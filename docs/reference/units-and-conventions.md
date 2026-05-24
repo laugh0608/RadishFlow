@@ -47,6 +47,7 @@
 | `Heater` / `Cooler` | `outlet_pressure_pa` | `Pa` | 目标 outlet 绝压，不高于已连接 inlet pressure |
 | `Mixer` | `outlet_pressure_pa` | `Pa` | 目标 outlet 绝压，不高于两股已连接 inlet pressure 的较低值 |
 | `Valve` | `outlet_pressure_pa` | `Pa` | 目标 outlet 绝压，不高于已连接 inlet pressure |
+| `Flash Drum` | `outlet_temperature_k` | `K` | flash temperature，同步 liquid / vapor outlet 模板 |
 | `Flash Drum` | `outlet_pressure_pa` | `Pa` | flash pressure，同步 liquid / vapor outlet 模板 |
 
 这些字段属于项目 flowsheet 语义，会通过正式参数提交流写回项目模型。Studio 提交时会同步对应 outlet stream 模板，求解器优先读取单元参数；旧项目或未设置参数时仍可按已有 outlet stream 模板兼容读取。

@@ -1043,14 +1043,20 @@ fn unit_property_fields(
         )
         .into_iter()
         .collect(),
-        "flash_drum" => unit_number_property_field(
-            flowsheet,
-            unit,
-            drafts,
-            rf_ui::UnitInspectorDraftField::OutletPressurePa,
-            "Flash pressure (Pa)",
-        )
+        "flash_drum" => [
+            (
+                rf_ui::UnitInspectorDraftField::OutletTemperatureK,
+                "Flash temperature (K)",
+            ),
+            (
+                rf_ui::UnitInspectorDraftField::OutletPressurePa,
+                "Flash pressure (Pa)",
+            ),
+        ]
         .into_iter()
+        .filter_map(|(field, label)| {
+            unit_number_property_field(flowsheet, unit, drafts, field, label)
+        })
         .collect(),
         _ => Vec::new(),
     }
@@ -1385,12 +1391,17 @@ fn unit_parameter_constraint_text(
 ) -> String {
     match field {
         rf_ui::UnitInspectorDraftField::OutletTemperatureK => {
+            if unit.kind == "flash_drum" {
+                return "SI unit: K. Enter a positive finite flash temperature; the committed value is used by the solver and synced to the Flash Drum liquid/vapor outlet stream templates.".to_string();
+            }
             "SI unit: K. Enter a positive finite outlet temperature; the committed value is used by the solver and synced to the outlet stream template.".to_string()
         }
         rf_ui::UnitInspectorDraftField::OutletPressurePa => {
             if unit_outlet_pressure_cannot_exceed_inlet(unit) {
-                let inlet_limit = connected_inlet_pressure_limit(flowsheet, unit)
-                    .map(|pressure_pa| format!(" Current inlet pressure limit: {pressure_pa:.0} Pa."));
+                let inlet_limit =
+                    connected_inlet_pressure_limit(flowsheet, unit).map(|pressure_pa| {
+                        format!(" Current inlet pressure limit: {pressure_pa:.0} Pa.")
+                    });
                 return format!(
                     "SI unit: Pa. Enter a positive finite outlet absolute pressure; Mixer, Heater, Cooler, and Valve outlet pressure cannot exceed the connected inlet pressure limit.{}",
                     inlet_limit.unwrap_or_default()

@@ -277,8 +277,14 @@ fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorDraftField> 
                 UnitInspectorDraftField::OutletPressurePa,
             ]
         }
-        rf_unitops::MIXER_KIND | rf_unitops::VALVE_KIND | rf_unitops::FLASH_DRUM_KIND => {
+        rf_unitops::MIXER_KIND | rf_unitops::VALVE_KIND => {
             vec![UnitInspectorDraftField::OutletPressurePa]
+        }
+        rf_unitops::FLASH_DRUM_KIND => {
+            vec![
+                UnitInspectorDraftField::OutletTemperatureK,
+                UnitInspectorDraftField::OutletPressurePa,
+            ]
         }
         _ => Vec::new(),
     }
@@ -424,6 +430,7 @@ fn default_unit_parameter_value(unit: &UnitNode, field: &UnitInspectorDraftField
         (rf_unitops::COOLER_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         (rf_unitops::MIXER_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         (rf_unitops::VALVE_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(90_000.0),
+        (rf_unitops::FLASH_DRUM_KIND, UnitInspectorDraftField::OutletTemperatureK) => Some(298.15),
         (rf_unitops::FLASH_DRUM_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         _ => None,
     }

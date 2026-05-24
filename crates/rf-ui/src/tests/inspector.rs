@@ -664,6 +664,58 @@ fn committing_flash_pressure_parameter_syncs_both_outlet_templates() {
 }
 
 #[test]
+fn committing_flash_temperature_parameter_syncs_both_outlet_templates() {
+    let mut app_state = AppState::new(flash_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("flash-1")));
+    let update = app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("flash-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            "335",
+        )
+        .expect("expected flash temperature draft update");
+
+    assert_eq!(update.key, "unit:flash-1:outlet_temperature_k");
+    assert!(update.is_dirty);
+    assert_eq!(update.validation, crate::DraftValidationState::Valid);
+
+    let outcome = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("flash-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            timestamp(42),
+        )
+        .expect("expected flash temperature draft commit")
+        .expect("expected committed flash temperature draft");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetUnitParameter {
+            unit_id: UnitId::new("flash-1"),
+            parameter: "outlet_temperature_k".to_string(),
+            value: CommandValue::Number(335.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("flash-1")]
+            .parameters
+            .outlet_temperature_k,
+        Some(335.0)
+    );
+    for stream_id in ["stream-liquid", "stream-vapor"] {
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&StreamId::new(stream_id)].temperature_k,
+            335.0
+        );
+    }
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
+}
+
+#[test]
 fn updating_valve_parameter_above_inlet_pressure_marks_draft_invalid() {
     let mut app_state = AppState::new(valve_parameter_document());
     app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("valve-1")));

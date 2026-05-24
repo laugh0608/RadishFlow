@@ -2084,7 +2084,7 @@ fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_heater
 }
 
 #[test]
-fn studio_gui_window_model_surfaces_flash_drum_pressure_parameter() {
+fn studio_gui_window_model_surfaces_flash_drum_parameters() {
     let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
     driver
@@ -2101,12 +2101,33 @@ fn studio_gui_window_model_surfaces_flash_drum_pressure_parameter() {
         .runtime
         .active_inspector_detail
         .expect("expected active flash inspector detail");
+    let temperature_field = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:flash-1:outlet_temperature_k")
+        .expect("expected flash temperature field");
     let field = detail
         .property_fields
         .iter()
         .find(|field| field.key == "unit:flash-1:outlet_pressure_pa")
         .expect("expected flash pressure field");
 
+    assert_eq!(temperature_field.label, "Flash temperature (K)");
+    assert_eq!(temperature_field.value_kind_label, "Number");
+    assert_eq!(temperature_field.status_label, "Synced");
+    assert_eq!(
+        temperature_field.draft_update_command_id,
+        "inspector.update_stream_draft:unit:flash-1:outlet_temperature_k"
+    );
+    assert!(temperature_field.commit_command_id.is_none());
+    assert!(
+        temperature_field
+            .constraint_text
+            .as_deref()
+            .is_some_and(|text| text.contains("SI unit: K")
+                && text.contains("positive finite flash temperature")
+                && text.contains("liquid/vapor outlet stream templates"))
+    );
     assert_eq!(field.label, "Flash pressure (Pa)");
     assert_eq!(field.value_kind_label, "Number");
     assert_eq!(field.status_label, "Synced");

@@ -202,7 +202,19 @@ fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
             field: UnitParameterShellField::OutletPressurePa,
         },
         UnitParameterShellCase {
-            name: "flash",
+            name: "flash-temperature",
+            project_json: include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            unit_id: "flash-1",
+            draft_key: "unit:flash-1:outlet_temperature_k",
+            raw_value: "335",
+            expected_value: 335.0,
+            outlet_stream_ids: &["stream-liquid", "stream-vapor"],
+            field: UnitParameterShellField::OutletTemperatureK,
+        },
+        UnitParameterShellCase {
+            name: "flash-pressure",
             project_json: include_str!(
                 "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
             ),

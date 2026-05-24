@@ -693,6 +693,15 @@ fn validate_step_parameters(
     inputs: &UnitOperationInputs,
     consumed_stream_ids: &[StreamId],
 ) -> RfResult<()> {
+    if let Some(outlet_temperature_k) = unit.parameters.outlet_temperature_k {
+        validate_unit_outlet_temperature_parameter(
+            step_number,
+            unit,
+            consumed_stream_ids,
+            outlet_temperature_k,
+        )?;
+    }
+
     let Some(outlet_pressure_pa) = unit.parameters.outlet_pressure_pa else {
         return Ok(());
     };
@@ -736,6 +745,37 @@ fn validate_step_parameters(
         dedupe_stream_ids(related_stream_ids),
         limit.port_targets,
     ))
+}
+
+fn validate_unit_outlet_temperature_parameter(
+    step_number: usize,
+    unit: &UnitNode,
+    consumed_stream_ids: &[StreamId],
+    outlet_temperature_k: f64,
+) -> RfResult<()> {
+    if !unit_supports_outlet_temperature_parameter(unit)
+        || (outlet_temperature_k.is_finite() && outlet_temperature_k > 0.0)
+    {
+        return Ok(());
+    }
+
+    Err(solver_step_invalid_input_with_context(
+        step_number,
+        unit,
+        SolverDiagnosticCode::StepParameter,
+        format!(
+            "outlet_temperature_k `{outlet_temperature_k}` K must be a positive finite temperature"
+        ),
+        unit_parameter_related_stream_ids(unit, consumed_stream_ids),
+        unit_parameter_related_port_targets(unit),
+    ))
+}
+
+fn unit_supports_outlet_temperature_parameter(unit: &UnitNode) -> bool {
+    matches!(
+        unit.kind.as_str(),
+        HEATER_KIND | COOLER_KIND | FLASH_DRUM_KIND
+    )
 }
 
 fn unit_supports_outlet_pressure_parameter(unit: &UnitNode) -> bool {
@@ -919,6 +959,9 @@ fn instantiate_operation(
             let liquid = stream_target_for_port(unit, FLASH_DRUM_LIQUID_PORT, flowsheet)?;
             let vapor = stream_target_for_port(unit, FLASH_DRUM_VAPOR_PORT, flowsheet)?;
             let mut operation = FlashDrum::new(liquid, vapor);
+            if let Some(temperature_k) = unit.parameters.outlet_temperature_k {
+                operation = operation.with_outlet_temperature_k(temperature_k);
+            }
             if let Some(pressure_pa) = unit.parameters.outlet_pressure_pa {
                 operation = operation.with_outlet_pressure_pa(pressure_pa);
             }

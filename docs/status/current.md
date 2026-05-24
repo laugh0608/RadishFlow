@@ -14,7 +14,7 @@
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
 - 当前主线：MVP 第一阶段最小闭环已经可验证，`v26.5.1-dev` 已作为内部验收 tag 创建并推送；首版 demo 前的 Home / Workbench 产品可用性 blocker 已收口，当前重新回到功能开发。
-- 当前重点：进入“受控扩展高频建模能力”阶段。已收口内建单元参数链路、连接失败恢复、空白项目 Mixer 路径、受控流股断开 / 删除 / 单端唯一候选重连、source / sink 断开提示、重连不可用原因一致展示、关闭脏工作区保护、suggestion 下一步可见性、sidecar 级单元定位 / 拖动 / viewport 记忆、`SolveSnapshot` 轻量文本复制 / 导出。后续允许继续推进窄口径单元参数、受控重连细化和 sidecar 级布局体验；仍不做自由连线、自动布线、完整拖拽布局、完整报表或第三方 CAPE-OPEN / 物性包加载。
+- 当前重点：进入“受控扩展高频建模能力”阶段。已收口内建单元参数链路、连接失败恢复、空白项目 Mixer 路径、受控流股断开 / 删除 / 单端唯一候选重连、source / sink 断开提示、重连不可用原因一致展示、关闭脏工作区保护、suggestion 下一步可见性、sidecar 级单元定位 / 拖动 / viewport 记忆、`SolveSnapshot` 轻量文本复制 / 导出。后续允许继续推进窄口径单元参数、受控重连细化和 sidecar 级布局体验；仍不做自由连线、自动布线、完整拖拽布局、完整报表或第三方物性包加载。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -49,6 +49,7 @@
 - 2026-05-24 已收口 selected stream 重连 presentation 一致性：Canvas / Inspector / shell 对可用、已双端连接、候选不唯一和 cycle-forming 候选等状态使用同一套可用性判断与不可用原因；Inspector 不再隐藏不可用重连动作，而是禁用并说明原因。该补口仍不新增端口选择器、自由连线或自动布线。
 - 2026-05-24 轻量人工 smoke 暴露 Canvas 单元直接拖动时模块原地抖动且不能稳定按住拖拽，以及空白点击错误地移动选中单元、关闭脏工作区确认只显示在顶部通知区。现已把单元拖动改为按鼠标 world 坐标跟随并在拖动 active 时禁用 viewport pan；空白点击改为清空选择；关闭脏工作区改为居中确认窗口。拖动仍只写 layout sidecar，不写项目语义、不进 undo。
 - 2026-05-24 已补 `SolveSnapshot` 文本复制 / 导出 `Units` 区；仍只消费结果 DTO，不写项目、不进 undo、不扩完整报表系统。
+- 2026-05-24 已补 Flash Drum flash temperature：复用正式参数链路，同步 liquid / vapor 出口并参与 TP Flash；不扩完整参数表。
 
 见 `docs/devlogs/2026-05/2026-W21.md`、`docs/devlogs/2026-05/2026-W20.md`。
 
