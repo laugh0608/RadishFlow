@@ -55,10 +55,10 @@
 
 ## 下一步建议
 
-1. 下一步继续做轻量人工 smoke：复核结果复制 / 导出的 `Units` 区、selected stream 重连 / 断开、关闭确认窗口、sidecar 级拖动 / viewport 高频路径。
-2. 每个新能力必须走正式 command / validation / undo，或明确标记为 shell-local state；同时补 focused tests 和必要文档。
-3. 若要刷新新的便携包或 tag，应创建新提交 / 新版本节点，不移动已推送的 `v26.5.1-dev` tag。
-4. 不把受控扩展误扩成自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统或对外发布自动化。
+1. 明天优先真实窗口 smoke：结果 `Units` 复制 / 导出、Feed / Mixer / Flash Drum 参数重跑、selected stream 重连 / 断开、关闭确认、sidecar 拖动 / viewport。
+2. 若无 blocker，再选一个窄口径建模补口；必须走正式 command / validation / undo，或明确 shell-local state，补 focused tests 和必要文档。
+3. 若要刷新便携包或 tag，应创建新提交 / 新版本节点，不移动已推送的 `v26.5.1-dev` tag。
+4. 不把受控扩展误扩成自由连线、自动布线、完整拖拽布局、完整报表、完整参数表或对外发布自动化。
 
 ## 暂不推进
 
