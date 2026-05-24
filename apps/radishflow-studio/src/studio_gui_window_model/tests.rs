@@ -2127,6 +2127,49 @@ fn studio_gui_window_model_surfaces_flash_drum_pressure_parameter() {
 }
 
 #[test]
+fn studio_gui_window_model_surfaces_mixer_pressure_parameter() {
+    let config = synced_example_config("feed-mixer-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:mixer-1".to_string(),
+        })
+        .expect("expected mixer focus dispatch");
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected active mixer inspector detail");
+    let field = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:mixer-1:outlet_pressure_pa")
+        .expect("expected mixer pressure field");
+
+    assert_eq!(field.label, "Outlet pressure (Pa)");
+    assert_eq!(field.value_kind_label, "Number");
+    assert_eq!(field.status_label, "Synced");
+    assert_eq!(
+        field.draft_update_command_id,
+        "inspector.update_stream_draft:unit:mixer-1:outlet_pressure_pa"
+    );
+    assert!(field.commit_command_id.is_none());
+    assert!(
+        field
+            .constraint_text
+            .as_deref()
+            .is_some_and(|text| text.contains("SI unit: Pa")
+                && text.contains("positive finite outlet absolute pressure")
+                && text.contains("Mixer, Heater, Cooler, and Valve")
+                && text.contains("Current inlet pressure limit"))
+    );
+}
+
+#[test]
 fn studio_gui_window_model_surfaces_official_two_phase_flash_outlet_enthalpy_in_runtime_snapshot() {
     let config = synced_example_config("feed-cooler-flash-binary-hydrocarbon.rfproj.json");
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");

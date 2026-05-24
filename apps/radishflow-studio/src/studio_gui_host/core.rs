@@ -1034,6 +1034,15 @@ fn unit_property_fields(
         )
         .into_iter()
         .collect(),
+        "mixer" => unit_number_property_field(
+            flowsheet,
+            unit,
+            drafts,
+            rf_ui::UnitInspectorDraftField::OutletPressurePa,
+            "Outlet pressure (Pa)",
+        )
+        .into_iter()
+        .collect(),
         "flash_drum" => unit_number_property_field(
             flowsheet,
             unit,
@@ -1356,7 +1365,7 @@ fn unit_parameter_invalid_notice(
     if field.key.ends_with(":outlet_pressure_pa") {
         if unit_outlet_pressure_cannot_exceed_inlet(unit) {
             return format!(
-                "{} must be a positive finite outlet absolute pressure in Pa and cannot exceed the connected inlet pressure.",
+                "{} must be a positive finite outlet absolute pressure in Pa and cannot exceed the connected inlet pressure limit.",
                 field.label
             );
         }
@@ -1380,11 +1389,10 @@ fn unit_parameter_constraint_text(
         }
         rf_ui::UnitInspectorDraftField::OutletPressurePa => {
             if unit_outlet_pressure_cannot_exceed_inlet(unit) {
-                let inlet_limit = connected_inlet_stream(flowsheet, unit).map(|stream| {
-                    format!(" Current inlet pressure limit: {:.0} Pa.", stream.pressure_pa)
-                });
+                let inlet_limit = connected_inlet_pressure_limit(flowsheet, unit)
+                    .map(|pressure_pa| format!(" Current inlet pressure limit: {pressure_pa:.0} Pa."));
                 return format!(
-                    "SI unit: Pa. Enter a positive finite outlet absolute pressure; Heater, Cooler, and Valve outlet pressure cannot exceed the connected inlet pressure.{}",
+                    "SI unit: Pa. Enter a positive finite outlet absolute pressure; Mixer, Heater, Cooler, and Valve outlet pressure cannot exceed the connected inlet pressure limit.{}",
                     inlet_limit.unwrap_or_default()
                 );
             }
@@ -1394,21 +1402,23 @@ fn unit_parameter_constraint_text(
 }
 
 fn unit_outlet_pressure_cannot_exceed_inlet(unit: &rf_model::UnitNode) -> bool {
-    matches!(unit.kind.as_str(), "heater" | "cooler" | "valve")
+    matches!(unit.kind.as_str(), "mixer" | "heater" | "cooler" | "valve")
 }
 
-fn connected_inlet_stream<'a>(
-    flowsheet: &'a rf_model::Flowsheet,
+fn connected_inlet_pressure_limit(
+    flowsheet: &rf_model::Flowsheet,
     unit: &rf_model::UnitNode,
-) -> Option<&'a rf_model::MaterialStreamState> {
+) -> Option<f64> {
     unit.ports
         .iter()
-        .find(|port| {
+        .filter(|port| {
             port.direction == rf_types::PortDirection::Inlet
                 && port.kind == rf_types::PortKind::Material
         })
-        .and_then(|port| port.stream_id.as_ref())
-        .and_then(|stream_id| flowsheet.streams.get(stream_id))
+        .filter_map(|port| port.stream_id.as_ref())
+        .filter_map(|stream_id| flowsheet.streams.get(stream_id))
+        .map(|stream| stream.pressure_pa)
+        .reduce(f64::min)
 }
 
 fn stream_property_notices(

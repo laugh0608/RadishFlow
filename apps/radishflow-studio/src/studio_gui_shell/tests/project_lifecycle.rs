@@ -178,6 +178,18 @@ fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
             field: UnitParameterShellField::OutletPressurePa,
         },
         UnitParameterShellCase {
+            name: "mixer-pressure",
+            project_json: include_str!(
+                "../../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            unit_id: "mixer-1",
+            draft_key: "unit:mixer-1:outlet_pressure_pa",
+            raw_value: "640000",
+            expected_value: 640_000.0,
+            outlet_stream_ids: &["stream-mix-out"],
+            field: UnitParameterShellField::OutletPressurePa,
+        },
+        UnitParameterShellCase {
             name: "valve",
             project_json: include_str!(
                 "../../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"

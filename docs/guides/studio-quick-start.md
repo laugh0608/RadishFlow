@@ -163,7 +163,7 @@ cargo run -p radishflow-studio
 4. 使用 Canvas 上的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` suggestion 补齐端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
 5. 在左侧 `项目` 或 Canvas 对象列表中选择 stream / unit，右侧 `检查器` 会切到对应对象。
 6. 在流股检查器中编辑 `T / P / F` 和组成草稿；字段提交、全部应用、组成归一化都是显式动作。
-7. 选中 `Heater / Cooler / Valve / Flash Drum` 时，可在单元检查器中编辑已暴露的 outlet temperature、outlet pressure 或 flash pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。
+7. 选中 `Heater / Cooler / Mixer / Valve / Flash Drum` 时，可在单元检查器中编辑已暴露的 outlet temperature、outlet pressure 或 flash pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。
 8. 若流股错连或漏连，先选中该 material stream，再使用 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 或 `Delete stream` 这组受控恢复动作；`Reconnect stream` 只在单端唯一候选且不会形成 unit dependency cycle 时可用。
 9. 点击顶部 `运行`，结果只从最新 `SolveSnapshot` 展示到右侧 `结果` 和底部 `结果表`。
 
@@ -175,10 +175,11 @@ cargo run -p radishflow-studio
 
 - `Heater / Cooler`：`outlet temperature`，单位 K
 - `Heater / Cooler`：`outlet pressure`，单位 Pa；不能高于已连接 inlet pressure
+- `Mixer`：`outlet pressure`，单位 Pa；不能高于两股已连接 inlet pressure 的较低值
 - `Valve`：`outlet pressure`，单位 Pa；不能高于已连接 inlet pressure
 - `Flash Drum`：`flash pressure`，单位 Pa；提交后同步 liquid / vapor 两个出口流股模板，并作为 TP Flash pressure 参与求解
 
-`Heater / Cooler / Valve` 的 outlet pressure 若高于已连接 inlet pressure，会在单元检查器草稿态直接标记为无效，保持草稿、不写回项目文档，也不会同步 outlet stream 模板。Flash Drum 的 flash pressure 当前只要求正有限 Pa 值，不施加 inlet pressure 上限。若旧项目或外部编辑已经把越界参数写入文档，运行会产生 `solver.step.parameter` 诊断，并把 failure detail、端口 attention 和 recovery action 指向相关 unit / port / stream。
+`Mixer / Heater / Cooler / Valve` 的 outlet pressure 若高于已连接 inlet pressure 约束，会在单元检查器草稿态直接标记为无效，保持草稿、不写回项目文档，也不会同步 outlet stream 模板。Flash Drum 的 flash pressure 当前只要求正有限 Pa 值，不施加 inlet pressure 上限。若旧项目或外部编辑已经把越界参数写入文档，运行会产生 `solver.step.parameter` 诊断，并把 failure detail、端口 attention 和 recovery action 指向相关 unit / port / stream。
 
 连接类失败同样会尽量携带可修复目标：例如缺失 upstream source、未绑定 outlet port、cycle、自环、坏 stream 引用、重复 source / sink 或 orphan stream。Run Panel 中的 recovery action 可能只是聚焦相关 unit / port / stream，也可能执行明确的局部修复动作；按钮文案应区分这两类行为。
 

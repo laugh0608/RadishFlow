@@ -771,6 +771,38 @@ fn sequential_solver_uses_heater_unit_outlet_pressure_parameter() {
 }
 
 #[test]
+fn sequential_solver_uses_mixer_unit_outlet_pressure_parameter() {
+    let provider = build_provider();
+    let flash_solver = PlaceholderTpFlashSolver;
+    let services = SolverServices {
+        thermo: &provider,
+        flash_solver: &flash_solver,
+    };
+    let mut flowsheet = build_feed_mixer_heater_flash_flowsheet();
+    flowsheet
+        .units
+        .get_mut(&UnitId::new("mixer-1"))
+        .expect("expected mixer")
+        .parameters = UnitOperationParameters {
+        outlet_pressure_pa: Some(92_000.0),
+        ..Default::default()
+    };
+
+    let snapshot = SequentialModularSolver
+        .solve(&services, &flowsheet)
+        .expect("expected solve snapshot");
+
+    let mixed = snapshot
+        .stream(&"stream-mix-out".into())
+        .expect("expected mixer outlet");
+    assert_close(mixed.pressure_pa, 92_000.0, 1e-12);
+    let heated = snapshot
+        .stream(&"stream-heated".into())
+        .expect("expected heated outlet");
+    assert_close(heated.pressure_pa, 95_000.0, 1e-12);
+}
+
+#[test]
 fn sequential_solver_runs_feed_heater_flash_example_project_file() {
     let provider = build_provider();
     let flash_solver = PlaceholderTpFlashSolver;
@@ -1359,6 +1391,61 @@ fn sequential_solver_reports_unit_parameter_context_for_invalid_heater_pressure(
         &[
             DiagnosticPortTarget::new("heater-1", "outlet"),
             DiagnosticPortTarget::new("heater-1", "inlet")
+        ]
+    );
+}
+
+#[test]
+fn sequential_solver_reports_unit_parameter_context_for_invalid_mixer_pressure() {
+    let provider = build_provider();
+    let flash_solver = PlaceholderTpFlashSolver;
+    let services = SolverServices {
+        thermo: &provider,
+        flash_solver: &flash_solver,
+    };
+    let mut flowsheet = build_feed_mixer_heater_flash_flowsheet();
+    flowsheet
+        .units
+        .get_mut(&"mixer-1".into())
+        .expect("expected mixer unit")
+        .parameters = UnitOperationParameters {
+        outlet_temperature_k: None,
+        outlet_pressure_pa: Some(110_000.0),
+    };
+
+    let error = SequentialModularSolver
+        .solve(&services, &flowsheet)
+        .expect_err("expected mixer parameter validation failure");
+
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("solver.step.parameter")
+    );
+    assert!(error.message().contains("unit parameter validation failed"));
+    assert!(error.message().contains("outlet_pressure_pa `110000` Pa"));
+    assert!(
+        error
+            .message()
+            .contains("cannot exceed lowest inlet pressure")
+    );
+    assert_eq!(
+        error.context().related_unit_ids(),
+        &[UnitId::new("mixer-1")]
+    );
+    assert_eq!(
+        error.context().related_stream_ids(),
+        &[
+            StreamId::new("stream-feed-a"),
+            StreamId::new("stream-feed-b"),
+            StreamId::new("stream-mix-out")
+        ]
+    );
+    assert_eq!(
+        error.context().related_port_targets(),
+        &[
+            DiagnosticPortTarget::new("mixer-1", "outlet"),
+            DiagnosticPortTarget::new("mixer-1", "inlet_a"),
+            DiagnosticPortTarget::new("mixer-1", "inlet_b")
         ]
     );
 }

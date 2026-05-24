@@ -492,11 +492,20 @@ impl UnitOperation for Feed {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mixer {
     outlet: StreamTarget,
+    outlet_pressure_pa: Option<f64>,
 }
 
 impl Mixer {
     pub fn new(outlet: StreamTarget) -> Self {
-        Self { outlet }
+        Self {
+            outlet,
+            outlet_pressure_pa: None,
+        }
+    }
+
+    pub fn with_outlet_pressure_pa(mut self, pressure_pa: f64) -> Self {
+        self.outlet_pressure_pa = Some(pressure_pa);
+        self
     }
 }
 
@@ -531,7 +540,15 @@ impl UnitOperation for Mixer {
             ],
             "mixer outlet temperature",
         )?;
-        let pressure_pa = validated_pressure(inlet_a)?.min(validated_pressure(inlet_b)?);
+        let inlet_pressure_limit_pa =
+            validated_pressure(inlet_a)?.min(validated_pressure(inlet_b)?);
+        let pressure_pa = match self.outlet_pressure_pa {
+            Some(pressure_pa) => {
+                validate_mixer_outlet_pressure(pressure_pa, inlet_pressure_limit_pa)?;
+                pressure_pa
+            }
+            None => inlet_pressure_limit_pa,
+        };
         let overall_mole_fractions = mixed_composition([inlet_a, inlet_b])?;
 
         let mut outlet_stream = MaterialStreamState::from_tpzf(
@@ -837,6 +854,20 @@ fn validated_pressure(stream: &MaterialStreamState) -> RfResult<f64> {
     }
 
     Ok(stream.pressure_pa)
+}
+
+fn validate_mixer_outlet_pressure(pressure_pa: f64, inlet_pressure_limit_pa: f64) -> RfResult<()> {
+    if !pressure_pa.is_finite() || pressure_pa <= 0.0 {
+        return Err(RfError::invalid_input(format!(
+            "mixer outlet pressure `{pressure_pa}` Pa must be a finite value greater than zero pascal"
+        )));
+    }
+    if pressure_pa > inlet_pressure_limit_pa {
+        return Err(RfError::invalid_input(format!(
+            "mixer outlet pressure `{pressure_pa}` Pa cannot exceed lowest inlet pressure `{inlet_pressure_limit_pa}` Pa"
+        )));
+    }
+    Ok(())
 }
 
 fn validated_total_flow(stream: &MaterialStreamState) -> RfResult<f64> {
@@ -1366,6 +1397,81 @@ mod tests {
         assert!(window.bubble_pressure_pa > outlet.pressure_pa);
         assert!(window.bubble_temperature_k < outlet.temperature_k);
         assert!(window.dew_temperature_k > outlet.temperature_k);
+    }
+
+    #[test]
+    fn mixer_uses_configured_outlet_pressure_below_lowest_inlet() {
+        let provider = build_provider([2.0, 0.5], 100_000.0);
+        let flash_solver = PlaceholderTpFlashSolver;
+        let inlet_a = build_stream(
+            "stream-a",
+            "Feed A",
+            300.0,
+            120_000.0,
+            2.0,
+            binary_composition(0.25, 0.75),
+        );
+        let inlet_b = build_stream(
+            "stream-b",
+            "Feed B",
+            360.0,
+            100_000.0,
+            3.0,
+            binary_composition(0.60, 0.40),
+        );
+        let mixer = Mixer::new(StreamTarget::new("stream-out", "Mixer Outlet"))
+            .with_outlet_pressure_pa(95_000.0);
+
+        let inputs = UnitOperationInputs::new()
+            .with_material_stream(MIXER_INLET_A_PORT, inlet_a)
+            .with_material_stream(MIXER_INLET_B_PORT, inlet_b);
+        let services = UnitOperationServices {
+            thermo: Some(&provider),
+            flash_solver: Some(&flash_solver as &dyn TpFlashSolver),
+        };
+        let outputs = mixer
+            .run(&services, &inputs)
+            .expect("expected mixer output");
+
+        let outlet = outputs
+            .stream(MIXER_OUTLET_PORT)
+            .expect("expected mixer outlet stream");
+        assert_close(outlet.pressure_pa, 95_000.0, 1e-12);
+    }
+
+    #[test]
+    fn mixer_rejects_configured_outlet_pressure_above_lowest_inlet() {
+        let inlet_a = build_stream(
+            "stream-a",
+            "Feed A",
+            300.0,
+            120_000.0,
+            2.0,
+            binary_composition(0.25, 0.75),
+        );
+        let inlet_b = build_stream(
+            "stream-b",
+            "Feed B",
+            360.0,
+            100_000.0,
+            3.0,
+            binary_composition(0.60, 0.40),
+        );
+        let mixer = Mixer::new(StreamTarget::new("stream-out", "Mixer Outlet"))
+            .with_outlet_pressure_pa(105_000.0);
+        let inputs = UnitOperationInputs::new()
+            .with_material_stream(MIXER_INLET_A_PORT, inlet_a)
+            .with_material_stream(MIXER_INLET_B_PORT, inlet_b);
+
+        let error = mixer
+            .run(&UnitOperationServices::default(), &inputs)
+            .expect_err("expected mixer pressure validation error");
+
+        assert!(
+            error
+                .message()
+                .contains("cannot exceed lowest inlet pressure")
+        );
     }
 
     #[test]

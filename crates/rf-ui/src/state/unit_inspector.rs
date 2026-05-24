@@ -277,7 +277,7 @@ fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorDraftField> 
                 UnitInspectorDraftField::OutletPressurePa,
             ]
         }
-        rf_unitops::VALVE_KIND | rf_unitops::FLASH_DRUM_KIND => {
+        rf_unitops::MIXER_KIND | rf_unitops::VALVE_KIND | rf_unitops::FLASH_DRUM_KIND => {
             vec![UnitInspectorDraftField::OutletPressurePa]
         }
         _ => Vec::new(),
@@ -369,8 +369,8 @@ fn is_valid_unit_parameter_value_for_unit(
     if unit_outlet_pressure_cannot_exceed_inlet(unit)
         && matches!(field, UnitInspectorDraftField::OutletPressurePa)
     {
-        return inlet_stream(flowsheet, unit)
-            .map(|stream| value <= stream.pressure_pa)
+        return inlet_pressure_limit(flowsheet, unit)
+            .map(|pressure_pa| value <= pressure_pa)
             .unwrap_or(true);
     }
 
@@ -380,16 +380,21 @@ fn is_valid_unit_parameter_value_for_unit(
 fn unit_outlet_pressure_cannot_exceed_inlet(unit: &UnitNode) -> bool {
     matches!(
         unit.kind.as_str(),
-        rf_unitops::HEATER_KIND | rf_unitops::COOLER_KIND | rf_unitops::VALVE_KIND
+        rf_unitops::MIXER_KIND
+            | rf_unitops::HEATER_KIND
+            | rf_unitops::COOLER_KIND
+            | rf_unitops::VALVE_KIND
     )
 }
 
-fn inlet_stream<'a>(flowsheet: &'a Flowsheet, unit: &UnitNode) -> Option<&'a MaterialStreamState> {
+fn inlet_pressure_limit(flowsheet: &Flowsheet, unit: &UnitNode) -> Option<f64> {
     unit.ports
         .iter()
-        .find(|port| port.direction == PortDirection::Inlet && port.kind == PortKind::Material)
-        .and_then(|port| port.stream_id.as_ref())
-        .and_then(|stream_id| flowsheet.streams.get(stream_id))
+        .filter(|port| port.direction == PortDirection::Inlet && port.kind == PortKind::Material)
+        .filter_map(|port| port.stream_id.as_ref())
+        .filter_map(|stream_id| flowsheet.streams.get(stream_id))
+        .map(|stream| stream.pressure_pa)
+        .reduce(f64::min)
 }
 
 fn outlet_stream<'a>(flowsheet: &'a Flowsheet, unit: &UnitNode) -> Option<&'a MaterialStreamState> {
@@ -417,6 +422,7 @@ fn default_unit_parameter_value(unit: &UnitNode, field: &UnitInspectorDraftField
         (rf_unitops::HEATER_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         (rf_unitops::COOLER_KIND, UnitInspectorDraftField::OutletTemperatureK) => Some(285.0),
         (rf_unitops::COOLER_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
+        (rf_unitops::MIXER_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         (rf_unitops::VALVE_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(90_000.0),
         (rf_unitops::FLASH_DRUM_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         _ => None,

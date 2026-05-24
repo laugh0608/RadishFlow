@@ -233,6 +233,72 @@ fn valve_parameter_document() -> FlowsheetDocument {
     )
 }
 
+fn mixer_parameter_document() -> FlowsheetDocument {
+    let mut flowsheet = Flowsheet::new("mixer-demo");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-feed-a",
+            "Feed A",
+            315.0,
+            120_000.0,
+            2.0,
+            Default::default(),
+        ))
+        .expect("expected feed a stream insert");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-feed-b",
+            "Feed B",
+            325.0,
+            100_000.0,
+            3.0,
+            Default::default(),
+        ))
+        .expect("expected feed b stream insert");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-mixed",
+            "Mixer Outlet",
+            321.0,
+            100_000.0,
+            0.0,
+            Default::default(),
+        ))
+        .expect("expected mixer outlet stream insert");
+    flowsheet
+        .insert_unit(UnitNode::new(
+            "mixer-1",
+            "Mixer",
+            "mixer",
+            vec![
+                UnitPort::new(
+                    "inlet_a",
+                    PortDirection::Inlet,
+                    PortKind::Material,
+                    Some("stream-feed-a".into()),
+                ),
+                UnitPort::new(
+                    "inlet_b",
+                    PortDirection::Inlet,
+                    PortKind::Material,
+                    Some("stream-feed-b".into()),
+                ),
+                UnitPort::new(
+                    "outlet",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-mixed".into()),
+                ),
+            ],
+        ))
+        .expect("expected mixer insert");
+
+    FlowsheetDocument::new(
+        flowsheet,
+        DocumentMetadata::new("doc-mixer-parameter", "Mixer Parameter Demo", timestamp(10)),
+    )
+}
+
 fn flash_parameter_document() -> FlowsheetDocument {
     let mut flowsheet = Flowsheet::new("flash-demo");
     flowsheet
@@ -422,6 +488,94 @@ fn committing_heater_pressure_parameter_syncs_outlet_template() {
         Some(SolvePendingReason::DocumentRevisionAdvanced)
     );
     assert!(app_state.workspace.drafts.fields.is_empty());
+}
+
+#[test]
+fn committing_mixer_pressure_parameter_syncs_outlet_template() {
+    let mut app_state = AppState::new(mixer_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("mixer-1")));
+    app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("mixer-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            "95000",
+        )
+        .expect("expected mixer pressure draft update");
+
+    let outcome = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("mixer-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            timestamp(42),
+        )
+        .expect("expected mixer pressure draft commit")
+        .expect("expected committed mixer pressure draft");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetUnitParameter {
+            unit_id: UnitId::new("mixer-1"),
+            parameter: "outlet_pressure_pa".to_string(),
+            value: CommandValue::Number(95_000.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("mixer-1")]
+            .parameters
+            .outlet_pressure_pa,
+        Some(95_000.0)
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-mixed")].pressure_pa,
+        95_000.0
+    );
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
+    assert!(app_state.workspace.drafts.fields.is_empty());
+}
+
+#[test]
+fn updating_mixer_pressure_above_lowest_inlet_marks_draft_invalid() {
+    let mut app_state = AppState::new(mixer_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("mixer-1")));
+
+    let outcome = app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("mixer-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            "105000",
+        )
+        .expect("expected mixer pressure draft update");
+
+    assert_eq!(outcome.key, "unit:mixer-1:outlet_pressure_pa");
+    assert!(outcome.is_dirty);
+    assert_eq!(outcome.validation, crate::DraftValidationState::Invalid);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("mixer-1")]
+            .parameters
+            .outlet_pressure_pa,
+        None
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-mixed")].pressure_pa,
+        100_000.0
+    );
+
+    let ignored = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("mixer-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            timestamp(42),
+        )
+        .expect("expected invalid commit to be ignored");
+
+    assert_eq!(ignored, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.drafts.fields.contains_key(&outcome.key));
 }
 
 #[test]

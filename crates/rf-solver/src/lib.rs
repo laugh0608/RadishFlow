@@ -8,9 +8,9 @@ use rf_types::{DiagnosticPortTarget, PortDirection, RfError, RfResult, StreamId,
 use rf_unitops::{
     BuiltinUnitKind, COOLER_KIND, FEED_KIND, FEED_OUTLET_PORT, FLASH_DRUM_KIND,
     FLASH_DRUM_LIQUID_PORT, FLASH_DRUM_VAPOR_PORT, Feed, FlashDrum, HEATER_COOLER_INLET_PORT,
-    HEATER_COOLER_OUTLET_PORT, HEATER_KIND, HeaterCooler, MIXER_KIND, MIXER_OUTLET_PORT, Mixer,
-    StreamTarget, UnitOperation, UnitOperationInputs, UnitOperationServices, VALVE_KIND, Valve,
-    validate_unit_node,
+    HEATER_COOLER_OUTLET_PORT, HEATER_KIND, HeaterCooler, MIXER_INLET_A_PORT, MIXER_INLET_B_PORT,
+    MIXER_KIND, MIXER_OUTLET_PORT, Mixer, StreamTarget, UnitOperation, UnitOperationInputs,
+    UnitOperationServices, VALVE_KIND, Valve, validate_unit_node,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -713,20 +713,16 @@ fn validate_step_parameters(
         ));
     }
 
-    if !unit_outlet_pressure_cannot_exceed_inlet(unit) {
-        return Ok(());
-    }
-
-    let Some(inlet) = inputs.stream(HEATER_COOLER_INLET_PORT) else {
+    let Some(limit) = outlet_pressure_limit(unit, inputs) else {
         return Ok(());
     };
-    if outlet_pressure_pa <= inlet.pressure_pa {
+    if outlet_pressure_pa <= limit.pressure_pa {
         return Ok(());
     }
 
     let mut related_stream_ids = consumed_stream_ids.to_vec();
-    if let Ok(outlet_stream_id) = port_stream_id(unit, HEATER_COOLER_OUTLET_PORT) {
-        related_stream_ids.push(outlet_stream_id.clone());
+    for outlet_stream_id in outlet_stream_ids(unit) {
+        related_stream_ids.push(outlet_stream_id);
     }
 
     Err(solver_step_invalid_input_with_context(
@@ -734,26 +730,87 @@ fn validate_step_parameters(
         unit,
         SolverDiagnosticCode::StepParameter,
         format!(
-            "outlet_pressure_pa `{outlet_pressure_pa}` Pa cannot exceed inlet pressure `{}` Pa from stream `{}`",
-            inlet.pressure_pa, inlet.id
+            "outlet_pressure_pa `{outlet_pressure_pa}` Pa cannot exceed {} `{}` Pa from stream `{}`",
+            limit.description, limit.pressure_pa, limit.stream_id
         ),
         dedupe_stream_ids(related_stream_ids),
-        vec![
-            DiagnosticPortTarget::new(unit.id.clone(), HEATER_COOLER_OUTLET_PORT.to_string()),
-            DiagnosticPortTarget::new(unit.id.clone(), HEATER_COOLER_INLET_PORT.to_string()),
-        ],
+        limit.port_targets,
     ))
 }
 
 fn unit_supports_outlet_pressure_parameter(unit: &UnitNode) -> bool {
     matches!(
         unit.kind.as_str(),
-        HEATER_KIND | COOLER_KIND | VALVE_KIND | FLASH_DRUM_KIND
+        MIXER_KIND | HEATER_KIND | COOLER_KIND | VALVE_KIND | FLASH_DRUM_KIND
     )
 }
 
 fn unit_outlet_pressure_cannot_exceed_inlet(unit: &UnitNode) -> bool {
-    matches!(unit.kind.as_str(), HEATER_KIND | COOLER_KIND | VALVE_KIND)
+    matches!(
+        unit.kind.as_str(),
+        MIXER_KIND | HEATER_KIND | COOLER_KIND | VALVE_KIND
+    )
+}
+
+struct OutletPressureLimit {
+    pressure_pa: f64,
+    stream_id: StreamId,
+    description: &'static str,
+    port_targets: Vec<DiagnosticPortTarget>,
+}
+
+fn outlet_pressure_limit(
+    unit: &UnitNode,
+    inputs: &UnitOperationInputs,
+) -> Option<OutletPressureLimit> {
+    if !unit_outlet_pressure_cannot_exceed_inlet(unit) {
+        return None;
+    }
+
+    match unit.kind.as_str() {
+        MIXER_KIND => mixer_outlet_pressure_limit(unit, inputs),
+        HEATER_KIND | COOLER_KIND | VALVE_KIND => single_inlet_outlet_pressure_limit(unit, inputs),
+        _ => None,
+    }
+}
+
+fn single_inlet_outlet_pressure_limit(
+    unit: &UnitNode,
+    inputs: &UnitOperationInputs,
+) -> Option<OutletPressureLimit> {
+    let inlet = inputs.stream(HEATER_COOLER_INLET_PORT)?;
+    Some(OutletPressureLimit {
+        pressure_pa: inlet.pressure_pa,
+        stream_id: inlet.id.clone(),
+        description: "inlet pressure",
+        port_targets: vec![
+            DiagnosticPortTarget::new(unit.id.clone(), HEATER_COOLER_OUTLET_PORT.to_string()),
+            DiagnosticPortTarget::new(unit.id.clone(), HEATER_COOLER_INLET_PORT.to_string()),
+        ],
+    })
+}
+
+fn mixer_outlet_pressure_limit(
+    unit: &UnitNode,
+    inputs: &UnitOperationInputs,
+) -> Option<OutletPressureLimit> {
+    let inlet_a = inputs.stream(MIXER_INLET_A_PORT)?;
+    let inlet_b = inputs.stream(MIXER_INLET_B_PORT)?;
+    let limit = if inlet_a.pressure_pa <= inlet_b.pressure_pa {
+        inlet_a
+    } else {
+        inlet_b
+    };
+    Some(OutletPressureLimit {
+        pressure_pa: limit.pressure_pa,
+        stream_id: limit.id.clone(),
+        description: "lowest inlet pressure",
+        port_targets: vec![
+            DiagnosticPortTarget::new(unit.id.clone(), MIXER_OUTLET_PORT.to_string()),
+            DiagnosticPortTarget::new(unit.id.clone(), MIXER_INLET_A_PORT.to_string()),
+            DiagnosticPortTarget::new(unit.id.clone(), MIXER_INLET_B_PORT.to_string()),
+        ],
+    })
 }
 
 fn unit_parameter_related_stream_ids(
@@ -778,6 +835,14 @@ fn unit_parameter_related_port_targets(unit: &UnitNode) -> Vec<DiagnosticPortTar
         .iter()
         .filter(|port| port.direction == rf_types::PortDirection::Outlet)
         .map(|port| DiagnosticPortTarget::new(unit.id.clone(), port.name.clone()))
+        .collect()
+}
+
+fn outlet_stream_ids(unit: &UnitNode) -> Vec<StreamId> {
+    unit.ports
+        .iter()
+        .filter(|port| port.direction == rf_types::PortDirection::Outlet)
+        .filter_map(|port| port.stream_id.clone())
         .collect()
 }
 
@@ -826,7 +891,11 @@ fn instantiate_operation(
         }
         MIXER_KIND => {
             let outlet = stream_target_for_port(unit, MIXER_OUTLET_PORT, flowsheet)?;
-            Ok(Box::new(Mixer::new(outlet)))
+            let mut operation = Mixer::new(outlet);
+            if let Some(pressure_pa) = unit.parameters.outlet_pressure_pa {
+                operation = operation.with_outlet_pressure_pa(pressure_pa);
+            }
+            Ok(Box::new(operation))
         }
         HEATER_KIND => {
             let outlet = heater_cooler_outlet_template(unit, flowsheet)?;
