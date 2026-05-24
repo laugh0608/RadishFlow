@@ -98,10 +98,7 @@ fn tsv_row<'a>(cells: impl IntoIterator<Item = &'a str>) -> String {
 }
 
 fn one_line(value: &str) -> String {
-    value
-        .replace('\t', " ")
-        .replace('\r', " ")
-        .replace('\n', " ")
+    value.replace(['\t', '\r', '\n'], " ")
 }
 
 fn format_bubble_dew_window(window: &StudioGuiWindowBubbleDewWindowModel) -> String {

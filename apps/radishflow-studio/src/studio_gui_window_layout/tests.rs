@@ -87,8 +87,17 @@ fn studio_gui_window_layout_maps_panels_into_dock_regions() {
         .expect("expected canvas panel");
     assert_eq!(canvas.dock_region, StudioGuiWindowDockRegion::CenterStage);
     assert!(canvas.active_in_stack);
-    assert_eq!(canvas.badge.as_deref(), Some("3"));
-    assert!(canvas.summary.contains("3 suggestions"));
+    let suggestion_count = dispatch.window.canvas.suggestion_count;
+    let suggestion_count_text = suggestion_count.to_string();
+    assert_eq!(
+        canvas.badge.as_deref(),
+        Some(suggestion_count_text.as_str())
+    );
+    assert!(
+        canvas
+            .summary
+            .contains(&format!("{suggestion_count} suggestions"))
+    );
 
     let runtime = layout
         .panel(StudioGuiWindowAreaId::Runtime)

@@ -634,10 +634,10 @@ impl StreamEndpointDisconnectTarget {
         }
     }
 
-    fn endpoint<'a>(
+    fn endpoint(
         self,
-        stream: &'a crate::StudioGuiCanvasStreamLineViewModel,
-    ) -> Option<&'a crate::StudioGuiCanvasStreamLineEndpointViewModel> {
+        stream: &crate::StudioGuiCanvasStreamLineViewModel,
+    ) -> Option<&crate::StudioGuiCanvasStreamLineEndpointViewModel> {
         match self {
             Self::Source => stream.source.as_ref(),
             Self::Sink => stream.sink.as_ref(),

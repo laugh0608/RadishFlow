@@ -779,12 +779,14 @@ fn unique_material_stream_endpoint_label(
         .units
         .values()
         .flat_map(|unit| {
-            unit.ports.iter().filter_map(move |port| {
-                (port.kind == rf_types::PortKind::Material
-                    && port.direction == direction
-                    && port.stream_id.as_ref() == Some(stream_id))
-                .then(|| format!("{}:{}", unit.id, port.name))
-            })
+            unit.ports
+                .iter()
+                .filter(move |port| {
+                    port.kind == rf_types::PortKind::Material
+                        && port.direction == direction
+                        && port.stream_id.as_ref() == Some(stream_id)
+                })
+                .map(|port| format!("{}:{}", unit.id, port.name))
         })
         .collect::<Vec<_>>();
     (endpoints.len() == 1).then(|| endpoints.remove(0))
@@ -1371,7 +1373,19 @@ fn stream_property_notices(
     drafts: &rf_ui::InspectorDraftState,
     fields: &[StudioGuiInspectorTargetFieldSnapshot],
 ) -> Vec<crate::StudioGuiInspectorPropertyNoticeSnapshot> {
-    let mut notices = inspector_property_notices(fields);
+    let mut notices = if fields
+        .iter()
+        .any(|field| field.validation == StudioGuiInspectorTargetFieldValidationSnapshot::Invalid)
+    {
+        vec![crate::StudioGuiInspectorPropertyNoticeSnapshot {
+            status_label: "Invalid",
+            message:
+                "Fix invalid stream property drafts before applying changes; invalid drafts are preserved and are not committed."
+                    .to_string(),
+        }]
+    } else {
+        Vec::new()
+    };
 
     if let Some(sum) = stream_property_composition_sum(stream, drafts) {
         if !sum.is_finite() || sum <= 0.0 {
