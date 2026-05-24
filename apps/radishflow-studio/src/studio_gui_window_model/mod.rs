@@ -186,6 +186,14 @@ pub struct StudioGuiWindowCommandActionModel {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowInspectorConnectionActionModel {
+    pub label: String,
+    pub hover_text: String,
+    pub command_id: String,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowInspectorTargetModel {
     pub kind_label: &'static str,
     pub target_id: String,
@@ -215,7 +223,7 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub property_composition_normalize_command_id: Option<String>,
     pub property_composition_component_actions:
         Vec<StudioGuiWindowInspectorCompositionComponentActionModel>,
-    pub connection_actions: Vec<StudioGuiWindowCommandActionModel>,
+    pub connection_actions: Vec<StudioGuiWindowInspectorConnectionActionModel>,
     pub unit_ports: Vec<StudioGuiWindowInspectorTargetPortModel>,
     pub latest_unit_result: Option<StudioGuiWindowUnitExecutionResultModel>,
     pub latest_stream_result: Option<StudioGuiWindowStreamResultModel>,
@@ -1132,10 +1140,11 @@ fn inspector_target_detail_model_from_snapshot(
         connection_actions: detail
             .connection_actions
             .iter()
-            .map(|action| StudioGuiWindowCommandActionModel {
+            .map(|action| StudioGuiWindowInspectorConnectionActionModel {
                 label: action.label.clone(),
                 hover_text: action.detail.clone(),
                 command_id: action.command_id.clone(),
+                enabled: action.enabled,
             })
             .collect(),
         unit_ports: detail

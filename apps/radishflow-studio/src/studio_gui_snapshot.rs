@@ -123,6 +123,7 @@ pub struct StudioGuiInspectorConnectionActionSnapshot {
     pub label: String,
     pub detail: String,
     pub command_id: String,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -5,6 +5,11 @@ use super::*;
 use crate::{
     StudioGuiDiagnosticStreamSnapshot, StudioGuiFailureDiagnosticContextSnapshot,
     StudioGuiFailureDiagnosticPortSnapshot, WorkspaceControlState,
+    studio_stream_reconnect_presentation::{
+        StudioStreamReconnectAvailability, StudioStreamReconnectMissingSide,
+        stream_reconnect_already_connected, stream_reconnect_from_candidates,
+        stream_reconnect_missing_endpoint, stream_reconnect_missing_stream,
+    },
 };
 use std::collections::BTreeSet;
 
@@ -700,6 +705,7 @@ fn stream_connection_actions(
                 "Remove material port bindings for `{stream_id_label}` while keeping the stream specification."
             ),
             command_id: "canvas.disconnect_selected_stream".to_string(),
+            enabled: true,
         });
     }
     if let Some(detail) = stream_endpoint_disconnect_detail(
@@ -713,6 +719,7 @@ fn stream_connection_actions(
             label: "Disconnect source".to_string(),
             detail,
             command_id: "canvas.disconnect_selected_stream_source".to_string(),
+            enabled: true,
         });
     }
     if let Some(detail) = stream_endpoint_disconnect_detail(
@@ -726,21 +733,23 @@ fn stream_connection_actions(
             label: "Disconnect sink".to_string(),
             detail,
             command_id: "canvas.disconnect_selected_stream_sink".to_string(),
+            enabled: true,
         });
     }
-    if let Some(detail) = stream_reconnect_detail(flowsheet, stream_id) {
-        actions.push(StudioGuiInspectorConnectionActionSnapshot {
-            label: "Reconnect stream".to_string(),
-            detail,
-            command_id: "canvas.reconnect_selected_stream".to_string(),
-        });
-    }
+    let reconnect = stream_reconnect_availability(flowsheet, stream_id);
+    actions.push(StudioGuiInspectorConnectionActionSnapshot {
+        label: "Reconnect stream".to_string(),
+        detail: reconnect.action_detail(stream_id.as_str()),
+        command_id: "canvas.reconnect_selected_stream".to_string(),
+        enabled: reconnect.is_available(),
+    });
     actions.extend([StudioGuiInspectorConnectionActionSnapshot {
         label: "Delete stream".to_string(),
         detail: format!(
             "Remove material port bindings for `{stream_id_label}` and delete the stream."
         ),
         command_id: "canvas.delete_selected_stream".to_string(),
+        enabled: true,
     }]);
     actions
 }
@@ -792,14 +801,17 @@ fn unique_material_stream_endpoint_label(
     (endpoints.len() == 1).then(|| endpoints.remove(0))
 }
 
-fn stream_reconnect_detail(
+fn stream_reconnect_availability(
     flowsheet: &rf_model::Flowsheet,
     stream_id: &rf_types::StreamId,
-) -> Option<String> {
+) -> StudioStreamReconnectAvailability {
+    if !flowsheet.streams.contains_key(stream_id) {
+        return stream_reconnect_missing_stream();
+    }
+
     let mut source_unit_id = None;
-    let mut source_binding = None;
     let mut sink_unit_id = None;
-    let mut sink_binding = None;
+    let mut latest_sink_binding = None;
     let mut source_count = 0usize;
     let mut sink_count = 0usize;
 
@@ -815,12 +827,11 @@ fn stream_reconnect_detail(
                 rf_types::PortDirection::Outlet => {
                     source_count += 1;
                     source_unit_id = Some(unit.id.clone());
-                    source_binding = Some(format!("{}:{}", unit.id, port.name));
                 }
                 rf_types::PortDirection::Inlet => {
                     sink_count += 1;
                     sink_unit_id = Some(unit.id.clone());
-                    sink_binding = Some(format!("{}:{}", unit.id, port.name));
+                    latest_sink_binding = Some(format!("{}:{}", unit.id, port.name));
                 }
             }
         }
@@ -828,37 +839,61 @@ fn stream_reconnect_detail(
 
     match (source_count, sink_count) {
         (1, 0) => {
-            let source_unit_id = source_unit_id?;
-            let targets = available_material_reconnect_sink_labels(flowsheet, &source_unit_id);
-            (targets.len() == 1).then(|| {
-                format!(
-                    "Reconnect `{}` from `{}` to the only available material inlet `{}`.",
-                    stream_id.as_str(),
-                    source_binding.expect("checked source binding"),
-                    targets[0]
-                )
-            })
+            let Some(source_unit_id) = source_unit_id else {
+                return stream_reconnect_missing_endpoint();
+            };
+            let candidates = material_reconnect_sink_candidates(flowsheet, &source_unit_id);
+            stream_reconnect_from_host_candidates(
+                stream_id.as_str(),
+                StudioStreamReconnectMissingSide::Sink,
+                candidates,
+            )
         }
         (0, 1) => {
-            let sink_unit_id = sink_unit_id?;
-            let targets = available_material_reconnect_source_labels(flowsheet, &sink_unit_id);
-            (targets.len() == 1).then(|| {
-                format!(
-                    "Reconnect `{}` from the only available material outlet `{}` to `{}`.",
-                    stream_id.as_str(),
-                    targets[0],
-                    sink_binding.expect("checked sink binding")
-                )
-            })
+            let Some(sink_unit_id) = sink_unit_id else {
+                return stream_reconnect_missing_endpoint();
+            };
+            let candidates = material_reconnect_source_candidates(flowsheet, &sink_unit_id);
+            stream_reconnect_from_host_candidates(
+                stream_id.as_str(),
+                StudioStreamReconnectMissingSide::Source,
+                candidates,
+            )
         }
-        _ => None,
+        (1, 1) => stream_reconnect_already_connected(
+            latest_sink_binding.unwrap_or_else(|| "connected sink".to_string()),
+        ),
+        _ => stream_reconnect_missing_endpoint(),
     }
 }
 
-fn available_material_reconnect_sink_labels(
+fn stream_reconnect_from_host_candidates(
+    stream_id: &str,
+    missing_side: StudioStreamReconnectMissingSide,
+    candidates: Vec<(String, bool)>,
+) -> StudioStreamReconnectAvailability {
+    let candidate_count = candidates.len();
+    let cycle_blocked_count = candidates
+        .iter()
+        .filter(|(_, would_create_cycle)| *would_create_cycle)
+        .count();
+    let available_targets = candidates
+        .into_iter()
+        .filter_map(|(label, would_create_cycle)| (!would_create_cycle).then_some(label))
+        .collect::<Vec<_>>();
+    stream_reconnect_from_candidates(
+        stream_id,
+        missing_side,
+        candidate_count,
+        cycle_blocked_count,
+        available_targets,
+    )
+}
+
+fn material_reconnect_sink_candidates(
     flowsheet: &rf_model::Flowsheet,
     source_unit_id: &rf_types::UnitId,
-) -> Vec<String> {
+) -> Vec<(String, bool)> {
     flowsheet
         .units
         .values()
@@ -870,17 +905,21 @@ fn available_material_reconnect_sink_labels(
                     port.kind == rf_types::PortKind::Material
                         && port.direction == rf_types::PortDirection::Inlet
                         && port.stream_id.is_none()
-                        && !would_create_unit_dependency_cycle(flowsheet, source_unit_id, &unit.id)
                 })
-                .map(|port| format!("{}:{}", unit.id, port.name))
+                .map(|port| {
+                    (
+                        format!("{}:{}", unit.id, port.name),
+                        would_create_unit_dependency_cycle(flowsheet, source_unit_id, &unit.id),
+                    )
+                })
         })
         .collect()
 }
 
-fn available_material_reconnect_source_labels(
+fn material_reconnect_source_candidates(
     flowsheet: &rf_model::Flowsheet,
     sink_unit_id: &rf_types::UnitId,
-) -> Vec<String> {
+) -> Vec<(String, bool)> {
     flowsheet
         .units
         .values()
@@ -892,9 +931,13 @@ fn available_material_reconnect_source_labels(
                     port.kind == rf_types::PortKind::Material
                         && port.direction == rf_types::PortDirection::Outlet
                         && port.stream_id.is_none()
-                        && !would_create_unit_dependency_cycle(flowsheet, &unit.id, sink_unit_id)
                 })
-                .map(|port| format!("{}:{}", unit.id, port.name))
+                .map(|port| {
+                    (
+                        format!("{}:{}", unit.id, port.name),
+                        would_create_unit_dependency_cycle(flowsheet, &unit.id, sink_unit_id),
+                    )
+                })
         })
         .collect()
 }

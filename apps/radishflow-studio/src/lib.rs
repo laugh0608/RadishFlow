@@ -38,6 +38,7 @@ mod studio_inspector_draft_command;
 mod studio_inspector_target_command;
 mod studio_local_rules;
 mod studio_runtime;
+mod studio_stream_reconnect_presentation;
 mod studio_window_host;
 mod studio_window_host_manager;
 mod studio_window_session;
@@ -290,11 +291,12 @@ pub use studio_gui_window_model::{
     StudioGuiWindowFailureDiagnosticDetailModel, StudioGuiWindowFailureDiagnosticPortTargetModel,
     StudioGuiWindowFailureResultModel, StudioGuiWindowHeaderModel,
     StudioGuiWindowInspectorCompositionComponentActionModel,
-    StudioGuiWindowInspectorCompositionSummaryModel, StudioGuiWindowInspectorPropertyNoticeModel,
-    StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowInspectorTargetFieldModel,
-    StudioGuiWindowInspectorTargetModel, StudioGuiWindowInspectorTargetPortModel,
-    StudioGuiWindowInspectorTargetSummaryRowModel, StudioGuiWindowModel,
-    StudioGuiWindowPhaseResultModel, StudioGuiWindowResultInspectorComparisonModel,
+    StudioGuiWindowInspectorCompositionSummaryModel, StudioGuiWindowInspectorConnectionActionModel,
+    StudioGuiWindowInspectorPropertyNoticeModel, StudioGuiWindowInspectorTargetDetailModel,
+    StudioGuiWindowInspectorTargetFieldModel, StudioGuiWindowInspectorTargetModel,
+    StudioGuiWindowInspectorTargetPortModel, StudioGuiWindowInspectorTargetSummaryRowModel,
+    StudioGuiWindowModel, StudioGuiWindowPhaseResultModel,
+    StudioGuiWindowResultInspectorComparisonModel,
     StudioGuiWindowResultInspectorComparisonRowModel,
     StudioGuiWindowResultInspectorCompositionComparisonRowModel,
     StudioGuiWindowResultInspectorModel, StudioGuiWindowResultInspectorPhaseComparisonRowModel,

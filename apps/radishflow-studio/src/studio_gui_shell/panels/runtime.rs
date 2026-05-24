@@ -1385,7 +1385,15 @@ impl ReadyAppState {
                 ui.small(egui::RichText::new("Connections").strong());
                 for action in &detail.connection_actions {
                     if ui
-                        .small_button(self.locale.runtime_label(&action.label).as_ref())
+                        .add_enabled(
+                            action.enabled,
+                            egui::Button::new(
+                                egui::RichText::new(
+                                    self.locale.runtime_label(&action.label).as_ref(),
+                                )
+                                .small(),
+                            ),
+                        )
                         .on_hover_text(self.locale.runtime_label(&action.hover_text).as_ref())
                         .clicked()
                     {

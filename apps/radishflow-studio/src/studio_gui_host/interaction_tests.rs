@@ -573,15 +573,24 @@ fn gui_host_reconnects_selected_source_only_stream_from_canvas_command_surface()
         .expect("expected stream focus dispatch");
 
     let focused = gui_host.snapshot();
-    assert!({
-        let stream_detail = focused.runtime.active_inspector_detail.as_ref();
-        stream_detail.is_some_and(|detail| {
-            detail
-                .connection_actions
-                .iter()
-                .any(|action| action.command_id == "canvas.reconnect_selected_stream")
-        })
-    });
+    let stream_detail = focused
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected focused stream detail");
+    let reconnect_action = stream_detail
+        .connection_actions
+        .iter()
+        .find(|action| action.command_id == "canvas.reconnect_selected_stream")
+        .expect("expected reconnect action");
+    assert!(reconnect_action.enabled);
+    assert!(
+        reconnect_action
+            .detail
+            .contains("only available material inlet `flash-1:inlet`"),
+        "expected source-only reconnect detail, got {:?}",
+        reconnect_action
+    );
     let focused_canvas = gui_host.canvas_state();
     assert_eq!(
         canvas_port_stream(&focused_canvas, "heater-1", "outlet"),
@@ -644,6 +653,7 @@ fn gui_host_reconnects_selected_sink_only_stream_from_canvas_command_surface() {
         .iter()
         .find(|action| action.command_id == "canvas.reconnect_selected_stream")
         .expect("expected reconnect action");
+    assert!(reconnect_action.enabled);
     assert!(
         reconnect_action
             .detail
@@ -695,7 +705,7 @@ fn gui_host_reconnects_selected_sink_only_stream_from_canvas_command_surface() {
 }
 
 #[test]
-fn gui_host_hides_selected_stream_reconnect_when_unique_target_would_create_cycle() {
+fn gui_host_disables_selected_stream_reconnect_when_unique_target_would_create_cycle() {
     let (config, project_path) = cycle_reconnect_config();
     let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
     gui_host.open_window().expect("expected window open");
@@ -709,12 +719,90 @@ fn gui_host_hides_selected_stream_reconnect_when_unique_target_would_create_cycl
         .active_inspector_detail
         .as_ref()
         .expect("expected focused stream detail");
+    let reconnect_action = stream_detail
+        .connection_actions
+        .iter()
+        .find(|action| action.command_id == "canvas.reconnect_selected_stream")
+        .expect("expected reconnect action");
+    assert!(!reconnect_action.enabled);
     assert!(
-        !stream_detail
-            .connection_actions
-            .iter()
-            .any(|action| action.command_id == "canvas.reconnect_selected_stream"),
-        "expected cycle-forming unique target to be filtered from inspector reconnect actions"
+        reconnect_action
+            .detail
+            .contains("only available material inlet would create"),
+        "expected cycle-forming unique target detail, got {:?}",
+        reconnect_action
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_disables_selected_stream_reconnect_when_stream_is_already_connected() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("canvas.accept_focused")
+        .expect("expected flash inlet acceptance");
+    gui_host
+        .dispatch_ui_command("inspector.focus_stream:stream-heated")
+        .expect("expected stream focus dispatch");
+
+    let focused = gui_host.snapshot();
+    let stream_detail = focused
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected focused stream detail");
+    let reconnect_action = stream_detail
+        .connection_actions
+        .iter()
+        .find(|action| action.command_id == "canvas.reconnect_selected_stream")
+        .expect("expected reconnect action");
+    assert!(!reconnect_action.enabled);
+    assert!(
+        reconnect_action
+            .detail
+            .contains("already has both material endpoints"),
+        "expected already-connected reconnect detail, got {:?}",
+        reconnect_action
+    );
+    assert!(
+        reconnect_action
+            .detail
+            .contains("current sink `flash-1:inlet`")
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_disables_selected_stream_reconnect_when_target_is_ambiguous() {
+    let (config, project_path) = ambiguous_reconnect_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("inspector.focus_stream:stream-heated")
+        .expect("expected stream focus dispatch");
+
+    let focused = gui_host.snapshot();
+    let stream_detail = focused
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected focused stream detail");
+    let reconnect_action = stream_detail
+        .connection_actions
+        .iter()
+        .find(|action| action.command_id == "canvas.reconnect_selected_stream")
+        .expect("expected reconnect action");
+    assert!(!reconnect_action.enabled);
+    assert!(
+        reconnect_action
+            .detail
+            .contains("there are 2 available material inlets"),
+        "expected ambiguous reconnect detail, got {:?}",
+        reconnect_action
     );
 
     let _ = fs::remove_file(project_path);
