@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-05-22
+更新时间：2026-05-25
 
 ## MVP 目标
 
@@ -160,7 +160,7 @@ App 与交互层当前进一步冻结以下口径：
 
 截至 2026-05-12，MVP 第一阶段的 M1-M5 最小线均已形成可验证基线：Rust Core 能跑通最小稳态流程，Rust Studio 已具备最小可操作工作台闭环，`rf-ffi` 与 `.NET 10` CAPE-OPEN / PME 路径也已有回归与人工验证记录。当前优先目标应从继续补细粒度消费面测试，切换为 MVP α 验收与发布硬化；后续只修验收路径暴露的真实 blocker，不再把 near-boundary、command surface 或 runtime click 细节扩成开放式任务池。
 
-截至 2026-05-24，首版 demo 前硬化期、MVP α 内部验收节点和第一轮受控扩展均已收口。当前优先目标切换为 MVP β：高频建模能力与小案例作者体验。后续不再围绕 Canvas / Inspector 的 hover、提示、按钮、边界说明做开放式补口，而应把能力包组织成可被用户复现的小建模闭环；允许成组推进高频 Unit Inspector 参数、受控连接编辑设计和可复现示例案例。文档语义变化仍必须通过正式 command / validation / undo，布局 / 视口仍必须明确为 shell-local 或 sidecar state；仍不进入自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统、完整参数表、第三方 CAPE-OPEN 模型加载或第三方物性包加载。
+截至 2026-05-25，首版 demo 前硬化期、MVP α 内部验收节点和第一轮受控扩展均已收口。当前优先目标切换为 MVP β：高频建模能力与小案例作者体验。后续不再围绕 Canvas / Inspector 的 hover、提示、按钮、边界说明做开放式补口，而应把能力包组织成可被用户复现的小建模闭环；当前已从 Home 提供 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条空白项目作者路径。允许成组推进高频 Unit Inspector 参数、受控连接编辑设计和可复现示例案例。文档语义变化仍必须通过正式 command / validation / undo，布局 / 视口和作者清单选择仍必须明确为 shell-local 或 sidecar state；仍不进入自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统、完整参数表、第三方 CAPE-OPEN 模型加载或第三方物性包加载。
 
 ## 近期开发节奏
 

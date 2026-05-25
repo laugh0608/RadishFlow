@@ -1,6 +1,6 @@
 # Studio UI Design Guidelines
 
-更新时间：2026-05-23
+更新时间：2026-05-25
 
 ## 用途
 
@@ -113,7 +113,7 @@ UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使
 - 建模对象、连接建议、运行、结果和错误分别属于哪个区域。
 - 人工 smoke 时应该按什么路径操作和观察结果。
 
-2026-05-16 已完成 Home Dashboard 与 Workbench 第一轮真实 UI 收口。2026-05-17 已继续完成 Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、Home 打开路径、Canvas 可读性、运行后结果视图和 Workbench 高频残余文案收口。后续不再回到“先讨论首页分区”或继续扩画布建模能力的阶段；下一轮应优先做视觉 smoke，只修真实 demo blocker。
+2026-05-16 已完成 Home Dashboard 与 Workbench 第一轮真实 UI 收口。2026-05-17 已继续完成 Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、Home 打开路径、Canvas 可读性、运行后结果视图和 Workbench 高频残余文案收口。2026-05-25 已进入 MVP β 小案例作者体验：Home 可从空白项目进入 `Mixer-Flash` 或 `Heater-Flash` 作者路径，Workbench `放置` 面板显示只读任务清单。后续不再回到“先讨论首页分区”或继续扩画布建模能力的阶段；下一轮应优先做可复现作者路径和真实窗口 smoke，只修阻碍主路径的问题。
 
 2026-05-17 日终截图复核后保留的两项 UI blocker 已在 2026-05-18 收口：
 
@@ -161,7 +161,8 @@ Studio 默认工作台建议分为六个稳定区域。
 - 页面应保留 `radishflow-workbench-concept.png` 的轻量浅色风格、克制蓝色主强调、状态 chip 和清晰分区，但不显示流程图画布。
 - `radishflow-home-dashboard-concept-v2-20260516.png` 当前作为启动首页视觉基线：它比早期概念稿更接近当前信息架构，Start actions、Recent Cases、Example Cases、Environment 和 Messages 的职责边界更清楚。
 - `radishflow-home-dashboard-concept.png` 保留为早期概念稿参考：它的信息架构方向正确，但字段和示例数据偏概念演示，不作为后续实现的优先基线。
-- Start actions 只保留当前主路径：`新建项目`、`打开项目`、`打开示例项目`；登录放在顶部 App Bar，不把完整命令面板或调试入口放进第一视野。最近项目的继续入口由 `最近项目` 列表行承载，不再作为左侧重复按钮常驻。
+- Start actions 只保留当前主路径：`新建项目`、当前小案例作者入口、`打开项目`、`打开示例项目`；登录放在顶部 App Bar，不把完整命令面板或调试入口放进第一视野。最近项目的继续入口由 `最近项目` 列表行承载，不再作为左侧重复按钮常驻。
+- 小案例作者入口只负责创建空白项目并打开对应任务清单，不自动生成 flowsheet，不写 `FlowsheetDocument`，不进入 undo，也不替代 placement / suggestion / parameter / run / save / export 工作流。
 - 最近项目和示例项目必须可扫读：名称、路径或来源、最后打开时间、流程摘要、组分 / 物性包摘要、状态标签；整行应可选择，双击整行可打开。
 - 客户端 / 服务端 / 设备信息默认以状态卡或紧凑 section 呈现；详细路径、backend、cache 细节和诊断信息进入展开项。
 - 登录入口应优先是 `登录` 按钮，而不是内嵌账号密码表单；桌面登录继续遵守 OIDC Authorization Code + PKCE + 系统浏览器 + loopback redirect 的边界。
@@ -170,7 +171,7 @@ Studio 默认工作台建议分为六个稳定区域。
 建议首屏布局：
 
 - 顶部 App Bar：`RadishFlow Studio`、版本 / build commit、登录状态、服务端状态、语言 / 设置入口。
-- 左侧 Start Actions：新建项目、打开项目、打开示例项目。
+- 左侧 Start Actions：新建项目、`Mixer-Flash` / `Heater-Flash` 小案例作者入口、打开项目、打开示例项目。
 - 中央内容：最近打开的项目列表和示例项目列表；首版 demo 前默认只暴露 official hydrocarbon 演示路径，即 `Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum`。Synthetic / PME 验证样例可保留为文件或专题入口，但不进入首页高频示例列表。
 - 右侧 Environment Status：客户端信息、服务端信息、设备信息、本地缓存 / 示例路径状态。
 - 底部 Messages：最近环境警告、登录 / 授权提示、示例路径或物性包缓存诊断。
@@ -180,7 +181,7 @@ Studio 默认工作台建议分为六个稳定区域。
 | 区域 | 第一屏保留字段 | 折叠或二级字段 |
 | --- | --- | --- |
 | Top App Bar | 应用名、`development build` 或当前人工确认的版本标识、`Local ready`、`Server offline`、`Signed out`、单位集、登录 / 设置 / 帮助入口 | 完整 build commit、完整控制面 URL、语言高级设置、开发诊断 |
-| Start Actions | `新建项目`、`打开项目`、`打开示例项目`；无最近项目时 `打开示例项目` 为优先入口 | 命令面板、最近工作区完整列表、保存 / 另存为、运行按钮 |
+| Start Actions | `新建项目`、`创建 Mixer-Flash 小案例`、`创建 Heater-Flash 小案例`、`打开项目`、`打开示例项目`；无最近项目时 `打开示例项目` 或小案例作者入口为优先入口 | 命令面板、最近工作区完整列表、保存 / 另存为、运行按钮 |
 | Recent Cases | 项目名称、路径或来源、最后打开时间、物性包、状态；选中态和双击打开行为 | 流股数、单元数、诊断数、最新求解摘要、完整路径展开 |
 | Example Cases | 示例类型、短流程图摘要、组件摘要、物性包、状态；选中态和双击打开行为 | 长说明、教程步骤、完整 flowsheet 预览、PME 操作说明 |
 | Environment | `Client`、`Server`、`Device` 三组健康摘要；只显示影响“能否开始”的状态 | cache 根目录、examples 绝对路径、backend 细节、原始错误文本、设备资源曲线 |
@@ -206,10 +207,11 @@ Studio 默认工作台建议分为六个稳定区域。
 动作契约：
 
 - `New Project` / `新建项目` 创建 MVP 默认空白项目，进入工作台；该动作不依赖登录或服务端。
+- 小案例作者入口创建 MVP 默认空白项目，进入工作台并切到左侧 `放置`；当前支持 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条作者清单。清单状态必须从当前 canvas unit / stream / solve snapshot 推导，不反向修改项目语义。
 - `Open Project` / `打开项目` 使用系统文件选择器打开用户项目，进入工作台；打开成功后更新 MRU。
 - `Open Example Project` / `打开示例项目` 从 Example Cases 选择或打开示例文件夹，成功后进入工作台并更新 MRU 来源。
 - `Recent Cases` 和 `Example Cases` 的行点击只改变选择态，整行双击触发打开；文件缺失时不静默失败，应把该项目行标为 `Missing file` 并产生 `Messages` 行。
-- 若当前工作区存在未保存变更，`新建项目`、`打开项目`、`打开示例项目` 和列表双击打开都必须进入显式继续 / 取消确认，不得只显示无法行动的 discard 提示。
+- 若当前工作区存在未保存变更，`新建项目`、小案例作者入口、`打开项目`、`打开示例项目` 和列表双击打开都必须进入显式继续 / 取消确认，不得只显示无法行动的 discard 提示。
 - `Sign in` 只启动 OIDC / PKCE 系统浏览器登录；不在首页内嵌账号密码表单。
 - `Messages` 中的 `Sign in`、`Open Examples Folder`、`Open Cache Folder` 等动作应复用正式 command surface；若实现阶段暂需过渡，也不能长期保留和菜单 / 命令面板平行的私有分支。
 

@@ -54,7 +54,7 @@
 - 负责控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的 HTTP client、协议映射与应用层编排
 - 负责把下载租约、下载 fetcher 与本地缓存落盘串成单一路径
 - 负责从 `PropertyPackageProvider` 或本地 auth cache 组装最小真实求解链路，并把 `rf-solver::SolveSnapshot` 回写到 `rf-ui::AppState`
-- 负责把 Studio shell 入口组织为可复现的 MVP α 工作流：启动后默认显示 Home Dashboard，进入 case 后暴露 `Home / 打开示例 / 新建空白 / 打开项目... / 运行 / 保存 / 另存为... / 视图`，默认隐藏低频命令和调试式布局控制，保留命令面板
+- 负责把 Studio shell 入口组织为可复现的 MVP α / β 工作流：启动后默认显示 Home，可从空白项目进入小案例作者路径；进入 case 后暴露主路径命令
 - 负责在 GUI shell 层提供用户操作与求解审计输出；默认 stderr 日志只作为开发态 smoke 和诊断入口，不替代未来正式审计 / telemetry 设计
 - 负责遵守 `eframe` / `winit` 事件循环约束：Windows 事件循环在主线程创建；干净最后窗口 close 不得被 `CancelClose` 拦截，关闭前清理逻辑窗口并停止当帧 fallback 布局；脏工作区 close 必须先确认保存 / 舍弃 / 取消
 
@@ -71,7 +71,7 @@
 2026-05-17 人工 smoke 已确认，Studio 首页、工作台分区、运行后结果视图和 Home 项目切换确认流程已经落地。shell UI 边界按以下稳定入口治理：
 
 - Home Dashboard：应用启动后的默认首页，只承载 Start actions、Recent Cases、Example Cases、Environment 和 Messages；不读取 `SolveSnapshot`，不直接承载流程图编辑。
-- Home 项目入口：左侧 Start actions 保留 `新建项目`、`打开项目`、`打开示例项目`；最近项目和示例项目由列表行承载选择态与双击打开。
+- Home 项目入口：左侧 Start actions 保留 `新建项目`、小案例作者入口、`打开项目`、`打开示例项目`；最近项目和示例项目由列表行承载选择态与双击打开。小案例作者入口只创建空白项目并切到 `放置`，清单只读 canvas，不生成 flowsheet、不写项目、不进 undo。
 - 未保存确认：新建、打开或列表双击时，若有未保存变更，必须先进入继续 / 取消确认。
 - 顶部主路径：进入 case 后只保留用户主路径、当前项目摘要和必要状态，不把调试计数和菜单全集置于第一视野。
 - 操作入口：`Home`、打开示例、新建空白、打开项目、运行、保存、另存为和视图保持可发现；低频命令进入 `视图`。
@@ -821,7 +821,7 @@ pub struct StepSnapshot {
 当前已落地与仍待细化的边界：
 
 - 手动运行已经进入真实 GUI 工作台主路径：顶部 `运行` 直接派发 `run_panel.run_manual`，并通过 command registry 的 availability / disabled reason 控制按钮状态
-- Home Dashboard 当前是 Studio shell 的默认第一视野；`新建项目 / 打开项目 / 打开示例项目` 和列表双击只触发生命周期动作，不写入当前 `FlowsheetDocument`
+- Home 是默认第一视野；`新建项目 / 小案例作者入口 / 打开项目 / 打开示例项目` 和列表双击只触发生命周期或清单选择，不写入当前 `FlowsheetDocument`
 - Home 与工作台的项目切换入口当前已统一纳入未保存变更确认流程；继续才丢弃当前工作区，取消不改变当前项目、MRU 或 `FlowsheetDocument`
 - `Home / 打开示例 / 新建空白 / 打开项目... / 保存 / 另存为... / 视图 / 命令面板` 当前作为进入 case 后的 Studio shell 主路径；默认隐藏命令大全只是 shell 启动时的 host-local transient layout preference，不写入项目文档语义
 - `StudioAppFacade`、`WorkspaceControlAction`、`WorkspaceControlState`、`RunPanelWidgetModel` 与 `run_panel_driver` 已经构成手动运行入口的稳定链路；后续仍待细化的是后台调度、取消、自动运行与 `Hold -> Active` 恢复在最终 GUI 中的完整交互表达

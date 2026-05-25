@@ -77,7 +77,7 @@
 后续路线图不再服务开放式扩张，而是服务 MVP β 的高频建模能力包：
 
 - 优先用真实窗口轻量 smoke 复核最近新增的结果导出、单元参数、受控重连、关闭确认和 sidecar 布局路径。
-- 继续保持 `Feed/Heater/Cooler/Valve/Mixer -> Flash` 的数值、结果 DTO 和 UI consumer 基线稳定，并把下一批能力组织成可复现小流程。
+- 继续保持 `Feed/Heater/Cooler/Valve/Mixer -> Flash` 的数值、结果 DTO 和 UI consumer 基线稳定，并把下一批能力组织成可复现小流程；当前 `Mixer-Flash` 与 `Heater-Flash` 作者入口只作为空白项目导航和任务清单，不是项目向导或自动建模系统。
 - 下一阶段优先成组推进高频 Unit Inspector 参数、受控连接编辑设计和小案例作者体验，而不是继续追逐 Canvas / Inspector presentation 细节。
 - CAPE-OPEN / PME 只修真实验证暴露的 blocker，不继续主动扩第三方宿主矩阵。
 - Studio UI 优化只做主路径和明确专题；不扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
