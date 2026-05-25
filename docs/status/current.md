@@ -46,13 +46,13 @@
 - 2026-05-24 已补 Flash Drum flash temperature 与 Feed source T/P：复用正式参数链路并同步 outlet 模板；不扩完整参数表。
 - 2026-05-25 人工真实窗口轻量 smoke 已通过：结果复制 / 导出、Feed / Mixer / Flash Drum 参数重跑、selected stream 重连 / 断开、关闭确认和 sidecar 单元拖动 / viewport 均未发现新的主路径 blocker。
 - 2026-05-25 已纠偏版本节点口径：当前没有达到正式 tag / release 标准，`v26.5.1-dev` 相关 release notes / staging 说明只作为历史草案或内部打包材料保留，不再作为当前主线事实源。
-- 2026-05-25 MVP β 第一刀已开始落地：空白项目 `Feed + Feed -> Mixer -> Flash Drum` focused 回归扩展为小案例作者路径，覆盖单元参数提交、运行、保存、重开、重跑和当前结果文本导出；仍复用正式 command / suggestion / save / export 边界。
+- 2026-05-25 MVP β 第一刀已开始落地：空白项目 `Feed + Feed -> Mixer -> Flash Drum` focused 回归扩展为小案例作者路径，覆盖单元参数提交、运行、保存、重开、重跑和当前结果文本导出；`run-first` guide 已补同一路径说明。该能力仍复用正式 command / suggestion / save / export 边界。
 
 见 `docs/devlogs/2026-05/2026-W22.md`、`docs/devlogs/2026-05/2026-W21.md`。
 
 ## 下一步建议
 
-1. 继续推进可复现小案例作者体验：把已锁定的空白 Mixer 小案例路径补成更清晰的用户入口或说明，并按需要扩到 `Feed -> Heater/Valve -> Flash Drum`。
+1. 继续推进可复现小案例作者体验：按需要把同一套作者路径扩到 `Feed -> Heater/Valve -> Flash Drum`，或补更清晰的 UI 入口。
 2. 备选能力包是成组 Unit Inspector 参数增强或受控连接编辑设计；继续保持正式 command / validation / undo，或明确 shell-local sidecar state，并补 focused tests 和必要文档。
 3. 暂不推进 tag、release notes、便携包刷新或对外发布自动化；若未来要恢复版本节点，必须先明确验收标准和人工确认。
 4. 不把 MVP β 误扩成自由连线、自动布线、完整拖拽布局、完整报表、完整参数表、第三方模型加载或对外发布自动化。

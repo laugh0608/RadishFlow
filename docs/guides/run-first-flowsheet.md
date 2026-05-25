@@ -180,7 +180,31 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 当前仍不支持自由拉线、任意端口点击创建、任意端口重连、自动布线、完整组件库、完整物性包浏览/切换或完整单元参数表。这些缺口若影响验证，应记录为 MVP α 后续任务，而不是用 shell 私有状态绕过。
 
-## 7. 常见阻塞点
+## 7. MVP β 小案例作者路径
+
+如果你已经能跑通内置示例，下一步建议从空白项目手工复现一个小案例。当前推荐先用 `Feed + Feed -> Mixer -> Flash Drum`，因为它同时覆盖双入口连接、单元参数、保存重开和结果导出。
+
+建议步骤：
+
+1. 新建空白项目。
+2. 放置两个 `Feed`、一个 `Mixer` 和一个 `Flash Drum`。
+3. 依次接受本地 suggestion，形成：
+   - `Feed 1 -> Mixer.inlet_a`
+   - `Feed 2 -> Mixer.inlet_b`
+   - `Mixer.outlet -> Flash Drum.inlet`
+   - `Flash Drum.liquid / vapor` 两个出口流股
+4. 在单元检查器中提交一组 SI 参数：
+   - `Feed 1` source temperature = `305 K`，source pressure = `130000 Pa`
+   - `Feed 2` source temperature = `315 K`，source pressure = `120000 Pa`
+   - `Mixer` outlet pressure = `90000 Pa`
+   - `Flash Drum` flash temperature = `300 K`，flash pressure = `85000 Pa`
+5. 点击顶部 `运行`，确认运行收敛，`stream-mixer-1-outlet` 总摩尔流量为两股入口之和。
+6. 保存项目，关闭或重新打开该项目，再次运行。
+7. 在右侧 `结果` 区复制当前 `SolveSnapshot`，或导出为轻量 `.txt`。
+
+这条路径的目标不是新增项目向导，而是验证用户能按现有 `放置 -> suggestion -> 单元参数 -> 运行 -> 保存重开 -> 结果导出` 工作流复现一个小案例。连接仍通过正式 suggestion 和 `DocumentCommand` 完成；参数仍只覆盖当前已暴露的 MVP 高频字段；导出只消费当前结果 DTO，不写项目、不进入 undo。
+
+## 8. 常见阻塞点
 
 如果当前示例没有直接跑通，优先检查以下几类问题：
 
@@ -214,7 +238,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - `Normalize composition`：显式把当前组成归一化；它不会代替用户猜测新增或删除组分
 - `Remove` / add component：只在当前 flowsheet 已有组件目录内操作，不触发项目级组件迁移
 
-## 8. 下一步建议
+## 9. 下一步建议
 
 如果这次运行已经走通，下一步建议按下面顺序继续：
 

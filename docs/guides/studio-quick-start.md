@@ -122,6 +122,8 @@ cargo run -p radishflow-studio
 
 - `docs/guides/run-first-flowsheet.md`
 
+如果内置示例已经跑通，下一步建议按 `docs/guides/run-first-flowsheet.md` 的 “MVP β 小案例作者路径” 从空白项目复现 `Feed + Feed -> Mixer -> Flash Drum`：放置单元、接受 suggestion、提交 Feed / Mixer / Flash Drum 参数、运行、保存重开、重跑并导出当前结果。这是当前 MVP β 的推荐作者体验路径，不是自由连线、自动布线或完整项目向导。
+
 ## 启动首页
 
 启动后，第一视野是 Home Dashboard，而不是直接进入某个项目的画布。首页的稳定分区如下：
