@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-05-24
+更新时间：2026-05-25
 
 ## 目的
 
@@ -9,7 +9,7 @@
 它回答的是：
 
 - 当前 Studio 已经能做什么
-- 如何从内部便携包或开发态启动 Studio
+- 如何从历史便携 staging 或开发态启动 Studio
 - 第一次建议打开哪个示例
 - 接下来应该看哪些文档
 
@@ -25,7 +25,7 @@
 - 通过首页 `新建项目`、`打开项目`、`打开示例项目` 或进入工作台后的顶部主路径切换项目
 - 最近项目和示例项目列表行可选择，也可双击整行打开；文件缺失时只降级对应行状态，不阻断首页
 - 进入项目后在顶部主路径直接使用 `Home / 打开示例 / 新建空白 / 打开项目... / 运行 / 保存 / 另存为... / 视图`
-- 运行仓库内或便携包内的 official hydrocarbon 正向示例 flowsheet
+- 运行仓库内或便携 staging 内的 official hydrocarbon 正向示例 flowsheet
 - 在左侧 `项目 / 示例项目 / 放置`、中央 `Canvas`、右侧 `检查器 / 结果 / 运行 / 物性包` 和底部 `消息 / 运行日志 / 结果表 / 诊断` 中完成当前 MVP α 工作流
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
 - 复制当前 `SolveSnapshot` 文本，或导出当前快照为轻量 `.txt`
@@ -59,7 +59,7 @@ Studio 现在还不是完整产品说明书意义上的“成熟桌面软件”�
 
 ## 启动方式
 
-如果你拿到的是内部便携包，先解压或进入 staging 目录：
+如果你拿到的是历史内部便携 staging，先解压或进入 staging 目录。下面路径只作为历史示例，不代表当前正式版本节点：
 
 ```text
 artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/
@@ -77,13 +77,13 @@ artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/
 examples/flowsheets
 ```
 
-当前 Studio 会优先从 exe 同目录发现内置示例；如果不是从便携包启动，则回退到仓库内 `examples/flowsheets`。
+当前 Studio 会优先从 exe 同目录发现内置示例；如果不是从便携 staging 启动，则回退到仓库内 `examples/flowsheets`。
 
 说明：
 
-- 这是 Windows 内部便携包 / staging 形态，不是安装器
+- 这是 Windows 内部便携 staging 形态，不是安装器、正式 demo 或 release 节点
 - 不会执行 COM 注册、PME 自动化、Windows Registry 写入或第三方 CAPE-OPEN 模型加载
-- 包内 `PACKAGE-MANIFEST.txt` 应记录 `version=v26.5.1-dev`、`gitCommit=7479e82`、`gitDirty=false`
+- 历史 staging 的 `PACKAGE-MANIFEST.txt` 可能记录 `version=v26.5.1-dev`、`gitCommit=7479e82`、`gitDirty=false`；这些字段只说明当时 staging 的构建信息，不等同于当前正式 tag
 
 开发态启动方式如下。
 
@@ -134,7 +134,7 @@ cargo run -p radishflow-studio
 
 工程术语、文件名、包名和路径会保留原文；用户动作、状态和环境字段默认使用中文。首页不承载流程图编辑，打开项目或示例后才进入工作台。
 
-首版 demo 前，Home / Workbench 的默认示例选择器只暴露四条 official hydrocarbon 演示路径：`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum`。仓库和便携包内仍可能附带 synthetic 或 PME 验证样例文件，但这些文件主要服务回归或外部验证，不作为首页高频演示入口。
+首版 demo 前，Home / Workbench 的默认示例选择器只暴露四条 official hydrocarbon 演示路径：`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum`。仓库和便携 staging 内仍可能附带 synthetic 或 PME 验证样例文件，但这些文件主要服务回归或外部验证，不作为首页高频演示入口。
 
 若当前工作区存在未保存变更，首页的 `新建项目`、`打开项目`、`打开示例项目` 以及工作台顶部的项目切换入口都会先进入显式确认流程；继续后才丢弃当前未保存内容，取消则保持当前项目不变。
 
@@ -143,7 +143,7 @@ cargo run -p radishflow-studio
 进入项目后，顶部第一行展示应用、当前项目和状态 chip；第二行提供当前主路径：
 
 - `Home`：返回启动首页
-- `打开示例`：打开仓库或便携包内置正向示例
+- `打开示例`：打开仓库或便携 staging 内置正向示例
 - `新建空白`：新建未命名空白项目；不会立刻弹出保存对话框
 - `打开项目...`：从磁盘选择已有 `*.rfproj.json`
 - `运行`：对当前工作区执行一次手动运行；不可用时 hover 会说明原因

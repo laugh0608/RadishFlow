@@ -179,7 +179,7 @@ Studio 默认工作台建议分为六个稳定区域。
 
 | 区域 | 第一屏保留字段 | 折叠或二级字段 |
 | --- | --- | --- |
-| Top App Bar | 应用名、`v26.5.1-dev internal` 或当前版本、`Local ready`、`Server offline`、`Signed out`、单位集、登录 / 设置 / 帮助入口 | 完整 build commit、完整控制面 URL、语言高级设置、开发诊断 |
+| Top App Bar | 应用名、`development build` 或当前人工确认的版本标识、`Local ready`、`Server offline`、`Signed out`、单位集、登录 / 设置 / 帮助入口 | 完整 build commit、完整控制面 URL、语言高级设置、开发诊断 |
 | Start Actions | `新建项目`、`打开项目`、`打开示例项目`；无最近项目时 `打开示例项目` 为优先入口 | 命令面板、最近工作区完整列表、保存 / 另存为、运行按钮 |
 | Recent Cases | 项目名称、路径或来源、最后打开时间、物性包、状态；选中态和双击打开行为 | 流股数、单元数、诊断数、最新求解摘要、完整路径展开 |
 | Example Cases | 示例类型、短流程图摘要、组件摘要、物性包、状态；选中态和双击打开行为 | 长说明、教程步骤、完整 flowsheet 预览、PME 操作说明 |

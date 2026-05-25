@@ -1,6 +1,6 @@
 # Versioning And Release
 
-更新时间：2026-05-18
+更新时间：2026-05-25
 
 ## 目标
 
@@ -9,9 +9,11 @@
 这里的目标不是立刻把所有 crate 内部版本都切到发布口径，而是先明确：
 
 - RadishFlow 对外版本如何命名
-- 哪些 tag 视为规范发布 tag
+- 哪些 tag 未来可视为规范发布 tag
 - CI 当前对哪些 tag 自动响应
 - 当前阶段如何处理“项目发布版本”和“workspace 内部 crate 版本”的关系
+
+当前补充口径：截至 2026-05-25，RadishFlow 尚未达到正式 tag / release 节点标准。本文档保留未来版本命名和 CI 响应规则，但不要求也不鼓励为普通内部 smoke、历史 staging 或日常开发创建 tag。
 
 ## 参考来源
 
@@ -19,7 +21,7 @@
 
 - 继续沿用 **Calendar Versioning**
 - 继续沿用 `-dev` / `-test` / `-release` 轨道后缀
-- 继续把规范 tag 作为自动化发布和验收的主要入口
+- 未来达到发布门槛后，可继续把规范 tag 作为自动化发布和验收入口
 
 但当前也明确保留一条差异：
 
@@ -157,8 +159,9 @@ vYY.M.RELEASE.DDXX
 
 ### 需要一轮内部验收
 
-- 创建 `vYY.M.RELEASE-dev`
-- 例如：`v26.3.1-dev`
+- 先完成明确的人工验收标准、仓库级验证、打包边界和负责人确认。
+- 只有当该轮验收需要被固化为正式版本节点时，才创建 `vYY.M.RELEASE-dev`。
+- 普通内部 smoke、开发态 staging 或一次性验证不创建 tag。
 
 ### 需要一轮测试部署/测试验收
 
@@ -170,9 +173,9 @@ vYY.M.RELEASE.DDXX
 - 创建 `vYY.M.RELEASE-release`
 - 例如：`v26.3.1-release`
 
-## MVP α 便携包操作清单
+## 便携 staging 操作清单
 
-当前 MVP α 交付形态先冻结为 Windows 便携压缩包 / staging 目录，不代表完整安装器。包内入口是 `radishflow-studio.exe`；示例项目、样例物性包、quick start、结果审阅说明、验收清单、版本说明和许可文件随包附带。
+当前如需人工验证 Windows 便携形态，可生成 staging 目录或压缩包。它不代表正式安装器、正式 demo、对外发布或已达到 tag 标准。包内入口是 `radishflow-studio.exe`；示例项目、样例物性包、quick start、结果审阅说明、验收清单、版本说明和许可文件可随包附带。
 
 打包前必须先完成阶段性验证：
 
@@ -180,16 +183,16 @@ vYY.M.RELEASE.DDXX
 pwsh ./scripts/check-repo.ps1
 ```
 
-生成当前月份的默认 `-dev` 便携包：
+生成当前默认版本的便携 staging：
 
 ```powershell
 pwsh ./scripts/package.ps1 -Clean
 ```
 
-生成指定规范版本包：
+如需人工指定 staging 版本号，可显式传入 `-Version`。该版本号只是包内标识；除非已完成版本节点确认，否则不等同于 Git tag：
 
 ```powershell
-pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean
+pwsh ./scripts/package.ps1 -Version <staging-version> -Clean
 ```
 
 脚本默认执行 `cargo build -p radishflow-studio --bin radishflow-studio --release`，并输出到 `artifacts/packages/RadishFlow-<version>-windows-<arch>/` 与同名 `.zip`。若只想复用已有构建产物，可显式传入 `-SkipBuild`；若只想检查 staging 内容而不生成压缩包，可传入 `-NoArchive`。
@@ -202,16 +205,16 @@ pwsh ./scripts/package.ps1 -Version v26.5.1-dev -Clean
 - 不启动 PME 或外部宿主
 - 不加载第三方 CAPE-OPEN 模型
 
-内部包记录或 Release Notes 应至少包含：
+内部 staging 记录至少包含：
 
-- 使用的包版本；若已创建规范 tag，再记录 tag
+- 使用的包版本；若未来已创建规范 tag，再记录 tag
 - `pwsh ./scripts/check-repo.ps1` 结果
 - `pwsh ./scripts/package.ps1 -Version <version> -Clean` 结果
-- MVP α Smoke A / B / C 记录引用
+- 相关人工 smoke 记录引用
 - 当前能力边界和明确非目标
 - 已知环境前提，例如当前便携包优先面向 Windows
 
-当前版本化说明放在 `docs/releases/<version-or-tag>.md`。`scripts/package.ps1` 会在对应文件存在时把它复制进便携包，并在 `PACKAGE-MANIFEST.txt` 中记录 `releaseNotes` 路径；若对应文件不存在，则记录为 `not-included`。`v26.5.1-dev` 当前已作为内部验收 tag 创建并推送，tag 指向 `7479e82`；它仍只代表内部 `-dev` 验收轨道，不代表正式 demo、安装器或对外发布候选。
+版本化说明可放在 `docs/releases/<version-or-tag>.md`。`scripts/package.ps1` 会在对应文件存在时把它复制进便携包，并在 `PACKAGE-MANIFEST.txt` 中记录 `releaseNotes` 路径；若对应文件不存在，则记录为 `not-included`。历史 `docs/releases/v26.5.1-dev.md` 仅作为曾经的 staging / release notes 草案保留，不再作为当前正式版本节点事实源。
 
 ## 当前后续事项
 

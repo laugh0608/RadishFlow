@@ -598,6 +598,49 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
     accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.liquid");
     accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.vapor");
 
+    commit_unit_parameter(
+        &mut app,
+        "feed-1",
+        "unit:feed-1:outlet_temperature_k",
+        "305",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "feed-1",
+        "unit:feed-1:outlet_pressure_pa",
+        "130000",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "feed-2",
+        "unit:feed-2:outlet_temperature_k",
+        "315",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "feed-2",
+        "unit:feed-2:outlet_pressure_pa",
+        "120000",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "mixer-1",
+        "unit:mixer-1:outlet_pressure_pa",
+        "90000",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "flash-1",
+        "unit:flash-1:outlet_temperature_k",
+        "300",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "flash-1",
+        "unit:flash-1:outlet_pressure_pa",
+        "85000",
+    );
+
     app.dispatch_ui_command("run_panel.run_manual");
     let solved = app.platform_host.snapshot().window_model();
     assert_eq!(
@@ -615,6 +658,18 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
         .find(|stream| stream.stream_id == "stream-mixer-1-outlet")
         .expect("expected mixer outlet result");
     assert_eq!(solved_mixer_outlet.total_molar_flow_mol_s, 2.0);
+    assert_eq!(solved_mixer_outlet.pressure_pa, 90_000.0);
+    let solved_flash_liquid = solved
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected solve snapshot")
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-flash-1-liquid")
+        .expect("expected flash liquid outlet result");
+    assert_eq!(solved_flash_liquid.temperature_k, 300.0);
+    assert_eq!(solved_flash_liquid.pressure_pa, 85_000.0);
 
     app.save_project();
     let saved = read_project_file(&project_path).expect("expected saved blank mixer project");
@@ -669,6 +724,50 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
         stored_unit_port_stream_id(&saved, "flash-1", "vapor"),
         Some("stream-flash-1-vapor")
     );
+    assert_eq!(
+        saved
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("feed-1"))
+            .expect("expected saved feed-1")
+            .parameters
+            .outlet_temperature_k,
+        Some(305.0)
+    );
+    assert_eq!(
+        saved
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("feed-2"))
+            .expect("expected saved feed-2")
+            .parameters
+            .outlet_pressure_pa,
+        Some(120_000.0)
+    );
+    assert_eq!(
+        saved
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("mixer-1"))
+            .expect("expected saved mixer")
+            .parameters
+            .outlet_pressure_pa,
+        Some(90_000.0)
+    );
+    assert_eq!(
+        saved
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("flash-1"))
+            .expect("expected saved flash")
+            .parameters
+            .outlet_temperature_k,
+        Some(300.0)
+    );
 
     app.open_project(project_path.clone(), "project");
     let reopened = app.platform_host.snapshot().window_model();
@@ -696,6 +795,7 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
         .find(|stream| stream.stream_id == "stream-mixer-1-outlet")
         .expect("expected mixer outlet rerun result");
     assert_eq!(rerun_mixer_outlet.total_molar_flow_mol_s, 2.0);
+    assert_eq!(rerun_mixer_outlet.pressure_pa, 90_000.0);
     assert!(
         rerun_streams
             .iter()
@@ -707,6 +807,29 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
             .any(|stream| stream.stream_id == "stream-flash-1-vapor")
     );
 
+    let export_path = project_path.with_extension("txt");
+    let snapshot = rerun
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected exported rerun solve snapshot");
+    app.export_solve_snapshot_to_path(snapshot, export_path.clone());
+    let exported = fs::read_to_string(&export_path).expect("expected case author export read");
+    assert!(exported.contains("Units\nunit_id\tstep\tstatus\tsummary"));
+    assert!(exported.contains("mixer-1"));
+    assert!(exported.contains("flash-1"));
+    assert!(exported.contains("stream-mixer-1-outlet"));
+    assert!(
+        !app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes,
+        "result export must not dirty the authored case"
+    );
+
+    let _ = fs::remove_file(export_path);
     let _ = fs::remove_file(studio_layout_path_for_project(&project_path));
     let _ = fs::remove_file(project_path);
 }

@@ -137,6 +137,17 @@ fn stored_unit_port_stream_id<'a>(
         .map(|stream_id| stream_id.as_str())
 }
 
+fn commit_unit_parameter(app: &mut ReadyAppState, unit_id: &str, draft_key: &str, raw_value: &str) {
+    app.dispatch_ui_command(format!("inspector.focus_unit:{unit_id}"));
+    app.dispatch_inspector_field_draft_update(
+        radishflow_studio::inspector_draft_update_command_id(draft_key),
+        raw_value,
+    );
+    app.dispatch_inspector_field_draft_commit(
+        radishflow_studio::inspector_draft_commit_command_id(draft_key),
+    );
+}
+
 fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
     StudioRuntimeConfig {
         project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))

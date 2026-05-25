@@ -1,6 +1,6 @@
 # Run First Flowsheet
 
-更新时间：2026-05-23
+更新时间：2026-05-25
 
 ## 目的
 
@@ -19,13 +19,13 @@
 
 ## 0. 前提
 
-如果从内部便携包体验，进入包目录后直接启动：
+如果从历史内部便携 staging 体验，进入 staging 目录后直接启动：
 
 ```powershell
 .\radishflow-studio.exe
 ```
 
-包内示例位于 `examples/flowsheets`。当前包是 Windows 便携包 / staging 形态，不是安装器；不会执行 COM 注册、PME 自动化或第三方 CAPE-OPEN 模型加载。
+包内示例位于 `examples/flowsheets`。当前 staging 是 Windows 便携目录形态，不是安装器、正式 demo 或 release 节点；不会执行 COM 注册、PME 自动化或第三方 CAPE-OPEN 模型加载。
 
 如果从仓库开发态体验，建议当前工作区至少可通过最小构建检查：
 
