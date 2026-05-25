@@ -182,7 +182,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 ## 7. MVP β 小案例作者路径
 
-如果你已经能跑通内置示例，下一步建议从空白项目手工复现一个小案例。当前推荐先用 `Feed + Feed -> Mixer -> Flash Drum`，因为它同时覆盖双入口连接、单元参数、保存重开和结果导出。
+如果你已经能跑通内置示例，下一步建议从空白项目手工复现一个小案例。当前推荐先用 `Feed + Feed -> Mixer -> Flash Drum`，因为它同时覆盖双入口连接、单元参数、保存重开和结果导出；也可以从首页选择 `创建 Heater-Flash 小案例`，用同一任务清单机制复现 `Feed -> Heater -> Flash Drum`。
 
 建议步骤：
 

@@ -25,6 +25,8 @@ enum HomeText {
     NewBlankCase,
     AuthorMixerFlashCase,
     AuthorMixerFlashDetail,
+    AuthorHeaterFlashCase,
+    AuthorHeaterFlashDetail,
     OpenCase,
     OpenExampleCase,
     RecentCases,
@@ -196,6 +198,20 @@ impl ReadyAppState {
             self.start_mixer_flash_authoring_case();
         }
         render_wrapped_small(ui, home_text(self.locale, HomeText::AuthorMixerFlashDetail));
+        ui.add_space(5.0);
+        if ui
+            .add(
+                egui::Button::new(home_text(self.locale, HomeText::AuthorHeaterFlashCase))
+                    .min_size(egui::vec2(ui.available_width(), 40.0)),
+            )
+            .clicked()
+        {
+            self.start_heater_flash_authoring_case();
+        }
+        render_wrapped_small(
+            ui,
+            home_text(self.locale, HomeText::AuthorHeaterFlashDetail),
+        );
         ui.add_space(5.0);
         if ui
             .add(
@@ -884,6 +900,10 @@ fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {
             HomeText::AuthorMixerFlashDetail => {
                 "Start from a blank project with a case authoring checklist."
             }
+            HomeText::AuthorHeaterFlashCase => "Create Heater-Flash Case",
+            HomeText::AuthorHeaterFlashDetail => {
+                "Build a single-feed heater case with the same checklist flow."
+            }
             HomeText::OpenCase => "Open Project",
             HomeText::OpenExampleCase => "Open Example Project",
             HomeText::RecentCases => "Recent Cases",
@@ -937,6 +957,8 @@ fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {
             HomeText::NewBlankCase => "新建项目",
             HomeText::AuthorMixerFlashCase => "创建 Mixer-Flash 小案例",
             HomeText::AuthorMixerFlashDetail => "从空白项目开始，并打开放置任务清单。",
+            HomeText::AuthorHeaterFlashCase => "创建 Heater-Flash 小案例",
+            HomeText::AuthorHeaterFlashDetail => "单 Feed 加热后进入 Flash Drum 的作者路径。",
             HomeText::OpenCase => "打开项目",
             HomeText::OpenExampleCase => "打开示例项目",
             HomeText::RecentCases => "最近项目",

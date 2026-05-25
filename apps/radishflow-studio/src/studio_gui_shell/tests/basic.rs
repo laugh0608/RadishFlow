@@ -370,6 +370,7 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
         "开始",
         "新建项目",
         "创建 Mixer-Flash 小案例",
+        "创建 Heater-Flash 小案例",
         "打开项目",
         "打开示例项目",
         "最近项目",
@@ -467,6 +468,45 @@ fn home_mixer_flash_authoring_entry_creates_blank_project_and_opens_palette() {
 }
 
 #[test]
+fn home_heater_flash_authoring_entry_creates_blank_project_and_opens_palette() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.start_heater_flash_authoring_case();
+
+    assert_eq!(app.screen, StudioShellScreen::Workbench);
+    assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Palette);
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Inspector);
+    assert_eq!(app.bottom_drawer_tab, StudioShellBottomDrawerTab::Messages);
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .expect("expected heater case authoring notice")
+            .title,
+        "已开始 Heater-Flash 小案例"
+    );
+
+    let texts = render_alpha_workbench_texts(&mut app);
+    for expected in [
+        "Heater-Flash 小案例",
+        "放置一个 Feed",
+        "放置 Heater",
+        "待做",
+    ] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected heater authoring checklist to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    assert!(
+        !texts.iter().any(|text| text.contains("放置 Mixer")),
+        "expected selected heater authoring path to hide the mixer checklist, rendered texts: {:?}",
+        texts
+    );
+}
+
+#[test]
 fn mixer_flash_authoring_checklist_reflects_feed_outlet_progress() {
     let mut app = ready_app_state(&synced_workspace_config());
 
@@ -496,6 +536,44 @@ fn mixer_flash_authoring_checklist_reflects_feed_outlet_progress() {
     assert!(
         texts.iter().any(|text| text.contains("放置 Mixer")),
         "expected later authoring tasks to remain visible, rendered texts: {:?}",
+        texts
+    );
+}
+
+#[test]
+fn heater_flash_authoring_checklist_reflects_heater_outlet_progress() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.start_heater_flash_authoring_case();
+    assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Palette);
+    let initial_texts = render_alpha_workbench_texts(&mut app);
+    assert!(
+        !initial_texts.iter().any(|text| text == "完成"),
+        "expected blank heater authoring checklist to start with no completed tasks, rendered texts: {:?}",
+        initial_texts
+    );
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.heater");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(180.0, 40.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.heater.connect_inlet.heater-1.stream-feed-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.heater.create_outlet.heater-1");
+
+    let texts = render_alpha_workbench_texts(&mut app);
+    assert!(
+        texts.iter().filter(|text| *text == "完成").count() >= 5,
+        "expected checklist to mark feed and heater path tasks complete, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        texts.iter().any(|text| text.contains("放置 Flash Drum")),
+        "expected later heater authoring tasks to remain visible, rendered texts: {:?}",
         texts
     );
 }

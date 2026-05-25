@@ -1,130 +1,190 @@
 use super::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum MixerFlashAuthoringText {
-    Title,
-    Detail,
+enum AuthoringTaskKey {
+    OneFeed,
     TwoFeeds,
+    FeedOutlet,
     FeedOutlets,
+    HeaterPlaced,
+    FeedToHeater,
+    HeaterOutlet,
     MixerPlaced,
     FeedToMixer,
     MixerOutlet,
     FlashPlaced,
+    HeaterToFlash,
     MixerToFlash,
     FlashOutlets,
     RunCase,
-    Done,
-    Todo,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct MixerFlashAuthoringTask {
-    label: &'static str,
+struct AuthoringTask {
+    key: AuthoringTaskKey,
     complete: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-struct MixerFlashAuthoringProgress {
+struct AuthoringProgress {
     feed_units: usize,
     feed_outlet_streams: usize,
+    has_heater: bool,
+    feed_to_heater_streams: usize,
+    has_heater_outlet_stream: bool,
     has_mixer: bool,
     feed_to_mixer_streams: usize,
     has_mixer_outlet_stream: bool,
     has_flash: bool,
+    has_heater_to_flash_stream: bool,
     has_mixer_to_flash_stream: bool,
     flash_outlet_streams: usize,
     has_solve_snapshot: bool,
 }
 
 impl ReadyAppState {
-    pub(super) fn render_mixer_flash_authoring_checklist(
+    pub(super) fn render_authoring_checklists(
         &self,
         ui: &mut egui::Ui,
         window: &StudioGuiWindowModel,
     ) {
         ui.separator();
-        ui.label(
-            egui::RichText::new(mixer_flash_authoring_text(
-                self.locale,
-                MixerFlashAuthoringText::Title,
-            ))
-            .strong(),
-        );
-        render_wrapped_small(
-            ui,
-            mixer_flash_authoring_text(self.locale, MixerFlashAuthoringText::Detail),
-        );
+
+        let cases = self
+            .active_authoring_case
+            .map(|case| vec![case])
+            .unwrap_or_else(|| {
+                vec![
+                    AuthoringCaseKind::MixerFlash,
+                    AuthoringCaseKind::HeaterFlash,
+                ]
+            });
+
+        for (index, case) in cases.iter().copied().enumerate() {
+            if index > 0 {
+                ui.add_space(8.0);
+            }
+            self.render_authoring_checklist(ui, window, case);
+        }
+    }
+
+    fn render_authoring_checklist(
+        &self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+        case: AuthoringCaseKind,
+    ) {
+        ui.label(egui::RichText::new(authoring_case_title(self.locale, case)).strong());
+        render_wrapped_small(ui, authoring_case_detail(self.locale, case));
         ui.add_space(4.0);
 
-        for task in mixer_flash_authoring_tasks(self.locale, window) {
+        for task in authoring_tasks(case, window) {
             let (status, color) = if task.complete {
                 (
-                    mixer_flash_authoring_text(self.locale, MixerFlashAuthoringText::Done),
+                    authoring_status_text(self.locale, true),
                     egui::Color32::from_rgb(52, 128, 89),
                 )
             } else {
                 (
-                    mixer_flash_authoring_text(self.locale, MixerFlashAuthoringText::Todo),
+                    authoring_status_text(self.locale, false),
                     egui::Color32::from_rgb(86, 96, 108),
                 )
             };
             ui.horizontal_wrapped(|ui| {
                 render_status_chip(ui, status, color);
-                ui.label(task.label);
+                ui.label(authoring_task_label(self.locale, task.key));
             });
         }
     }
 }
 
-fn mixer_flash_authoring_tasks(
-    locale: StudioShellLocale,
-    window: &StudioGuiWindowModel,
-) -> Vec<MixerFlashAuthoringTask> {
-    let progress = mixer_flash_authoring_progress(window);
+fn authoring_tasks(case: AuthoringCaseKind, window: &StudioGuiWindowModel) -> Vec<AuthoringTask> {
+    let progress = authoring_progress(window);
 
-    vec![
-        MixerFlashAuthoringTask {
-            label: mixer_flash_authoring_text(locale, MixerFlashAuthoringText::TwoFeeds),
-            complete: progress.feed_units >= 2,
-        },
-        MixerFlashAuthoringTask {
-            label: mixer_flash_authoring_text(locale, MixerFlashAuthoringText::FeedOutlets),
-            complete: progress.feed_outlet_streams >= 2,
-        },
-        MixerFlashAuthoringTask {
-            label: mixer_flash_authoring_text(locale, MixerFlashAuthoringText::MixerPlaced),
-            complete: progress.has_mixer,
-        },
-        MixerFlashAuthoringTask {
-            label: mixer_flash_authoring_text(locale, MixerFlashAuthoringText::FeedToMixer),
-            complete: progress.feed_to_mixer_streams >= 2,
-        },
-        MixerFlashAuthoringTask {
-            label: mixer_flash_authoring_text(locale, MixerFlashAuthoringText::MixerOutlet),
-            complete: progress.has_mixer_outlet_stream,
-        },
-        MixerFlashAuthoringTask {
-            label: mixer_flash_authoring_text(locale, MixerFlashAuthoringText::FlashPlaced),
-            complete: progress.has_flash,
-        },
-        MixerFlashAuthoringTask {
-            label: mixer_flash_authoring_text(locale, MixerFlashAuthoringText::MixerToFlash),
-            complete: progress.has_mixer_to_flash_stream,
-        },
-        MixerFlashAuthoringTask {
-            label: mixer_flash_authoring_text(locale, MixerFlashAuthoringText::FlashOutlets),
-            complete: progress.flash_outlet_streams >= 2,
-        },
-        MixerFlashAuthoringTask {
-            label: mixer_flash_authoring_text(locale, MixerFlashAuthoringText::RunCase),
-            complete: progress.has_solve_snapshot,
-        },
-    ]
+    match case {
+        AuthoringCaseKind::MixerFlash => vec![
+            AuthoringTask {
+                key: AuthoringTaskKey::TwoFeeds,
+                complete: progress.feed_units >= 2,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::FeedOutlets,
+                complete: progress.feed_outlet_streams >= 2,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::MixerPlaced,
+                complete: progress.has_mixer,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::FeedToMixer,
+                complete: progress.feed_to_mixer_streams >= 2,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::MixerOutlet,
+                complete: progress.has_mixer_outlet_stream,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::FlashPlaced,
+                complete: progress.has_flash,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::MixerToFlash,
+                complete: progress.has_mixer_to_flash_stream,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::FlashOutlets,
+                complete: progress.flash_outlet_streams >= 2,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::RunCase,
+                complete: progress.has_solve_snapshot,
+            },
+        ],
+        AuthoringCaseKind::HeaterFlash => vec![
+            AuthoringTask {
+                key: AuthoringTaskKey::OneFeed,
+                complete: progress.feed_units >= 1,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::FeedOutlet,
+                complete: progress.feed_outlet_streams >= 1,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::HeaterPlaced,
+                complete: progress.has_heater,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::FeedToHeater,
+                complete: progress.feed_to_heater_streams >= 1,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::HeaterOutlet,
+                complete: progress.has_heater_outlet_stream,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::FlashPlaced,
+                complete: progress.has_flash,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::HeaterToFlash,
+                complete: progress.has_heater_to_flash_stream,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::FlashOutlets,
+                complete: progress.flash_outlet_streams >= 2,
+            },
+            AuthoringTask {
+                key: AuthoringTaskKey::RunCase,
+                complete: progress.has_solve_snapshot,
+            },
+        ],
+    }
 }
 
-fn mixer_flash_authoring_progress(window: &StudioGuiWindowModel) -> MixerFlashAuthoringProgress {
+fn authoring_progress(window: &StudioGuiWindowModel) -> AuthoringProgress {
     let view = window.canvas.widget.view();
     let feed_unit_ids = unit_ids_by_kind(view, "feed");
+    let heater_unit_id = first_unit_id_by_kind(view, "heater");
     let mixer_unit_id = first_unit_id_by_kind(view, "mixer");
     let flash_unit_id = first_unit_id_by_kind(view, "flash_drum");
 
@@ -140,30 +200,28 @@ fn mixer_flash_authoring_progress(window: &StudioGuiWindowModel) -> MixerFlashAu
         })
         .count();
 
+    let feed_to_heater_streams = heater_unit_id
+        .as_ref()
+        .map(|heater_id| count_streams_from_any_to_unit(view, &feed_unit_ids, heater_id))
+        .unwrap_or(0);
+
     let feed_to_mixer_streams = mixer_unit_id
         .as_ref()
-        .map(|mixer_id| {
-            view.stream_lines
-                .iter()
-                .filter(|stream| {
-                    let from_feed = stream.source.as_ref().is_some_and(|source| {
-                        feed_unit_ids
-                            .iter()
-                            .any(|unit_id| unit_id == &source.unit_id)
-                    });
-                    let to_mixer = stream
-                        .sink
-                        .as_ref()
-                        .is_some_and(|sink| &sink.unit_id == mixer_id);
-                    from_feed && to_mixer
-                })
-                .count()
-        })
+        .map(|mixer_id| count_streams_from_any_to_unit(view, &feed_unit_ids, mixer_id))
         .unwrap_or(0);
+
+    let has_heater_outlet_stream = heater_unit_id
+        .as_ref()
+        .is_some_and(|heater_id| has_stream_from_unit(view, heater_id));
 
     let has_mixer_outlet_stream = mixer_unit_id
         .as_ref()
         .is_some_and(|mixer_id| has_stream_from_unit(view, mixer_id));
+
+    let has_heater_to_flash_stream = heater_unit_id
+        .as_ref()
+        .zip(flash_unit_id.as_ref())
+        .is_some_and(|(heater_id, flash_id)| has_stream_between_units(view, heater_id, flash_id));
 
     let has_mixer_to_flash_stream = mixer_unit_id
         .as_ref()
@@ -185,17 +243,43 @@ fn mixer_flash_authoring_progress(window: &StudioGuiWindowModel) -> MixerFlashAu
         })
         .unwrap_or(0);
 
-    MixerFlashAuthoringProgress {
+    AuthoringProgress {
         feed_units: feed_unit_ids.len(),
         feed_outlet_streams,
+        has_heater: heater_unit_id.is_some(),
+        feed_to_heater_streams,
+        has_heater_outlet_stream,
         has_mixer: mixer_unit_id.is_some(),
         feed_to_mixer_streams,
         has_mixer_outlet_stream,
         has_flash: flash_unit_id.is_some(),
+        has_heater_to_flash_stream,
         has_mixer_to_flash_stream,
         flash_outlet_streams,
         has_solve_snapshot: window.runtime.latest_solve_snapshot.is_some(),
     }
+}
+
+fn count_streams_from_any_to_unit(
+    view: &radishflow_studio::StudioGuiCanvasViewModel,
+    source_unit_ids: &[String],
+    sink_unit_id: &str,
+) -> usize {
+    view.stream_lines
+        .iter()
+        .filter(|stream| {
+            let from_source = stream.source.as_ref().is_some_and(|source| {
+                source_unit_ids
+                    .iter()
+                    .any(|unit_id| unit_id == &source.unit_id)
+            });
+            let to_sink = stream
+                .sink
+                .as_ref()
+                .is_some_and(|sink| sink.unit_id.as_str() == sink_unit_id);
+            from_source && to_sink
+        })
+        .count()
 }
 
 fn unit_ids_by_kind(view: &radishflow_studio::StudioGuiCanvasViewModel, kind: &str) -> Vec<String> {
@@ -243,44 +327,76 @@ fn has_stream_between_units(
     })
 }
 
-fn mixer_flash_authoring_text(
-    locale: StudioShellLocale,
-    key: MixerFlashAuthoringText,
-) -> &'static str {
+fn authoring_case_title(locale: StudioShellLocale, case: AuthoringCaseKind) -> &'static str {
+    match (locale, case) {
+        (StudioShellLocale::En, AuthoringCaseKind::MixerFlash) => "Mixer-Flash Case",
+        (StudioShellLocale::En, AuthoringCaseKind::HeaterFlash) => "Heater-Flash Case",
+        (StudioShellLocale::ZhCn, AuthoringCaseKind::MixerFlash) => "Mixer-Flash 小案例",
+        (StudioShellLocale::ZhCn, AuthoringCaseKind::HeaterFlash) => "Heater-Flash 小案例",
+    }
+}
+
+fn authoring_case_detail(locale: StudioShellLocale, case: AuthoringCaseKind) -> &'static str {
+    match (locale, case) {
+        (StudioShellLocale::En, AuthoringCaseKind::MixerFlash) => {
+            "Follow this checklist to build Feed + Feed -> Mixer -> Flash Drum from a blank project."
+        }
+        (StudioShellLocale::En, AuthoringCaseKind::HeaterFlash) => {
+            "Follow this checklist to build Feed -> Heater -> Flash Drum from a blank project."
+        }
+        (StudioShellLocale::ZhCn, AuthoringCaseKind::MixerFlash) => {
+            "从空白项目开始，按清单完成 Feed + Feed -> Mixer -> Flash Drum 建模。"
+        }
+        (StudioShellLocale::ZhCn, AuthoringCaseKind::HeaterFlash) => {
+            "从空白项目开始，按清单完成 Feed -> Heater -> Flash Drum 建模。"
+        }
+    }
+}
+
+fn authoring_task_label(locale: StudioShellLocale, key: AuthoringTaskKey) -> &'static str {
     match locale {
         StudioShellLocale::En => match key {
-            MixerFlashAuthoringText::Title => "Mixer-Flash Case",
-            MixerFlashAuthoringText::Detail => {
-                "Follow this checklist to build Feed + Feed -> Mixer -> Flash Drum from a blank project."
-            }
-            MixerFlashAuthoringText::TwoFeeds => "Place two Feed units",
-            MixerFlashAuthoringText::FeedOutlets => "Create both Feed outlet streams",
-            MixerFlashAuthoringText::MixerPlaced => "Place a Mixer",
-            MixerFlashAuthoringText::FeedToMixer => "Connect both Feed outlets into the Mixer",
-            MixerFlashAuthoringText::MixerOutlet => "Create the Mixer outlet stream",
-            MixerFlashAuthoringText::FlashPlaced => "Place a Flash Drum",
-            MixerFlashAuthoringText::MixerToFlash => "Connect the Mixer outlet into the Flash Drum",
-            MixerFlashAuthoringText::FlashOutlets => "Create Flash Drum liquid and vapor outlets",
-            MixerFlashAuthoringText::RunCase => "Run the case and review results",
-            MixerFlashAuthoringText::Done => "done",
-            MixerFlashAuthoringText::Todo => "todo",
+            AuthoringTaskKey::OneFeed => "Place one Feed",
+            AuthoringTaskKey::TwoFeeds => "Place two Feed units",
+            AuthoringTaskKey::FeedOutlet => "Create the Feed outlet stream",
+            AuthoringTaskKey::FeedOutlets => "Create both Feed outlet streams",
+            AuthoringTaskKey::HeaterPlaced => "Place a Heater",
+            AuthoringTaskKey::FeedToHeater => "Connect the Feed outlet into the Heater",
+            AuthoringTaskKey::HeaterOutlet => "Create the Heater outlet stream",
+            AuthoringTaskKey::MixerPlaced => "Place a Mixer",
+            AuthoringTaskKey::FeedToMixer => "Connect both Feed outlets into the Mixer",
+            AuthoringTaskKey::MixerOutlet => "Create the Mixer outlet stream",
+            AuthoringTaskKey::FlashPlaced => "Place a Flash Drum",
+            AuthoringTaskKey::HeaterToFlash => "Connect the Heater outlet into the Flash Drum",
+            AuthoringTaskKey::MixerToFlash => "Connect the Mixer outlet into the Flash Drum",
+            AuthoringTaskKey::FlashOutlets => "Create Flash Drum liquid and vapor outlets",
+            AuthoringTaskKey::RunCase => "Run the case and review results",
         },
         StudioShellLocale::ZhCn => match key {
-            MixerFlashAuthoringText::Title => "Mixer-Flash 小案例",
-            MixerFlashAuthoringText::Detail => {
-                "从空白项目开始，按清单完成 Feed + Feed -> Mixer -> Flash Drum 建模。"
-            }
-            MixerFlashAuthoringText::TwoFeeds => "放置两个 Feed",
-            MixerFlashAuthoringText::FeedOutlets => "创建两个 Feed 出口流股",
-            MixerFlashAuthoringText::MixerPlaced => "放置 Mixer",
-            MixerFlashAuthoringText::FeedToMixer => "连接两个 Feed 出口到 Mixer",
-            MixerFlashAuthoringText::MixerOutlet => "创建 Mixer 出口流股",
-            MixerFlashAuthoringText::FlashPlaced => "放置 Flash Drum",
-            MixerFlashAuthoringText::MixerToFlash => "连接 Mixer 出口到 Flash Drum",
-            MixerFlashAuthoringText::FlashOutlets => "创建 Flash Drum 液相和气相出口",
-            MixerFlashAuthoringText::RunCase => "运行案例并检查结果",
-            MixerFlashAuthoringText::Done => "完成",
-            MixerFlashAuthoringText::Todo => "待做",
+            AuthoringTaskKey::OneFeed => "放置一个 Feed",
+            AuthoringTaskKey::TwoFeeds => "放置两个 Feed",
+            AuthoringTaskKey::FeedOutlet => "创建 Feed 出口流股",
+            AuthoringTaskKey::FeedOutlets => "创建两个 Feed 出口流股",
+            AuthoringTaskKey::HeaterPlaced => "放置 Heater",
+            AuthoringTaskKey::FeedToHeater => "连接 Feed 出口到 Heater",
+            AuthoringTaskKey::HeaterOutlet => "创建 Heater 出口流股",
+            AuthoringTaskKey::MixerPlaced => "放置 Mixer",
+            AuthoringTaskKey::FeedToMixer => "连接两个 Feed 出口到 Mixer",
+            AuthoringTaskKey::MixerOutlet => "创建 Mixer 出口流股",
+            AuthoringTaskKey::FlashPlaced => "放置 Flash Drum",
+            AuthoringTaskKey::HeaterToFlash => "连接 Heater 出口到 Flash Drum",
+            AuthoringTaskKey::MixerToFlash => "连接 Mixer 出口到 Flash Drum",
+            AuthoringTaskKey::FlashOutlets => "创建 Flash Drum 液相和气相出口",
+            AuthoringTaskKey::RunCase => "运行案例并检查结果",
         },
+    }
+}
+
+fn authoring_status_text(locale: StudioShellLocale, complete: bool) -> &'static str {
+    match (locale, complete) {
+        (StudioShellLocale::En, true) => "done",
+        (StudioShellLocale::En, false) => "todo",
+        (StudioShellLocale::ZhCn, true) => "完成",
+        (StudioShellLocale::ZhCn, false) => "待做",
     }
 }

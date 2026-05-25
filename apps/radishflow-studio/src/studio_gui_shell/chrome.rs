@@ -577,7 +577,7 @@ impl ReadyAppState {
             ui.add_space(6.0);
         }
 
-        self.render_mixer_flash_authoring_checklist(ui, window);
+        self.render_authoring_checklists(ui, window);
         ui.add_space(8.0);
 
         for option in &palette.options {

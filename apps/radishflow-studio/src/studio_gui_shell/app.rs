@@ -38,14 +38,18 @@ impl ReadyAppState {
     }
 
     pub(super) fn create_blank_project(&mut self) {
-        self.request_blank_project(false);
+        self.request_blank_project(None);
     }
 
     pub(super) fn start_mixer_flash_authoring_case(&mut self) {
-        self.request_blank_project(true);
+        self.request_blank_project(Some(AuthoringCaseKind::MixerFlash));
     }
 
-    fn request_blank_project(&mut self, start_authoring: bool) {
+    pub(super) fn start_heater_flash_authoring_case(&mut self) {
+        self.request_blank_project(Some(AuthoringCaseKind::HeaterFlash));
+    }
+
+    fn request_blank_project(&mut self, authoring_case: Option<AuthoringCaseKind>) {
         if self
             .platform_host
             .snapshot()
@@ -55,7 +59,7 @@ impl ReadyAppState {
         {
             self.project_open.pending_confirmation = None;
             self.project_open.pending_blank_project_confirmation = true;
-            self.project_open.pending_authoring_blank_project = start_authoring;
+            self.project_open.pending_authoring_blank_project = authoring_case;
             self.project_open.pending_save_as_overwrite = None;
             self.project_open.pending_close_window_confirmation = None;
             self.project_open.notice = Some(ProjectOpenNotice {
@@ -66,22 +70,22 @@ impl ReadyAppState {
             return;
         }
 
-        self.create_blank_project_without_confirmation(start_authoring);
+        self.create_blank_project_without_confirmation(authoring_case);
     }
 
     pub(super) fn confirm_pending_blank_project(&mut self) {
         if !self.project_open.pending_blank_project_confirmation {
             return;
         }
-        let start_authoring = self.project_open.pending_authoring_blank_project;
+        let authoring_case = self.project_open.pending_authoring_blank_project;
         self.project_open.pending_blank_project_confirmation = false;
-        self.project_open.pending_authoring_blank_project = false;
-        self.create_blank_project_without_confirmation(start_authoring);
+        self.project_open.pending_authoring_blank_project = None;
+        self.create_blank_project_without_confirmation(authoring_case);
     }
 
     pub(super) fn cancel_pending_blank_project(&mut self) {
         self.project_open.pending_blank_project_confirmation = false;
-        self.project_open.pending_authoring_blank_project = false;
+        self.project_open.pending_authoring_blank_project = None;
         self.project_open.notice = Some(ProjectOpenNotice {
             level: ProjectOpenNoticeLevel::Info,
             title: blank_project_canceled_notice_title(self.locale).to_string(),
@@ -89,7 +93,10 @@ impl ReadyAppState {
         });
     }
 
-    fn create_blank_project_without_confirmation(&mut self, start_authoring: bool) {
+    fn create_blank_project_without_confirmation(
+        &mut self,
+        authoring_case: Option<AuthoringCaseKind>,
+    ) {
         let config = studio_shell_blank_runtime_config();
 
         match StudioGuiPlatformHost::new(&config) {
@@ -112,24 +119,25 @@ impl ReadyAppState {
                 self.project_open.path_input.clear();
                 self.project_open.pending_confirmation = None;
                 self.project_open.pending_blank_project_confirmation = false;
-                self.project_open.pending_authoring_blank_project = false;
+                self.project_open.pending_authoring_blank_project = None;
                 self.project_open.pending_save_as_overwrite = None;
                 self.project_open.pending_close_window_confirmation = None;
                 self.project_open.notice = Some(ProjectOpenNotice {
                     level: ProjectOpenNoticeLevel::Info,
-                    title: blank_project_created_notice_title(self.locale, start_authoring)
+                    title: blank_project_created_notice_title(self.locale, authoring_case)
                         .to_string(),
-                    detail: blank_project_created_notice_detail(self.locale, start_authoring)
+                    detail: blank_project_created_notice_detail(self.locale, authoring_case)
                         .to_string(),
                 });
                 self.screen = StudioShellScreen::Workbench;
-                if start_authoring {
+                self.active_authoring_case = authoring_case;
+                if authoring_case.is_some() {
                     self.left_sidebar_tab = StudioShellLeftSidebarTab::Palette;
                     self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
                     self.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
                 }
                 self.platform_host.record_activity_line(
-                    blank_project_created_activity_line(start_authoring).to_string(),
+                    blank_project_created_activity_line(authoring_case).to_string(),
                 );
                 self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
                 if let Err(error) = self.apply_default_hidden_commands_panel_for_current_window() {
@@ -425,7 +433,7 @@ impl ReadyAppState {
                 source_label: source_label.to_string(),
             });
             self.project_open.pending_blank_project_confirmation = false;
-            self.project_open.pending_authoring_blank_project = false;
+            self.project_open.pending_authoring_blank_project = None;
             self.project_open.pending_save_as_overwrite = None;
             self.project_open.pending_close_window_confirmation = None;
             self.project_open.notice = Some(ProjectOpenNotice {
@@ -484,7 +492,7 @@ impl ReadyAppState {
                     self.record_and_persist_recent_project(project_path.clone());
                 self.project_open.pending_confirmation = None;
                 self.project_open.pending_blank_project_confirmation = false;
-                self.project_open.pending_authoring_blank_project = false;
+                self.project_open.pending_authoring_blank_project = None;
                 self.project_open.pending_save_as_overwrite = None;
                 self.project_open.pending_close_window_confirmation = None;
                 self.project_open.notice =
@@ -498,6 +506,7 @@ impl ReadyAppState {
                         ),
                     }));
                 self.screen = StudioShellScreen::Workbench;
+                self.active_authoring_case = None;
                 self.platform_host.record_activity_line(format!(
                     "opened {source_label}: {}",
                     project_path.display()
@@ -1370,7 +1379,7 @@ impl ReadyAppState {
     fn request_close_window_confirmation(&mut self, window_id: StudioWindowHostId) {
         self.project_open.pending_confirmation = None;
         self.project_open.pending_blank_project_confirmation = false;
-        self.project_open.pending_authoring_blank_project = false;
+        self.project_open.pending_authoring_blank_project = None;
         self.project_open.pending_save_as_overwrite = None;
         self.project_open.pending_close_window_confirmation = Some(window_id);
         self.project_open.notice = None;
@@ -1665,41 +1674,53 @@ fn blank_project_canceled_notice_title(locale: StudioShellLocale) -> &'static st
 
 fn blank_project_created_notice_title(
     locale: StudioShellLocale,
-    start_authoring: bool,
+    authoring_case: Option<AuthoringCaseKind>,
 ) -> &'static str {
-    match (locale, start_authoring) {
-        (StudioShellLocale::En, true) => "Mixer-Flash case started",
-        (StudioShellLocale::En, false) => "Blank project created",
-        (StudioShellLocale::ZhCn, true) => "已开始 Mixer-Flash 小案例",
-        (StudioShellLocale::ZhCn, false) => "Blank project created",
+    match (locale, authoring_case) {
+        (StudioShellLocale::En, Some(AuthoringCaseKind::MixerFlash)) => "Mixer-Flash case started",
+        (StudioShellLocale::En, Some(AuthoringCaseKind::HeaterFlash)) => {
+            "Heater-Flash case started"
+        }
+        (StudioShellLocale::En, None) => "Blank project created",
+        (StudioShellLocale::ZhCn, Some(AuthoringCaseKind::MixerFlash)) => {
+            "已开始 Mixer-Flash 小案例"
+        }
+        (StudioShellLocale::ZhCn, Some(AuthoringCaseKind::HeaterFlash)) => {
+            "已开始 Heater-Flash 小案例"
+        }
+        (StudioShellLocale::ZhCn, None) => "Blank project created",
     }
 }
 
 fn blank_project_created_notice_detail(
     locale: StudioShellLocale,
-    start_authoring: bool,
+    authoring_case: Option<AuthoringCaseKind>,
 ) -> &'static str {
-    match (locale, start_authoring) {
-        (StudioShellLocale::En, true) => {
+    match (locale, authoring_case) {
+        (StudioShellLocale::En, Some(_)) => {
             "Created an untitled blank project and opened the placement checklist."
         }
-        (StudioShellLocale::En, false) => {
+        (StudioShellLocale::En, None) => {
             "Created an untitled blank project. Use Save to choose a .rfproj.json path."
         }
-        (StudioShellLocale::ZhCn, true) => {
+        (StudioShellLocale::ZhCn, Some(_)) => {
             "已新建未命名空白项目，并打开放置面板中的小案例任务清单。"
         }
-        (StudioShellLocale::ZhCn, false) => {
+        (StudioShellLocale::ZhCn, None) => {
             "Created an untitled blank project. Use Save to choose a .rfproj.json path."
         }
     }
 }
 
-fn blank_project_created_activity_line(start_authoring: bool) -> &'static str {
-    if start_authoring {
-        "started mixer-flash authoring case from blank project"
-    } else {
-        "created untitled blank project"
+fn blank_project_created_activity_line(authoring_case: Option<AuthoringCaseKind>) -> &'static str {
+    match authoring_case {
+        Some(AuthoringCaseKind::MixerFlash) => {
+            "started mixer-flash authoring case from blank project"
+        }
+        Some(AuthoringCaseKind::HeaterFlash) => {
+            "started heater-flash authoring case from blank project"
+        }
+        None => "created untitled blank project",
     }
 }
 
