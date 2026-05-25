@@ -1,6 +1,6 @@
 # Canvas Interaction Contract
 
-更新时间：2026-05-24
+更新时间：2026-05-25
 
 ## 文档目的
 
@@ -110,7 +110,9 @@
 截至 2026-05-17，Studio 画布已经具备以下最小闭环：
 
 - 左侧 `放置` 入口可创建 `进料 / 混合器 / 加热器 / 冷却器 / 阀门 / 闪蒸罐` MVP 单元；项目对象名和示例文件仍可保留 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` 等领域英文名。
+- Home 小案例作者入口可创建空白项目并切到左侧 `放置` 面板；当前支持 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条任务清单。作者入口只影响 shell-local 当前清单选择，不创建单元、不连接流股、不写 `FlowsheetDocument`、不进入 `CommandHistory`。
 - 当前最短可求解路径覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`。
+- 作者任务清单状态必须从当前 canvas presentation 推导：unit kind、material stream source / sink 端点和最新 `SolveSnapshot`。清单不是真相源，不得反向修正文档或替代 suggestion acceptance。
 - 本地 suggestion 可补齐标准材料端口连接和必要 outlet stream；显示动词按接受载荷区分为 `连接流股` / `Connect stream` 与 `创建流股` / `Create stream`，不再使用泛化 `Apply` 或单一 `连接`。
 - suggestion 接受仍转换为正式 `DocumentCommand::ConnectPorts` 或等价文档命令后写回；接受 / 拒绝本身不进入 `CommandHistory`。
 - Canvas 对象选择会驱动右侧 `检查器` / 结果定位，但不缓存第二份求解结果。

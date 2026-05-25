@@ -123,7 +123,7 @@ cargo run -p radishflow-studio
 
 - `docs/guides/run-first-flowsheet.md`
 
-如果内置示例已经跑通，下一步建议从首页点击 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例`，也可按 `docs/guides/run-first-flowsheet.md` 的 “MVP β 小案例作者路径” 从空白项目复现 `Feed + Feed -> Mixer -> Flash Drum`：放置单元、接受 suggestion、提交 Feed / Mixer / Flash Drum 参数、运行、保存重开、重跑并导出当前结果。这些作者入口只打开空白项目和任务清单，不是自由连线、自动布线或完整项目向导。
+如果内置示例已经跑通，下一步建议从首页点击 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例`，按 `docs/guides/author-small-cases.md` 从空白项目复现小案例：放置单元、接受 suggestion、提交单元参数、运行、保存重开、重跑并导出当前结果。这些作者入口只打开空白项目和任务清单，不是自由连线、自动布线或完整项目向导。
 
 ## 启动首页
 
@@ -140,6 +140,13 @@ cargo run -p radishflow-studio
 首版 demo 前，Home / Workbench 的默认示例选择器只暴露四条 official hydrocarbon 演示路径：`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum`。仓库和便携 staging 内仍可能附带 synthetic 或 PME 验证样例文件，但这些文件主要服务回归或外部验证，不作为首页高频演示入口。
 
 若当前工作区存在未保存变更，首页的 `新建项目`、两个小案例作者入口、`打开项目`、`打开示例项目` 以及工作台顶部的项目切换入口都会先进入显式确认流程；继续后才丢弃当前未保存内容，取消则保持当前项目不变。
+
+小案例作者入口当前支持：
+
+- `Mixer-Flash`：`Feed + Feed -> Mixer -> Flash Drum`
+- `Heater-Flash`：`Feed -> Heater -> Flash Drum`
+
+入口只决定左侧 `放置` 面板展示哪一条任务清单。清单状态从当前 canvas unit / stream / solve snapshot 推导，不会自动补单元、自动连线或修改项目文档。
 
 ## 工作台主路径
 

@@ -182,7 +182,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 ## 7. MVP β 小案例作者路径
 
-如果你已经能跑通内置示例，下一步建议从空白项目手工复现一个小案例。当前推荐先用 `Feed + Feed -> Mixer -> Flash Drum`，因为它同时覆盖双入口连接、单元参数、保存重开和结果导出；也可以从首页选择 `创建 Heater-Flash 小案例`，用同一任务清单机制复现 `Feed -> Heater -> Flash Drum`。
+如果你已经能跑通内置示例，下一步建议从空白项目手工复现一个小案例。当前推荐先用 `Feed + Feed -> Mixer -> Flash Drum`，因为它同时覆盖双入口连接、单元参数、保存重开和结果导出；也可以从首页选择 `创建 Heater-Flash 小案例`，用同一任务清单机制复现 `Feed -> Heater -> Flash Drum`。更完整的小案例作者说明见 `docs/guides/author-small-cases.md`。
 
 建议步骤：
 
@@ -203,6 +203,8 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 7. 在右侧 `结果` 区复制当前 `SolveSnapshot`，或导出为轻量 `.txt`。
 
 这条路径的目标不是新增项目向导，而是验证用户能按现有 `放置 -> suggestion -> 单元参数 -> 运行 -> 保存重开 -> 结果导出` 工作流复现一个小案例。连接仍通过正式 suggestion 和 `DocumentCommand` 完成；参数仍只覆盖当前已暴露的 MVP 高频字段；导出只消费当前结果 DTO，不写项目、不进入 undo。
+
+如果选择 `创建 Heater-Flash 小案例`，操作顺序相同，但目标链路改为 `Feed -> Heater -> Flash Drum`。清单会要求放置一个 `Feed`、创建 Feed outlet、放置并连接 `Heater`、创建 Heater outlet、连接到 `Flash Drum`、创建 liquid / vapor outlet，然后运行并检查结果。该路径的详细核对点见 `docs/guides/author-small-cases.md`。
 
 ## 8. 常见阻塞点
 

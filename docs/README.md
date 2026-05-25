@@ -28,6 +28,7 @@ Guide 文档回答“怎么做”，优先面向第一次上手和具体操作�
 | --- | --- |
 | `guides/studio-quick-start.md` | 当前 Studio 的启动方式、能力边界和第一次体验入口 |
 | `guides/run-first-flowsheet.md` | 用仓库示例走通一次最小求解闭环 |
+| `guides/author-small-cases.md` | 从 Home 小案例作者入口复现 `Mixer-Flash` / `Heater-Flash` 空白项目路径 |
 | `guides/review-solve-results.md` | 在 Studio 中按 source/intermediate/step/outlet 四类对象审阅结果 |
 | `capeopen/pme-validation.md` | CAPE-OPEN / PME 人工验证 runbook |
 

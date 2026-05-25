@@ -1,6 +1,6 @@
 # Review Solve Results
 
-更新时间：2026-05-24
+更新时间：2026-05-25
 
 ## 目的
 
@@ -14,6 +14,7 @@
 - `检查` / `诊断目标` / `结果` commands 应该怎样帮助你核对同一份结果
 - `H`、`phase_region`、`bubble_dew_window` 在结果区里分别代表什么
 - 当前快照复制 / 导出应该怎样理解
+- 从小案例作者路径运行后应该先核对哪些结果
 
 它不是架构文档，也不展开测试或实现细节。
 
@@ -27,6 +28,8 @@
 
 如果只是第一次上手，先从第一条开始；如果你更想看 non-flash intermediate 的 `bubble_dew_window`，第二条更直观。
 
+如果你是从 Home 的 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例` 进入，先按 `docs/guides/author-small-cases.md` 完成放置、连接和参数提交，再回到本文档审阅结果。
+
 ## 先看哪四处
 
 一次运行成功后，先按下面顺序看：
@@ -39,6 +42,24 @@
 当前这四处都应该只读消费同一份 `SolveSnapshot` DTO；如果某个字段只在其中一处出现，通常应先怀疑消费层回归，而不是先猜数值层分叉。
 
 当前中文 UI 中，这四处通常对应右侧 `结果` tab、右侧 `检查器` tab 中的关联结果、底部 `结果表 / 诊断`，以及命令入口中的结果定位项。英文术语在本文档中只用于指代内部结果组织方式，不表示默认界面必须显示英文。
+
+## 小案例作者路径的结果核对
+
+从 `Mixer-Flash` 作者路径运行后，优先核对：
+
+- `stream-mixer-1-outlet`：总摩尔流量应为两股 Feed outlet 之和
+- `Mixer` 单元结果：输入流股应包含两个 Feed outlet，产出流股应是 mixer outlet
+- `Flash Drum` 单元结果：输入流股应是 mixer outlet，产出流股应包含 liquid / vapor
+- 右侧 `结果` 区的复制 / 导出文本应来自同一份最新 `SolveSnapshot`
+
+从 `Heater-Flash` 作者路径运行后，优先核对：
+
+- heater outlet：温度和压力应反映已提交的 `Heater` outlet temperature / outlet pressure
+- `Heater` 单元结果：输入流股应是 Feed outlet，产出流股应是 heater outlet
+- `Flash Drum` 单元结果：输入流股应是 heater outlet，不应直接消费 Feed outlet
+- flash liquid / vapor outlet：应能在 stream result 和 unit result 中互相定位
+
+这些核对只读消费运行后的 `SolveSnapshot`。如果结果不符合预期，先回到 `检查器` 查看单元参数是否已经提交，再检查 Canvas suggestion 是否已经把对应 source / sink 端点补齐。
 
 ## 先定 selector，再看 comparison / unit
 
