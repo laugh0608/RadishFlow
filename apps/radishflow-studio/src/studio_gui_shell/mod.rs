@@ -29,6 +29,7 @@ use rf_ui::{
 };
 
 mod app;
+mod authoring;
 mod chrome;
 mod fonts;
 mod home_dashboard;
@@ -157,6 +158,7 @@ struct ProjectOpenState {
     notice: Option<ProjectOpenNotice>,
     pending_confirmation: Option<ProjectOpenRequest>,
     pending_blank_project_confirmation: bool,
+    pending_authoring_blank_project: bool,
     pending_save_as_overwrite: Option<PathBuf>,
     pending_close_window_confirmation: Option<StudioWindowHostId>,
 }
@@ -669,6 +671,7 @@ impl ProjectOpenState {
             notice: None,
             pending_confirmation: None,
             pending_blank_project_confirmation: false,
+            pending_authoring_blank_project: false,
             pending_save_as_overwrite: None,
             pending_close_window_confirmation: None,
         };

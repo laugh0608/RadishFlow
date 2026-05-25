@@ -14,7 +14,7 @@
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
 - 当前主线：MVP 第一阶段最小闭环和首版 demo 前硬化期已经阶段性收口；当前进入 MVP β：高频建模能力与小案例作者体验。当前尚未达到正式 tag / release 节点标准，历史 `v26.5.1-dev` 打包口径不再作为当前事实源或发布计划依据。
-- 当前重点：已收口内建单元参数链路、连接失败恢复、空白项目 Mixer 路径、受控流股断开 / 删除 / 单端唯一候选重连、source / sink 断开提示、重连不可用原因一致展示、关闭脏工作区保护、suggestion 下一步可见性、sidecar 级单元定位 / 拖动 / viewport 记忆、`SolveSnapshot` 轻量文本复制 / 导出。2026-05-25 人工真实窗口轻量 smoke 已通过，下一步进入 MVP β 第一刀：优先推进可复现小案例作者体验或成组高频单元参数；不再继续围绕 hover、提示、按钮等 presentation 细节做开放式补口。仍不做自由连线、自动布线、完整拖拽布局、完整报表、完整参数表或第三方物性包加载。
+- 当前重点：已收口内建单元参数链路、连接失败恢复、空白项目 Mixer 路径、受控流股断开 / 删除 / 单端唯一候选重连、source / sink 断开提示、重连不可用原因一致展示、关闭脏工作区保护、suggestion 下一步可见性、sidecar 级单元定位 / 拖动 / viewport 记忆、`SolveSnapshot` 轻量文本复制 / 导出。2026-05-25 人工真实窗口轻量 smoke 已通过，MVP β 第一刀已转入可复现小案例作者体验：Home 可从空白项目进入 `Feed + Feed -> Mixer -> Flash Drum` 作者路径，Workbench 放置面板按当前 canvas 状态显示任务清单。下一步优先扩同类作者路径或补成组高频单元参数；不再继续围绕 hover、提示、按钮等 presentation 细节做开放式补口。仍不做自由连线、自动布线、完整拖拽布局、完整报表、完整参数表或第三方物性包加载。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -47,12 +47,13 @@
 - 2026-05-25 人工真实窗口轻量 smoke 已通过：结果复制 / 导出、Feed / Mixer / Flash Drum 参数重跑、selected stream 重连 / 断开、关闭确认和 sidecar 单元拖动 / viewport 均未发现新的主路径 blocker。
 - 2026-05-25 已纠偏版本节点口径：当前没有达到正式 tag / release 标准，`v26.5.1-dev` 相关 release notes / staging 说明只作为历史草案或内部打包材料保留，不再作为当前主线事实源。
 - 2026-05-25 MVP β 第一刀已开始落地：空白项目 `Feed + Feed -> Mixer -> Flash Drum` focused 回归扩展为小案例作者路径，覆盖单元参数提交、运行、保存、重开、重跑和当前结果文本导出；`run-first` guide 已补同一路径说明。该能力仍复用正式 command / suggestion / save / export 边界。
+- 2026-05-25 已补 Studio Home 小案例作者入口和 Workbench 放置面板任务清单：入口只创建空白项目并切到 `放置`，清单只从当前 canvas 单元 / 流股 / solve snapshot 推导状态，不自动生成 flowsheet，不写项目文档，不进 undo。
 
 见 `docs/devlogs/2026-05/2026-W22.md`、`docs/devlogs/2026-05/2026-W21.md`。
 
 ## 下一步建议
 
-1. 继续推进可复现小案例作者体验：按需要把同一套作者路径扩到 `Feed -> Heater/Valve -> Flash Drum`，或补更清晰的 UI 入口。
+1. 继续推进可复现小案例作者体验：按需要把同一套作者路径扩到 `Feed -> Heater/Valve -> Flash Drum`，或细化当前任务清单与结果审阅入口。
 2. 备选能力包是成组 Unit Inspector 参数增强或受控连接编辑设计；继续保持正式 command / validation / undo，或明确 shell-local sidecar state，并补 focused tests 和必要文档。
 3. 暂不推进 tag、release notes、便携包刷新或对外发布自动化；若未来要恢复版本节点，必须先明确验收标准和人工确认。
 4. 不把 MVP β 误扩成自由连线、自动布线、完整拖拽布局、完整报表、完整参数表、第三方模型加载或对外发布自动化。

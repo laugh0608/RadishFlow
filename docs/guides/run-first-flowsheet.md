@@ -186,7 +186,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 建议步骤：
 
-1. 新建空白项目。
+1. 在首页点击 `创建 Mixer-Flash 小案例`，或手动新建空白项目后切到左侧 `放置`。该入口只负责打开作者任务清单，不会自动生成 flowsheet。
 2. 放置两个 `Feed`、一个 `Mixer` 和一个 `Flash Drum`。
 3. 依次接受本地 suggestion，形成：
    - `Feed 1 -> Mixer.inlet_a`

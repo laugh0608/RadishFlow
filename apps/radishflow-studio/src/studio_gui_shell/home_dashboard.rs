@@ -23,6 +23,8 @@ enum HomeText {
     SignInUnavailableDetail,
     Start,
     NewBlankCase,
+    AuthorMixerFlashCase,
+    AuthorMixerFlashDetail,
     OpenCase,
     OpenExampleCase,
     RecentCases,
@@ -36,6 +38,7 @@ enum HomeText {
     Environment,
     Client,
     Studio,
+    DevelopmentBuild,
     Mode,
     Examples,
     PortableInternal,
@@ -118,7 +121,7 @@ impl ReadyAppState {
                     ui.separator();
                     render_status_chip(
                         ui,
-                        "v26.5.1-dev internal",
+                        home_text(self.locale, HomeText::DevelopmentBuild),
                         egui::Color32::from_rgb(86, 118, 168),
                     );
                     render_status_chip(
@@ -182,6 +185,17 @@ impl ReadyAppState {
         {
             self.create_blank_project();
         }
+        ui.add_space(5.0);
+        if ui
+            .add(
+                egui::Button::new(home_text(self.locale, HomeText::AuthorMixerFlashCase))
+                    .min_size(egui::vec2(ui.available_width(), 40.0)),
+            )
+            .clicked()
+        {
+            self.start_mixer_flash_authoring_case();
+        }
+        render_wrapped_small(ui, home_text(self.locale, HomeText::AuthorMixerFlashDetail));
         ui.add_space(5.0);
         if ui
             .add(
@@ -431,7 +445,10 @@ impl ReadyAppState {
             ui,
             home_text(self.locale, HomeText::Client),
             &[
-                (home_text(self.locale, HomeText::Studio), "v26.5.1-dev"),
+                (
+                    home_text(self.locale, HomeText::Studio),
+                    home_text(self.locale, HomeText::DevelopmentBuild),
+                ),
                 (
                     home_text(self.locale, HomeText::Mode),
                     home_text(self.locale, HomeText::PortableInternal),
@@ -863,6 +880,10 @@ fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {
             }
             HomeText::Start => "Start",
             HomeText::NewBlankCase => "New Project",
+            HomeText::AuthorMixerFlashCase => "Create Mixer-Flash Case",
+            HomeText::AuthorMixerFlashDetail => {
+                "Start from a blank project with a case authoring checklist."
+            }
             HomeText::OpenCase => "Open Project",
             HomeText::OpenExampleCase => "Open Example Project",
             HomeText::RecentCases => "Recent Cases",
@@ -878,9 +899,10 @@ fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {
             HomeText::Environment => "Environment",
             HomeText::Client => "Client",
             HomeText::Studio => "Studio",
+            HomeText::DevelopmentBuild => "development build",
             HomeText::Mode => "Mode",
             HomeText::Examples => "Examples",
-            HomeText::PortableInternal => "Portable / internal",
+            HomeText::PortableInternal => "Portable / development",
             HomeText::Missing => "Missing",
             HomeText::Ready => "Ready",
             HomeText::Server => "Server",
@@ -913,6 +935,8 @@ fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {
             HomeText::SignInUnavailableDetail => "当前内部构建尚未接入 OIDC / PKCE 浏览器登录。",
             HomeText::Start => "开始",
             HomeText::NewBlankCase => "新建项目",
+            HomeText::AuthorMixerFlashCase => "创建 Mixer-Flash 小案例",
+            HomeText::AuthorMixerFlashDetail => "从空白项目开始，并打开放置任务清单。",
             HomeText::OpenCase => "打开项目",
             HomeText::OpenExampleCase => "打开示例项目",
             HomeText::RecentCases => "最近项目",
@@ -926,9 +950,10 @@ fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {
             HomeText::Environment => "环境",
             HomeText::Client => "客户端",
             HomeText::Studio => "Studio",
+            HomeText::DevelopmentBuild => "开发构建",
             HomeText::Mode => "模式",
             HomeText::Examples => "示例",
-            HomeText::PortableInternal => "便携 / 内部",
+            HomeText::PortableInternal => "便携 / 开发",
             HomeText::Missing => "缺失",
             HomeText::Ready => "就绪",
             HomeText::Server => "服务端",

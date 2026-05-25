@@ -577,6 +577,9 @@ impl ReadyAppState {
             ui.add_space(6.0);
         }
 
+        self.render_mixer_flash_authoring_checklist(ui, window);
+        ui.add_space(8.0);
+
         for option in &palette.options {
             let option_label = self.locale.runtime_label(&option.label);
             let option_detail = self.locale.runtime_label(&option.detail);

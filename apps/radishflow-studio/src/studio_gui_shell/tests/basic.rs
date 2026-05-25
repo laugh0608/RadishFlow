@@ -369,6 +369,7 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
         "稳态流程模拟",
         "开始",
         "新建项目",
+        "创建 Mixer-Flash 小案例",
         "打开项目",
         "打开示例项目",
         "最近项目",
@@ -392,6 +393,13 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
     assert!(
         !texts.iter().any(|text| text.contains("继续上次项目")),
         "expected home dashboard to hide redundant continue action, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        !texts
+            .iter()
+            .any(|text| text.contains("v26.5.1-dev internal")),
+        "expected home dashboard to avoid stale staging version chips, rendered texts: {:?}",
         texts
     );
     assert_eq!(
@@ -427,6 +435,69 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
             texts
         );
     }
+}
+
+#[test]
+fn home_mixer_flash_authoring_entry_creates_blank_project_and_opens_palette() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.start_mixer_flash_authoring_case();
+
+    assert_eq!(app.screen, StudioShellScreen::Workbench);
+    assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Palette);
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Inspector);
+    assert_eq!(app.bottom_drawer_tab, StudioShellBottomDrawerTab::Messages);
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .expect("expected case authoring notice")
+            .title,
+        "已开始 Mixer-Flash 小案例"
+    );
+
+    let texts = render_alpha_workbench_texts(&mut app);
+    for expected in ["Mixer-Flash 小案例", "放置两个 Feed", "放置 Mixer", "待做"] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected authoring checklist to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
+fn mixer_flash_authoring_checklist_reflects_feed_outlet_progress() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.start_mixer_flash_authoring_case();
+    assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Palette);
+    let initial_texts = render_alpha_workbench_texts(&mut app);
+    assert!(
+        !initial_texts.iter().any(|text| text == "完成"),
+        "expected blank authoring checklist to start with no completed tasks, rendered texts: {:?}",
+        initial_texts
+    );
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 140.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-2");
+
+    let texts = render_alpha_workbench_texts(&mut app);
+    assert!(
+        texts.iter().filter(|text| *text == "完成").count() >= 2,
+        "expected checklist to mark feed placement and outlet tasks complete, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        texts.iter().any(|text| text.contains("放置 Mixer")),
+        "expected later authoring tasks to remain visible, rendered texts: {:?}",
+        texts
+    );
 }
 
 #[test]

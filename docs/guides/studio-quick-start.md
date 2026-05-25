@@ -17,12 +17,13 @@
 
 ## 当前能做什么
 
-截至 2026-05-24，Studio 当前已经具备以下最小闭环：
+截至 2026-05-25，Studio 当前已经具备以下最小闭环：
 
 - 启动后默认进入中文 Home Dashboard，可从 `开始 / 最近项目 / 示例项目 / 环境 / 消息` 分区判断从哪里开始
 - 新建未命名空白项目，并用 MVP 默认 `methane / ethane` 二元体系进入最短建模路径
 - 打开已有 `*.rfproj.json` 项目
 - 通过首页 `新建项目`、`打开项目`、`打开示例项目` 或进入工作台后的顶部主路径切换项目
+- 通过首页 `创建 Mixer-Flash 小案例` 从空白项目进入 `Feed + Feed -> Mixer -> Flash Drum` 作者路径，并在左侧 `放置` 面板查看任务清单
 - 最近项目和示例项目列表行可选择，也可双击整行打开；文件缺失时只降级对应行状态，不阻断首页
 - 进入项目后在顶部主路径直接使用 `Home / 打开示例 / 新建空白 / 打开项目... / 运行 / 保存 / 另存为... / 视图`
 - 运行仓库内或便携 staging 内的 official hydrocarbon 正向示例 flowsheet
@@ -122,13 +123,13 @@ cargo run -p radishflow-studio
 
 - `docs/guides/run-first-flowsheet.md`
 
-如果内置示例已经跑通，下一步建议按 `docs/guides/run-first-flowsheet.md` 的 “MVP β 小案例作者路径” 从空白项目复现 `Feed + Feed -> Mixer -> Flash Drum`：放置单元、接受 suggestion、提交 Feed / Mixer / Flash Drum 参数、运行、保存重开、重跑并导出当前结果。这是当前 MVP β 的推荐作者体验路径，不是自由连线、自动布线或完整项目向导。
+如果内置示例已经跑通，下一步建议从首页点击 `创建 Mixer-Flash 小案例`，或按 `docs/guides/run-first-flowsheet.md` 的 “MVP β 小案例作者路径” 从空白项目复现 `Feed + Feed -> Mixer -> Flash Drum`：放置单元、接受 suggestion、提交 Feed / Mixer / Flash Drum 参数、运行、保存重开、重跑并导出当前结果。这是当前 MVP β 的推荐作者体验路径，不是自由连线、自动布线或完整项目向导。
 
 ## 启动首页
 
 启动后，第一视野是 Home Dashboard，而不是直接进入某个项目的画布。首页的稳定分区如下：
 
-- `开始`：`新建项目`、`打开项目`、`打开示例项目`
+- `开始`：`新建项目`、`创建 Mixer-Flash 小案例`、`打开项目`、`打开示例项目`
 - `最近项目`：显示最近项目、路径摘要、物性包和就绪 / 缺失状态；整行可选择，双击可打开
 - `示例项目`：显示内置示例、流程摘要、组分和物性包；整行可选择，双击可打开
 - `环境`：显示客户端、服务端和设备三组摘要
@@ -138,7 +139,7 @@ cargo run -p radishflow-studio
 
 首版 demo 前，Home / Workbench 的默认示例选择器只暴露四条 official hydrocarbon 演示路径：`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum`。仓库和便携 staging 内仍可能附带 synthetic 或 PME 验证样例文件，但这些文件主要服务回归或外部验证，不作为首页高频演示入口。
 
-若当前工作区存在未保存变更，首页的 `新建项目`、`打开项目`、`打开示例项目` 以及工作台顶部的项目切换入口都会先进入显式确认流程；继续后才丢弃当前未保存内容，取消则保持当前项目不变。
+若当前工作区存在未保存变更，首页的 `新建项目`、`创建 Mixer-Flash 小案例`、`打开项目`、`打开示例项目` 以及工作台顶部的项目切换入口都会先进入显式确认流程；继续后才丢弃当前未保存内容，取消则保持当前项目不变。
 
 ## 工作台主路径
 
