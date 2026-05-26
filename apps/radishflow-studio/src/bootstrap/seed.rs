@@ -393,6 +393,12 @@ fn build_bootstrap_payload(
     let mut payload =
         parse_property_package_download_json(BOOTSTRAP_MVP_PROPERTY_PACKAGE_DOWNLOAD_JSON)?
             .to_stored_payload()?;
+    if flowsheet_components.is_empty() {
+        payload.package_id = package_id.to_string();
+        payload.validate()?;
+        return Ok(payload);
+    }
+
     let preserves_official_component_ids = payload
         .components
         .iter()

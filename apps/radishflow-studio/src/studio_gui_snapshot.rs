@@ -16,9 +16,21 @@ pub struct StudioGuiWorkspaceDocumentSnapshot {
     pub has_unsaved_changes: bool,
     pub project_path: Option<String>,
     pub property_package_id: Option<String>,
+    pub property_package_choices: Vec<StudioGuiPropertyPackageChoiceSnapshot>,
     pub unit_count: usize,
     pub stream_count: usize,
     pub snapshot_history_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiPropertyPackageChoiceSnapshot {
+    pub package_id: String,
+    pub label: String,
+    pub detail: String,
+    pub component_summary: String,
+    pub command_id: String,
+    pub selected: bool,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]

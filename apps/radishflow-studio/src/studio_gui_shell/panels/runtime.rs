@@ -330,11 +330,32 @@ impl ReadyAppState {
 
         egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.set_width(ui.available_width());
+            let current_package_id = window
+                .runtime
+                .workspace_document
+                .property_package_id
+                .as_deref()
+                .unwrap_or("unselected");
             ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new("binary-hydrocarbon-lite-v1").strong());
+                ui.label(egui::RichText::new(current_package_id).strong());
                 render_status_chip(
                     ui,
-                    self.locale.runtime_label("Ready").as_ref(),
+                    match self.locale {
+                        StudioShellLocale::En => {
+                            if current_package_id == "unselected" {
+                                "Unselected"
+                            } else {
+                                "Selected"
+                            }
+                        }
+                        StudioShellLocale::ZhCn => {
+                            if current_package_id == "unselected" {
+                                "未选择"
+                            } else {
+                                "已选择"
+                            }
+                        }
+                    },
                     egui::Color32::from_rgb(66, 118, 92),
                 );
             });
@@ -342,9 +363,9 @@ impl ReadyAppState {
                 ui,
                 match self.locale {
                     StudioShellLocale::En => {
-                        "Local binary hydrocarbon package used by the bundled examples."
+                        "Choose the built-in property package stored in the current flowsheet."
                     }
-                    StudioShellLocale::ZhCn => "本地二元烃物性包，用于内置示例和当前工作台。",
+                    StudioShellLocale::ZhCn => "选择写入当前 flowsheet 的内置物性包。",
                 },
             );
             ui.add_space(4.0);
@@ -356,7 +377,15 @@ impl ReadyAppState {
                         StudioShellLocale::En => "Components",
                         StudioShellLocale::ZhCn => "组分",
                     });
-                    ui.small("Methane, Ethane");
+                    let component_summary = window
+                        .runtime
+                        .workspace_document
+                        .property_package_choices
+                        .iter()
+                        .find(|choice| choice.selected)
+                        .map(|choice| choice.component_summary.as_str())
+                        .unwrap_or("-");
+                    ui.small(component_summary);
                     ui.end_row();
 
                     ui.small(match self.locale {
@@ -384,6 +413,31 @@ impl ReadyAppState {
                     ui.end_row();
                 });
         });
+
+        ui.add_space(8.0);
+        for choice in &window.runtime.workspace_document.property_package_choices {
+            let label = match self.locale {
+                StudioShellLocale::En => choice.label.as_str().to_string(),
+                StudioShellLocale::ZhCn => match choice.package_id.as_str() {
+                    "binary-hydrocarbon-lite-v1" => "二元烃 Lite".to_string(),
+                    _ => choice.label.clone(),
+                },
+            };
+            let response = ui
+                .add_enabled(
+                    choice.enabled,
+                    egui::Button::new(label)
+                        .selected(choice.selected)
+                        .min_size(egui::vec2(ui.available_width(), 30.0)),
+                )
+                .on_hover_text(&choice.detail);
+            render_wrapped_small(ui, &choice.package_id);
+            render_wrapped_small(ui, &choice.component_summary);
+            if response.clicked() {
+                self.dispatch_ui_command(&choice.command_id);
+            }
+            ui.add_space(6.0);
+        }
 
         if let Some(entitlement_host) = window.runtime.entitlement_host.as_ref() {
             let entitlement = &entitlement_host.presentation.panel.view;

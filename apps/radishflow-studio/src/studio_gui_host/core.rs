@@ -1661,6 +1661,7 @@ fn workspace_document_snapshot_from_controller(
     controller: &crate::StudioAppHostController,
 ) -> crate::StudioGuiWorkspaceDocumentSnapshot {
     let document = controller.document();
+    let selected_property_package_id = document.flowsheet.property_package_id();
     crate::StudioGuiWorkspaceDocumentSnapshot {
         document_id: document.metadata.document_id.as_str().to_string(),
         title: document.metadata.title.clone(),
@@ -1671,10 +1672,19 @@ fn workspace_document_snapshot_from_controller(
         project_path: controller
             .document_path()
             .map(|path| path.display().to_string()),
-        property_package_id: document
-            .flowsheet
-            .property_package_id()
-            .map(|package_id| package_id.to_string()),
+        property_package_id: selected_property_package_id.map(|package_id| package_id.to_string()),
+        property_package_choices: crate::STUDIO_BUILTIN_PROPERTY_PACKAGES
+            .iter()
+            .map(|package| crate::StudioGuiPropertyPackageChoiceSnapshot {
+                package_id: package.package_id.to_string(),
+                label: package.label.to_string(),
+                detail: package.detail.to_string(),
+                component_summary: package.component_summary.to_string(),
+                command_id: crate::property_package_select_command_id(package.package_id),
+                selected: selected_property_package_id == Some(package.package_id),
+                enabled: true,
+            })
+            .collect(),
         unit_count: document.flowsheet.units.len(),
         stream_count: document.flowsheet.streams.len(),
         snapshot_history_count: controller.snapshot_history_count(),

@@ -1085,6 +1085,9 @@ fn app_command(report: &super::StudioBootstrapReport) -> &crate::StudioAppComman
         StudioBootstrapDispatch::InspectorCompositionComponentRemove(_) => {
             panic!("expected app command dispatch")
         }
+        StudioBootstrapDispatch::PropertyPackageSelection(_) => {
+            panic!("expected app command dispatch")
+        }
         StudioBootstrapDispatch::DocumentHistory(_) => {
             panic!("expected app command dispatch")
         }
@@ -1136,6 +1139,9 @@ fn session_event(
             panic!("expected entitlement session event dispatch")
         }
         StudioBootstrapDispatch::InspectorCompositionComponentRemove(_) => {
+            panic!("expected entitlement session event dispatch")
+        }
+        StudioBootstrapDispatch::PropertyPackageSelection(_) => {
             panic!("expected entitlement session event dispatch")
         }
         StudioBootstrapDispatch::DocumentHistory(_) => {

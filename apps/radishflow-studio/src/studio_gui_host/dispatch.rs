@@ -231,6 +231,24 @@ impl StudioGuiHost {
             );
         }
 
+        if let Some(command) = crate::property_package_select_command_from_id(command_id) {
+            let Some(target_window_id) = self.preferred_target_window_id() else {
+                return Ok(StudioGuiHostUiCommandDispatchResult::IgnoredDisabled {
+                    command_id: command_id.to_string(),
+                    detail: "Open a studio window before selecting a property package".to_string(),
+                    target_window_id: None,
+                    ui_commands: self.ui_commands(),
+                });
+            };
+            let dispatch = self.controller.dispatch_window_trigger(
+                target_window_id,
+                StudioRuntimeTrigger::PropertyPackageSelection(command),
+            )?;
+            return Ok(StudioGuiHostUiCommandDispatchResult::Executed(
+                dispatch_from_controller(dispatch, self.canvas_state()),
+            ));
+        }
+
         let registry = self.command_registry();
         let ui_commands = self.ui_commands();
         let Some(command) = registry.command(command_id).cloned() else {

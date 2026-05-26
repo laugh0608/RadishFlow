@@ -899,6 +899,9 @@ mod tests {
             StudioRuntimeDispatch::InspectorCompositionComponentRemove(_) => {
                 panic!("expected entitlement session event dispatch")
             }
+            StudioRuntimeDispatch::PropertyPackageSelection(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
             StudioRuntimeDispatch::DocumentHistory(_) => {
                 panic!("expected entitlement session event dispatch")
             }

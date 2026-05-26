@@ -79,6 +79,63 @@ fn gui_host_dispatches_ui_command_and_refreshes_command_registry() {
 }
 
 #[test]
+fn gui_host_dispatches_property_package_selection_command() {
+    let mut gui_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
+    let opened = gui_host.open_window().expect("expected window open");
+    let initial_window = gui_host.window_model_for_window(None);
+    let choice = initial_window
+        .runtime
+        .workspace_document
+        .property_package_choices
+        .iter()
+        .find(|choice| choice.package_id == "binary-hydrocarbon-lite-v1")
+        .expect("expected built-in property package choice")
+        .clone();
+
+    let dispatch = gui_host
+        .dispatch_ui_command(&choice.command_id)
+        .expect("expected property package selection dispatch");
+
+    match dispatch {
+        StudioGuiHostUiCommandDispatchResult::Executed(dispatch) => {
+            assert_eq!(dispatch.target_window_id, opened.registration.window_id);
+            match &dispatch.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::PropertyPackageSelection(outcome) => {
+                    assert_eq!(outcome.command.package_id, "binary-hydrocarbon-lite-v1");
+                    assert_eq!(
+                        outcome.selected_package_id.as_deref(),
+                        Some("binary-hydrocarbon-lite-v1")
+                    );
+                }
+                other => panic!("expected property package selection dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected executed ui command result, got {other:?}"),
+    }
+
+    let selected_window = gui_host.window_model_for_window(None);
+    assert_eq!(
+        selected_window
+            .runtime
+            .workspace_document
+            .property_package_id
+            .as_deref(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert!(
+        selected_window
+            .runtime
+            .workspace_document
+            .property_package_choices
+            .iter()
+            .any(
+                |candidate| candidate.package_id == "binary-hydrocarbon-lite-v1"
+                    && candidate.selected
+            )
+    );
+}
+
+#[test]
 fn gui_host_command_surface_ids_converge_into_equivalent_host_dispatch_paths() {
     let mut surface_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
     let opened = surface_host.open_window().expect("expected window open");

@@ -13,8 +13,9 @@ use crate::{
     dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, focus_inspector_target,
-    normalize_inspector_composition, snapshot_entitlement_session_driver_state,
-    snapshot_entitlement_session_schedule, snapshot_run_panel_driver_state, update_inspector_draft,
+    normalize_inspector_composition, select_property_package,
+    snapshot_entitlement_session_driver_state, snapshot_entitlement_session_schedule,
+    snapshot_run_panel_driver_state, update_inspector_draft,
 };
 use rf_store::{StoredAuthCacheIndex, read_project_file};
 use rf_types::{RfError, RfResult};
@@ -250,6 +251,10 @@ fn dispatch_bootstrap_trigger(
                 remove_inspector_composition_component(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::InspectorCompositionComponentRemove(outcome))
         }
+        StudioBootstrapTrigger::PropertyPackageSelection(command) => {
+            let outcome = select_property_package(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::PropertyPackageSelection(outcome))
+        }
         StudioBootstrapTrigger::DocumentHistory(command) => {
             let outcome = dispatch_document_history(session.app_state, *command)?;
             Ok(StudioBootstrapDispatch::DocumentHistory(outcome))
@@ -353,17 +358,23 @@ fn command_outcome_from_workspace_control(
 impl BootstrapSession {
     pub(crate) fn new(config: &StudioBootstrapConfig) -> RfResult<Self> {
         let mut app_state = match config.untitled_blank_project.as_ref() {
-            Some(untitled) => app_state_from_untitled_blank_project(
-                &untitled.document_id,
-                &untitled.title,
-                untitled.created_at,
-            ),
+            Some(untitled) => {
+                let mut app_state = app_state_from_untitled_blank_project(
+                    &untitled.document_id,
+                    &untitled.title,
+                    untitled.created_at,
+                );
+                initialize_blank_project_thermo_basis(
+                    &mut app_state,
+                    normalized_system_time_now()?,
+                )?;
+                app_state
+            }
             None => {
                 let project_file = read_project_file(&config.project_path)?;
                 app_state_from_project_file(&project_file, &config.project_path)
             }
         };
-        initialize_blank_project_thermo_basis(&mut app_state, normalized_system_time_now()?)?;
         let cache_root = TemporaryCacheRoot::new("studio-bootstrap")?;
         let seeded_auth_cache = seed_sample_auth_cache(
             cache_root.path(),

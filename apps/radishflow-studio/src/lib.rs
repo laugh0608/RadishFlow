@@ -37,6 +37,7 @@ mod studio_gui_window_model;
 mod studio_inspector_draft_command;
 mod studio_inspector_target_command;
 mod studio_local_rules;
+mod studio_property_package_selection;
 mod studio_runtime;
 mod studio_stream_reconnect_presentation;
 mod studio_window_host;
@@ -267,8 +268,8 @@ pub use studio_gui_snapshot::{
     StudioGuiInspectorPropertyNoticeSnapshot, StudioGuiInspectorTargetDetailSnapshot,
     StudioGuiInspectorTargetFieldSnapshot, StudioGuiInspectorTargetFieldValidationSnapshot,
     StudioGuiInspectorTargetFieldValueKindSnapshot, StudioGuiInspectorTargetPortSnapshot,
-    StudioGuiInspectorTargetSummaryRowSnapshot, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
-    StudioGuiWorkspaceDocumentSnapshot,
+    StudioGuiInspectorTargetSummaryRowSnapshot, StudioGuiPropertyPackageChoiceSnapshot,
+    StudioGuiRuntimeSnapshot, StudioGuiSnapshot, StudioGuiWorkspaceDocumentSnapshot,
 };
 pub use studio_gui_timer_host::{
     StudioGuiNativeTimerDueEvent, StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation,
@@ -327,6 +328,13 @@ pub use studio_inspector_draft_command::{
 };
 pub use studio_inspector_target_command::{
     inspector_target_command_id, inspector_target_from_command_id,
+};
+pub use studio_property_package_selection::{
+    PROPERTY_PACKAGE_SELECT_COMMAND_PREFIX, PropertyPackageSelectionOutcome,
+    STUDIO_BUILTIN_PROPERTY_PACKAGES, StudioBuiltinPropertyPackage,
+    StudioPropertyPackageSelectionCommand, builtin_property_package,
+    property_package_select_command_from_id, property_package_select_command_id,
+    select_property_package, select_property_package_at,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,

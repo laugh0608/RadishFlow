@@ -331,6 +331,97 @@ fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
     }
 }
 
+#[test]
+fn property_package_selection_saves_reopens_and_preferred_run_uses_selection() {
+    let project_path = temporary_project_path("property-package-selection");
+    let mut project = rf_store::parse_project_file_json(include_str!(
+        "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected heater flash project fixture");
+    project
+        .document
+        .flowsheet
+        .set_property_package_id(Some("legacy-package".to_string()))
+        .expect("expected legacy package marker");
+    write_project_file(&project_path, &project).expect("expected temp project write");
+    let config = StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..synced_workspace_config()
+    };
+    let mut app = ready_app_state(&config);
+
+    let opened = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        opened
+            .runtime
+            .workspace_document
+            .property_package_id
+            .as_deref(),
+        Some("legacy-package")
+    );
+    let command_id = opened
+        .runtime
+        .workspace_document
+        .property_package_choices
+        .iter()
+        .find(|choice| choice.package_id == "binary-hydrocarbon-lite-v1")
+        .expect("expected built-in package choice")
+        .command_id
+        .clone();
+
+    app.dispatch_ui_command(command_id);
+    let selected = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        selected
+            .runtime
+            .workspace_document
+            .property_package_id
+            .as_deref(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert!(selected.runtime.workspace_document.has_unsaved_changes);
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    assert_eq!(
+        saved.document.flowsheet.property_package_id(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+
+    app.open_project(project_path.clone(), "project");
+    let reopened = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        reopened
+            .runtime
+            .workspace_document
+            .property_package_id
+            .as_deref(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert!(!reopened.runtime.workspace_document.has_unsaved_changes);
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        rerun.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    assert!(
+        rerun
+            .runtime
+            .control_state
+            .latest_log_entry
+            .as_ref()
+            .map(|entry| entry
+                .message
+                .contains("with property package `binary-hydrocarbon-lite-v1`"))
+            .unwrap_or(false),
+        "Preferred run should use the flowsheet package selection"
+    );
+
+    let _ = std::fs::remove_file(project_path);
+}
+
 #[derive(Debug, Clone, Copy)]
 struct UnitParameterShellCase {
     name: &'static str,
