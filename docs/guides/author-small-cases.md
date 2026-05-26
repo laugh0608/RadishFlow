@@ -60,7 +60,7 @@ Flash Drum -> liquid / vapor
    - `Mixer` outlet pressure = `90000 Pa`
    - `Flash Drum` flash temperature = `300 K`，flash pressure = `85000 Pa`
 9. 点击顶部 `运行`。
-10. 在右侧 `结果` 和底部 `结果表` 检查收敛结果。
+10. 在右侧 `结果` 和底部 `结果表` 检查收敛结果；底部表应同时显示流股结果和单元最新步骤。
 11. 保存项目，重开后再次运行，确认结果仍可复现。
 12. 需要交付文本结果时，在右侧 `结果` 区复制当前 `SolveSnapshot` 或导出 `.txt`。
 
@@ -94,7 +94,7 @@ Flash Drum -> liquid / vapor
    - `Heater` outlet temperature / outlet pressure
    - `Flash Drum` flash temperature / flash pressure
 9. 点击顶部 `运行`。
-10. 在右侧 `结果` 中先看 heater outlet，再看 flash liquid / vapor outlet。
+10. 在右侧 `结果` 中先看 heater outlet，再看 flash liquid / vapor outlet；底部 `结果表` 可同时核对 Heater 与 Flash Drum 的消费 / 产出流股。
 11. 保存项目，重开后再次运行。
 
 当前可用的最小核对点：

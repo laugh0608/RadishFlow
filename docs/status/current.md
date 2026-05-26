@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-05-25
+更新时间：2026-05-26
 
 ## 用途
 
@@ -14,7 +14,7 @@
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
 - 当前主线：MVP 第一阶段最小闭环和首版 demo 前硬化期已经阶段性收口；当前进入 MVP β：高频建模能力与小案例作者体验。当前尚未达到正式 tag / release 节点标准，历史 `v26.5.1-dev` 打包口径不再作为当前事实源或发布计划依据。
-- 当前重点：已收口内建单元参数链路、连接失败恢复、空白项目 Mixer 路径、受控流股断开 / 删除 / 单端唯一候选重连、source / sink 断开提示、重连不可用原因一致展示、关闭脏工作区保护、suggestion 下一步可见性、sidecar 级单元定位 / 拖动 / viewport 记忆、`SolveSnapshot` 轻量文本复制 / 导出。2026-05-25 人工真实窗口轻量 smoke 已通过，MVP β 第一刀已转入可复现小案例作者体验：Home 可从空白项目进入 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 作者路径，Workbench 放置面板按当前 canvas 状态显示任务清单。下一步优先补同类路径的结果审阅收口或成组高频单元参数；不再继续围绕 hover、提示、按钮等 presentation 细节做开放式补口。仍不做自由连线、自动布线、完整拖拽布局、完整报表、完整参数表或第三方物性包加载。
+- 当前重点：已收口内建单元参数链路、连接失败恢复、空白项目 Mixer 路径、受控流股断开 / 删除 / 单端唯一候选重连、source / sink 断开提示、重连不可用原因一致展示、关闭脏工作区保护、suggestion 下一步可见性、sidecar 级单元定位 / 拖动 / viewport 记忆、`SolveSnapshot` 轻量文本复制 / 导出。2026-05-25 人工真实窗口轻量 smoke 已通过，MVP β 第一刀已转入可复现小案例作者体验：Home 可从空白项目进入 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 作者路径，Workbench 放置面板按当前 canvas 状态显示任务清单。2026-05-26 已补两条作者路径的结果审阅收口：运行成功后仍自动切到右侧 `结果` 与底部 `结果表`，底部结果表除流股外也列出最新单元步骤的消费 / 产出流股，Heater-Flash focused 回归同步锁定 Result Inspector 单元链路和文本导出。下一步优先评估是否把同一作者结构扩到 `Feed -> Valve -> Flash Drum`，或推进成组高频单元参数；不再继续围绕 hover、提示、按钮等 presentation 细节做开放式补口。仍不做自由连线、自动布线、完整拖拽布局、完整报表、完整参数表或第三方物性包加载。
 - 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
 
 ## 最近完成摘要
@@ -49,14 +49,15 @@
 - 2026-05-25 MVP β 第一刀已开始落地：空白项目 `Feed + Feed -> Mixer -> Flash Drum` focused 回归扩展为小案例作者路径，覆盖单元参数提交、运行、保存、重开、重跑和当前结果文本导出；`run-first` guide 已补同一路径说明。该能力仍复用正式 command / suggestion / save / export 边界。
 - 2026-05-25 已补 Studio Home 小案例作者入口和 Workbench 放置面板任务清单：入口只创建空白项目并切到 `放置`，清单只从当前 canvas 单元 / 流股 / solve snapshot 推导状态，不自动生成 flowsheet，不写项目文档，不进 undo。
 - 2026-05-25 已把同一套作者入口扩到 `Feed -> Heater -> Flash Drum`：Home 可选择 Heater-Flash 小案例，Palette 只显示该路径清单；状态仍只读 canvas view，不自动生成 flowsheet。
+- 2026-05-26 已补结果审阅收口：底部 `结果表` 增加单元最新步骤区，按 `unit / status / step / consumed streams / produced streams` 展示当前 `SolveSnapshot` 的单元链路；Heater-Flash 作者路径 focused 回归补齐 Result Inspector 单元消费 / 产出链路和轻量文本导出，Mixer-Flash 既有保存重开 / 导出回归继续通过。
 
 见 `docs/devlogs/2026-05/2026-W22.md`、`docs/devlogs/2026-05/2026-W21.md`。
 
 ## 下一步建议
 
-1. 2026-05-26 优先细化当前两条小案例作者路径的结果审阅收口：运行收敛后引导到右侧 `结果`、底部 `结果表`、`复制快照` / `导出文本`；仍只消费 `SolveSnapshot`，不扩完整报表系统。
+1. 下一步优先评估是否把同一作者结构继续扩到 `Feed -> Valve -> Flash Drum`，前提是复用现有 placement / suggestion / parameter / run / save / export 边界。
 2. 备选能力包是成组 Unit Inspector 参数增强或受控连接编辑设计；继续保持正式 command / validation / undo，或明确 shell-local sidecar state，并补 focused tests 和必要文档。
-3. 若结果审阅收口后还有开发时间，再评估是否把同一结构继续扩到 `Feed -> Valve -> Flash Drum`。
+3. 若继续补结果审阅，只围绕当前 `SolveSnapshot` 的可读性和小案例核对点推进，不扩跨快照报表、模板或批量导出。
 4. 暂不推进 tag、release notes、便携包刷新或对外发布自动化；若未来要恢复版本节点，必须先明确验收标准和人工确认。
 5. 不把 MVP β 误扩成自由连线、自动布线、完整拖拽布局、完整报表、完整参数表、第三方模型加载或对外发布自动化。
 

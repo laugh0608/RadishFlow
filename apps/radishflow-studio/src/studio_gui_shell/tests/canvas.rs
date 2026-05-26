@@ -525,6 +525,73 @@ fn blank_project_heater_parameter_saves_reopens_and_reruns() {
         .expect("expected heater outlet result");
     assert_eq!(heated.temperature_k, 358.5);
 
+    let snapshot = rerun
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected heater rerun solve snapshot");
+    let heater_result =
+        snapshot.result_inspector_with_unit(Some("stream-heater-1-outlet"), None, Some("heater-1"));
+    let heater_unit = heater_result
+        .selected_unit
+        .as_ref()
+        .expect("expected heater unit result");
+    assert!(
+        heater_unit
+            .consumed_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-feed-1-outlet")
+    );
+    assert!(
+        heater_unit
+            .produced_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-heater-1-outlet")
+    );
+
+    let flash_result =
+        snapshot.result_inspector_with_unit(Some("stream-heater-1-outlet"), None, Some("flash-1"));
+    let flash_unit = flash_result
+        .selected_unit
+        .as_ref()
+        .expect("expected flash unit result");
+    assert!(
+        flash_unit
+            .consumed_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-heater-1-outlet")
+    );
+    assert!(
+        flash_unit
+            .produced_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-flash-1-liquid")
+    );
+    assert!(
+        flash_unit
+            .produced_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-flash-1-vapor")
+    );
+
+    let export_path = project_path.with_extension("txt");
+    app.export_solve_snapshot_to_path(snapshot, export_path.clone());
+    let exported = fs::read_to_string(&export_path).expect("expected heater export read");
+    assert!(exported.contains("Units\nunit_id\tstep\tstatus\tsummary"));
+    assert!(exported.contains("heater-1"));
+    assert!(exported.contains("flash-1"));
+    assert!(exported.contains("stream-heater-1-outlet"));
+    assert!(
+        !app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .has_unsaved_changes,
+        "heater result export must not dirty the authored case"
+    );
+
+    let _ = fs::remove_file(export_path);
     let _ = fs::remove_file(project_path);
 }
 

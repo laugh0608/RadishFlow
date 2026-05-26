@@ -925,6 +925,53 @@ impl ReadyAppState {
                     ui.end_row();
                 }
             });
+
+        let unit_steps = latest_unit_steps(&snapshot.steps);
+        if !unit_steps.is_empty() {
+            ui.add_space(8.0);
+            ui.strong(self.locale.text(ShellText::Units));
+            egui::Grid::new(format!(
+                "bottom-results-units-table:{}",
+                snapshot.snapshot_id
+            ))
+            .num_columns(5)
+            .striped(true)
+            .min_col_width(78.0)
+            .show(ui, |ui| {
+                ui.strong(result_table_header(self.locale, ResultTableHeader::Unit));
+                ui.strong(result_table_header(self.locale, ResultTableHeader::Status));
+                ui.strong(result_table_header(self.locale, ResultTableHeader::Step));
+                ui.strong(self.locale.text(ShellText::InspectorConsumedStreams));
+                ui.strong(self.locale.text(ShellText::InspectorProducedStreams));
+                ui.end_row();
+
+                for step in unit_steps {
+                    let unit_response = ui
+                        .add(egui::Button::new(&step.unit_id).frame(false))
+                        .on_hover_text(&step.summary);
+                    if unit_response.clicked() {
+                        self.result_inspector
+                            .select_unit(&snapshot.snapshot_id, step.unit_id.clone());
+                        self.right_sidebar_tab = StudioShellRightSidebarTab::Results;
+                    }
+                    ui.label(
+                        self.locale
+                            .runtime_label(step.execution_status_label)
+                            .as_ref(),
+                    );
+                    ui.label(format!("#{}", step.index));
+                    render_wrapped_small(
+                        ui,
+                        result_table_stream_references(&step.consumed_stream_results),
+                    );
+                    render_wrapped_small(
+                        ui,
+                        result_table_stream_references(&step.produced_stream_results),
+                    );
+                    ui.end_row();
+                }
+            });
+        }
     }
 
     fn render_bottom_diagnostics(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
@@ -1330,6 +1377,9 @@ fn window_command_toolbar_item<'a>(
 #[derive(Debug, Clone, Copy)]
 enum ResultTableHeader {
     Stream,
+    Unit,
+    Status,
+    Step,
     Phase,
 }
 
@@ -1337,13 +1387,51 @@ fn result_table_header(locale: StudioShellLocale, header: ResultTableHeader) -> 
     match locale {
         StudioShellLocale::En => match header {
             ResultTableHeader::Stream => "Stream",
+            ResultTableHeader::Unit => "Unit",
+            ResultTableHeader::Status => "Status",
+            ResultTableHeader::Step => "Step",
             ResultTableHeader::Phase => "Phase",
         },
         StudioShellLocale::ZhCn => match header {
             ResultTableHeader::Stream => "流股",
+            ResultTableHeader::Unit => "单元",
+            ResultTableHeader::Status => "状态",
+            ResultTableHeader::Step => "步骤",
             ResultTableHeader::Phase => "相态",
         },
     }
+}
+
+fn latest_unit_steps(
+    steps: &[radishflow_studio::StudioGuiWindowSolveStepModel],
+) -> Vec<&radishflow_studio::StudioGuiWindowSolveStepModel> {
+    let mut unit_steps = Vec::new();
+    for step in steps {
+        if let Some(index) = unit_steps.iter().position(
+            |existing: &&radishflow_studio::StudioGuiWindowSolveStepModel| {
+                existing.unit_id == step.unit_id
+            },
+        ) {
+            unit_steps[index] = step;
+        } else {
+            unit_steps.push(step);
+        }
+    }
+    unit_steps
+}
+
+fn result_table_stream_references(
+    streams: &[radishflow_studio::StudioGuiWindowStreamResultReferenceModel],
+) -> String {
+    if streams.is_empty() {
+        return "-".to_string();
+    }
+
+    streams
+        .iter()
+        .map(|stream| stream.stream_id.as_str())
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn result_table_phase_summary(

@@ -809,6 +809,20 @@ fn bottom_results_table_uses_localized_compact_phase_column() {
         "expected result table to render a compact no-phase value, rendered texts: {:?}",
         texts
     );
+    for expected in ["单元", "状态", "步骤", "消费流股", "产出流股"] {
+        assert!(
+            texts.iter().any(|text| text == expected),
+            "expected bottom result table to render unit result header `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for expected in ["feed-1", "stream-feed"] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected bottom result table to include unit/step result `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
 }
 
 #[test]
