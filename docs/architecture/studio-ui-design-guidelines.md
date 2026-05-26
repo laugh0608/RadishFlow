@@ -249,7 +249,7 @@ Studio 默认工作台建议分为六个稳定区域。
 职责：
 
 - 示例管理：内置示例列表、最近项目、打开示例入口和示例说明摘要。
-- 当前项目树：Components、Property Package、Streams、Units、Results、Diagnostics。
+- 当前项目树：Project components、Property Package、Streams、Units、Results、Diagnostics。
 - 建模对象库：Feed、Mixer、Heater/Cooler、Valve、Flash Drum 等 MVP 对象。
 - 搜索和分类过滤。
 
@@ -260,6 +260,7 @@ Studio 默认工作台建议分为六个稳定区域。
 - suggestion 是辅助建模入口，不和对象库按钮混排成一列命令。
 - 示例、项目树与对象库可以用 tab 或分段控件切换，避免同时展开造成拥挤。
 - 打开示例不应只依赖顶部按钮；左侧必须有稳定、可扫读的示例管理入口。
+- 项目级输入不应只藏在右侧 tab。当前左侧 `项目` 面板必须能扫读受控项目组分和当前物性包，且组分选择 / 移除入口应直接作用于 `Flowsheet.components`，不引入 shell 私有组分状态。
 
 ### 中央 Flowsheet Canvas
 
@@ -293,6 +294,7 @@ Studio 默认工作台建议分为六个稳定区域。
 
 - 右侧默认只展示和当前选择或当前任务相关的信息。
 - 建议以 `检查器 / 运行 / 结果 / 物性包` tab 或等价分段组织；授权 / entitlement 在当前 demo 主路径中低频，默认不应压过物性包和结果审阅。
+- `物性包` tab 可继续承载本地 package 摘要、内置 package 选择和同一套项目组分选择入口，但它不是唯一入口；用户刚进入 Workbench 时应能先从左侧项目树发现项目组分状态。
 - 属性字段采用 label + input + unit + validation 的行结构；单位必须紧贴数值，不藏在说明文字里。
 - 从左侧 Project、Canvas 对象列表或结果定位动作选择 stream / unit 后，应自然切换到对应检查器；stream 优先暴露 `T / P / F`、组成草稿和提交/归一化动作，unit 优先暴露已进入 MVP 的关键参数、端口、关联步骤、关联诊断和最新只读结果。
 - Unit Inspector 当前只把 `Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 与 `Flash Drum` 的 flash temperature / pressure 作为可编辑参数行；字段必须显示 SI 单位和约束提示，提交走正式文档命令并同步对应 outlet stream 模板。其余单元信息仍以端口、关联步骤、关联诊断和最新只读结果为主，不提前设计完整单元参数表。
