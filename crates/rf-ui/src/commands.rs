@@ -22,6 +22,9 @@ impl CanvasPoint {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DocumentCommand {
+    SetPropertyPackage {
+        package_id: Option<String>,
+    },
     CreateUnit {
         unit_id: UnitId,
         kind: String,

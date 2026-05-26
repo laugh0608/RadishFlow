@@ -446,7 +446,10 @@ impl ReadyAppState {
         self.render_project_tree_row(
             ui,
             self.locale.text(ShellText::PropertyPackage),
-            "binary-hydrocarbon-lite-v1",
+            document
+                .property_package_id
+                .as_deref()
+                .unwrap_or("unselected"),
             None,
         );
         self.render_project_tree_row(

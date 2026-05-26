@@ -177,13 +177,25 @@ pub(super) fn initialize_blank_project_thermo_basis(
     app_state: &mut AppState,
     changed_at: SystemTime,
 ) -> RfResult<Option<u64>> {
-    if !app_state.workspace.document.flowsheet.components.is_empty() {
+    let has_default_components = !app_state.workspace.document.flowsheet.components.is_empty();
+    let has_property_package = app_state
+        .workspace
+        .document
+        .flowsheet
+        .property_package_id()
+        .is_some();
+    if has_default_components && has_property_package {
         return Ok(None);
     }
 
     let mut flowsheet = app_state.workspace.document.flowsheet.clone();
-    for (component_id, component_name) in BOOTSTRAP_MVP_COMPONENT_SPECS {
-        flowsheet.insert_component(Component::new(component_id, component_name))?;
+    if !has_default_components {
+        for (component_id, component_name) in BOOTSTRAP_MVP_COMPONENT_SPECS {
+            flowsheet.insert_component(Component::new(component_id, component_name))?;
+        }
+    }
+    if !has_property_package {
+        flowsheet.set_property_package_id(Some(BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID.to_string()))?;
     }
 
     let revision = app_state

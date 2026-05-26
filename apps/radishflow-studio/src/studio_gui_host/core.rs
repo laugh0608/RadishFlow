@@ -1671,6 +1671,10 @@ fn workspace_document_snapshot_from_controller(
         project_path: controller
             .document_path()
             .map(|path| path.display().to_string()),
+        property_package_id: document
+            .flowsheet
+            .property_package_id()
+            .map(|package_id| package_id.to_string()),
         unit_count: document.flowsheet.units.len(),
         stream_count: document.flowsheet.streams.len(),
         snapshot_history_count: controller.snapshot_history_count(),

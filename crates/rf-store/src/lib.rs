@@ -202,6 +202,25 @@ mod tests {
     }
 
     #[test]
+    fn project_file_round_trips_flowsheet_property_package_selection() {
+        let mut flowsheet = Flowsheet::new("thermo-selection");
+        flowsheet
+            .set_property_package_id(Some("binary-hydrocarbon-lite-v1".to_string()))
+            .expect("expected property package selection");
+        let project = StoredProjectFile::new(
+            flowsheet,
+            StoredDocumentMetadata::new("doc-1", "Thermo Selection", timestamp(10)),
+        );
+
+        let json = project_file_to_pretty_json(&project).expect("expected project json");
+        let round_trip = parse_project_file_json(&json).expect("expected project parse");
+
+        assert_eq!(round_trip, project);
+        assert!(json.contains("\"thermo\": {"));
+        assert!(json.contains("\"property_package_id\": \"binary-hydrocarbon-lite-v1\""));
+    }
+
+    #[test]
     fn project_file_round_trips_unit_operation_parameters() {
         let mut flowsheet = Flowsheet::new("unit-parameters");
         flowsheet

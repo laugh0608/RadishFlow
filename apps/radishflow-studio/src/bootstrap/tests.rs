@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::time::UNIX_EPOCH;
 
 use rf_model::{Component, Flowsheet};
 use rf_store::{read_property_package_manifest, read_property_package_payload};
@@ -10,7 +11,7 @@ use rf_ui::{
 use super::{
     BootstrapSession, StudioBootstrapConfig, StudioBootstrapDispatch,
     StudioBootstrapEntitlementSeed, StudioBootstrapEntitlementSessionEvent, StudioBootstrapTrigger,
-    run_studio_bootstrap,
+    StudioBootstrapUntitledProject, run_studio_bootstrap,
 };
 use crate::{
     EntitlementPreflightAction, EntitlementSessionEvent, EntitlementSessionEventOutcome,
@@ -19,6 +20,29 @@ use crate::{
     StudioEntitlementOutcome, StudioRuntime, StudioWorkspaceRunOutcome, WorkspaceRunCommand,
     WorkspaceRunPackageSelection, WorkspaceSolveSkipReason,
 };
+
+#[test]
+fn bootstrap_initializes_blank_project_property_package_selection() {
+    let session = BootstrapSession::new(&StudioBootstrapConfig {
+        untitled_blank_project: Some(StudioBootstrapUntitledProject::new(
+            "doc-blank",
+            "Blank Project",
+            UNIX_EPOCH,
+        )),
+        ..StudioBootstrapConfig::default()
+    })
+    .expect("expected bootstrap session");
+
+    assert_eq!(
+        session
+            .app_state
+            .workspace
+            .document
+            .flowsheet
+            .property_package_id(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+}
 
 #[test]
 fn bootstrap_runs_sample_workspace_from_main_entry_boundary() {

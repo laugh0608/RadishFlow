@@ -15,6 +15,7 @@ pub struct StudioGuiWorkspaceDocumentSnapshot {
     pub last_saved_revision: Option<u64>,
     pub has_unsaved_changes: bool,
     pub project_path: Option<String>,
+    pub property_package_id: Option<String>,
     pub unit_count: usize,
     pub stream_count: usize,
     pub snapshot_history_count: usize,

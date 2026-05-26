@@ -721,6 +721,31 @@ impl AppState {
         self.workspace.canvas_interaction.set_view_mode(view_mode);
     }
 
+    pub fn set_flowsheet_property_package_id(
+        &mut self,
+        package_id: Option<String>,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<u64>> {
+        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
+        next_flowsheet.set_property_package_id(package_id)?;
+
+        if self.workspace.document.flowsheet.property_package_id()
+            == next_flowsheet.property_package_id()
+        {
+            return Ok(None);
+        }
+
+        let package_id = next_flowsheet
+            .property_package_id()
+            .map(|package_id| package_id.to_string());
+        let revision = self.commit_document_change(
+            DocumentCommand::SetPropertyPackage { package_id },
+            next_flowsheet,
+            changed_at,
+        );
+        Ok(Some(revision))
+    }
+
     pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<CanvasSuggestion>) {
         self.workspace
             .canvas_interaction
