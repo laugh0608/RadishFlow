@@ -535,6 +535,89 @@ fn project_component_selection_saves_reopens_and_feeds_composition_choices() {
     let _ = std::fs::remove_file(project_path);
 }
 
+#[test]
+fn feed_composition_drafts_normalize_save_reopen_and_rerun_official_case() {
+    let project_path = temporary_project_path("feed-composition-input");
+    let project = rf_store::parse_project_file_json(include_str!(
+        "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected heater flash project fixture");
+    write_project_file(&project_path, &project).expect("expected temp project write");
+    let config = StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..synced_workspace_config()
+    };
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("inspector.focus_stream:stream-feed");
+    for (component_id, raw_value) in [("methane", "0.2"), ("ethane", "0.6")] {
+        app.dispatch_inspector_field_draft_update(
+            radishflow_studio::inspector_draft_update_command_id(&format!(
+                "stream:stream-feed:overall_mole_fraction:{component_id}"
+            )),
+            raw_value,
+        );
+    }
+
+    let draft_window = app.platform_host.snapshot().window_model();
+    let detail = draft_window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected feed stream inspector");
+    assert_eq!(
+        detail
+            .property_composition_summary
+            .as_ref()
+            .map(|summary| summary.status_label),
+        Some("Draft")
+    );
+    let normalize_command_id = detail
+        .property_composition_normalize_command_id
+        .clone()
+        .expect("expected composition normalize command");
+
+    app.dispatch_inspector_composition_normalize(normalize_command_id);
+    let normalized = app.platform_host.snapshot().window_model();
+    assert!(normalized.runtime.workspace_document.has_unsaved_changes);
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    let saved_feed = &saved.document.flowsheet.streams[&rf_types::StreamId::new("stream-feed")];
+    assert_close(
+        saved_feed.overall_mole_fractions[&rf_types::ComponentId::new("methane")],
+        0.25,
+    );
+    assert_close(
+        saved_feed.overall_mole_fractions[&rf_types::ComponentId::new("ethane")],
+        0.75,
+    );
+
+    app.open_project(project_path.clone(), "project");
+    let reopened = app.platform_host.snapshot().window_model();
+    assert!(!reopened.runtime.workspace_document.has_unsaved_changes);
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        rerun.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    let feed_result = rerun
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected solve snapshot")
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-feed")
+        .expect("expected feed stream result");
+    assert_stream_fraction(feed_result, "methane", 0.25);
+    assert_stream_fraction(feed_result, "ethane", 0.75);
+
+    let _ = std::fs::remove_file(project_path);
+}
+
 #[derive(Debug, Clone, Copy)]
 struct UnitParameterShellCase {
     name: &'static str,
@@ -561,6 +644,26 @@ fn temporary_project_path(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
         "radishflow-studio-shell-unit-parameter-{name}-{timestamp}.rfproj.json"
     ))
+}
+
+fn assert_stream_fraction(
+    stream: &radishflow_studio::StudioGuiWindowStreamResultModel,
+    component_id: &str,
+    expected: f64,
+) {
+    let row = stream
+        .composition_rows
+        .iter()
+        .find(|row| row.component_id == component_id)
+        .unwrap_or_else(|| panic!("expected {component_id} composition row"));
+    assert_close(row.fraction, expected);
+}
+
+fn assert_close(actual: f64, expected: f64) {
+    assert!(
+        (actual - expected).abs() <= 1e-12,
+        "expected {actual} to equal {expected}"
+    );
 }
 
 fn assert_saved_unit_parameter(project: &StoredProjectFile, case: UnitParameterShellCase) {
