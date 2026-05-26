@@ -452,6 +452,10 @@ impl ReadyAppState {
                 .unwrap_or("unselected"),
             None,
         );
+        ui.add_space(6.0);
+        self.render_project_components(ui, document);
+        ui.add_space(6.0);
+
         self.render_project_tree_row(
             ui,
             self.locale.text(ShellText::Streams),
@@ -524,6 +528,75 @@ impl ReadyAppState {
                     .unwrap_or(0),
             ),
         );
+    }
+
+    fn render_project_components(
+        &mut self,
+        ui: &mut egui::Ui,
+        document: &radishflow_studio::StudioGuiWorkspaceDocumentSnapshot,
+    ) {
+        self.render_project_tree_row(
+            ui,
+            match self.locale {
+                StudioShellLocale::En => "Project components",
+                StudioShellLocale::ZhCn => "项目组分",
+            },
+            "",
+            Some(
+                document
+                    .project_component_choices
+                    .iter()
+                    .filter(|choice| choice.selected)
+                    .count(),
+            ),
+        );
+
+        for component in &document.project_component_choices {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new(&component.name).strong());
+                if let Some(formula) = component.formula.as_ref() {
+                    ui.small(formula);
+                }
+                let status = if component.selected {
+                    match self.locale {
+                        StudioShellLocale::En => "Selected",
+                        StudioShellLocale::ZhCn => "已选择",
+                    }
+                } else {
+                    match self.locale {
+                        StudioShellLocale::En => "Available",
+                        StudioShellLocale::ZhCn => "可选",
+                    }
+                };
+                ui.small(status);
+            });
+
+            if component.selected {
+                let remove_label = match self.locale {
+                    StudioShellLocale::En => "Remove",
+                    StudioShellLocale::ZhCn => "移除",
+                };
+                if ui
+                    .add_enabled(component.remove_enabled, egui::Button::new(remove_label))
+                    .on_hover_text(&component.remove_detail)
+                    .clicked()
+                {
+                    self.dispatch_ui_command(&component.remove_command_id);
+                }
+            } else {
+                let select_label = match self.locale {
+                    StudioShellLocale::En => "Select",
+                    StudioShellLocale::ZhCn => "选择",
+                };
+                if ui
+                    .button(select_label)
+                    .on_hover_text(&component.component_id)
+                    .clicked()
+                {
+                    self.dispatch_ui_command(&component.select_command_id);
+                }
+            }
+        }
     }
 
     fn render_project_tree_row(

@@ -316,6 +316,10 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
         "流程图模式",
         "物料线",
         "画布",
+        "项目组分",
+        "Methane",
+        "Ethane",
+        "已选择",
     ] {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
