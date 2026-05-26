@@ -16,7 +16,7 @@
 - `TP Flash`、`SolveSnapshot`、结果审阅和 `rf-ffi` JSON/error 基线已经形成可复验闭环。
 - `.NET 10` CAPE-OPEN / COM 适配层已完成 DWSIM / COFE 侧的关键 PME 兼容验证。
 - MVP β 第一刀：小案例作者体验 v0 已通过，当前不继续围绕同一阶段做细颗粒度打磨。
-- 当前主线切到 MVP β 第二刀：建模输入能力 v0。
+- 当前主线切到 MVP β 第二刀：建模输入能力 v0；项目级物性包选择、项目组分选择和 Feed composition 输入主路径已经形成 focused 回归，下一步是 official demo case 复现验收。
 - 当前尚未达到正式 tag / release 节点标准，历史 `v26.5.1-dev` staging 材料不作为当前路线图事实源。
 
 当前不再把路线图作为每日推进清单。今天做什么、当前验证基线和暂不推进项，以 `docs/status/current.md` 为准；MVP α 验收清单保留为内部验收记录，不再作为当前日常推进主线。
@@ -80,6 +80,7 @@
 - 已通过的 `Mixer-Flash` 与 `Heater-Flash` 作者入口只修真实 blocker，不继续补同构入口、hover、按钮文案或 selector 小细节。
 - 下一阶段优先扩建模输入能力：项目组分选择、内置物性方法 / package 选择、Feed composition 输入和单元参数输入应形成一条可理解工作流。
 - 组分输入 v0 只覆盖内置小型组分目录，不做完整组分数据库；物性方法 v0 只覆盖内置方法 / package，不加载第三方 Property Package。
+- 当前 Studio 已把内置 methane / ethane 项目组分选择暴露在左侧 `项目` 面板和右侧 `物性包` 页；这只是受控输入能力，不代表完整组分数据库或物性包浏览器。
 - demo case 作为验收方式：至少 2 个 official demo case 应由新的输入能力支撑，并能写清参数、预期结果和核对点。
 - `Feed -> Valve -> Flash Drum` 作者路径、更多作者 checklist 和轻量报表增强先进入 backlog；只有当它们服务建模输入能力验收或暴露真实 blocker 时再推进。
 - CAPE-OPEN / PME 只修真实验证暴露的 blocker，不继续主动扩第三方宿主矩阵。

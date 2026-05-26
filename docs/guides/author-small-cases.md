@@ -34,6 +34,15 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 
 清单不会成为真相源，也不会反向修正文档。如果清单显示未完成，应回到 Canvas suggestion、Inspector 参数或运行结果中完成正式操作。
 
+## 建模输入前置项
+
+空白项目会初始化 MVP 默认 `binary-hydrocarbon-lite-v1` 物性包和内置 methane / ethane 组分。若需要检查或调整项目级输入：
+
+- 左侧 `项目` 面板直接显示当前物性包和 `项目组分`，可看到 methane / ethane 的已选状态。
+- 右侧 `物性包` tab 也提供同一受控组分选择入口和内置 package 选择入口。
+- 项目组分选择写入 `Flowsheet.components`；Stream Inspector 中的 composition 添加动作只从这份项目组分列表派生。
+- Feed composition 的数值修改仍在选中对应 stream 后，通过右侧 `检查器` 的字段草稿、`Normalize composition` 和提交命令完成。
+
 ## Mixer-Flash 小案例
 
 目标流程：

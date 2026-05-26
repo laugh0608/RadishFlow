@@ -158,6 +158,8 @@ cargo run -p radishflow-studio
 - `打开项目...`：从磁盘选择已有 `*.rfproj.json`
 - `运行`：对当前工作区执行一次手动运行；不可用时 hover 会说明原因
 - `保存`：保存当前项目
+
+新建或打开项目后，左侧 `项目` 面板会显示当前 `物性包` 和 `项目组分`。MVP β 建模输入 v0 只提供受控内置 methane / ethane 组分目录；选择会写入项目 `Flowsheet.components`，并决定 Stream Inspector 中 Feed composition 可添加的组分。右侧 `物性包` tab 仍保留同一组项目级输入入口和本地包摘要。
 - `另存为...`：把当前项目另存到新的 `*.rfproj.json` 路径；未命名空白项目首次 `保存` 也会进入这条选择器路径
 - `视图`：收纳低频视图入口、语言切换、命令面板和开发诊断入口
 
