@@ -1685,10 +1685,47 @@ fn workspace_document_snapshot_from_controller(
                 enabled: true,
             })
             .collect(),
+        project_component_choices: crate::STUDIO_BUILTIN_PROJECT_COMPONENTS
+            .iter()
+            .map(|component| {
+                let component_id = rf_types::ComponentId::new(component.component_id);
+                let selected = document.flowsheet.components.contains_key(&component_id);
+                let referenced = flowsheet_component_is_referenced(&document.flowsheet, &component_id);
+                crate::StudioGuiProjectComponentChoiceSnapshot {
+                    component_id: component.component_id.to_string(),
+                    name: component.name.to_string(),
+                    formula: Some(component.formula.to_string()),
+                    selected,
+                    select_command_id: crate::project_component_select_command_id(
+                        component.component_id,
+                    ),
+                    remove_command_id: crate::project_component_remove_command_id(
+                        component.component_id,
+                    ),
+                    remove_enabled: selected && !referenced,
+                    remove_detail: if referenced {
+                        "Remove this component from stream compositions before removing it from the project."
+                            .to_string()
+                    } else {
+                        "Remove this unused component from the current flowsheet.".to_string()
+                    },
+                }
+            })
+            .collect(),
         unit_count: document.flowsheet.units.len(),
         stream_count: document.flowsheet.streams.len(),
         snapshot_history_count: controller.snapshot_history_count(),
     }
+}
+
+fn flowsheet_component_is_referenced(
+    flowsheet: &rf_model::Flowsheet,
+    component_id: &rf_types::ComponentId,
+) -> bool {
+    flowsheet
+        .streams
+        .values()
+        .any(|stream| stream.overall_mole_fractions.contains_key(component_id))
 }
 
 #[cfg(test)]

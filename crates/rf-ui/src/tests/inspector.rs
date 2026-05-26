@@ -111,6 +111,101 @@ fn focusing_inspector_target_selects_stream_and_clears_previous_unit() {
 }
 
 #[test]
+fn adding_flowsheet_component_records_document_command() {
+    let document = sample_document();
+    let mut app_state = AppState::new(document);
+    let component = rf_model::Component::new("component-c", "Component C").with_formula("C");
+
+    let revision = app_state
+        .add_flowsheet_component(component, timestamp(42))
+        .expect("expected component add")
+        .expect("expected applied component add");
+
+    assert_eq!(revision, 1);
+    assert!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .components
+            .contains_key(&ComponentId::new("component-c"))
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
+        Some(&DocumentCommand::AddComponent {
+            component_id: ComponentId::new("component-c"),
+            name: "Component C".to_string(),
+            formula: Some("C".to_string()),
+        })
+    );
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
+}
+
+#[test]
+fn removing_flowsheet_component_rejects_stream_composition_references() {
+    let mut document = inspector_focus_document();
+    document
+        .flowsheet
+        .insert_component(rf_model::Component::new("component-a", "Component A"))
+        .expect("expected component-a insert");
+    let mut app_state = AppState::new(document);
+
+    let error = app_state
+        .remove_flowsheet_component(ComponentId::new("component-a"), timestamp(42))
+        .expect_err("expected referenced component removal to fail");
+
+    assert!(
+        error
+            .to_string()
+            .contains("component `component-a` is still referenced by stream `stream-feed`")
+    );
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.command_history.is_empty());
+}
+
+#[test]
+fn removing_unused_flowsheet_component_records_document_command() {
+    let mut document = sample_document();
+    document
+        .flowsheet
+        .insert_component(rf_model::Component::new("component-c", "Component C"))
+        .expect("expected component-c insert");
+    let mut app_state = AppState::new(document);
+
+    let revision = app_state
+        .remove_flowsheet_component(ComponentId::new("component-c"), timestamp(42))
+        .expect("expected component remove")
+        .expect("expected applied component remove");
+
+    assert_eq!(revision, 1);
+    assert!(
+        !app_state
+            .workspace
+            .document
+            .flowsheet
+            .components
+            .contains_key(&ComponentId::new("component-c"))
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
+        Some(&DocumentCommand::RemoveComponent {
+            component_id: ComponentId::new("component-c"),
+        })
+    );
+}
+
+#[test]
 fn focusing_missing_inspector_target_keeps_current_focus() {
     let document = inspector_focus_document();
     let mut app_state = AppState::new(document);

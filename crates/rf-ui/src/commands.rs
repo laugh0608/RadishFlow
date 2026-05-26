@@ -25,6 +25,14 @@ pub enum DocumentCommand {
     SetPropertyPackage {
         package_id: Option<String>,
     },
+    AddComponent {
+        component_id: ComponentId,
+        name: String,
+        formula: Option<String>,
+    },
+    RemoveComponent {
+        component_id: ComponentId,
+    },
     CreateUnit {
         unit_id: UnitId,
         kind: String,

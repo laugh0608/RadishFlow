@@ -439,6 +439,77 @@ impl ReadyAppState {
             ui.add_space(6.0);
         }
 
+        ui.add_space(4.0);
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.label(egui::RichText::new(match self.locale {
+                StudioShellLocale::En => "Project components",
+                StudioShellLocale::ZhCn => "项目组分",
+            }).strong());
+            render_wrapped_small(
+                ui,
+                match self.locale {
+                    StudioShellLocale::En => {
+                        "Choose from the controlled built-in component catalog stored in the current flowsheet."
+                    }
+                    StudioShellLocale::ZhCn => "从受控内置组分目录选择写入当前 flowsheet 的项目组分。",
+                },
+            );
+            ui.add_space(4.0);
+            for component in &window.runtime.workspace_document.project_component_choices {
+                ui.horizontal(|ui| {
+                    let status = if component.selected {
+                        match self.locale {
+                            StudioShellLocale::En => "Selected",
+                            StudioShellLocale::ZhCn => "已选择",
+                        }
+                    } else {
+                        match self.locale {
+                            StudioShellLocale::En => "Available",
+                            StudioShellLocale::ZhCn => "可选",
+                        }
+                    };
+                    ui.label(egui::RichText::new(&component.name).strong());
+                    if let Some(formula) = component.formula.as_ref() {
+                        ui.small(formula);
+                    }
+                    ui.small(status);
+                });
+
+                if component.selected {
+                    let remove_label = match self.locale {
+                        StudioShellLocale::En => "Remove",
+                        StudioShellLocale::ZhCn => "移除",
+                    };
+                    if ui
+                        .add_enabled(
+                            component.remove_enabled,
+                            egui::Button::new(remove_label)
+                                .min_size(egui::vec2(ui.available_width(), 28.0)),
+                        )
+                        .on_hover_text(&component.remove_detail)
+                        .clicked()
+                    {
+                        self.dispatch_ui_command(&component.remove_command_id);
+                    }
+                } else {
+                    let select_label = match self.locale {
+                        StudioShellLocale::En => "Select",
+                        StudioShellLocale::ZhCn => "选择",
+                    };
+                    if ui
+                        .button(select_label)
+                        .on_hover_text(&component.component_id)
+                        .clicked()
+                    {
+                        self.dispatch_ui_command(&component.select_command_id);
+                    }
+                }
+                render_wrapped_small(ui, &component.component_id);
+                ui.add_space(6.0);
+            }
+        });
+
         if let Some(entitlement_host) = window.runtime.entitlement_host.as_ref() {
             let entitlement = &entitlement_host.presentation.panel.view;
             ui.add_space(8.0);

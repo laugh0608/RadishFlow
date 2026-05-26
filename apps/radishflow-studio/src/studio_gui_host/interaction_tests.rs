@@ -136,6 +136,100 @@ fn gui_host_dispatches_property_package_selection_command() {
 }
 
 #[test]
+fn gui_host_dispatches_project_component_selection_commands() {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-gui-host-component-selection-{timestamp}.rfproj.json"
+    ));
+    let mut flowsheet = rf_model::Flowsheet::new("component-selection");
+    flowsheet
+        .set_property_package_id(Some("binary-hydrocarbon-lite-v1".to_string()))
+        .expect("expected property package id");
+    let project = rf_store::StoredProjectFile::new(
+        flowsheet,
+        rf_store::StoredDocumentMetadata::new(
+            "doc-component-selection",
+            "Component Selection",
+            std::time::UNIX_EPOCH,
+        ),
+    );
+    let project_json =
+        rf_store::project_file_to_pretty_json(&project).expect("expected project serialization");
+    fs::write(&project_path, project_json).expect("expected component selection project");
+    let mut gui_host = StudioGuiHost::new(&StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..lease_expiring_config()
+    })
+    .expect("expected gui host");
+    let opened = gui_host.open_window().expect("expected window open");
+
+    let initial_window = gui_host.window_model_for_window(None);
+    let methane = initial_window
+        .runtime
+        .workspace_document
+        .project_component_choices
+        .iter()
+        .find(|choice| choice.component_id == "methane")
+        .expect("expected methane component choice")
+        .clone();
+    assert!(!methane.selected);
+
+    let select_dispatch = gui_host
+        .dispatch_ui_command(&methane.select_command_id)
+        .expect("expected project component selection dispatch");
+
+    match select_dispatch {
+        StudioGuiHostUiCommandDispatchResult::Executed(dispatch) => {
+            assert_eq!(dispatch.target_window_id, opened.registration.window_id);
+            match &dispatch.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::ProjectComponentSelection(outcome) => {
+                    assert!(outcome.applied);
+                    assert_eq!(outcome.command.component_id, "methane");
+                    assert_eq!(outcome.selected_component_ids, ["methane"]);
+                }
+                other => panic!("expected project component selection dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected executed ui command result, got {other:?}"),
+    }
+
+    let selected_window = gui_host.window_model_for_window(None);
+    let methane = selected_window
+        .runtime
+        .workspace_document
+        .project_component_choices
+        .iter()
+        .find(|choice| choice.component_id == "methane")
+        .expect("expected methane component choice")
+        .clone();
+    assert!(methane.selected);
+    assert!(methane.remove_enabled);
+
+    let remove_dispatch = gui_host
+        .dispatch_ui_command(&methane.remove_command_id)
+        .expect("expected project component removal dispatch");
+
+    match remove_dispatch {
+        StudioGuiHostUiCommandDispatchResult::Executed(dispatch) => {
+            match &dispatch.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::ProjectComponentRemoval(outcome) => {
+                    assert!(outcome.applied);
+                    assert_eq!(outcome.command.component_id, "methane");
+                    assert!(outcome.selected_component_ids.is_empty());
+                }
+                other => panic!("expected project component removal dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected executed ui command result, got {other:?}"),
+    }
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
 fn gui_host_command_surface_ids_converge_into_equivalent_host_dispatch_paths() {
     let mut surface_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
     let opened = surface_host.open_window().expect("expected window open");

@@ -422,6 +422,119 @@ fn property_package_selection_saves_reopens_and_preferred_run_uses_selection() {
     let _ = std::fs::remove_file(project_path);
 }
 
+#[test]
+fn project_component_selection_saves_reopens_and_feeds_composition_choices() {
+    let project_path = temporary_project_path("project-component-selection");
+    let mut project = rf_store::parse_project_file_json(include_str!(
+        "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected heater flash project fixture");
+    project.document.flowsheet.components.clear();
+    for stream in project.document.flowsheet.streams.values_mut() {
+        stream.overall_mole_fractions.clear();
+    }
+    write_project_file(&project_path, &project).expect("expected temp project write");
+    let config = StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..synced_workspace_config()
+    };
+    let mut app = ready_app_state(&config);
+
+    let opened = app.platform_host.snapshot().window_model();
+    for component_id in ["methane", "ethane"] {
+        let choice = opened
+            .runtime
+            .workspace_document
+            .project_component_choices
+            .iter()
+            .find(|choice| choice.component_id == component_id)
+            .unwrap_or_else(|| panic!("expected {component_id} component choice"));
+        assert!(!choice.selected);
+        app.dispatch_ui_command(choice.select_command_id.clone());
+    }
+
+    app.dispatch_ui_command("inspector.focus_stream:stream-feed");
+    for component_id in ["methane", "ethane"] {
+        let window = app.platform_host.snapshot().window_model();
+        let detail = window
+            .runtime
+            .active_inspector_detail
+            .as_ref()
+            .expect("expected active stream inspector");
+        let command_id = detail
+            .property_composition_component_actions
+            .iter()
+            .find(|action| action.component_id == component_id)
+            .unwrap_or_else(|| panic!("expected {component_id} composition action"))
+            .action
+            .command_id
+            .clone();
+        app.dispatch_inspector_composition_component_add(command_id);
+    }
+
+    let edited = app.platform_host.snapshot().window_model();
+    assert!(edited.runtime.workspace_document.has_unsaved_changes);
+    assert!(
+        edited
+            .runtime
+            .workspace_document
+            .project_component_choices
+            .iter()
+            .filter(|choice| choice.selected)
+            .map(|choice| choice.component_id.as_str())
+            .eq(["methane", "ethane"].into_iter())
+    );
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    assert!(
+        saved
+            .document
+            .flowsheet
+            .components
+            .contains_key(&rf_types::ComponentId::new("methane"))
+    );
+    assert!(
+        saved
+            .document
+            .flowsheet
+            .components
+            .contains_key(&rf_types::ComponentId::new("ethane"))
+    );
+    let feed = &saved.document.flowsheet.streams[&rf_types::StreamId::new("stream-feed")];
+    assert_eq!(
+        feed.overall_mole_fractions[&rf_types::ComponentId::new("methane")],
+        1.0
+    );
+    assert_eq!(
+        feed.overall_mole_fractions[&rf_types::ComponentId::new("ethane")],
+        0.0
+    );
+
+    app.open_project(project_path.clone(), "project");
+    let reopened = app.platform_host.snapshot().window_model();
+    assert!(!reopened.runtime.workspace_document.has_unsaved_changes);
+    assert!(
+        reopened
+            .runtime
+            .workspace_document
+            .project_component_choices
+            .iter()
+            .filter(|choice| choice.selected)
+            .map(|choice| choice.component_id.as_str())
+            .eq(["methane", "ethane"].into_iter())
+    );
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        rerun.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+
+    let _ = std::fs::remove_file(project_path);
+}
+
 #[derive(Debug, Clone, Copy)]
 struct UnitParameterShellCase {
     name: &'static str,

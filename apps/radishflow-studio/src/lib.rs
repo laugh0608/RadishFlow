@@ -37,6 +37,7 @@ mod studio_gui_window_model;
 mod studio_inspector_draft_command;
 mod studio_inspector_target_command;
 mod studio_local_rules;
+mod studio_project_component_selection;
 mod studio_property_package_selection;
 mod studio_runtime;
 mod studio_stream_reconnect_presentation;
@@ -268,8 +269,9 @@ pub use studio_gui_snapshot::{
     StudioGuiInspectorPropertyNoticeSnapshot, StudioGuiInspectorTargetDetailSnapshot,
     StudioGuiInspectorTargetFieldSnapshot, StudioGuiInspectorTargetFieldValidationSnapshot,
     StudioGuiInspectorTargetFieldValueKindSnapshot, StudioGuiInspectorTargetPortSnapshot,
-    StudioGuiInspectorTargetSummaryRowSnapshot, StudioGuiPropertyPackageChoiceSnapshot,
-    StudioGuiRuntimeSnapshot, StudioGuiSnapshot, StudioGuiWorkspaceDocumentSnapshot,
+    StudioGuiInspectorTargetSummaryRowSnapshot, StudioGuiProjectComponentChoiceSnapshot,
+    StudioGuiPropertyPackageChoiceSnapshot, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
+    StudioGuiWorkspaceDocumentSnapshot,
 };
 pub use studio_gui_timer_host::{
     StudioGuiNativeTimerDueEvent, StudioGuiNativeTimerEffects, StudioGuiNativeTimerOperation,
@@ -328,6 +330,15 @@ pub use studio_inspector_draft_command::{
 };
 pub use studio_inspector_target_command::{
     inspector_target_command_id, inspector_target_from_command_id,
+};
+pub use studio_project_component_selection::{
+    PROJECT_COMPONENT_REMOVE_COMMAND_PREFIX, PROJECT_COMPONENT_SELECT_COMMAND_PREFIX,
+    ProjectComponentSelectionOutcome, STUDIO_BUILTIN_PROJECT_COMPONENTS,
+    StudioBuiltinProjectComponent, StudioProjectComponentSelectionCommand,
+    builtin_project_component, project_component_remove_command_from_id,
+    project_component_remove_command_id, project_component_select_command_from_id,
+    project_component_select_command_id, remove_project_component, remove_project_component_at,
+    select_project_component, select_project_component_at,
 };
 pub use studio_property_package_selection::{
     PROPERTY_PACKAGE_SELECT_COMMAND_PREFIX, PropertyPackageSelectionOutcome,

@@ -17,6 +17,7 @@ pub struct StudioGuiWorkspaceDocumentSnapshot {
     pub project_path: Option<String>,
     pub property_package_id: Option<String>,
     pub property_package_choices: Vec<StudioGuiPropertyPackageChoiceSnapshot>,
+    pub project_component_choices: Vec<StudioGuiProjectComponentChoiceSnapshot>,
     pub unit_count: usize,
     pub stream_count: usize,
     pub snapshot_history_count: usize,
@@ -31,6 +32,18 @@ pub struct StudioGuiPropertyPackageChoiceSnapshot {
     pub command_id: String,
     pub selected: bool,
     pub enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiProjectComponentChoiceSnapshot {
+    pub component_id: String,
+    pub name: String,
+    pub formula: Option<String>,
+    pub selected: bool,
+    pub select_command_id: String,
+    pub remove_command_id: String,
+    pub remove_enabled: bool,
+    pub remove_detail: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]

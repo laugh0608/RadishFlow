@@ -10,7 +10,7 @@ pub use unit_inspector::{
     unit_inspector_parameter_value,
 };
 
-use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
+use rf_model::{Component, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
 use rf_types::{ComponentId, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId};
 use rf_unitops::{
     BuiltinUnitKind, UnitOperationSpec, builtin_unit_spec, builtin_unit_spec_by_name,
@@ -740,6 +740,76 @@ impl AppState {
             .map(|package_id| package_id.to_string());
         let revision = self.commit_document_change(
             DocumentCommand::SetPropertyPackage { package_id },
+            next_flowsheet,
+            changed_at,
+        );
+        Ok(Some(revision))
+    }
+
+    pub fn add_flowsheet_component(
+        &mut self,
+        component: Component,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<u64>> {
+        if self
+            .workspace
+            .document
+            .flowsheet
+            .components
+            .contains_key(&component.id)
+        {
+            return Ok(None);
+        }
+
+        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
+        next_flowsheet.insert_component(component.clone())?;
+        let revision = self.commit_document_change(
+            DocumentCommand::AddComponent {
+                component_id: component.id,
+                name: component.name,
+                formula: component.formula,
+            },
+            next_flowsheet,
+            changed_at,
+        );
+        Ok(Some(revision))
+    }
+
+    pub fn remove_flowsheet_component(
+        &mut self,
+        component_id: ComponentId,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<u64>> {
+        if !self
+            .workspace
+            .document
+            .flowsheet
+            .components
+            .contains_key(&component_id)
+        {
+            return Ok(None);
+        }
+
+        if let Some(stream) = self
+            .workspace
+            .document
+            .flowsheet
+            .streams
+            .values()
+            .find(|stream| stream.overall_mole_fractions.contains_key(&component_id))
+        {
+            return Err(RfError::invalid_input(format!(
+                "component `{}` is still referenced by stream `{}` composition",
+                component_id, stream.id
+            )));
+        }
+
+        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
+        next_flowsheet.components.remove(&component_id);
+        let revision = self.commit_document_change(
+            DocumentCommand::RemoveComponent {
+                component_id: component_id.clone(),
+            },
             next_flowsheet,
             changed_at,
         );

@@ -902,6 +902,12 @@ mod tests {
             StudioRuntimeDispatch::PropertyPackageSelection(_) => {
                 panic!("expected entitlement session event dispatch")
             }
+            StudioRuntimeDispatch::ProjectComponentSelection(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
+            StudioRuntimeDispatch::ProjectComponentRemoval(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
             StudioRuntimeDispatch::DocumentHistory(_) => {
                 panic!("expected entitlement session event dispatch")
             }

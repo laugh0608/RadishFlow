@@ -13,9 +13,9 @@ use crate::{
     dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, focus_inspector_target,
-    normalize_inspector_composition, select_property_package,
-    snapshot_entitlement_session_driver_state, snapshot_entitlement_session_schedule,
-    snapshot_run_panel_driver_state, update_inspector_draft,
+    normalize_inspector_composition, remove_project_component, select_project_component,
+    select_property_package, snapshot_entitlement_session_driver_state,
+    snapshot_entitlement_session_schedule, snapshot_run_panel_driver_state, update_inspector_draft,
 };
 use rf_store::{StoredAuthCacheIndex, read_project_file};
 use rf_types::{RfError, RfResult};
@@ -254,6 +254,14 @@ fn dispatch_bootstrap_trigger(
         StudioBootstrapTrigger::PropertyPackageSelection(command) => {
             let outcome = select_property_package(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::PropertyPackageSelection(outcome))
+        }
+        StudioBootstrapTrigger::ProjectComponentSelection(command) => {
+            let outcome = select_project_component(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::ProjectComponentSelection(outcome))
+        }
+        StudioBootstrapTrigger::ProjectComponentRemoval(command) => {
+            let outcome = remove_project_component(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::ProjectComponentRemoval(outcome))
         }
         StudioBootstrapTrigger::DocumentHistory(command) => {
             let outcome = dispatch_document_history(session.app_state, *command)?;

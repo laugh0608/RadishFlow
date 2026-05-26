@@ -62,7 +62,8 @@
 
 - 已落地“项目级物性包选择”主路径：`Flowsheet` 承载热力学配置，项目 JSON 可保存 / 重开该选择，`Preferred` 运行解析优先使用项目中保存的 package。
 - Studio 已从只读展示推进到受控内置物性包选择 UI：右侧 `物性包` 页展示内置 package 选项，选择写入 `Flowsheet.thermo.property_package_id`，保存 / 重开保持，并由 `Preferred` 运行使用。
-- 下一步转入组分输入 / 组分选择 v0，让项目组分与内置物性包选择形成同一建模输入工作流。
+- 已落地“项目组分选择 v0”：Studio 右侧 `物性包` 页暴露受控内置 methane / ethane 组分目录，选择写入 `Flowsheet.components`，保存 / 重开保持；删除只允许未被任何 stream composition 引用的组件，Feed composition 的受控添加项继续从项目组件列表派生。
+- 下一步转入 Feed composition 输入工作流与 official demo case 复现验收：用项目组分、内置物性包、composition draft / normalize / commit 和 Unit 参数串成一条可复现小建模路径。
 
 ## 验证节奏
 
