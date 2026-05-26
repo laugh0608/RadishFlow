@@ -1,6 +1,6 @@
 # RadishFlow MVP Roadmap
 
-更新时间：2026-05-25
+更新时间：2026-05-26
 
 ## 用途
 
@@ -10,12 +10,13 @@
 
 ## 当前结论
 
-截至 2026-05-25，M1-M5 都已越过 MVP 的最小完成线，MVP α 用户视角 smoke 和首版 demo 前硬化期也已阶段性收口：
+截至 2026-05-26，M1-M5 都已越过 MVP 的最小完成线，MVP α 用户视角 smoke、首版 demo 前硬化期和 MVP β 第一刀也已阶段性收口：
 
 - Rust 内核和 Studio 可以跑通最小稳态流程。
 - `TP Flash`、`SolveSnapshot`、结果审阅和 `rf-ffi` JSON/error 基线已经形成可复验闭环。
 - `.NET 10` CAPE-OPEN / COM 适配层已完成 DWSIM / COFE 侧的关键 PME 兼容验证。
-- 当前主线已经从 MVP α 验收与 demo 前硬化，切到 MVP β：高频建模能力与小案例作者体验。
+- MVP β 第一刀：小案例作者体验 v0 已通过，当前不继续围绕同一阶段做细颗粒度打磨。
+- 当前主线切到 MVP β 第二刀：建模输入能力 v0。
 - 当前尚未达到正式 tag / release 节点标准，历史 `v26.5.1-dev` staging 材料不作为当前路线图事实源。
 
 当前不再把路线图作为每日推进清单。今天做什么、当前验证基线和暂不推进项，以 `docs/status/current.md` 为准；MVP α 验收清单保留为内部验收记录，不再作为当前日常推进主线。
@@ -74,11 +75,13 @@
 
 ## 当前计划边界
 
-后续路线图不再服务开放式扩张，而是服务 MVP β 的高频建模能力包：
+后续路线图不再服务开放式扩张，而是服务更大颗粒的 MVP β 能力包：
 
-- 优先用真实窗口轻量 smoke 复核最近新增的结果导出、单元参数、受控重连、关闭确认和 sidecar 布局路径。
-- 继续保持 `Feed/Heater/Cooler/Valve/Mixer -> Flash` 的数值、结果 DTO 和 UI consumer 基线稳定，并把下一批能力组织成可复现小流程；当前 `Mixer-Flash` 与 `Heater-Flash` 作者入口只作为空白项目导航和任务清单，不是项目向导或自动建模系统。
-- 下一阶段优先成组推进高频 Unit Inspector 参数、受控连接编辑设计和小案例作者体验，而不是继续追逐 Canvas / Inspector presentation 细节。
+- 已通过的 `Mixer-Flash` 与 `Heater-Flash` 作者入口只修真实 blocker，不继续补同构入口、hover、按钮文案或 selector 小细节。
+- 下一阶段优先扩建模输入能力：项目组分选择、内置物性方法 / package 选择、Feed composition 输入和单元参数输入应形成一条可理解工作流。
+- 组分输入 v0 只覆盖内置小型组分目录，不做完整组分数据库；物性方法 v0 只覆盖内置方法 / package，不加载第三方 Property Package。
+- demo case 作为验收方式：至少 2 个 official demo case 应由新的输入能力支撑，并能写清参数、预期结果和核对点。
+- `Feed -> Valve -> Flash Drum` 作者路径、更多作者 checklist 和轻量报表增强先进入 backlog；只有当它们服务建模输入能力验收或暴露真实 blocker 时再推进。
 - CAPE-OPEN / PME 只修真实验证暴露的 blocker，不继续主动扩第三方宿主矩阵。
 - Studio UI 优化只做主路径和明确专题；不扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
 
