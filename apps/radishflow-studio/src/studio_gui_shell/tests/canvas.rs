@@ -44,6 +44,81 @@ fn normalize_stream_composition(app: &mut ReadyAppState, stream_id: &str, drafts
     );
 }
 
+#[derive(Clone, Copy)]
+struct SingleInletFlashAuthoringCase {
+    begin_unit_command: &'static str,
+    unit_id: &'static str,
+    connect_unit_inlet_suggestion: &'static str,
+    create_unit_outlet_suggestion: &'static str,
+    unit_outlet_stream_id: &'static str,
+    unit_outlet_temperature_k: Option<f64>,
+    unit_outlet_pressure_pa: f64,
+    flash_temperature_k: f64,
+    flash_pressure_pa: f64,
+}
+
+fn author_single_inlet_flash_case_from_blank(
+    app: &mut ReadyAppState,
+    case: SingleInletFlashAuthoringCase,
+) {
+    select_builtin_binary_hydrocarbon_basis(app);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(app, "local.feed.create_outlet.feed-1");
+
+    app.dispatch_ui_command(case.begin_unit_command);
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(180.0, 40.0));
+    accept_canvas_suggestion_by_id(app, case.connect_unit_inlet_suggestion);
+    accept_canvas_suggestion_by_id(app, case.create_unit_outlet_suggestion);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(320.0, 40.0));
+    accept_canvas_suggestion_by_id(
+        app,
+        &format!(
+            "local.flash_drum.connect_inlet.flash-1.{}",
+            case.unit_outlet_stream_id
+        ),
+    );
+    accept_canvas_suggestion_by_id(app, "local.flash_drum.create_outlet.flash-1.liquid");
+    accept_canvas_suggestion_by_id(app, "local.flash_drum.create_outlet.flash-1.vapor");
+
+    normalize_stream_composition(
+        app,
+        "stream-feed-1-outlet",
+        &[("methane", "0.2"), ("ethane", "0.6")],
+    );
+    commit_unit_parameter(app, "feed-1", "unit:feed-1:outlet_temperature_k", "310");
+    commit_unit_parameter(app, "feed-1", "unit:feed-1:outlet_pressure_pa", "130000");
+    if let Some(temperature_k) = case.unit_outlet_temperature_k {
+        commit_unit_parameter(
+            app,
+            case.unit_id,
+            &format!("unit:{}:outlet_temperature_k", case.unit_id),
+            &temperature_k.to_string(),
+        );
+    }
+    commit_unit_parameter(
+        app,
+        case.unit_id,
+        &format!("unit:{}:outlet_pressure_pa", case.unit_id),
+        &case.unit_outlet_pressure_pa.to_string(),
+    );
+    commit_unit_parameter(
+        app,
+        "flash-1",
+        "unit:flash-1:outlet_temperature_k",
+        &case.flash_temperature_k.to_string(),
+    );
+    commit_unit_parameter(
+        app,
+        "flash-1",
+        "unit:flash-1:outlet_pressure_pa",
+        &case.flash_pressure_pa.to_string(),
+    );
+}
+
 #[test]
 fn canvas_viewport_navigation_records_inspector_focus_commands() {
     let (config, project_path) = flash_drum_local_rules_config();
@@ -760,6 +835,199 @@ fn blank_project_heater_flash_demo_case_saves_reopens_and_reruns() {
 
     let _ = fs::remove_file(export_path);
     let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn blank_project_cooler_and_valve_flash_paths_save_reopen_and_rerun() {
+    let cases = [
+        SingleInletFlashAuthoringCase {
+            begin_unit_command: "canvas.begin_place_unit.cooler",
+            unit_id: "cooler-1",
+            connect_unit_inlet_suggestion: "local.cooler.connect_inlet.cooler-1.stream-feed-1-outlet",
+            create_unit_outlet_suggestion: "local.cooler.create_outlet.cooler-1",
+            unit_outlet_stream_id: "stream-cooler-1-outlet",
+            unit_outlet_temperature_k: Some(286.0),
+            unit_outlet_pressure_pa: 90_000.0,
+            flash_temperature_k: 300.0,
+            flash_pressure_pa: 85_000.0,
+        },
+        SingleInletFlashAuthoringCase {
+            begin_unit_command: "canvas.begin_place_unit.valve",
+            unit_id: "valve-1",
+            connect_unit_inlet_suggestion: "local.valve.connect_inlet.valve-1.stream-feed-1-outlet",
+            create_unit_outlet_suggestion: "local.valve.create_outlet.valve-1",
+            unit_outlet_stream_id: "stream-valve-1-outlet",
+            unit_outlet_temperature_k: None,
+            unit_outlet_pressure_pa: 85_000.0,
+            flash_temperature_k: 300.0,
+            flash_pressure_pa: 80_000.0,
+        },
+    ];
+
+    for case in cases {
+        let (config, project_path) = blank_workspace_config();
+        let mut app = ready_app_state(&config);
+        author_single_inlet_flash_case_from_blank(&mut app, case);
+
+        app.save_project();
+        let saved = read_project_file(&project_path).expect("expected saved authored project");
+        assert_eq!(
+            saved.document.flowsheet.property_package_id(),
+            Some("binary-hydrocarbon-lite-v1")
+        );
+        assert_eq!(saved.document.flowsheet.components.len(), 2);
+        assert_eq!(
+            stored_unit_port_stream_id(&saved, "feed-1", "outlet"),
+            Some("stream-feed-1-outlet")
+        );
+        assert_eq!(
+            stored_unit_port_stream_id(&saved, case.unit_id, "inlet"),
+            Some("stream-feed-1-outlet")
+        );
+        assert_eq!(
+            stored_unit_port_stream_id(&saved, case.unit_id, "outlet"),
+            Some(case.unit_outlet_stream_id)
+        );
+        assert_eq!(
+            stored_unit_port_stream_id(&saved, "flash-1", "inlet"),
+            Some(case.unit_outlet_stream_id)
+        );
+        let feed_stream = &saved.document.flowsheet.streams[&StreamId::new("stream-feed-1-outlet")];
+        assert_close(
+            feed_stream.overall_mole_fractions[&rf_types::ComponentId::new("methane")],
+            0.25,
+        );
+        assert_close(
+            feed_stream.overall_mole_fractions[&rf_types::ComponentId::new("ethane")],
+            0.75,
+        );
+        assert_eq!(feed_stream.temperature_k, 310.0);
+        assert_eq!(feed_stream.pressure_pa, 130_000.0);
+        let unit = &saved.document.flowsheet.units[&UnitId::new(case.unit_id)];
+        assert_eq!(
+            unit.parameters.outlet_pressure_pa,
+            Some(case.unit_outlet_pressure_pa)
+        );
+        let unit_outlet =
+            &saved.document.flowsheet.streams[&StreamId::new(case.unit_outlet_stream_id)];
+        assert_eq!(unit_outlet.pressure_pa, case.unit_outlet_pressure_pa);
+        if let Some(temperature_k) = case.unit_outlet_temperature_k {
+            assert_eq!(unit.parameters.outlet_temperature_k, Some(temperature_k));
+            assert_eq!(unit_outlet.temperature_k, temperature_k);
+        }
+
+        app.open_project(project_path.clone(), "project");
+        let reopened = app.platform_host.snapshot().window_model();
+        assert!(!reopened.runtime.workspace_document.has_unsaved_changes);
+
+        app.dispatch_ui_command("run_panel.run_manual");
+        let rerun = app.platform_host.snapshot().window_model();
+        assert_eq!(
+            rerun.runtime.control_state.run_status,
+            rf_ui::RunStatus::Converged
+        );
+        let snapshot = rerun
+            .runtime
+            .latest_solve_snapshot
+            .as_ref()
+            .expect("expected rerun solve snapshot");
+        let feed = snapshot
+            .streams
+            .iter()
+            .find(|stream| stream.stream_id == "stream-feed-1-outlet")
+            .expect("expected feed result");
+        let unit_outlet_result = snapshot
+            .streams
+            .iter()
+            .find(|stream| stream.stream_id == case.unit_outlet_stream_id)
+            .expect("expected unit outlet result");
+        assert_eq!(feed.temperature_k, 310.0);
+        assert_eq!(feed.pressure_pa, 130_000.0);
+        assert_stream_fraction(feed, "methane", 0.25);
+        assert_stream_fraction(feed, "ethane", 0.75);
+        assert_eq!(unit_outlet_result.pressure_pa, case.unit_outlet_pressure_pa);
+        if let Some(temperature_k) = case.unit_outlet_temperature_k {
+            assert_eq!(unit_outlet_result.temperature_k, temperature_k);
+        } else {
+            assert_eq!(unit_outlet_result.temperature_k, feed.temperature_k);
+        }
+        assert!(unit_outlet_result.molar_enthalpy_j_per_mol.is_some());
+
+        let unit_result = snapshot.result_inspector_with_unit(
+            Some(case.unit_outlet_stream_id),
+            None,
+            Some(case.unit_id),
+        );
+        let selected_unit = unit_result
+            .selected_unit
+            .as_ref()
+            .expect("expected authored unit result");
+        assert!(
+            selected_unit
+                .consumed_stream_results
+                .iter()
+                .any(|stream| stream.stream_id == "stream-feed-1-outlet")
+        );
+        assert!(
+            selected_unit
+                .produced_stream_results
+                .iter()
+                .any(|stream| stream.stream_id == case.unit_outlet_stream_id)
+        );
+
+        let flash_result = snapshot.result_inspector_with_unit(
+            Some(case.unit_outlet_stream_id),
+            None,
+            Some("flash-1"),
+        );
+        let flash_unit = flash_result
+            .selected_unit
+            .as_ref()
+            .expect("expected flash unit result");
+        assert!(
+            flash_unit
+                .consumed_stream_results
+                .iter()
+                .any(|stream| stream.stream_id == case.unit_outlet_stream_id)
+        );
+        assert!(
+            flash_unit
+                .produced_stream_results
+                .iter()
+                .any(|stream| stream.stream_id == "stream-flash-1-liquid")
+        );
+        assert!(
+            flash_unit
+                .produced_stream_results
+                .iter()
+                .any(|stream| stream.stream_id == "stream-flash-1-vapor")
+        );
+
+        let flash_liquid = snapshot
+            .streams
+            .iter()
+            .find(|stream| stream.stream_id == "stream-flash-1-liquid")
+            .expect("expected flash liquid result");
+        let flash_vapor = snapshot
+            .streams
+            .iter()
+            .find(|stream| stream.stream_id == "stream-flash-1-vapor")
+            .expect("expected flash vapor result");
+        assert_eq!(flash_liquid.temperature_k, case.flash_temperature_k);
+        assert_eq!(flash_liquid.pressure_pa, case.flash_pressure_pa);
+        assert_eq!(flash_vapor.temperature_k, case.flash_temperature_k);
+        assert_eq!(flash_vapor.pressure_pa, case.flash_pressure_pa);
+        assert_close(
+            flash_liquid.total_molar_flow_mol_s + flash_vapor.total_molar_flow_mol_s,
+            feed.total_molar_flow_mol_s,
+        );
+        assert!(
+            flash_liquid.molar_enthalpy_j_per_mol.is_some()
+                || flash_vapor.molar_enthalpy_j_per_mol.is_some()
+        );
+
+        let _ = fs::remove_file(project_path);
+    }
 }
 
 #[test]
