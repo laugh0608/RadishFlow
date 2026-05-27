@@ -64,6 +64,7 @@
 - Studio 已从只读展示推进到受控内置物性包选择 UI：右侧 `物性包` 页展示内置 package 选项，选择写入 `Flowsheet.thermo.property_package_id`，保存 / 重开保持，并由 `Preferred` 运行使用。
 - 已落地“项目组分选择 v0”：Studio 左侧 `项目` 面板和右侧 `物性包` 页暴露受控内置 methane / ethane 组分目录，选择写入 `Flowsheet.components`，保存 / 重开保持；删除只允许未被任何 stream composition 引用的组件，Feed composition 的受控添加项继续从项目组件列表派生。
 - 已修正空白项目主路径：新建未命名空白项目不再预写默认物性包和默认组分；用户需从受控内置列表显式选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane 后，再进入 Feed composition、单元参数、运行、保存 / 重开路径。
+- 已修正 Unit Inspector 参数输入页 blocker：单元参数不再用窄表格挤压长字段说明，改为本地化短标签、输入框、单位、状态和操作的紧凑行布局；约束提示缩短为辅助说明，不再把英文长句挤成竖排。
 - 已补 Feed composition 输入主路径回归：从 official Heater-Flash 示例复制临时项目，走真实 Stream Inspector draft update / normalize / save / reopen / Preferred run 路径，把 `stream-feed` 组成从草稿归一到 methane 0.25 / ethane 0.75，并在保存项目和求解结果中核对。
 - 下一步转入 official demo case 复现验收：把项目组分、内置物性包、Feed composition 和 Unit 参数串成 1-2 条有明确输入表与结果核对点的小案例。
 

@@ -259,6 +259,39 @@ fn rendered_text_occurrences(texts: &[String], expected: &str) -> usize {
 }
 
 #[test]
+fn runtime_panel_renders_unit_parameter_fields_as_compact_localized_rows() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("inspector.focus_unit:feed-1");
+    let active_detail = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .active_inspector_detail
+        .expect("expected active feed inspector detail");
+
+    let active_texts = render_active_inspector_texts(&mut app, active_detail);
+    assert!(
+        active_texts.iter().any(|text| text == "源温度")
+            && active_texts.iter().any(|text| text == "源压力")
+            && active_texts.iter().any(|text| text == "K")
+            && active_texts.iter().any(|text| text == "Pa")
+            && active_texts.iter().any(|text| text == "300")
+            && active_texts.iter().any(|text| text == "120000")
+            && active_texts.iter().any(|text| text == "已同步"),
+        "expected compact localized feed parameter rows, rendered texts: {active_texts:?}"
+    );
+    assert!(
+        active_texts
+            .iter()
+            .all(|text| text != "Source temperature (K)" && text != "Source pressure (Pa)")
+    );
+    assert!(active_texts.iter().all(|text| {
+        !text.contains("SI unit:") && !text.contains("the committed value is used by the solver")
+    }));
+}
+
+#[test]
 fn runtime_panel_keeps_developer_activity_sections_collapsed_by_default() {
     let mut app = ready_app_state(&synced_workspace_config());
     let window = app.platform_host.snapshot().window_model();

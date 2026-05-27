@@ -1386,12 +1386,12 @@ fn unit_parameter_invalid_notice(
     if field.key.ends_with(":outlet_pressure_pa") {
         if unit_outlet_pressure_cannot_exceed_inlet(unit) {
             return format!(
-                "{} must be a positive finite outlet absolute pressure in Pa and cannot exceed the connected inlet pressure limit.",
+                "{} must be a positive finite outlet pressure in Pa and cannot exceed connected inlet pressure.",
                 field.label
             );
         }
         return format!(
-            "{} must be a positive finite outlet absolute pressure in Pa.",
+            "{} must be a positive finite outlet pressure in Pa.",
             field.label
         );
     }
@@ -1407,28 +1407,28 @@ fn unit_parameter_constraint_text(
     match field {
         rf_ui::UnitInspectorDraftField::OutletTemperatureK => {
             if unit.kind == "feed" {
-                return "SI unit: K. Enter a positive finite source outlet temperature; the committed value is used by the solver and synced to the Feed outlet stream template.".to_string();
+                return "Unit K; positive finite source outlet temperature; commit syncs the Feed outlet template.".to_string();
             }
             if unit.kind == "flash_drum" {
-                return "SI unit: K. Enter a positive finite flash temperature; the committed value is used by the solver and synced to the Flash Drum liquid/vapor outlet stream templates.".to_string();
+                return "Unit K; positive finite flash temperature; commit syncs liquid/vapor outlet templates.".to_string();
             }
-            "SI unit: K. Enter a positive finite outlet temperature; the committed value is used by the solver and synced to the outlet stream template.".to_string()
+            "Unit K; positive finite outlet temperature; commit syncs the outlet stream template."
+                .to_string()
         }
         rf_ui::UnitInspectorDraftField::OutletPressurePa => {
             if unit_outlet_pressure_cannot_exceed_inlet(unit) {
-                let inlet_limit =
-                    connected_inlet_pressure_limit(flowsheet, unit).map(|pressure_pa| {
-                        format!(" Current inlet pressure limit: {pressure_pa:.0} Pa.")
-                    });
+                let inlet_limit = connected_inlet_pressure_limit(flowsheet, unit)
+                    .map(|pressure_pa| format!(" Inlet limit: {pressure_pa:.0} Pa."));
                 return format!(
-                    "SI unit: Pa. Enter a positive finite outlet absolute pressure; Mixer, Heater, Cooler, and Valve outlet pressure cannot exceed the connected inlet pressure limit.{}",
+                    "Unit Pa; positive finite outlet pressure; cannot exceed connected inlet pressure.{}",
                     inlet_limit.unwrap_or_default()
                 );
             }
             if unit.kind == "feed" {
-                return "SI unit: Pa. Enter a positive finite source outlet absolute pressure; the committed value is used by the solver and synced to the Feed outlet stream template.".to_string();
+                return "Unit Pa; positive finite source outlet pressure; commit syncs the Feed outlet template.".to_string();
             }
-            "SI unit: Pa. Enter a positive finite flash outlet pressure; the committed value is used by the solver and synced to the Flash Drum liquid/vapor outlet stream templates.".to_string()
+            "Unit Pa; positive finite flash pressure; commit syncs liquid/vapor outlet templates."
+                .to_string()
         }
     }
 }
