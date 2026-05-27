@@ -44,6 +44,15 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 - 选择 methane / ethane 会写入 `Flowsheet.components`；Stream Inspector 中的 composition 添加动作只从这份项目组分列表派生。
 - Feed composition 的数值修改仍在选中对应 stream 后，通过右侧 `检查器` 的字段草稿、`Normalize composition` 和提交命令完成。
 
+## β 第二刀验收口径
+
+下面两条案例用于验收“建模输入能力 v0”，重点不是自动生成流程，而是确认用户能用受控输入能力复现 official demo case：
+
+- 项目级输入必须显式选择 `binary-hydrocarbon-lite-v1`、methane、ethane。
+- Feed composition 和 Unit 参数必须通过 Inspector draft / commit / normalize 进入项目。
+- 保存 / 重开后再次运行必须收敛。
+- 结果核对必须来自最新 `SolveSnapshot`，而不是读取静态示例文件。
+
 ## Mixer-Flash 小案例
 
 目标流程：
@@ -65,11 +74,19 @@ Flash Drum -> liquid / vapor
 6. 接受 `Mixer` 的 `Create stream` suggestion，创建 mixer outlet。
 7. 为 `Flash Drum` 接受 `Connect stream` suggestion，把 mixer outlet 接到 flash inlet。
 8. 接受 `Flash Drum` 的 liquid / vapor 两个 outlet suggestion。
-9. 在右侧 `检查器` 中提交一组 SI 参数：
-   - `Feed 1` source temperature = `305 K`，source pressure = `130000 Pa`
-   - `Feed 2` source temperature = `315 K`，source pressure = `120000 Pa`
-   - `Mixer` outlet pressure = `90000 Pa`
-   - `Flash Drum` flash temperature = `300 K`，flash pressure = `85000 Pa`
+9. 在右侧 `检查器` 中提交这组 SI 输入：
+
+| 对象 | 字段 | 输入 |
+| --- | --- | ---: |
+| 物性包 | package | `binary-hydrocarbon-lite-v1` |
+| 项目组分 | components | methane, ethane |
+| Feed 1 outlet composition | methane / ethane | draft `0.2 / 0.6`，Normalize 后 `0.25 / 0.75` |
+| Feed 2 outlet composition | methane / ethane | draft `0.7 / 0.1`，Normalize 后 `0.875 / 0.125` |
+| Feed 1 | source temperature / pressure | `305 K` / `130000 Pa` |
+| Feed 2 | source temperature / pressure | `315 K` / `120000 Pa` |
+| Mixer | outlet pressure | `90000 Pa` |
+| Flash Drum | flash temperature / pressure | `300 K` / `85000 Pa` |
+
 10. 点击顶部 `运行`。
 11. 在右侧 `结果` 和底部 `结果表` 检查收敛结果；底部表应同时显示流股结果和单元最新步骤。
 12. 保存项目，重开后再次运行，确认结果仍可复现。
@@ -78,6 +95,9 @@ Flash Drum -> liquid / vapor
 当前可用的最小核对点：
 
 - `stream-mixer-1-outlet` 总摩尔流量应为两股 Feed 入口之和。
+- `stream-mixer-1-outlet` methane / ethane 组成应为 `0.5625 / 0.4375`。
+- `stream-mixer-1-outlet` pressure 应为 `90000 Pa`。
+- flash liquid outlet 的 temperature / pressure 应为 `300 K` / `85000 Pa`。
 - `Flash Drum` 应有 liquid / vapor 两个出口结果。
 - 保存重开后，unit / stream / port 绑定和已提交单元参数应保持。
 
@@ -101,18 +121,27 @@ Flash Drum -> liquid / vapor
 6. 接受 `Heater` 的 `Create stream` suggestion，创建 heater outlet。
 7. 为 `Flash Drum` 接受 `Connect stream` suggestion，把 heater outlet 接到 flash inlet。
 8. 接受 `Flash Drum` 的 liquid / vapor 两个 outlet suggestion。
-9. 在右侧 `检查器` 中提交一组 SI 参数：
-   - `Feed` source temperature / source pressure
-   - `Heater` outlet temperature / outlet pressure
-   - `Flash Drum` flash temperature / flash pressure
+9. 在右侧 `检查器` 中提交这组 SI 输入：
+
+| 对象 | 字段 | 输入 |
+| --- | --- | ---: |
+| 物性包 | package | `binary-hydrocarbon-lite-v1` |
+| 项目组分 | components | methane, ethane |
+| Feed outlet composition | methane / ethane | draft `0.2 / 0.6`，Normalize 后 `0.25 / 0.75` |
+| Feed | source temperature / pressure | `310 K` / `130000 Pa` |
+| Heater | outlet temperature / pressure | `358.5 K` / `90000 Pa` |
+| Flash Drum | flash temperature / pressure | `300 K` / `85000 Pa` |
+
 10. 点击顶部 `运行`。
 11. 在右侧 `结果` 中先看 heater outlet，再看 flash liquid / vapor outlet；底部 `结果表` 可同时核对 Heater 与 Flash Drum 的消费 / 产出流股。
 12. 保存项目，重开后再次运行。
 
 当前可用的最小核对点：
 
+- Feed outlet 结果中 methane / ethane 组成应为 `0.25 / 0.75`，temperature / pressure 应为 `310 K` / `130000 Pa`。
 - `Heater` outlet 结果应反映已提交的 outlet temperature / outlet pressure。
 - `Flash Drum` 的 inlet 应消费 heater outlet，而不是 Feed source stream。
+- flash liquid / vapor outlet 的 temperature / pressure 应为 `300 K` / `85000 Pa`，两股 outlet 的总摩尔流量之和应等于 Feed outlet 总摩尔流量。
 - 若 heater outlet pressure 高于已连接 inlet pressure，草稿会保持 invalid，不写回项目。
 
 ## 常见误解

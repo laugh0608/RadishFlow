@@ -1,5 +1,49 @@
 use super::*;
 
+fn assert_close(actual: f64, expected: f64) {
+    assert!(
+        (actual - expected).abs() <= 1e-12,
+        "expected {actual} to equal {expected}"
+    );
+}
+
+fn assert_stream_fraction(
+    stream: &radishflow_studio::StudioGuiWindowStreamResultModel,
+    component_id: &str,
+    expected: f64,
+) {
+    let row = stream
+        .composition_rows
+        .iter()
+        .find(|row| row.component_id == component_id)
+        .unwrap_or_else(|| panic!("expected {component_id} composition row"));
+    assert_close(row.fraction, expected);
+}
+
+fn normalize_stream_composition(app: &mut ReadyAppState, stream_id: &str, drafts: &[(&str, &str)]) {
+    app.dispatch_ui_command(format!("inspector.focus_stream:{stream_id}"));
+    for (component_id, raw_value) in drafts {
+        app.dispatch_inspector_field_draft_update(
+            radishflow_studio::inspector_draft_update_command_id(&format!(
+                "stream:{stream_id}:overall_mole_fraction:{component_id}"
+            )),
+            *raw_value,
+        );
+    }
+    let detail = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .active_inspector_detail
+        .expect("expected active stream inspector");
+    app.dispatch_inspector_composition_normalize(
+        detail
+            .property_composition_normalize_command_id
+            .expect("expected stream composition normalize command"),
+    );
+}
+
 #[test]
 fn canvas_viewport_navigation_records_inspector_focus_commands() {
     let (config, project_path) = flash_drum_local_rules_config();
@@ -478,7 +522,7 @@ fn blank_project_selects_thermo_basis_saves_reopens_and_runs_feed_flash_path() {
 }
 
 #[test]
-fn blank_project_heater_parameter_saves_reopens_and_reruns() {
+fn blank_project_heater_flash_demo_case_saves_reopens_and_reruns() {
     let (config, project_path) = blank_workspace_config();
     let mut app = ready_app_state(&config);
     select_builtin_binary_hydrocarbon_basis(&mut app);
@@ -504,17 +548,67 @@ fn blank_project_heater_parameter_saves_reopens_and_reruns() {
     accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.liquid");
     accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.vapor");
 
-    app.dispatch_ui_command("inspector.focus_unit:heater-1");
-    app.dispatch_inspector_field_draft_update(
-        radishflow_studio::inspector_draft_update_command_id("unit:heater-1:outlet_temperature_k"),
+    normalize_stream_composition(
+        &mut app,
+        "stream-feed-1-outlet",
+        &[("methane", "0.2"), ("ethane", "0.6")],
+    );
+
+    commit_unit_parameter(
+        &mut app,
+        "feed-1",
+        "unit:feed-1:outlet_temperature_k",
+        "310",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "feed-1",
+        "unit:feed-1:outlet_pressure_pa",
+        "130000",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "heater-1",
+        "unit:heater-1:outlet_temperature_k",
         "358.5",
     );
-    app.dispatch_inspector_field_draft_commit(
-        radishflow_studio::inspector_draft_commit_command_id("unit:heater-1:outlet_temperature_k"),
+    commit_unit_parameter(
+        &mut app,
+        "heater-1",
+        "unit:heater-1:outlet_pressure_pa",
+        "90000",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "flash-1",
+        "unit:flash-1:outlet_temperature_k",
+        "300",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "flash-1",
+        "unit:flash-1:outlet_pressure_pa",
+        "85000",
     );
 
     app.save_project();
     let saved = read_project_file(&project_path).expect("expected saved blank heater project");
+    assert_eq!(
+        saved.document.flowsheet.property_package_id(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert_eq!(saved.document.flowsheet.components.len(), 2);
+    let feed_stream = &saved.document.flowsheet.streams[&StreamId::new("stream-feed-1-outlet")];
+    assert_close(
+        feed_stream.overall_mole_fractions[&rf_types::ComponentId::new("methane")],
+        0.25,
+    );
+    assert_close(
+        feed_stream.overall_mole_fractions[&rf_types::ComponentId::new("ethane")],
+        0.75,
+    );
+    assert_eq!(feed_stream.temperature_k, 310.0);
+    assert_eq!(feed_stream.pressure_pa, 130_000.0);
     assert_eq!(
         saved.document.flowsheet.units[&UnitId::new("heater-1")]
             .parameters
@@ -524,6 +618,28 @@ fn blank_project_heater_parameter_saves_reopens_and_reruns() {
     assert_eq!(
         saved.document.flowsheet.streams[&StreamId::new("stream-heater-1-outlet")].temperature_k,
         358.5
+    );
+    assert_eq!(
+        saved.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_pressure_pa,
+        Some(90_000.0)
+    );
+    assert_eq!(
+        saved.document.flowsheet.streams[&StreamId::new("stream-heater-1-outlet")].pressure_pa,
+        90_000.0
+    );
+    assert_eq!(
+        saved.document.flowsheet.units[&UnitId::new("flash-1")]
+            .parameters
+            .outlet_temperature_k,
+        Some(300.0)
+    );
+    assert_eq!(
+        saved.document.flowsheet.units[&UnitId::new("flash-1")]
+            .parameters
+            .outlet_pressure_pa,
+        Some(85_000.0)
     );
 
     app.open_project(project_path.clone(), "project");
@@ -542,7 +658,21 @@ fn blank_project_heater_parameter_saves_reopens_and_reruns() {
         .iter()
         .find(|stream| stream.stream_id == "stream-heater-1-outlet")
         .expect("expected heater outlet result");
+    let feed = rerun
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected solve snapshot")
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-feed-1-outlet")
+        .expect("expected feed outlet result");
+    assert_eq!(feed.temperature_k, 310.0);
+    assert_eq!(feed.pressure_pa, 130_000.0);
+    assert_stream_fraction(feed, "methane", 0.25);
+    assert_stream_fraction(feed, "ethane", 0.75);
     assert_eq!(heated.temperature_k, 358.5);
+    assert_eq!(heated.pressure_pa, 90_000.0);
 
     let snapshot = rerun
         .runtime
@@ -592,6 +722,24 @@ fn blank_project_heater_parameter_saves_reopens_and_reruns() {
             .iter()
             .any(|stream| stream.stream_id == "stream-flash-1-vapor")
     );
+    let flash_liquid = snapshot
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-flash-1-liquid")
+        .expect("expected flash liquid result");
+    let flash_vapor = snapshot
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-flash-1-vapor")
+        .expect("expected flash vapor result");
+    assert_eq!(flash_liquid.temperature_k, 300.0);
+    assert_eq!(flash_liquid.pressure_pa, 85_000.0);
+    assert_eq!(flash_vapor.temperature_k, 300.0);
+    assert_eq!(flash_vapor.pressure_pa, 85_000.0);
+    assert_close(
+        flash_liquid.total_molar_flow_mol_s + flash_vapor.total_molar_flow_mol_s,
+        feed.total_molar_flow_mol_s,
+    );
 
     let export_path = project_path.with_extension("txt");
     app.export_solve_snapshot_to_path(snapshot, export_path.clone());
@@ -627,6 +775,17 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
     app.dispatch_ui_command("canvas.begin_place_unit.feed");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 140.0));
     accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-2");
+
+    normalize_stream_composition(
+        &mut app,
+        "stream-feed-1-outlet",
+        &[("methane", "0.2"), ("ethane", "0.6")],
+    );
+    normalize_stream_composition(
+        &mut app,
+        "stream-feed-2-outlet",
+        &[("methane", "0.7"), ("ethane", "0.1")],
+    );
 
     app.dispatch_ui_command("canvas.begin_place_unit.mixer");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(210.0, 90.0));
@@ -746,6 +905,8 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
         .expect("expected mixer outlet result");
     assert_eq!(solved_mixer_outlet.total_molar_flow_mol_s, 2.0);
     assert_eq!(solved_mixer_outlet.pressure_pa, 90_000.0);
+    assert_stream_fraction(solved_mixer_outlet, "methane", 0.5625);
+    assert_stream_fraction(solved_mixer_outlet, "ethane", 0.4375);
     let solved_flash_liquid = solved
         .runtime
         .latest_solve_snapshot
@@ -810,6 +971,16 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
     assert_eq!(
         stored_unit_port_stream_id(&saved, "flash-1", "vapor"),
         Some("stream-flash-1-vapor")
+    );
+    assert_close(
+        saved.document.flowsheet.streams[&StreamId::new("stream-feed-1-outlet")]
+            .overall_mole_fractions[&rf_types::ComponentId::new("methane")],
+        0.25,
+    );
+    assert_close(
+        saved.document.flowsheet.streams[&StreamId::new("stream-feed-2-outlet")]
+            .overall_mole_fractions[&rf_types::ComponentId::new("methane")],
+        0.875,
     );
     assert_eq!(
         saved
@@ -883,6 +1054,8 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
         .expect("expected mixer outlet rerun result");
     assert_eq!(rerun_mixer_outlet.total_molar_flow_mol_s, 2.0);
     assert_eq!(rerun_mixer_outlet.pressure_pa, 90_000.0);
+    assert_stream_fraction(rerun_mixer_outlet, "methane", 0.5625);
+    assert_stream_fraction(rerun_mixer_outlet, "ethane", 0.4375);
     assert!(
         rerun_streams
             .iter()

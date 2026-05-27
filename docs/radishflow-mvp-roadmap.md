@@ -10,13 +10,14 @@
 
 ## 当前结论
 
-截至 2026-05-26，M1-M5 都已越过 MVP 的最小完成线，MVP α 用户视角 smoke、首版 demo 前硬化期和 MVP β 第一刀也已阶段性收口：
+截至 2026-05-27，M1-M5 都已越过 MVP 的最小完成线，MVP α 用户视角 smoke、首版 demo 前硬化期和 MVP β 第一刀、第二刀也已阶段性收口：
 
 - Rust 内核和 Studio 可以跑通最小稳态流程。
 - `TP Flash`、`SolveSnapshot`、结果审阅和 `rf-ffi` JSON/error 基线已经形成可复验闭环。
 - `.NET 10` CAPE-OPEN / COM 适配层已完成 DWSIM / COFE 侧的关键 PME 兼容验证。
 - MVP β 第一刀：小案例作者体验 v0 已通过，当前不继续围绕同一阶段做细颗粒度打磨。
-- 当前主线切到 MVP β 第二刀：建模输入能力 v0；项目级物性包选择、项目组分选择和 Feed composition 输入主路径已经形成 focused 回归，下一步是 official demo case 复现验收。
+- MVP β 第二刀：建模输入能力 v0 已通过；项目级物性包选择、项目组分选择、Feed composition 输入、Unit 参数输入和 2 条 official demo case 复现验收已经形成 focused 回归，并通过 2026-05-27 仓库级验证。
+- 下一步先为 MVP β 后续能力包定题，优先评估“结果核对与案例说明 v0”或下一组真实建模 blocker。
 - 当前尚未达到正式 tag / release 节点标准，历史 `v26.5.1-dev` staging 材料不作为当前路线图事实源。
 
 当前不再把路线图作为每日推进清单。今天做什么、当前验证基线和暂不推进项，以 `docs/status/current.md` 为准；MVP α 验收清单保留为内部验收记录，不再作为当前日常推进主线。

@@ -15,6 +15,7 @@
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN / COM 适配层构建稳态流程模拟软件。
 - MVP 第一阶段 M1-M5、MVP α 内部验收和首版 demo 前硬化期已经阶段性收口。
 - **MVP β 第一刀：小案例作者体验 v0 已通过。**
+- **MVP β 第二刀：建模输入能力 v0 已通过。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 β 第一刀通过依据：
@@ -23,6 +24,13 @@
 - 两条路径均复用正式 placement / suggestion / Unit Inspector / run / save / reopen / result review / snapshot export 边界，不是项目向导、自由连线或自动建模系统。
 - 运行成功后可在右侧 `结果`、底部 `结果表` 和 `复制快照` / `导出文本` 中审阅同一份 `SolveSnapshot`。
 - 2026-05-26 仓库级验证 `pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
+
+β 第二刀通过依据：
+
+- 空白项目初始不预选物性包或组分；用户需显式选择 `binary-hydrocarbon-lite-v1`、methane、ethane。
+- 项目级物性包选择、项目组分选择、Feed composition draft / normalize / commit、Unit 参数输入、保存 / 重开和 `Preferred` run 已形成可复验闭环。
+- `Heater-Flash` 与 `Mixer-Flash` 两条 official demo case 已写清输入表和结果核对点，并由空白项目 focused 回归覆盖到最新 `SolveSnapshot`。
+- 2026-05-27 仓库级验证 `pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
 
 ## 当前开发策略
 
@@ -38,25 +46,20 @@
 
 ## 下阶段目标
 
-**MVP β 第二刀：建模输入能力 v0。**
+**MVP β 后续能力包：先定题，再实施。**
 
-目标是让用户不再只能跑固定样例，而是能在受控范围内配置组分、选择内置物性方法、输入 Feed 组成和单元参数，并运行一个自己定义的小流程。演示案例用于验收这组输入能力，不再作为主目标本身。
+建模输入能力 v0 已收口。下一步不继续补零散 UI 小项，优先在下面两类方向中选一个成组推进：
 
-优先级：
+- **结果核对与案例说明 v0**：把 official demo case 的输入、关键中间流股、flash 分割、焓值 / 相态等结果解释成用户可核对的说明和轻量导出能力。
+- **下一组高频建模能力**：在不引入完整组件库、完整物性包系统或自由连线编辑器的前提下，选择一个真实建模 blocker 成组推进。
 
-1. **组分输入 / 组分选择 v0**：先做内置小型组分目录，不做完整组分数据库；允许项目在受控范围内选择组分，并复用现有 Feed composition draft / normalize / commit 机制。
-2. **物性方法 / 物性包选择 v0**：先支持内置物性方法或内置 package 的显式选择，不加载第三方 Property Package；选择结果必须保存 / 重开后保持，并能影响求解路径或结果。
-3. **建模输入工作流 UI**：围绕“项目组分 / 物性方法 / Feed composition / Unit 参数 / 运行结果”串成可理解的工作流，不做独立大规模视觉精修。
-4. **demo case 验收**：用新的输入能力复现 2 个 official demo case，并写清参数、预期结果和核对点。
+候选未定前，不推进 tag、release notes、便携包刷新或对外发布自动化。
 
-阶段退出标准：
+后续能力包判断标准：
 
-- 用户可在受控范围内选择项目组分，并能编辑 Feed 组成后运行。
-- 用户可选择一个内置物性方法 / package；该选择进入项目持久化，保存 / 重开后仍可运行。
-- 至少 2 个 official demo case 由这套输入能力支撑，而不是只依赖硬编码固定样例。
-- 每个 demo case 有明确的结果核对点，能解释温度、压力、流量、相态、焓值或 flash 分割中的关键变化。
-- 相关核心路径有 focused 自动化验证；阶段收口时跑 `pwsh ./scripts/check-repo.ps1`。
-- 不引入完整组分数据库、完整物性包系统、第三方 Property Package 加载、完整报表、自由连线、自动布线或完整参数表。
+- 能服务用户真实建模或结果判断路径。
+- 有明确退出标准和 focused 验证。
+- 不引入当前暂不推进项中的复杂度。
 
 当前推进切片：
 
@@ -66,7 +69,8 @@
 - 已修正空白项目主路径：新建未命名空白项目不再预写默认物性包和默认组分；用户需从受控内置列表显式选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane 后，再进入 Feed composition、单元参数、运行、保存 / 重开路径。
 - 已修正 Unit Inspector 参数输入页 blocker：单元参数不再用窄表格挤压长字段说明，改为本地化短标签、输入框、单位、状态和操作的紧凑行布局；约束提示缩短为辅助说明，不再把英文长句挤成竖排。
 - 已补 Feed composition 输入主路径回归：从 official Heater-Flash 示例复制临时项目，走真实 Stream Inspector draft update / normalize / save / reopen / Preferred run 路径，把 `stream-feed` 组成从草稿归一到 methane 0.25 / ethane 0.75，并在保存项目和求解结果中核对。
-- 下一步转入 official demo case 复现验收：把项目组分、内置物性包、Feed composition 和 Unit 参数串成 1-2 条有明确输入表与结果核对点的小案例。
+- 已推进 official demo case 复现验收：`docs/guides/author-small-cases.md` 写清 `Heater-Flash` 与 `Mixer-Flash` 两条输入表和结果核对点；空白项目 focused 回归覆盖项目组分、内置物性包、Feed composition、Unit 参数、保存 / 重开、Preferred run 与 `SolveSnapshot` 核对。
+- 下一步为 β 后续能力包定题：优先评估“结果核对与案例说明 v0”是否作为下一刀；不回到已通过阶段的零散 UI 打磨。
 
 ## 验证节奏
 
