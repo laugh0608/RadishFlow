@@ -54,18 +54,18 @@
 
 ## 下阶段目标
 
-**MVP β 后续能力包：结果核对与案例说明 v0 第一版已落地，下一步先复核验收，再决定后续能力包。**
+**MVP β 下一建议能力包：失败修复闭环 v0。**
 
-建模输入能力 v0 已收口。当前不继续补零散 UI 小项，结果核对与案例说明 v0 已先围绕 official demo case 落地第一版。后续若继续推进，应在下面两类方向中选一个成组推进：
+建模输入能力 v0、结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0 均已完成 focused 收口。下一步建议围绕真实建模失败修复路径成组推进，而不是回到 UI 文案、hover、selector、用户 guide 或同构 Home 作者入口。
 
+- **失败修复闭环 v0**：围绕缺物性包、缺项目组分、缺 stream composition、单元参数越界、断连 / 漏连这几类真实 blocker，核对诊断码、recovery target、Inspector focus、修复命令、保存 / 重开后的 rerun 是否稳定。
 - **结果核对与案例说明后续增强**：只补真实审阅 blocker，例如轻量导出仍缺失关键字段、case 说明与 `SolveSnapshot` 行为不一致、focused 验证漏掉正式核对路径。
-- **下一组高频建模能力**：在不引入完整组件库、完整物性包系统或自由连线编辑器的前提下，选择一个真实建模 blocker 成组推进。
 
 上一组高频建模能力 **受控连接恢复 v0** 已完成 focused 收口：选中 stream 后的 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 和 `Delete stream` 已锁定到正式 `DocumentCommand` / undo / save / reopen / rerun 路径；`Reconnect stream` 只补齐唯一、未占用且不会形成 unit dependency cycle 的端点。
 
 当前下一组高频建模能力 **剩余单元建模闭环 v0** 已完成 focused 收口：在不新增 Home 作者入口、不补用户 guide、不做 UI 小打磨的前提下，确认 `Cooler` / `Valve` 也能从空白项目通过现有 placement / suggestion / Inspector 输入完成 `Feed -> Cooler -> Flash Drum` 与 `Feed -> Valve -> Flash Drum`，并覆盖保存 / 重开 / rerun、关键中间流股、flash 分割、相态和焓值核对路径。
 
-候选未定前，不推进 tag、release notes、便携包刷新或对外发布自动化。
+失败修复闭环 v0 未收口前，不推进 tag、release notes、便携包刷新或对外发布自动化。
 
 后续能力包判断标准：
 
@@ -87,7 +87,7 @@
 - 已修正缺少流股组成时的求解诊断：下游单元消费未提交 composition 的流股时，solver 现在返回 `solver.step.stream_input`，并携带相关 stream 与 inlet 端口；Run Panel 恢复动作聚焦到流股输入，而不是泛化为单元执行失败。
 - 已完成受控连接恢复 v0 focused 收口：验证锁定 official Heater-Flash case 中 selected stream 断开 sink、重连唯一 Flash inlet、保存 / 重开 / rerun 后仍由 Flash Drum 消费 heater outlet 的闭环。
 - 已完成剩余单元建模闭环 v0 focused 收口：补 focused 验证覆盖空白项目中显式选择内置物性包 / 组分后，手工搭建 `Feed -> Cooler -> Flash Drum` 与 `Feed -> Valve -> Flash Drum`，提交 Feed composition 和单元参数，保存 / 重开 / rerun，并核对中间流股、flash consumed stream、液/汽出口、相态 / `H` 基础审阅对象；2026-05-27 仓库级验证 `pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
-- 下一步先选择新的能力包或真实 blocker，不回到已通过阶段的零散 UI 打磨。
+- 下一步建议推进失败修复闭环 v0，不回到已通过阶段的零散 UI 打磨。
 
 ## 验证节奏
 

@@ -17,7 +17,8 @@
 - `.NET 10` CAPE-OPEN / COM 适配层已完成 DWSIM / COFE 侧的关键 PME 兼容验证。
 - MVP β 第一刀：小案例作者体验 v0 已通过，当前不继续围绕同一阶段做细颗粒度打磨。
 - MVP β 第二刀：建模输入能力 v0 已通过；项目级物性包选择、项目组分选择、Feed composition 输入、Unit 参数输入和 2 条 official demo case 复现验收已经形成 focused 回归，并通过 2026-05-27 仓库级验证。
-- 下一步先为 MVP β 后续能力包定题，优先评估“结果核对与案例说明 v0”或下一组真实建模 blocker。
+- MVP β 后续能力包已完成多组 focused 收口：结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0。
+- 下一步建议进入失败修复闭环 v0，围绕缺物性包、缺组分、缺 composition、参数越界和断连 / 漏连这类真实 blocker，核对诊断、recovery target、Inspector focus、修复命令和保存 / 重开 / rerun 稳定性。
 - 当前尚未达到正式 tag / release 节点标准，历史 `v26.5.1-dev` staging 材料不作为当前路线图事实源。
 
 当前不再把路线图作为每日推进清单。今天做什么、当前验证基线和暂不推进项，以 `docs/status/current.md` 为准；MVP α 验收清单保留为内部验收记录，不再作为当前日常推进主线。
@@ -79,11 +80,11 @@
 后续路线图不再服务开放式扩张，而是服务更大颗粒的 MVP β 能力包：
 
 - 已通过的 `Mixer-Flash` 与 `Heater-Flash` 作者入口只修真实 blocker，不继续补同构入口、hover、按钮文案或 selector 小细节。
-- 下一阶段优先扩建模输入能力：项目组分选择、内置物性方法 / package 选择、Feed composition 输入和单元参数输入应形成一条可理解工作流。
+- 建模输入能力已完成 v0 收口：项目组分选择、内置物性方法 / package 选择、Feed composition 输入和单元参数输入已形成可保存 / 重开 / 运行的受控工作流。
 - 组分输入 v0 只覆盖内置小型组分目录，不做完整组分数据库；物性方法 v0 只覆盖内置方法 / package，不加载第三方 Property Package。
 - 当前 Studio 已把内置 `binary-hydrocarbon-lite-v1` 物性包选择和 methane / ethane 项目组分选择暴露在左侧 `项目` 面板和右侧 `物性包` 页；空白项目初始不预选，用户显式选择后才写入项目。这只是受控输入能力，不代表完整组分数据库或物性包浏览器。
-- demo case 作为验收方式：至少 2 个 official demo case 应由新的输入能力支撑，并能写清参数、预期结果和核对点。
-- `Feed -> Valve -> Flash Drum` 作者路径、更多作者 checklist 和轻量报表增强先进入 backlog；只有当它们服务建模输入能力验收或暴露真实 blocker 时再推进。
+- demo case 作为验收方式：`Heater-Flash` 与 `Mixer-Flash` 已覆盖 official demo case 输入和结果核对；`Cooler-Flash` 与 `Valve-Flash` 已用内部 focused test 覆盖空白项目建模闭环，但不新增 Home 作者入口或用户 guide。
+- 更多作者 checklist、同构 Home 入口和轻量报表增强先进入 backlog；只有当它们服务真实 blocker 修复或阶段验收时再推进。
 - CAPE-OPEN / PME 只修真实验证暴露的 blocker，不继续主动扩第三方宿主矩阵。
 - Studio UI 优化只做主路径和明确专题；不扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
 
