@@ -53,6 +53,20 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 - 保存 / 重开后再次运行必须收敛。
 - 结果核对必须来自最新 `SolveSnapshot`，而不是读取静态示例文件。
 
+## 结果核对与案例说明 v0
+
+本节面向已经运行成功的用户，说明如何把结果从“有数值”核对到“路径、相态和焓值都可解释”。这里的 official demo case 指仓库内置示例文件：
+
+- `examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json`
+- `examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json`
+
+Home 作者入口从空白项目复现时，流股 ID 会按当前 canvas 生成，例如 `stream-feed-1-outlet`、`stream-heater-1-outlet`、`stream-mixer-1-outlet`。这些 ID 不需要和 official demo 文件完全相同；核对时看同一类对象和同一条 `SolveSnapshot` 链路：
+
+- `Streams`：关键输入流股、非 flash 中间流股、flash outlet 的 `T / P / F / H / composition / phases / bubble_dew_window`
+- `Units` / `Steps`：每个单元实际消费和产出的流股引用
+- `Flash Drum`：flash inlet 是否来自上游中间流股，以及 liquid / vapor outlet 的流量分割和相态
+- `复制快照` / `导出文本`：应包含同一份快照里的流股、单元、步骤和诊断，不写项目文件，也不重新求解
+
 ## Mixer-Flash 小案例
 
 目标流程：
@@ -101,6 +115,17 @@ Flash Drum -> liquid / vapor
 - `Flash Drum` 应有 liquid / vapor 两个出口结果。
 - 保存重开后，unit / stream / port 绑定和已提交单元参数应保持。
 
+Official demo case 的结果核对路径：
+
+| 核对对象 | 预期 |
+| --- | --- |
+| 输入流股 | `stream-feed-a` 为 `300 K / 650000 Pa / 2 mol/s / z=0.2 methane, 0.8 ethane`；`stream-feed-b` 为 `300 K / 650000 Pa / 3 mol/s / z=0.2 methane, 0.8 ethane` |
+| Mixer step | `mixer-1` 消费 `stream-feed-a`、`stream-feed-b`，产出 `stream-mix-out` |
+| 中间流股 | `stream-mix-out` 为 `300 K / 650000 Pa / 5 mol/s / z=0.2 methane, 0.8 ethane`，并带有已物化 `H` 与 `bubble_dew_window` |
+| Flash step | `flash-1` 消费 `stream-mix-out`，产出 `stream-liquid`、`stream-vapor` |
+| Flash 分割 | liquid 与 vapor 均为非零流量，二者总摩尔流量之和等于 `stream-mix-out` |
+| 相态 / 焓值 | liquid outlet 应有 Liquid phase row，vapor outlet 应有 Vapor phase row；两股 flowing outlet 都应带 `H`，窗口 `phase_region` 为 two-phase |
+
 ## Heater-Flash 小案例
 
 目标流程：
@@ -143,6 +168,17 @@ Flash Drum -> liquid / vapor
 - `Flash Drum` 的 inlet 应消费 heater outlet，而不是 Feed source stream。
 - flash liquid / vapor outlet 的 temperature / pressure 应为 `300 K` / `85000 Pa`，两股 outlet 的总摩尔流量之和应等于 Feed outlet 总摩尔流量。
 - 若 heater outlet pressure 高于已连接 inlet pressure，草稿会保持 invalid，不写回项目。
+
+Official demo case 的结果核对路径：
+
+| 核对对象 | 预期 |
+| --- | --- |
+| 输入流股 | `stream-feed` 为 `300 K / 120000 Pa / 5 mol/s / z=0.35 methane, 0.65 ethane`，并带有已物化 `H` 与窗口 |
+| Heater step | `heater-1` 消费 `stream-feed`，产出 `stream-heated` |
+| 中间流股 | `stream-heated` 为 `345 K / 95000 Pa / 5 mol/s / z=0.35 methane, 0.65 ethane`，并带有已物化 `H` 与 `bubble_dew_window` |
+| Flash step | `flash-1` 消费 `stream-heated`，产出 `stream-liquid`、`stream-vapor` |
+| Flash 分割 | 当前 official hydrocarbon 条件为 vapor-only：`stream-liquid` 总摩尔流量为 `0`，`stream-vapor` 总摩尔流量等于 `stream-heated` |
+| 相态 / 焓值 | `stream-liquid` 允许缺席 phase rows、`H` 和窗口；`stream-vapor` 应有 Vapor phase row、已物化 `H`，窗口 `phase_region` 为 vapor-only |
 
 ## 常见误解
 

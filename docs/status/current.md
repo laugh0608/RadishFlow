@@ -16,6 +16,7 @@
 - MVP 第一阶段 M1-M5、MVP α 内部验收和首版 demo 前硬化期已经阶段性收口。
 - **MVP β 第一刀：小案例作者体验 v0 已通过。**
 - **MVP β 第二刀：建模输入能力 v0 已通过。**
+- **MVP β 后续能力包：结果核对与案例说明 v0 已落地第一版。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 β 第一刀通过依据：
@@ -32,6 +33,12 @@
 - `Heater-Flash` 与 `Mixer-Flash` 两条 official demo case 已写清输入表和结果核对点，并由空白项目 focused 回归覆盖到最新 `SolveSnapshot`。
 - 2026-05-27 仓库级验证 `pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
 
+结果核对与案例说明 v0 第一版依据：
+
+- `docs/guides/author-small-cases.md` 已按 official hydrocarbon `Heater-Flash` / `Mixer-Flash` demo case 整理关键输入、关键中间流股、flash 分割、相态和焓值核对路径。
+- `docs/guides/review-solve-results.md` 已把小案例审阅顺序从“先看哪些对象”细化为输入流股、非 flash 中间流股、unit step、flash 分割、相态 / `H` 和轻量导出的核对链路。
+- focused 验证覆盖 solver `SolveSnapshot` 中 official demo case 的输入、中间流股、unit step 消费 / 产出、flash 分割、相态 / `H`，并覆盖 Studio window-model 轻量导出是否保留这些核对对象。
+
 ## 当前开发策略
 
 当前项目由个人开发者推进，后续不再用“持续补细颗粒度体验缺口”的方式消耗主线节奏。已经通过的阶段只修真实 blocker：
@@ -46,11 +53,11 @@
 
 ## 下阶段目标
 
-**MVP β 后续能力包：先定题，再实施。**
+**MVP β 后续能力包：结果核对与案例说明 v0 第一版已落地，下一步先复核验收，再决定后续能力包。**
 
-建模输入能力 v0 已收口。下一步不继续补零散 UI 小项，优先在下面两类方向中选一个成组推进：
+建模输入能力 v0 已收口。当前不继续补零散 UI 小项，结果核对与案例说明 v0 已先围绕 official demo case 落地第一版。后续若继续推进，应在下面两类方向中选一个成组推进：
 
-- **结果核对与案例说明 v0**：把 official demo case 的输入、关键中间流股、flash 分割、焓值 / 相态等结果解释成用户可核对的说明和轻量导出能力。
+- **结果核对与案例说明后续增强**：只补真实审阅 blocker，例如轻量导出仍缺失关键字段、case 说明与 `SolveSnapshot` 行为不一致、focused 验证漏掉正式核对路径。
 - **下一组高频建模能力**：在不引入完整组件库、完整物性包系统或自由连线编辑器的前提下，选择一个真实建模 blocker 成组推进。
 
 候选未定前，不推进 tag、release notes、便携包刷新或对外发布自动化。
@@ -70,7 +77,8 @@
 - 已修正 Unit Inspector 参数输入页 blocker：单元参数不再用窄表格挤压长字段说明，改为本地化短标签、输入框、单位、状态和操作的紧凑行布局；约束提示缩短为辅助说明，不再把英文长句挤成竖排。
 - 已补 Feed composition 输入主路径回归：从 official Heater-Flash 示例复制临时项目，走真实 Stream Inspector draft update / normalize / save / reopen / Preferred run 路径，把 `stream-feed` 组成从草稿归一到 methane 0.25 / ethane 0.75，并在保存项目和求解结果中核对。
 - 已推进 official demo case 复现验收：`docs/guides/author-small-cases.md` 写清 `Heater-Flash` 与 `Mixer-Flash` 两条输入表和结果核对点；空白项目 focused 回归覆盖项目组分、内置物性包、Feed composition、Unit 参数、保存 / 重开、Preferred run 与 `SolveSnapshot` 核对。
-- 下一步为 β 后续能力包定题：优先评估“结果核对与案例说明 v0”是否作为下一刀；不回到已通过阶段的零散 UI 打磨。
+- 已推进结果核对与案例说明 v0 第一版：两条 official demo case 的输入、中间流股、flash 分割、相态 / 焓值核对路径已写入 guide，并补 focused test 锁定 solver snapshot 与 Studio 轻量导出的关键审阅对象。
+- 下一步先复核结果核对与案例说明 v0 的验收边界；若没有真实 blocker，再选择下一组高频建模能力，不回到已通过阶段的零散 UI 打磨。
 
 ## 验证节奏
 

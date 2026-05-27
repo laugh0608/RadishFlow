@@ -159,6 +159,42 @@ fn assert_flash_consumes_stream(snapshot: &rf_solver::SolveSnapshot, stream_id: 
     );
 }
 
+fn assert_unit_step_stream_path(
+    snapshot: &rf_solver::SolveSnapshot,
+    unit_id: &str,
+    consumed_stream_ids: &[&str],
+    produced_stream_ids: &[&str],
+) {
+    let step = snapshot
+        .steps
+        .iter()
+        .find(|step| step.unit_id == UnitId::new(unit_id))
+        .unwrap_or_else(|| panic!("expected solve step for unit `{unit_id}`"));
+
+    assert_eq!(
+        step.consumed_streams
+            .iter()
+            .map(|stream| stream.id.clone())
+            .collect::<Vec<_>>(),
+        consumed_stream_ids
+            .iter()
+            .map(|stream_id| StreamId::new(*stream_id))
+            .collect::<Vec<_>>(),
+        "unexpected consumed streams for unit `{unit_id}`"
+    );
+    assert_eq!(
+        step.produced_streams
+            .iter()
+            .map(|stream| stream.id.clone())
+            .collect::<Vec<_>>(),
+        produced_stream_ids
+            .iter()
+            .map(|stream_id| StreamId::new(*stream_id))
+            .collect::<Vec<_>>(),
+        "unexpected produced streams for unit `{unit_id}`"
+    );
+}
+
 fn assert_stream_materializes_overall_enthalpy(
     snapshot: &rf_solver::SolveSnapshot,
     stream_id: &str,
@@ -213,6 +249,20 @@ fn assert_stream_materializes_overall_enthalpy(
             .expect("expected overall phase enthalpy"),
         expected_overall_enthalpy,
         1e-9,
+    );
+}
+
+fn assert_stream_has_overall_enthalpy(snapshot: &rf_solver::SolveSnapshot, stream_id: &str) {
+    let stream = snapshot
+        .stream(&StreamId::new(stream_id))
+        .expect("expected stream");
+    assert!(
+        stream
+            .phases
+            .iter()
+            .any(|phase| phase.label == PhaseLabel::Overall
+                && phase.molar_enthalpy_j_per_mol.is_some()),
+        "expected `{stream_id}` to carry overall molar enthalpy"
     );
 }
 
@@ -503,6 +553,101 @@ fn solve_near_boundary_case_with_provider<F>(
 }
 
 #[test]
+fn feed_mixer_flash_binary_hydrocarbon_result_review_path_stays_auditable() {
+    let provider = build_binary_hydrocarbon_lite_provider();
+    let snapshot = solve_example_with_provider(
+        include_str!(
+            "../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+        ),
+        &provider,
+    );
+
+    assert_eq!(snapshot.status, SolveStatus::Converged);
+    assert_eq!(snapshot.steps.len(), 4);
+
+    for stream_id in ["stream-feed-a", "stream-feed-b"] {
+        let feed = snapshot
+            .stream(&StreamId::new(stream_id))
+            .expect("expected feed result");
+        assert_close(feed.temperature_k, 300.0, 1e-12);
+        assert_close(feed.pressure_pa, 650_000.0, 1e-12);
+        assert_close(
+            *feed
+                .overall_mole_fractions
+                .get(&ComponentId::new("methane"))
+                .expect("expected methane"),
+            0.2,
+            1e-12,
+        );
+        assert_stream_materializes_overall_enthalpy(&snapshot, stream_id, &provider);
+        assert_stream_materializes_bubble_dew_window(&snapshot, stream_id, &provider);
+    }
+
+    let feed_a = snapshot
+        .stream(&StreamId::new("stream-feed-a"))
+        .expect("expected feed a result");
+    let feed_b = snapshot
+        .stream(&StreamId::new("stream-feed-b"))
+        .expect("expected feed b result");
+    assert_close(feed_a.total_molar_flow_mol_s, 2.0, 1e-12);
+    assert_close(feed_b.total_molar_flow_mol_s, 3.0, 1e-12);
+
+    assert_unit_step_stream_path(
+        &snapshot,
+        "mixer-1",
+        &["stream-feed-a", "stream-feed-b"],
+        &["stream-mix-out"],
+    );
+    let mixed = snapshot
+        .stream(&StreamId::new("stream-mix-out"))
+        .expect("expected mixer outlet result");
+    assert_close(
+        mixed.total_molar_flow_mol_s,
+        feed_a.total_molar_flow_mol_s + feed_b.total_molar_flow_mol_s,
+        1e-12,
+    );
+    assert_close(mixed.temperature_k, 300.0, 1e-12);
+    assert_close(mixed.pressure_pa, 650_000.0, 1e-12);
+    assert_close(
+        *mixed
+            .overall_mole_fractions
+            .get(&ComponentId::new("methane"))
+            .expect("expected methane"),
+        0.2,
+        1e-12,
+    );
+    assert_stream_materializes_overall_enthalpy(&snapshot, "stream-mix-out", &provider);
+    assert_two_phase_window_spans_solver_stream(&snapshot, "stream-mix-out");
+
+    assert_unit_step_stream_path(
+        &snapshot,
+        "flash-1",
+        &["stream-mix-out"],
+        &["stream-liquid", "stream-vapor"],
+    );
+    assert_flash_consumes_stream(&snapshot, "stream-mix-out");
+
+    let liquid = snapshot
+        .stream(&StreamId::new("stream-liquid"))
+        .expect("expected liquid outlet result");
+    let vapor = snapshot
+        .stream(&StreamId::new("stream-vapor"))
+        .expect("expected vapor outlet result");
+    assert_eq!(liquid.phases[1].label, PhaseLabel::Liquid);
+    assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
+    assert!(liquid.total_molar_flow_mol_s > 0.0);
+    assert!(vapor.total_molar_flow_mol_s > 0.0);
+    assert_close(
+        liquid.total_molar_flow_mol_s + vapor.total_molar_flow_mol_s,
+        mixed.total_molar_flow_mol_s,
+        1e-12,
+    );
+    assert_stream_has_overall_enthalpy(&snapshot, "stream-liquid");
+    assert_stream_has_overall_enthalpy(&snapshot, "stream-vapor");
+    assert_flash_outlet_boundary_windows(&snapshot, "stream-liquid", "stream-vapor");
+}
+
+#[test]
 fn feed_mixer_flash_project_solves_end_to_end() {
     let provider = build_synthetic_demo_provider();
     let snapshot = solve_example_result_with_provider_and_edit(
@@ -671,6 +816,96 @@ fn feed_heater_flash_binary_hydrocarbon_project_solves_end_to_end() {
     assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
     assert_close(liquid.total_molar_flow_mol_s, 0.0, 1e-12);
     assert!(liquid.bubble_dew_window.is_none());
+    let vapor_window = vapor
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected vapor outlet bubble/dew window");
+    assert_eq!(vapor_window.phase_region, PhaseEquilibriumRegion::VaporOnly);
+}
+
+#[test]
+fn feed_heater_flash_binary_hydrocarbon_result_review_path_stays_auditable() {
+    let provider = build_binary_hydrocarbon_lite_provider();
+    let snapshot = solve_example_with_provider(
+        include_str!(
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ),
+        &provider,
+    );
+
+    assert_eq!(snapshot.status, SolveStatus::Converged);
+    assert_eq!(snapshot.steps.len(), 3);
+
+    let feed = snapshot
+        .stream(&StreamId::new("stream-feed"))
+        .expect("expected feed result");
+    assert_close(feed.temperature_k, 300.0, 1e-12);
+    assert_close(feed.pressure_pa, 120_000.0, 1e-12);
+    assert_close(feed.total_molar_flow_mol_s, 5.0, 1e-12);
+    assert_close(
+        *feed
+            .overall_mole_fractions
+            .get(&ComponentId::new("methane"))
+            .expect("expected methane"),
+        0.35,
+        1e-12,
+    );
+    assert_stream_materializes_overall_enthalpy(&snapshot, "stream-feed", &provider);
+    assert_stream_materializes_bubble_dew_window(&snapshot, "stream-feed", &provider);
+
+    assert_unit_step_stream_path(&snapshot, "heater-1", &["stream-feed"], &["stream-heated"]);
+    let heated = snapshot
+        .stream(&StreamId::new("stream-heated"))
+        .expect("expected heated outlet result");
+    assert_close(heated.temperature_k, 345.0, 1e-12);
+    assert_close(heated.pressure_pa, 95_000.0, 1e-12);
+    assert_close(
+        heated.total_molar_flow_mol_s,
+        feed.total_molar_flow_mol_s,
+        1e-12,
+    );
+    assert_close(
+        *heated
+            .overall_mole_fractions
+            .get(&ComponentId::new("methane"))
+            .expect("expected methane"),
+        0.35,
+        1e-12,
+    );
+    assert_stream_materializes_overall_enthalpy(&snapshot, "stream-heated", &provider);
+    let heated_window = heated
+        .bubble_dew_window
+        .as_ref()
+        .expect("expected heated outlet bubble/dew window");
+    assert_eq!(
+        heated_window.phase_region,
+        PhaseEquilibriumRegion::VaporOnly
+    );
+
+    assert_unit_step_stream_path(
+        &snapshot,
+        "flash-1",
+        &["stream-heated"],
+        &["stream-liquid", "stream-vapor"],
+    );
+    assert_flash_consumes_stream(&snapshot, "stream-heated");
+
+    let liquid = snapshot
+        .stream(&StreamId::new("stream-liquid"))
+        .expect("expected liquid outlet result");
+    let vapor = snapshot
+        .stream(&StreamId::new("stream-vapor"))
+        .expect("expected vapor outlet result");
+    assert_close(liquid.total_molar_flow_mol_s, 0.0, 1e-12);
+    assert_close(
+        vapor.total_molar_flow_mol_s,
+        heated.total_molar_flow_mol_s,
+        1e-12,
+    );
+    assert!(liquid.phases.is_empty());
+    assert!(liquid.bubble_dew_window.is_none());
+    assert_eq!(vapor.phases[1].label, PhaseLabel::Vapor);
+    assert_stream_materializes_overall_enthalpy(&snapshot, "stream-vapor", &provider);
     let vapor_window = vapor
         .bubble_dew_window
         .as_ref()

@@ -45,21 +45,29 @@
 
 ## 小案例作者路径的结果核对
 
-从 `Mixer-Flash` 作者路径运行后，优先核对：
+从 `Mixer-Flash` 作者路径运行后，先按下面链路核对：
 
-- `stream-mixer-1-outlet`：总摩尔流量应为两股 Feed outlet 之和
+- 输入流股：两股 Feed outlet 的 `T / P / F / composition / H / bubble_dew_window`
+- 中间流股：mixer outlet 的总摩尔流量应为两股 Feed outlet 之和，composition 应为摩尔流量加权结果
 - `Mixer` 单元结果：输入流股应包含两个 Feed outlet，产出流股应是 mixer outlet
 - `Flash Drum` 单元结果：输入流股应是 mixer outlet，产出流股应包含 liquid / vapor
+- Flash 分割：liquid / vapor 两股 outlet 的总摩尔流量之和应等于 flash inlet
+- 相态 / 焓值：flowing outlet 应能看到 phase row 和 `H`；two-phase case 中 liquid / vapor outlet 的窗口分别落在 bubble / dew 边界
 - 右侧 `结果` 区的复制 / 导出文本应来自同一份最新 `SolveSnapshot`
 
-从 `Heater-Flash` 作者路径运行后，优先核对：
+从 `Heater-Flash` 作者路径运行后，先按下面链路核对：
 
-- heater outlet：温度和压力应反映已提交的 `Heater` outlet temperature / outlet pressure
+- 输入流股：Feed outlet 的 `T / P / F / composition / H / bubble_dew_window`
+- 中间流股：heater outlet 的温度和压力应反映已提交的 `Heater` outlet temperature / outlet pressure
 - `Heater` 单元结果：输入流股应是 Feed outlet，产出流股应是 heater outlet
 - `Flash Drum` 单元结果：输入流股应是 heater outlet，不应直接消费 Feed outlet
+- Flash 分割：liquid / vapor 两股 outlet 的总摩尔流量之和应等于 flash inlet；若是 vapor-only 条件，零流量 liquid outlet 允许缺席 phase rows、`H` 和窗口
+- 相态 / 焓值：flowing vapor outlet 应能看到 Vapor phase row、`H` 和 vapor-only 窗口
 - flash liquid / vapor outlet：应能在 stream result 和 unit result 中互相定位
 
 这些核对只读消费运行后的 `SolveSnapshot`。如果结果不符合预期，先回到 `检查器` 查看单元参数是否已经提交，再检查 Canvas suggestion 是否已经把对应 source / sink 端点补齐。
+
+official hydrocarbon demo 的稳定数值口径详见 `docs/guides/author-small-cases.md` 中的“结果核对与案例说明 v0”。本文只说明阅读顺序，不复制每个示例的输入表。
 
 ## 先定 selector，再看 comparison / unit
 

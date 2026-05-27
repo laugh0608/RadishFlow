@@ -97,6 +97,44 @@ fn solve_snapshot_light_text_export_uses_current_snapshot_results() {
     );
 }
 
+#[test]
+fn official_binary_demo_case_exports_keep_result_review_paths() {
+    for (project_json, intermediate_stream_id, upstream_unit_id) in [
+        (
+            include_str!(
+                "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-heated",
+            "heater-1",
+        ),
+        (
+            include_str!(
+                "../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-mix-out",
+            "mixer-1",
+        ),
+    ] {
+        let snapshot = solve_binary_hydrocarbon_lite_snapshot(project_json);
+        let text = snapshot.light_text_export();
+
+        assert!(text.contains(intermediate_stream_id));
+        assert!(text.contains("stream-liquid"));
+        assert!(text.contains("stream-vapor"));
+        assert!(text.contains("phase_region="));
+        assert!(
+            text.contains("J/mol"),
+            "export should carry materialized H text for `{intermediate_stream_id}`"
+        );
+        assert!(text.contains(upstream_unit_id));
+        assert!(text.contains("flash-1"));
+        assert!(
+            text.contains(&format!("{intermediate_stream_id} (T ")),
+            "unit/step rows should keep the intermediate stream reference summary"
+        );
+    }
+}
+
 fn assert_flash_consumer_preserves_snapshot_stream_reference(
     snapshot: &crate::StudioGuiWindowSolveSnapshotModel,
     stream_id: &str,
