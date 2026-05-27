@@ -1368,6 +1368,55 @@ fn sequential_solver_reports_step_context_for_unit_execution_failures() {
 }
 
 #[test]
+fn sequential_solver_reports_stream_input_context_for_missing_composition() {
+    let provider = build_provider();
+    let flash_solver = PlaceholderTpFlashSolver;
+    let services = SolverServices {
+        thermo: &provider,
+        flash_solver: &flash_solver,
+    };
+    let mut flowsheet = build_feed_heater_flash_flowsheet();
+    flowsheet
+        .streams
+        .get_mut(&"stream-feed".into())
+        .expect("expected feed stream")
+        .overall_mole_fractions
+        .clear();
+
+    let error = SequentialModularSolver
+        .solve(&services, &flowsheet)
+        .expect_err("expected stream input validation failure");
+
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("solver.step.stream_input")
+    );
+    assert!(error.message().contains("stream input validation failed"));
+    assert!(
+        error
+            .message()
+            .contains("stream `stream-feed` must define at least one overall mole fraction entry")
+    );
+    assert!(
+        error
+            .message()
+            .contains("before it can be consumed by `heater-1`")
+    );
+    assert_eq!(
+        error.context().related_unit_ids(),
+        &[UnitId::new("heater-1")]
+    );
+    assert_eq!(
+        error.context().related_stream_ids(),
+        &[StreamId::new("stream-feed")]
+    );
+    assert_eq!(
+        error.context().related_port_targets(),
+        &[DiagnosticPortTarget::new("heater-1", "inlet")]
+    );
+}
+
+#[test]
 fn sequential_solver_reports_unit_parameter_context_for_invalid_valve_pressure() {
     let provider = build_provider();
     let flash_solver = PlaceholderTpFlashSolver;

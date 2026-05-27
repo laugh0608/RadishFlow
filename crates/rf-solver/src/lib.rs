@@ -34,6 +34,7 @@ enum SolverDiagnosticCode {
     StepLookup,
     StepSpec,
     StepParameter,
+    StepStreamInput,
     StepInstantiation,
     StepInlet,
     StepMaterialization,
@@ -55,6 +56,7 @@ impl SolverDiagnosticCode {
             Self::StepLookup => "solver.step.lookup",
             Self::StepSpec => "solver.step.spec",
             Self::StepParameter => "solver.step.parameter",
+            Self::StepStreamInput => "solver.step.stream_input",
             Self::StepInstantiation => "solver.step.instantiation",
             Self::StepInlet => "solver.step.inlet",
             Self::StepMaterialization => "solver.step.materialization",
@@ -71,6 +73,7 @@ impl SolverDiagnosticCode {
             Self::StepLookup => "unit lookup",
             Self::StepSpec => "unit spec validation",
             Self::StepParameter => "unit parameter validation",
+            Self::StepStreamInput => "stream input validation",
             Self::StepInstantiation => "operation instantiation",
             Self::StepInlet => "inlet resolution",
             Self::StepMaterialization => "output materialization",
@@ -254,6 +257,7 @@ impl FlowsheetSolver for SequentialModularSolver {
                 .map(|stream| stream.id.clone())
                 .collect::<Vec<_>>();
 
+            validate_step_stream_inputs(step_number, unit, &consumed_streams)?;
             validate_step_parameters(step_number, unit, &inputs, &consumed_stream_ids)?;
 
             let outputs = operation.run(&unit_services, &inputs).map_err(|error| {
@@ -687,6 +691,63 @@ fn solver_step_execution_error(
     .with_related_stream_ids(consumed_stream_ids.to_vec())
 }
 
+fn validate_step_stream_inputs(
+    step_number: usize,
+    unit: &UnitNode,
+    consumed_streams: &[MaterialStreamState],
+) -> RfResult<()> {
+    for stream in consumed_streams {
+        if stream.overall_mole_fractions.is_empty() {
+            return Err(solver_step_invalid_input_with_context(
+                step_number,
+                unit,
+                SolverDiagnosticCode::StepStreamInput,
+                format!(
+                    "stream `{}` must define at least one overall mole fraction entry before it can be consumed by `{}`",
+                    stream.id, unit.id
+                ),
+                vec![stream.id.clone()],
+                inlet_port_targets_for_stream(unit, &stream.id),
+            ));
+        }
+
+        if stream
+            .overall_mole_fractions
+            .values()
+            .any(|value| !value.is_finite() || *value < 0.0)
+        {
+            return Err(solver_step_invalid_input_with_context(
+                step_number,
+                unit,
+                SolverDiagnosticCode::StepStreamInput,
+                format!(
+                    "stream `{}` overall mole fractions must be finite non-negative values before it can be consumed by `{}`",
+                    stream.id, unit.id
+                ),
+                vec![stream.id.clone()],
+                inlet_port_targets_for_stream(unit, &stream.id),
+            ));
+        }
+
+        let sum = stream.overall_mole_fractions.values().sum::<f64>();
+        if !sum.is_finite() || sum <= 0.0 {
+            return Err(solver_step_invalid_input_with_context(
+                step_number,
+                unit,
+                SolverDiagnosticCode::StepStreamInput,
+                format!(
+                    "stream `{}` overall mole fractions must sum to a positive finite value before it can be consumed by `{}`",
+                    stream.id, unit.id
+                ),
+                vec![stream.id.clone()],
+                inlet_port_targets_for_stream(unit, &stream.id),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn validate_step_parameters(
     step_number: usize,
     unit: &UnitNode,
@@ -883,6 +944,18 @@ fn outlet_stream_ids(unit: &UnitNode) -> Vec<StreamId> {
         .iter()
         .filter(|port| port.direction == rf_types::PortDirection::Outlet)
         .filter_map(|port| port.stream_id.clone())
+        .collect()
+}
+
+fn inlet_port_targets_for_stream(
+    unit: &UnitNode,
+    stream_id: &StreamId,
+) -> Vec<DiagnosticPortTarget> {
+    unit.ports
+        .iter()
+        .filter(|port| port.direction == rf_types::PortDirection::Inlet)
+        .filter(|port| port.stream_id.as_ref() == Some(stream_id))
+        .map(|port| DiagnosticPortTarget::new(unit.id.clone(), port.name.clone()))
         .collect()
 }
 

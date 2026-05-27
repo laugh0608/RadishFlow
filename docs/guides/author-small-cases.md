@@ -189,6 +189,7 @@ Official demo case 的结果核对路径：
 - 任务清单不是文档语义：它只从当前 canvas / solve snapshot 推导状态。
 - `Connect stream` / `Create stream` 仍是正式 suggestion action；接受后才会通过文档命令写回。
 - 单元参数必须显式提交；仅在输入框中修改草稿不会改变运行结果。
+- 如果拓扑已完成但 Feed composition 未提交，运行会以 `solver.step.stream_input` 失败，并指向被下游单元消费的入口流股；应回到该 Feed outlet stream 的检查器提交组成。
 - 结果复制 / 导出只消费当前 `SolveSnapshot`，不写项目，也不是完整报表系统。
 
 ## 相关文档

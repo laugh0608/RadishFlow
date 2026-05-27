@@ -1050,4 +1050,104 @@ mod tests {
 
         std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
     }
+
+    #[test]
+    fn solver_stream_input_failure_uses_stream_focused_notice() {
+        let cache_root = unique_temp_path("workspace-control-stream-input-failure");
+        let mut auth_cache_index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
+        );
+        write_default_official_binary_hydrocarbon_cached_package(
+            &cache_root,
+            &mut auth_cache_index,
+        );
+        let facade = StudioAppFacade::new();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut flowsheet = project.document.flowsheet;
+        flowsheet
+            .streams
+            .get_mut(&"stream-feed".into())
+            .expect("expected feed stream")
+            .overall_mole_fractions
+            .clear();
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new(
+                "doc-run-panel-stream-input-failure",
+                "Run Panel Stream Input Failure Demo",
+                timestamp(100),
+            ),
+        ));
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+        let outcome = dispatch_workspace_control_action_with_auth_cache(
+            &facade,
+            &mut app_state,
+            &context,
+            &WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Preferred),
+        )
+        .expect("expected failed control action");
+
+        match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                assert!(matches!(
+                    dispatch.outcome,
+                    StudioWorkspaceRunOutcome::Failed(_)
+                ));
+            }
+            _ => panic!("expected workspace run dispatch"),
+        }
+        assert_eq!(outcome.control_state.run_status, RunStatus::Error);
+        assert_eq!(
+            outcome
+                .control_state
+                .notice
+                .as_ref()
+                .map(|notice| (notice.level, notice.title.as_str())),
+            Some((rf_ui::RunPanelNoticeLevel::Error, "Stream input invalid"))
+        );
+        let diagnostic = app_state
+            .workspace
+            .solve_session
+            .latest_diagnostic
+            .as_ref()
+            .expect("expected latest diagnostic");
+        assert_eq!(
+            diagnostic.primary_code.as_deref(),
+            Some("solver.step.stream_input")
+        );
+        assert_eq!(
+            diagnostic.related_stream_ids,
+            vec![rf_types::StreamId::new("stream-feed")]
+        );
+        assert_eq!(
+            diagnostic.related_port_targets,
+            vec![rf_types::DiagnosticPortTarget::new("heater-1", "inlet")]
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .and_then(|notice| notice.recovery_action.as_ref())
+                .map(|action| {
+                    (
+                        action.title,
+                        action
+                            .target_stream_id
+                            .as_ref()
+                            .map(|stream_id| stream_id.as_str()),
+                    )
+                }),
+            Some(("Inspect stream inputs", Some("stream-feed")))
+        );
+
+        std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
 }
