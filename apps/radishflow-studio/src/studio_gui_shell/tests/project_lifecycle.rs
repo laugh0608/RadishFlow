@@ -618,6 +618,80 @@ fn feed_composition_drafts_normalize_save_reopen_and_rerun_official_case() {
     let _ = std::fs::remove_file(project_path);
 }
 
+#[test]
+fn selected_stream_reconnect_saves_reopens_and_reruns_official_case() {
+    let project_path = temporary_project_path("selected-stream-reconnect");
+    let project = feed_heater_flash_binary_hydrocarbon_project();
+    write_project_file(&project_path, &project).expect("expected temp project write");
+    let config = StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..synced_workspace_config()
+    };
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("inspector.focus_stream:stream-heated");
+    app.dispatch_ui_command("canvas.disconnect_selected_stream_sink");
+    let disconnected = app.platform_host.snapshot().window_model();
+    assert!(disconnected.runtime.workspace_document.has_unsaved_changes);
+    let reconnect_action = disconnected
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected stream inspector detail")
+        .connection_actions
+        .iter()
+        .find(|action| action.command_id == "canvas.reconnect_selected_stream")
+        .expect("expected reconnect action");
+    assert!(reconnect_action.enabled);
+    assert!(
+        reconnect_action
+            .hover_text
+            .contains("only available material inlet `flash-1:inlet`"),
+        "expected unique flash inlet reconnect detail, got {reconnect_action:?}"
+    );
+
+    app.dispatch_ui_command("canvas.reconnect_selected_stream");
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "heater-1", "outlet"),
+        Some("stream-heated")
+    );
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "flash-1", "inlet"),
+        Some("stream-heated")
+    );
+
+    app.open_project(project_path.clone(), "project");
+    let reopened = app.platform_host.snapshot().window_model();
+    assert!(!reopened.runtime.workspace_document.has_unsaved_changes);
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        rerun.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    let flash_step = rerun
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected solve snapshot")
+        .steps
+        .iter()
+        .find(|step| step.unit_id == "flash-1")
+        .expect("expected flash step");
+    assert!(
+        flash_step
+            .consumed_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-heated"),
+        "Flash Drum should consume the reconnected heater outlet stream"
+    );
+
+    let _ = std::fs::remove_file(project_path);
+}
+
 #[derive(Debug, Clone, Copy)]
 struct UnitParameterShellCase {
     name: &'static str,

@@ -17,6 +17,7 @@
 - **MVP β 第一刀：小案例作者体验 v0 已通过。**
 - **MVP β 第二刀：建模输入能力 v0 已通过。**
 - **MVP β 后续能力包：结果核对与案例说明 v0 已落地第一版。**
+- **MVP β 下一组高频建模能力：受控连接恢复 v0 正在收口。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 β 第一刀通过依据：
@@ -60,6 +61,8 @@
 - **结果核对与案例说明后续增强**：只补真实审阅 blocker，例如轻量导出仍缺失关键字段、case 说明与 `SolveSnapshot` 行为不一致、focused 验证漏掉正式核对路径。
 - **下一组高频建模能力**：在不引入完整组件库、完整物性包系统或自由连线编辑器的前提下，选择一个真实建模 blocker 成组推进。
 
+当前已选择下一组高频建模能力：**受控连接恢复 v0**。目标是确认用户能在无自由连线阶段修正单端漏连 / 断开后的 material stream：选中 stream 后只允许 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 和 `Delete stream` 这类受控动作；`Reconnect stream` 只补齐唯一、未占用且不会形成 unit dependency cycle 的端点，并进入正式 `DocumentCommand` / undo / save / reopen / rerun 路径。
+
 候选未定前，不推进 tag、release notes、便携包刷新或对外发布自动化。
 
 后续能力包判断标准：
@@ -80,7 +83,8 @@
 - 已推进结果核对与案例说明 v0 第一版：两条 official demo case 的输入、中间流股、flash 分割、相态 / 焓值核对路径已写入 guide，并补 focused test 锁定 solver snapshot 与 Studio 轻量导出的关键审阅对象。
 - 已修正小案例作者清单输入就绪缺口：清单不再只看拓扑和快照，也会提示物性包、项目组分、Feed composition 和必要单元参数是否已提交，避免拓扑完成后直接运行才暴露缺组成错误。
 - 已修正缺少流股组成时的求解诊断：下游单元消费未提交 composition 的流股时，solver 现在返回 `solver.step.stream_input`，并携带相关 stream 与 inlet 端口；Run Panel 恢复动作聚焦到流股输入，而不是泛化为单元执行失败。
-- 下一步先复核结果核对与案例说明 v0 的验收边界；若没有真实 blocker，再选择下一组高频建模能力，不回到已通过阶段的零散 UI 打磨。
+- 已开始受控连接恢复 v0 收口：补 focused 验证锁定 official Heater-Flash case 中 selected stream 断开 sink、重连唯一 Flash inlet、保存 / 重开 / rerun 后仍由 Flash Drum 消费 heater outlet 的闭环。
+- 下一步继续复核受控连接恢复 v0 是否还缺真实 blocker；若没有，再选择下一组高频建模能力，不回到已通过阶段的零散 UI 打磨。
 
 ## 验证节奏
 
