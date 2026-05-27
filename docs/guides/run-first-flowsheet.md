@@ -161,7 +161,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 如果想验证“不是只会打开示例”，可以用当前 MVP α 支持的最短空白路径：
 
 1. 在首页点击 `新建项目`，或进入工作台后点击顶部 `新建空白`，进入未命名空白项目。
-2. 左侧 `项目` 面板会显示当前物性包和 `项目组分`。当前受控目录只包含 methane / ethane；它们写入 `Flowsheet.components`，并决定后续 Stream Inspector 中可添加的组成条目。
+2. 左侧 `项目` 面板会显示当前物性包和 `项目组分`。空白项目不会预选求解输入；先选择内置 `binary-hydrocarbon-lite-v1` package，再选择 methane / ethane。它们会写入 `Flowsheet.thermo.property_package_id` 和 `Flowsheet.components`，并决定后续 Stream Inspector 中可添加的组成条目。
 3. 左侧切到 `放置`，放置 `进料` 和 `闪蒸罐`；需要中间设备时可加 `加热器 / 冷却器 / 阀门`，需要双入口时可加第二个 `进料` 和 `混合器`。按钮文案当前是 `放置进料`、`放置闪蒸罐` 等，项目对象名仍可显示为 `Feed`、`Flash Drum` 等领域名。
 4. 每次放置单元后，在 Canvas 中点击落点提交；这只提交当前放置意图，不是完整拖拽布局编辑器。
 5. 使用 Canvas suggestion 中的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` 动作补齐 `source -> sink` 端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
@@ -216,6 +216,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - 当前运行环境下是否出现多包可选且未显式指定 package
 - 项目是否被改成了不完整连接或不一致端口绑定
 - Feed source temperature / pressure 或 Flash Drum flash temperature / flash pressure 是否为正有限 SI 值；Mixer / Heater / Cooler / Valve outlet pressure 是否高于已连接 inlet pressure 约束。若越界值已存在于项目文档，运行诊断会归类为 `solver.step.parameter`
+- 已连接到下游单元的 stream 是否已经写入至少一项 overall mole fraction；若缺少可消费组成，运行诊断会归类为 `solver.step.stream_input`，并应优先定位到相关 stream 和 inlet port
 - 顶部 `运行` 是否处于 disabled 状态，以及 hover 文案给出的原因
 - 启动 Studio 的终端 stderr 是否有 `[radishflow-studio]` 审计线或 GUI panic 提示
 

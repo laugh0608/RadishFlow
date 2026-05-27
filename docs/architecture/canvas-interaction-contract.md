@@ -1,6 +1,6 @@
 # Canvas Interaction Contract
 
-更新时间：2026-05-25
+更新时间：2026-05-27
 
 ## 文档目的
 
@@ -28,7 +28,7 @@
 - 模型建议不绕过本地连接校验、命令系统与求解诊断
 - 已落地的 placement palette、local suggestions、对象选择、layout sidecar 和 viewport 呈现优化都仍属于 UI / shell 边界，不改变 `FlowsheetDocument` 的求解语义
 
-截至 2026-05-23，首版 demo 前硬化期已经结束。下一阶段允许在上述边界内推进受控画布能力：selected stream 受控重连细化、单元直接拖动但只写 layout sidecar、sidecar 级 viewport 记忆，以及更清晰的 suggestion / 诊断可见性。它们必须先补正式 command / validation / presentation 边界，或明确为 shell-local sidecar 状态；仍不得进入自由连线编辑器、自动布线系统、完整拖拽布局编辑器或复杂视图持久化。
+截至 2026-05-27，首版 demo 后的受控画布能力已经进入 MVP β 使用路径：selected stream 断开 / 删除 / 单端重连、单元直接拖动但只写 layout sidecar、sidecar 级 viewport 记忆，以及 suggestion / 诊断可见性都应按本文的正式 command、validation、presentation 或 shell-local sidecar 边界维护。它们仍不得进入自由连线编辑器、自动布线系统、完整拖拽布局编辑器或复杂视图持久化。
 
 ## 核心原则
 
@@ -421,7 +421,7 @@ pub struct GhostElement {
 
 1. `Energy` / `Signal` 在核心语义未接通前，是否允许先以纯 UI 占位对象存在
 2. `Perspective` 视图是否需要单独的深度排序策略和遮挡规则
-3. selected stream 端点级断开 / 单端重连的 command / validation / undo 语义如何继续细化，才不会滑向自由连线编辑器
+3. selected stream 恢复动作是否要扩展到非唯一候选、任意端口选择或跨类型重连；当前答案是否，除非先补新的专题边界
 4. suggestion 是否需要批量接受，还是严格先从单条接受开始
 5. `Tab` 接受是否需要和属性面板焦点、文本输入焦点做更细的快捷键竞争规则
 6. `RadishMind` suggestion schema 是否与本地 `LocalRules` 输出完全同构，还是允许额外解释字段

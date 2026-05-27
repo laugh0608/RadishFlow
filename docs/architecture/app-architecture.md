@@ -1,23 +1,16 @@
 # App Architecture
 
-更新时间：2026-05-23
+更新时间：2026-05-27
 
 ## 当前目标
 
-现阶段 App 方向已推进到 MVP α 验收硬化与 Studio 可用性收口。当前仍不做完整商业化界面或复杂交互扩张，但需要把已进入验收路径的 Studio 首页、工作台分区、运行入口、消息反馈和关闭行为规范化，避免用户无法判断如何打开示例、如何运行、结果在哪里、错误在哪里以及窗口是否正常退出。
+现阶段 App 方向聚焦 MVP β Studio 建模与结果核对闭环。不做完整商业化界面或复杂交互扩张；本文只冻结 App 边界。
 
-当前关注：
+不扩展自由连线、完整拖拽布局、完整报表或未来型多文档工作台。
 
-- App 壳层职责
-- UI / Core 边界
-- 文档模型与状态组织
-- 画布、属性面板、运行控制、结果展示关系
+## 冻结决策
 
-不扩展自由连线编辑器、完整拖拽布局编辑器、完整报表系统或未来型多文档工作台。
-
-## 当前已冻结决策
-
-截至 2026-03-29，以下 App 架构决策已经冻结：
+冻结决策：
 
 1. MVP 保持单文档工作区，不做多文档容器优先设计
 2. “单文档工作区”不等于“单文件实现”，代码仍按职责拆分，避免单文件持续膨胀
@@ -41,7 +34,7 @@
 
 ### `apps/radishflow-studio`
 
-这是应用组合根，而不是业务逻辑仓库。
+这是应用组合根。
 
 职责：
 
@@ -51,10 +44,9 @@
 - 工作区与文档生命周期管理
 - 将 `rf-ui`、`rf-canvas`、`rf-store`、`rf-solver` 能力组装成桌面应用
 - 负责 `AuthSessionState` / `EntitlementState` 与 `StoredAuthCacheIndex` 之间的桥接与同步
-- 负责控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的 HTTP client、协议映射与应用层编排
-- 负责把下载租约、下载 fetcher 与本地缓存落盘串成单一路径
+- 负责控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的协议映射、下载租约与本地缓存落盘编排
 - 负责从 `PropertyPackageProvider` 或本地 auth cache 组装最小真实求解链路，并把 `rf-solver::SolveSnapshot` 回写到 `rf-ui::AppState`
-- 负责把 Studio shell 入口组织为可复现的 MVP α / β 工作流：启动后默认显示 Home，可从空白项目进入小案例作者路径；进入 case 后暴露主路径命令
+- 负责把 Studio shell 入口组织为可复现的 MVP α / β 工作流：默认显示 Home，可从空白项目进入小案例作者路径，进入 case 后暴露主路径命令
 - 负责在 GUI shell 层提供用户操作与求解审计输出；默认 stderr 日志只作为开发态 smoke 和诊断入口，不替代未来正式审计 / telemetry 设计
 - 负责遵守 `eframe` / `winit` 事件循环约束：Windows 事件循环在主线程创建；干净最后窗口 close 不得被 `CancelClose` 拦截，关闭前清理逻辑窗口并停止当帧 fallback 布局；脏工作区 close 必须先确认保存 / 舍弃 / 取消
 
@@ -68,14 +60,14 @@
 
 ### Studio Shell UI 规范化边界
 
-2026-05-17 人工 smoke 已确认，Studio 首页、工作台分区、运行后结果视图和 Home 项目切换确认流程已经落地。shell UI 边界按以下稳定入口治理：
+Studio 首页、工作台分区、运行后结果视图和 Home 项目切换确认流程已落地。shell UI 边界按以下稳定入口治理：
 
 - Home Dashboard：应用启动后的默认首页，只承载 Start actions、Recent Cases、Example Cases、Environment 和 Messages；不读取 `SolveSnapshot`，不直接承载流程图编辑。
 - Home 项目入口：左侧 Start actions 保留 `新建项目`、小案例作者入口、`打开项目`、`打开示例项目`；最近项目和示例项目由列表行承载选择态与双击打开。小案例作者入口只创建空白项目并切到 `放置`，清单只读 canvas，不生成 flowsheet、不写项目、不进 undo。
 - 未保存确认：新建、打开或列表双击时，若有未保存变更，必须先进入继续 / 取消确认。
 - 顶部主路径：进入 case 后只保留用户主路径、当前项目摘要和必要状态，不把调试计数和菜单全集置于第一视野。
 - 操作入口：`Home`、打开示例、新建空白、打开项目、运行、保存、另存为和视图保持可发现；低频命令进入 `视图`。
-- 工作台分区：左侧 `项目 / 示例项目 / 放置` 负责项目对象、项目级输入摘要、示例入口与 MVP 放置入口；其中 `项目` 面板可直接暴露受控项目组分选择。右侧 `检查器 / 结果 / 运行 / 物性包` 负责属性编辑、结果审阅、运行上下文和物性包状态；底部 `消息 / 运行日志 / 结果表 / 诊断` 承接可行动消息、运行日志和表格结果。
+- 工作台分区：左侧 `项目 / 示例项目 / 放置` 负责项目对象、项目级输入摘要、示例入口与 MVP 放置入口；其中 `项目` 面板可直接暴露受控物性包和项目组分选择，空白项目不隐式预选求解输入。右侧 `检查器 / 结果 / 运行 / 物性包` 负责属性编辑、结果审阅、运行上下文和物性包状态；底部 `消息 / 运行日志 / 结果表 / 诊断` 承接可行动消息、运行日志和表格结果。
 - 结果反馈：成功后 shell 可切到右侧 `结果` 和底部 `结果表`，失败后切到右侧 `运行`。结果面只读消费`SolveSnapshot`。`复制快照`/`导出文本` 格式化快照的 `Streams / Units / Steps / Diagnostics`，不写项目/undo，不扩报表/批量导出
 - 日志与审计：开发态 stderr 与 GUI activity 可继续服务 smoke，但正式 UI 只展示用户能采取行动的摘要，不把平台 timer 或 host internals 混入主路径
 - 关闭行为：干净最后窗口应自然结束进程；shell 可在清理逻辑窗口后停止当帧渲染，但不能拦截原生关闭请求。脏工作区必须先取消本次 close，请用户选择保存并关闭、舍弃并关闭或取消关闭；保存失败、另存为取消或覆盖确认未完成时保持打开。
@@ -570,8 +562,6 @@ pub enum SolvePendingReason {
 - `SetSimulationMode`、`RunSolve`、`ClearResults` 属于运行控制动作，直接作用于 `SolveSessionState`
 - `OpenDocument`、`SaveDocument`、`SaveDocumentAs` 属于文档生命周期动作，不进入 undo/redo 历史
 
-这条边界如果现在不冻结，后面 undo/redo 会很快被无价值噪声淹没。
-
 ## 草稿态结构建议
 
 字段级草稿态建议不要散落在控件内部，而是集中表达成可检查对象。
@@ -704,6 +694,8 @@ pub struct StepSnapshot {
 - 草稿值不立即写回 `FlowsheetDocument`
 - 当发生 `Enter`、失焦、点击应用等语义提交时，才生成命令并写回文档
 - 写回文档后再决定是否触发结构检查与自动求解
+- 项目级物性包和组分选择属于文档语义输入；空白项目不自动补 package / components，Stream Inspector 只能从当前 `Flowsheet.components` 中添加组成条目
+- Stream Inspector 的 `T / P / F / composition` 也采用草稿提交；下游单元消费到缺少 overall composition 的 stream 时，诊断归类为 `solver.step.stream_input`，并携带 stream / inlet target
 - Unit Inspector参数：`Feed`、`Heater / Cooler`、`Flash Drum` 写回 `outlet_temperature_k` / `outlet_pressure_pa`，`Mixer`、`Valve` 写回 `outlet_pressure_pa`；提交 `SetUnitParameter` 同步模板，Mixer pressure 不高于 inlet pressure，Heater / Cooler / Valve 不高于 inlet pressure
 - Unit Inspector 参数字段必须携带 SI 单位和约束 presentation；无效草稿不写文档/历史/模板。已入文档的无效参数由 `solver.step.parameter` 等诊断暴露，并携带 unit / port / stream context
 

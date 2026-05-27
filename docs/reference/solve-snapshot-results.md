@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-05-24
+更新时间：2026-05-27
 
 ## 目的
 
@@ -126,6 +126,8 @@ source stream 当前不是“只有文档态输入，没有结果态”的对象
 
 这几处不应各自维护第二套 `H / phase_region / bubble_dew_window` 口径。
 
+当前 official demo case 与空白作者路径都应按这条链路核对 `Heater -> Flash`、`Mixer -> Flash`、`Cooler -> Flash` 和 `Valve -> Flash`：上游单元产出的中间流股、全局 stream 结果和 flash step 消费的输入流股必须保持同一份数值语义。
+
 ### 3. Flash outlet
 
 `Flash Drum` outlet 需要区分 flowing outlet 和零流量对侧 outlet。
@@ -200,6 +202,13 @@ unit-centric 视图当前只是在同一份快照里按单元重新组织结果�
 - palette、menu、command list 与 runtime action button 都应继续走 host `dispatch_ui_command`，不为各自入口复制一套 target 解析
 - `DiagnosticTargets` section 只汇总这组已存在 target，不另造 shell 私有状态机
 - runtime 最终渲染面的 `Inspect` 标签和 `source | target | summary` 文本只负责展示这组 action，不重写其语义
+
+当前稳定诊断口径：
+
+- `solver.step.stream_input` 表示下游单元消费的输入流股缺少可用 stream specification，例如已连接 stream 没有至少一项 overall mole fraction。target 应优先携带相关 stream 与 inlet port，让 Run Panel recovery / focus 进入可编辑的 stream 输入，而不是把问题误归因为下游单元故障。
+- `solver.step.parameter` 表示已进入项目文档的单元参数不满足当前单元约束，例如 pressure / temperature 不是正有限值，或 outlet pressure 高于已连接 inlet pressure。target 应携带 unit / port / stream context，修复入口是 Unit Inspector 的参数字段。
+
+UI / shell 不应通过解析错误文本反推出这些分类；分类、summary 和 target 应来自结构化 diagnostic DTO。
 
 ### text copy / export
 
