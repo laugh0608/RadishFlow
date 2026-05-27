@@ -1,6 +1,6 @@
 # Author Small Cases
 
-更新时间：2026-05-25
+更新时间：2026-05-27
 
 ## 用途
 
@@ -18,7 +18,7 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 点击后，Studio 会：
 
 1. 若当前工作区有未保存更改，先进入继续 / 取消确认。
-2. 创建一个 MVP 默认空白项目。
+2. 创建一个未命名空白项目。
 3. 进入 Workbench 并切到左侧 `放置` 面板。
 4. 在 `放置` 面板显示对应小案例任务清单。
 
@@ -36,11 +36,12 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 
 ## 建模输入前置项
 
-空白项目会初始化 MVP 默认 `binary-hydrocarbon-lite-v1` 物性包和内置 methane / ethane 组分。若需要检查或调整项目级输入：
+空白项目不会预写默认物性包或默认组分。开始放置单元前，先完成项目级输入选择：
 
-- 左侧 `项目` 面板直接显示当前物性包和 `项目组分`，可看到 methane / ethane 的已选状态。
+- 左侧 `项目` 面板直接显示当前物性包和 `项目组分`；未选择时会显示可选的内置项。
 - 右侧 `物性包` tab 也提供同一受控组分选择入口和内置 package 选择入口。
-- 项目组分选择写入 `Flowsheet.components`；Stream Inspector 中的 composition 添加动作只从这份项目组分列表派生。
+- 选择 `binary-hydrocarbon-lite-v1` 会写入 `Flowsheet.thermo.property_package_id`。
+- 选择 methane / ethane 会写入 `Flowsheet.components`；Stream Inspector 中的 composition 添加动作只从这份项目组分列表派生。
 - Feed composition 的数值修改仍在选中对应 stream 后，通过右侧 `检查器` 的字段草稿、`Normalize composition` 和提交命令完成。
 
 ## Mixer-Flash 小案例
@@ -57,21 +58,22 @@ Flash Drum -> liquid / vapor
 建议步骤：
 
 1. 在 Home 点击 `创建 Mixer-Flash 小案例`。
-2. 在 `放置` 面板依次放置两个 `Feed`、一个 `Mixer`、一个 `Flash Drum`。
-3. 为两个 `Feed` 分别接受 `Create stream` suggestion，创建出口流股。
-4. 为 `Mixer` 接受两个 `Connect stream` suggestion，把两个 Feed outlet 接到 `inlet_a / inlet_b`。
-5. 接受 `Mixer` 的 `Create stream` suggestion，创建 mixer outlet。
-6. 为 `Flash Drum` 接受 `Connect stream` suggestion，把 mixer outlet 接到 flash inlet。
-7. 接受 `Flash Drum` 的 liquid / vapor 两个 outlet suggestion。
-8. 在右侧 `检查器` 中提交一组 SI 参数：
+2. 在左侧 `项目` 或右侧 `物性包` tab 中选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane。
+3. 在 `放置` 面板依次放置两个 `Feed`、一个 `Mixer`、一个 `Flash Drum`。
+4. 为两个 `Feed` 分别接受 `Create stream` suggestion，创建出口流股。
+5. 为 `Mixer` 接受两个 `Connect stream` suggestion，把两个 Feed outlet 接到 `inlet_a / inlet_b`。
+6. 接受 `Mixer` 的 `Create stream` suggestion，创建 mixer outlet。
+7. 为 `Flash Drum` 接受 `Connect stream` suggestion，把 mixer outlet 接到 flash inlet。
+8. 接受 `Flash Drum` 的 liquid / vapor 两个 outlet suggestion。
+9. 在右侧 `检查器` 中提交一组 SI 参数：
    - `Feed 1` source temperature = `305 K`，source pressure = `130000 Pa`
    - `Feed 2` source temperature = `315 K`，source pressure = `120000 Pa`
    - `Mixer` outlet pressure = `90000 Pa`
    - `Flash Drum` flash temperature = `300 K`，flash pressure = `85000 Pa`
-9. 点击顶部 `运行`。
-10. 在右侧 `结果` 和底部 `结果表` 检查收敛结果；底部表应同时显示流股结果和单元最新步骤。
-11. 保存项目，重开后再次运行，确认结果仍可复现。
-12. 需要交付文本结果时，在右侧 `结果` 区复制当前 `SolveSnapshot` 或导出 `.txt`。
+10. 点击顶部 `运行`。
+11. 在右侧 `结果` 和底部 `结果表` 检查收敛结果；底部表应同时显示流股结果和单元最新步骤。
+12. 保存项目，重开后再次运行，确认结果仍可复现。
+13. 需要交付文本结果时，在右侧 `结果` 区复制当前 `SolveSnapshot` 或导出 `.txt`。
 
 当前可用的最小核对点：
 
@@ -92,19 +94,20 @@ Flash Drum -> liquid / vapor
 建议步骤：
 
 1. 在 Home 点击 `创建 Heater-Flash 小案例`。
-2. 在 `放置` 面板依次放置一个 `Feed`、一个 `Heater`、一个 `Flash Drum`。
-3. 为 `Feed` 接受 `Create stream` suggestion，创建出口流股。
-4. 为 `Heater` 接受 `Connect stream` suggestion，把 Feed outlet 接到 heater inlet。
-5. 接受 `Heater` 的 `Create stream` suggestion，创建 heater outlet。
-6. 为 `Flash Drum` 接受 `Connect stream` suggestion，把 heater outlet 接到 flash inlet。
-7. 接受 `Flash Drum` 的 liquid / vapor 两个 outlet suggestion。
-8. 在右侧 `检查器` 中提交一组 SI 参数：
+2. 在左侧 `项目` 或右侧 `物性包` tab 中选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane。
+3. 在 `放置` 面板依次放置一个 `Feed`、一个 `Heater`、一个 `Flash Drum`。
+4. 为 `Feed` 接受 `Create stream` suggestion，创建出口流股。
+5. 为 `Heater` 接受 `Connect stream` suggestion，把 Feed outlet 接到 heater inlet。
+6. 接受 `Heater` 的 `Create stream` suggestion，创建 heater outlet。
+7. 为 `Flash Drum` 接受 `Connect stream` suggestion，把 heater outlet 接到 flash inlet。
+8. 接受 `Flash Drum` 的 liquid / vapor 两个 outlet suggestion。
+9. 在右侧 `检查器` 中提交一组 SI 参数：
    - `Feed` source temperature / source pressure
    - `Heater` outlet temperature / outlet pressure
    - `Flash Drum` flash temperature / flash pressure
-9. 点击顶部 `运行`。
-10. 在右侧 `结果` 中先看 heater outlet，再看 flash liquid / vapor outlet；底部 `结果表` 可同时核对 Heater 与 Flash Drum 的消费 / 产出流股。
-11. 保存项目，重开后再次运行。
+10. 点击顶部 `运行`。
+11. 在右侧 `结果` 中先看 heater outlet，再看 flash liquid / vapor outlet；底部 `结果表` 可同时核对 Heater 与 Flash Drum 的消费 / 产出流股。
+12. 保存项目，重开后再次运行。
 
 当前可用的最小核对点：
 

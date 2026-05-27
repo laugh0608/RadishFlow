@@ -822,7 +822,24 @@ fn create_blank_project_opens_untitled_blank_workspace_without_picker() {
     assert_eq!(window.runtime.workspace_document.project_path, None);
     assert!(
         window.runtime.workspace_document.has_unsaved_changes,
-        "bootstrap should mark the default blank thermo basis as an explicit unsaved project edit"
+        "untitled blank projects still need Save As even before semantic edits"
+    );
+    assert_eq!(
+        window
+            .runtime
+            .workspace_document
+            .property_package_id
+            .as_deref(),
+        None
+    );
+    assert!(
+        window
+            .runtime
+            .workspace_document
+            .project_component_choices
+            .iter()
+            .all(|choice| !choice.selected),
+        "blank projects should expose component choices without preselecting them"
     );
     assert_eq!(window.runtime.workspace_document.unit_count, 0);
     assert_eq!(window.runtime.workspace_document.stream_count, 0);

@@ -1,6 +1,6 @@
 # RadishFlow MVP Roadmap
 
-更新时间：2026-05-26
+更新时间：2026-05-27
 
 ## 用途
 
@@ -80,7 +80,7 @@
 - 已通过的 `Mixer-Flash` 与 `Heater-Flash` 作者入口只修真实 blocker，不继续补同构入口、hover、按钮文案或 selector 小细节。
 - 下一阶段优先扩建模输入能力：项目组分选择、内置物性方法 / package 选择、Feed composition 输入和单元参数输入应形成一条可理解工作流。
 - 组分输入 v0 只覆盖内置小型组分目录，不做完整组分数据库；物性方法 v0 只覆盖内置方法 / package，不加载第三方 Property Package。
-- 当前 Studio 已把内置 methane / ethane 项目组分选择暴露在左侧 `项目` 面板和右侧 `物性包` 页；这只是受控输入能力，不代表完整组分数据库或物性包浏览器。
+- 当前 Studio 已把内置 `binary-hydrocarbon-lite-v1` 物性包选择和 methane / ethane 项目组分选择暴露在左侧 `项目` 面板和右侧 `物性包` 页；空白项目初始不预选，用户显式选择后才写入项目。这只是受控输入能力，不代表完整组分数据库或物性包浏览器。
 - demo case 作为验收方式：至少 2 个 official demo case 应由新的输入能力支撑，并能写清参数、预期结果和核对点。
 - `Feed -> Valve -> Flash Drum` 作者路径、更多作者 checklist 和轻量报表增强先进入 backlog；只有当它们服务建模输入能力验收或暴露真实 blocker 时再推进。
 - CAPE-OPEN / PME 只修真实验证暴露的 blocker，不继续主动扩第三方宿主矩阵。

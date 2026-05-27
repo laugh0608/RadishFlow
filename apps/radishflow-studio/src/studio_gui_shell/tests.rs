@@ -596,6 +596,31 @@ fn accept_canvas_suggestion_by_id(app: &mut ReadyAppState, suggestion_id: &str) 
     });
 }
 
+fn select_builtin_binary_hydrocarbon_basis(app: &mut ReadyAppState) {
+    app.dispatch_ui_command("project.property_package.select:binary-hydrocarbon-lite-v1");
+    app.dispatch_ui_command("project.component.select:methane");
+    app.dispatch_ui_command("project.component.select:ethane");
+
+    let document = &app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .workspace_document;
+    assert_eq!(
+        document.property_package_id.as_deref(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert!(
+        document
+            .project_component_choices
+            .iter()
+            .filter(|choice| choice.selected)
+            .map(|choice| choice.component_id.as_str())
+            .eq(["methane", "ethane"].into_iter())
+    );
+}
+
 struct TestProjectFilePicker {
     selected_project: Option<PathBuf>,
 }

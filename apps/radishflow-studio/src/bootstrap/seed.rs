@@ -6,7 +6,7 @@ use crate::{
     RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse,
     parse_property_package_download_json,
 };
-use rf_model::{Component, Flowsheet};
+use rf_model::Flowsheet;
 use rf_store::{
     StoredAuthCacheIndex, StoredCredentialReference, StoredEntitlementCache, StoredProjectFile,
     StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
@@ -15,17 +15,15 @@ use rf_store::{
 };
 use rf_types::{ComponentId, RfError, RfResult};
 use rf_ui::{
-    AppLogLevel, AppState, AuthenticatedUser, DocumentMetadata, EntitlementSnapshot,
-    FlowsheetDocument, OfflineLeaseRefreshRequest, OfflineLeaseRefreshResponse,
-    PropertyPackageLeaseGrant, PropertyPackageLeaseRequest, PropertyPackageManifest,
-    PropertyPackageManifestList, PropertyPackageSource, SecureCredentialHandle, TokenLease,
+    AppState, AuthenticatedUser, DocumentMetadata, EntitlementSnapshot, FlowsheetDocument,
+    OfflineLeaseRefreshRequest, OfflineLeaseRefreshResponse, PropertyPackageLeaseGrant,
+    PropertyPackageLeaseRequest, PropertyPackageManifest, PropertyPackageManifestList,
+    PropertyPackageSource, SecureCredentialHandle, TokenLease,
 };
 
 use super::StudioBootstrapEntitlementSeed;
 
 pub(super) const BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID: &str = "binary-hydrocarbon-lite-v1";
-const BOOTSTRAP_MVP_COMPONENT_SPECS: [(&str, &str); 2] =
-    [("methane", "Methane"), ("ethane", "Ethane")];
 const BOOTSTRAP_MVP_PROPERTY_PACKAGE_DOWNLOAD_JSON: &str = include_str!(
     "../../../../examples/sample-components/property-packages/binary-hydrocarbon-lite-v1/download.json"
 );
@@ -171,53 +169,6 @@ pub(super) fn app_state_from_untitled_blank_project(
         DocumentMetadata::new(document_id.to_string(), title.to_string(), created_at),
     );
     AppState::new(document)
-}
-
-pub(super) fn initialize_blank_project_thermo_basis(
-    app_state: &mut AppState,
-    changed_at: SystemTime,
-) -> RfResult<Option<u64>> {
-    let has_default_components = !app_state.workspace.document.flowsheet.components.is_empty();
-    let has_property_package = app_state
-        .workspace
-        .document
-        .flowsheet
-        .property_package_id()
-        .is_some();
-    if has_default_components && has_property_package {
-        return Ok(None);
-    }
-
-    let mut flowsheet = app_state.workspace.document.flowsheet.clone();
-    if !has_default_components {
-        for (component_id, component_name) in BOOTSTRAP_MVP_COMPONENT_SPECS {
-            flowsheet.insert_component(Component::new(component_id, component_name))?;
-        }
-    }
-    if !has_property_package {
-        flowsheet.set_property_package_id(Some(BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID.to_string()))?;
-    }
-
-    let revision = app_state
-        .workspace
-        .document
-        .replace_flowsheet(flowsheet, changed_at);
-    app_state.workspace.canvas_interaction.invalidate_all();
-    app_state
-        .workspace
-        .solve_session
-        .mark_document_revision_advanced(revision);
-    app_state.workspace.drafts.clear();
-    app_state.push_log(
-        AppLogLevel::Info,
-        match BOOTSTRAP_MVP_COMPONENT_SPECS {
-            [(first_component_id, _), (second_component_id, _)] => format!(
-                "initialized blank project with default components `{}` / `{}` and property package `{}`",
-                first_component_id, second_component_id, BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID
-            ),
-        },
-    );
-    Ok(Some(revision))
 }
 
 pub(super) fn seed_sample_auth_cache(

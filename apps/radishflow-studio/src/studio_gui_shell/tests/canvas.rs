@@ -370,13 +370,31 @@ fn canvas_feed_to_flash_explicit_suggestion_selection_can_run() {
 }
 
 #[test]
-fn blank_project_initializes_components_saves_reopens_and_runs_feed_flash_path() {
+fn blank_project_selects_thermo_basis_saves_reopens_and_runs_feed_flash_path() {
     let (config, project_path) = blank_workspace_config();
     let mut app = ready_app_state(&config);
 
     let opened_blank = app.platform_host.snapshot().window_model();
-    assert_eq!(opened_blank.runtime.workspace_document.revision, 1);
-    assert!(opened_blank.runtime.workspace_document.has_unsaved_changes);
+    assert_eq!(opened_blank.runtime.workspace_document.revision, 0);
+    assert!(!opened_blank.runtime.workspace_document.has_unsaved_changes);
+    assert_eq!(
+        opened_blank
+            .runtime
+            .workspace_document
+            .property_package_id
+            .as_deref(),
+        None
+    );
+    assert!(
+        opened_blank
+            .runtime
+            .workspace_document
+            .project_component_choices
+            .iter()
+            .all(|choice| !choice.selected)
+    );
+
+    select_builtin_binary_hydrocarbon_basis(&mut app);
 
     app.dispatch_ui_command("canvas.begin_place_unit.feed");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
@@ -463,6 +481,7 @@ fn blank_project_initializes_components_saves_reopens_and_runs_feed_flash_path()
 fn blank_project_heater_parameter_saves_reopens_and_reruns() {
     let (config, project_path) = blank_workspace_config();
     let mut app = ready_app_state(&config);
+    select_builtin_binary_hydrocarbon_basis(&mut app);
 
     app.dispatch_ui_command("canvas.begin_place_unit.feed");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
@@ -599,6 +618,7 @@ fn blank_project_heater_parameter_saves_reopens_and_reruns() {
 fn blank_project_mixer_path_saves_reopens_and_reruns() {
     let (config, project_path) = blank_workspace_config();
     let mut app = ready_app_state(&config);
+    select_builtin_binary_hydrocarbon_basis(&mut app);
 
     app.dispatch_ui_command("canvas.begin_place_unit.feed");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
@@ -905,6 +925,7 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
 fn canvas_unit_positions_persist_through_project_save_and_reopen() {
     let (config, project_path) = blank_workspace_config();
     let mut app = ready_app_state(&config);
+    select_builtin_binary_hydrocarbon_basis(&mut app);
 
     app.dispatch_ui_command("canvas.begin_place_unit.feed");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));

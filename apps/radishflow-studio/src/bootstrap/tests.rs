@@ -22,7 +22,7 @@ use crate::{
 };
 
 #[test]
-fn bootstrap_initializes_blank_project_property_package_selection() {
+fn bootstrap_keeps_untitled_blank_project_thermo_basis_unselected() {
     let session = BootstrapSession::new(&StudioBootstrapConfig {
         untitled_blank_project: Some(StudioBootstrapUntitledProject::new(
             "doc-blank",
@@ -40,8 +40,18 @@ fn bootstrap_initializes_blank_project_property_package_selection() {
             .document
             .flowsheet
             .property_package_id(),
-        Some("binary-hydrocarbon-lite-v1")
+        None
     );
+    assert!(
+        session
+            .app_state
+            .workspace
+            .document
+            .flowsheet
+            .components
+            .is_empty()
+    );
+    assert_eq!(session.app_state.workspace.document.revision, 0);
 }
 
 #[test]

@@ -23,8 +23,8 @@ use rf_ui::AppState;
 
 use super::seed::{
     BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID, BootstrapControlPlaneClient, app_state_from_project_file,
-    app_state_from_untitled_blank_project, initialize_blank_project_thermo_basis,
-    normalized_system_time_now, seed_bootstrap_runtime_state, seed_sample_auth_cache,
+    app_state_from_untitled_blank_project, normalized_system_time_now,
+    seed_bootstrap_runtime_state, seed_sample_auth_cache,
 };
 use super::temp_cache::TemporaryCacheRoot;
 use super::{
@@ -366,18 +366,11 @@ fn command_outcome_from_workspace_control(
 impl BootstrapSession {
     pub(crate) fn new(config: &StudioBootstrapConfig) -> RfResult<Self> {
         let mut app_state = match config.untitled_blank_project.as_ref() {
-            Some(untitled) => {
-                let mut app_state = app_state_from_untitled_blank_project(
-                    &untitled.document_id,
-                    &untitled.title,
-                    untitled.created_at,
-                );
-                initialize_blank_project_thermo_basis(
-                    &mut app_state,
-                    normalized_system_time_now()?,
-                )?;
-                app_state
-            }
+            Some(untitled) => app_state_from_untitled_blank_project(
+                &untitled.document_id,
+                &untitled.title,
+                untitled.created_at,
+            ),
             None => {
                 let project_file = read_project_file(&config.project_path)?;
                 app_state_from_project_file(&project_file, &config.project_path)
