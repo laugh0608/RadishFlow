@@ -78,6 +78,7 @@
 - 已补 Feed composition 输入主路径回归：从 official Heater-Flash 示例复制临时项目，走真实 Stream Inspector draft update / normalize / save / reopen / Preferred run 路径，把 `stream-feed` 组成从草稿归一到 methane 0.25 / ethane 0.75，并在保存项目和求解结果中核对。
 - 已推进 official demo case 复现验收：`docs/guides/author-small-cases.md` 写清 `Heater-Flash` 与 `Mixer-Flash` 两条输入表和结果核对点；空白项目 focused 回归覆盖项目组分、内置物性包、Feed composition、Unit 参数、保存 / 重开、Preferred run 与 `SolveSnapshot` 核对。
 - 已推进结果核对与案例说明 v0 第一版：两条 official demo case 的输入、中间流股、flash 分割、相态 / 焓值核对路径已写入 guide，并补 focused test 锁定 solver snapshot 与 Studio 轻量导出的关键审阅对象。
+- 已修正小案例作者清单输入就绪缺口：清单不再只看拓扑和快照，也会提示物性包、项目组分、Feed composition 和必要单元参数是否已提交，避免拓扑完成后直接运行才暴露缺组成错误。
 - 下一步先复核结果核对与案例说明 v0 的验收边界；若没有真实 blocker，再选择下一组高频建模能力，不回到已通过阶段的零散 UI 打磨。
 
 ## 验证节奏

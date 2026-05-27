@@ -30,6 +30,9 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 
 - 当前已存在的 unit kind，例如 `feed`、`mixer`、`heater`、`flash_drum`
 - 当前 material stream 的 source / sink 端点绑定
+- 当前项目级物性包和项目组分是否已选择
+- 当前 Feed outlet composition 是否已经提交
+- 当前 Feed / Mixer / Heater / Flash Drum 的必要参数是否已经提交
 - 当前是否已有最新 `SolveSnapshot`
 
 清单不会成为真相源，也不会反向修正文档。如果清单显示未完成，应回到 Canvas suggestion、Inspector 参数或运行结果中完成正式操作。

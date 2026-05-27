@@ -173,6 +173,10 @@ impl StudioGuiDriver {
         &self.host
     }
 
+    pub fn document(&self) -> &rf_ui::FlowsheetDocument {
+        self.host.document()
+    }
+
     pub fn native_timer_runtime(&self) -> &StudioGuiNativeTimerRuntime {
         &self.native_timer_runtime
     }

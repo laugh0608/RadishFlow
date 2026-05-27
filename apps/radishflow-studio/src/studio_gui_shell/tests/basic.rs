@@ -583,6 +583,55 @@ fn heater_flash_authoring_checklist_reflects_heater_outlet_progress() {
 }
 
 #[test]
+fn heater_flash_authoring_checklist_keeps_input_tasks_pending_after_topology_only() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.start_heater_flash_authoring_case();
+    select_builtin_binary_hydrocarbon_basis(&mut app);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.heater");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(180.0, 40.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.heater.connect_inlet.heater-1.stream-feed-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.heater.create_outlet.heater-1");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(320.0, 40.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.flash_drum.connect_inlet.flash-1.stream-heater-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.liquid");
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.vapor");
+
+    let texts = render_alpha_workbench_texts(&mut app);
+    for expected in [
+        "提交 Feed 组成",
+        "提交 Feed 温度和压力",
+        "提交 Heater 出口温度和压力",
+        "提交 Flash Drum 温度和压力",
+        "运行案例并检查结果",
+    ] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected authoring checklist to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    assert!(
+        texts.iter().filter(|text| *text == "待做").count() >= 4,
+        "expected topology-only heater case to keep input and run tasks pending, rendered texts: {:?}",
+        texts
+    );
+}
+
+#[test]
 fn home_case_row_action_opens_on_double_click() {
     assert_eq!(home_case_row_action(false, false), HomeCaseRowAction::None);
     assert_eq!(home_case_row_action(true, false), HomeCaseRowAction::Select);

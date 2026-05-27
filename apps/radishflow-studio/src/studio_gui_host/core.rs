@@ -39,6 +39,10 @@ impl StudioGuiHost {
         self.controller.state()
     }
 
+    pub fn document(&self) -> &rf_ui::FlowsheetDocument {
+        self.controller.document()
+    }
+
     pub fn ui_commands(&self) -> StudioAppHostUiCommandModel {
         self.state().ui_command_model()
     }
