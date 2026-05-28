@@ -1,6 +1,6 @@
 # Author Small Cases
 
-更新时间：2026-05-27
+更新时间：2026-05-28
 
 ## 用途
 
@@ -22,7 +22,7 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 3. 进入 Workbench 并切到左侧 `放置` 面板。
 4. 在 `放置` 面板显示对应小案例任务清单。
 
-它不会自动生成 flowsheet，不会替用户放置单元，不会写 `FlowsheetDocument`，也不会进入 undo。后续仍需要用户按现有 `放置 -> suggestion -> 单元参数 -> 运行 -> 保存 -> 结果审阅` 工作流完成案例。
+它不会自动生成 flowsheet，不会替用户放置单元，不会写 `FlowsheetDocument`，也不会进入 undo。后续仍需要用户按现有 `放置 -> suggestion -> 流股输入 -> 单元参数 -> 运行 -> 保存 -> 结果审阅` 工作流完成案例。
 
 ## 任务清单如何理解
 
@@ -36,6 +36,8 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 - 当前是否已有最新 `SolveSnapshot`
 
 清单不会成为真相源，也不会反向修正文档。如果清单显示未完成，应回到 Canvas suggestion、Inspector 参数或运行结果中完成正式操作。
+
+手动运行按钮不再由这个清单阻断。无论是否从 Home 小案例入口进入，运行前都会使用通用 `Flowsheet` readiness：缺 material port / stream reference、缺项目组分、Feed source stream T/P/F/z 未就绪、composition 引用未选项目组分或未归一、必要单元参数未提交，都会显示“模型输入未完成”并聚焦到具体对象。缺 property package 仍交给正式 Run Panel package resolution 诊断。
 
 ## 建模输入前置项
 
@@ -99,8 +101,8 @@ Flash Drum -> liquid / vapor
 | 项目组分 | components | methane, ethane |
 | Feed 1 outlet composition | methane / ethane | draft `0.2 / 0.6`，Normalize 后 `0.25 / 0.75` |
 | Feed 2 outlet composition | methane / ethane | draft `0.7 / 0.1`，Normalize 后 `0.875 / 0.125` |
-| Feed 1 | source temperature / pressure | `305 K` / `130000 Pa` |
-| Feed 2 | source temperature / pressure | `315 K` / `120000 Pa` |
+| Feed 1 | source temperature / pressure / molar flow | `305 K` / `130000 Pa` / 默认 `1 mol/s`，可按需显式修改 |
+| Feed 2 | source temperature / pressure / molar flow | `315 K` / `120000 Pa` / 默认 `1 mol/s`，可按需显式修改 |
 | Mixer | outlet pressure | `90000 Pa` |
 | Flash Drum | flash temperature / pressure | `300 K` / `85000 Pa` |
 
@@ -156,7 +158,7 @@ Flash Drum -> liquid / vapor
 | 物性包 | package | `binary-hydrocarbon-lite-v1` |
 | 项目组分 | components | methane, ethane |
 | Feed outlet composition | methane / ethane | draft `0.2 / 0.6`，Normalize 后 `0.25 / 0.75` |
-| Feed | source temperature / pressure | `310 K` / `130000 Pa` |
+| Feed | source temperature / pressure / molar flow | `310 K` / `130000 Pa` / 默认 `1 mol/s`，可按需显式修改 |
 | Heater | outlet temperature / pressure | `358.5 K` / `90000 Pa` |
 | Flash Drum | flash temperature / pressure | `300 K` / `85000 Pa` |
 

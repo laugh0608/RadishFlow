@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-05-27
+更新时间：2026-05-28
 
 ## 当前目标
 
@@ -19,6 +19,7 @@
 5. 求解结果采用独立 `SolveSnapshot`，不直接污染 `FlowsheetDocument`
 6. 结果快照保留按步展开能力，为后续结果审阅、差异比较和操作脚本留接口
 7. 撤销/重做当前采用 snapshot-backed `CommandHistory`：历史记录仍保留语义 `DocumentCommand`，执行时应用对应 `before / after` flowsheet 快照
+8. 手动运行前使用通用 `Flowsheet` readiness 检查真实建模输入，不使用小案例作者清单作为运行 gate
 
 ## 顶层分层
 
@@ -698,6 +699,7 @@ pub struct StepSnapshot {
 - Stream Inspector 的 `T / P / F / composition` 也采用草稿提交；下游单元消费到缺少 overall composition 的 stream 时，诊断归类为 `solver.step.stream_input`，并携带 stream / inlet target
 - Unit Inspector参数：`Feed`、`Heater / Cooler`、`Flash Drum` 写回 `outlet_temperature_k` / `outlet_pressure_pa`，`Mixer`、`Valve` 写回 `outlet_pressure_pa`；提交 `SetUnitParameter` 同步模板，Mixer pressure 不高于 inlet pressure，Heater / Cooler / Valve 不高于 inlet pressure
 - Unit Inspector 参数字段必须携带 SI 单位和约束 presentation；无效草稿不写文档/历史/模板。已入文档的无效参数由 `solver.step.parameter` 等诊断暴露，并携带 unit / port / stream context
+- 手动运行前 readiness 只读取已提交的文档态输入，不读取 Inspector 草稿，也不自动补写默认值；未就绪时 shell 显示“模型输入未完成”并聚焦到对应 package / stream / unit / port
 
 采用这个方案的原因：
 
@@ -710,6 +712,25 @@ pub struct StepSnapshot {
 - 草稿态不进入命令历史
 - 只有成功提交到文档的变更才形成命令
 - 只有影响方程系统的提交才触发求解相关检查
+
+### 运行前 readiness
+
+Studio 的手动运行入口在调用正式 Run Panel 求解命令前，会先做一层通用建模输入检查。它的职责是阻止明显未完成的流程进入求解器，让用户先回到具体 stream / unit / port 补齐输入。
+
+当前检查范围：
+
+- 至少存在一个 unit。
+- 所有 material port 必须已绑定 stream，且绑定的 stream reference 必须存在。
+- 项目必须至少选择一组 project components；stream composition 中引用的 component 必须已经进入项目组分列表。
+- Feed source stream 必须具备正有限 `temperature_k`、`pressure_pa`、`total_molar_flow_mol_s`，并具备非空、数值有效、归一到 1 的 `overall_mole_fractions`。
+- `Heater / Cooler / Flash Drum` 必须提交 `outlet_temperature_k` 和 `outlet_pressure_pa`。
+- `Mixer / Valve` 必须提交 `outlet_pressure_pa`。
+
+明确不属于这层 readiness 的内容：
+
+- 不解析或选择 property package。缺物性包、缓存缺失或多包歧义继续交给正式 run package resolution 和 Run Panel 诊断。
+- 不消费 `Mixer-Flash` / `Heater-Flash` 作者清单状态。作者清单只作为导航提示，不作为普通空白项目的运行 gate。
+- 不隐式归一 composition，不隐式写入 unit 参数，不用 outlet stream template 代替用户提交的 `UnitOperationParameters`。求解器保留对旧项目的兼容 fallback，但 Studio 运行前检查以用户已提交的文档态建模输入为准。
 
 ## 求解模式与运行状态
 
