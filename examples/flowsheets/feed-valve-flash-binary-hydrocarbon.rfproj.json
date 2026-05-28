@@ -98,7 +98,10 @@
               "kind": "material",
               "stream_id": "stream-throttled"
             }
-          ]
+          ],
+          "parameters": {
+            "outlet_pressure_pa": 650000.0
+          }
         },
         "flash-1": {
           "id": "flash-1",
@@ -123,7 +126,11 @@
               "kind": "material",
               "stream_id": "stream-vapor"
             }
-          ]
+          ],
+          "parameters": {
+            "outlet_temperature_k": 300.0,
+            "outlet_pressure_pa": 650000.0
+          }
         }
       }
     },

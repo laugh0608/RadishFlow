@@ -23,6 +23,15 @@ enum ModelingReadinessTask {
         stream_id: String,
         component_id: String,
     },
+    FixFeedSourceTemperature {
+        stream_id: String,
+    },
+    FixFeedSourcePressure {
+        stream_id: String,
+    },
+    FixFeedSourceMolarFlow {
+        stream_id: String,
+    },
     CommitFeedComposition {
         stream_id: String,
     },
@@ -32,6 +41,16 @@ enum ModelingReadinessTask {
     FixStreamCompositionValues {
         stream_id: String,
     },
+    CommitUnitParameter {
+        unit_id: String,
+        parameter: ModelingUnitParameter,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ModelingUnitParameter {
+    OutletTemperature,
+    OutletPressure,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -142,6 +161,13 @@ fn modeling_run_blocker(document: &rf_ui::FlowsheetDocument) -> Option<ModelingR
         });
     }
 
+    if let Some((stream_id, task)) = first_feed_source_stream_state_issue(flowsheet) {
+        return Some(ModelingRunBlocker {
+            task,
+            focus_target: ModelingFocusTarget::Stream(stream_id),
+        });
+    }
+
     if let Some(stream_id) = first_feed_source_stream_missing_composition(flowsheet) {
         return Some(ModelingRunBlocker {
             task: ModelingReadinessTask::CommitFeedComposition {
@@ -155,6 +181,16 @@ fn modeling_run_blocker(document: &rf_ui::FlowsheetDocument) -> Option<ModelingR
         return Some(ModelingRunBlocker {
             task,
             focus_target: ModelingFocusTarget::Stream(stream_id),
+        });
+    }
+
+    if let Some((unit_id, parameter)) = first_required_unit_parameter_missing(flowsheet) {
+        return Some(ModelingRunBlocker {
+            task: ModelingReadinessTask::CommitUnitParameter {
+                unit_id: unit_id.clone(),
+                parameter,
+            },
+            focus_target: ModelingFocusTarget::Unit(unit_id),
         });
     }
 
@@ -207,25 +243,39 @@ fn first_stream_component_outside_project(
     })
 }
 
-fn first_feed_source_stream_missing_composition(flowsheet: &rf_model::Flowsheet) -> Option<String> {
-    flowsheet.units.values().find_map(|unit| {
-        if unit.kind != "feed" {
-            return None;
+fn first_feed_source_stream_state_issue(
+    flowsheet: &rf_model::Flowsheet,
+) -> Option<(String, ModelingReadinessTask)> {
+    feed_source_streams(flowsheet).find_map(|stream| {
+        let stream_id = stream.id.as_str().to_string();
+        if !is_positive_finite(stream.temperature_k) {
+            return Some((
+                stream_id.clone(),
+                ModelingReadinessTask::FixFeedSourceTemperature { stream_id },
+            ));
         }
-        unit.ports
-            .iter()
-            .filter(|port| {
-                port.kind == rf_types::PortKind::Material
-                    && port.direction == rf_types::PortDirection::Outlet
-            })
-            .find_map(|port| {
-                let stream_id = port.stream_id.as_ref()?;
-                let stream = flowsheet.streams.get(stream_id)?;
-                stream
-                    .overall_mole_fractions
-                    .is_empty()
-                    .then(|| stream_id.as_str().to_string())
-            })
+        if !is_positive_finite(stream.pressure_pa) {
+            return Some((
+                stream_id.clone(),
+                ModelingReadinessTask::FixFeedSourcePressure { stream_id },
+            ));
+        }
+        if !is_positive_finite(stream.total_molar_flow_mol_s) {
+            return Some((
+                stream_id.clone(),
+                ModelingReadinessTask::FixFeedSourceMolarFlow { stream_id },
+            ));
+        }
+        None
+    })
+}
+
+fn first_feed_source_stream_missing_composition(flowsheet: &rf_model::Flowsheet) -> Option<String> {
+    feed_source_streams(flowsheet).find_map(|stream| {
+        stream
+            .overall_mole_fractions
+            .is_empty()
+            .then(|| stream.id.as_str().to_string())
     })
 }
 
@@ -257,6 +307,60 @@ fn first_stream_composition_value_issue(
             )),
         }
     })
+}
+
+fn first_required_unit_parameter_missing(
+    flowsheet: &rf_model::Flowsheet,
+) -> Option<(String, ModelingUnitParameter)> {
+    flowsheet.units.values().find_map(|unit| {
+        required_unit_parameters(unit.kind.as_str())
+            .iter()
+            .copied()
+            .find(|parameter| unit_parameter_missing(unit, *parameter))
+            .map(|parameter| (unit.id.as_str().to_string(), parameter))
+    })
+}
+
+fn feed_source_streams<'a>(
+    flowsheet: &'a rf_model::Flowsheet,
+) -> impl Iterator<Item = &'a rf_model::MaterialStreamState> + 'a {
+    flowsheet
+        .units
+        .values()
+        .filter(|unit| unit.kind == "feed")
+        .flat_map(|unit| {
+            unit.ports.iter().filter_map(|port| {
+                if port.kind != rf_types::PortKind::Material
+                    || port.direction != rf_types::PortDirection::Outlet
+                {
+                    return None;
+                }
+                let stream_id = port.stream_id.as_ref()?;
+                flowsheet.streams.get(stream_id)
+            })
+        })
+}
+
+fn required_unit_parameters(kind: &str) -> &'static [ModelingUnitParameter] {
+    match kind {
+        "heater" | "cooler" | "flash_drum" => &[
+            ModelingUnitParameter::OutletTemperature,
+            ModelingUnitParameter::OutletPressure,
+        ],
+        "mixer" | "valve" => &[ModelingUnitParameter::OutletPressure],
+        _ => &[],
+    }
+}
+
+fn unit_parameter_missing(unit: &rf_model::UnitNode, parameter: ModelingUnitParameter) -> bool {
+    match parameter {
+        ModelingUnitParameter::OutletTemperature => unit.parameters.outlet_temperature_k.is_none(),
+        ModelingUnitParameter::OutletPressure => unit.parameters.outlet_pressure_pa.is_none(),
+    }
+}
+
+fn is_positive_finite(value: f64) -> bool {
+    value.is_finite() && value > 0.0
 }
 
 fn modeling_run_blocked_title(locale: StudioShellLocale) -> &'static str {
@@ -297,6 +401,15 @@ fn modeling_run_blocked_detail_en(task: &ModelingReadinessTask) -> String {
         } => format!(
             "Stream `{stream_id}` references component `{component_id}` that is not selected in the project."
         ),
+        ModelingReadinessTask::FixFeedSourceTemperature { stream_id } => format!(
+            "Set feed source stream `{stream_id}` temperature to a positive finite value before running."
+        ),
+        ModelingReadinessTask::FixFeedSourcePressure { stream_id } => format!(
+            "Set feed source stream `{stream_id}` pressure to a positive finite value before running."
+        ),
+        ModelingReadinessTask::FixFeedSourceMolarFlow { stream_id } => format!(
+            "Set feed source stream `{stream_id}` molar flow to a positive finite value before running."
+        ),
         ModelingReadinessTask::CommitFeedComposition { stream_id } => {
             format!("Define the feed stream `{stream_id}` overall mole fractions before running.")
         }
@@ -306,6 +419,10 @@ fn modeling_run_blocked_detail_en(task: &ModelingReadinessTask) -> String {
         ModelingReadinessTask::FixStreamCompositionValues { stream_id } => {
             format!("Fix stream `{stream_id}` overall mole fractions before running.")
         }
+        ModelingReadinessTask::CommitUnitParameter { unit_id, parameter } => format!(
+            "Commit unit `{unit_id}` {} before running.",
+            modeling_unit_parameter_label_en(*parameter)
+        ),
     }
 }
 
@@ -331,6 +448,15 @@ fn modeling_run_blocked_detail_zh(task: &ModelingReadinessTask) -> String {
         } => format!(
             "流股 `{stream_id}` 的组成引用了未进入项目组分列表的 `{component_id}`，请先选择该项目组分。"
         ),
+        ModelingReadinessTask::FixFeedSourceTemperature { stream_id } => {
+            format!("先把进料源流股 `{stream_id}` 的温度设为大于 0 的有限值，再运行当前流程。")
+        }
+        ModelingReadinessTask::FixFeedSourcePressure { stream_id } => {
+            format!("先把进料源流股 `{stream_id}` 的压力设为大于 0 的有限值，再运行当前流程。")
+        }
+        ModelingReadinessTask::FixFeedSourceMolarFlow { stream_id } => {
+            format!("先把进料源流股 `{stream_id}` 的摩尔流量设为大于 0 的有限值，再运行当前流程。")
+        }
         ModelingReadinessTask::CommitFeedComposition { stream_id } => {
             format!("先补齐进料流股 `{stream_id}` 的总体摩尔分率，再运行当前流程。")
         }
@@ -340,5 +466,23 @@ fn modeling_run_blocked_detail_zh(task: &ModelingReadinessTask) -> String {
         ModelingReadinessTask::FixStreamCompositionValues { stream_id } => {
             format!("先修正流股 `{stream_id}` 的总体摩尔分率数值，再运行当前流程。")
         }
+        ModelingReadinessTask::CommitUnitParameter { unit_id, parameter } => format!(
+            "先提交单元 `{unit_id}` 的{}，再运行当前流程。",
+            modeling_unit_parameter_label_zh(*parameter)
+        ),
+    }
+}
+
+fn modeling_unit_parameter_label_en(parameter: ModelingUnitParameter) -> &'static str {
+    match parameter {
+        ModelingUnitParameter::OutletTemperature => "outlet temperature",
+        ModelingUnitParameter::OutletPressure => "outlet pressure",
+    }
+}
+
+fn modeling_unit_parameter_label_zh(parameter: ModelingUnitParameter) -> &'static str {
+    match parameter {
+        ModelingUnitParameter::OutletTemperature => "出口温度",
+        ModelingUnitParameter::OutletPressure => "出口压力",
     }
 }

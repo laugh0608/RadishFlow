@@ -451,7 +451,7 @@ fn canvas_feed_to_flash_minimal_path_surfaces_local_connection_suggestions() {
 }
 
 #[test]
-fn canvas_feed_to_flash_explicit_suggestion_selection_can_run() {
+fn canvas_feed_to_flash_explicit_suggestion_selection_can_run_after_parameters() {
     let mut app = ready_app_state(&lease_expiring_config());
 
     app.dispatch_ui_command("canvas.begin_place_unit.feed");
@@ -477,6 +477,19 @@ fn canvas_feed_to_flash_explicit_suggestion_selection_can_run() {
     );
     accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-2.vapor");
     accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-2.liquid");
+
+    commit_unit_parameter(
+        &mut app,
+        "flash-2",
+        "unit:flash-2:outlet_temperature_k",
+        "300",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "flash-2",
+        "unit:flash-2:outlet_pressure_pa",
+        "85000",
+    );
 
     app.dispatch_ui_command("run_panel.run_manual");
     let completed = app.platform_host.snapshot().window_model();
@@ -543,6 +556,19 @@ fn blank_project_selects_thermo_basis_saves_reopens_and_runs_feed_flash_path() {
     app.dispatch_ui_command("canvas.accept_focused");
     app.dispatch_ui_command("canvas.accept_focused");
 
+    commit_unit_parameter(
+        &mut app,
+        "flash-1",
+        "unit:flash-1:outlet_temperature_k",
+        "300",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "flash-1",
+        "unit:flash-1:outlet_pressure_pa",
+        "85000",
+    );
+
     app.dispatch_ui_command("run_panel.run_manual");
     let solved = app.platform_host.snapshot().window_model();
     assert_eq!(
@@ -576,6 +602,14 @@ fn blank_project_selects_thermo_basis_saves_reopens_and_runs_feed_flash_path() {
             .copied(),
         Some(0.5)
     );
+    let flash_unit = saved
+        .document
+        .flowsheet
+        .units
+        .get(&UnitId::new("flash-1"))
+        .expect("expected flash unit");
+    assert_eq!(flash_unit.parameters.outlet_temperature_k, Some(300.0));
+    assert_eq!(flash_unit.parameters.outlet_pressure_pa, Some(85000.0));
 
     app.open_project(project_path.clone(), "project");
     let reopened = app.platform_host.snapshot().window_model();
@@ -1850,7 +1884,7 @@ fn canvas_unit_layout_nudge_pins_transient_grid_without_dirtying_project() {
 }
 
 #[test]
-fn canvas_feed_heater_flash_minimal_path_can_run_after_accepting_suggestions() {
+fn canvas_feed_heater_flash_minimal_path_can_run_after_parameters() {
     let mut app = ready_app_state(&synced_workspace_config());
 
     app.dispatch_ui_command("canvas.begin_place_unit.feed");
@@ -1900,6 +1934,31 @@ fn canvas_feed_heater_flash_minimal_path_can_run_after_accepting_suggestions() {
     app.dispatch_ui_command("canvas.accept_focused");
     app.dispatch_ui_command("canvas.accept_focused");
 
+    commit_unit_parameter(
+        &mut app,
+        "heater-2",
+        "unit:heater-2:outlet_temperature_k",
+        "330",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "heater-2",
+        "unit:heater-2:outlet_pressure_pa",
+        "90000",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "flash-2",
+        "unit:flash-2:outlet_temperature_k",
+        "300",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "flash-2",
+        "unit:flash-2:outlet_pressure_pa",
+        "85000",
+    );
+
     app.dispatch_ui_command("run_panel.run_manual");
     let completed = app.platform_host.snapshot().window_model();
     assert_eq!(
@@ -1913,7 +1972,7 @@ fn canvas_feed_heater_flash_minimal_path_can_run_after_accepting_suggestions() {
             .control_state
             .latest_snapshot_id
             .as_deref()
-            .is_some_and(|snapshot_id| snapshot_id.contains("rev-9-seq-1"))
+            .is_some_and(|snapshot_id| snapshot_id.contains("rev-13-seq-1"))
     );
     assert!(
         completed
@@ -1927,7 +1986,7 @@ fn canvas_feed_heater_flash_minimal_path_can_run_after_accepting_suggestions() {
 }
 
 #[test]
-fn canvas_feed_mixer_flash_minimal_path_can_run_after_accepting_suggestions() {
+fn canvas_feed_mixer_flash_minimal_path_can_run_after_parameters() {
     let mut app = ready_app_state(&synced_workspace_config());
 
     for point in [
@@ -1978,6 +2037,25 @@ fn canvas_feed_mixer_flash_minimal_path_can_run_after_accepting_suggestions() {
     app.dispatch_ui_command("canvas.accept_focused");
     app.dispatch_ui_command("canvas.accept_focused");
 
+    commit_unit_parameter(
+        &mut app,
+        "mixer-1",
+        "unit:mixer-1:outlet_pressure_pa",
+        "90000",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "flash-2",
+        "unit:flash-2:outlet_temperature_k",
+        "300",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "flash-2",
+        "unit:flash-2:outlet_pressure_pa",
+        "85000",
+    );
+
     app.dispatch_ui_command("run_panel.run_manual");
     let completed = app.platform_host.snapshot().window_model();
     assert_eq!(
@@ -1991,7 +2069,7 @@ fn canvas_feed_mixer_flash_minimal_path_can_run_after_accepting_suggestions() {
             .control_state
             .latest_snapshot_id
             .as_deref()
-            .is_some_and(|snapshot_id| snapshot_id.contains("rev-12-seq-1"))
+            .is_some_and(|snapshot_id| snapshot_id.contains("rev-15-seq-1"))
     );
     assert!(
         completed

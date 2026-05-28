@@ -731,6 +731,98 @@ fn blank_project_mixer_topology_run_uses_generic_modeling_readiness() {
 }
 
 #[test]
+fn blank_project_feed_source_run_requires_positive_molar_flow() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.create_blank_project();
+    select_builtin_binary_hydrocarbon_basis(&mut app);
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+    app.dispatch_ui_command("inspector.focus_stream:stream-feed-1-outlet");
+    app.dispatch_inspector_field_draft_update(
+        radishflow_studio::inspector_draft_update_command_id(
+            "stream:stream-feed-1-outlet:total_molar_flow_mol_s",
+        ),
+        "0",
+    );
+    app.dispatch_inspector_field_draft_commit(
+        radishflow_studio::inspector_draft_commit_command_id(
+            "stream:stream-feed-1-outlet:total_molar_flow_mol_s",
+        ),
+    );
+
+    app.dispatch_ui_command("run_panel.run_manual");
+
+    let window = app.platform_host.snapshot().window_model();
+    assert!(
+        window.runtime.latest_failure.is_none(),
+        "invalid feed source flow should stop before solver failure"
+    );
+    let detail = window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected feed source stream to be focused");
+    assert_eq!(detail.target.kind_label, "Stream");
+    assert_eq!(detail.target.target_id, "stream-feed-1-outlet");
+    let notice = app
+        .project_open
+        .notice
+        .as_ref()
+        .expect("expected modeling readiness notice");
+    assert_eq!(notice.title, "模型输入未完成");
+    assert!(
+        notice.detail.contains("摩尔流量"),
+        "expected feed source molar-flow readiness detail, got {notice:?}"
+    );
+}
+
+#[test]
+fn blank_project_feed_flash_run_requires_flash_parameters_after_feed_inputs() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.create_blank_project();
+    select_builtin_binary_hydrocarbon_basis(&mut app);
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(220.0, 40.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.flash_drum.connect_inlet.flash-1.stream-feed-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.liquid");
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.vapor");
+
+    app.dispatch_ui_command("run_panel.run_manual");
+
+    let window = app.platform_host.snapshot().window_model();
+    assert!(
+        window.runtime.latest_failure.is_none(),
+        "missing flash parameters should stop before solver failure"
+    );
+    let detail = window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected flash unit to be focused");
+    assert_eq!(detail.target.kind_label, "Unit");
+    assert_eq!(detail.target.target_id, "flash-1");
+    let notice = app
+        .project_open
+        .notice
+        .as_ref()
+        .expect("expected modeling readiness notice");
+    assert_eq!(notice.title, "模型输入未完成");
+    assert!(
+        notice.detail.contains("出口温度"),
+        "expected flash parameter readiness detail, got {notice:?}"
+    );
+}
+
+#[test]
 fn blank_project_feed_port_exposes_stream_inspector_action() {
     let mut app = ready_app_state(&synced_workspace_config());
 

@@ -141,7 +141,10 @@
               "kind": "material",
               "stream_id": "stream-mix-out"
             }
-          ]
+          ],
+          "parameters": {
+            "outlet_pressure_pa": 100000.0
+          }
         },
         "heater-1": {
           "id": "heater-1",
@@ -160,7 +163,11 @@
               "kind": "material",
               "stream_id": "stream-heated"
             }
-          ]
+          ],
+          "parameters": {
+            "outlet_temperature_k": 350.0,
+            "outlet_pressure_pa": 95000.0
+          }
         },
         "flash-1": {
           "id": "flash-1",
@@ -185,7 +192,11 @@
               "kind": "material",
               "stream_id": "stream-vapor"
             }
-          ]
+          ],
+          "parameters": {
+            "outlet_temperature_k": 350.0,
+            "outlet_pressure_pa": 95000.0
+          }
         }
       }
     },
