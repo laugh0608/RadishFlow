@@ -18,7 +18,7 @@
 - **MVP β 第二刀：建模输入能力 v0 已通过。**
 - **MVP β 后续能力包：结果核对与案例说明 v0 已落地第一版。**
 - **MVP β 下一组高频建模能力：受控连接恢复 v0 与剩余单元建模闭环 v0 已完成 focused 收口。**
-- **MVP β 失败修复闭环 v0 已启动并扩展到断连 / 错连 mutation recovery：缺物性包、缺项目组分、缺 stream composition、单元参数越界、漏连出口、missing stream reference、duplicate upstream source 与 orphan stream 已被 focused 回归锁定。**
+- **MVP β 失败修复闭环 v0 已启动：缺物性包、缺项目组分、缺 stream composition、参数越界和主要连接 blocker 已被 focused 回归锁定。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 β 第一刀通过依据：
@@ -62,15 +62,18 @@
 - **失败修复闭环 v0**：围绕缺物性包、缺项目组分、缺 stream composition、单元参数越界、断连 / 错连 / 漏连这几类真实 blocker，核对诊断码、recovery target、Inspector focus、修复命令、保存 / 重开后的 rerun 是否稳定。
 - **结果核对与案例说明后续增强**：只补真实审阅 blocker，例如轻量导出仍缺失关键字段、case 说明与 `SolveSnapshot` 行为不一致、focused 验证漏掉正式核对路径。
 
-当前已覆盖的失败修复口径：
+当前已覆盖口径：
 
-- 缺物性包：property package load failure 会记录 `workspace.run.property_package_missing`，Run Panel 显示物性包不可用并给出本地物性包修复动作。
-- 缺项目组分：stream composition 引用未进入项目组件列表的 component 时，运行前门禁阻止求解并提示选择项目组件。
-- 缺 `stream composition`：下游消费未提交组成的流股时返回 `solver.step.stream_input`，恢复动作聚焦 Stream Inspector，补齐项目组件组成并归一后可保存 / 重开 / rerun 收敛。
-- 单元参数越界：返回 `solver.step.parameter`，恢复动作聚焦 Unit Inspector，修正参数后可保存 / 重开 / rerun 收敛。
-- 漏连出口：`solver.connection_validation.unbound_outlet_port` 的恢复动作通过正式 `DocumentCommand::ConnectPorts` 创建并绑定 outlet stream，保存 / 重开 / rerun 后稳定收敛。
-- 缺失 stream 引用：`solver.connection_validation.missing_stream_reference` 先断开坏引用，保存 / 重开后 rerun 会暴露派生的 unbound outlet，再通过 outlet stream creation 收敛。
-- 重复上游 source：`solver.connection_validation.duplicate_upstream_source` 先断开冲突 source，保存 / 重开后 rerun 会暴露派生的 unbound outlet，再通过 outlet stream creation 收敛。
+- 缺物性包：property package load failure 记录 `workspace.run.property_package_missing`，Run Panel 给出本地物性包修复动作。
+- 缺项目组分：stream composition 引用未选择 component 时，运行前门禁阻止求解。
+- 缺 `stream composition`：`solver.step.stream_input` 聚焦 Stream Inspector，补齐并归一后可保存 / 重开 / rerun 收敛。
+- 单元参数越界：`solver.step.parameter` 聚焦 Unit Inspector，修正参数后可保存 / 重开 / rerun 收敛。
+- 漏连出口：`solver.connection_validation.unbound_outlet_port` 通过 `DocumentCommand::ConnectPorts` 创建并绑定 outlet stream，保存 / 重开 / rerun 收敛。
+- 缺失 stream 引用：`solver.connection_validation.missing_stream_reference` 先断开坏引用，重开 rerun 后处理派生 unbound outlet 并收敛。
+- 重复上游 source：`solver.connection_validation.duplicate_upstream_source` 先断开冲突 source，重开 rerun 后处理派生 unbound outlet 并收敛。
+- 重复下游 sink：`solver.connection_validation.duplicate_downstream_sink` 先断开冲突 sink，保存 / 重开后 rerun 会暴露需要用户选择上游路径的 unbound inlet。
+- 缺失上游 source：`solver.connection_validation.missing_upstream_source` 先断开悬空 inlet 并删除对应孤立流股，保存 / 重开后 rerun 会暴露需要用户选择上游路径的 unbound inlet。
+- 未绑定入口：`solver.connection_validation.unbound_inlet_port` 当前是检查型恢复，只聚焦 Unit Inspector，不自动创建或猜测上游路径。
 - 孤立 stream：`solver.connection_validation.orphan_stream` 通过 `DocumentCommand::DeleteStream` 清理孤立流股，保存 / 重开 / rerun 后稳定收敛。
 
 上一组高频建模能力 **受控连接恢复 v0** 已完成 focused 收口：选中 stream 后的 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 和 `Delete stream` 已锁定到正式 `DocumentCommand` / undo / save / reopen / rerun 路径；`Reconnect stream` 只补齐唯一、未占用且不会形成 unit dependency cycle 的端点。
@@ -99,8 +102,8 @@
 - 已修正缺少流股组成时的求解诊断：下游单元消费未提交 composition 的流股时，solver 现在返回 `solver.step.stream_input`，并携带相关 stream 与 inlet 端口；Run Panel 恢复动作聚焦到流股输入，而不是泛化为单元执行失败。
 - 已完成受控连接恢复 v0 focused 收口：验证锁定 official Heater-Flash case 中 selected stream 断开 sink、重连唯一 Flash inlet、保存 / 重开 / rerun 后仍由 Flash Drum 消费 heater outlet 的闭环。
 - 已完成剩余单元建模闭环 v0 focused 收口：补 focused 验证覆盖空白项目中显式选择内置物性包 / 组分后，手工搭建 `Feed -> Cooler -> Flash Drum` 与 `Feed -> Valve -> Flash Drum`，提交 Feed composition 和单元参数，保存 / 重开 / rerun，并核对中间流股、flash consumed stream、液/汽出口、相态 / `H` 基础审阅对象；2026-05-27 仓库级验证 `pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
-- 已启动失败修复闭环 v0 并扩展断连 / 错连 mutation recovery：focused 回归覆盖缺物性包诊断码、缺项目组分运行前门禁、official case 中缺 Feed composition、Valve 参数越界、unbound outlet 漏连、missing stream reference、duplicate upstream source 和 orphan stream，锁定 `run_panel.recover_failure` 聚焦 / mutation、Inspector 修复、保存 / 重开和 rerun 收敛或下一步 blocker 暴露。
-- 下一步继续核对 duplicate downstream sink、missing upstream source、unbound inlet 这类需要用户选择上游路径的断连 / 错连恢复口径；不回到已通过阶段的零散 UI 打磨。
+- 已启动失败修复闭环 v0 并扩展断连 / 错连 recovery：focused 回归覆盖缺物性包、缺项目组分、缺 Feed composition、Valve 参数越界、unbound outlet、missing stream reference、duplicate source / sink、missing upstream、unbound inlet 和 orphan stream，锁定 recovery 聚焦 / mutation、保存 / 重开和 rerun 收敛或下一步 blocker 暴露。
+- 下一步继续核对是否需要把这些 focused 覆盖提升为更集中的阶段验收，或补拓扑 cycle / invalid port signature 的同类生命周期；不回到已通过阶段的零散 UI 打磨。
 
 ## 验证节奏
 

@@ -370,6 +370,157 @@ fn orphan_stream_recovery_saves_reopens_and_reruns_official_case() {
     let _ = std::fs::remove_file(project_path);
 }
 
+#[test]
+fn duplicate_sink_recovery_saves_reopens_and_exposes_unbound_inlet_path() {
+    let project_path = temporary_failure_project_path("duplicate-sink-recovery");
+    write_fixture_project(
+        &project_path,
+        include_str!(
+            "../../../../../examples/flowsheets/failures/duplicate-downstream-sink.rfproj.json"
+        ),
+    );
+    let mut app = ready_app_state(&project_config(project_path.clone()));
+
+    run_and_assert_failure(
+        &mut app,
+        ExpectedFailure {
+            title: "Duplicate stream sink",
+            primary_code: "solver.connection_validation.duplicate_downstream_sink",
+            recovery_title: Some("Disconnect conflicting sink"),
+            recovery_target: Some(("Unit", "mixer-1")),
+        },
+    );
+
+    app.dispatch_ui_command("run_panel.recover_failure");
+    assert_dirty_after_recovery(&app);
+    assert_active_inspector_target(&app, "Unit", "mixer-1");
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "mixer-1", "inlet_a"),
+        None
+    );
+
+    reopen_and_assert_clean(&mut app, &project_path);
+    run_and_assert_failure(
+        &mut app,
+        ExpectedFailure {
+            title: "Unbound inlet port",
+            primary_code: "solver.connection_validation.unbound_inlet_port",
+            recovery_title: Some("Inspect inlet path"),
+            recovery_target: Some(("Unit", "mixer-1")),
+        },
+    );
+
+    app.dispatch_ui_command("run_panel.recover_failure");
+    assert_error_after_focus_recovery(&app);
+    assert_active_inspector_target(&app, "Unit", "mixer-1");
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn missing_upstream_recovery_saves_reopens_and_exposes_unbound_inlet_path() {
+    let project_path = temporary_failure_project_path("missing-upstream-recovery");
+    write_fixture_project(
+        &project_path,
+        include_str!(
+            "../../../../../examples/flowsheets/failures/missing-upstream-source.rfproj.json"
+        ),
+    );
+    let mut app = ready_app_state(&project_config(project_path.clone()));
+
+    run_and_assert_failure(
+        &mut app,
+        ExpectedFailure {
+            title: "Missing upstream source",
+            primary_code: "solver.connection_validation.missing_upstream_source",
+            recovery_title: Some("Remove dangling inlet stream"),
+            recovery_target: Some(("Unit", "mixer-1")),
+        },
+    );
+
+    app.dispatch_ui_command("run_panel.recover_failure");
+    assert_dirty_after_recovery(&app);
+    assert_active_inspector_target(&app, "Unit", "mixer-1");
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "mixer-1", "inlet_a"),
+        None
+    );
+    assert!(
+        !saved
+            .document
+            .flowsheet
+            .streams
+            .contains_key(&StreamId::new("stream-feed-a"))
+    );
+
+    reopen_and_assert_clean(&mut app, &project_path);
+    run_and_assert_failure(
+        &mut app,
+        ExpectedFailure {
+            title: "Unbound inlet port",
+            primary_code: "solver.connection_validation.unbound_inlet_port",
+            recovery_title: Some("Inspect inlet path"),
+            recovery_target: Some(("Unit", "mixer-1")),
+        },
+    );
+
+    app.dispatch_ui_command("run_panel.recover_failure");
+    assert_error_after_focus_recovery(&app);
+    assert_active_inspector_target(&app, "Unit", "mixer-1");
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn unbound_inlet_recovery_focuses_without_mutating_saved_project() {
+    let project_path = temporary_failure_project_path("unbound-inlet-recovery");
+    write_fixture_project(
+        &project_path,
+        include_str!("../../../../../examples/flowsheets/failures/unbound-inlet-port.rfproj.json"),
+    );
+    let mut app = ready_app_state(&project_config(project_path.clone()));
+
+    run_and_assert_failure(
+        &mut app,
+        ExpectedFailure {
+            title: "Unbound inlet port",
+            primary_code: "solver.connection_validation.unbound_inlet_port",
+            recovery_title: Some("Inspect inlet path"),
+            recovery_target: Some(("Unit", "heater-1")),
+        },
+    );
+
+    app.dispatch_ui_command("run_panel.recover_failure");
+    assert_error_after_focus_recovery(&app);
+    assert_active_inspector_target(&app, "Unit", "heater-1");
+
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    assert_eq!(saved.document.revision, 0);
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "heater-1", "inlet"),
+        None
+    );
+
+    reopen_and_assert_clean(&mut app, &project_path);
+    run_and_assert_failure(
+        &mut app,
+        ExpectedFailure {
+            title: "Unbound inlet port",
+            primary_code: "solver.connection_validation.unbound_inlet_port",
+            recovery_title: Some("Inspect inlet path"),
+            recovery_target: Some(("Unit", "heater-1")),
+        },
+    );
+
+    let _ = std::fs::remove_file(project_path);
+}
+
 #[derive(Debug, Clone, Copy)]
 struct ExpectedFailure<'a> {
     title: &'a str,
@@ -440,6 +591,14 @@ fn assert_dirty_after_recovery(app: &ReadyAppState) {
     assert_eq!(
         recovered.runtime.control_state.pending_reason,
         Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+    );
+}
+
+fn assert_error_after_focus_recovery(app: &ReadyAppState) {
+    let focused = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        focused.runtime.control_state.run_status,
+        rf_ui::RunStatus::Error
     );
 }
 
