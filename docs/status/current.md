@@ -19,7 +19,8 @@
 - **MVP β 后续能力包：结果核对与案例说明 v0 已落地第一版。**
 - **MVP β 下一组高频建模能力：受控连接恢复 v0 与剩余单元建模闭环 v0 已完成 focused 收口。**
 - **MVP β 失败修复闭环 v0 已完成 focused 收口：缺物性包、缺项目组分、缺 composition、参数越界、连接 blocker、cycle 与 invalid port signature 已锁定。**
-- **MVP β 人工 smoke 与验收标准 v0 已定义，人工执行待进行。**
+- **MVP β 人工 smoke v0 已通过：Smoke A-D 均已由人工完成，未发现 blocker。**
+- **MVP β 阶段基线验证已通过：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 β 第一刀通过依据：
@@ -56,17 +57,17 @@
 
 ## 下阶段目标
 
-**MVP β 人工 smoke 与验收标准 v0 已定义。**
+**MVP β 人工 smoke v0 已通过。**
 
-建模输入能力 v0、结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0 与失败修复闭环 v0 均已完成 focused 收口。下一步执行 `docs/mvp/beta-acceptance-checklist.md` 中的最小人工 smoke，不回到零散 UI 打磨。
+建模输入能力 v0、结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0、失败修复闭环 v0、MVP β 人工 smoke v0 与仓库级阶段基线验证均已通过。下一步评估后续能力包；不回到零散 UI 打磨。
 
-人工 smoke v0 的最小路径：
+人工 smoke v0 已通过的路径：
 
 - 打开 official demo case，运行、结果审阅、保存 / 重开 / rerun。
 - 从 Home 作者入口手工复现 `Mixer-Flash` 和 `Heater-Flash` 空白项目路径。
 - 覆盖代表性失败恢复：缺 Feed composition 诊断与修复、selected stream 断开 / 重连 / 保存重开。
 
-通过 / 失败标准以 `docs/mvp/beta-acceptance-checklist.md` 为准；人工 smoke 未执行并通过前，不推进 tag、release notes、便携包刷新或对外发布自动化。
+通过 / 失败记录以 `docs/mvp/beta-acceptance-checklist.md` 为准；当前仍不推进 tag、release notes、便携包刷新或对外发布自动化。
 
 后续能力包判断标准：
 
@@ -89,7 +90,8 @@
 - 已完成受控连接恢复 v0 focused 收口：验证锁定 official Heater-Flash case 中 selected stream 断开 sink、重连唯一 Flash inlet、保存 / 重开 / rerun 后仍由 Flash Drum 消费 heater outlet 的闭环。
 - 已完成剩余单元建模闭环 v0 focused 收口：补 focused 验证覆盖空白项目中显式选择内置物性包 / 组分后，手工搭建 `Feed -> Cooler -> Flash Drum` 与 `Feed -> Valve -> Flash Drum`，提交 Feed composition 和单元参数，保存 / 重开 / rerun，并核对中间流股、flash consumed stream、液/汽出口、相态 / `H` 基础审阅对象；2026-05-27 仓库级验证 `pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
 - 已完成失败修复闭环 v0 focused 收口：回归覆盖缺物性包、缺项目组分、缺 Feed composition、Valve 参数越界、主要连接 blocker、cycle 和 invalid port signature；2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。
-- 已建立 MVP β 人工 smoke 与验收标准 v0：最小路径、通过 / 失败标准、blocker 分类和暂不推进项已落到 `docs/mvp/beta-acceptance-checklist.md`；下一步由人工启动 Studio 执行 Smoke A-D。
+- 已完成 MVP β 人工 smoke v0：Smoke A-D 已由人工执行并通过，未发现 `AuthoringPath`、`ModelingInput`、`FailureRecovery`、`ResultReview` 或 `Persistence` blocker；记录已落到 `docs/mvp/beta-acceptance-checklist.md`。
+- 已完成 MVP β 阶段基线验证：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。
 
 ## 验证节奏
 
@@ -102,7 +104,7 @@
 ## 暂不推进
 
 - 不继续在 β 第一刀上追加 `Valve-Flash` 作者入口或同类 checklist。
-- MVP β 人工 smoke 未执行并通过前，不推进 tag、release notes、便携包刷新或对外发布自动化。
+- 仍不推进 tag、release notes、便携包刷新或对外发布自动化；这些事项等待后续明确发布节点。
 - 不做自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统、完整参数表。
 - 不引入第三方 CAPE-OPEN 模型、第三方物性包加载、完整组分数据库或完整 Thermodynamics PMC。
 - 不把 CAPE-OPEN / COM 语义倒灌到 Rust Core。

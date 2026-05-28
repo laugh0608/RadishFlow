@@ -21,7 +21,7 @@
 - 剩余单元建模闭环 v0
 - 失败修复闭环 v0
 
-当前 `19d8986` 已在真实环境通过 `pwsh ./scripts/check-repo.ps1`。下一步是人工执行本文的最小 smoke，并按本文标准记录 `Pass / Fail / Blocked`。在人工 smoke 未执行并通过前，不把当前状态升级为正式 tag / release 节点。
+当前 `718b03b` 已完成人工 Smoke A-D，未发现 blocker。2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 已在 smoke 记录同步工作区通过。在明确发布节点前，不把当前状态升级为正式 tag / release 节点。
 
 ## 验收原则
 
@@ -62,7 +62,7 @@ UI 观感小问题、局部文案不顺、非阻断 tooltip、低频面板排序
 
 | 项目 | 当前状态 | 通过标准 | 记录 |
 | --- | --- | --- | --- |
-| 仓库级验证 | Pass | `pwsh ./scripts/check-repo.ps1` 通过 | 2026-05-28 真实环境已在 `19d8986` 通过 |
+| 仓库级验证 | Pass | `pwsh ./scripts/check-repo.ps1` 通过 | 2026-05-28 真实环境已在 smoke 记录同步工作区通过 |
 | 失败修复 focused | Pass | `cargo test -p radishflow-studio failure_recovery_lifecycle` 覆盖缺物性包、缺组分、缺 composition、参数越界、连接 blocker、cycle 与 invalid port signature 生命周期 | 2026-05-28 已通过，作为人工 smoke 的前置信心，不替代人工主路径复验 |
 | 文档口径 | Pass | `docs/status/current.md`、本文、`docs/devlogs/2026-05/2026-W22.md` 不再把下一步指向已完成的失败修复闭环 | 2026-05-28 建立本文 |
 
@@ -72,45 +72,49 @@ UI 观感小问题、局部文案不顺、非阻断 tooltip、低频面板排序
 
 | 项 | 记录 |
 | --- | --- |
-| 状态 | Pending |
+| 状态 | Pass |
 | 推荐项目 | `examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json`，再抽查 `examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json` |
 | 步骤 | 启动 Studio；打开示例；执行 `运行`；查看右侧 `结果`、底部 `结果表` 和当前对象 `检查器`；保存到临时项目；重开并 rerun |
 | 通过标准 | 运行成功生成最新 `SolveSnapshot`；能审阅输入流股、非 flash 中间流股、unit step、flash liquid / vapor、相态和 `H`；保存 / 重开不破坏项目或 sidecar |
 | 失败标准 | 无法打开 / 运行 / 保存 / 重开；结果只显示空壳或过期快照；flash step 消费错误流股；保存后丢失参数或连接 |
 | Blocker 分类 | `OpenRunReview`、`ResultReview`、`Persistence`、`DocsRepro` |
+| 记录 | 2026-05-28 人工执行通过；打开、运行、结果审阅、保存 / 重开 / rerun 未发现 blocker |
 
 ### Smoke B：Mixer-Flash 空白作者路径
 
 | 项 | 记录 |
 | --- | --- |
-| 状态 | Pending |
+| 状态 | Pass |
 | 入口 | Home `创建 Mixer-Flash 小案例` |
 | 步骤 | 从空白项目显式选择 `binary-hydrocarbon-lite-v1`、methane、ethane；放置两个 `Feed`、一个 `Mixer`、一个 `Flash Drum`；通过 suggestion 创建 / 连接流股；提交两股 Feed composition、Feed 参数、Mixer outlet pressure、Flash Drum flash T/P；运行；复制或导出当前快照；保存、重开、rerun |
 | 通过标准 | 清单状态从项目真实 canvas / input / snapshot 推导；运行收敛；mixer outlet 流量为两股 Feed 之和；composition 为摩尔流量加权结果；Flash Drum 消费 mixer outlet；导出文本与右侧结果来自同一份快照 |
 | 失败标准 | 作者入口自动写项目语义；空白项目被预填物性包或组分；suggestion 无法完成双入口连接；参数或组成只停留在草稿；保存重开后 rerun 漂移 |
 | Blocker 分类 | `AuthoringPath`、`ModelingInput`、`ResultReview`、`Persistence` |
+| 记录 | 2026-05-28 人工执行通过；空白作者路径、输入提交、运行、导出 / 保存 / 重开 / rerun 未发现 blocker |
 
 ### Smoke C：Heater-Flash 空白作者路径与缺 composition 恢复
 
 | 项 | 记录 |
 | --- | --- |
-| 状态 | Pending |
+| 状态 | Pass |
 | 入口 | Home `创建 Heater-Flash 小案例` |
 | 步骤 | 从空白项目显式选择 package 和项目组分；放置 `Feed -> Heater -> Flash Drum` 并创建 liquid / vapor outlet；先故意不提交 Feed composition 后运行；确认诊断定位到被消费的 stream；通过 recovery / Inspector 补齐 composition 并 normalize；提交 Feed、Heater、Flash Drum 参数；运行、保存、重开、rerun |
 | 通过标准 | 缺 composition 时产生 `solver.step.stream_input`，并能定位到相关 stream / inlet；补齐后 rerun 收敛；Heater outlet 温压反映已提交参数；Flash Drum 消费 heater outlet；vapor-only / two-phase 结果按 guide 可核对 |
 | 失败标准 | 缺 composition 被下游单元泛化失败吞掉；recovery target 聚焦错误对象；补齐后仍无法保存 / 重开 / rerun；Flash Drum 直接消费 Feed outlet |
 | Blocker 分类 | `AuthoringPath`、`ModelingInput`、`FailureRecovery`、`ResultReview`、`Persistence` |
+| 记录 | 2026-05-28 人工执行通过；缺 Feed composition 诊断与恢复、补齐后运行 / 保存 / 重开 / rerun 未发现 blocker |
 
 ### Smoke D：受控连接恢复代表路径
 
 | 项 | 记录 |
 | --- | --- |
-| 状态 | Pending |
+| 状态 | Pass |
 | 推荐项目 | Smoke C 成功后的 Heater-Flash 临时项目 |
 | 步骤 | 选中 heater outlet stream；执行 `Disconnect sink`；确认 rerun 暴露可理解的未绑定入口或连接诊断；执行 `Reconnect stream`；保存、重开、rerun |
 | 通过标准 | 断开 / 重连通过正式 command 进入 undo；`Reconnect stream` 只在唯一合法候选时可用；保存 / 重开后 Flash Drum 继续消费 heater outlet 并运行成功 |
 | 失败标准 | 断开或重连绕过文档历史；自动猜错端点；形成 cycle；重开后连接丢失或 rerun 失败 |
 | Blocker 分类 | `ConnectionRecovery`、`FailureRecovery`、`Persistence` |
+| 记录 | 2026-05-28 人工执行通过；selected stream 断开 / 诊断 / 重连 / 保存 / 重开 / rerun 未发现 blocker |
 
 ## 整体通过标准
 
@@ -146,7 +150,7 @@ MVP β 人工 smoke v0 可记为 `Pass`，需要同时满足：
 | 日期 | 提交 | Smoke | 状态 | 记录 |
 | --- | --- | --- | --- | --- |
 | 2026-05-28 | `19d8986` | 自动化前置 | Pass | 真实环境 `pwsh ./scripts/check-repo.ps1` 已通过；本文建立最小人工 smoke 与验收标准 v0 |
-| 待执行 | 待记录 | Smoke A-D | Pending | 由人工启动 Studio 后填写 |
+| 2026-05-28 | `718b03b` | Smoke A-D | Pass | 人工启动 Studio 执行 official demo、Mixer-Flash 作者路径、Heater-Flash 缺 composition 恢复与受控连接恢复，未发现 blocker |
 
 ## 相关文档
 
