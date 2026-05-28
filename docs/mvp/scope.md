@@ -30,9 +30,12 @@
 - 加载第三方 CAPE-OPEN Thermo/Property Package
 - 完整 Thermodynamics PMC
 - recycle 全功能收敛
-- 动态模拟
+- 动态模拟（远期方向，非当前阶段）
+- CFD 模拟（远期方向，非当前阶段）
 - 大规模组分数据库
 - UI 视觉精修优先级高于内核闭环
+
+动态模拟和 CFD 模拟已进入长期产品规划，但当前只作为远期方向记录。它们不得改变本阶段“稳态流程模拟 + 最小 CAPE-OPEN Unit Operation PMC”的验收边界，也不为当前通用小流程建模 v1 增加 schema、crate、UI 或测试要求。
 
 ## 当前阶段细化决策
 
