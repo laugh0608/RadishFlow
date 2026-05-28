@@ -96,6 +96,7 @@
 - 已完成 MVP β 人工 smoke v0：Smoke A-D 已由人工执行并通过，未发现 `AuthoringPath`、`ModelingInput`、`FailureRecovery`、`ResultReview` 或 `Persistence` blocker；记录已落到 `docs/mvp/beta-acceptance-checklist.md`。
 - 已完成 MVP β 阶段基线验证：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。
 - 已启动通用小流程建模 v1 第一切片：运行按钮不再由 active 小案例清单拦截，改为所有项目共享的建模输入 readiness；普通空白项目与小案例入口都会用“模型输入未完成”指向真实 flowsheet 缺口，property package 解析仍留在正式 run command。
+- 已推进通用小流程建模 v1 第二切片：运行前 readiness 已按 Feed source stream 状态检查 T/P/F/z、项目组分引用和 composition 归一，并按 unit kind 要求 Heater / Cooler / Flash Drum 的出口 T/P 以及 Mixer / Valve 的出口压力；官方示例项目同步补齐正式单元参数，普通空白项目不再靠拓扑建议直接运行。
 
 ## 验证节奏
 

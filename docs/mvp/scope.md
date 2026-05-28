@@ -166,7 +166,7 @@ App 与交互层当前进一步冻结以下口径：
 
 截至 2026-05-27，MVP β 第二刀：建模输入能力 v0 已通过，结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0 也已完成 focused 收口。`Cooler` / `Valve` 已通过内部测试覆盖空白项目手工搭建、参数提交、保存 / 重开 / rerun 与 `SolveSnapshot` 核对；但当前 UI 仍是草稿状态，不新增对应 Home 作者入口，也不补会随 UI 变化废弃的用户操作 guide。下一阶段建议推进失败修复闭环 v0，围绕缺物性包、缺项目组分、缺 stream composition、参数越界、断连 / 漏连等真实 blocker 核对诊断、recovery target、Inspector focus、修复命令和保存 / 重开 / rerun 稳定性。
 
-截至 2026-05-28，失败修复闭环 v0、MVP β 人工 smoke v0 与仓库级阶段基线验证均已通过。当前下一步切到通用小流程建模 v1：普通空白项目不再进入或自动匹配 `Mixer-Flash` / `Heater-Flash` 小案例状态；运行前检查应按当前 `Flowsheet` 的项目组分、material port 连接、Feed source stream 组成和组成归一状态判断，并定位到具体 stream / unit / port。物性包选择继续由正式 run package resolution 判断，避免 shell 误拦仍可由本地唯一缓存包解析的旧示例项目。既有小案例清单只保留为导航提示，不作为通用建模运行 gate；仍不推进 tag、release notes、便携包刷新、自由连线编辑器、自动布线、完整拖拽布局器或完整报表系统。
+截至 2026-05-28，失败修复闭环 v0、MVP β 人工 smoke v0 与仓库级阶段基线验证均已通过，通用小流程建模 v1 已推进前两步。普通空白项目不再进入或自动匹配 `Mixer-Flash` / `Heater-Flash` 小案例状态；运行前检查按当前 `Flowsheet` 的项目组分、material port 连接、stream reference、Feed source stream T/P/F/z、composition 归一和 Heater / Cooler / Valve / Mixer / Flash Drum 必要参数判断，并定位到具体 stream / unit / port。物性包选择继续由正式 run package resolution 判断，避免 shell 误拦仍可由本地唯一缓存包解析的旧示例项目。官方示例项目若要直接运行，也必须携带正式 `UnitOperationParameters`，不再依赖 outlet stream template fallback 代表用户已提交参数。既有小案例清单只保留为导航提示，不作为通用建模运行 gate；仍不推进 tag、release notes、便携包刷新、自由连线编辑器、自动布线、完整拖拽布局器或完整报表系统。
 
 ## 近期开发节奏
 
@@ -246,7 +246,7 @@ App 与交互层当前进一步冻结以下口径：
 - 不再把 `rf-ffi`、`.NET 10` 适配层或 PME 人工验证列为“尚未启动”的后续项；这些路径已经形成当前回归基线，后续只做明确回归修复、验证脚本维护和官方接口真相源校准
 - Studio / Canvas 暂停继续扩 hover、legend、focus、command feedback 等周边 presentation 细节，把当前只读扫读层和多单元 placement palette 视为已收口边界
 - 2026-05-04 已补齐三条最短可操作建模路径：`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`；这些路径当前通过本地 Canvas suggestions 补齐连接和必要 outlet stream，并已由 shell 回归测试锁定到手动求解收敛
-- 2026-05-04 继续补齐真正空白项目前置缺口；2026-05-14 顶部 `New Blank` 进入未命名空白项目，并为最短建模路径准备本地 `binary-hydrocarbon-lite-v1` 物性包缓存；2026-05-27 起，空白项目不再预写默认二元 official hydrocarbon 组件或默认物性包，必须由用户显式选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane 后再创建 Feed source stream 和运行。Feed source stream 默认值仍固定为 `298.15 K / 101325 Pa / 1 mol/s / 等摩尔组成`，保存后重新打开仍可继续运行 `Feed -> Flash Drum` 最短闭环
+- 2026-05-04 继续补齐真正空白项目前置缺口；2026-05-14 顶部 `New Blank` 进入未命名空白项目，并为最短建模路径准备本地 `binary-hydrocarbon-lite-v1` 物性包缓存；2026-05-27 起，空白项目不再预写默认二元 official hydrocarbon 组件或默认物性包，必须由用户显式选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane 后再创建 Feed source stream 和运行。2026-05-28 起，运行前 readiness 要求 Feed source stream 的 T/P/F/z 与 Flash Drum 等必要单元参数都进入文档；Feed source stream 可沿用本地规则默认值，但 `Feed -> Flash Drum` 最短闭环仍需显式提交 Flash Drum flash temperature / pressure 后运行
 - 2026-05-04 又补出显式 suggestion acceptance；2026-05-20 UI 文案进一步按 acceptance payload 区分为 `连接流股` / `Connect stream` 与 `创建流股` / `Create stream`：每条带 acceptance payload 的本地建议都可单独接受，当前已验证非 focused outlet suggestion 也能先被接受，后续仍可补齐 `Feed -> Flash Drum` 并运行收敛
 - 2026-05-04 又补出 Canvas placement 坐标最小持久化：落点保存到 `<project>.rfstudio-layout.json` sidecar，保存并重开项目后单元位置可恢复，且仍可继续显式接受 connection suggestions 并运行收敛
 - 2026-05-04 又补出 Active Inspector 单元最新执行结果审阅：选中已运行单元时，窗口模型会暴露执行状态、step 序号、summary 和产出流股跳转，并由 shell 只读展示；2026-05-05 进一步补出输入流股跳转

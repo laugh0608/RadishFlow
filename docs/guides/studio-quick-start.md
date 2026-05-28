@@ -178,7 +178,7 @@ cargo run -p radishflow-studio
 7. 在流股检查器中编辑 `T / P / F` 和组成草稿；字段提交、全部应用、组成归一化都是显式动作。
 8. 选中 `Feed / Heater / Cooler / Mixer / Valve / Flash Drum` 时，可在单元检查器中编辑已暴露的 source temperature、source pressure、outlet temperature、outlet pressure、flash temperature 或 flash pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。
 9. 若流股错连或漏连，先选中该 material stream，再使用 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 或 `Delete stream` 这组受控恢复动作；`Reconnect stream` 只在单端唯一候选且不会形成 unit dependency cycle 时可用。
-10. 点击顶部 `运行`，结果只从最新 `SolveSnapshot` 展示到右侧 `结果` 和底部 `结果表`。
+10. 点击顶部 `运行`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一、material port 连接或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐后，结果只从最新 `SolveSnapshot` 展示到右侧 `结果` 和底部 `结果表`。
 
 当前连接仍通过本地 suggestion 和正式 `DocumentCommand` 完成，不是自由拉线编辑器；单元参数编辑也仍限制在上述 MVP 已暴露字段，不等同于完整单元参数表。
 
@@ -194,6 +194,8 @@ cargo run -p radishflow-studio
 - `Flash Drum`：`flash temperature`，单位 K；`flash pressure`，单位 Pa；提交后同步 liquid / vapor 两个出口流股模板，并作为 TP Flash 输入参与求解
 
 `Mixer / Heater / Cooler / Valve` 的 outlet pressure 若高于已连接 inlet pressure 约束，会在单元检查器草稿态直接标记为无效，保持草稿、不写回项目文档，也不会同步 outlet stream 模板。Flash Drum 的 flash temperature / flash pressure 当前只要求正有限 SI 值，不施加 inlet pressure 上限。若旧项目或外部编辑已经把越界参数写入文档，运行会产生 `solver.step.parameter` 诊断，并把 failure detail、端口 attention 和 recovery action 指向相关 unit / port / stream。
+
+运行前 readiness 不再使用 `Mixer-Flash` 或 `Heater-Flash` 小案例清单作为 gate。普通空白项目按当前 `Flowsheet` 判断：Feed source stream 必须有正有限温度、压力和摩尔流量，composition 必须引用已选择项目组分并归一；Heater / Cooler / Flash Drum 必须提交出口温度和压力，Mixer / Valve 必须提交出口压力。物性包缺失仍交给正式运行命令的 package resolution 诊断。
 
 连接类失败同样会尽量携带可修复目标：例如缺失 upstream source、未绑定 outlet port、cycle、自环、坏 stream 引用、重复 source / sink 或 orphan stream。Run Panel 中的 recovery action 可能只是聚焦相关 unit / port / stream，也可能执行明确的局部修复动作；按钮文案应区分这两类行为。
 
@@ -247,7 +249,7 @@ Canvas 中的单元位置和 viewport offset 保存到项目同目录的 `<proje
 - `Unnormalized` 表示组成已经进入项目文档，但总和不是 1
 - `Normalize composition` 会按当前组成显式归一化
 - 组分添加 / 删除只从当前 flowsheet component catalog 派生，不创建完整组件库
-- 运行前若仍有未提交草稿或未归一化文档组成，应先阻断并显示诊断，不做隐式差值补偿
+- 运行前若文档组成缺失、引用未选择项目组分、数值无效或未归一化，应先阻断并显示诊断，不做隐式差值补偿
 
 ## 运行反馈和退出
 

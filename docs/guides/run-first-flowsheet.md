@@ -168,7 +168,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 6. 从左侧 `项目` 或 Canvas 对象列表选择 stream / unit，右侧 `检查器` 会显示当前对象。
 7. 流股检查器当前可编辑 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 和已有 flowsheet component catalog 中的组成条目；组成修改需要显式提交、归一化或丢弃。若流股缺少项目组分，可先通过检查器中的受控 add component 动作添加，再编辑对应摩尔分率。
 8. 单元检查器当前已暴露首批高频参数：Feed 的 source temperature / pressure、Heater / Cooler 的 outlet temperature / outlet pressure、Mixer / Valve 的 outlet pressure 与 Flash Drum 的 flash temperature / flash pressure；字段使用 SI 单位并显示约束提示，Mixer outlet pressure 不能高于两股已连接 inlet pressure 的较低值，Heater / Cooler / Valve outlet pressure 若高于已连接 inlet pressure 会停留在无效草稿态。其余内容仍以端口、关联步骤、关联诊断和最新 `SolveSnapshot` 中的单元结果为主，不等同于完整单元参数表。
-9. 点击 `运行`，成功后右侧会自动切到 `结果`，底部会自动切到 `结果表`；失败时会切到右侧 `运行` 和底部 `消息`，方便先看诊断。
+9. 点击 `运行`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一、material port 连接或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐并运行成功后，右侧会自动切到 `结果`，底部会自动切到 `结果表`。正式物性包解析失败仍由 Run Panel 诊断承载。
 
 如果误接或漏接了流股，可以选中对应 material stream 后使用右侧检查器或 Canvas 操作区中的受控恢复动作：
 
@@ -215,7 +215,8 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - 文档态流股组成是否未归一到 1
 - 当前运行环境下是否出现多包可选且未显式指定 package
 - 项目是否被改成了不完整连接或不一致端口绑定
-- Feed source temperature / pressure 或 Flash Drum flash temperature / flash pressure 是否为正有限 SI 值；Mixer / Heater / Cooler / Valve outlet pressure 是否高于已连接 inlet pressure 约束。若越界值已存在于项目文档，运行诊断会归类为 `solver.step.parameter`
+- Feed source temperature / pressure / molar flow 是否为正有限 SI 值，Feed composition 是否引用已选择项目组分并归一；Flash Drum flash temperature / flash pressure、Heater / Cooler outlet temperature / pressure、Mixer / Valve outlet pressure 等必要参数是否已经提交
+- Mixer / Heater / Cooler / Valve outlet pressure 是否高于已连接 inlet pressure 约束。若越界值已存在于项目文档，运行诊断会归类为 `solver.step.parameter`
 - 已连接到下游单元的 stream 是否已经写入至少一项 overall mole fraction；若缺少可消费组成，运行诊断会归类为 `solver.step.stream_input`，并应优先定位到相关 stream 和 inlet port
 - 顶部 `运行` 是否处于 disabled 状态，以及 hover 文案给出的原因
 - 启动 Studio 的终端 stderr 是否有 `[radishflow-studio]` 审计线或 GUI panic 提示
