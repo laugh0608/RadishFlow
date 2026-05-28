@@ -1066,6 +1066,33 @@ fn gui_driver_keeps_zero_composition_digit_editable_until_fraction_is_completed(
         Some(("Invalid", "0"))
     );
 
+    let decimal_prefix = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id:
+                "inspector.update_stream_draft:stream:stream-feed:overall_mole_fraction:methane"
+                    .to_string(),
+            raw_value: "0.".to_string(),
+        })
+        .expect("expected decimal prefix draft update");
+    let decimal_prefix_detail = decimal_prefix
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected stream inspector detail");
+    assert!(decimal_prefix_detail.property_fields.iter().any(|field| {
+        field.key == "stream:stream-feed:overall_mole_fraction:methane"
+            && field.current_value == "0."
+            && field.status_label != "Invalid"
+    }));
+    assert_eq!(
+        decimal_prefix_detail
+            .property_composition_summary
+            .as_ref()
+            .map(|summary| (summary.status_label, summary.current_sum_text.as_str())),
+        Some(("Invalid", "0"))
+    );
+
     let completed_fraction = driver
         .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
             command_id:

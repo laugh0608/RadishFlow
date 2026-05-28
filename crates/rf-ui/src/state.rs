@@ -1213,13 +1213,13 @@ impl AppState {
         let (draft_value, is_dirty, validation) =
             stream_draft_value_from_raw(&field, stream, raw_value);
 
-        if !is_dirty && validation != DraftValidationState::Invalid {
-            self.workspace.drafts.fields.remove(&key);
-        } else {
+        if inspector_draft_needs_storage(&draft_value, is_dirty, validation) {
             self.workspace
                 .drafts
                 .fields
                 .insert(key.clone(), draft_value);
+        } else {
+            self.workspace.drafts.fields.remove(&key);
         }
 
         Some(StreamInspectorDraftUpdateResult {
@@ -1632,6 +1632,22 @@ impl AppState {
     pub fn clear_auth_session(&mut self) {
         self.auth_session.clear();
         self.entitlement.clear();
+    }
+}
+
+fn inspector_draft_needs_storage(
+    draft_value: &DraftValue,
+    is_dirty: bool,
+    validation: DraftValidationState,
+) -> bool {
+    if is_dirty || validation == DraftValidationState::Invalid {
+        return true;
+    }
+
+    match draft_value {
+        DraftValue::Text(draft) | DraftValue::Number(draft) | DraftValue::Choice(draft) => {
+            draft.current != draft.original
+        }
     }
 }
 

@@ -1170,6 +1170,29 @@ fn updating_zero_composition_draft_keeps_field_valid_before_positive_fraction_en
             .contains_key(&first_digit.key)
     );
 
+    let decimal_prefix = app_state
+        .update_stream_inspector_draft(
+            &stream_id,
+            crate::StreamInspectorDraftField::OverallMoleFraction(component_a.clone()),
+            "0.",
+        )
+        .expect("expected decimal prefix composition draft update");
+
+    assert_eq!(
+        decimal_prefix.validation,
+        crate::DraftValidationState::Valid
+    );
+    assert!(!decimal_prefix.is_dirty);
+    assert_eq!(
+        app_state.workspace.drafts.fields.get(&decimal_prefix.key),
+        Some(&crate::DraftValue::Number(crate::FieldDraft {
+            original: "0".to_string(),
+            current: "0.".to_string(),
+            is_dirty: false,
+            validation: crate::DraftValidationState::Valid,
+        }))
+    );
+
     let completed_fraction = app_state
         .update_stream_inspector_draft(
             &stream_id,
