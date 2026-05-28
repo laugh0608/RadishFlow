@@ -613,7 +613,63 @@ fn blank_palette_does_not_auto_match_authoring_case_after_mixer_topology() {
 }
 
 #[test]
-fn blank_project_mixer_topology_run_uses_solver_diagnostic_without_authoring_blocker() {
+fn blank_project_empty_run_uses_generic_modeling_readiness() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.create_blank_project();
+    app.dispatch_ui_command("run_panel.run_manual");
+
+    let window = app.platform_host.snapshot().window_model();
+    assert!(
+        window.runtime.latest_failure.is_none(),
+        "empty blank project should stop before solver failure"
+    );
+    assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Palette);
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Inspector);
+    let notice = app
+        .project_open
+        .notice
+        .as_ref()
+        .expect("expected modeling readiness notice");
+    assert_eq!(notice.title, "模型输入未完成");
+    assert!(
+        notice.detail.contains("至少一个单元"),
+        "expected first-unit readiness detail, got {notice:?}"
+    );
+}
+
+#[test]
+fn blank_project_feed_outlet_run_requires_project_components_before_composition() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.create_blank_project();
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+
+    app.dispatch_ui_command("run_panel.run_manual");
+
+    let window = app.platform_host.snapshot().window_model();
+    assert!(
+        window.runtime.latest_failure.is_none(),
+        "missing project components should stop before solver failure"
+    );
+    assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Project);
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Package);
+    let notice = app
+        .project_open
+        .notice
+        .as_ref()
+        .expect("expected modeling readiness notice");
+    assert_eq!(notice.title, "模型输入未完成");
+    assert!(
+        notice.detail.contains("项目组分"),
+        "expected project component readiness detail, got {notice:?}"
+    );
+}
+
+#[test]
+fn blank_project_mixer_topology_run_uses_generic_modeling_readiness() {
     let mut app = ready_app_state(&synced_workspace_config());
 
     app.create_blank_project();
@@ -647,22 +703,23 @@ fn blank_project_mixer_topology_run_uses_solver_diagnostic_without_authoring_blo
     app.dispatch_ui_command("run_panel.run_manual");
 
     let window = app.platform_host.snapshot().window_model();
-    assert_eq!(
-        window.runtime.control_state.run_status,
-        rf_ui::RunStatus::Error
+    assert!(
+        window.runtime.latest_failure.is_none(),
+        "generic modeling readiness should stop before solver failure"
     );
-    let failure = window
+    let detail = window
         .runtime
-        .latest_failure
+        .active_inspector_detail
         .as_ref()
-        .expect("expected missing composition to reach solver diagnostic");
-    assert_eq!(failure.title, "Stream input invalid");
+        .expect("expected missing feed composition stream to be focused");
+    assert_eq!(detail.target.kind_label, "Stream");
+    assert_eq!(detail.target.target_id, "stream-feed-1-outlet");
     assert_eq!(
-        failure
-            .diagnostic_detail
+        app.project_open
+            .notice
             .as_ref()
-            .and_then(|detail| detail.primary_code.as_deref()),
-        Some("solver.step.stream_input")
+            .map(|notice| notice.title.as_str()),
+        Some("模型输入未完成")
     );
     assert_ne!(
         app.project_open
@@ -813,7 +870,7 @@ fn mixer_flash_authoring_run_focuses_missing_feed_composition_before_solving() {
             .notice
             .as_ref()
             .map(|notice| notice.title.as_str()),
-        Some("小案例输入未完成")
+        Some("模型输入未完成")
     );
 }
 

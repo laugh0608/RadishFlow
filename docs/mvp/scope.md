@@ -166,7 +166,7 @@ App 与交互层当前进一步冻结以下口径：
 
 截至 2026-05-27，MVP β 第二刀：建模输入能力 v0 已通过，结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0 也已完成 focused 收口。`Cooler` / `Valve` 已通过内部测试覆盖空白项目手工搭建、参数提交、保存 / 重开 / rerun 与 `SolveSnapshot` 核对；但当前 UI 仍是草稿状态，不新增对应 Home 作者入口，也不补会随 UI 变化废弃的用户操作 guide。下一阶段建议推进失败修复闭环 v0，围绕缺物性包、缺项目组分、缺 stream composition、参数越界、断连 / 漏连等真实 blocker 核对诊断、recovery target、Inspector focus、修复命令和保存 / 重开 / rerun 稳定性。
 
-截至 2026-05-28，失败修复闭环 v0 已完成 focused 收口，真实环境 `pwsh ./scripts/check-repo.ps1` 已在 `19d8986` 通过。当前下一步切到 MVP β 人工 smoke 与验收标准 v0：只复验 official demo 打开 / 运行 / 审阅 / 保存重开、`Mixer-Flash` 与 `Heater-Flash` 空白作者路径、缺 composition 恢复和 selected stream 断开 / 重连代表路径；通过 / 失败标准、blocker 分类和暂不推进项以 `docs/mvp/beta-acceptance-checklist.md` 为准。人工 smoke 未执行并通过前，不推进 tag、release notes、便携包刷新或对外发布自动化。
+截至 2026-05-28，失败修复闭环 v0、MVP β 人工 smoke v0 与仓库级阶段基线验证均已通过。当前下一步切到通用小流程建模 v1：普通空白项目不再进入或自动匹配 `Mixer-Flash` / `Heater-Flash` 小案例状态；运行前检查应按当前 `Flowsheet` 的项目组分、material port 连接、Feed source stream 组成和组成归一状态判断，并定位到具体 stream / unit / port。物性包选择继续由正式 run package resolution 判断，避免 shell 误拦仍可由本地唯一缓存包解析的旧示例项目。既有小案例清单只保留为导航提示，不作为通用建模运行 gate；仍不推进 tag、release notes、便携包刷新、自由连线编辑器、自动布线、完整拖拽布局器或完整报表系统。
 
 ## 近期开发节奏
 

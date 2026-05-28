@@ -671,7 +671,7 @@ impl ReadyAppState {
 
     pub(super) fn dispatch_ui_command(&mut self, command_id: impl Into<String>) {
         let command_id = command_id.into();
-        if self.intercept_authoring_run_if_needed(&command_id) {
+        if self.intercept_modeling_readiness_run_if_needed(&command_id) {
             return;
         }
 

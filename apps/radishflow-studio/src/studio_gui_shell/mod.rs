@@ -34,6 +34,7 @@ mod chrome;
 mod fonts;
 mod home_dashboard;
 mod locale;
+mod modeling_readiness;
 mod panels;
 mod project_picker;
 mod utils;

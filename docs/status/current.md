@@ -21,6 +21,7 @@
 - **MVP β 失败修复闭环 v0 已完成 focused 收口：缺物性包、缺项目组分、缺 composition、参数越界、连接 blocker、cycle 与 invalid port signature 已锁定。**
 - **MVP β 人工 smoke v0 已通过：Smoke A-D 均已由人工完成，未发现 blocker。**
 - **MVP β 阶段基线验证已通过：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。**
+- **MVP β 下一阶段已切到通用小流程建模 v1：目标从复现指定案例推进到空白项目中受控组合小流程。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 β 第一刀通过依据：
@@ -59,7 +60,7 @@
 
 **MVP β 人工 smoke v0 已通过。**
 
-建模输入能力 v0、结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0、失败修复闭环 v0、MVP β 人工 smoke v0 与仓库级阶段基线验证均已通过。下一步评估后续能力包；不回到零散 UI 打磨。
+建模输入能力 v0、结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0、失败修复闭环 v0、MVP β 人工 smoke v0 与仓库级阶段基线验证均已通过。下一步推进 **通用小流程建模 v1**；不回到零散 UI 打磨，也不把工作停在案例说明或验收文档上。
 
 人工 smoke v0 已通过的路径：
 
@@ -69,11 +70,13 @@
 
 通过 / 失败记录以 `docs/mvp/beta-acceptance-checklist.md` 为准；当前仍不推进 tag、release notes、便携包刷新或对外发布自动化。
 
-后续能力包判断标准：
+通用小流程建模 v1 目标：
 
-- 能服务用户真实建模或结果判断路径。
-- 有明确退出标准和 focused 验证。
-- 不引入当前暂不推进项中的复杂度。
+- 普通空白项目不再进入或自动匹配 `Mixer-Flash` / `Heater-Flash` 小案例状态。
+- 运行前检查按当前 `Flowsheet` 的真实建模输入判断，不再按某个案例步骤阻断；物性包选择仍由正式 run package resolution 判断，避免 shell 误拦可由本地唯一缓存包解析的旧示例项目。
+- 在受控范围内支持用户自行组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`。
+- 缺项目组分、缺 Feed composition、未连接 material port、缺失 stream reference 和组成未归一等问题应定位到具体 stream / unit / port；缺物性包继续走正式运行命令的 package 解析与 Run Panel 诊断。
+- 保存 / 重开 / rerun 仍必须稳定；不引入自由连线编辑器、自动布线、完整拖拽布局器或完整报表系统。
 
 当前推进切片：
 
@@ -92,6 +95,7 @@
 - 已完成失败修复闭环 v0 focused 收口：回归覆盖缺物性包、缺项目组分、缺 Feed composition、Valve 参数越界、主要连接 blocker、cycle 和 invalid port signature；2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。
 - 已完成 MVP β 人工 smoke v0：Smoke A-D 已由人工执行并通过，未发现 `AuthoringPath`、`ModelingInput`、`FailureRecovery`、`ResultReview` 或 `Persistence` blocker；记录已落到 `docs/mvp/beta-acceptance-checklist.md`。
 - 已完成 MVP β 阶段基线验证：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。
+- 已启动通用小流程建模 v1 第一切片：运行按钮不再由 active 小案例清单拦截，改为所有项目共享的建模输入 readiness；普通空白项目与小案例入口都会用“模型输入未完成”指向真实 flowsheet 缺口，property package 解析仍留在正式 run command。
 
 ## 验证节奏
 
@@ -103,7 +107,7 @@
 
 ## 暂不推进
 
-- 不继续在 β 第一刀上追加 `Valve-Flash` 作者入口或同类 checklist。
+- 不继续在 β 第一刀上追加 `Valve-Flash` 作者入口或同类 checklist；既有小案例清单只作为导航提示，不作为通用建模运行 gate。
 - 仍不推进 tag、release notes、便携包刷新或对外发布自动化；这些事项等待后续明确发布节点。
 - 不做自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统、完整参数表。
 - 不引入第三方 CAPE-OPEN 模型、第三方物性包加载、完整组分数据库或完整 Thermodynamics PMC。
