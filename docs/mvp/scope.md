@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-05-26
+更新时间：2026-05-28
 
 ## MVP 目标
 
@@ -166,6 +166,8 @@ App 与交互层当前进一步冻结以下口径：
 
 截至 2026-05-27，MVP β 第二刀：建模输入能力 v0 已通过，结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0 也已完成 focused 收口。`Cooler` / `Valve` 已通过内部测试覆盖空白项目手工搭建、参数提交、保存 / 重开 / rerun 与 `SolveSnapshot` 核对；但当前 UI 仍是草稿状态，不新增对应 Home 作者入口，也不补会随 UI 变化废弃的用户操作 guide。下一阶段建议推进失败修复闭环 v0，围绕缺物性包、缺项目组分、缺 stream composition、参数越界、断连 / 漏连等真实 blocker 核对诊断、recovery target、Inspector focus、修复命令和保存 / 重开 / rerun 稳定性。
 
+截至 2026-05-28，失败修复闭环 v0 已完成 focused 收口，真实环境 `pwsh ./scripts/check-repo.ps1` 已在 `19d8986` 通过。当前下一步切到 MVP β 人工 smoke 与验收标准 v0：只复验 official demo 打开 / 运行 / 审阅 / 保存重开、`Mixer-Flash` 与 `Heater-Flash` 空白作者路径、缺 composition 恢复和 selected stream 断开 / 重连代表路径；通过 / 失败标准、blocker 分类和暂不推进项以 `docs/mvp/beta-acceptance-checklist.md` 为准。人工 smoke 未执行并通过前，不推进 tag、release notes、便携包刷新或对外发布自动化。
+
 ## 近期开发节奏
 
 当前建议以周为单位推进，先把主线拆细：
@@ -284,7 +286,7 @@ App 与交互层当前进一步冻结以下口径：
 - 一个能力包满足“主路径可走通、保存 / 重开不坏、结果能核对、必要验证通过、入口文档说明清楚”即应停止，不继续追逐局部 presentation 完美。
 - UI 展示细节默认不为单点新增测试；除非它曾造成 blocker 或影响主路径验收。
 - 阶段收口优先执行仓库级验证；日常小修只跑与风险匹配的 focused tests。
-- 下阶段优先修会阻碍失败修复闭环的问题，包括缺物性包、缺项目组分、缺 stream composition、单元参数越界、断连 / 漏连后的诊断定位、recovery action、Inspector focus、保存重开和 rerun 稳定性。
+- 下阶段优先执行 MVP β 人工 smoke；若暴露真实 blocker，再按缺物性包、缺项目组分、缺 stream composition、单元参数越界、断连 / 漏连后的诊断定位、recovery action、Inspector focus、保存重开和 rerun 稳定性修根因。
 
 补充对 `.NET 10` `UnitOp.Mvp` 当前子线的判断口径：
 

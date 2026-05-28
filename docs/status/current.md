@@ -19,6 +19,7 @@
 - **MVP β 后续能力包：结果核对与案例说明 v0 已落地第一版。**
 - **MVP β 下一组高频建模能力：受控连接恢复 v0 与剩余单元建模闭环 v0 已完成 focused 收口。**
 - **MVP β 失败修复闭环 v0 已完成 focused 收口：缺物性包、缺项目组分、缺 composition、参数越界、连接 blocker、cycle 与 invalid port signature 已锁定。**
+- **MVP β 人工 smoke 与验收标准 v0 已定义，人工执行待进行。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 β 第一刀通过依据：
@@ -55,34 +56,17 @@
 
 ## 下阶段目标
 
-**MVP β 失败修复闭环 v0 已完成 focused 收口。**
+**MVP β 人工 smoke 与验收标准 v0 已定义。**
 
-建模输入能力 v0、结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0 与失败修复闭环 v0 均已完成 focused 收口。下一步建议评估人工 smoke、验收标准或后续能力包，不回到零散 UI 打磨。
+建模输入能力 v0、结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0 与失败修复闭环 v0 均已完成 focused 收口。下一步执行 `docs/mvp/beta-acceptance-checklist.md` 中的最小人工 smoke，不回到零散 UI 打磨。
 
-- **失败修复闭环 v0**：围绕缺物性包、缺项目组分、缺 stream composition、单元参数越界、断连 / 错连 / 漏连这几类真实 blocker，核对诊断码、recovery target、Inspector focus、修复命令、保存 / 重开后的 rerun 是否稳定。
-- **结果核对与案例说明后续增强**：只补真实审阅 blocker，例如轻量导出仍缺失关键字段、case 说明与 `SolveSnapshot` 行为不一致、focused 验证漏掉正式核对路径。
+人工 smoke v0 的最小路径：
 
-当前已覆盖口径：
+- 打开 official demo case，运行、结果审阅、保存 / 重开 / rerun。
+- 从 Home 作者入口手工复现 `Mixer-Flash` 和 `Heater-Flash` 空白项目路径。
+- 覆盖代表性失败恢复：缺 Feed composition 诊断与修复、selected stream 断开 / 重连 / 保存重开。
 
-- 缺物性包：property package load failure 记录 `workspace.run.property_package_missing`，Run Panel 给出本地物性包修复动作。
-- 缺项目组分：stream composition 引用未选择 component 时，运行前门禁阻止求解。
-- 缺 `stream composition`：`solver.step.stream_input` 聚焦 Stream Inspector，补齐并归一后可保存 / 重开 / rerun 收敛。
-- 单元参数越界：`solver.step.parameter` 聚焦 Unit Inspector，修正参数后可保存 / 重开 / rerun 收敛。
-- 漏连出口：`solver.connection_validation.unbound_outlet_port` 通过 `DocumentCommand::ConnectPorts` 创建并绑定 outlet stream，保存 / 重开 / rerun 收敛。
-- 缺失 stream 引用：`solver.connection_validation.missing_stream_reference` 先断开坏引用，重开 rerun 后处理派生 unbound outlet 并收敛。
-- 重复上游 source：`solver.connection_validation.duplicate_upstream_source` 先断开冲突 source，重开 rerun 后处理派生 unbound outlet 并收敛。
-- 重复下游 sink：`solver.connection_validation.duplicate_downstream_sink` 先断开冲突 sink，保存 / 重开后 rerun 会暴露需要用户选择上游路径的 unbound inlet。
-- 缺失上游 source：`solver.connection_validation.missing_upstream_source` 先断开悬空 inlet 并删除对应孤立流股，保存 / 重开后 rerun 会暴露需要用户选择上游路径的 unbound inlet。
-- 未绑定入口：`solver.connection_validation.unbound_inlet_port` 当前是检查型恢复，只聚焦 Unit Inspector，不自动创建或猜测上游路径。
-- 孤立 stream：`solver.connection_validation.orphan_stream` 通过 `DocumentCommand::DeleteStream` 清理孤立流股，保存 / 重开 / rerun 后稳定收敛。
-- Cycle：`solver.topological_ordering.self_loop_cycle` / `two_unit_cycle` 会断开目标 inlet，保存 / 重开后暴露需要用户选择上游路径的 unbound inlet。
-- Invalid port signature：`solver.connection_validation.invalid_port_signature` 通过恢复 canonical ports 修复，保存 / 重开 / rerun 后收敛。
-
-上一组高频建模能力 **受控连接恢复 v0** 已完成 focused 收口：选中 stream 后的 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 和 `Delete stream` 已锁定到正式 `DocumentCommand` / undo / save / reopen / rerun 路径；`Reconnect stream` 只补齐唯一、未占用且不会形成 unit dependency cycle 的端点。
-
-当前下一组高频建模能力 **剩余单元建模闭环 v0** 已完成 focused 收口：在不新增 Home 作者入口、不补用户 guide、不做 UI 小打磨的前提下，确认 `Cooler` / `Valve` 也能从空白项目通过现有 placement / suggestion / Inspector 输入完成 `Feed -> Cooler -> Flash Drum` 与 `Feed -> Valve -> Flash Drum`，并覆盖保存 / 重开 / rerun、关键中间流股、flash 分割、相态和焓值核对路径。
-
-失败修复闭环 v0 未收口前，不推进 tag、release notes、便携包刷新或对外发布自动化。
+通过 / 失败标准以 `docs/mvp/beta-acceptance-checklist.md` 为准；人工 smoke 未执行并通过前，不推进 tag、release notes、便携包刷新或对外发布自动化。
 
 后续能力包判断标准：
 
@@ -105,7 +89,7 @@
 - 已完成受控连接恢复 v0 focused 收口：验证锁定 official Heater-Flash case 中 selected stream 断开 sink、重连唯一 Flash inlet、保存 / 重开 / rerun 后仍由 Flash Drum 消费 heater outlet 的闭环。
 - 已完成剩余单元建模闭环 v0 focused 收口：补 focused 验证覆盖空白项目中显式选择内置物性包 / 组分后，手工搭建 `Feed -> Cooler -> Flash Drum` 与 `Feed -> Valve -> Flash Drum`，提交 Feed composition 和单元参数，保存 / 重开 / rerun，并核对中间流股、flash consumed stream、液/汽出口、相态 / `H` 基础审阅对象；2026-05-27 仓库级验证 `pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
 - 已完成失败修复闭环 v0 focused 收口：回归覆盖缺物性包、缺项目组分、缺 Feed composition、Valve 参数越界、主要连接 blocker、cycle 和 invalid port signature；2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。
-- 下一步评估人工 smoke、验收标准或后续能力包；不回到已通过阶段的零散 UI 打磨。
+- 已建立 MVP β 人工 smoke 与验收标准 v0：最小路径、通过 / 失败标准、blocker 分类和暂不推进项已落到 `docs/mvp/beta-acceptance-checklist.md`；下一步由人工启动 Studio 执行 Smoke A-D。
 
 ## 验证节奏
 
@@ -118,7 +102,7 @@
 ## 暂不推进
 
 - 不继续在 β 第一刀上追加 `Valve-Flash` 作者入口或同类 checklist。
-- 不推进 tag、release notes、便携包刷新或对外发布自动化；恢复版本节点前必须先定义验收标准。
+- MVP β 人工 smoke 未执行并通过前，不推进 tag、release notes、便携包刷新或对外发布自动化。
 - 不做自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统、完整参数表。
 - 不引入第三方 CAPE-OPEN 模型、第三方物性包加载、完整组分数据库或完整 Thermodynamics PMC。
 - 不把 CAPE-OPEN / COM 语义倒灌到 Rust Core。
@@ -127,6 +111,7 @@
 ## 按需阅读
 
 - 最新流水和决策依据：`docs/devlogs/2026-05/2026-W22.md`
+- MVP β 人工 smoke 与验收标准：`docs/mvp/beta-acceptance-checklist.md`
 - MVP 范围和非目标：`docs/mvp/scope.md`
 - MVP 路线图：`docs/radishflow-mvp-roadmap.md`
 - 仓库全局模块边界：`docs/architecture/overview.md`

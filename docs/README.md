@@ -1,6 +1,6 @@
 # RadishFlow Docs
 
-更新时间：2026-05-25
+更新时间：2026-05-28
 
 ## 先读什么
 
@@ -69,6 +69,7 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | `status/current.md` | 当前阶段、重点、验证基线和按需阅读入口 |
 | `mvp/scope.md` | 第一阶段 MVP 冻结范围、非目标与开发节奏 |
 | `mvp/alpha-acceptance-checklist.md` | MVP α 验收矩阵、smoke 记录口径和 release blocker 分类 |
+| `mvp/beta-acceptance-checklist.md` | MVP β 人工 smoke、通过 / 失败标准和暂不推进项 |
 | `radishflow-mvp-roadmap.md` | 第一阶段 MVP 路线图 |
 | `devlogs/README.md` | 按月份分组的周志索引与命名规则 |
 | `releases/v26.5.1-dev.md` | 历史 `v26.5.1-dev` 便携 staging 草案和验证记录；不作为当前正式版本节点事实源 |

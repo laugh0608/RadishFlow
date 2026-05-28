@@ -1,6 +1,6 @@
 # RadishFlow MVP Roadmap
 
-更新时间：2026-05-27
+更新时间：2026-05-28
 
 ## 用途
 
@@ -10,15 +10,15 @@
 
 ## 当前结论
 
-截至 2026-05-27，M1-M5 都已越过 MVP 的最小完成线，MVP α 用户视角 smoke、首版 demo 前硬化期和 MVP β 第一刀、第二刀也已阶段性收口：
+截至 2026-05-28，M1-M5 都已越过 MVP 的最小完成线，MVP α 用户视角 smoke、首版 demo 前硬化期和 MVP β 多组能力包也已阶段性收口：
 
 - Rust 内核和 Studio 可以跑通最小稳态流程。
 - `TP Flash`、`SolveSnapshot`、结果审阅和 `rf-ffi` JSON/error 基线已经形成可复验闭环。
 - `.NET 10` CAPE-OPEN / COM 适配层已完成 DWSIM / COFE 侧的关键 PME 兼容验证。
 - MVP β 第一刀：小案例作者体验 v0 已通过，当前不继续围绕同一阶段做细颗粒度打磨。
 - MVP β 第二刀：建模输入能力 v0 已通过；项目级物性包选择、项目组分选择、Feed composition 输入、Unit 参数输入和 2 条 official demo case 复现验收已经形成 focused 回归，并通过 2026-05-27 仓库级验证。
-- MVP β 后续能力包已完成多组 focused 收口：结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0。
-- 下一步建议进入失败修复闭环 v0，围绕缺物性包、缺组分、缺 composition、参数越界和断连 / 漏连这类真实 blocker，核对诊断、recovery target、Inspector focus、修复命令和保存 / 重开 / rerun 稳定性。
+- MVP β 后续能力包已完成多组 focused 收口：结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0、失败修复闭环 v0。
+- MVP β 人工 smoke 与验收标准 v0 已定义；下一步执行 `docs/mvp/beta-acceptance-checklist.md` 中的 Smoke A-D，而不是推进 tag、release notes、便携包或零散 UI 打磨。
 - 当前尚未达到正式 tag / release 节点标准，历史 `v26.5.1-dev` staging 材料不作为当前路线图事实源。
 
 当前不再把路线图作为每日推进清单。今天做什么、当前验证基线和暂不推进项，以 `docs/status/current.md` 为准；MVP α 验收清单保留为内部验收记录，不再作为当前日常推进主线。
@@ -84,6 +84,8 @@
 - 组分输入 v0 只覆盖内置小型组分目录，不做完整组分数据库；物性方法 v0 只覆盖内置方法 / package，不加载第三方 Property Package。
 - 当前 Studio 已把内置 `binary-hydrocarbon-lite-v1` 物性包选择和 methane / ethane 项目组分选择暴露在左侧 `项目` 面板和右侧 `物性包` 页；空白项目初始不预选，用户显式选择后才写入项目。这只是受控输入能力，不代表完整组分数据库或物性包浏览器。
 - demo case 作为验收方式：`Heater-Flash` 与 `Mixer-Flash` 已覆盖 official demo case 输入和结果核对；`Cooler-Flash` 与 `Valve-Flash` 已用内部 focused test 覆盖空白项目建模闭环，但不新增 Home 作者入口或用户 guide。
+- 失败修复闭环已完成 focused 收口；人工 smoke 只覆盖代表性恢复路径，不把 focused tests 已覆盖的所有恢复生命周期全部手工重跑。
+- MVP β 下一步验收以 `docs/mvp/beta-acceptance-checklist.md` 为准：official demo 打开 / 运行 / 审阅 / 保存重开，`Mixer-Flash` 与 `Heater-Flash` 空白作者路径，缺 composition 恢复，以及 selected stream 断开 / 重连代表路径。
 - 更多作者 checklist、同构 Home 入口和轻量报表增强先进入 backlog；只有当它们服务真实 blocker 修复或阶段验收时再推进。
 - CAPE-OPEN / PME 只修真实验证暴露的 blocker，不继续主动扩第三方宿主矩阵。
 - Studio UI 优化只做主路径和明确专题；不扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
@@ -115,6 +117,7 @@ MVP β 功能推进不应把 UI 问题长期拆成零散按钮、临时面板或
 
 - 当前阶段和下一步：`docs/status/current.md`
 - MVP α 验收记录：`docs/mvp/alpha-acceptance-checklist.md`
+- MVP β 人工 smoke 与验收标准：`docs/mvp/beta-acceptance-checklist.md`
 - MVP 冻结范围：`docs/mvp/scope.md`
 - Studio UI 规范：`docs/architecture/studio-ui-design-guidelines.md`
 - UI 灵感参考：`docs/architecture/ui-inspiration-reference.md`
