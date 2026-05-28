@@ -521,6 +521,149 @@ fn unbound_inlet_recovery_focuses_without_mutating_saved_project() {
     let _ = std::fs::remove_file(project_path);
 }
 
+#[test]
+fn invalid_port_signature_recovery_saves_reopens_and_reruns_official_case() {
+    let project_path = temporary_failure_project_path("invalid-port-signature-recovery");
+    write_fixture_project(
+        &project_path,
+        include_str!(
+            "../../../../../examples/flowsheets/failures/invalid-port-signature.rfproj.json"
+        ),
+    );
+    let mut app = ready_app_state(&project_config(project_path.clone()));
+
+    run_and_assert_failure(
+        &mut app,
+        ExpectedFailure {
+            title: "Invalid port signature",
+            primary_code: "solver.connection_validation.invalid_port_signature",
+            recovery_title: Some("Restore canonical ports"),
+            recovery_target: Some(("Unit", "feed-1")),
+        },
+    );
+
+    app.dispatch_ui_command("run_panel.recover_failure");
+    assert_dirty_after_recovery(&app);
+    assert_active_inspector_target(&app, "Unit", "feed-1");
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "feed-1", "outlet"),
+        Some("stream-feed")
+    );
+    assert!(
+        saved
+            .document
+            .flowsheet
+            .units
+            .get(&UnitId::new("feed-1"))
+            .expect("expected feed unit")
+            .ports
+            .iter()
+            .all(|port| port.name != "unexpected")
+    );
+
+    reopen_and_assert_clean(&mut app, &project_path);
+    run_and_assert_converged(&mut app);
+    assert_latest_snapshot_has_stream(&app, "stream-feed");
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn self_loop_recovery_saves_reopens_and_exposes_unbound_inlet_path() {
+    let project_path = temporary_failure_project_path("self-loop-recovery");
+    write_fixture_project(
+        &project_path,
+        include_str!("../../../../../examples/flowsheets/failures/self-loop-cycle.rfproj.json"),
+    );
+    let mut app = ready_app_state(&project_config(project_path.clone()));
+
+    run_and_assert_failure(
+        &mut app,
+        ExpectedFailure {
+            title: "Self loop detected",
+            primary_code: "solver.topological_ordering.self_loop_cycle",
+            recovery_title: Some("Disconnect self-loop inlet"),
+            recovery_target: Some(("Unit", "flash-1")),
+        },
+    );
+
+    app.dispatch_ui_command("run_panel.recover_failure");
+    assert_dirty_after_recovery(&app);
+    assert_active_inspector_target(&app, "Unit", "flash-1");
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    assert_eq!(stored_unit_port_stream_id(&saved, "flash-1", "inlet"), None);
+
+    reopen_and_assert_clean(&mut app, &project_path);
+    run_and_assert_failure(
+        &mut app,
+        ExpectedFailure {
+            title: "Unbound inlet port",
+            primary_code: "solver.connection_validation.unbound_inlet_port",
+            recovery_title: Some("Inspect inlet path"),
+            recovery_target: Some(("Unit", "flash-1")),
+        },
+    );
+
+    app.dispatch_ui_command("run_panel.recover_failure");
+    assert_error_after_focus_recovery(&app);
+    assert_active_inspector_target(&app, "Unit", "flash-1");
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn two_unit_cycle_recovery_saves_reopens_and_exposes_unbound_inlet_path() {
+    let project_path = temporary_failure_project_path("two-unit-cycle-recovery");
+    write_fixture_project(
+        &project_path,
+        include_str!("../../../../../examples/flowsheets/failures/multi-unit-cycle.rfproj.json"),
+    );
+    let mut app = ready_app_state(&project_config(project_path.clone()));
+
+    run_and_assert_failure(
+        &mut app,
+        ExpectedFailure {
+            title: "Two-unit cycle detected",
+            primary_code: "solver.topological_ordering.two_unit_cycle",
+            recovery_title: Some("Disconnect cycle inlet"),
+            recovery_target: Some(("Unit", "heater-1")),
+        },
+    );
+
+    app.dispatch_ui_command("run_panel.recover_failure");
+    assert_dirty_after_recovery(&app);
+    assert_active_inspector_target(&app, "Unit", "heater-1");
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "heater-1", "inlet"),
+        None
+    );
+
+    reopen_and_assert_clean(&mut app, &project_path);
+    run_and_assert_failure(
+        &mut app,
+        ExpectedFailure {
+            title: "Unbound inlet port",
+            primary_code: "solver.connection_validation.unbound_inlet_port",
+            recovery_title: Some("Inspect inlet path"),
+            recovery_target: Some(("Unit", "heater-1")),
+        },
+    );
+
+    app.dispatch_ui_command("run_panel.recover_failure");
+    assert_error_after_focus_recovery(&app);
+    assert_active_inspector_target(&app, "Unit", "heater-1");
+
+    let _ = std::fs::remove_file(project_path);
+}
+
 #[derive(Debug, Clone, Copy)]
 struct ExpectedFailure<'a> {
     title: &'a str,
@@ -546,7 +689,7 @@ fn project_config(project_path: PathBuf) -> StudioRuntimeConfig {
     }
 }
 
-fn write_fixture_project(project_path: &PathBuf, project_json: &str) {
+fn write_fixture_project(project_path: &std::path::Path, project_json: &str) {
     let project =
         rf_store::parse_project_file_json(project_json).expect("expected failure project fixture");
     write_project_file(project_path, &project).expect("expected temp project write");
@@ -613,8 +756,8 @@ fn assert_active_inspector_target(app: &ReadyAppState, kind_label: &str, target_
     assert_eq!(detail.target.target_id, target_id);
 }
 
-fn reopen_and_assert_clean(app: &mut ReadyAppState, project_path: &PathBuf) {
-    app.open_project(project_path.clone(), "project");
+fn reopen_and_assert_clean(app: &mut ReadyAppState, project_path: &std::path::Path) {
+    app.open_project(project_path.to_path_buf(), "project");
     let reopened = app.platform_host.snapshot().window_model();
     assert!(!reopened.runtime.workspace_document.has_unsaved_changes);
 }
