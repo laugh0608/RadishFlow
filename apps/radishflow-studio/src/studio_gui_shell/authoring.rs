@@ -79,20 +79,13 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         window: &StudioGuiWindowModel,
     ) {
-        let document = self.platform_host.document();
-        let cases = authoring_cases_to_show(self.active_authoring_case, window, document);
-        if cases.is_empty() {
+        let Some(case) = self.active_authoring_case else {
             return;
-        }
+        };
 
+        let document = self.platform_host.document();
         ui.separator();
-
-        for (index, case) in cases.iter().copied().enumerate() {
-            if index > 0 {
-                ui.add_space(8.0);
-            }
-            self.render_authoring_checklist(ui, window, document, case);
-        }
+        self.render_authoring_checklist(ui, window, document, case);
     }
 
     fn render_authoring_checklist(
@@ -130,16 +123,14 @@ impl ReadyAppState {
             return false;
         }
 
-        let window = self.platform_host.snapshot().window_model();
-        if self.active_authoring_case.is_none()
-            && window.runtime.workspace_document.project_path.is_some()
-        {
+        let Some(case) = self.active_authoring_case else {
             return false;
-        }
+        };
 
+        let window = self.platform_host.snapshot().window_model();
         let blocker = {
             let document = self.platform_host.document();
-            authoring_run_blocker(self.active_authoring_case, &window, document)
+            authoring_run_blocker(case, &window, document)
         };
         let Some(blocker) = blocker else {
             return false;
@@ -181,36 +172,12 @@ impl ReadyAppState {
     }
 }
 
-fn authoring_cases_to_show(
-    active_case: Option<AuthoringCaseKind>,
-    window: &StudioGuiWindowModel,
-    document: &rf_ui::FlowsheetDocument,
-) -> Vec<AuthoringCaseKind> {
-    if let Some(case) = active_case {
-        return vec![case];
-    }
-    if window.runtime.workspace_document.project_path.is_some() {
-        return Vec::new();
-    }
-
-    let progress = authoring_progress(window, document);
-    if let Some(case) = inferred_authoring_case(&progress) {
-        return vec![case];
-    }
-
-    vec![
-        AuthoringCaseKind::MixerFlash,
-        AuthoringCaseKind::HeaterFlash,
-    ]
-}
-
 fn authoring_run_blocker(
-    active_case: Option<AuthoringCaseKind>,
+    case: AuthoringCaseKind,
     window: &StudioGuiWindowModel,
     document: &rf_ui::FlowsheetDocument,
 ) -> Option<AuthoringRunBlocker> {
     let progress = authoring_progress(window, document);
-    let case = active_case.or_else(|| inferred_authoring_case(&progress))?;
 
     authoring_tasks_with_progress(case, &progress)
         .into_iter()
@@ -360,16 +327,6 @@ fn authoring_tasks_with_progress(
                 complete: progress.has_solve_snapshot,
             },
         ],
-    }
-}
-
-fn inferred_authoring_case(progress: &AuthoringProgress) -> Option<AuthoringCaseKind> {
-    if progress.has_mixer {
-        Some(AuthoringCaseKind::MixerFlash)
-    } else if progress.has_heater {
-        Some(AuthoringCaseKind::HeaterFlash)
-    } else {
-        None
     }
 }
 

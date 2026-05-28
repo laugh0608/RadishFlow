@@ -1621,7 +1621,10 @@ impl ReadyAppState {
                         render_wrapped_small(ui, &port.direction);
                         render_wrapped_small(ui, &port.kind);
                         match (&port.stream_id, &port.stream_action) {
-                            (_, Some(action)) => {
+                            (Some(stream_id), Some(action)) => {
+                                self.render_port_stream_action(ui, stream_id, action);
+                            }
+                            (None, Some(action)) => {
                                 let _ = self.render_small_command_action(ui, action);
                             }
                             (Some(stream_id), None) => render_wrapped_small(ui, stream_id),
@@ -2249,6 +2252,25 @@ impl ReadyAppState {
             self.dispatch_ui_command(&action.command_id);
         }
         response
+    }
+
+    fn render_port_stream_action(
+        &mut self,
+        ui: &mut egui::Ui,
+        stream_id: &str,
+        action: &radishflow_studio::StudioGuiWindowCommandActionModel,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            render_wrapped_small(ui, stream_id);
+            let label = match self.locale {
+                StudioShellLocale::En => "Open stream",
+                StudioShellLocale::ZhCn => "打开流股",
+            };
+            let response = ui.small_button(label).on_hover_text(&action.hover_text);
+            if response.clicked() {
+                self.dispatch_ui_command(&action.command_id);
+            }
+        });
     }
 
     fn localized_command_action_label<'a>(

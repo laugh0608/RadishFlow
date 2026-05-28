@@ -583,7 +583,7 @@ fn heater_flash_authoring_checklist_reflects_heater_outlet_progress() {
 }
 
 #[test]
-fn blank_palette_infers_mixer_case_and_hides_heater_checklist_after_mixer_topology() {
+fn blank_palette_does_not_auto_match_authoring_case_after_mixer_topology() {
     let mut app = ready_app_state(&synced_workspace_config());
 
     app.create_blank_project();
@@ -599,17 +599,112 @@ fn blank_palette_infers_mixer_case_and_hides_heater_checklist_after_mixer_topolo
 
     let texts = render_alpha_workbench_texts(&mut app);
     assert!(
-        texts.iter().any(|text| text.contains("Mixer-Flash 小案例")),
-        "expected inferred mixer checklist, rendered texts: {:?}",
+        !texts.iter().any(|text| text.contains("Mixer-Flash 小案例")),
+        "blank project must not infer mixer authoring checklist, rendered texts: {:?}",
         texts
     );
     assert!(
         !texts
             .iter()
             .any(|text| text.contains("Heater-Flash 小案例")),
-        "expected inferred mixer checklist to hide heater checklist, rendered texts: {:?}",
+        "blank project must not infer heater authoring checklist, rendered texts: {:?}",
         texts
     );
+}
+
+#[test]
+fn blank_project_mixer_topology_run_uses_solver_diagnostic_without_authoring_blocker() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.create_blank_project();
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 140.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-2");
+    select_builtin_binary_hydrocarbon_basis(&mut app);
+    app.dispatch_ui_command("canvas.begin_place_unit.mixer");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(210.0, 90.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.mixer.connect_inlet_a.mixer-1.stream-feed-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.mixer.connect_inlet_b.mixer-1.stream-feed-2-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.mixer.create_outlet.mixer-1");
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(360.0, 90.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.flash_drum.connect_inlet.flash-1.stream-mixer-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.liquid");
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.vapor");
+
+    app.dispatch_ui_command("run_panel.run_manual");
+
+    let window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        window.runtime.control_state.run_status,
+        rf_ui::RunStatus::Error
+    );
+    let failure = window
+        .runtime
+        .latest_failure
+        .as_ref()
+        .expect("expected missing composition to reach solver diagnostic");
+    assert_eq!(failure.title, "Stream input invalid");
+    assert_eq!(
+        failure
+            .diagnostic_detail
+            .as_ref()
+            .and_then(|detail| detail.primary_code.as_deref()),
+        Some("solver.step.stream_input")
+    );
+    assert_ne!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("小案例输入未完成")
+    );
+}
+
+#[test]
+fn blank_project_feed_port_exposes_stream_inspector_action() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.create_blank_project();
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+    app.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+    app.dispatch_ui_command("inspector.focus_unit:feed-1");
+
+    let texts = render_alpha_workbench_texts(&mut app);
+    assert!(
+        texts.iter().any(|text| text == "stream-feed-1-outlet"),
+        "expected feed outlet stream id in unit port list, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        texts.iter().any(|text| text == "打开流股"),
+        "expected explicit stream inspector action in unit port list, rendered texts: {:?}",
+        texts
+    );
+
+    app.dispatch_ui_command("inspector.focus_stream:stream-feed-1-outlet");
+    let window = app.platform_host.snapshot().window_model();
+    let detail = window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected stream inspector detail");
+    assert_eq!(detail.target.kind_label, "Stream");
+    assert_eq!(detail.target.target_id, "stream-feed-1-outlet");
 }
 
 #[test]
