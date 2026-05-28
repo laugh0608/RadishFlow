@@ -303,6 +303,8 @@ pub fn run_panel_failure_title_for_diagnostic_code(primary_code: Option<&str>) -
         "Connection validation failed"
     } else if diagnostic_code_in_family(primary_code, "solver.topological_ordering") {
         "Topological ordering failed"
+    } else if diagnostic_code_in_family(primary_code, "workspace.run.property_package_missing") {
+        "Property package unavailable"
     } else if diagnostic_code_in_family(primary_code, "solver.step.lookup") {
         "Unit lookup failed"
     } else if diagnostic_code_in_family(primary_code, "solver.step.spec") {
@@ -428,6 +430,12 @@ pub fn run_panel_failure_recovery_action_for_diagnostic_code(
             RunPanelRecoveryActionKind::BreakCycle,
             "Break cycle",
             "消除自环或多单元回路后再重试，当前顺序模块法只支持无回路 flowsheet。",
+        ))
+    } else if diagnostic_code_in_family(primary_code, "workspace.run.property_package_missing") {
+        Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::RepairLocalCache,
+            "Repair property package",
+            "确认项目选择的 property package 已在本地缓存中，或重新选择当前可用的内置物性包后再运行。",
         ))
     } else if diagnostic_code_in_family(primary_code, "solver.step.lookup") {
         Some(RunPanelRecoveryAction::new(

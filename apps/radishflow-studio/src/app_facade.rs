@@ -127,6 +127,7 @@ pub enum StudioWorkspaceRunBlockedReason {
     ExplicitPackageSelectionRequired,
     EntitlementMismatch,
     InvalidSelection,
+    MissingProjectComponents,
     PendingInspectorDrafts,
     UnnormalizedStreamComposition,
 }
@@ -473,6 +474,33 @@ fn workspace_run_preflight_block(app_state: &AppState) -> Option<StudioWorkspace
         });
     }
 
+    workspace_missing_project_component_block(app_state)
+        .or_else(|| workspace_unnormalized_stream_composition_block(app_state))
+}
+
+fn workspace_missing_project_component_block(
+    app_state: &AppState,
+) -> Option<StudioWorkspaceRunBlocked> {
+    let flowsheet = &app_state.workspace.document.flowsheet;
+
+    flowsheet.streams.values().find_map(|stream| {
+        stream
+            .overall_mole_fractions
+            .keys()
+            .find(|component_id| !flowsheet.components.contains_key(*component_id))
+            .map(|component_id| StudioWorkspaceRunBlocked {
+                reason: StudioWorkspaceRunBlockedReason::MissingProjectComponents,
+                message: format!(
+                    "stream `{}` composition references component `{component_id}` that is not selected in project components. Select the component before running; stream composition must stay inside the project component list.",
+                    stream.id
+                ),
+            })
+    })
+}
+
+fn workspace_unnormalized_stream_composition_block(
+    app_state: &AppState,
+) -> Option<StudioWorkspaceRunBlocked> {
     app_state
         .workspace
         .document
@@ -492,15 +520,13 @@ fn workspace_run_preflight_block(app_state: &AppState) -> Option<StudioWorkspace
                 });
             match sum {
                 Some(sum) if (sum - 1.0).abs() <= 1e-9 => None,
-                Some(sum) if sum.is_finite() && sum > 0.0 => {
-                    Some(StudioWorkspaceRunBlocked {
-                        reason: StudioWorkspaceRunBlockedReason::UnnormalizedStreamComposition,
-                        message: format!(
-                            "stream `{}` overall mole fractions sum to {sum:.6}, not 1.000000. Normalize composition explicitly before running; no automatic compensation is applied by the run command.",
-                            stream.id
-                        ),
-                    })
-                }
+                Some(sum) if sum.is_finite() && sum > 0.0 => Some(StudioWorkspaceRunBlocked {
+                    reason: StudioWorkspaceRunBlockedReason::UnnormalizedStreamComposition,
+                    message: format!(
+                        "stream `{}` overall mole fractions sum to {sum:.6}, not 1.000000. Normalize composition explicitly before running; no automatic compensation is applied by the run command.",
+                        stream.id
+                    ),
+                }),
                 Some(sum) => Some(StudioWorkspaceRunBlocked {
                     reason: StudioWorkspaceRunBlockedReason::UnnormalizedStreamComposition,
                     message: format!(

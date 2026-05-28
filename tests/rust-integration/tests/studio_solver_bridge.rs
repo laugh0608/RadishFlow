@@ -735,7 +735,7 @@ fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end
 }
 
 #[test]
-fn studio_solver_bridge_records_missing_package_without_solver_code_end_to_end() {
+fn studio_solver_bridge_records_missing_package_workspace_code_end_to_end() {
     let provider = InMemoryPropertyPackageProvider::default();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
@@ -761,7 +761,10 @@ fn studio_solver_bridge_records_missing_package_without_solver_code_end_to_end()
         .latest_diagnostic
         .as_ref()
         .expect("expected failure summary");
-    assert_eq!(summary.primary_code, None);
+    assert_eq!(
+        summary.primary_code.as_deref(),
+        Some("workspace.run.property_package_missing")
+    );
     assert!(summary.related_unit_ids.is_empty());
 
     let notice = app_state
@@ -770,8 +773,25 @@ fn studio_solver_bridge_records_missing_package_without_solver_code_end_to_end()
         .notice
         .as_ref()
         .expect("expected run panel notice");
-    assert_eq!(notice.title, "Run failed");
-    assert!(notice.recovery_action.is_none());
+    assert_eq!(notice.title, "Property package unavailable");
+    assert_eq!(
+        notice.recovery_action.as_ref().map(|action| {
+            (
+                action.kind,
+                action.title,
+                action.target_unit_id.as_ref(),
+                action.target_stream_id.as_ref(),
+                action.mutation.as_ref(),
+            )
+        }),
+        Some((
+            RunPanelRecoveryActionKind::RepairLocalCache,
+            "Repair property package",
+            None,
+            None,
+            None,
+        ))
+    );
 }
 
 #[test]

@@ -309,6 +309,9 @@ fn notice_title_for_blocked_outcome(
             "Entitlement update required"
         }
         crate::StudioWorkspaceRunBlockedReason::InvalidSelection => "Run blocked",
+        crate::StudioWorkspaceRunBlockedReason::MissingProjectComponents => {
+            "Project components required"
+        }
         crate::StudioWorkspaceRunBlockedReason::PendingInspectorDrafts => {
             "Inspector edits not applied"
         }
@@ -875,6 +878,85 @@ mod tests {
                 .map(|notice| notice
                     .message
                     .contains("solver only reads the committed flowsheet document"))
+                .unwrap_or(false)
+        );
+
+        std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn missing_project_component_blocks_workspace_run_notice() {
+        let cache_root = unique_temp_path("workspace-control-missing-project-component");
+        let mut auth_cache_index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
+        );
+        write_default_official_binary_hydrocarbon_cached_package(
+            &cache_root,
+            &mut auth_cache_index,
+        );
+        let facade = StudioAppFacade::new();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut flowsheet = project.document.flowsheet;
+        flowsheet.components.remove(&ComponentId::new("ethane"));
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new(
+                "doc-missing-project-component",
+                "Missing Project Component Demo",
+                timestamp(94),
+            ),
+        ));
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+        let outcome = dispatch_workspace_control_action_with_auth_cache(
+            &facade,
+            &mut app_state,
+            &context,
+            &WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Preferred),
+        )
+        .expect("expected blocked control action");
+
+        match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                assert_eq!(dispatch.package_id, None);
+                assert!(matches!(
+                    dispatch.outcome,
+                    StudioWorkspaceRunOutcome::Blocked(crate::StudioWorkspaceRunBlocked {
+                        reason: crate::StudioWorkspaceRunBlockedReason::MissingProjectComponents,
+                        ..
+                    })
+                ));
+            }
+            _ => panic!("expected workspace run dispatch"),
+        }
+        assert_eq!(outcome.control_state.run_status, RunStatus::Idle);
+        assert_eq!(
+            outcome
+                .control_state
+                .notice
+                .as_ref()
+                .map(|notice| (notice.level, notice.title.as_str())),
+            Some((
+                rf_ui::RunPanelNoticeLevel::Warning,
+                "Project components required"
+            ))
+        );
+        assert!(
+            outcome
+                .control_state
+                .notice
+                .as_ref()
+                .map(|notice| {
+                    notice.message.contains("component `ethane`")
+                        && notice
+                            .message
+                            .contains("not selected in project components")
+                })
                 .unwrap_or(false)
         );
 

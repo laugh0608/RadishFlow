@@ -6,11 +6,13 @@ use rf_store::StoredAuthCacheIndex;
 use rf_thermo::{
     CachedPropertyPackageProvider, PlaceholderThermoProvider, PropertyPackageProvider,
 };
-use rf_types::{RfError, RfResult};
+use rf_types::{ErrorCode, RfError, RfResult};
 use rf_ui::{AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, RunStatus};
 
 pub(crate) const WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE: &str =
     "workspace.run.local_cache_unavailable";
+pub(crate) const WORKSPACE_RUN_DIAGNOSTIC_PROPERTY_PACKAGE_MISSING: &str =
+    "workspace.run.property_package_missing";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioSolveRequest {
@@ -83,6 +85,7 @@ where
     let thermo_system = match package_provider.load_system(package_id) {
         Ok(system) => system,
         Err(error) => {
+            let error = workspace_property_package_load_error(error);
             record_solve_failure(
                 app_state,
                 revision,
@@ -132,6 +135,16 @@ where
         ),
     );
     Ok(())
+}
+
+fn workspace_property_package_load_error(error: RfError) -> RfError {
+    if error.context().diagnostic_code().is_none()
+        && matches!(error.code(), ErrorCode::MissingEntity)
+    {
+        error.with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_PROPERTY_PACKAGE_MISSING)
+    } else {
+        error
+    }
 }
 
 pub fn solve_workspace_from_auth_cache(
