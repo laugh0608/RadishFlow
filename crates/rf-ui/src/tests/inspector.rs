@@ -1134,6 +1134,81 @@ fn committing_stream_inspector_composition_draft_updates_overall_mole_fraction()
 }
 
 #[test]
+fn updating_zero_composition_draft_keeps_field_valid_before_positive_fraction_entry() {
+    let mut document = inspector_focus_document();
+    let stream_id = StreamId::new("stream-feed");
+    let component_a = ComponentId::new("component-a");
+    let component_b = ComponentId::new("component-b");
+    for fraction in document
+        .flowsheet
+        .streams
+        .get_mut(&stream_id)
+        .expect("expected feed stream")
+        .overall_mole_fractions
+        .values_mut()
+    {
+        *fraction = 0.0;
+    }
+    let mut app_state = AppState::new(document);
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+    let first_digit = app_state
+        .update_stream_inspector_draft(
+            &stream_id,
+            crate::StreamInspectorDraftField::OverallMoleFraction(component_a.clone()),
+            "0",
+        )
+        .expect("expected zero composition draft update");
+
+    assert_eq!(first_digit.validation, crate::DraftValidationState::Valid);
+    assert!(!first_digit.is_dirty);
+    assert!(
+        !app_state
+            .workspace
+            .drafts
+            .fields
+            .contains_key(&first_digit.key)
+    );
+
+    let completed_fraction = app_state
+        .update_stream_inspector_draft(
+            &stream_id,
+            crate::StreamInspectorDraftField::OverallMoleFraction(component_a.clone()),
+            "0.5",
+        )
+        .expect("expected positive composition draft update");
+
+    assert_eq!(
+        completed_fraction.validation,
+        crate::DraftValidationState::Valid
+    );
+    assert!(completed_fraction.is_dirty);
+    assert_eq!(
+        app_state
+            .workspace
+            .drafts
+            .fields
+            .get(&completed_fraction.key),
+        Some(&crate::DraftValue::Number(crate::FieldDraft {
+            original: "0".to_string(),
+            current: "0.5".to_string(),
+            is_dirty: true,
+            validation: crate::DraftValidationState::Valid,
+        }))
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&stream_id].overall_mole_fractions
+            [&component_a],
+        0.0
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&stream_id].overall_mole_fractions
+            [&component_b],
+        0.0
+    );
+}
+
+#[test]
 fn normalizing_stream_inspector_composition_drafts_commits_all_mole_fractions() {
     let document = inspector_focus_document();
     let mut app_state = AppState::new(document);

@@ -1,6 +1,6 @@
 use std::fs;
 
-use rf_store::read_project_file;
+use rf_store::{read_project_file, write_project_file};
 
 use super::test_support::{
     find_menu_command, find_menu_command_by_label, flash_drum_local_rules_config,
@@ -999,6 +999,101 @@ fn gui_driver_surfaces_invalid_stream_draft_notice_without_private_shell_state()
         }),
         "expected invalid draft state to be exposed through inspector presentation"
     );
+}
+
+#[test]
+fn gui_driver_keeps_zero_composition_digit_editable_until_fraction_is_completed() {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-zero-composition-{timestamp}.json"
+    ));
+    let mut project = rf_store::parse_project_file_json(include_str!(
+        "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected heater flash project fixture");
+    let feed = project
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&rf_types::StreamId::new("stream-feed"))
+        .expect("expected feed stream");
+    for fraction in feed.overall_mole_fractions.values_mut() {
+        *fraction = 0.0;
+    }
+    write_project_file(&project_path, &project).expect("expected zero composition project write");
+
+    let mut driver = StudioGuiDriver::new(&StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..lease_expiring_config()
+    })
+    .expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected inspector focus dispatch");
+
+    let first_digit = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id:
+                "inspector.update_stream_draft:stream:stream-feed:overall_mole_fraction:methane"
+                    .to_string(),
+            raw_value: "0".to_string(),
+        })
+        .expect("expected zero digit draft update");
+    let first_digit_detail = first_digit
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected stream inspector detail");
+    assert!(first_digit_detail.property_fields.iter().any(|field| {
+        field.key == "stream:stream-feed:overall_mole_fraction:methane"
+            && field.current_value == "0"
+            && field.status_label != "Invalid"
+    }));
+    assert_eq!(
+        first_digit_detail
+            .property_composition_summary
+            .as_ref()
+            .map(|summary| (summary.status_label, summary.current_sum_text.as_str())),
+        Some(("Invalid", "0"))
+    );
+
+    let completed_fraction = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id:
+                "inspector.update_stream_draft:stream:stream-feed:overall_mole_fraction:methane"
+                    .to_string(),
+            raw_value: "0.5".to_string(),
+        })
+        .expect("expected completed fraction draft update");
+    let completed_detail = completed_fraction
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected stream inspector detail");
+    assert!(completed_detail.property_fields.iter().any(|field| {
+        field.key == "stream:stream-feed:overall_mole_fraction:methane"
+            && field.current_value == "0.5"
+            && field.status_label == "Draft"
+    }));
+    assert_eq!(
+        completed_detail
+            .property_composition_summary
+            .as_ref()
+            .map(|summary| (summary.status_label, summary.current_sum_text.as_str())),
+        Some(("Draft", "0.500000"))
+    );
+
+    let _ = fs::remove_file(project_path);
 }
 
 #[test]

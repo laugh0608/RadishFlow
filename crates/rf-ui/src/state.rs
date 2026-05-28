@@ -1680,8 +1680,6 @@ fn stream_draft_value_from_raw(
                 .unwrap_or(0.0);
             stream_number_draft_value(original, raw_value, |value| {
                 is_valid_stream_scalar_value(field, value)
-                    && composition_sum_after_fraction(stream, component_id, value)
-                        .is_some_and(|sum| sum > 0.0)
             })
         }
     }
@@ -1853,26 +1851,6 @@ fn is_valid_stream_scalar_value(field: &StreamInspectorDraftField, value: f64) -
             value.is_finite() && (0.0..=1.0).contains(&value)
         }
     }
-}
-
-fn composition_sum_after_fraction(
-    stream: &MaterialStreamState,
-    component_id: &ComponentId,
-    value: f64,
-) -> Option<f64> {
-    stream
-        .overall_mole_fractions
-        .iter()
-        .map(|(candidate_id, fraction)| {
-            if candidate_id == component_id {
-                value
-            } else {
-                *fraction
-            }
-        })
-        .try_fold(0.0, |sum, fraction| {
-            (fraction.is_finite() && fraction >= 0.0).then_some(sum + fraction)
-        })
 }
 
 fn validate_stream_overall_mole_fractions(stream: &MaterialStreamState) -> RfResult<()> {

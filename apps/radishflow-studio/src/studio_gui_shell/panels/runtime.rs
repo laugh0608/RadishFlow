@@ -1726,7 +1726,8 @@ impl ReadyAppState {
             let mut draft_value = field.current_value.clone();
             let response = ui.add_sized(
                 [input_width, 24.0],
-                egui::TextEdit::singleline(&mut draft_value),
+                egui::TextEdit::singleline(&mut draft_value)
+                    .id_salt(format!("inspector-property-field:{}", field.key)),
             );
             if response.changed() {
                 self.dispatch_inspector_field_draft_update(
