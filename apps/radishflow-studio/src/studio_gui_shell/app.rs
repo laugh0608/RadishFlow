@@ -671,6 +671,10 @@ impl ReadyAppState {
 
     pub(super) fn dispatch_ui_command(&mut self, command_id: impl Into<String>) {
         let command_id = command_id.into();
+        if self.intercept_authoring_run_if_needed(&command_id) {
+            return;
+        }
+
         let canvas_navigation = self.canvas_object_navigation_request(&command_id);
         match self.dispatch_event_result(StudioGuiEvent::UiCommandRequested {
             command_id: command_id.clone(),

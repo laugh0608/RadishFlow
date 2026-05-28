@@ -34,6 +34,21 @@ struct AuthoringTask {
     complete: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct AuthoringRunBlocker {
+    case: AuthoringCaseKind,
+    task_key: AuthoringTaskKey,
+    focus_target: AuthoringFocusTarget,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AuthoringFocusTarget {
+    Package,
+    Palette,
+    Stream(String),
+    Unit(String),
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 struct AuthoringProgress {
     feed_units: usize,
@@ -64,18 +79,13 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         window: &StudioGuiWindowModel,
     ) {
-        ui.separator();
-
-        let cases = self
-            .active_authoring_case
-            .map(|case| vec![case])
-            .unwrap_or_else(|| {
-                vec![
-                    AuthoringCaseKind::MixerFlash,
-                    AuthoringCaseKind::HeaterFlash,
-                ]
-            });
         let document = self.platform_host.document();
+        let cases = authoring_cases_to_show(self.active_authoring_case, window, document);
+        if cases.is_empty() {
+            return;
+        }
+
+        ui.separator();
 
         for (index, case) in cases.iter().copied().enumerate() {
             if index > 0 {
@@ -114,6 +124,102 @@ impl ReadyAppState {
             });
         }
     }
+
+    pub(super) fn intercept_authoring_run_if_needed(&mut self, command_id: &str) -> bool {
+        if command_id != "run_panel.run_manual" {
+            return false;
+        }
+
+        let window = self.platform_host.snapshot().window_model();
+        if self.active_authoring_case.is_none()
+            && window.runtime.workspace_document.project_path.is_some()
+        {
+            return false;
+        }
+
+        let blocker = {
+            let document = self.platform_host.document();
+            authoring_run_blocker(self.active_authoring_case, &window, document)
+        };
+        let Some(blocker) = blocker else {
+            return false;
+        };
+
+        self.focus_authoring_run_blocker(&blocker);
+        self.project_open.notice = Some(ProjectOpenNotice {
+            level: ProjectOpenNoticeLevel::Warning,
+            title: authoring_run_blocked_title(self.locale).to_string(),
+            detail: authoring_run_blocked_detail(self.locale, blocker.case, blocker.task_key),
+        });
+        self.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
+        self.platform_host.record_activity_line(format!(
+            "blocked authoring run before solve: {:?} {:?}",
+            blocker.case, blocker.task_key
+        ));
+        true
+    }
+
+    fn focus_authoring_run_blocker(&mut self, blocker: &AuthoringRunBlocker) {
+        match &blocker.focus_target {
+            AuthoringFocusTarget::Package => {
+                self.left_sidebar_tab = StudioShellLeftSidebarTab::Project;
+                self.right_sidebar_tab = StudioShellRightSidebarTab::Package;
+            }
+            AuthoringFocusTarget::Palette => {
+                self.left_sidebar_tab = StudioShellLeftSidebarTab::Palette;
+                self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+            }
+            AuthoringFocusTarget::Stream(stream_id) => {
+                self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+                self.dispatch_ui_command(format!("inspector.focus_stream:{stream_id}"));
+            }
+            AuthoringFocusTarget::Unit(unit_id) => {
+                self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+                self.dispatch_ui_command(format!("inspector.focus_unit:{unit_id}"));
+            }
+        }
+    }
+}
+
+fn authoring_cases_to_show(
+    active_case: Option<AuthoringCaseKind>,
+    window: &StudioGuiWindowModel,
+    document: &rf_ui::FlowsheetDocument,
+) -> Vec<AuthoringCaseKind> {
+    if let Some(case) = active_case {
+        return vec![case];
+    }
+    if window.runtime.workspace_document.project_path.is_some() {
+        return Vec::new();
+    }
+
+    let progress = authoring_progress(window, document);
+    if let Some(case) = inferred_authoring_case(&progress) {
+        return vec![case];
+    }
+
+    vec![
+        AuthoringCaseKind::MixerFlash,
+        AuthoringCaseKind::HeaterFlash,
+    ]
+}
+
+fn authoring_run_blocker(
+    active_case: Option<AuthoringCaseKind>,
+    window: &StudioGuiWindowModel,
+    document: &rf_ui::FlowsheetDocument,
+) -> Option<AuthoringRunBlocker> {
+    let progress = authoring_progress(window, document);
+    let case = active_case.or_else(|| inferred_authoring_case(&progress))?;
+
+    authoring_tasks_with_progress(case, &progress)
+        .into_iter()
+        .find(|task| task.key != AuthoringTaskKey::RunCase && !task.complete)
+        .map(|task| AuthoringRunBlocker {
+            case,
+            task_key: task.key,
+            focus_target: authoring_task_focus_target(task.key, window, document),
+        })
 }
 
 fn authoring_tasks(
@@ -122,7 +228,13 @@ fn authoring_tasks(
     document: &rf_ui::FlowsheetDocument,
 ) -> Vec<AuthoringTask> {
     let progress = authoring_progress(window, document);
+    authoring_tasks_with_progress(case, &progress)
+}
 
+fn authoring_tasks_with_progress(
+    case: AuthoringCaseKind,
+    progress: &AuthoringProgress,
+) -> Vec<AuthoringTask> {
     match case {
         AuthoringCaseKind::MixerFlash => vec![
             AuthoringTask {
@@ -251,6 +363,68 @@ fn authoring_tasks(
     }
 }
 
+fn inferred_authoring_case(progress: &AuthoringProgress) -> Option<AuthoringCaseKind> {
+    if progress.has_mixer {
+        Some(AuthoringCaseKind::MixerFlash)
+    } else if progress.has_heater {
+        Some(AuthoringCaseKind::HeaterFlash)
+    } else {
+        None
+    }
+}
+
+fn authoring_task_focus_target(
+    key: AuthoringTaskKey,
+    window: &StudioGuiWindowModel,
+    document: &rf_ui::FlowsheetDocument,
+) -> AuthoringFocusTarget {
+    match key {
+        AuthoringTaskKey::PropertyPackageSelected | AuthoringTaskKey::ProjectComponentsSelected => {
+            AuthoringFocusTarget::Package
+        }
+        AuthoringTaskKey::FeedComposition | AuthoringTaskKey::FeedCompositions => {
+            first_feed_outlet_stream_missing_composition(window, document)
+                .map(AuthoringFocusTarget::Stream)
+                .unwrap_or(AuthoringFocusTarget::Palette)
+        }
+        AuthoringTaskKey::FeedParameters | AuthoringTaskKey::FeedParametersForBoth => {
+            first_feed_missing_source_parameters(window, document)
+                .map(AuthoringFocusTarget::Unit)
+                .unwrap_or(AuthoringFocusTarget::Palette)
+        }
+        AuthoringTaskKey::HeaterParameters => {
+            first_unit_id_by_kind(window.canvas.widget.view(), "heater")
+                .map(AuthoringFocusTarget::Unit)
+                .unwrap_or(AuthoringFocusTarget::Palette)
+        }
+        AuthoringTaskKey::MixerParameters => {
+            first_unit_id_by_kind(window.canvas.widget.view(), "mixer")
+                .map(AuthoringFocusTarget::Unit)
+                .unwrap_or(AuthoringFocusTarget::Palette)
+        }
+        AuthoringTaskKey::FlashParameters => {
+            first_unit_id_by_kind(window.canvas.widget.view(), "flash_drum")
+                .map(AuthoringFocusTarget::Unit)
+                .unwrap_or(AuthoringFocusTarget::Palette)
+        }
+        AuthoringTaskKey::OneFeed
+        | AuthoringTaskKey::TwoFeeds
+        | AuthoringTaskKey::FeedOutlet
+        | AuthoringTaskKey::FeedOutlets
+        | AuthoringTaskKey::HeaterPlaced
+        | AuthoringTaskKey::FeedToHeater
+        | AuthoringTaskKey::HeaterOutlet
+        | AuthoringTaskKey::MixerPlaced
+        | AuthoringTaskKey::FeedToMixer
+        | AuthoringTaskKey::MixerOutlet
+        | AuthoringTaskKey::FlashPlaced
+        | AuthoringTaskKey::HeaterToFlash
+        | AuthoringTaskKey::MixerToFlash
+        | AuthoringTaskKey::FlashOutlets
+        | AuthoringTaskKey::RunCase => AuthoringFocusTarget::Palette,
+    }
+}
+
 fn authoring_progress(
     window: &StudioGuiWindowModel,
     document: &rf_ui::FlowsheetDocument,
@@ -350,6 +524,32 @@ fn authoring_progress(
             .is_some_and(|unit_id| unit_has_temperature_and_pressure_parameters(document, unit_id)),
         has_solve_snapshot: window.runtime.latest_solve_snapshot.is_some(),
     }
+}
+
+fn first_feed_outlet_stream_missing_composition(
+    window: &StudioGuiWindowModel,
+    document: &rf_ui::FlowsheetDocument,
+) -> Option<String> {
+    let view = window.canvas.widget.view();
+    let feed_unit_ids = unit_ids_by_kind(view, "feed");
+    feed_outlet_stream_ids(view, &feed_unit_ids)
+        .into_iter()
+        .find(|stream_id| {
+            document
+                .flowsheet
+                .streams
+                .get(&rf_types::StreamId::new(stream_id.as_str()))
+                .is_none_or(|stream| stream.overall_mole_fractions.is_empty())
+        })
+}
+
+fn first_feed_missing_source_parameters(
+    window: &StudioGuiWindowModel,
+    document: &rf_ui::FlowsheetDocument,
+) -> Option<String> {
+    unit_ids_by_kind(window.canvas.widget.view(), "feed")
+        .into_iter()
+        .find(|unit_id| !unit_has_temperature_and_pressure_parameters(document, unit_id))
 }
 
 fn count_streams_from_any_to_unit(
@@ -575,5 +775,31 @@ fn authoring_status_text(locale: StudioShellLocale, complete: bool) -> &'static 
         (StudioShellLocale::En, false) => "todo",
         (StudioShellLocale::ZhCn, true) => "完成",
         (StudioShellLocale::ZhCn, false) => "待做",
+    }
+}
+
+fn authoring_run_blocked_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Case inputs are not ready",
+        StudioShellLocale::ZhCn => "小案例输入未完成",
+    }
+}
+
+fn authoring_run_blocked_detail(
+    locale: StudioShellLocale,
+    case: AuthoringCaseKind,
+    task_key: AuthoringTaskKey,
+) -> String {
+    match locale {
+        StudioShellLocale::En => format!(
+            "Finish `{}` before running the {} checklist.",
+            authoring_task_label(locale, task_key),
+            authoring_case_title(locale, case)
+        ),
+        StudioShellLocale::ZhCn => format!(
+            "先完成“{}”，再运行 {}。",
+            authoring_task_label(locale, task_key),
+            authoring_case_title(locale, case)
+        ),
     }
 }

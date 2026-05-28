@@ -583,6 +583,36 @@ fn heater_flash_authoring_checklist_reflects_heater_outlet_progress() {
 }
 
 #[test]
+fn blank_palette_infers_mixer_case_and_hides_heater_checklist_after_mixer_topology() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.create_blank_project();
+    app.left_sidebar_tab = StudioShellLeftSidebarTab::Palette;
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 140.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-2");
+    app.dispatch_ui_command("canvas.begin_place_unit.mixer");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(210.0, 90.0));
+
+    let texts = render_alpha_workbench_texts(&mut app);
+    assert!(
+        texts.iter().any(|text| text.contains("Mixer-Flash 小案例")),
+        "expected inferred mixer checklist, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        !texts
+            .iter()
+            .any(|text| text.contains("Heater-Flash 小案例")),
+        "expected inferred mixer checklist to hide heater checklist, rendered texts: {:?}",
+        texts
+    );
+}
+
+#[test]
 fn heater_flash_authoring_checklist_keeps_input_tasks_pending_after_topology_only() {
     let mut app = ready_app_state(&synced_workspace_config());
 
@@ -628,6 +658,67 @@ fn heater_flash_authoring_checklist_keeps_input_tasks_pending_after_topology_onl
         texts.iter().filter(|text| *text == "待做").count() >= 4,
         "expected topology-only heater case to keep input and run tasks pending, rendered texts: {:?}",
         texts
+    );
+}
+
+#[test]
+fn mixer_flash_authoring_run_focuses_missing_feed_composition_before_solving() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.start_mixer_flash_authoring_case();
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 140.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-2");
+    select_builtin_binary_hydrocarbon_basis(&mut app);
+    app.dispatch_ui_command("canvas.begin_place_unit.mixer");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(210.0, 90.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.mixer.connect_inlet_a.mixer-1.stream-feed-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.mixer.connect_inlet_b.mixer-1.stream-feed-2-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.mixer.create_outlet.mixer-1");
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(360.0, 90.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.flash_drum.connect_inlet.flash-1.stream-mixer-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.liquid");
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.vapor");
+
+    app.dispatch_ui_command("run_panel.run_manual");
+
+    let window = app.platform_host.snapshot().window_model();
+    assert!(
+        window.runtime.latest_failure.is_none(),
+        "authoring run should stop before solver failure"
+    );
+    let detail = window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected missing feed composition stream to be focused");
+    assert_eq!(detail.target.kind_label, "Stream");
+    assert_eq!(detail.target.target_id, "stream-feed-1-outlet");
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Inspector);
+    assert_eq!(app.bottom_drawer_tab, StudioShellBottomDrawerTab::Messages);
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Warning)
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("小案例输入未完成")
     );
 }
 
