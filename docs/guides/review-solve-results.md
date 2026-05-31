@@ -1,6 +1,6 @@
 # Review Solve Results
 
-更新时间：2026-05-25
+更新时间：2026-05-31
 
 ## 目的
 
@@ -215,11 +215,12 @@ Studio 不应再通过全局 stream 列表按 id 回填、拼装或猜测第二�
 右侧 `结果` 区当前提供 `复制快照` 与 `导出文本...`。它们只把当前最新 `SolveSnapshot` 格式化成轻量纯文本，内容覆盖：
 
 - 流股摘要
+- Review 摘要：source / intermediate / terminal streams、latest unit results、diagnostics count
 - 单元结果摘要
 - 求解步骤
 - 诊断条目
 
-其中 `Units` 区按单元列出最新 step、状态、summary、输入流股和输出流股，便于人工复核 unit-centric 结果。它仍然只是当前快照的轻量文本视图，不是独立结果模型。
+其中 `Review` 区按 case-level 审阅顺序汇总 source、intermediate、terminal stream，并列出 latest unit results 的状态、消费流股和产出流股；`Units` 区按单元列出最新 step、状态、summary、输入流股和输出流股，便于人工复核 unit-centric 结果。它们都从当前同一份 `SolveSnapshot` 派生，不是独立结果模型。
 
 稳定边界：
 

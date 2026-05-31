@@ -13,6 +13,29 @@ impl StudioGuiWindowSolveSnapshotModel {
                 self.stream_count, self.step_count, self.diagnostic_count
             ),
             String::new(),
+            "Review".to_string(),
+            tsv_row(["category", "items"]),
+            tsv_row([
+                "source_streams",
+                format_stream_references(&self.review_summary.source_stream_results).as_str(),
+            ]),
+            tsv_row([
+                "intermediate_streams",
+                format_stream_references(&self.review_summary.intermediate_stream_results).as_str(),
+            ]),
+            tsv_row([
+                "terminal_streams",
+                format_stream_references(&self.review_summary.terminal_stream_results).as_str(),
+            ]),
+            tsv_row([
+                "units",
+                format_review_units(&self.review_summary.unit_results).as_str(),
+            ]),
+            tsv_row([
+                "diagnostics",
+                self.review_summary.diagnostic_count.to_string().as_str(),
+            ]),
+            String::new(),
             "Streams".to_string(),
             tsv_row([
                 "stream_id",
@@ -156,6 +179,22 @@ fn format_stream_references(streams: &[StudioGuiWindowStreamResultReferenceModel
     streams
         .iter()
         .map(|stream| format!("{} ({})", stream.stream_id, one_line(&stream.summary)))
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn format_review_units(units: &[StudioGuiWindowResultReviewUnitModel]) -> String {
+    units
+        .iter()
+        .map(|unit| {
+            format!(
+                "{} status={} consumed=[{}] produced=[{}]",
+                unit.unit_id,
+                unit.status_label,
+                unit.consumed_stream_ids.join(", "),
+                unit.produced_stream_ids.join(", ")
+            )
+        })
         .collect::<Vec<_>>()
         .join("; ")
 }

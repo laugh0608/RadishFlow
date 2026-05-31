@@ -22,7 +22,7 @@
 - **MVP β 人工 smoke v0 已通过：Smoke A-D 均已由人工完成，未发现 blocker。**
 - **MVP β 阶段基线验证已通过：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。**
 - **MVP β 下一阶段已切到通用小流程建模 v1：目标从复现指定案例推进到空白项目中受控组合小流程。**
-- **通用小流程建模 v1 第十切片已完成 focused 推进：普通空白项目结果审阅入口已覆盖 Results commands、轻量导出、底部结果表、Result Inspector 呈现、关键结果合理性核对、单相 Flash 零流量出口缺席语义，以及重开后正式求解失败的诊断上下文定位。**
+- **通用小流程建模 v1 第十一切片已完成 focused 推进：普通空白项目结果审阅入口已覆盖 Results commands、轻量导出、底部结果表、Result Inspector 呈现、关键结果合理性核对、单相 Flash 零流量出口缺席语义、重开后正式求解失败的诊断上下文定位，以及 case-level review summary。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 β 第一刀通过依据：
@@ -98,7 +98,7 @@
 - 已完成 MVP β 阶段基线验证：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。
 - 已启动通用小流程建模 v1 第一切片：运行按钮不再由 active 小案例清单拦截，改为所有项目共享的建模输入 readiness；普通空白项目与小案例入口都会用“模型输入未完成”指向真实 flowsheet 缺口，property package 解析仍留在正式 run command。
 - 已推进通用小流程建模 v1 第二切片：运行前 readiness 已按 Feed source stream 状态检查 T/P/F/z、项目组分引用和 composition 归一，并按 unit kind 要求 Heater / Cooler / Flash Drum 的出口 T/P 以及 Mixer / Valve 的出口压力；官方示例项目同步补齐正式单元参数，普通空白项目不再靠拓扑建议直接运行。
-- 已推进通用小流程建模 v1 第三至第十切片：`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum` 均覆盖显式输入、保存端口绑定、重开 rerun、单元 step、结果检查器、Results commands、轻量导出和 outlet T/P/F/H；底部结果表与 Result Inspector focused 回归已锁定输入流股、中间流股、Flash 液 / 汽出口、unit consumed / produced stream references、composition、phase 与 bubble/dew window 入口；结果合理性回归已覆盖 Flash split 总量 / 组分物料衡算、单入口单元出口 T/P/F/z 一致性和 Mixer 流量加权 composition；单相 Flash 零流量 outlet 已锁定不伪造 `H`、phase rows 或 bubble/dew window，右侧 Result Inspector 以 `none` 相态摘要表达缺席语义；普通空白项目重开后若进入正式求解失败，failure diagnostic detail 已锁定相关 unit、stream、port context 和可聚焦 action；host / window-model 层已补回归锁定 blocked modeling input 不启用 failure recovery，结构性连接 / 拓扑错误继续进入正式 Run Panel 诊断 / recovery。
+- 已推进通用小流程建模 v1 第三至第十一切片：`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum` 均覆盖显式输入、保存端口绑定、重开 rerun、单元 step、结果检查器、Results commands、轻量导出和 outlet T/P/F/H；底部结果表与 Result Inspector focused 回归已锁定输入流股、中间流股、Flash 液 / 汽出口、unit consumed / produced stream references、composition、phase 与 bubble/dew window 入口；结果合理性回归已覆盖 Flash split 总量 / 组分物料衡算、单入口单元出口 T/P/F/z 一致性和 Mixer 流量加权 composition；单相 Flash 零流量 outlet 已锁定不伪造 `H`、phase rows 或 bubble/dew window，右侧 Result Inspector 以 `none` 相态摘要表达缺席语义；普通空白项目重开后若进入正式求解失败，failure diagnostic detail 已锁定相关 unit、stream、port context 和可聚焦 action；window-model 已新增 case-level `review_summary`，按 source / intermediate / terminal streams、latest unit results 和 diagnostics 汇总同一份 `SolveSnapshot`，轻量导出同步输出 `Review` section；host / window-model 层已补回归锁定 blocked modeling input 不启用 failure recovery，结构性连接 / 拓扑错误继续进入正式 Run Panel 诊断 / recovery。
 
 ## 验证节奏
 

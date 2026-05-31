@@ -1,5 +1,5 @@
 use super::result_review::{
-    assert_bottom_result_table_contains_streams_and_steps,
+    assert_bottom_result_table_contains_streams_and_steps, assert_case_review_summary_covers_flow,
     assert_flash_outlet_phase_review_semantics, assert_flash_split_material_balance,
     assert_mixer_weighted_result, assert_result_inspector_renders_stream_review_object,
     assert_result_inspector_renders_unit_stream_references,
@@ -835,6 +835,13 @@ fn blank_project_selects_thermo_basis_saves_reopens_and_runs_feed_flash_path() {
         "stream-flash-1-vapor",
         Some("flash-1"),
     );
+    assert_case_review_summary_covers_flow(
+        snapshot,
+        &["stream-feed-1-outlet"],
+        &[],
+        &["stream-flash-1-liquid", "stream-flash-1-vapor"],
+        &["feed-1", "flash-1"],
+    );
     assert_bottom_result_table_contains_streams_and_steps(
         &mut app,
         snapshot,
@@ -1071,6 +1078,13 @@ fn blank_project_single_inlet_flash_paths_save_reopen_and_rerun() {
             "stream-flash-1-vapor",
             Some("flash-1"),
         );
+        assert_case_review_summary_covers_flow(
+            snapshot,
+            &["stream-feed-1-outlet"],
+            &[case.unit_outlet_stream_id],
+            &["stream-flash-1-liquid", "stream-flash-1-vapor"],
+            &["feed-1", case.unit_id, "flash-1"],
+        );
         assert_bottom_result_table_contains_streams_and_steps(
             &mut app,
             snapshot,
@@ -1126,6 +1140,15 @@ fn blank_project_single_inlet_flash_paths_save_reopen_and_rerun() {
             let export_path = project_path.with_extension("txt");
             app.export_solve_snapshot_to_path(snapshot, export_path.clone());
             let exported = fs::read_to_string(&export_path).expect("expected heater export read");
+            assert!(exported.contains("Review\ncategory\titems"));
+            assert!(exported.contains("source_streams\tstream-feed-1-outlet"));
+            assert!(exported.contains(&format!(
+                "intermediate_streams\t{}",
+                case.unit_outlet_stream_id
+            )));
+            assert!(exported.contains("terminal_streams\tstream-flash-1-liquid"));
+            assert!(exported.contains("units\tfeed-1 status=Converged"));
+            assert!(exported.contains(&format!("{} status=Converged", case.unit_id)));
             assert!(exported.contains(
                 "Streams\nstream_id\tlabel\tT\tP\tF\tH\tcomposition\tphases\tbubble_dew_window"
             ));
@@ -1477,6 +1500,13 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
         "stream-flash-1-vapor",
         Some("flash-1"),
     );
+    assert_case_review_summary_covers_flow(
+        snapshot,
+        &["stream-feed-1-outlet", "stream-feed-2-outlet"],
+        &["stream-mixer-1-outlet"],
+        &["stream-flash-1-liquid", "stream-flash-1-vapor"],
+        &["feed-1", "feed-2", "mixer-1", "flash-1"],
+    );
     assert!(
         rerun_streams
             .iter()
@@ -1529,6 +1559,13 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
     let export_path = project_path.with_extension("txt");
     app.export_solve_snapshot_to_path(snapshot, export_path.clone());
     let exported = fs::read_to_string(&export_path).expect("expected case author export read");
+    assert!(exported.contains("Review\ncategory\titems"));
+    assert!(exported.contains("source_streams\tstream-feed-1-outlet"));
+    assert!(exported.contains("stream-feed-2-outlet"));
+    assert!(exported.contains("intermediate_streams\tstream-mixer-1-outlet"));
+    assert!(exported.contains("terminal_streams\tstream-flash-1-liquid"));
+    assert!(exported.contains("units\tfeed-1 status=Converged"));
+    assert!(exported.contains("mixer-1 status=Converged"));
     assert!(exported.contains("Units\nunit_id\tstep\tstatus\tsummary"));
     assert!(exported.contains("mixer-1"));
     assert!(exported.contains("flash-1"));

@@ -201,6 +201,71 @@ pub(super) fn assert_mixer_weighted_result(
     }
 }
 
+pub(super) fn assert_case_review_summary_covers_flow(
+    snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    source_stream_ids: &[&str],
+    intermediate_stream_ids: &[&str],
+    terminal_stream_ids: &[&str],
+    unit_ids: &[&str],
+) {
+    let review = &snapshot.review_summary;
+    assert_eq!(
+        review.status_label, snapshot.status_label,
+        "review summary should preserve snapshot status"
+    );
+    assert_eq!(
+        review.diagnostic_count, snapshot.diagnostic_count,
+        "review summary should preserve diagnostic count"
+    );
+    assert_review_stream_group(
+        &review.source_stream_results,
+        source_stream_ids,
+        "source streams",
+    );
+    assert_review_stream_group(
+        &review.intermediate_stream_results,
+        intermediate_stream_ids,
+        "intermediate streams",
+    );
+    assert_review_stream_group(
+        &review.terminal_stream_results,
+        terminal_stream_ids,
+        "terminal streams",
+    );
+    assert_eq!(
+        review
+            .unit_results
+            .iter()
+            .map(|unit| unit.unit_id.as_str())
+            .collect::<Vec<_>>(),
+        unit_ids,
+        "review summary should preserve latest unit execution order"
+    );
+    for unit in &review.unit_results {
+        let step = snapshot
+            .steps
+            .iter()
+            .rev()
+            .find(|step| step.unit_id == unit.unit_id)
+            .unwrap_or_else(|| panic!("expected latest step for unit `{}`", unit.unit_id));
+        assert_eq!(unit.status_label, step.execution_status_label);
+        assert_eq!(
+            unit.consumed_stream_ids,
+            step.consumed_stream_results
+                .iter()
+                .map(|stream| stream.stream_id.clone())
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            unit.produced_stream_ids,
+            step.produced_stream_results
+                .iter()
+                .map(|stream| stream.stream_id.clone())
+                .collect::<Vec<_>>()
+        );
+    }
+}
+
 pub(super) fn assert_bottom_result_table_contains_streams_and_steps(
     app: &mut ReadyAppState,
     snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
@@ -403,6 +468,37 @@ pub(super) fn assert_result_inspector_renders_unit_stream_references(
             "expected result inspector unit surface to render stream reference `{}` for `{unit_id}`, rendered texts: {:?}",
             stream_ref.stream_id,
             unit_texts
+        );
+    }
+}
+
+fn assert_review_stream_group(
+    streams: &[radishflow_studio::StudioGuiWindowStreamResultReferenceModel],
+    expected_stream_ids: &[&str],
+    group_name: &str,
+) {
+    assert_eq!(
+        streams
+            .iter()
+            .map(|stream| stream.stream_id.as_str())
+            .collect::<Vec<_>>(),
+        expected_stream_ids,
+        "review summary should classify {group_name}"
+    );
+    for stream in streams {
+        assert_eq!(
+            stream.focus_action.command_id,
+            format!("inspector.focus_stream:{}", stream.stream_id),
+            "review summary stream `{}` should carry focus action",
+            stream.stream_id
+        );
+        assert!(
+            stream.summary.contains("T ")
+                && stream.summary.contains("P ")
+                && stream.summary.contains("F "),
+            "review summary stream `{}` should carry numeric summary, got `{}`",
+            stream.stream_id,
+            stream.summary
         );
     }
 }
