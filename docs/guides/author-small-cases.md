@@ -1,6 +1,6 @@
 # Author Small Cases
 
-更新时间：2026-05-28
+更新时间：2026-05-31
 
 ## 用途
 
@@ -68,9 +68,10 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 Home 作者入口从空白项目复现时，流股 ID 会按当前 canvas 生成，例如 `stream-feed-1-outlet`、`stream-heater-1-outlet`、`stream-mixer-1-outlet`。这些 ID 不需要和 official demo 文件完全相同；核对时看同一类对象和同一条 `SolveSnapshot` 链路：
 
 - `Streams`：关键输入流股、非 flash 中间流股、flash outlet 的 `T / P / F / H / composition / phases / bubble_dew_window`
+- `Review`：按 source / intermediate / terminal stream 分组，并汇总 latest unit results 的消费 / 产出流股
 - `Units` / `Steps`：每个单元实际消费和产出的流股引用
 - `Flash Drum`：flash inlet 是否来自上游中间流股，以及 liquid / vapor outlet 的流量分割和相态
-- `复制快照` / `导出文本`：应包含同一份快照里的流股、单元、步骤和诊断，不写项目文件，也不重新求解
+- `复制快照` / `导出文本`：应包含同一份快照里的 `Streams / Review / Units / Steps / Diagnostics`，不写项目文件，也不重新求解
 
 ## Mixer-Flash 小案例
 
@@ -109,7 +110,7 @@ Flash Drum -> liquid / vapor
 10. 点击顶部 `运行`。
 11. 在右侧 `结果` 和底部 `结果表` 检查收敛结果；底部表应同时显示流股结果和单元最新步骤。
 12. 保存项目，重开后再次运行，确认结果仍可复现。
-13. 需要交付文本结果时，在右侧 `结果` 区复制当前 `SolveSnapshot` 或导出 `.txt`。
+13. 需要交付文本结果时，在右侧 `结果` 区复制当前 `SolveSnapshot` 或导出 `.txt`；先看 `Review` section，再看 `Streams / Units / Steps` 明细。
 
 当前可用的最小核对点：
 
@@ -192,7 +193,7 @@ Official demo case 的结果核对路径：
 - `Connect stream` / `Create stream` 仍是正式 suggestion action；接受后才会通过文档命令写回。
 - 单元参数必须显式提交；仅在输入框中修改草稿不会改变运行结果。
 - 如果拓扑已完成但 Feed composition 未提交，运行会以 `solver.step.stream_input` 失败，并指向被下游单元消费的入口流股；应回到该 Feed outlet stream 的检查器提交组成。
-- 结果复制 / 导出只消费当前 `SolveSnapshot`，不写项目，也不是完整报表系统。
+- 结果复制 / 导出只消费当前 `SolveSnapshot`，不写项目，也不是完整报表系统；其中 `Review` 只是对同一份快照的 case-level 摘要，不是第二套结果。
 
 ## 相关文档
 

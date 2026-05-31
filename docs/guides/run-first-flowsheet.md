@@ -1,6 +1,6 @@
 # Run First Flowsheet
 
-更新时间：2026-05-25
+更新时间：2026-05-31
 
 ## 目的
 
@@ -109,6 +109,8 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 3. 底部 `结果表` 与 `诊断`
 4. 右侧 `检查器` 中当前对象的关联结果
 
+如果需要快速交叉核对整条 case，可以再导出当前快照文本。导出中的 `Review` section 会按 source / intermediate / terminal streams、latest unit results 和 diagnostics count 汇总同一份 `SolveSnapshot`，便于先确认输入流股、中间流股、Flash 出口和单元消费 / 产出关系。
+
 当前你应该特别注意以下结果字段：
 
 - `T / P / F / H`
@@ -201,9 +203,9 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
    - `Flash Drum` flash temperature = `300 K`，flash pressure = `85000 Pa`
 5. 点击顶部 `运行`，确认运行收敛，`stream-mixer-1-outlet` 总摩尔流量为两股入口之和。
 6. 保存项目，关闭或重新打开该项目，再次运行。
-7. 在右侧 `结果` 区复制当前 `SolveSnapshot`，或导出为轻量 `.txt`。
+7. 在右侧 `结果` 区复制当前 `SolveSnapshot`，或导出为轻量 `.txt`；文本中的 `Review` section 可快速核对 source / intermediate / terminal streams 与 latest unit results。
 
-这条路径的目标不是新增项目向导，而是验证用户能按现有 `放置 -> suggestion -> 单元参数 -> 运行 -> 保存重开 -> 结果导出` 工作流复现一个小案例。连接仍通过正式 suggestion 和 `DocumentCommand` 完成；参数仍只覆盖当前已暴露的 MVP 高频字段；导出只消费当前结果 DTO，不写项目、不进入 undo。
+这条路径的目标不是新增项目向导，而是验证用户能按现有 `放置 -> suggestion -> 单元参数 -> 运行 -> 保存重开 -> 结果导出` 工作流复现一个小案例。连接仍通过正式 suggestion 和 `DocumentCommand` 完成；参数仍只覆盖当前已暴露的 MVP 高频字段；导出只消费当前结果 DTO，不写项目、不进入 undo，也不是完整报表系统。
 
 如果选择 `创建 Heater-Flash 小案例`，操作顺序相同，但目标链路改为 `Feed -> Heater -> Flash Drum`。清单会要求放置一个 `Feed`、创建 Feed outlet、放置并连接 `Heater`、创建 Heater outlet、连接到 `Flash Drum`、创建 liquid / vapor outlet，然后运行并检查结果。该路径的详细核对点见 `docs/guides/author-small-cases.md`。
 

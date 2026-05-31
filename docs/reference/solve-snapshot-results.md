@@ -184,6 +184,20 @@ unit-centric 视图当前只是在同一份快照里按单元重新组织结果�
 
 它不应自己再从全局 stream map 组一套“更完整的单元结果”。
 
+### case-level review summary
+
+case-level `review_summary` 是 Studio window-model 从同一份最新 `SolveSnapshot` 派生的审阅摘要，用于让用户先按流程链路确认“哪些结果对象应该被看见”。
+
+当前分组语义：
+
+- `source_stream_results`：source unit 产出、且被下游单元消费的流股，例如 Feed outlet。
+- `intermediate_stream_results`：既由上游单元产出、又被下游单元消费的非 source 流股，例如 heater / cooler / valve / mixer outlet。
+- `terminal_stream_results`：由单元产出、但不再被下游单元消费的终端产品流股，例如 Flash Drum liquid / vapor outlet。
+- `unit_results`：每个单元当前最新 step 的状态、消费流股和产出流股。
+- `diagnostic_count`：当前快照中的诊断条目数量。
+
+这层摘要不改变 `SolveSnapshot.streams`、`StepSnapshot.consumed_streams` 或 `StepSnapshot.streams` 的正式语义，也不承担结果推导、重新计算或报表模板职责。若某个流股在 `Review` 分组和 step 明细中表现不一致，应优先按消费层 bug 排查，而不是让 `Review` 自行补造结果。
+
 ### diagnostic target / focus action
 
 当前 `inspector.focus_stream:*` 与 `inspector.focus_unit:*` 的正式语义只是“定位到某个当前已有结果对象”。

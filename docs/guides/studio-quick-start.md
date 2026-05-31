@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-05-27
+更新时间：2026-05-31
 
 ## 目的
 
@@ -17,7 +17,7 @@
 
 ## 当前能做什么
 
-截至 2026-05-27，Studio 当前已经具备以下最小闭环：
+截至 2026-05-31，Studio 当前已经具备以下主路径能力：
 
 - 启动后默认进入中文 Home Dashboard，可从 `开始 / 最近项目 / 示例项目 / 环境 / 消息` 分区判断从哪里开始
 - 新建未命名空白项目，并从受控内置列表显式选择 `binary-hydrocarbon-lite-v1` 与 `methane / ethane` 后进入最短建模路径
@@ -29,7 +29,7 @@
 - 运行仓库内或便携 staging 内的 official hydrocarbon 正向示例 flowsheet
 - 在左侧 `项目 / 示例项目 / 放置`、中央 `Canvas`、右侧 `检查器 / 结果 / 运行 / 物性包` 和底部 `消息 / 运行日志 / 结果表 / 诊断` 中完成当前 MVP α 工作流
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
-- 复制当前 `SolveSnapshot` 文本，或导出当前快照为轻量 `.txt`
+- 复制当前 `SolveSnapshot` 文本，或导出当前快照为轻量 `.txt`；导出文本包含 `Streams / Review / Units / Steps / Diagnostics`
 - 通过 `检查`、`诊断目标`、结果选择项和命令入口在流股、单元、步骤和当前检查器之间定位同一份结果
 - 在流股检查器中编辑流股基础字段与组成草稿，并显式提交、归一化或丢弃
 - 在单元检查器中编辑首批关键单元参数：`Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 和 `Flash Drum` 的 flash temperature / flash pressure
@@ -178,7 +178,7 @@ cargo run -p radishflow-studio
 7. 在流股检查器中编辑 `T / P / F` 和组成草稿；字段提交、全部应用、组成归一化都是显式动作。
 8. 选中 `Feed / Heater / Cooler / Mixer / Valve / Flash Drum` 时，可在单元检查器中编辑已暴露的 source temperature、source pressure、outlet temperature、outlet pressure、flash temperature 或 flash pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。
 9. 若流股错连或漏连，先选中该 material stream，再使用 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 或 `Delete stream` 这组受控恢复动作；`Reconnect stream` 只在单端唯一候选且不会形成 unit dependency cycle 时可用。
-10. 点击顶部 `运行`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一、material port 连接或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐后，结果只从最新 `SolveSnapshot` 展示到右侧 `结果` 和底部 `结果表`。
+10. 点击顶部 `运行`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一、material port 连接或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐后，结果只从最新 `SolveSnapshot` 展示到右侧 `结果`、底部 `结果表` 和轻量导出的 `Review` 摘要。
 
 当前连接仍通过本地 suggestion 和正式 `DocumentCommand` 完成，不是自由拉线编辑器；单元参数编辑也仍限制在上述 MVP 已暴露字段，不等同于完整单元参数表。
 
@@ -233,6 +233,7 @@ Canvas 中的单元位置和 viewport offset 保存到项目同目录的 `<proje
 - 右侧 `检查器 / 结果 / 运行 / 物性包` tabs，其中 `检查器` 负责当前对象参数、组成、端口和关联结果，`结果` 负责只读结果审阅，`物性包` 负责本地包和同步状态摘要
 - 底部 `消息 / 运行日志 / 结果表 / 诊断` drawer，其中结果表只读消费当前 `SolveSnapshot`，默认消息区比结果 / 诊断页更紧凑
 - `诊断目标` 中可直接定位的流股 / 单元结果目标
+- 当前快照导出中的 `Review` 摘要：按 source / intermediate / terminal streams 与 latest unit results 快速核对同一条结果链路
 
 如果运行成功，Studio 会自动把右侧切到 `结果`、底部切到 `结果表`。`Flash Drum` 相关结果当前应能进一步展示：
 
