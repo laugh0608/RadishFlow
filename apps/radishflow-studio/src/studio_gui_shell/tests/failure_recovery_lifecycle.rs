@@ -129,6 +129,180 @@ fn unit_parameter_failure_recovery_saves_reopens_and_reruns_official_case() {
 }
 
 #[test]
+fn blank_project_valve_parameter_failure_surfaces_diagnostic_context() {
+    let (config, project_path) = blank_workspace_config();
+    let mut app = ready_app_state(&config);
+    select_builtin_binary_hydrocarbon_basis(&mut app);
+
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.valve");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(180.0, 40.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.valve.connect_inlet.valve-1.stream-feed-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.valve.create_outlet.valve-1");
+
+    app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(320.0, 40.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.flash_drum.connect_inlet.flash-1.stream-valve-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.liquid");
+    accept_canvas_suggestion_by_id(&mut app, "local.flash_drum.create_outlet.flash-1.vapor");
+
+    add_and_normalize_stream_composition(
+        &mut app,
+        "stream-feed-1-outlet",
+        &[("methane", "0.2"), ("ethane", "0.6")],
+    );
+    commit_unit_parameter(
+        &mut app,
+        "feed-1",
+        "unit:feed-1:outlet_temperature_k",
+        "310",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "feed-1",
+        "unit:feed-1:outlet_pressure_pa",
+        "130000",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "valve-1",
+        "unit:valve-1:outlet_pressure_pa",
+        "85000",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "flash-1",
+        "unit:flash-1:outlet_temperature_k",
+        "300",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "flash-1",
+        "unit:flash-1:outlet_pressure_pa",
+        "85000",
+    );
+
+    app.save_project();
+    let mut saved = read_project_file(&project_path).expect("expected saved blank valve project");
+    saved
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new("valve-1"))
+        .expect("expected saved valve")
+        .parameters
+        .outlet_pressure_pa = Some(150_000.0);
+    saved
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&StreamId::new("stream-valve-1-outlet"))
+        .expect("expected saved valve outlet")
+        .pressure_pa = 150_000.0;
+    write_project_file(&project_path, &saved).expect("expected invalid valve project write");
+    app.open_project(project_path.clone(), "project");
+
+    run_and_assert_failure(
+        &mut app,
+        ExpectedFailure {
+            title: "Unit parameter invalid",
+            primary_code: "solver.step.parameter",
+            recovery_title: Some("Inspect unit parameters"),
+            recovery_target: Some(("Unit", "valve-1")),
+        },
+    );
+    let failed = app.platform_host.snapshot().window_model();
+    assert!(
+        failed.runtime.latest_solve_snapshot.is_none(),
+        "failed dynamic run must not expose a stale solve snapshot"
+    );
+    let failure = failed
+        .runtime
+        .latest_failure
+        .as_ref()
+        .expect("expected dynamic valve failure");
+    let detail = failure
+        .diagnostic_detail
+        .as_ref()
+        .expect("expected failure diagnostic detail");
+    assert!(
+        detail
+            .related_units
+            .iter()
+            .any(|target| target.target_id == "valve-1"),
+        "expected valve unit target in diagnostic detail: {detail:?}"
+    );
+    for stream_id in ["stream-feed-1-outlet", "stream-valve-1-outlet"] {
+        assert!(
+            detail
+                .related_streams
+                .iter()
+                .any(|target| target.target_id == stream_id),
+            "expected stream target `{stream_id}` in diagnostic detail: {detail:?}"
+        );
+        assert!(
+            detail
+                .related_stream_results
+                .iter()
+                .any(|stream| stream.stream_id == stream_id
+                    && stream.focus_action.command_id
+                        == format!("inspector.focus_stream:{stream_id}")),
+            "expected stream result context `{stream_id}` in diagnostic detail: {detail:?}"
+        );
+    }
+    for (port_name, stream_id) in [
+        ("outlet", "stream-valve-1-outlet"),
+        ("inlet", "stream-feed-1-outlet"),
+    ] {
+        let port = detail
+            .related_ports
+            .iter()
+            .find(|target| target.unit_id == "valve-1" && target.port_name == port_name)
+            .unwrap_or_else(|| {
+                panic!("expected valve `{port_name}` port context in diagnostic detail: {detail:?}")
+            });
+        assert_eq!(port.unit_action.command_id, "inspector.focus_unit:valve-1");
+        let stream_result = port
+            .stream_result
+            .as_ref()
+            .unwrap_or_else(|| panic!("expected stream context for valve `{port_name}` port"));
+        assert_eq!(
+            stream_result.stream_id, stream_id,
+            "expected valve `{port_name}` port stream context"
+        );
+        assert_eq!(
+            stream_result.focus_action.command_id,
+            format!("inspector.focus_stream:{stream_id}")
+        );
+    }
+    for command_id in [
+        "inspector.focus_unit:valve-1",
+        "inspector.focus_stream:stream-feed-1-outlet",
+        "inspector.focus_stream:stream-valve-1-outlet",
+    ] {
+        assert!(
+            failure
+                .diagnostic_actions
+                .iter()
+                .any(|action| action.action.command_id == command_id),
+            "expected failure diagnostic action `{command_id}`: {:?}",
+            failure.diagnostic_actions
+        );
+    }
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
 fn unbound_outlet_failure_recovery_saves_reopens_and_reruns_official_case() {
     let project_path = temporary_failure_project_path("unbound-outlet-recovery");
     write_fixture_project(
@@ -785,14 +959,14 @@ fn add_and_normalize_stream_composition(
             .active_inspector_detail
             .as_ref()
             .expect("expected active stream inspector");
-        let command_id = detail
+        let Some(command_id) = detail
             .property_composition_component_actions
             .iter()
             .find(|action| action.component_id == *component_id)
-            .unwrap_or_else(|| panic!("expected {component_id} composition action"))
-            .action
-            .command_id
-            .clone();
+            .map(|action| action.action.command_id.clone())
+        else {
+            continue;
+        };
         app.dispatch_inspector_composition_component_add(command_id);
     }
 
