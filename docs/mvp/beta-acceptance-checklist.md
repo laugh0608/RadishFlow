@@ -23,6 +23,8 @@
 
 当前 `718b03b` 已完成人工 Smoke A-D，未发现 blocker。2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 已在 smoke 记录同步工作区通过。在明确发布节点前，不把当前状态升级为正式 tag / release 节点。
 
+截至 2026-05-31，通用小流程建模 v1 已继续覆盖普通空白项目三类受控路径的结果审阅、关键结果合理性、失败态定位和 case-level review summary。本文定义的 MVP β Smoke A-D 后续保留为阶段收口或发布前复验清单，不再作为日常开发 gate；日常推进优先使用与改动风险匹配的 focused 验证。
+
 ## 验收原则
 
 - 验收以用户能复现的小流程为主，不继续追逐 hover、按钮文案、局部 selector 或同构作者入口。
@@ -135,15 +137,20 @@ MVP β 人工 smoke v0 可记为 `Pass`，需要同时满足：
 
 ## 暂不推进
 
-本轮不推进：
+本轮 smoke 已完成。后续仍不推进：
 
 - tag、release notes、便携包刷新或对外发布自动化
 - Windows 安装器、自动更新、正式 release channel
 - COM 注册、PME 自动化互调、第三方 CAPE-OPEN 模型或第三方物性包加载
-- `Cooler-Flash` / `Valve-Flash` Home 作者入口或会随草稿 UI 废弃的用户 guide
+- `Cooler-Flash` / `Valve-Flash` Home 作者入口，或绑定草稿 UI 细节的专门操作 guide
 - 自由连线编辑器、任意端口选择器、自动布线、完整拖拽布局编辑器
 - 完整结果报表、跨快照报表、打印系统或模板导出
 - hover、tooltip、按钮文案、局部 selector、视觉微调等非 blocker UI 打磨
+
+后续可放宽的事项：
+
+- `Cooler` / `Valve` 可作为通用空白项目受控路径继续补说明或 focused 回归，但仍不新增 Home 作者入口。
+- 可补服务建模正确性的状态表达，例如旧结果失效提示、结果新旧状态标识和单次 `SolveSnapshot` 轻量审阅摘要；这些不视为完整报表系统。
 
 ## 记录模板
 

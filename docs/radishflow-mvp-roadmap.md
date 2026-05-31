@@ -20,6 +20,7 @@
 - MVP β 后续能力包已完成多组 focused 收口：结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0、失败修复闭环 v0。
 - MVP β 人工 smoke 与仓库级阶段基线验证已通过；下一步推进通用小流程建模 v1，而不是推进 tag、release notes、便携包或零散 UI 打磨。
 - 通用小流程建模 v1 已完成到第十一切片：运行按钮改用通用 `Flowsheet` readiness，普通空白项目不再自动匹配小案例 gate；`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 已覆盖显式输入、保存 / 重开 / rerun、结果审阅入口、关键结果合理性、单相 Flash 缺席语义、失败态定位和 case-level review summary。
+- 阶段性约束已从“围绕 β 验收补覆盖”调整为“推进普通空白项目编辑后重跑一致性和真实建模缺口”：指定小案例入口、MVP β Smoke A-D 和结果审阅覆盖面不再作为每日 gate。
 - 当前尚未达到正式 tag / release 节点标准，历史 `v26.5.1-dev` staging 材料不作为当前路线图事实源。
 
 当前不再把路线图作为每日推进清单。今天做什么、当前验证基线和暂不推进项，以 `docs/status/current.md` 为准；MVP α 验收清单保留为内部验收记录，不再作为当前日常推进主线。
@@ -88,9 +89,11 @@
 - demo case 作为验收方式：`Heater-Flash` 与 `Mixer-Flash` 已覆盖 official demo case 输入和结果核对；`Cooler-Flash` 与 `Valve-Flash` 已用内部 focused test 覆盖空白项目建模闭环，但不新增 Home 作者入口或用户 guide。
 - 失败修复闭环已完成 focused 收口；人工 smoke 只覆盖代表性恢复路径，不把 focused tests 已覆盖的所有恢复生命周期全部手工重跑。
 - MVP β 当前推进通用小流程建模 v1：普通空白项目必须按真实 `Flowsheet` readiness 运行，不再按某个作者案例阻断；用户应能在受控范围内自行组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，显式补齐 Feed source stream 和必要单元参数后保存 / 重开 / rerun，并通过右侧 Result Inspector、底部结果表、Results commands、轻量导出和 case-level review summary 审阅同一份 `SolveSnapshot`。
-- 更多作者 checklist、同构 Home 入口和完整报表增强先进入 backlog；既有小案例清单只作为导航提示，不再作为通用建模能力的运行 gate。
+- 后续可自然推进 `Cooler` / `Valve` 作为通用空白项目受控路径的说明和回归，但不新增同构 Home 作者入口或 checklist。既有小案例清单只作为导航提示，不再作为通用建模能力的运行 gate。
+- 允许服务建模正确性的 UI 状态表达和轻量结果审阅材料改进，例如旧结果失效提示、结果新旧状态标识和单次快照摘要；视觉精修、大改版、完整报表、模板、打印、批量导出和跨快照报表仍不进入当前阶段。
+- readiness 后续只能继续承担确定的建模输入缺失门禁；结构性连接、拓扑、非法旧项目或求解阶段参数失败继续由正式 Run Panel 诊断 / recovery 承担，不把 readiness 扩成第二套 solver。
 - CAPE-OPEN / PME 只修真实验证暴露的 blocker，不继续主动扩第三方宿主矩阵。
-- Studio UI 优化只做主路径和明确专题；不扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
+- Studio UI 优化只做主路径和明确专题；不扩自由连线、任意端口选择器、完整拖拽布局、自动布线、完整参数表或完整结果报表。
 
 ## 远期产品方向
 
