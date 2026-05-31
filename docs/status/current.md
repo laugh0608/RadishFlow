@@ -22,7 +22,7 @@
 - **MVP β 人工 smoke v0 已通过：Smoke A-D 均已由人工完成，未发现 blocker。**
 - **MVP β 阶段基线验证已通过：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。**
 - **MVP β 下一阶段已切到通用小流程建模 v1：目标从复现指定案例推进到空白项目中受控组合小流程。**
-- **通用小流程建模 v1 第三切片已完成 focused 推进：普通空白项目 `Feed -> Flash Drum` 显式输入、保存 / 重开 / rerun 与结果核对已补强；readiness 与正式 Run Panel 连接 / 拓扑诊断边界已重新收口。**
+- **通用小流程建模 v1 第四切片已完成 focused 推进：普通空白项目 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum` 的保存 / 重开 / rerun 和结果核对已按统一口径收口。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 β 第一刀通过依据：
@@ -98,7 +98,7 @@
 - 已完成 MVP β 阶段基线验证：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。
 - 已启动通用小流程建模 v1 第一切片：运行按钮不再由 active 小案例清单拦截，改为所有项目共享的建模输入 readiness；普通空白项目与小案例入口都会用“模型输入未完成”指向真实 flowsheet 缺口，property package 解析仍留在正式 run command。
 - 已推进通用小流程建模 v1 第二切片：运行前 readiness 已按 Feed source stream 状态检查 T/P/F/z、项目组分引用和 composition 归一，并按 unit kind 要求 Heater / Cooler / Flash Drum 的出口 T/P 以及 Mixer / Valve 的出口压力；官方示例项目同步补齐正式单元参数，普通空白项目不再靠拓扑建议直接运行。
-- 已推进通用小流程建模 v1 第三切片：`Feed -> Flash Drum` 普通空白项目 focused 回归改为显式提交 Feed source stream 的 T/P/F/z，并核对保存端口绑定、重开 rerun、Flash step 消费 / 产出和 outlet T/P/F/H；readiness 现在只拦截建模输入未完成，连接校验错误、missing stream reference、duplicate source / sink、orphan stream 与 cycle 继续进入正式 Run Panel 诊断 / recovery。
+- 已推进通用小流程建模 v1 第三 / 第四切片：`Feed -> Flash Drum` 普通空白项目 focused 回归改为显式提交 Feed source stream 的 T/P/F/z；`Feed -> Heater/Cooler/Valve -> Flash Drum` 的单入口路径已收敛到同一测试矩阵，并与 `Feed + Feed -> Mixer -> Flash Drum` 一起核对保存端口绑定、重开 rerun、单元 step、结果检查器和 outlet T/P/F/H；readiness 只拦截建模输入未完成，连接 / 拓扑错误继续进入正式 Run Panel 诊断 / recovery。
 
 ## 验证节奏
 
