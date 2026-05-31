@@ -46,6 +46,35 @@ fn solver_failure_config() -> (crate::StudioRuntimeConfig, PathBuf) {
     )
 }
 
+fn missing_components_blocked_run_config() -> (crate::StudioRuntimeConfig, PathBuf) {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected time after epoch")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-window-host-missing-components-{unique}.rfproj.json"
+    ));
+    let mut project = rf_store::parse_project_file_json(include_str!(
+        "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected heater project parse");
+    project.document.flowsheet.components.clear();
+    let project_json =
+        rf_store::project_file_to_pretty_json(&project).expect("expected project json");
+    fs::write(&project_path, project_json).expect("expected temporary blocked project");
+
+    (
+        crate::StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            untitled_blank_project: None,
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            trigger: crate::StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+        },
+        project_path,
+    )
+}
+
 fn synced_workspace_config() -> crate::StudioRuntimeConfig {
     crate::StudioRuntimeConfig {
         entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
@@ -1005,6 +1034,57 @@ fn app_window_host_manager_routes_global_recovery_request_to_foreground_window()
         }
         other => panic!("expected run panel recovery dispatch, got {other:?}"),
     }
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn app_window_host_manager_keeps_recovery_disabled_after_blocked_workspace_run() {
+    let (config, project_path) = missing_components_blocked_run_config();
+    let mut manager = StudioAppWindowHostManager::new(&config).expect("expected manager");
+    let window = manager.open_window();
+
+    let blocked_run = manager
+        .dispatch_trigger(
+            window.window_id,
+            &StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+        )
+        .expect("expected blocked run dispatch");
+    match &blocked_run
+        .dispatch
+        .host_output
+        .runtime_output
+        .report
+        .dispatch
+    {
+        crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+            crate::StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                assert!(matches!(
+                    dispatch.outcome,
+                    crate::StudioWorkspaceRunOutcome::Blocked(_)
+                ));
+            }
+            other => panic!("expected workspace run dispatch, got {other:?}"),
+        },
+        other => panic!("expected app command dispatch, got {other:?}"),
+    }
+
+    let recovery = manager.ui_action_state(StudioAppWindowHostUiAction::RecoverRunPanelFailure);
+    assert_eq!(
+        recovery,
+        StudioAppWindowHostUiActionState {
+            action: StudioAppWindowHostUiAction::RecoverRunPanelFailure,
+            availability: StudioAppWindowHostUiActionAvailability::Disabled {
+                reason: StudioAppWindowHostUiActionDisabledReason::NoRunPanelRecovery,
+                target_window_id: Some(window.window_id),
+            },
+        }
+    );
+    assert!(!recovery.enabled());
+    let recovery_dispatch = manager
+        .dispatch_ui_action(StudioAppWindowHostUiAction::RecoverRunPanelFailure)
+        .expect_err("expected unavailable recovery action to stay rejected");
+    assert_eq!(recovery_dispatch.code(), rf_types::ErrorCode::InvalidInput);
 
     let _ = fs::remove_file(project_path);
 }

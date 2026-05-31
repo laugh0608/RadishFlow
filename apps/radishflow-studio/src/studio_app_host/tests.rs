@@ -47,6 +47,35 @@ fn solver_failure_config() -> (crate::StudioRuntimeConfig, PathBuf) {
     )
 }
 
+fn missing_components_blocked_run_config() -> (crate::StudioRuntimeConfig, PathBuf) {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected time after epoch")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-app-host-missing-components-{unique}.rfproj.json"
+    ));
+    let mut project = rf_store::parse_project_file_json(include_str!(
+        "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected heater project parse");
+    project.document.flowsheet.components.clear();
+    let project_json =
+        rf_store::project_file_to_pretty_json(&project).expect("expected project json");
+    fs::write(&project_path, project_json).expect("expected temporary blocked project");
+
+    (
+        crate::StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            untitled_blank_project: None,
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            trigger: crate::StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+        },
+        project_path,
+    )
+}
+
 fn flash_drum_local_rules_synced_config() -> (crate::StudioRuntimeConfig, PathBuf) {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)

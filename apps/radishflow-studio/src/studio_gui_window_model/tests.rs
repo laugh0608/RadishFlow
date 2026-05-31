@@ -1072,6 +1072,35 @@ fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
     failure_synced_config("unbound-outlet-port.rfproj.json")
 }
 
+fn missing_components_blocked_run_synced_config() -> (StudioRuntimeConfig, PathBuf) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-window-model-missing-components-{timestamp}.rfproj.json"
+    ));
+    let mut project = parse_project_file_json(include_str!(
+        "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected heater project parse");
+    project.document.flowsheet.components.clear();
+    let project_json =
+        project_file_to_pretty_json(&project).expect("expected blocked project json");
+    fs::write(&project_path, project_json).expect("expected blocked project write");
+
+    (
+        StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            untitled_blank_project: None,
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            trigger: StudioRuntimeTrigger::WidgetAction(rf_ui::RunPanelActionId::RunManual),
+        },
+        project_path,
+    )
+}
+
 fn missing_upstream_failure_synced_config() -> StudioRuntimeConfig {
     failure_synced_config("missing-upstream-source.rfproj.json")
 }
@@ -3512,6 +3541,40 @@ fn studio_gui_window_model_dispatches_official_near_boundary_flash_focus_command
 
         let _ = fs::remove_file(project_path);
     }
+}
+
+#[test]
+fn studio_gui_window_model_keeps_modeling_readiness_out_of_failure_recovery() {
+    let (config, project_path) = missing_components_blocked_run_synced_config();
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let blocked = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected readiness-blocked run dispatch");
+    let window = blocked.window;
+
+    assert!(
+        window.runtime.latest_failure.is_none(),
+        "blocked modeling input should not materialize as a visible Run Panel failure"
+    );
+    assert!(
+        window.runtime.latest_solve_snapshot.is_none(),
+        "blocked modeling input should stop before a solve snapshot is created"
+    );
+    let recovery_items = window.commands.palette_items("recovery");
+    assert!(
+        recovery_items.iter().any(|item| {
+            item.command_id == "run_panel.recover_failure" && item.label.contains("[disabled]")
+        }),
+        "blocked modeling input must keep Run Panel recovery disabled"
+    );
+
+    let _ = fs::remove_file(project_path);
 }
 
 #[test]
