@@ -112,6 +112,38 @@ fn assert_flash_outlet_results(
     );
 }
 
+fn assert_result_command_available(
+    commands: &radishflow_studio::StudioGuiWindowCommandAreaModel,
+    query: &str,
+    command_id: &str,
+    menu_path_prefix: &str,
+    detail_fragments: &[&str],
+) {
+    let items = commands.palette_items(query);
+    let item = items
+        .iter()
+        .find(|item| item.command_id == command_id)
+        .unwrap_or_else(|| {
+            panic!("expected result command {command_id} for query {query}; got {items:?}")
+        });
+    assert!(
+        item.enabled,
+        "expected result command {command_id} to be enabled"
+    );
+    assert!(
+        item.menu_path_text.starts_with(menu_path_prefix),
+        "expected result command {command_id} menu path `{}` to start with `{menu_path_prefix}`",
+        item.menu_path_text
+    );
+    for fragment in detail_fragments {
+        assert!(
+            item.detail.contains(fragment),
+            "expected result command {command_id} detail `{}` to contain `{fragment}`",
+            item.detail
+        );
+    }
+}
+
 fn commit_stream_field(app: &mut ReadyAppState, stream_id: &str, field: &str, raw_value: &str) {
     app.dispatch_ui_command(format!("inspector.focus_stream:{stream_id}"));
     app.dispatch_inspector_field_draft_update(
@@ -971,15 +1003,47 @@ fn blank_project_single_inlet_flash_paths_save_reopen_and_rerun() {
             case.flash_pressure_pa,
             feed.total_molar_flow_mol_s,
         );
+        assert_result_command_available(
+            &rerun.commands,
+            &format!("result snapshot {}", case.unit_outlet_stream_id),
+            &format!("inspector.focus_stream:{}", case.unit_outlet_stream_id),
+            "Results > Streams >",
+            &[case.unit_outlet_stream_id, "SolveSnapshot", "H "],
+        );
+        assert_result_command_available(
+            &rerun.commands,
+            &format!("result snapshot {}", case.unit_id),
+            &format!("inspector.focus_unit:{}", case.unit_id),
+            "Results > Units >",
+            &[case.unit_id, "SolveSnapshot", "Latest step"],
+        );
 
         if case.case_name == "heater" {
             let export_path = project_path.with_extension("txt");
             app.export_solve_snapshot_to_path(snapshot, export_path.clone());
             let exported = fs::read_to_string(&export_path).expect("expected heater export read");
-            assert!(exported.contains("Units\nunit_id\tstep\tstatus\tsummary"));
+            assert!(exported.contains(
+                "Streams\nstream_id\tlabel\tT\tP\tF\tH\tcomposition\tphases\tbubble_dew_window"
+            ));
+            assert!(exported.contains(
+                "Units\nunit_id\tstep\tstatus\tsummary\tconsumed_streams\tproduced_streams"
+            ));
+            assert!(exported.contains(
+                "Steps\nindex\tunit_id\tstatus\tsummary\tconsumed_streams\tproduced_streams"
+            ));
             assert!(exported.contains(case.unit_id));
             assert!(exported.contains("flash-1"));
             assert!(exported.contains(case.unit_outlet_stream_id));
+            assert!(exported.contains("stream-feed-1-outlet"));
+            assert!(exported.contains("stream-flash-1-liquid"));
+            assert!(exported.contains("stream-flash-1-vapor"));
+            assert!(exported.contains("methane=0.2500"));
+            assert!(exported.contains("ethane=0.7500"));
+            assert!(exported.contains("phase_region="));
+            assert!(exported.contains("bubble_pressure="));
+            assert!(exported.contains("dew_pressure="));
+            assert!(exported.contains("bubble_temperature="));
+            assert!(exported.contains("dew_temperature="));
             assert!(
                 !app.platform_host
                     .snapshot()
