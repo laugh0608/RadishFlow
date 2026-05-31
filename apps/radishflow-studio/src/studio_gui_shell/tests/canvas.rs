@@ -1,5 +1,6 @@
 use super::result_review::{
-    assert_bottom_result_table_contains_streams_and_steps, assert_flash_split_material_balance,
+    assert_bottom_result_table_contains_streams_and_steps,
+    assert_flash_outlet_phase_review_semantics, assert_flash_split_material_balance,
     assert_mixer_weighted_result, assert_result_inspector_renders_stream_review_object,
     assert_result_inspector_renders_unit_stream_references,
     assert_single_inlet_unit_result_consistency,
@@ -827,6 +828,13 @@ fn blank_project_selects_thermo_basis_saves_reopens_and_runs_feed_flash_path() {
         "stream-flash-1-liquid",
         "stream-flash-1-vapor",
     );
+    assert_flash_outlet_phase_review_semantics(
+        &mut app,
+        snapshot,
+        "stream-flash-1-liquid",
+        "stream-flash-1-vapor",
+        Some("flash-1"),
+    );
     assert_bottom_result_table_contains_streams_and_steps(
         &mut app,
         snapshot,
@@ -1055,6 +1063,13 @@ fn blank_project_single_inlet_flash_paths_save_reopen_and_rerun() {
             case.unit_outlet_stream_id,
             "stream-flash-1-liquid",
             "stream-flash-1-vapor",
+        );
+        assert_flash_outlet_phase_review_semantics(
+            &mut app,
+            snapshot,
+            "stream-flash-1-liquid",
+            "stream-flash-1-vapor",
+            Some("flash-1"),
         );
         assert_bottom_result_table_contains_streams_and_steps(
             &mut app,
@@ -1454,6 +1469,13 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
         "stream-mixer-1-outlet",
         "stream-flash-1-liquid",
         "stream-flash-1-vapor",
+    );
+    assert_flash_outlet_phase_review_semantics(
+        &mut app,
+        snapshot,
+        "stream-flash-1-liquid",
+        "stream-flash-1-vapor",
+        Some("flash-1"),
     );
     assert!(
         rerun_streams

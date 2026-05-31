@@ -34,6 +34,91 @@ pub(super) fn assert_flash_split_material_balance(
     }
 }
 
+pub(super) fn assert_flash_outlet_phase_review_semantics(
+    app: &mut ReadyAppState,
+    snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    liquid_stream_id: &str,
+    vapor_stream_id: &str,
+    selected_unit_id: Option<&str>,
+) {
+    let liquid = snapshot_stream(snapshot, liquid_stream_id);
+    let vapor = snapshot_stream(snapshot, vapor_stream_id);
+    let mut zero_flow_outlet_count = 0;
+
+    for stream in [liquid, vapor] {
+        let is_zero_flow = stream.total_molar_flow_mol_s.abs() <= RESULT_REVIEW_TOLERANCE;
+        if is_zero_flow {
+            zero_flow_outlet_count += 1;
+            assert_eq!(
+                stream.molar_enthalpy_j_per_mol, None,
+                "zero-flow flash outlet `{}` must not synthesize molar enthalpy",
+                stream.stream_id
+            );
+            assert_eq!(
+                stream.molar_enthalpy_text, None,
+                "zero-flow flash outlet `{}` must not synthesize enthalpy text",
+                stream.stream_id
+            );
+            assert!(
+                stream.phase_rows.is_empty(),
+                "zero-flow flash outlet `{}` must keep phase rows absent",
+                stream.stream_id
+            );
+            assert!(
+                stream.bubble_dew_window.is_none(),
+                "zero-flow flash outlet `{}` must keep bubble/dew window absent",
+                stream.stream_id
+            );
+
+            let texts = render_result_inspector_review_texts(
+                app,
+                snapshot,
+                stream.stream_id.as_str(),
+                selected_unit_id,
+            );
+            let bubble_dew_header = app.locale.text(ShellText::BubbleDewWindow);
+            assert!(
+                !texts.iter().any(|text| text.contains(bubble_dew_header)),
+                "expected result inspector to omit bubble/dew window for zero-flow outlet `{}`; rendered texts: {:?}",
+                stream.stream_id,
+                texts
+            );
+            assert!(
+                texts.iter().any(|text| text == "none"),
+                "expected result inspector to render `none` phase summary for zero-flow outlet `{}`; rendered texts: {:?}",
+                stream.stream_id,
+                texts
+            );
+        } else {
+            assert!(
+                stream.molar_enthalpy_j_per_mol.is_some(),
+                "flowing flash outlet `{}` should carry molar enthalpy",
+                stream.stream_id
+            );
+            assert!(
+                stream.molar_enthalpy_text.is_some(),
+                "flowing flash outlet `{}` should carry enthalpy text",
+                stream.stream_id
+            );
+            assert!(
+                !stream.phase_rows.is_empty(),
+                "flowing flash outlet `{}` should carry phase rows",
+                stream.stream_id
+            );
+            assert!(
+                stream.bubble_dew_window.is_some(),
+                "flowing flash outlet `{}` should carry bubble/dew window",
+                stream.stream_id
+            );
+        }
+    }
+
+    assert!(
+        zero_flow_outlet_count > 0,
+        "expected current blank-project flash cases to cover a single-phase zero-flow outlet"
+    );
+}
+
 pub(super) fn assert_single_inlet_unit_result_consistency(
     snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
     inlet_stream_id: &str,
