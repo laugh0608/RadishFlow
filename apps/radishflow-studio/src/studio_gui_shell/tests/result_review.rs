@@ -1,5 +1,121 @@
 use super::*;
 
+const RESULT_REVIEW_TOLERANCE: f64 = 1e-9;
+
+pub(super) fn assert_flash_split_material_balance(
+    snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    inlet_stream_id: &str,
+    liquid_stream_id: &str,
+    vapor_stream_id: &str,
+) {
+    let inlet = snapshot_stream(snapshot, inlet_stream_id);
+    let liquid = snapshot_stream(snapshot, liquid_stream_id);
+    let vapor = snapshot_stream(snapshot, vapor_stream_id);
+
+    assert_close(
+        liquid.total_molar_flow_mol_s + vapor.total_molar_flow_mol_s,
+        inlet.total_molar_flow_mol_s,
+        "flash outlet total molar flow should match inlet flow",
+    );
+    for component in &inlet.composition_rows {
+        let inlet_component_flow = inlet.total_molar_flow_mol_s * component.fraction;
+        let outlet_component_flow = liquid.total_molar_flow_mol_s
+            * stream_fraction(liquid, component.component_id.as_str())
+            + vapor.total_molar_flow_mol_s
+                * stream_fraction(vapor, component.component_id.as_str());
+        assert_close(
+            outlet_component_flow,
+            inlet_component_flow,
+            format!(
+                "flash split should preserve component `{}` molar flow",
+                component.component_id
+            ),
+        );
+    }
+}
+
+pub(super) fn assert_single_inlet_unit_result_consistency(
+    snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    inlet_stream_id: &str,
+    outlet_stream_id: &str,
+    expected_outlet_temperature_k: f64,
+    expected_outlet_pressure_pa: f64,
+) {
+    let inlet = snapshot_stream(snapshot, inlet_stream_id);
+    let outlet = snapshot_stream(snapshot, outlet_stream_id);
+
+    assert_close(
+        outlet.total_molar_flow_mol_s,
+        inlet.total_molar_flow_mol_s,
+        "single-inlet unit outlet flow should match inlet flow",
+    );
+    assert_close(
+        outlet.temperature_k,
+        expected_outlet_temperature_k,
+        "single-inlet unit outlet temperature should match submitted parameter or inlet carry-through",
+    );
+    assert_close(
+        outlet.pressure_pa,
+        expected_outlet_pressure_pa,
+        "single-inlet unit outlet pressure should match submitted parameter",
+    );
+    for component in &inlet.composition_rows {
+        assert_close(
+            stream_fraction(outlet, component.component_id.as_str()),
+            component.fraction,
+            format!(
+                "single-inlet unit should preserve component `{}` composition",
+                component.component_id
+            ),
+        );
+    }
+}
+
+pub(super) fn assert_mixer_weighted_result(
+    snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    inlet_stream_ids: &[&str],
+    outlet_stream_id: &str,
+    expected_outlet_pressure_pa: f64,
+) {
+    let outlet = snapshot_stream(snapshot, outlet_stream_id);
+    let inlets = inlet_stream_ids
+        .iter()
+        .map(|stream_id| snapshot_stream(snapshot, stream_id))
+        .collect::<Vec<_>>();
+    let total_inlet_flow = inlets
+        .iter()
+        .map(|stream| stream.total_molar_flow_mol_s)
+        .sum::<f64>();
+
+    assert_close(
+        outlet.total_molar_flow_mol_s,
+        total_inlet_flow,
+        "mixer outlet total molar flow should equal inlet flow sum",
+    );
+    assert_close(
+        outlet.pressure_pa,
+        expected_outlet_pressure_pa,
+        "mixer outlet pressure should match submitted parameter",
+    );
+    for component in &outlet.composition_rows {
+        let weighted_component_flow = inlets
+            .iter()
+            .map(|stream| {
+                stream.total_molar_flow_mol_s
+                    * stream_fraction(stream, component.component_id.as_str())
+            })
+            .sum::<f64>();
+        assert_close(
+            component.fraction,
+            weighted_component_flow / total_inlet_flow,
+            format!(
+                "mixer outlet component `{}` should use flow-weighted composition",
+                component.component_id
+            ),
+        );
+    }
+}
+
 pub(super) fn assert_bottom_result_table_contains_streams_and_steps(
     app: &mut ReadyAppState,
     snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
@@ -337,4 +453,29 @@ fn snapshot_stream<'a>(
         .iter()
         .find(|stream| stream.stream_id == stream_id)
         .unwrap_or_else(|| panic!("expected stream result {stream_id}"))
+}
+
+fn stream_fraction(
+    stream: &radishflow_studio::StudioGuiWindowStreamResultModel,
+    component_id: &str,
+) -> f64 {
+    stream
+        .composition_rows
+        .iter()
+        .find(|row| row.component_id == component_id)
+        .unwrap_or_else(|| {
+            panic!(
+                "expected stream `{}` to carry component `{component_id}`",
+                stream.stream_id
+            )
+        })
+        .fraction
+}
+
+fn assert_close(actual: f64, expected: f64, context: impl AsRef<str>) {
+    assert!(
+        (actual - expected).abs() <= RESULT_REVIEW_TOLERANCE,
+        "{}: expected {actual} to equal {expected}",
+        context.as_ref()
+    );
 }

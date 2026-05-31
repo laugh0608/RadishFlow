@@ -1,7 +1,8 @@
 use super::result_review::{
-    assert_bottom_result_table_contains_streams_and_steps,
-    assert_result_inspector_renders_stream_review_object,
+    assert_bottom_result_table_contains_streams_and_steps, assert_flash_split_material_balance,
+    assert_mixer_weighted_result, assert_result_inspector_renders_stream_review_object,
     assert_result_inspector_renders_unit_stream_references,
+    assert_single_inlet_unit_result_consistency,
 };
 use super::*;
 
@@ -820,6 +821,12 @@ fn blank_project_selects_thermo_basis_saves_reopens_and_runs_feed_flash_path() {
         &["stream-flash-1-liquid", "stream-flash-1-vapor"],
     );
     assert_flash_outlet_results(snapshot, 300.0, 85_000.0, feed.total_molar_flow_mol_s);
+    assert_flash_split_material_balance(
+        snapshot,
+        "stream-feed-1-outlet",
+        "stream-flash-1-liquid",
+        "stream-flash-1-vapor",
+    );
     assert_bottom_result_table_contains_streams_and_steps(
         &mut app,
         snapshot,
@@ -1003,6 +1010,13 @@ fn blank_project_single_inlet_flash_paths_save_reopen_and_rerun() {
             assert_eq!(unit_outlet_result.temperature_k, feed.temperature_k);
         }
         assert!(unit_outlet_result.molar_enthalpy_j_per_mol.is_some());
+        assert_single_inlet_unit_result_consistency(
+            snapshot,
+            "stream-feed-1-outlet",
+            case.unit_outlet_stream_id,
+            case.unit_outlet_temperature_k.unwrap_or(feed.temperature_k),
+            case.unit_outlet_pressure_pa,
+        );
 
         assert_snapshot_step_links(
             snapshot,
@@ -1035,6 +1049,12 @@ fn blank_project_single_inlet_flash_paths_save_reopen_and_rerun() {
             case.flash_temperature_k,
             case.flash_pressure_pa,
             feed.total_molar_flow_mol_s,
+        );
+        assert_flash_split_material_balance(
+            snapshot,
+            case.unit_outlet_stream_id,
+            "stream-flash-1-liquid",
+            "stream-flash-1-vapor",
         );
         assert_bottom_result_table_contains_streams_and_steps(
             &mut app,
@@ -1423,6 +1443,18 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
     assert_eq!(rerun_mixer_outlet.pressure_pa, 90_000.0);
     assert_stream_fraction(rerun_mixer_outlet, "methane", 0.5625);
     assert_stream_fraction(rerun_mixer_outlet, "ethane", 0.4375);
+    assert_mixer_weighted_result(
+        snapshot,
+        &["stream-feed-1-outlet", "stream-feed-2-outlet"],
+        "stream-mixer-1-outlet",
+        90_000.0,
+    );
+    assert_flash_split_material_balance(
+        snapshot,
+        "stream-mixer-1-outlet",
+        "stream-flash-1-liquid",
+        "stream-flash-1-vapor",
+    );
     assert!(
         rerun_streams
             .iter()
