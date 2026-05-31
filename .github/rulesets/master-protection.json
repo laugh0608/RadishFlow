@@ -49,6 +49,12 @@
           },
           {
             "context": "Rust Baseline"
+          },
+          {
+            "context": "Rust Baseline (macOS)"
+          },
+          {
+            "context": "Rust Baseline (Windows)"
           }
         ],
         "strict_required_status_checks_policy": true

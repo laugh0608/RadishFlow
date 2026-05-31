@@ -1071,6 +1071,12 @@ mod tests {
             .get_mut(&"stream-throttled".into())
             .expect("expected throttled stream")
             .pressure_pa = 730_000.0;
+        flowsheet
+            .units
+            .get_mut(&"valve-1".into())
+            .expect("expected valve unit")
+            .parameters
+            .outlet_pressure_pa = Some(730_000.0);
         let mut app_state = AppState::new(FlowsheetDocument::new(
             flowsheet,
             DocumentMetadata::new(
@@ -1105,7 +1111,7 @@ mod tests {
                 .notice
                 .as_ref()
                 .map(|notice| (notice.level, notice.title.as_str())),
-            Some((rf_ui::RunPanelNoticeLevel::Error, "Unit execution failed"))
+            Some((rf_ui::RunPanelNoticeLevel::Error, "Unit parameter invalid"))
         );
         assert_eq!(
             app_state
@@ -1114,7 +1120,7 @@ mod tests {
                 .notice
                 .as_ref()
                 .map(|notice| notice.title.as_str()),
-            Some("Unit execution failed")
+            Some("Unit parameter invalid")
         );
         assert_eq!(
             app_state
@@ -1125,8 +1131,8 @@ mod tests {
                 .and_then(|notice| notice.recovery_action.as_ref())
                 .map(|action| (action.title, action.detail)),
             Some((
-                "Inspect unit inputs",
-                "检查单元规格、物性条件和入口状态是否满足执行前提。"
+                "Inspect unit parameters",
+                "检查 Unit Inspector 中的参数值和 SI 约束，确认参数与已连接入口状态一致。"
             ))
         );
 

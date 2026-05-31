@@ -338,6 +338,12 @@ mod tests {
             .get_mut(&"stream-throttled".into())
             .expect("expected throttled stream")
             .pressure_pa = 730_000.0;
+        flowsheet
+            .units
+            .get_mut(&"valve-1".into())
+            .expect("expected valve unit")
+            .parameters
+            .outlet_pressure_pa = Some(730_000.0);
         let mut app_state = AppState::new(FlowsheetDocument::new(
             flowsheet,
             DocumentMetadata::new("doc-6", "Valve Failure Demo", timestamp(80)),
@@ -354,7 +360,7 @@ mod tests {
         )
         .expect_err("expected solve failure");
 
-        assert!(error.message().contains("solver.step.execution:"));
+        assert!(error.message().contains("solver.step.parameter:"));
         assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
         assert_eq!(
             app_state
@@ -363,7 +369,7 @@ mod tests {
                 .latest_diagnostic
                 .as_ref()
                 .and_then(|summary| summary.primary_code.as_deref()),
-            Some("solver.step.execution")
+            Some("solver.step.parameter")
         );
         assert_eq!(
             app_state

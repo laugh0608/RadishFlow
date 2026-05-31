@@ -81,6 +81,35 @@ fn apply_case_feed_state(
     stream.pressure_pa = case.pressure_pa;
 }
 
+fn set_app_unit_outlet_temperature(app_state: &mut AppState, unit_id: &str, temperature_k: f64) {
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new(unit_id))
+        .expect("expected unit")
+        .parameters
+        .outlet_temperature_k = Some(temperature_k);
+}
+
+fn set_app_unit_outlet_pressure(app_state: &mut AppState, unit_id: &str, pressure_pa: f64) {
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new(unit_id))
+        .expect("expected unit")
+        .parameters
+        .outlet_pressure_pa = Some(pressure_pa);
+}
+
+fn set_app_flash_case_parameters(app_state: &mut AppState, case: &NearBoundaryStreamWindowCase) {
+    set_app_unit_outlet_temperature(app_state, "flash-1", case.temperature_k);
+    set_app_unit_outlet_pressure(app_state, "flash-1", case.pressure_pa);
+}
+
 fn assert_near_boundary_window_matches_case(
     stream: &rf_ui::StreamStateSnapshot,
     case: &NearBoundaryStreamWindowCase,
@@ -310,6 +339,9 @@ fn app_state_for_binary_heater_boundary_case(
         .expect("expected feed stream")
         .pressure_pa = 700_000.0;
     apply_case_feed_state(&mut app_state, "stream-heated", case);
+    set_app_unit_outlet_temperature(&mut app_state, "heater-1", case.temperature_k);
+    set_app_unit_outlet_pressure(&mut app_state, "heater-1", case.pressure_pa);
+    set_app_flash_case_parameters(&mut app_state, case);
     app_state
 }
 
@@ -336,6 +368,9 @@ fn app_state_for_binary_mixer_boundary_case(
         );
         apply_case_feed_state(&mut app_state, stream_id, case);
     }
+    set_app_unit_outlet_temperature(&mut app_state, "mixer-1", case.temperature_k);
+    set_app_unit_outlet_pressure(&mut app_state, "mixer-1", case.pressure_pa);
+    set_app_flash_case_parameters(&mut app_state, case);
     app_state
 }
 
@@ -368,6 +403,9 @@ fn app_state_for_binary_cooler_boundary_case(
         .expect("expected feed stream")
         .pressure_pa = 700_000.0;
     apply_case_feed_state(&mut app_state, "stream-cooled", case);
+    set_app_unit_outlet_temperature(&mut app_state, "cooler-1", case.temperature_k);
+    set_app_unit_outlet_pressure(&mut app_state, "cooler-1", case.pressure_pa);
+    set_app_flash_case_parameters(&mut app_state, case);
     app_state
 }
 
@@ -409,6 +447,8 @@ fn app_state_for_binary_valve_boundary_case(
         .expect("expected throttled stream");
     throttled.temperature_k = case.temperature_k;
     throttled.pressure_pa = case.pressure_pa;
+    set_app_unit_outlet_pressure(&mut app_state, "valve-1", case.pressure_pa);
+    set_app_flash_case_parameters(&mut app_state, case);
     app_state
 }
 
@@ -433,6 +473,9 @@ fn app_state_for_synthetic_mixer_boundary_case(
         );
         apply_case_feed_state(&mut app_state, stream_id, case);
     }
+    set_app_unit_outlet_temperature(&mut app_state, "mixer-1", case.temperature_k);
+    set_app_unit_outlet_pressure(&mut app_state, "mixer-1", case.pressure_pa);
+    set_app_flash_case_parameters(&mut app_state, case);
     app_state
 }
 
@@ -456,6 +499,9 @@ fn app_state_for_synthetic_heater_boundary_case(
     );
     apply_case_feed_state(&mut app_state, "stream-feed", case);
     apply_case_feed_state(&mut app_state, "stream-heated", case);
+    set_app_unit_outlet_temperature(&mut app_state, "heater-1", case.temperature_k);
+    set_app_unit_outlet_pressure(&mut app_state, "heater-1", case.pressure_pa);
+    set_app_flash_case_parameters(&mut app_state, case);
     app_state
 }
 
@@ -479,6 +525,9 @@ fn app_state_for_synthetic_cooler_boundary_case(
     );
     apply_case_feed_state(&mut app_state, "stream-feed", case);
     apply_case_feed_state(&mut app_state, "stream-cooled", case);
+    set_app_unit_outlet_temperature(&mut app_state, "cooler-1", case.temperature_k);
+    set_app_unit_outlet_pressure(&mut app_state, "cooler-1", case.pressure_pa);
+    set_app_flash_case_parameters(&mut app_state, case);
     app_state
 }
 
@@ -502,6 +551,8 @@ fn app_state_for_synthetic_valve_boundary_case(
     );
     apply_case_feed_state(&mut app_state, "stream-feed", case);
     apply_case_feed_state(&mut app_state, "stream-throttled", case);
+    set_app_unit_outlet_pressure(&mut app_state, "valve-1", case.pressure_pa);
+    set_app_flash_case_parameters(&mut app_state, case);
     app_state
 }
 

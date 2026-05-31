@@ -301,7 +301,7 @@ fn app_window_host_manager_dispatches_run_panel_recovery_through_typed_entry() {
     assert_eq!(recovery.target_window_id, window.window_id);
     match &recovery.dispatch.host_output.runtime_output.report.dispatch {
         crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
-            assert_eq!(outcome.action.title, "Inspect unit inputs");
+            assert_eq!(outcome.action.title, "Inspect unit parameters");
             assert_eq!(
                 outcome.applied_target,
                 Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(

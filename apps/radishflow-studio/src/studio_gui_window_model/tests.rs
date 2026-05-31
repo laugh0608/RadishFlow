@@ -543,7 +543,9 @@ fn assert_window_model_preserves_ui_stream_window_absence(
     let ui_stream = find_ui_snapshot_stream(ui_snapshot, stream_id);
     assert!(
         ui_stream.bubble_dew_window.is_none(),
-        "expected ui snapshot bubble/dew window absence for `{stream_id}`"
+        "expected ui snapshot bubble/dew window absence for `{stream_id}`, flow={} window={:?}",
+        ui_stream.total_molar_flow_mol_s,
+        ui_stream.bubble_dew_window
     );
 
     let result_inspector = snapshot.result_inspector(Some(stream_id));

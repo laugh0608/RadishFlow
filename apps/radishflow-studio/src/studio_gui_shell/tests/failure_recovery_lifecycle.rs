@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn stream_input_failure_recovery_saves_reopens_and_reruns_official_case() {
+fn stream_input_readiness_focuses_composition_then_saves_reopens_and_reruns_official_case() {
     let project_path = temporary_failure_project_path("stream-input-recovery");
     let mut project = rf_store::parse_project_file_json(include_str!(
         "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
@@ -18,56 +18,31 @@ fn stream_input_failure_recovery_saves_reopens_and_reruns_official_case() {
     write_project_file(&project_path, &project).expect("expected temp project write");
     let mut app = ready_app_state(&project_config(project_path.clone()));
 
-    run_and_assert_failure(
-        &mut app,
-        ExpectedFailure {
-            title: "Stream input invalid",
-            primary_code: "solver.step.stream_input",
-            recovery_title: Some("Inspect stream inputs"),
-            recovery_target: Some(("Stream", "stream-feed")),
-        },
+    app.dispatch_ui_command("run_panel.run_manual");
+    let blocked = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        blocked.runtime.control_state.run_status,
+        rf_ui::RunStatus::Idle
     );
-
-    app.dispatch_ui_command("run_panel.recover_failure");
+    assert!(blocked.runtime.latest_failure.is_none());
+    assert_eq!(
+        app.project_open.notice.as_ref().map(|notice| notice.level),
+        Some(ProjectOpenNoticeLevel::Warning)
+    );
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("模型输入未完成")
+    );
     assert_active_inspector_target(&app, "Stream", "stream-feed");
 
-    for component_id in ["methane", "ethane"] {
-        let window = app.platform_host.snapshot().window_model();
-        let detail = window
-            .runtime
-            .active_inspector_detail
-            .as_ref()
-            .expect("expected active stream inspector");
-        let command_id = detail
-            .property_composition_component_actions
-            .iter()
-            .find(|action| action.component_id == component_id)
-            .unwrap_or_else(|| panic!("expected {component_id} composition action"))
-            .action
-            .command_id
-            .clone();
-        app.dispatch_inspector_composition_component_add(command_id);
-    }
-
-    for (component_id, raw_value) in [("methane", "0.2"), ("ethane", "0.6")] {
-        app.dispatch_inspector_field_draft_update(
-            radishflow_studio::inspector_draft_update_command_id(&format!(
-                "stream:stream-feed:overall_mole_fraction:{component_id}"
-            )),
-            raw_value,
-        );
-    }
-    let detail = app
-        .platform_host
-        .snapshot()
-        .window_model()
-        .runtime
-        .active_inspector_detail
-        .expect("expected stream inspector after composition draft");
-    let normalize_command_id = detail
-        .property_composition_normalize_command_id
-        .expect("expected composition normalize command");
-    app.dispatch_inspector_composition_normalize(normalize_command_id);
+    add_and_normalize_stream_composition(
+        &mut app,
+        "stream-feed",
+        &[("methane", "0.2"), ("ethane", "0.6")],
+    );
 
     app.save_project();
     let saved = read_project_file(&project_path).expect("expected saved project read");
@@ -190,6 +165,21 @@ fn unbound_outlet_failure_recovery_saves_reopens_and_reruns_official_case() {
             .contains_key(&StreamId::new("stream-feed-1-outlet"))
     );
 
+    commit_stream_field(&mut app, "stream-feed-1-outlet", "temperature_k", "320");
+    commit_stream_field(&mut app, "stream-feed-1-outlet", "pressure_pa", "100000");
+    commit_stream_field(
+        &mut app,
+        "stream-feed-1-outlet",
+        "total_molar_flow_mol_s",
+        "5",
+    );
+    add_and_normalize_stream_composition(
+        &mut app,
+        "stream-feed-1-outlet",
+        &[("methane", "0.2"), ("ethane", "0.6")],
+    );
+    app.save_project();
+
     reopen_and_assert_clean(&mut app, &project_path);
     run_and_assert_converged(&mut app);
     assert_latest_snapshot_has_stream(&app, "stream-feed-1-outlet");
@@ -258,6 +248,20 @@ fn missing_stream_reference_recovery_saves_reopens_and_completes_after_outlet_cr
             .contains_key(&StreamId::new("stream-heater-1-outlet"))
     );
 
+    commit_unit_parameter(
+        &mut app,
+        "heater-1",
+        "unit:heater-1:outlet_temperature_k",
+        "346",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "heater-1",
+        "unit:heater-1:outlet_pressure_pa",
+        "94000",
+    );
+    app.save_project();
+
     reopen_and_assert_clean(&mut app, &project_path);
     run_and_assert_converged(&mut app);
     assert_latest_snapshot_has_stream(&app, "stream-heater-1-outlet");
@@ -323,6 +327,27 @@ fn duplicate_source_recovery_saves_reopens_and_completes_after_outlet_creation()
             .contains_key(&StreamId::new("stream-feed-2-outlet"))
     );
 
+    commit_stream_field(&mut app, "stream-feed-2-outlet", "temperature_k", "320");
+    commit_stream_field(&mut app, "stream-feed-2-outlet", "pressure_pa", "100000");
+    commit_stream_field(
+        &mut app,
+        "stream-feed-2-outlet",
+        "total_molar_flow_mol_s",
+        "5",
+    );
+    add_and_normalize_stream_composition(
+        &mut app,
+        "stream-feed-2-outlet",
+        &[("methane", "0.35"), ("ethane", "0.65")],
+    );
+    commit_unit_parameter(
+        &mut app,
+        "mixer-1",
+        "unit:mixer-1:outlet_pressure_pa",
+        "90000",
+    );
+    app.save_project();
+
     reopen_and_assert_clean(&mut app, &project_path);
     run_and_assert_converged(&mut app);
     assert_latest_snapshot_has_stream(&app, "stream-feed-2-outlet");
@@ -361,6 +386,58 @@ fn orphan_stream_recovery_saves_reopens_and_reruns_official_case() {
             .flowsheet
             .streams
             .contains_key(&StreamId::new("stream-orphan"))
+    );
+
+    reopen_and_assert_clean(&mut app, &project_path);
+    commit_unit_parameter(
+        &mut app,
+        "heater-1",
+        "unit:heater-1:outlet_temperature_k",
+        "346",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "heater-1",
+        "unit:heater-1:outlet_pressure_pa",
+        "94000",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "flash-1",
+        "unit:flash-1:outlet_temperature_k",
+        "300",
+    );
+    commit_unit_parameter(
+        &mut app,
+        "flash-1",
+        "unit:flash-1:outlet_pressure_pa",
+        "85000",
+    );
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    assert_eq!(
+        saved.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_temperature_k,
+        Some(346.0)
+    );
+    assert_eq!(
+        saved.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_pressure_pa,
+        Some(94_000.0)
+    );
+    assert_eq!(
+        saved.document.flowsheet.units[&UnitId::new("flash-1")]
+            .parameters
+            .outlet_temperature_k,
+        Some(300.0)
+    );
+    assert_eq!(
+        saved.document.flowsheet.units[&UnitId::new("flash-1")]
+            .parameters
+            .outlet_pressure_pa,
+        Some(85_000.0)
     );
 
     reopen_and_assert_clean(&mut app, &project_path);
@@ -695,12 +772,75 @@ fn write_fixture_project(project_path: &std::path::Path, project_json: &str) {
     write_project_file(project_path, &project).expect("expected temp project write");
 }
 
+fn add_and_normalize_stream_composition(
+    app: &mut ReadyAppState,
+    stream_id: &str,
+    drafts: &[(&str, &str)],
+) {
+    app.dispatch_ui_command(format!("inspector.focus_stream:{stream_id}"));
+    for (component_id, _) in drafts {
+        let window = app.platform_host.snapshot().window_model();
+        let detail = window
+            .runtime
+            .active_inspector_detail
+            .as_ref()
+            .expect("expected active stream inspector");
+        let command_id = detail
+            .property_composition_component_actions
+            .iter()
+            .find(|action| action.component_id == *component_id)
+            .unwrap_or_else(|| panic!("expected {component_id} composition action"))
+            .action
+            .command_id
+            .clone();
+        app.dispatch_inspector_composition_component_add(command_id);
+    }
+
+    for (component_id, raw_value) in drafts {
+        app.dispatch_inspector_field_draft_update(
+            radishflow_studio::inspector_draft_update_command_id(&format!(
+                "stream:{stream_id}:overall_mole_fraction:{component_id}"
+            )),
+            *raw_value,
+        );
+    }
+    let detail = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .active_inspector_detail
+        .expect("expected stream inspector after composition draft");
+    let normalize_command_id = detail
+        .property_composition_normalize_command_id
+        .expect("expected composition normalize command");
+    app.dispatch_inspector_composition_normalize(normalize_command_id);
+}
+
+fn commit_stream_field(app: &mut ReadyAppState, stream_id: &str, field: &str, raw_value: &str) {
+    app.dispatch_ui_command(format!("inspector.focus_stream:{stream_id}"));
+    app.dispatch_inspector_field_draft_update(
+        radishflow_studio::inspector_draft_update_command_id(&format!(
+            "stream:{stream_id}:{field}"
+        )),
+        raw_value,
+    );
+    app.dispatch_inspector_field_draft_commit(
+        radishflow_studio::inspector_draft_commit_command_id(&format!(
+            "stream:{stream_id}:{field}"
+        )),
+    );
+}
+
 fn run_and_assert_failure(app: &mut ReadyAppState, expected: ExpectedFailure<'_>) {
     app.dispatch_ui_command("run_panel.run_manual");
     let failed = app.platform_host.snapshot().window_model();
     assert_eq!(
         failed.runtime.control_state.run_status,
-        rf_ui::RunStatus::Error
+        rf_ui::RunStatus::Error,
+        "expected run failure {expected:?}, notice: {:?}, latest failure: {:?}",
+        app.project_open.notice,
+        failed.runtime.latest_failure
     );
     let failure = failed
         .runtime
@@ -767,7 +907,10 @@ fn run_and_assert_converged(app: &mut ReadyAppState) {
     let rerun = app.platform_host.snapshot().window_model();
     assert_eq!(
         rerun.runtime.control_state.run_status,
-        rf_ui::RunStatus::Converged
+        rf_ui::RunStatus::Converged,
+        "expected rerun convergence, notice: {:?}, latest failure: {:?}",
+        app.project_open.notice,
+        rerun.runtime.latest_failure
     );
     assert!(rerun.runtime.latest_failure.is_none());
     assert!(rerun.runtime.latest_solve_snapshot.is_some());

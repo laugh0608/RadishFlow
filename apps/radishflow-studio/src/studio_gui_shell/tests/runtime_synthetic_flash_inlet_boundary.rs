@@ -137,6 +137,59 @@ fn solve_synthetic_snapshot(
         scenario.project_json,
         &provider,
         |project| {
+            let flash = project
+                .document
+                .flowsheet
+                .units
+                .get_mut(&"flash-1".into())
+                .expect("expected flash unit");
+            flash.parameters.outlet_temperature_k = Some(case.temperature_k);
+            flash.parameters.outlet_pressure_pa = Some(REFERENCE_PRESSURE_PA);
+
+            match scenario.label {
+                "heater" => {
+                    let unit = project
+                        .document
+                        .flowsheet
+                        .units
+                        .get_mut(&"heater-1".into())
+                        .expect("expected heater unit");
+                    unit.parameters.outlet_temperature_k = Some(case.temperature_k);
+                    unit.parameters.outlet_pressure_pa = Some(REFERENCE_PRESSURE_PA);
+                }
+                "cooler" => {
+                    let unit = project
+                        .document
+                        .flowsheet
+                        .units
+                        .get_mut(&"cooler-1".into())
+                        .expect("expected cooler unit");
+                    unit.parameters.outlet_temperature_k = Some(case.temperature_k);
+                    unit.parameters.outlet_pressure_pa = Some(REFERENCE_PRESSURE_PA);
+                }
+                "valve" => {
+                    project
+                        .document
+                        .flowsheet
+                        .units
+                        .get_mut(&"valve-1".into())
+                        .expect("expected valve unit")
+                        .parameters
+                        .outlet_pressure_pa = Some(REFERENCE_PRESSURE_PA);
+                }
+                "mixer" => {
+                    project
+                        .document
+                        .flowsheet
+                        .units
+                        .get_mut(&"mixer-1".into())
+                        .expect("expected mixer unit")
+                        .parameters
+                        .outlet_pressure_pa = Some(REFERENCE_PRESSURE_PA);
+                }
+                other => panic!("unexpected synthetic chain scenario `{other}`"),
+            }
+
             for stream_id in scenario.seeded_stream_ids {
                 apply_stream_state_and_composition(
                     project,

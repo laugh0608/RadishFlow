@@ -373,6 +373,44 @@ fn set_stream_pressure(
         .pressure_pa = pressure_pa;
 }
 
+fn set_unit_outlet_temperature(
+    project: &mut rf_store::StoredProjectFile,
+    unit_id: &str,
+    temperature_k: f64,
+) {
+    project
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new(unit_id))
+        .expect("expected unit")
+        .parameters
+        .outlet_temperature_k = Some(temperature_k);
+}
+
+fn set_unit_outlet_pressure(
+    project: &mut rf_store::StoredProjectFile,
+    unit_id: &str,
+    pressure_pa: f64,
+) {
+    project
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new(unit_id))
+        .expect("expected unit")
+        .parameters
+        .outlet_pressure_pa = Some(pressure_pa);
+}
+
+fn set_flash_case_parameters(
+    project: &mut rf_store::StoredProjectFile,
+    case: &NearBoundaryStreamWindowCase,
+) {
+    set_unit_outlet_temperature(project, "flash-1", case.temperature_k);
+    set_unit_outlet_pressure(project, "flash-1", case.pressure_pa);
+}
+
 fn assert_near_boundary_window_matches_case(
     snapshot: &rf_solver::SolveSnapshot,
     stream_id: &str,
@@ -1089,6 +1127,9 @@ fn binary_heater_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_wi
                     .expect("expected feed stream")
                     .pressure_pa = 700_000.0;
                 apply_case_feed_state(project, "stream-heated", &case);
+                set_unit_outlet_temperature(project, "heater-1", case.temperature_k);
+                set_unit_outlet_pressure(project, "heater-1", case.pressure_pa);
+                set_flash_case_parameters(project, &case);
             },
         );
     }
@@ -1125,6 +1166,9 @@ fn binary_heater_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet
                     .expect("expected feed stream")
                     .pressure_pa = 700_000.0;
                 apply_case_feed_state(project, "stream-heated", &case);
+                set_unit_outlet_temperature(project, "heater-1", case.temperature_k);
+                set_unit_outlet_pressure(project, "heater-1", case.pressure_pa);
+                set_flash_case_parameters(project, &case);
             },
         );
     }
@@ -1155,6 +1199,8 @@ fn binary_mixer_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_win
                     );
                     apply_case_feed_state(project, stream_id, &case);
                 }
+                set_unit_outlet_pressure(project, "mixer-1", case.pressure_pa);
+                set_flash_case_parameters(project, &case);
             },
         );
     }
@@ -1186,6 +1232,8 @@ fn binary_mixer_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet_
                     );
                     apply_case_feed_state(project, stream_id, &case);
                 }
+                set_unit_outlet_pressure(project, "mixer-1", case.pressure_pa);
+                set_flash_case_parameters(project, &case);
             },
         );
     }
@@ -1221,6 +1269,9 @@ fn binary_cooler_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_wi
                     .expect("expected feed stream")
                     .pressure_pa = 700_000.0;
                 apply_case_feed_state(project, "stream-cooled", &case);
+                set_unit_outlet_temperature(project, "cooler-1", case.temperature_k);
+                set_unit_outlet_pressure(project, "cooler-1", case.pressure_pa);
+                set_flash_case_parameters(project, &case);
             },
         );
     }
@@ -1257,6 +1308,9 @@ fn binary_cooler_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet
                     .expect("expected feed stream")
                     .pressure_pa = 700_000.0;
                 apply_case_feed_state(project, "stream-cooled", &case);
+                set_unit_outlet_temperature(project, "cooler-1", case.temperature_k);
+                set_unit_outlet_pressure(project, "cooler-1", case.pressure_pa);
+                set_flash_case_parameters(project, &case);
             },
         );
     }
@@ -1300,6 +1354,8 @@ fn binary_valve_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_win
                     .expect("expected throttled stream");
                 throttled.temperature_k = case.temperature_k;
                 throttled.pressure_pa = case.pressure_pa;
+                set_unit_outlet_pressure(project, "valve-1", case.pressure_pa);
+                set_flash_case_parameters(project, &case);
             },
         );
     }
@@ -1344,6 +1400,8 @@ fn binary_valve_flash_near_boundary_temperature_cases_preserve_inlet_and_outlet_
                     .expect("expected throttled stream");
                 throttled.temperature_k = case.temperature_k;
                 throttled.pressure_pa = case.pressure_pa;
+                set_unit_outlet_pressure(project, "valve-1", case.pressure_pa);
+                set_flash_case_parameters(project, &case);
             },
         );
     }
@@ -1379,6 +1437,8 @@ fn synthetic_mixer_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_
                     );
                     apply_case_feed_state(project, stream_id, &case);
                 }
+                set_unit_outlet_pressure(project, "mixer-1", case.pressure_pa);
+                set_flash_case_parameters(project, &case);
             },
         );
     }
@@ -1414,6 +1474,8 @@ fn synthetic_mixer_flash_near_boundary_temperature_cases_preserve_inlet_and_outl
                     );
                     apply_case_feed_state(project, stream_id, &case);
                 }
+                set_unit_outlet_pressure(project, "mixer-1", case.pressure_pa);
+                set_flash_case_parameters(project, &case);
             },
         );
     }

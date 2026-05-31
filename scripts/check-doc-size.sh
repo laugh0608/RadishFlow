@@ -57,7 +57,10 @@ rule_for_path() {
 
 cd "$repo_root"
 
-mapfile -t files < <(
+files=()
+while IFS= read -r path; do
+  files+=("$path")
+done < <(
   {
     for path in AGENTS.md CLAUDE.md README.md; do
       [[ -f "$path" ]] && printf '%s\n' "$path"

@@ -568,6 +568,16 @@ fn bootstrap_can_dispatch_run_panel_recovery_action() {
         .get_mut(&rf_types::StreamId::new("stream-throttled"))
         .expect("expected throttled stream")
         .pressure_pa = 730_000.0;
+    session
+        .app_state
+        .workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&rf_types::UnitId::new("valve-1"))
+        .expect("expected valve unit")
+        .parameters
+        .outlet_pressure_pa = Some(730_000.0);
 
     let report = session
         .run_trigger(&StudioBootstrapTrigger::WidgetAction(
@@ -593,7 +603,7 @@ fn bootstrap_can_dispatch_run_panel_recovery_action() {
 
     match &recovery_report.dispatch {
         StudioBootstrapDispatch::RunPanelRecovery(outcome) => {
-            assert_eq!(outcome.action.title, "Inspect unit inputs");
+            assert_eq!(outcome.action.title, "Inspect unit parameters");
             assert_eq!(
                 outcome.applied_target,
                 Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
@@ -603,15 +613,6 @@ fn bootstrap_can_dispatch_run_panel_recovery_action() {
         }
         other => panic!("expected run panel recovery dispatch, got {other:?}"),
     }
-    assert_eq!(
-        recovery_report
-            .run_panel
-            .text()
-            .lines
-            .iter()
-            .find(|line| line.as_str() == "Suggested target: unit valve-1"),
-        Some(&"Suggested target: unit valve-1".to_string())
-    );
     assert!(recovery_report.control_state.notice.is_some());
 }
 

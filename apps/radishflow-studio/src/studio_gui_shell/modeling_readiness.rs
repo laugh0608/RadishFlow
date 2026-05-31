@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ModelingRunBlocker {
@@ -9,15 +10,6 @@ struct ModelingRunBlocker {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum ModelingReadinessTask {
     PlaceFirstUnit,
-    ConnectMaterialPort {
-        unit_id: String,
-        port_name: String,
-    },
-    RestoreMaterialStreamReference {
-        unit_id: String,
-        port_name: String,
-        stream_id: String,
-    },
     SelectProjectComponents,
     SelectReferencedProjectComponent {
         stream_id: String,
@@ -121,27 +113,12 @@ fn modeling_run_blocker(document: &rf_ui::FlowsheetDocument) -> Option<ModelingR
         });
     }
 
-    if let Some((unit_id, port_name)) = first_unbound_material_port(flowsheet) {
-        return Some(ModelingRunBlocker {
-            task: ModelingReadinessTask::ConnectMaterialPort {
-                unit_id: unit_id.clone(),
-                port_name,
-            },
-            focus_target: ModelingFocusTarget::Unit(unit_id),
-        });
+    if rf_flowsheet::validate_connections(flowsheet).is_err() {
+        return None;
     }
 
-    if let Some((unit_id, port_name, stream_id)) =
-        first_missing_material_stream_reference(flowsheet)
-    {
-        return Some(ModelingRunBlocker {
-            task: ModelingReadinessTask::RestoreMaterialStreamReference {
-                unit_id: unit_id.clone(),
-                port_name,
-                stream_id,
-            },
-            focus_target: ModelingFocusTarget::Unit(unit_id),
-        });
+    if has_unit_dependency_cycle(flowsheet) {
+        return None;
     }
 
     if flowsheet.components.is_empty() {
@@ -197,33 +174,68 @@ fn modeling_run_blocker(document: &rf_ui::FlowsheetDocument) -> Option<ModelingR
     None
 }
 
-fn first_unbound_material_port(flowsheet: &rf_model::Flowsheet) -> Option<(String, String)> {
-    flowsheet.units.values().find_map(|unit| {
-        unit.ports
-            .iter()
-            .find(|port| port.kind == rf_types::PortKind::Material && port.stream_id.is_none())
-            .map(|port| (unit.id.as_str().to_string(), port.name.clone()))
-    })
+fn has_unit_dependency_cycle(flowsheet: &rf_model::Flowsheet) -> bool {
+    let mut source_by_stream: HashMap<&str, &str> = HashMap::new();
+    let mut stream_sinks = Vec::new();
+
+    for unit in flowsheet.units.values() {
+        for port in &unit.ports {
+            if port.kind != rf_types::PortKind::Material {
+                continue;
+            }
+            let Some(stream_id) = port.stream_id.as_ref() else {
+                continue;
+            };
+            match port.direction {
+                rf_types::PortDirection::Outlet => {
+                    source_by_stream.insert(stream_id.as_str(), unit.id.as_str());
+                }
+                rf_types::PortDirection::Inlet => {
+                    stream_sinks.push((stream_id.as_str(), unit.id.as_str()));
+                }
+            }
+        }
+    }
+
+    let mut graph: HashMap<&str, Vec<&str>> = HashMap::new();
+    for (stream_id, sink_unit_id) in stream_sinks {
+        if let Some(source_unit_id) = source_by_stream.get(stream_id) {
+            graph.entry(*source_unit_id).or_default().push(sink_unit_id);
+        }
+    }
+
+    let mut visiting = HashSet::new();
+    let mut visited = HashSet::new();
+    flowsheet
+        .units
+        .keys()
+        .any(|unit_id| visit_unit_dependency(unit_id.as_str(), &graph, &mut visiting, &mut visited))
 }
 
-fn first_missing_material_stream_reference(
-    flowsheet: &rf_model::Flowsheet,
-) -> Option<(String, String, String)> {
-    flowsheet.units.values().find_map(|unit| {
-        unit.ports
-            .iter()
-            .filter(|port| port.kind == rf_types::PortKind::Material)
-            .find_map(|port| {
-                let stream_id = port.stream_id.as_ref()?;
-                (!flowsheet.streams.contains_key(stream_id)).then(|| {
-                    (
-                        unit.id.as_str().to_string(),
-                        port.name.clone(),
-                        stream_id.as_str().to_string(),
-                    )
-                })
-            })
-    })
+fn visit_unit_dependency<'a>(
+    unit_id: &'a str,
+    graph: &HashMap<&'a str, Vec<&'a str>>,
+    visiting: &mut HashSet<&'a str>,
+    visited: &mut HashSet<&'a str>,
+) -> bool {
+    if visited.contains(unit_id) {
+        return false;
+    }
+    if !visiting.insert(unit_id) {
+        return true;
+    }
+
+    if let Some(dependencies) = graph.get(unit_id) {
+        for next_unit_id in dependencies {
+            if visit_unit_dependency(next_unit_id, graph, visiting, visited) {
+                return true;
+            }
+        }
+    }
+
+    visiting.remove(unit_id);
+    visited.insert(unit_id);
+    false
 }
 
 fn first_stream_component_outside_project(
@@ -382,16 +394,6 @@ fn modeling_run_blocked_detail_en(task: &ModelingReadinessTask) -> String {
         ModelingReadinessTask::PlaceFirstUnit => {
             "Place at least one unit before running the current flowsheet.".to_string()
         }
-        ModelingReadinessTask::ConnectMaterialPort { unit_id, port_name } => format!(
-            "Connect material port `{unit_id}.{port_name}` before running the current flowsheet."
-        ),
-        ModelingReadinessTask::RestoreMaterialStreamReference {
-            unit_id,
-            port_name,
-            stream_id,
-        } => format!(
-            "Port `{unit_id}.{port_name}` references missing stream `{stream_id}`. Repair that connection before running."
-        ),
         ModelingReadinessTask::SelectProjectComponents => {
             "Select project components before running the current flowsheet.".to_string()
         }
@@ -429,16 +431,6 @@ fn modeling_run_blocked_detail_en(task: &ModelingReadinessTask) -> String {
 fn modeling_run_blocked_detail_zh(task: &ModelingReadinessTask) -> String {
     match task {
         ModelingReadinessTask::PlaceFirstUnit => "先放置至少一个单元，再运行当前流程。".to_string(),
-        ModelingReadinessTask::ConnectMaterialPort { unit_id, port_name } => {
-            format!("先连接单元 `{unit_id}` 的 material 端口 `{port_name}`，再运行当前流程。")
-        }
-        ModelingReadinessTask::RestoreMaterialStreamReference {
-            unit_id,
-            port_name,
-            stream_id,
-        } => format!(
-            "单元 `{unit_id}` 的端口 `{port_name}` 引用了缺失流股 `{stream_id}`，请先修复连接。"
-        ),
         ModelingReadinessTask::SelectProjectComponents => {
             "先选择项目组分，再运行当前流程。".to_string()
         }

@@ -93,6 +93,44 @@ fn apply_case_state(
     stream.pressure_pa = case.pressure_pa;
 }
 
+fn set_unit_outlet_temperature(
+    project: &mut rf_store::StoredProjectFile,
+    unit_id: &str,
+    temperature_k: f64,
+) {
+    project
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new(unit_id))
+        .expect("expected unit")
+        .parameters
+        .outlet_temperature_k = Some(temperature_k);
+}
+
+fn set_unit_outlet_pressure(
+    project: &mut rf_store::StoredProjectFile,
+    unit_id: &str,
+    pressure_pa: f64,
+) {
+    project
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new(unit_id))
+        .expect("expected unit")
+        .parameters
+        .outlet_pressure_pa = Some(pressure_pa);
+}
+
+fn set_flash_case_parameters(
+    project: &mut rf_store::StoredProjectFile,
+    case: &NearBoundaryStreamWindowCase,
+) {
+    set_unit_outlet_temperature(project, "flash-1", case.temperature_k);
+    set_unit_outlet_pressure(project, "flash-1", case.pressure_pa);
+}
+
 fn assert_step_consumes_snapshot_stream(
     snapshot: &rf_solver::SolveSnapshot,
     unit_id: &str,
@@ -310,6 +348,9 @@ fn synthetic_heater_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet
             apply_case_composition(project, "stream-feed", case);
             apply_case_state(project, "stream-feed", case);
             apply_case_state(project, "stream-heated", case);
+            set_unit_outlet_temperature(project, "heater-1", case.temperature_k);
+            set_unit_outlet_pressure(project, "heater-1", case.pressure_pa);
+            set_flash_case_parameters(project, case);
         },
     );
 }
@@ -327,6 +368,9 @@ fn synthetic_heater_flash_near_boundary_temperature_cases_preserve_inlet_and_out
             apply_case_composition(project, "stream-feed", case);
             apply_case_state(project, "stream-feed", case);
             apply_case_state(project, "stream-heated", case);
+            set_unit_outlet_temperature(project, "heater-1", case.temperature_k);
+            set_unit_outlet_pressure(project, "heater-1", case.pressure_pa);
+            set_flash_case_parameters(project, case);
         },
     );
 }
@@ -344,6 +388,9 @@ fn synthetic_cooler_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet
             apply_case_composition(project, "stream-feed", case);
             apply_case_state(project, "stream-feed", case);
             apply_case_state(project, "stream-cooled", case);
+            set_unit_outlet_temperature(project, "cooler-1", case.temperature_k);
+            set_unit_outlet_pressure(project, "cooler-1", case.pressure_pa);
+            set_flash_case_parameters(project, case);
         },
     );
 }
@@ -361,6 +408,9 @@ fn synthetic_cooler_flash_near_boundary_temperature_cases_preserve_inlet_and_out
             apply_case_composition(project, "stream-feed", case);
             apply_case_state(project, "stream-feed", case);
             apply_case_state(project, "stream-cooled", case);
+            set_unit_outlet_temperature(project, "cooler-1", case.temperature_k);
+            set_unit_outlet_pressure(project, "cooler-1", case.pressure_pa);
+            set_flash_case_parameters(project, case);
         },
     );
 }
@@ -378,6 +428,8 @@ fn synthetic_valve_flash_near_boundary_pressure_cases_preserve_inlet_and_outlet_
             apply_case_composition(project, "stream-feed", case);
             apply_case_state(project, "stream-feed", case);
             apply_case_state(project, "stream-throttled", case);
+            set_unit_outlet_pressure(project, "valve-1", case.pressure_pa);
+            set_flash_case_parameters(project, case);
         },
     );
 }
@@ -395,6 +447,8 @@ fn synthetic_valve_flash_near_boundary_temperature_cases_preserve_inlet_and_outl
             apply_case_composition(project, "stream-feed", case);
             apply_case_state(project, "stream-feed", case);
             apply_case_state(project, "stream-throttled", case);
+            set_unit_outlet_pressure(project, "valve-1", case.pressure_pa);
+            set_flash_case_parameters(project, case);
         },
     );
 }

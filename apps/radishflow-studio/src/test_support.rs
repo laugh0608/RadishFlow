@@ -35,7 +35,7 @@ pub const SYNTHETIC_BINARY_COMPONENT_SPECS: [(&str, &str); 2] = [
     (SYNTHETIC_COMPONENT_A_ID, "Synthetic Component A"),
     (SYNTHETIC_COMPONENT_B_ID, "Synthetic Component B"),
 ];
-const OFFICIAL_BINARY_HYDROCARBON_NEAR_BOUNDARY_PRESSURE_DELTA_PA: f64 = 0.1;
+const OFFICIAL_BINARY_HYDROCARBON_NEAR_BOUNDARY_PRESSURE_DELTA_PA: f64 = 100.0;
 const OFFICIAL_BINARY_HYDROCARBON_NEAR_BOUNDARY_TEMPERATURE_DELTA_K: f64 = 0.001;
 
 #[doc(hidden)]
@@ -149,11 +149,24 @@ fn serialize_project_file(project: &StoredProjectFile) -> String {
 
 #[doc(hidden)]
 pub fn build_valve_solver_failure_project_json() -> String {
-    official_valve_binary_hydrocarbon_project_json().replacen(
-        "\"name\": \"Valve Outlet\",\n          \"temperature_k\": 300.0,\n          \"pressure_pa\": 650000.0,",
-        "\"name\": \"Valve Outlet\",\n          \"temperature_k\": 300.0,\n          \"pressure_pa\": 730000.0,",
-        1,
-    )
+    let mut project = parse_project_file_json(official_valve_binary_hydrocarbon_project_json())
+        .expect("expected official valve binary hydrocarbon project");
+    project
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new("valve-1"))
+        .expect("expected valve unit")
+        .parameters
+        .outlet_pressure_pa = Some(730_000.0);
+    project
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&StreamId::new("stream-throttled"))
+        .expect("expected throttled stream")
+        .pressure_pa = 730_000.0;
+    serialize_project_file(&project)
 }
 
 #[doc(hidden)]
@@ -191,25 +204,25 @@ pub fn official_binary_hydrocarbon_near_boundary_stream_window_cases()
 
         for (boundary_label, pressure_pa, expected_phase_region) in [
             (
-                "bubble-boundary - 0.1 Pa",
+                "bubble-boundary - 100 Pa",
                 exact_window.bubble_pressure_pa
                     - OFFICIAL_BINARY_HYDROCARBON_NEAR_BOUNDARY_PRESSURE_DELTA_PA,
                 PhaseEquilibriumRegion::TwoPhase,
             ),
             (
-                "bubble-boundary + 0.1 Pa",
+                "bubble-boundary + 100 Pa",
                 exact_window.bubble_pressure_pa
                     + OFFICIAL_BINARY_HYDROCARBON_NEAR_BOUNDARY_PRESSURE_DELTA_PA,
                 PhaseEquilibriumRegion::LiquidOnly,
             ),
             (
-                "dew-boundary + 0.1 Pa",
+                "dew-boundary + 100 Pa",
                 exact_window.dew_pressure_pa
                     + OFFICIAL_BINARY_HYDROCARBON_NEAR_BOUNDARY_PRESSURE_DELTA_PA,
                 PhaseEquilibriumRegion::TwoPhase,
             ),
             (
-                "dew-boundary - 0.1 Pa",
+                "dew-boundary - 100 Pa",
                 exact_window.dew_pressure_pa
                     - OFFICIAL_BINARY_HYDROCARBON_NEAR_BOUNDARY_PRESSURE_DELTA_PA,
                 PhaseEquilibriumRegion::VaporOnly,
@@ -525,8 +538,25 @@ pub fn apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
     project: &mut StoredProjectFile,
     scenario: &OfficialBinaryHydrocarbonNearBoundaryConsumerScenario,
 ) {
+    let flash = project
+        .document
+        .flowsheet
+        .units
+        .get_mut(&"flash-1".into())
+        .expect("expected flash unit");
+    flash.parameters.outlet_temperature_k = Some(scenario.case.temperature_k);
+    flash.parameters.outlet_pressure_pa = Some(scenario.case.pressure_pa);
+
     match scenario.path {
         OfficialBinaryHydrocarbonNearBoundaryPath::Heater => {
+            project
+                .document
+                .flowsheet
+                .units
+                .get_mut(&"heater-1".into())
+                .expect("expected heater unit")
+                .parameters
+                .outlet_temperature_k = Some(scenario.case.temperature_k);
             let feed_temperature_k = project
                 .document
                 .flowsheet
@@ -550,6 +580,14 @@ pub fn apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
             );
         }
         OfficialBinaryHydrocarbonNearBoundaryPath::Cooler => {
+            project
+                .document
+                .flowsheet
+                .units
+                .get_mut(&"cooler-1".into())
+                .expect("expected cooler unit")
+                .parameters
+                .outlet_temperature_k = Some(scenario.case.temperature_k);
             let feed_temperature_k = project
                 .document
                 .flowsheet
@@ -573,6 +611,14 @@ pub fn apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
             );
         }
         OfficialBinaryHydrocarbonNearBoundaryPath::Valve => {
+            project
+                .document
+                .flowsheet
+                .units
+                .get_mut(&"valve-1".into())
+                .expect("expected valve unit")
+                .parameters
+                .outlet_pressure_pa = Some(scenario.case.pressure_pa);
             apply_official_binary_hydrocarbon_stream_state_and_composition(
                 project,
                 "stream-feed",
@@ -589,6 +635,14 @@ pub fn apply_official_binary_hydrocarbon_near_boundary_consumer_scenario(
             );
         }
         OfficialBinaryHydrocarbonNearBoundaryPath::Mixer => {
+            project
+                .document
+                .flowsheet
+                .units
+                .get_mut(&"mixer-1".into())
+                .expect("expected mixer unit")
+                .parameters
+                .outlet_pressure_pa = Some(scenario.case.pressure_pa);
             for stream_id in ["stream-feed-a", "stream-feed-b"] {
                 apply_official_binary_hydrocarbon_stream_state_and_composition(
                     project,

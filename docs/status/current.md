@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-05-28
+更新时间：2026-05-31
 
 ## 用途
 
@@ -22,6 +22,7 @@
 - **MVP β 人工 smoke v0 已通过：Smoke A-D 均已由人工完成，未发现 blocker。**
 - **MVP β 阶段基线验证已通过：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。**
 - **MVP β 下一阶段已切到通用小流程建模 v1：目标从复现指定案例推进到空白项目中受控组合小流程。**
+- **通用小流程建模 v1 第三切片已完成 focused 推进：普通空白项目 `Feed -> Flash Drum` 显式输入、保存 / 重开 / rerun 与结果核对已补强；readiness 与正式 Run Panel 连接 / 拓扑诊断边界已重新收口。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 β 第一刀通过依据：
@@ -75,7 +76,7 @@
 - 普通空白项目不再进入或自动匹配 `Mixer-Flash` / `Heater-Flash` 小案例状态。
 - 运行前检查按当前 `Flowsheet` 的真实建模输入判断，不再按某个案例步骤阻断；物性包选择仍由正式 run package resolution 判断，避免 shell 误拦可由本地唯一缓存包解析的旧示例项目。
 - 在受控范围内支持用户自行组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`。
-- 缺项目组分、缺 Feed composition、未连接 material port、缺失 stream reference 和组成未归一等问题应定位到具体 stream / unit / port；缺物性包继续走正式运行命令的 package 解析与 Run Panel 诊断。
+- 缺项目组分、缺 Feed composition、Feed source stream 状态缺口、必要单元参数缺失和组成未归一等建模输入问题应由 readiness 定位到具体 stream / unit；未连接 material port、缺失 stream reference、重复 source / sink、orphan stream 和 cycle 等结构性问题继续进入正式 Run Panel 诊断 / recovery；缺物性包继续走正式运行命令的 package 解析与 Run Panel 诊断。
 - 保存 / 重开 / rerun 仍必须稳定；不引入自由连线编辑器、自动布线、完整拖拽布局器或完整报表系统。
 
 当前推进切片：
@@ -97,6 +98,7 @@
 - 已完成 MVP β 阶段基线验证：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。
 - 已启动通用小流程建模 v1 第一切片：运行按钮不再由 active 小案例清单拦截，改为所有项目共享的建模输入 readiness；普通空白项目与小案例入口都会用“模型输入未完成”指向真实 flowsheet 缺口，property package 解析仍留在正式 run command。
 - 已推进通用小流程建模 v1 第二切片：运行前 readiness 已按 Feed source stream 状态检查 T/P/F/z、项目组分引用和 composition 归一，并按 unit kind 要求 Heater / Cooler / Flash Drum 的出口 T/P 以及 Mixer / Valve 的出口压力；官方示例项目同步补齐正式单元参数，普通空白项目不再靠拓扑建议直接运行。
+- 已推进通用小流程建模 v1 第三切片：`Feed -> Flash Drum` 普通空白项目 focused 回归改为显式提交 Feed source stream 的 T/P/F/z，并核对保存端口绑定、重开 rerun、Flash step 消费 / 产出和 outlet T/P/F/H；readiness 现在只拦截建模输入未完成，连接校验错误、missing stream reference、duplicate source / sink、orphan stream 与 cycle 继续进入正式 Run Panel 诊断 / recovery。
 
 ## 验证节奏
 

@@ -634,7 +634,7 @@ fn app_host_controller_dispatches_recovery_ui_command_by_command_id() {
             assert_eq!(recovery.target_window_id, opened.registration.window_id);
             match &recovery.effects.runtime_report.dispatch {
                 crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
-                    assert_eq!(outcome.action.title, "Inspect unit inputs");
+                    assert_eq!(outcome.action.title, "Inspect unit parameters");
                 }
                 other => panic!("expected run panel recovery dispatch, got {other:?}"),
             }

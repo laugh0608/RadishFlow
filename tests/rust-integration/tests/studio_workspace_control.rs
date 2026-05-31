@@ -198,6 +198,35 @@ fn apply_binary_demo_composition(
         .insert(ComponentId::new("ethane"), overall_mole_fractions[1]);
 }
 
+fn set_app_unit_outlet_temperature(app_state: &mut AppState, unit_id: &str, temperature_k: f64) {
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new(unit_id))
+        .expect("expected unit")
+        .parameters
+        .outlet_temperature_k = Some(temperature_k);
+}
+
+fn set_app_unit_outlet_pressure(app_state: &mut AppState, unit_id: &str, pressure_pa: f64) {
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new(unit_id))
+        .expect("expected unit")
+        .parameters
+        .outlet_pressure_pa = Some(pressure_pa);
+}
+
+fn set_app_flash_case_parameters(app_state: &mut AppState, case: &NearBoundaryStreamWindowCase) {
+    set_app_unit_outlet_temperature(app_state, "flash-1", case.temperature_k);
+    set_app_unit_outlet_pressure(app_state, "flash-1", case.pressure_pa);
+}
+
 fn app_state_for_heater_boundary_case(
     document_id: &str,
     title: &str,
@@ -230,6 +259,9 @@ fn app_state_for_heater_boundary_case(
         .expect("expected heated stream");
     heated.temperature_k = case.temperature_k;
     heated.pressure_pa = case.pressure_pa;
+    set_app_unit_outlet_temperature(&mut app_state, "heater-1", case.temperature_k);
+    set_app_unit_outlet_pressure(&mut app_state, "heater-1", case.pressure_pa);
+    set_app_flash_case_parameters(&mut app_state, case);
     app_state
 }
 
@@ -334,6 +366,9 @@ fn app_state_for_synthetic_heater_boundary_case(
         .expect("expected heated stream");
     heated.temperature_k = case.temperature_k;
     heated.pressure_pa = case.pressure_pa;
+    set_app_unit_outlet_temperature(&mut app_state, "heater-1", case.temperature_k);
+    set_app_unit_outlet_pressure(&mut app_state, "heater-1", case.pressure_pa);
+    set_app_flash_case_parameters(&mut app_state, case);
     app_state
 }
 
@@ -1086,6 +1121,12 @@ fn run_panel_recovery_action_focuses_failed_unit_end_to_end() {
         .get_mut(&"stream-throttled".into())
         .expect("expected throttled stream")
         .pressure_pa = 730_000.0;
+    flowsheet
+        .units
+        .get_mut(&UnitId::new("valve-1"))
+        .expect("expected valve unit")
+        .parameters
+        .outlet_pressure_pa = Some(730_000.0);
     let mut app_state = AppState::new(FlowsheetDocument::new(
         flowsheet,
         DocumentMetadata::new(
@@ -1102,7 +1143,7 @@ fn run_panel_recovery_action_focuses_failed_unit_end_to_end() {
     let recovery =
         apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
 
-    assert_eq!(recovery.action.title, "Inspect unit inputs");
+    assert_eq!(recovery.action.title, "Inspect unit parameters");
     assert_eq!(
         recovery.applied_target,
         Some(InspectorTarget::Unit("valve-1".into()))
