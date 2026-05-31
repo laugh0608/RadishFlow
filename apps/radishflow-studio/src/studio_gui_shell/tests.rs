@@ -179,6 +179,7 @@ mod command_palette;
 mod command_surface;
 mod failure_recovery_lifecycle;
 mod project_lifecycle;
+mod result_review;
 mod runtime;
 mod runtime_synthetic_flash_inlet_boundary;
 

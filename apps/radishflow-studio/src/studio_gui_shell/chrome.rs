@@ -957,7 +957,11 @@ impl ReadyAppState {
         }
     }
 
-    fn render_bottom_results_table(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+    pub(in crate::studio_gui_shell) fn render_bottom_results_table(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+    ) {
         let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() else {
             ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
             return;

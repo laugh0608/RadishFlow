@@ -1,3 +1,8 @@
+use super::result_review::{
+    assert_bottom_result_table_contains_streams_and_steps,
+    assert_result_inspector_renders_stream_review_object,
+    assert_result_inspector_renders_unit_stream_references,
+};
 use super::*;
 
 fn assert_close(actual: f64, expected: f64) {
@@ -815,6 +820,34 @@ fn blank_project_selects_thermo_basis_saves_reopens_and_runs_feed_flash_path() {
         &["stream-flash-1-liquid", "stream-flash-1-vapor"],
     );
     assert_flash_outlet_results(snapshot, 300.0, 85_000.0, feed.total_molar_flow_mol_s);
+    assert_bottom_result_table_contains_streams_and_steps(
+        &mut app,
+        snapshot,
+        &[
+            "stream-feed-1-outlet",
+            "stream-flash-1-liquid",
+            "stream-flash-1-vapor",
+        ],
+        &["flash-1"],
+    );
+    for stream_id in [
+        "stream-feed-1-outlet",
+        "stream-flash-1-liquid",
+        "stream-flash-1-vapor",
+    ] {
+        assert_result_inspector_renders_stream_review_object(
+            &mut app,
+            snapshot,
+            stream_id,
+            Some("flash-1"),
+        );
+    }
+    assert_result_inspector_renders_unit_stream_references(
+        &mut app,
+        snapshot,
+        "stream-feed-1-outlet",
+        "flash-1",
+    );
 
     let _ = fs::remove_file(project_path);
 }
@@ -1002,6 +1035,42 @@ fn blank_project_single_inlet_flash_paths_save_reopen_and_rerun() {
             case.flash_temperature_k,
             case.flash_pressure_pa,
             feed.total_molar_flow_mol_s,
+        );
+        assert_bottom_result_table_contains_streams_and_steps(
+            &mut app,
+            snapshot,
+            &[
+                "stream-feed-1-outlet",
+                case.unit_outlet_stream_id,
+                "stream-flash-1-liquid",
+                "stream-flash-1-vapor",
+            ],
+            &[case.unit_id, "flash-1"],
+        );
+        for stream_id in [
+            "stream-feed-1-outlet",
+            case.unit_outlet_stream_id,
+            "stream-flash-1-liquid",
+            "stream-flash-1-vapor",
+        ] {
+            assert_result_inspector_renders_stream_review_object(
+                &mut app,
+                snapshot,
+                stream_id,
+                Some("flash-1"),
+            );
+        }
+        assert_result_inspector_renders_unit_stream_references(
+            &mut app,
+            snapshot,
+            case.unit_outlet_stream_id,
+            case.unit_id,
+        );
+        assert_result_inspector_renders_unit_stream_references(
+            &mut app,
+            snapshot,
+            case.unit_outlet_stream_id,
+            "flash-1",
         );
         assert_result_command_available(
             &rerun.commands,
@@ -1340,12 +1409,12 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
         rf_ui::RunStatus::Converged
     );
     assert_eq!(rerun.runtime.control_state.pending_reason, None);
-    let rerun_streams = &rerun
+    let snapshot = rerun
         .runtime
         .latest_solve_snapshot
         .as_ref()
-        .expect("expected rerun solve snapshot")
-        .streams;
+        .expect("expected rerun solve snapshot");
+    let rerun_streams = &snapshot.streams;
     let rerun_mixer_outlet = rerun_streams
         .iter()
         .find(|stream| stream.stream_id == "stream-mixer-1-outlet")
@@ -1364,13 +1433,46 @@ fn blank_project_mixer_path_saves_reopens_and_reruns() {
             .iter()
             .any(|stream| stream.stream_id == "stream-flash-1-vapor")
     );
+    assert_bottom_result_table_contains_streams_and_steps(
+        &mut app,
+        snapshot,
+        &[
+            "stream-feed-1-outlet",
+            "stream-feed-2-outlet",
+            "stream-mixer-1-outlet",
+            "stream-flash-1-liquid",
+            "stream-flash-1-vapor",
+        ],
+        &["mixer-1", "flash-1"],
+    );
+    for stream_id in [
+        "stream-feed-1-outlet",
+        "stream-feed-2-outlet",
+        "stream-mixer-1-outlet",
+        "stream-flash-1-liquid",
+        "stream-flash-1-vapor",
+    ] {
+        assert_result_inspector_renders_stream_review_object(
+            &mut app,
+            snapshot,
+            stream_id,
+            Some("flash-1"),
+        );
+    }
+    assert_result_inspector_renders_unit_stream_references(
+        &mut app,
+        snapshot,
+        "stream-mixer-1-outlet",
+        "mixer-1",
+    );
+    assert_result_inspector_renders_unit_stream_references(
+        &mut app,
+        snapshot,
+        "stream-mixer-1-outlet",
+        "flash-1",
+    );
 
     let export_path = project_path.with_extension("txt");
-    let snapshot = rerun
-        .runtime
-        .latest_solve_snapshot
-        .as_ref()
-        .expect("expected exported rerun solve snapshot");
     app.export_solve_snapshot_to_path(snapshot, export_path.clone());
     let exported = fs::read_to_string(&export_path).expect("expected case author export read");
     assert!(exported.contains("Units\nunit_id\tstep\tstatus\tsummary"));

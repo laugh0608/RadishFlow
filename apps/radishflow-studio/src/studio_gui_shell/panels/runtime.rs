@@ -1336,7 +1336,7 @@ impl ReadyAppState {
         ui.add_space(8.0);
     }
 
-    fn render_unit_execution_result_inspector(
+    pub(in crate::studio_gui_shell) fn render_unit_execution_result_inspector(
         &mut self,
         ui: &mut egui::Ui,
         unit: &radishflow_studio::StudioGuiWindowUnitExecutionResultModel,
