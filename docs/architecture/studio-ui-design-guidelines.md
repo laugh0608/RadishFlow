@@ -1,6 +1,6 @@
 # Studio UI Design Guidelines
 
-更新时间：2026-05-25
+更新时间：2026-05-31
 
 ## 用途
 
@@ -315,7 +315,7 @@ Studio 默认工作台建议分为六个稳定区域。
 
 - 默认 Messages 可更紧凑；无错误、无运行日志堆积时建议约 130-160 px 保持可行动摘要。Results / Diagnostics 可按内容需要更高，后续再评估用户可手动折叠 / resize。
 - Messages 放用户可行动摘要，Run Log 放较原始的运行过程。
-- 结果表格按 stream-centric / unit-centric 组织，保持和 `SolveSnapshot` 语义一致；当前快照复制 / 导出可包含 `Streams / Units / Steps / Diagnostics` 轻量文本区，但不应设计成完整报表、模板或批量导出系统。
+- 结果表格按 stream-centric / unit-centric 组织，保持和 `SolveSnapshot` 语义一致；当前快照复制 / 导出可包含 `Streams / Review / Units / Steps / Diagnostics` 轻量文本区，但不应设计成完整报表、模板或批量导出系统。
 - 底部面板不应默认展示整屏原始日志；原始日志作为展开详情或复制入口。
 
 ### 底部 Status Bar

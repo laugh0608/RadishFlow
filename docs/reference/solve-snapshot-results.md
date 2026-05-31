@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-05-27
+更新时间：2026-05-31
 
 ## 目的
 
@@ -43,6 +43,7 @@
 - stream comparison
 - diagnostic target / focus action
 - `Results` command section 中的 stream / unit result navigation
+- case-level review summary
 - 当前快照文本 formatter，用于复制或导出 `.txt`
 
 ## `SolveSnapshot` 的稳定语义
@@ -212,11 +213,12 @@ UI / shell 不应通过解析错误文本反推出这些分类；分类、summar
 
 ### text copy / export
 
-当前快照复制和文本导出只消费同一份最新 `SolveSnapshot`，并把已物化的流股摘要、单元结果、求解步骤和诊断格式化为纯文本。
+当前快照复制和文本导出只消费同一份最新 `SolveSnapshot`，并把已物化的流股摘要、case-level review summary、单元结果、求解步骤和诊断格式化为纯文本。
 
 稳定 section 口径：
 
 - `Streams`：来自 `SolveSnapshot.streams` 的流股摘要
+- `Review`：按 source / intermediate / terminal streams、latest unit results 和 diagnostics count 汇总同一份快照
 - `Units`：按单元列出当前最新 step、状态、summary、输入流股和输出流股
 - `Steps`：来自 `StepSnapshot` 的求解步骤摘要
 - `Diagnostics`：来自当前快照的诊断条目

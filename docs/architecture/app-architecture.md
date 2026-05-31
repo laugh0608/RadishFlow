@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-05-28
+更新时间：2026-05-31
 
 ## 当前目标
 
@@ -69,7 +69,7 @@ Studio 首页、工作台分区、运行后结果视图和 Home 项目切换确�
 - 顶部主路径：进入 case 后只保留用户主路径、当前项目摘要和必要状态，不把调试计数和菜单全集置于第一视野。
 - 操作入口：`Home`、打开示例、新建空白、打开项目、运行、保存、另存为和视图保持可发现；低频命令进入 `视图`。
 - 工作台分区：左侧 `项目 / 示例项目 / 放置` 负责项目对象、项目级输入摘要、示例入口与 MVP 放置入口；其中 `项目` 面板可直接暴露受控物性包和项目组分选择，空白项目不隐式预选求解输入。右侧 `检查器 / 结果 / 运行 / 物性包` 负责属性编辑、结果审阅、运行上下文和物性包状态；底部 `消息 / 运行日志 / 结果表 / 诊断` 承接可行动消息、运行日志和表格结果。
-- 结果反馈：成功后 shell 可切到右侧 `结果` 和底部 `结果表`，失败后切到右侧 `运行`。结果面只读消费`SolveSnapshot`。`复制快照`/`导出文本` 格式化快照的 `Streams / Units / Steps / Diagnostics`，不写项目/undo，不扩报表/批量导出
+- 结果反馈：成功后 shell 可切到右侧 `结果` 和底部 `结果表`，失败后切到右侧 `运行`。结果面只读消费 `SolveSnapshot`。`复制快照` / `导出文本` 格式化快照的 `Streams / Review / Units / Steps / Diagnostics`，不写项目 / undo，不扩报表 / 批量导出
 - 日志与审计：开发态 stderr 与 GUI activity 可继续服务 smoke，但正式 UI 只展示用户能采取行动的摘要，不把平台 timer 或 host internals 混入主路径
 - 关闭行为：干净最后窗口应自然结束进程；shell 可在清理逻辑窗口后停止当帧渲染，但不能拦截原生关闭请求。脏工作区必须先取消本次 close，请用户选择保存并关闭、舍弃并关闭或取消关闭；保存失败、另存为取消或覆盖确认未完成时保持打开。
 
@@ -745,6 +745,7 @@ Studio 的手动运行入口在调用正式 Run Panel 求解命令前，会先�
 - Studio 当前结果检查器的 `selected_stream / comparison_stream / selected_unit` 也已冻结为 shell-local 视图选择态：它们只决定当前显示哪一块 `SolveSnapshot` 结果面，不缓存第二份结果；若 base stream 切换成当前 compared stream，comparison 允许按现有规则清空，但这仍只是 selector state 复位，不代表结果语义变化；最终 UI 的选择区应使用紧凑可选项，不为每个候选重复渲染 `Inspect`
 - Studio 当前 near-boundary 结果消费链已收口到 `window_model -> shell runtime` 的同一条 action surface：`inspector.focus_stream:*` / `inspector.focus_unit:*`、comparison 检查动作和诊断目标 section 都应从同一份 `StudioGuiWindowDiagnosticTargetActionModel` 或既有 focus action 派生；GUI 不应再发明 target 语义或导航分支
 - Studio 当前 `StudioGuiCommandRegistry` 也会从最新 `SolveSnapshot` 派生 `Results` command section：result stream / unit navigation 只暴露为既有 `inspector.focus_stream:*` / `inspector.focus_unit:*` command，palette、menu、command list 与 runtime 小型 action button 都继续通过 `dispatch_ui_command(command_id)` 进入同一条 host 派发链，不在各自入口复制 target 解析
+- Studio 当前 window-model 也会从同一份 `SolveSnapshot` 派生 case-level `review_summary`：按 source / intermediate / terminal stream 分组，并列出 latest unit results 的 consumed / produced streams 与 diagnostics count。该摘要只服务结果审阅和轻量导出，不成为第二套结果缓存或报表模型。
 - Studio 当前失败详情只消费 `latest_diagnostic`，显示 primary code、revision、severity、count 与相关 target；GUI 不从 message 文本反解析或私造端口级 command
 - Studio 当前 Run Panel recovery action 必须区分聚焦与修复：前者只定位 target，后者才通过 `run_panel.recover_failure` 执行断开坏引用、删除 orphan stream、创建/绑定 outlet stream 或恢复 canonical port 等 mutation。用户主动选中流股后的整股断开 / 端点级断开 / 重连 / 删除走对应 `canvas.*selected_stream*` 命令，不复用 failure-only recovery command
 - `StudioAppHostController` 当前对 `DispatchCanvasInteraction` 不应再无条件 `refresh_local_canvas_suggestions()`；local-rules refresh 只应发生在真正改写文档或显式要求重算 suggestion 的路径上，否则会把 `FocusNext/Reject` 刚生成的正式焦点状态冲回首条 suggestion，破坏 GUI 命令面的连续交互语义

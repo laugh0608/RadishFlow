@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-05-28
+更新时间：2026-05-31
 
 ## MVP 目标
 
@@ -170,6 +170,8 @@ App 与交互层当前进一步冻结以下口径：
 截至 2026-05-27，MVP β 第二刀：建模输入能力 v0 已通过，结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0 也已完成 focused 收口。`Cooler` / `Valve` 已通过内部测试覆盖空白项目手工搭建、参数提交、保存 / 重开 / rerun 与 `SolveSnapshot` 核对；但当前 UI 仍是草稿状态，不新增对应 Home 作者入口，也不补会随 UI 变化废弃的用户操作 guide。下一阶段建议推进失败修复闭环 v0，围绕缺物性包、缺项目组分、缺 stream composition、参数越界、断连 / 漏连等真实 blocker 核对诊断、recovery target、Inspector focus、修复命令和保存 / 重开 / rerun 稳定性。
 
 截至 2026-05-28，失败修复闭环 v0、MVP β 人工 smoke v0 与仓库级阶段基线验证均已通过，通用小流程建模 v1 已推进前两步。普通空白项目不再进入或自动匹配 `Mixer-Flash` / `Heater-Flash` 小案例状态；运行前检查按当前 `Flowsheet` 的项目组分、material port 连接、stream reference、Feed source stream T/P/F/z、composition 归一和 Heater / Cooler / Valve / Mixer / Flash Drum 必要参数判断，并定位到具体 stream / unit / port。物性包选择继续由正式 run package resolution 判断，避免 shell 误拦仍可由本地唯一缓存包解析的旧示例项目。官方示例项目若要直接运行，也必须携带正式 `UnitOperationParameters`，不再依赖 outlet stream template fallback 代表用户已提交参数。既有小案例清单只保留为导航提示，不作为通用建模运行 gate；仍不推进 tag、release notes、便携包刷新、自由连线编辑器、自动布线、完整拖拽布局器或完整报表系统。
+
+截至 2026-05-31，通用小流程建模 v1 已推进到第十一切片。普通空白项目中的 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 已覆盖显式输入、保存 / 重开 / rerun、单元 step、Result Inspector、底部结果表、Results commands、轻量导出、关键结果合理性、单相 Flash 零流量出口缺席语义、重开失败态定位和 case-level review summary。结果审阅仍只消费同一份最新 `SolveSnapshot`，不新增完整报表系统、跨快照历史或 shell 私有结果真相源。
 
 ## 近期开发节奏
 

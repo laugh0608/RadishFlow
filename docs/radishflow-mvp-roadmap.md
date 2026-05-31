@@ -1,6 +1,6 @@
 # RadishFlow MVP Roadmap
 
-更新时间：2026-05-28
+更新时间：2026-05-31
 
 ## 用途
 
@@ -10,7 +10,7 @@
 
 ## 当前结论
 
-截至 2026-05-28，M1-M5 都已越过 MVP 的最小完成线，MVP α 用户视角 smoke、首版 demo 前硬化期和 MVP β 多组能力包也已阶段性收口：
+截至 2026-05-31，M1-M5 都已越过 MVP 的最小完成线，MVP α 用户视角 smoke、首版 demo 前硬化期和 MVP β 多组能力包也已阶段性收口：
 
 - Rust 内核和 Studio 可以跑通最小稳态流程。
 - `TP Flash`、`SolveSnapshot`、结果审阅和 `rf-ffi` JSON/error 基线已经形成可复验闭环。
@@ -19,7 +19,7 @@
 - MVP β 第二刀：建模输入能力 v0 已通过；项目级物性包选择、项目组分选择、Feed composition 输入、Unit 参数输入和 2 条 official demo case 复现验收已经形成 focused 回归，并通过 2026-05-27 仓库级验证。
 - MVP β 后续能力包已完成多组 focused 收口：结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0、失败修复闭环 v0。
 - MVP β 人工 smoke 与仓库级阶段基线验证已通过；下一步推进通用小流程建模 v1，而不是推进 tag、release notes、便携包或零散 UI 打磨。
-- 通用小流程建模 v1 已完成前两步：运行按钮改用通用 `Flowsheet` readiness，普通空白项目不再自动匹配小案例 gate；运行前检查已覆盖 material port / stream reference、项目组分引用、Feed source stream T/P/F/z、composition 归一和 Heater / Cooler / Valve / Mixer / Flash Drum 必要参数。
+- 通用小流程建模 v1 已完成到第十一切片：运行按钮改用通用 `Flowsheet` readiness，普通空白项目不再自动匹配小案例 gate；`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 已覆盖显式输入、保存 / 重开 / rerun、结果审阅入口、关键结果合理性、单相 Flash 缺席语义、失败态定位和 case-level review summary。
 - 当前尚未达到正式 tag / release 节点标准，历史 `v26.5.1-dev` staging 材料不作为当前路线图事实源。
 
 当前不再把路线图作为每日推进清单。今天做什么、当前验证基线和暂不推进项，以 `docs/status/current.md` 为准；MVP α 验收清单保留为内部验收记录，不再作为当前日常推进主线。
@@ -87,8 +87,8 @@
 - 当前 Studio 已把内置 `binary-hydrocarbon-lite-v1` 物性包选择和 methane / ethane 项目组分选择暴露在左侧 `项目` 面板和右侧 `物性包` 页；空白项目初始不预选，用户显式选择后才写入项目。这只是受控输入能力，不代表完整组分数据库或物性包浏览器。
 - demo case 作为验收方式：`Heater-Flash` 与 `Mixer-Flash` 已覆盖 official demo case 输入和结果核对；`Cooler-Flash` 与 `Valve-Flash` 已用内部 focused test 覆盖空白项目建模闭环，但不新增 Home 作者入口或用户 guide。
 - 失败修复闭环已完成 focused 收口；人工 smoke 只覆盖代表性恢复路径，不把 focused tests 已覆盖的所有恢复生命周期全部手工重跑。
-- MVP β 当前推进通用小流程建模 v1：普通空白项目必须按真实 `Flowsheet` readiness 运行，不再按某个作者案例阻断；用户应能在受控范围内自行组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，显式补齐 Feed source stream 和必要单元参数后保存 / 重开 / rerun。
-- 更多作者 checklist、同构 Home 入口和轻量报表增强先进入 backlog；既有小案例清单只作为导航提示，不再作为通用建模能力的运行 gate。
+- MVP β 当前推进通用小流程建模 v1：普通空白项目必须按真实 `Flowsheet` readiness 运行，不再按某个作者案例阻断；用户应能在受控范围内自行组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，显式补齐 Feed source stream 和必要单元参数后保存 / 重开 / rerun，并通过右侧 Result Inspector、底部结果表、Results commands、轻量导出和 case-level review summary 审阅同一份 `SolveSnapshot`。
+- 更多作者 checklist、同构 Home 入口和完整报表增强先进入 backlog；既有小案例清单只作为导航提示，不再作为通用建模能力的运行 gate。
 - CAPE-OPEN / PME 只修真实验证暴露的 blocker，不继续主动扩第三方宿主矩阵。
 - Studio UI 优化只做主路径和明确专题；不扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
 
