@@ -19,7 +19,7 @@
 - MVP β 第二刀：建模输入能力 v0 已通过；项目级物性包选择、项目组分选择、Feed composition 输入、Unit 参数输入和 2 条 official demo case 复现验收已经形成 focused 回归，并通过 2026-05-27 仓库级验证。
 - MVP β 后续能力包已完成多组 focused 收口：结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0、失败修复闭环 v0。
 - MVP β 人工 smoke 与仓库级阶段基线验证已通过；下一步推进通用小流程建模 v1，而不是推进 tag、release notes、便携包或零散 UI 打磨。
-- 通用小流程建模 v1 已完成到第十二切片：运行按钮改用通用 `Flowsheet` readiness，普通空白项目不再自动匹配小案例 gate；`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 已覆盖显式输入、保存 / 重开 / rerun、结果审阅入口、关键结果合理性、单相 Flash 缺席语义、失败态定位、case-level review summary 和编辑后旧结果失效语义。
+- 通用小流程建模 v1 已完成到第十四切片：运行按钮、`Resume`、F5 / Shift+F5、AppHost、StudioGuiDriver、StudioGuiHost command registry 等用户可触达运行入口已共用通用 `Flowsheet` readiness，普通空白项目不再自动匹配小案例 gate；`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 已覆盖显式输入、保存 / 重开 / rerun、结果审阅入口、关键结果合理性、单相 Flash 缺席语义、失败态定位、case-level review summary、编辑后旧结果失效语义，以及 Inspector 显示 outlet stream 默认值但缺显式 unit parameter 时的同值提交语义。
 - 阶段性约束已从“围绕 β 验收补覆盖”调整为“推进普通空白项目真实建模缺口和结果新旧状态表达”：指定小案例入口、MVP β Smoke A-D 和结果审阅覆盖面不再作为每日 gate。
 - 当前尚未达到正式 tag / release 节点标准，历史 `v26.5.1-dev` staging 材料不作为当前路线图事实源。
 
@@ -88,7 +88,7 @@
 - 当前 Studio 已把内置 `binary-hydrocarbon-lite-v1` 物性包选择和 methane / ethane 项目组分选择暴露在左侧 `项目` 面板和右侧 `物性包` 页；空白项目初始不预选，用户显式选择后才写入项目。这只是受控输入能力，不代表完整组分数据库或物性包浏览器。
 - demo case 作为验收方式：`Heater-Flash` 与 `Mixer-Flash` 已覆盖 official demo case 输入和结果核对；`Cooler-Flash` 与 `Valve-Flash` 已用内部 focused test 覆盖空白项目建模闭环，但不新增 Home 作者入口或用户 guide。
 - 失败修复闭环已完成 focused 收口；人工 smoke 只覆盖代表性恢复路径，不把 focused tests 已覆盖的所有恢复生命周期全部手工重跑。
-- MVP β 当前推进通用小流程建模 v1：普通空白项目必须按真实 `Flowsheet` readiness 运行，不再按某个作者案例阻断；用户应能在受控范围内自行组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，显式补齐 Feed source stream 和必要单元参数后保存 / 重开 / rerun，并通过右侧 Result Inspector、底部结果表、Results commands、轻量导出和 case-level review summary 审阅当前 revision 的同一份 `SolveSnapshot`。文档编辑后旧结果只用于 stale notice，不继续驱动结果审阅或导出入口。
+- MVP β 当前推进通用小流程建模 v1：普通空白项目必须按真实 `Flowsheet` readiness 运行，不再按某个作者案例阻断；用户应能在受控范围内自行组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，显式补齐 Feed source stream 和必要单元参数后保存 / 重开 / rerun，并通过右侧 Result Inspector、底部结果表、Results commands、轻量导出和 case-level review summary 审阅当前 revision 的同一份 `SolveSnapshot`。文档编辑后旧结果只用于 stale notice，不继续驱动结果审阅或导出入口；Unit Inspector 中由 outlet stream 模板派生的显示值不等于已提交单元参数，用户提交同一显示值时仍应写入正式 `UnitOperationParameters`。
 - 后续可自然推进 `Cooler` / `Valve` 作为通用空白项目受控路径的说明和回归，但不新增同构 Home 作者入口或 checklist。既有小案例清单只作为导航提示，不再作为通用建模能力的运行 gate。
 - 允许服务建模正确性的 UI 状态表达和轻量结果审阅材料改进，例如旧结果失效提示、结果新旧状态标识和单次快照摘要；视觉精修、大改版、完整报表、模板、打印、批量导出和跨快照报表仍不进入当前阶段。
 - readiness 后续只能继续承担确定的建模输入缺失门禁；结构性连接、拓扑、非法旧项目或求解阶段参数失败继续由正式 Run Panel 诊断 / recovery 承担，不把 readiness 扩成第二套 solver。
