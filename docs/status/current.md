@@ -24,6 +24,7 @@
 - **MVP β 下一阶段已切到通用小流程建模 v1：目标从复现指定案例推进到空白项目中受控组合小流程。**
 - **通用小流程建模 v1 第十一切片已完成 focused 推进：普通空白项目结果审阅入口已覆盖 Results commands、轻量导出、底部结果表、Result Inspector 呈现、关键结果合理性核对、单相 Flash 零流量出口缺席语义、重开后正式求解失败的诊断上下文定位，以及 case-level review summary。**
 - **通用小流程建模 v1 第十二切片已完成 focused 推进：普通空白项目成功求解后修改 Feed composition、unit 参数或连接状态时，旧结果不再作为当前结果入口暴露，并由 stale notice 指向重新运行；rerun 后 Result Inspector、底部结果表、Results commands、轻量导出和 case-level review summary 回到最新 `SolveSnapshot`。**
+- **通用小流程建模 v1 第十三切片已完成 focused 推进：Run Panel `Resume` 与手动 `Run` 使用同一 modeling readiness 入口；空白项目待运行状态下的 Resume 不绕过建模输入诊断，不制造正式求解失败。**
 - **阶段性门禁已调整：MVP β smoke、指定小案例入口和结果审阅覆盖面不再作为日常推进 gate；后续以普通空白项目真实建模缺口、结果新旧状态表达和 readiness / Run Panel 边界为主线。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
@@ -63,6 +64,7 @@
 
 - 空白项目需显式选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane，Feed composition 和 Unit 参数均走正式 Inspector draft / commit / undo / save / reopen 路径。
 - 通用 readiness 已按真实 `Flowsheet` 检查 Feed source stream T/P/F/z、项目组分、composition 归一和必要单元参数；结构性连接 / 拓扑 / 求解阶段参数失败继续走正式 Run Panel 诊断 / recovery。
+- `Run` 与 `Resume` 两个用户运行入口已统一使用同一 readiness 判断；在 Hold 且存在 pending reason 的空白项目中，Resume 保留 pending reason 并引导用户先补建模输入。
 - 普通空白项目已覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 的显式输入、保存 / 重开 / rerun、结果审阅和关键结果合理性。
 - 结果审阅当前包括 Result Inspector、底部结果表、Results commands、轻量导出、case-level `review_summary`、单相 Flash 零流量出口缺席语义和失败态定位。
 - 编辑后重跑一致性已覆盖 Feed composition、unit 参数和连接状态变更；旧快照只作为 stale notice 来源，不再驱动结果审阅或导出入口。

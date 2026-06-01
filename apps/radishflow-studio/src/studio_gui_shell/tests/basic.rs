@@ -639,6 +639,37 @@ fn blank_project_empty_run_uses_generic_modeling_readiness() {
 }
 
 #[test]
+fn blank_project_empty_resume_uses_generic_modeling_readiness() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.create_blank_project();
+    app.dispatch_ui_command("run_panel.resume_workspace");
+
+    let window = app.platform_host.snapshot().window_model();
+    assert!(
+        window.runtime.latest_failure.is_none(),
+        "empty blank project resume should stop before solver failure"
+    );
+    assert_eq!(
+        window.runtime.control_state.pending_reason,
+        Some(rf_ui::SolvePendingReason::SnapshotMissing)
+    );
+    assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Palette);
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Inspector);
+    assert_eq!(app.bottom_drawer_tab, StudioShellBottomDrawerTab::Messages);
+    let notice = app
+        .project_open
+        .notice
+        .as_ref()
+        .expect("expected modeling readiness notice");
+    assert_eq!(notice.title, "模型输入未完成");
+    assert!(
+        notice.detail.contains("至少一个单元"),
+        "expected first-unit readiness detail, got {notice:?}"
+    );
+}
+
+#[test]
 fn blank_project_feed_outlet_run_requires_project_components_before_composition() {
     let mut app = ready_app_state(&synced_workspace_config());
 

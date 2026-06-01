@@ -28,7 +28,7 @@ fn command_surface_interactions_converge_to_same_window_state_for_activate_works
 }
 
 #[test]
-fn command_surface_interactions_converge_to_same_window_state_for_resume_workspace() {
+fn command_surface_interactions_converge_to_same_readiness_state_for_resume_workspace() {
     let mut apps = ready_failed_command_surface_apps();
     let failed_window = shared_command_surface_initial_window(&apps);
 
@@ -60,20 +60,22 @@ fn command_surface_interactions_converge_to_same_window_state_for_resume_workspa
     assert!(!apps.palette_app.command_palette.open);
     assert_eq!(
         menu_window.runtime.control_state.run_status,
-        rf_ui::RunStatus::Converged
-    );
-    assert_eq!(menu_window.runtime.control_state.pending_reason, None);
-    assert_eq!(
-        menu_window
-            .runtime
-            .control_state
-            .latest_snapshot_id
-            .as_deref(),
-        Some("example-unbound-outlet-port-rev-1-seq-1")
+        rf_ui::RunStatus::Dirty
     );
     assert_eq!(
-        menu_window.runtime.run_panel.view().status_label,
-        "Converged"
+        menu_window.runtime.control_state.pending_reason,
+        Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+    );
+    assert!(menu_window.runtime.latest_failure.is_none());
+    assert_eq!(menu_window.runtime.control_state.latest_snapshot_id, None);
+    assert_eq!(menu_window.runtime.run_panel.view().status_label, "Dirty");
+    assert_eq!(
+        apps.menu_app
+            .project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("模型输入未完成")
     );
     assert_command_surface_windows_equal(&apps, &menu_window);
 }

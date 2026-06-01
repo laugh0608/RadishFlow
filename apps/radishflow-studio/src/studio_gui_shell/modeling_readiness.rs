@@ -54,8 +54,21 @@ enum ModelingFocusTarget {
 }
 
 impl ReadyAppState {
+    pub(super) fn intercept_modeling_readiness_shortcut_if_needed(
+        &mut self,
+        shortcut: &StudioGuiShortcut,
+    ) -> bool {
+        let Some(command_id) = modeling_readiness_run_command_from_shortcut(shortcut) else {
+            return false;
+        };
+        self.intercept_modeling_readiness_run_if_needed(command_id)
+    }
+
     pub(super) fn intercept_modeling_readiness_run_if_needed(&mut self, command_id: &str) -> bool {
-        if command_id != "run_panel.run_manual" {
+        if !matches!(
+            command_id,
+            "run_panel.run_manual" | "run_panel.resume_workspace"
+        ) {
             return false;
         }
 
@@ -100,6 +113,18 @@ impl ReadyAppState {
                 self.dispatch_ui_command(format!("inspector.focus_unit:{unit_id}"));
             }
         }
+    }
+}
+
+fn modeling_readiness_run_command_from_shortcut(
+    shortcut: &StudioGuiShortcut,
+) -> Option<&'static str> {
+    match (shortcut.modifiers.as_slice(), shortcut.key) {
+        ([], StudioGuiShortcutKey::F5) => Some("run_panel.run_manual"),
+        ([StudioGuiShortcutModifier::Shift], StudioGuiShortcutKey::F5) => {
+            Some("run_panel.resume_workspace")
+        }
+        _ => None,
     }
 }
 

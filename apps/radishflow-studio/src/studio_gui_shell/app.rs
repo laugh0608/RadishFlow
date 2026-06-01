@@ -1544,6 +1544,9 @@ impl ReadyAppState {
 
         let shortcuts = ctx.input(collect_shortcuts);
         for shortcut in shortcuts {
+            if self.intercept_modeling_readiness_shortcut_if_needed(&shortcut) {
+                continue;
+            }
             self.dispatch_event(StudioGuiEvent::ShortcutPressed {
                 shortcut,
                 focus_context,
