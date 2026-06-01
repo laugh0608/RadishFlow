@@ -571,6 +571,47 @@ fn committing_unit_inspector_draft_sets_parameter_and_syncs_outlet_template() {
 }
 
 #[test]
+fn committing_displayed_outlet_value_sets_missing_explicit_unit_parameter() {
+    let mut app_state = AppState::new(unit_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("heater-1")));
+    let update = app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            "345",
+        )
+        .expect("expected heater temperature draft update");
+
+    assert!(update.is_dirty);
+    assert_eq!(update.validation, crate::DraftValidationState::Valid);
+
+    let outcome = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            timestamp(42),
+        )
+        .expect("expected heater temperature draft commit")
+        .expect("expected committed heater temperature draft");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetUnitParameter {
+            unit_id: UnitId::new("heater-1"),
+            parameter: "outlet_temperature_k".to_string(),
+            value: CommandValue::Number(345.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_temperature_k,
+        Some(345.0)
+    );
+}
+
+#[test]
 fn committing_heater_pressure_parameter_syncs_outlet_template() {
     let mut app_state = AppState::new(unit_parameter_document());
     app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("heater-1")));

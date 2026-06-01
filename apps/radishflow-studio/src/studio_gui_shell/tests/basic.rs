@@ -854,6 +854,71 @@ fn blank_project_feed_flash_run_requires_flash_parameters_after_feed_inputs() {
 }
 
 #[test]
+fn modeling_readiness_notice_refreshes_after_committing_displayed_unit_defaults() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.create_blank_project();
+    select_builtin_binary_hydrocarbon_basis(&mut app);
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+    app.dispatch_ui_command("canvas.begin_place_unit.heater");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(180.0, 40.0));
+    accept_canvas_suggestion_by_id(
+        &mut app,
+        "local.heater.connect_inlet.heater-1.stream-feed-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut app, "local.heater.create_outlet.heater-1");
+
+    app.dispatch_ui_command("run_panel.run_manual");
+
+    let notice = app
+        .project_open
+        .notice
+        .as_ref()
+        .expect("expected heater parameter readiness notice");
+    assert_eq!(notice.title, "模型输入未完成");
+    assert!(
+        notice.detail.contains("出口温度"),
+        "expected missing heater temperature notice, got {notice:?}"
+    );
+
+    commit_unit_parameter(
+        &mut app,
+        "heater-1",
+        "unit:heater-1:outlet_temperature_k",
+        "345",
+    );
+
+    let notice = app
+        .project_open
+        .notice
+        .as_ref()
+        .expect("expected next heater parameter readiness notice");
+    assert_eq!(notice.title, "模型输入未完成");
+    assert!(
+        notice.detail.contains("出口压力"),
+        "expected readiness notice to advance to heater pressure, got {notice:?}"
+    );
+
+    commit_unit_parameter(
+        &mut app,
+        "heater-1",
+        "unit:heater-1:outlet_pressure_pa",
+        "101325",
+    );
+
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        None,
+        "modeling readiness notice should clear after displayed defaults are committed"
+    );
+}
+
+#[test]
 fn blank_project_feed_port_exposes_stream_inspector_action() {
     let mut app = ready_app_state(&synced_workspace_config());
 

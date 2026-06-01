@@ -692,6 +692,7 @@ impl ReadyAppState {
                 );
                 self.record_canvas_unit_layout_move_feedback(&dispatch);
                 self.record_ui_command_ignored_feedback(&dispatch.dispatch.outcome);
+                self.refresh_active_modeling_readiness_notice();
             }
             Err(error) => {
                 let message = format!("[{}] {}", error.code().as_str(), error.message());
@@ -999,7 +1000,9 @@ impl ReadyAppState {
 
     pub(super) fn dispatch_event(&mut self, event: StudioGuiEvent) {
         match self.dispatch_event_result(event.clone()) {
-            Ok(_) => {}
+            Ok(_) => {
+                self.refresh_active_modeling_readiness_notice();
+            }
             Err(error) => {
                 let message = format!("[{}] {}", error.code().as_str(), error.message());
                 self.platform_host

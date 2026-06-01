@@ -7,6 +7,36 @@ use radishflow_studio::{
 };
 
 impl ReadyAppState {
+    pub(super) fn refresh_active_modeling_readiness_notice(&mut self) {
+        if !self.has_active_modeling_readiness_notice() {
+            return;
+        }
+
+        let blocker = {
+            let document = self.platform_host.document();
+            studio_modeling_run_blocker(document)
+        };
+        match blocker {
+            Some(blocker) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Warning,
+                    title: modeling_run_blocked_title(self.locale).to_string(),
+                    detail: modeling_run_blocked_detail(self.locale, &blocker.task),
+                });
+            }
+            None => {
+                self.project_open.notice = None;
+            }
+        }
+    }
+
+    fn has_active_modeling_readiness_notice(&self) -> bool {
+        self.project_open.notice.as_ref().is_some_and(|notice| {
+            notice.title == studio_modeling_run_blocked_title_en()
+                || notice.title == studio_modeling_run_blocked_title_zh()
+        })
+    }
+
     pub(super) fn intercept_modeling_readiness_shortcut_if_needed(
         &mut self,
         shortcut: &StudioGuiShortcut,

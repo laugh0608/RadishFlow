@@ -67,9 +67,10 @@ impl AppState {
         }
         let original_value =
             unit_inspector_parameter_value(&self.workspace.document.flowsheet, unit_id, &field)?;
+        let missing_explicit_parameter = !unit_inspector_parameter_is_explicit(unit, &field);
         let raw_value = raw_value.into();
         let key = unit_inspector_draft_key(unit_id, &field);
-        let (draft_value, is_dirty, validation) =
+        let (mut draft_value, mut is_dirty, validation) =
             unit_draft_value_from_raw(original_value, raw_value, |value| {
                 is_valid_unit_parameter_value_for_unit(
                     &self.workspace.document.flowsheet,
@@ -78,6 +79,14 @@ impl AppState {
                     value,
                 )
             });
+        if missing_explicit_parameter && validation == DraftValidationState::Valid {
+            if let DraftValue::Number(draft) = &mut draft_value {
+                if !draft.is_dirty {
+                    draft.is_dirty = true;
+                    is_dirty = true;
+                }
+            }
+        }
 
         if !is_dirty && validation != DraftValidationState::Invalid {
             self.workspace.drafts.fields.remove(&key);
@@ -204,6 +213,15 @@ pub fn unit_inspector_parameter_value(
             .outlet_pressure_pa
             .or_else(|| outlet_stream(flowsheet, unit).map(|stream| stream.pressure_pa))
             .or_else(|| default_unit_parameter_value(unit, field)),
+    }
+}
+
+fn unit_inspector_parameter_is_explicit(unit: &UnitNode, field: &UnitInspectorDraftField) -> bool {
+    match field {
+        UnitInspectorDraftField::OutletTemperatureK => {
+            unit.parameters.outlet_temperature_k.is_some()
+        }
+        UnitInspectorDraftField::OutletPressurePa => unit.parameters.outlet_pressure_pa.is_some(),
     }
 }
 
