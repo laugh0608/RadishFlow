@@ -13,7 +13,8 @@ use crate::{
     dispatch_entitlement_session_event_with_control_plane,
     dispatch_run_panel_intent_with_auth_cache, dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_run_panel_widget_action_with_auth_cache, focus_inspector_target,
-    normalize_inspector_composition, snapshot_entitlement_session_driver_state,
+    normalize_inspector_composition, remove_project_component, select_project_component,
+    select_property_package, snapshot_entitlement_session_driver_state,
     snapshot_entitlement_session_schedule, snapshot_run_panel_driver_state, update_inspector_draft,
 };
 use rf_store::{StoredAuthCacheIndex, read_project_file};
@@ -22,8 +23,8 @@ use rf_ui::AppState;
 
 use super::seed::{
     BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID, BootstrapControlPlaneClient, app_state_from_project_file,
-    app_state_from_untitled_blank_project, initialize_blank_project_thermo_basis,
-    normalized_system_time_now, seed_bootstrap_runtime_state, seed_sample_auth_cache,
+    app_state_from_untitled_blank_project, normalized_system_time_now,
+    seed_bootstrap_runtime_state, seed_sample_auth_cache,
 };
 use super::temp_cache::TemporaryCacheRoot;
 use super::{
@@ -209,6 +210,10 @@ fn dispatch_bootstrap_trigger(
             }
             Ok(StudioBootstrapDispatch::InspectorTarget(outcome))
         }
+        StudioBootstrapTrigger::ClearInspectorTarget => {
+            let outcome = crate::clear_inspector_target(session.app_state);
+            Ok(StudioBootstrapDispatch::ClearInspectorTarget(outcome))
+        }
         StudioBootstrapTrigger::InspectorDraftUpdate(command) => {
             let outcome = update_inspector_draft(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::InspectorDraftUpdate(outcome))
@@ -245,6 +250,18 @@ fn dispatch_bootstrap_trigger(
             let outcome =
                 remove_inspector_composition_component(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::InspectorCompositionComponentRemove(outcome))
+        }
+        StudioBootstrapTrigger::PropertyPackageSelection(command) => {
+            let outcome = select_property_package(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::PropertyPackageSelection(outcome))
+        }
+        StudioBootstrapTrigger::ProjectComponentSelection(command) => {
+            let outcome = select_project_component(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::ProjectComponentSelection(outcome))
+        }
+        StudioBootstrapTrigger::ProjectComponentRemoval(command) => {
+            let outcome = remove_project_component(session.app_state, command.clone())?;
+            Ok(StudioBootstrapDispatch::ProjectComponentRemoval(outcome))
         }
         StudioBootstrapTrigger::DocumentHistory(command) => {
             let outcome = dispatch_document_history(session.app_state, *command)?;
@@ -359,7 +376,6 @@ impl BootstrapSession {
                 app_state_from_project_file(&project_file, &config.project_path)
             }
         };
-        initialize_blank_project_thermo_basis(&mut app_state, normalized_system_time_now()?)?;
         let cache_root = TemporaryCacheRoot::new("studio-bootstrap")?;
         let seeded_auth_cache = seed_sample_auth_cache(
             cache_root.path(),

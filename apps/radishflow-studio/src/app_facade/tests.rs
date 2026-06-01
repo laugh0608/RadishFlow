@@ -41,6 +41,17 @@ fn sample_document() -> FlowsheetDocument {
     FlowsheetDocument::new(flowsheet, metadata)
 }
 
+fn ready_heater_document() -> FlowsheetDocument {
+    let project = parse_project_file_json(
+        crate::test_support::official_heater_binary_hydrocarbon_project_json(),
+    )
+    .expect("expected official heater project parse");
+    FlowsheetDocument::new(
+        project.document.flowsheet,
+        DocumentMetadata::new("doc-ready-heater", "Ready Heater", timestamp(12)),
+    )
+}
+
 fn sample_auth_cache_index(package_ids: &[&str]) -> StoredAuthCacheIndex {
     let mut index = StoredAuthCacheIndex::new(
         "https://id.radish.local",
@@ -492,7 +503,7 @@ fn facade_returns_failed_dispatch_when_local_cache_files_are_unavailable() {
     let cache_root = unique_temp_path("app-facade-failed");
     let auth_cache_index = sample_auth_cache_index(&["pkg-1"]);
     let facade = StudioAppFacade::new();
-    let mut app_state = AppState::new(sample_document());
+    let mut app_state = AppState::new(ready_heater_document());
     let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
 
     let dispatch = facade

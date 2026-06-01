@@ -89,7 +89,7 @@ fn app_host_controller_dispatches_run_panel_recovery_through_typed_method() {
     assert_eq!(recovery.target_window_id, opened.registration.window_id);
     match &recovery.effects.runtime_report.dispatch {
         crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
-            assert_eq!(outcome.action.title, "Inspect unit inputs");
+            assert_eq!(outcome.action.title, "Inspect unit parameters");
             assert_eq!(
                 outcome.applied_target,
                 Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
@@ -258,7 +258,7 @@ fn app_host_controller_dispatches_run_panel_recovery_via_ui_action() {
     assert_ne!(recovery.target_window_id, first.registration.window_id);
     match &recovery.effects.runtime_report.dispatch {
         crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
-            assert_eq!(outcome.action.title, "Inspect unit inputs");
+            assert_eq!(outcome.action.title, "Inspect unit parameters");
             assert_eq!(
                 outcome.applied_target,
                 Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(

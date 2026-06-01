@@ -79,6 +79,224 @@ fn gui_host_dispatches_ui_command_and_refreshes_command_registry() {
 }
 
 #[test]
+fn gui_host_run_command_uses_modeling_readiness_before_solve_dispatch() {
+    let (config, project_path) = feed_missing_composition_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    let opened = gui_host.open_window().expect("expected window open");
+    assert!(
+        gui_host
+            .command_registry()
+            .sections
+            .iter()
+            .flat_map(|section| &section.commands)
+            .any(|command| command.command_id == "run_panel.run_manual" && command.enabled)
+    );
+
+    let dispatch = gui_host
+        .dispatch_ui_command("run_panel.run_manual")
+        .expect("expected gui host ui command dispatch");
+
+    match dispatch {
+        StudioGuiHostUiCommandDispatchResult::Executed(dispatch) => {
+            assert_eq!(dispatch.target_window_id, opened.registration.window_id);
+            match &dispatch.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::WorkspaceRun(run) => {
+                        assert_eq!(
+                            run.package_id.as_deref(),
+                            Some("binary-hydrocarbon-lite-v1")
+                        );
+                        assert!(matches!(
+                            run.outcome,
+                            crate::StudioWorkspaceRunOutcome::Blocked(
+                                crate::StudioWorkspaceRunBlocked {
+                                    reason:
+                                        crate::StudioWorkspaceRunBlockedReason::ModelingInputsNotReady,
+                                    ..
+                                }
+                            )
+                        ));
+                    }
+                    other => panic!("expected workspace run dispatch, got {other:?}"),
+                },
+                other => panic!("expected app command dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected executed ui command result, got {other:?}"),
+    }
+
+    let window = gui_host.window_model_for_window(None);
+    assert!(window.runtime.latest_failure.is_none());
+    assert_eq!(
+        window
+            .runtime
+            .run_panel
+            .presentation
+            .view
+            .notice
+            .as_ref()
+            .map(|notice| (notice.level, notice.title.as_str())),
+        Some((
+            rf_ui::RunPanelNoticeLevel::Warning,
+            "Model inputs are not ready"
+        ))
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_dispatches_property_package_selection_command() {
+    let mut gui_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
+    let opened = gui_host.open_window().expect("expected window open");
+    let initial_window = gui_host.window_model_for_window(None);
+    let choice = initial_window
+        .runtime
+        .workspace_document
+        .property_package_choices
+        .iter()
+        .find(|choice| choice.package_id == "binary-hydrocarbon-lite-v1")
+        .expect("expected built-in property package choice")
+        .clone();
+
+    let dispatch = gui_host
+        .dispatch_ui_command(&choice.command_id)
+        .expect("expected property package selection dispatch");
+
+    match dispatch {
+        StudioGuiHostUiCommandDispatchResult::Executed(dispatch) => {
+            assert_eq!(dispatch.target_window_id, opened.registration.window_id);
+            match &dispatch.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::PropertyPackageSelection(outcome) => {
+                    assert_eq!(outcome.command.package_id, "binary-hydrocarbon-lite-v1");
+                    assert_eq!(
+                        outcome.selected_package_id.as_deref(),
+                        Some("binary-hydrocarbon-lite-v1")
+                    );
+                }
+                other => panic!("expected property package selection dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected executed ui command result, got {other:?}"),
+    }
+
+    let selected_window = gui_host.window_model_for_window(None);
+    assert_eq!(
+        selected_window
+            .runtime
+            .workspace_document
+            .property_package_id
+            .as_deref(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert!(
+        selected_window
+            .runtime
+            .workspace_document
+            .property_package_choices
+            .iter()
+            .any(
+                |candidate| candidate.package_id == "binary-hydrocarbon-lite-v1"
+                    && candidate.selected
+            )
+    );
+}
+
+#[test]
+fn gui_host_dispatches_project_component_selection_commands() {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-gui-host-component-selection-{timestamp}.rfproj.json"
+    ));
+    let mut flowsheet = rf_model::Flowsheet::new("component-selection");
+    flowsheet
+        .set_property_package_id(Some("binary-hydrocarbon-lite-v1".to_string()))
+        .expect("expected property package id");
+    let project = rf_store::StoredProjectFile::new(
+        flowsheet,
+        rf_store::StoredDocumentMetadata::new(
+            "doc-component-selection",
+            "Component Selection",
+            std::time::UNIX_EPOCH,
+        ),
+    );
+    let project_json =
+        rf_store::project_file_to_pretty_json(&project).expect("expected project serialization");
+    fs::write(&project_path, project_json).expect("expected component selection project");
+    let mut gui_host = StudioGuiHost::new(&StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..lease_expiring_config()
+    })
+    .expect("expected gui host");
+    let opened = gui_host.open_window().expect("expected window open");
+
+    let initial_window = gui_host.window_model_for_window(None);
+    let methane = initial_window
+        .runtime
+        .workspace_document
+        .project_component_choices
+        .iter()
+        .find(|choice| choice.component_id == "methane")
+        .expect("expected methane component choice")
+        .clone();
+    assert!(!methane.selected);
+
+    let select_dispatch = gui_host
+        .dispatch_ui_command(&methane.select_command_id)
+        .expect("expected project component selection dispatch");
+
+    match select_dispatch {
+        StudioGuiHostUiCommandDispatchResult::Executed(dispatch) => {
+            assert_eq!(dispatch.target_window_id, opened.registration.window_id);
+            match &dispatch.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::ProjectComponentSelection(outcome) => {
+                    assert!(outcome.applied);
+                    assert_eq!(outcome.command.component_id, "methane");
+                    assert_eq!(outcome.selected_component_ids, ["methane"]);
+                }
+                other => panic!("expected project component selection dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected executed ui command result, got {other:?}"),
+    }
+
+    let selected_window = gui_host.window_model_for_window(None);
+    let methane = selected_window
+        .runtime
+        .workspace_document
+        .project_component_choices
+        .iter()
+        .find(|choice| choice.component_id == "methane")
+        .expect("expected methane component choice")
+        .clone();
+    assert!(methane.selected);
+    assert!(methane.remove_enabled);
+
+    let remove_dispatch = gui_host
+        .dispatch_ui_command(&methane.remove_command_id)
+        .expect("expected project component removal dispatch");
+
+    match remove_dispatch {
+        StudioGuiHostUiCommandDispatchResult::Executed(dispatch) => {
+            match &dispatch.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::ProjectComponentRemoval(outcome) => {
+                    assert!(outcome.applied);
+                    assert_eq!(outcome.command.component_id, "methane");
+                    assert!(outcome.selected_component_ids.is_empty());
+                }
+                other => panic!("expected project component removal dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected executed ui command result, got {other:?}"),
+    }
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
 fn gui_host_command_surface_ids_converge_into_equivalent_host_dispatch_paths() {
     let mut surface_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
     let opened = surface_host.open_window().expect("expected window open");
@@ -573,15 +791,24 @@ fn gui_host_reconnects_selected_source_only_stream_from_canvas_command_surface()
         .expect("expected stream focus dispatch");
 
     let focused = gui_host.snapshot();
-    assert!({
-        let stream_detail = focused.runtime.active_inspector_detail.as_ref();
-        stream_detail.is_some_and(|detail| {
-            detail
-                .connection_actions
-                .iter()
-                .any(|action| action.command_id == "canvas.reconnect_selected_stream")
-        })
-    });
+    let stream_detail = focused
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected focused stream detail");
+    let reconnect_action = stream_detail
+        .connection_actions
+        .iter()
+        .find(|action| action.command_id == "canvas.reconnect_selected_stream")
+        .expect("expected reconnect action");
+    assert!(reconnect_action.enabled);
+    assert!(
+        reconnect_action
+            .detail
+            .contains("only available material inlet `flash-1:inlet`"),
+        "expected source-only reconnect detail, got {:?}",
+        reconnect_action
+    );
     let focused_canvas = gui_host.canvas_state();
     assert_eq!(
         canvas_port_stream(&focused_canvas, "heater-1", "outlet"),
@@ -644,6 +871,7 @@ fn gui_host_reconnects_selected_sink_only_stream_from_canvas_command_surface() {
         .iter()
         .find(|action| action.command_id == "canvas.reconnect_selected_stream")
         .expect("expected reconnect action");
+    assert!(reconnect_action.enabled);
     assert!(
         reconnect_action
             .detail
@@ -695,7 +923,7 @@ fn gui_host_reconnects_selected_sink_only_stream_from_canvas_command_surface() {
 }
 
 #[test]
-fn gui_host_hides_selected_stream_reconnect_when_unique_target_would_create_cycle() {
+fn gui_host_disables_selected_stream_reconnect_when_unique_target_would_create_cycle() {
     let (config, project_path) = cycle_reconnect_config();
     let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
     gui_host.open_window().expect("expected window open");
@@ -709,12 +937,90 @@ fn gui_host_hides_selected_stream_reconnect_when_unique_target_would_create_cycl
         .active_inspector_detail
         .as_ref()
         .expect("expected focused stream detail");
+    let reconnect_action = stream_detail
+        .connection_actions
+        .iter()
+        .find(|action| action.command_id == "canvas.reconnect_selected_stream")
+        .expect("expected reconnect action");
+    assert!(!reconnect_action.enabled);
     assert!(
-        !stream_detail
-            .connection_actions
-            .iter()
-            .any(|action| action.command_id == "canvas.reconnect_selected_stream"),
-        "expected cycle-forming unique target to be filtered from inspector reconnect actions"
+        reconnect_action
+            .detail
+            .contains("only available material inlet would create"),
+        "expected cycle-forming unique target detail, got {:?}",
+        reconnect_action
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_disables_selected_stream_reconnect_when_stream_is_already_connected() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("canvas.accept_focused")
+        .expect("expected flash inlet acceptance");
+    gui_host
+        .dispatch_ui_command("inspector.focus_stream:stream-heated")
+        .expect("expected stream focus dispatch");
+
+    let focused = gui_host.snapshot();
+    let stream_detail = focused
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected focused stream detail");
+    let reconnect_action = stream_detail
+        .connection_actions
+        .iter()
+        .find(|action| action.command_id == "canvas.reconnect_selected_stream")
+        .expect("expected reconnect action");
+    assert!(!reconnect_action.enabled);
+    assert!(
+        reconnect_action
+            .detail
+            .contains("already has both material endpoints"),
+        "expected already-connected reconnect detail, got {:?}",
+        reconnect_action
+    );
+    assert!(
+        reconnect_action
+            .detail
+            .contains("current sink `flash-1:inlet`")
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn gui_host_disables_selected_stream_reconnect_when_target_is_ambiguous() {
+    let (config, project_path) = ambiguous_reconnect_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    gui_host.open_window().expect("expected window open");
+    gui_host
+        .dispatch_ui_command("inspector.focus_stream:stream-heated")
+        .expect("expected stream focus dispatch");
+
+    let focused = gui_host.snapshot();
+    let stream_detail = focused
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected focused stream detail");
+    let reconnect_action = stream_detail
+        .connection_actions
+        .iter()
+        .find(|action| action.command_id == "canvas.reconnect_selected_stream")
+        .expect("expected reconnect action");
+    assert!(!reconnect_action.enabled);
+    assert!(
+        reconnect_action
+            .detail
+            .contains("there are 2 available material inlets"),
+        "expected ambiguous reconnect detail, got {:?}",
+        reconnect_action
     );
 
     let _ = fs::remove_file(project_path);

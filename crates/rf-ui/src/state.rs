@@ -10,7 +10,7 @@ pub use unit_inspector::{
     unit_inspector_parameter_value,
 };
 
-use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
+use rf_model::{Component, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
 use rf_types::{ComponentId, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId};
 use rf_unitops::{
     BuiltinUnitKind, UnitOperationSpec, builtin_unit_spec, builtin_unit_spec_by_name,
@@ -721,6 +721,101 @@ impl AppState {
         self.workspace.canvas_interaction.set_view_mode(view_mode);
     }
 
+    pub fn set_flowsheet_property_package_id(
+        &mut self,
+        package_id: Option<String>,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<u64>> {
+        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
+        next_flowsheet.set_property_package_id(package_id)?;
+
+        if self.workspace.document.flowsheet.property_package_id()
+            == next_flowsheet.property_package_id()
+        {
+            return Ok(None);
+        }
+
+        let package_id = next_flowsheet
+            .property_package_id()
+            .map(|package_id| package_id.to_string());
+        let revision = self.commit_document_change(
+            DocumentCommand::SetPropertyPackage { package_id },
+            next_flowsheet,
+            changed_at,
+        );
+        Ok(Some(revision))
+    }
+
+    pub fn add_flowsheet_component(
+        &mut self,
+        component: Component,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<u64>> {
+        if self
+            .workspace
+            .document
+            .flowsheet
+            .components
+            .contains_key(&component.id)
+        {
+            return Ok(None);
+        }
+
+        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
+        next_flowsheet.insert_component(component.clone())?;
+        let revision = self.commit_document_change(
+            DocumentCommand::AddComponent {
+                component_id: component.id,
+                name: component.name,
+                formula: component.formula,
+            },
+            next_flowsheet,
+            changed_at,
+        );
+        Ok(Some(revision))
+    }
+
+    pub fn remove_flowsheet_component(
+        &mut self,
+        component_id: ComponentId,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<u64>> {
+        if !self
+            .workspace
+            .document
+            .flowsheet
+            .components
+            .contains_key(&component_id)
+        {
+            return Ok(None);
+        }
+
+        if let Some(stream) = self
+            .workspace
+            .document
+            .flowsheet
+            .streams
+            .values()
+            .find(|stream| stream.overall_mole_fractions.contains_key(&component_id))
+        {
+            return Err(RfError::invalid_input(format!(
+                "component `{}` is still referenced by stream `{}` composition",
+                component_id, stream.id
+            )));
+        }
+
+        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
+        next_flowsheet.components.remove(&component_id);
+        let revision = self.commit_document_change(
+            DocumentCommand::RemoveComponent {
+                component_id: component_id.clone(),
+            },
+            next_flowsheet,
+            changed_at,
+        );
+        Ok(Some(revision))
+    }
+
     pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<CanvasSuggestion>) {
         self.workspace
             .canvas_interaction
@@ -1090,6 +1185,14 @@ impl AppState {
         }
     }
 
+    pub fn clear_inspector_target(&mut self) -> Option<InspectorTarget> {
+        let previous_target = self.workspace.drafts.active_target.take();
+        self.workspace.selection.selected_units.clear();
+        self.workspace.selection.selected_streams.clear();
+        self.workspace.drafts.fields.clear();
+        previous_target
+    }
+
     pub fn update_stream_inspector_draft(
         &mut self,
         stream_id: &StreamId,
@@ -1110,13 +1213,13 @@ impl AppState {
         let (draft_value, is_dirty, validation) =
             stream_draft_value_from_raw(&field, stream, raw_value);
 
-        if !is_dirty && validation != DraftValidationState::Invalid {
-            self.workspace.drafts.fields.remove(&key);
-        } else {
+        if inspector_draft_needs_storage(&draft_value, is_dirty, validation) {
             self.workspace
                 .drafts
                 .fields
                 .insert(key.clone(), draft_value);
+        } else {
+            self.workspace.drafts.fields.remove(&key);
         }
 
         Some(StreamInspectorDraftUpdateResult {
@@ -1532,6 +1635,22 @@ impl AppState {
     }
 }
 
+fn inspector_draft_needs_storage(
+    draft_value: &DraftValue,
+    is_dirty: bool,
+    validation: DraftValidationState,
+) -> bool {
+    if is_dirty || validation == DraftValidationState::Invalid {
+        return true;
+    }
+
+    match draft_value {
+        DraftValue::Text(draft) | DraftValue::Number(draft) | DraftValue::Choice(draft) => {
+            draft.current != draft.original
+        }
+    }
+}
+
 fn stream_draft_value_from_raw(
     field: &StreamInspectorDraftField,
     stream: &MaterialStreamState,
@@ -1577,8 +1696,6 @@ fn stream_draft_value_from_raw(
                 .unwrap_or(0.0);
             stream_number_draft_value(original, raw_value, |value| {
                 is_valid_stream_scalar_value(field, value)
-                    && composition_sum_after_fraction(stream, component_id, value)
-                        .is_some_and(|sum| sum > 0.0)
             })
         }
     }
@@ -1752,26 +1869,6 @@ fn is_valid_stream_scalar_value(field: &StreamInspectorDraftField, value: f64) -
     }
 }
 
-fn composition_sum_after_fraction(
-    stream: &MaterialStreamState,
-    component_id: &ComponentId,
-    value: f64,
-) -> Option<f64> {
-    stream
-        .overall_mole_fractions
-        .iter()
-        .map(|(candidate_id, fraction)| {
-            if candidate_id == component_id {
-                value
-            } else {
-                *fraction
-            }
-        })
-        .try_fold(0.0, |sum, fraction| {
-            (fraction.is_finite() && fraction >= 0.0).then_some(sum + fraction)
-        })
-}
-
 fn validate_stream_overall_mole_fractions(stream: &MaterialStreamState) -> RfResult<()> {
     if stream.overall_mole_fractions.is_empty() {
         return Err(RfError::invalid_input(format!(
@@ -1818,4 +1915,19 @@ pub fn latest_snapshot(workspace: &WorkspaceState) -> Option<&SolveSnapshot> {
         .rev()
         .find(|snapshot| &snapshot.id == latest_snapshot_id)?;
     (snapshot.document_revision == workspace.solve_session.observed_revision).then_some(snapshot)
+}
+
+pub fn stale_snapshot(workspace: &WorkspaceState) -> Option<&SolveSnapshot> {
+    if workspace.solve_session.latest_snapshot.is_some()
+        || workspace.solve_session.pending_reason
+            != Some(SolvePendingReason::DocumentRevisionAdvanced)
+    {
+        return None;
+    }
+
+    workspace
+        .snapshot_history
+        .iter()
+        .rev()
+        .find(|snapshot| snapshot.document_revision != workspace.solve_session.observed_revision)
 }

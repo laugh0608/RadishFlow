@@ -309,6 +309,12 @@ fn notice_title_for_blocked_outcome(
             "Entitlement update required"
         }
         crate::StudioWorkspaceRunBlockedReason::InvalidSelection => "Run blocked",
+        crate::StudioWorkspaceRunBlockedReason::ModelingInputsNotReady => {
+            "Model inputs are not ready"
+        }
+        crate::StudioWorkspaceRunBlockedReason::MissingProjectComponents => {
+            "Project components required"
+        }
         crate::StudioWorkspaceRunBlockedReason::PendingInspectorDrafts => {
             "Inspector edits not applied"
         }
@@ -882,6 +888,88 @@ mod tests {
     }
 
     #[test]
+    fn missing_project_component_blocks_workspace_run_notice() {
+        let cache_root = unique_temp_path("workspace-control-missing-project-component");
+        let mut auth_cache_index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
+        );
+        write_default_official_binary_hydrocarbon_cached_package(
+            &cache_root,
+            &mut auth_cache_index,
+        );
+        let facade = StudioAppFacade::new();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut flowsheet = project.document.flowsheet;
+        flowsheet.components.remove(&ComponentId::new("ethane"));
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new(
+                "doc-missing-project-component",
+                "Missing Project Component Demo",
+                timestamp(94),
+            ),
+        ));
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+        let outcome = dispatch_workspace_control_action_with_auth_cache(
+            &facade,
+            &mut app_state,
+            &context,
+            &WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Preferred),
+        )
+        .expect("expected blocked control action");
+
+        match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                assert_eq!(
+                    dispatch.package_id.as_deref(),
+                    Some("binary-hydrocarbon-lite-v1")
+                );
+                assert!(matches!(
+                    dispatch.outcome,
+                    StudioWorkspaceRunOutcome::Blocked(crate::StudioWorkspaceRunBlocked {
+                        reason: crate::StudioWorkspaceRunBlockedReason::MissingProjectComponents,
+                        ..
+                    })
+                ));
+            }
+            _ => panic!("expected workspace run dispatch"),
+        }
+        assert_eq!(outcome.control_state.run_status, RunStatus::Idle);
+        assert_eq!(
+            outcome
+                .control_state
+                .notice
+                .as_ref()
+                .map(|notice| (notice.level, notice.title.as_str())),
+            Some((
+                rf_ui::RunPanelNoticeLevel::Warning,
+                "Project components required"
+            ))
+        );
+        assert!(
+            outcome
+                .control_state
+                .notice
+                .as_ref()
+                .map(|notice| {
+                    notice.message.contains("component `ethane`")
+                        && notice
+                            .message
+                            .contains("not selected in project components")
+                })
+                .unwrap_or(false)
+        );
+
+        std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
     fn unnormalized_document_stream_composition_blocks_workspace_run_notice() {
         let cache_root = unique_temp_path("workspace-control-unnormalized-composition");
         let mut auth_cache_index = StoredAuthCacheIndex::new(
@@ -925,7 +1013,10 @@ mod tests {
 
         match outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => {
-                assert_eq!(dispatch.package_id, None);
+                assert_eq!(
+                    dispatch.package_id.as_deref(),
+                    Some("binary-hydrocarbon-lite-v1")
+                );
                 assert!(matches!(
                     dispatch.outcome,
                     StudioWorkspaceRunOutcome::Blocked(crate::StudioWorkspaceRunBlocked {
@@ -989,6 +1080,12 @@ mod tests {
             .get_mut(&"stream-throttled".into())
             .expect("expected throttled stream")
             .pressure_pa = 730_000.0;
+        flowsheet
+            .units
+            .get_mut(&"valve-1".into())
+            .expect("expected valve unit")
+            .parameters
+            .outlet_pressure_pa = Some(730_000.0);
         let mut app_state = AppState::new(FlowsheetDocument::new(
             flowsheet,
             DocumentMetadata::new(
@@ -1023,7 +1120,7 @@ mod tests {
                 .notice
                 .as_ref()
                 .map(|notice| (notice.level, notice.title.as_str())),
-            Some((rf_ui::RunPanelNoticeLevel::Error, "Unit execution failed"))
+            Some((rf_ui::RunPanelNoticeLevel::Error, "Unit parameter invalid"))
         );
         assert_eq!(
             app_state
@@ -1032,7 +1129,7 @@ mod tests {
                 .notice
                 .as_ref()
                 .map(|notice| notice.title.as_str()),
-            Some("Unit execution failed")
+            Some("Unit parameter invalid")
         );
         assert_eq!(
             app_state
@@ -1043,9 +1140,96 @@ mod tests {
                 .and_then(|notice| notice.recovery_action.as_ref())
                 .map(|action| (action.title, action.detail)),
             Some((
-                "Inspect unit inputs",
-                "检查单元规格、物性条件和入口状态是否满足执行前提。"
+                "Inspect unit parameters",
+                "检查 Unit Inspector 中的参数值和 SI 约束，确认参数与已连接入口状态一致。"
             ))
+        );
+
+        std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
+    }
+
+    #[test]
+    fn feed_stream_input_gap_uses_modeling_readiness_notice() {
+        let cache_root = unique_temp_path("workspace-control-stream-input-failure");
+        let mut auth_cache_index = StoredAuthCacheIndex::new(
+            "https://id.radish.local",
+            "user-123",
+            StoredCredentialReference::new("radishflow-studio", "user-123-primary"),
+        );
+        write_default_official_binary_hydrocarbon_cached_package(
+            &cache_root,
+            &mut auth_cache_index,
+        );
+        let facade = StudioAppFacade::new();
+        let project = parse_project_file_json(include_str!(
+            "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+        ))
+        .expect("expected project parse");
+        let mut flowsheet = project.document.flowsheet;
+        flowsheet
+            .streams
+            .get_mut(&"stream-feed".into())
+            .expect("expected feed stream")
+            .overall_mole_fractions
+            .clear();
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new(
+                "doc-run-panel-stream-input-failure",
+                "Run Panel Stream Input Failure Demo",
+                timestamp(100),
+            ),
+        ));
+        let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
+
+        let outcome = dispatch_workspace_control_action_with_auth_cache(
+            &facade,
+            &mut app_state,
+            &context,
+            &WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Preferred),
+        )
+        .expect("expected blocked control action");
+
+        match outcome.dispatch {
+            StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                assert!(matches!(
+                    dispatch.outcome,
+                    StudioWorkspaceRunOutcome::Blocked(crate::StudioWorkspaceRunBlocked {
+                        reason: crate::StudioWorkspaceRunBlockedReason::ModelingInputsNotReady,
+                        ..
+                    })
+                ));
+            }
+            _ => panic!("expected workspace run dispatch"),
+        }
+        assert_eq!(outcome.control_state.run_status, RunStatus::Idle);
+        assert_eq!(
+            outcome
+                .control_state
+                .notice
+                .as_ref()
+                .map(|notice| (notice.level, notice.title.as_str())),
+            Some((
+                rf_ui::RunPanelNoticeLevel::Warning,
+                "Model inputs are not ready"
+            ))
+        );
+        assert!(
+            app_state
+                .workspace
+                .solve_session
+                .latest_diagnostic
+                .is_none()
+        );
+        assert_eq!(
+            app_state
+                .workspace
+                .run_panel
+                .notice
+                .as_ref()
+                .and_then(|notice| notice.recovery_action.as_ref())
+                .map(|action| action.title),
+            None
         );
 
         std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");

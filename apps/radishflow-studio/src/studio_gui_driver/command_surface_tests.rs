@@ -1,11 +1,11 @@
 use std::fs;
 
-use rf_store::read_project_file;
+use rf_store::{read_project_file, write_project_file};
 
 use super::test_support::{
-    find_menu_command, find_menu_command_by_label, flash_drum_local_rules_config,
-    flash_drum_local_rules_synced_config, lease_expiring_config, synced_workspace_config,
-    unbound_outlet_failure_synced_config,
+    feed_missing_composition_synced_config, find_menu_command, find_menu_command_by_label,
+    flash_drum_local_rules_config, flash_drum_local_rules_synced_config, lease_expiring_config,
+    synced_workspace_config, unbound_outlet_failure_synced_config,
 };
 use super::*;
 use crate::test_support::SYNTHETIC_COMPONENT_C_ID;
@@ -1002,6 +1002,128 @@ fn gui_driver_surfaces_invalid_stream_draft_notice_without_private_shell_state()
 }
 
 #[test]
+fn gui_driver_keeps_zero_composition_digit_editable_until_fraction_is_completed() {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-zero-composition-{timestamp}.json"
+    ));
+    let mut project = rf_store::parse_project_file_json(include_str!(
+        "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected heater flash project fixture");
+    let feed = project
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&rf_types::StreamId::new("stream-feed"))
+        .expect("expected feed stream");
+    for fraction in feed.overall_mole_fractions.values_mut() {
+        *fraction = 0.0;
+    }
+    write_project_file(&project_path, &project).expect("expected zero composition project write");
+
+    let mut driver = StudioGuiDriver::new(&StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..lease_expiring_config()
+    })
+    .expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_stream:stream-feed".to_string(),
+        })
+        .expect("expected inspector focus dispatch");
+
+    let first_digit = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id:
+                "inspector.update_stream_draft:stream:stream-feed:overall_mole_fraction:methane"
+                    .to_string(),
+            raw_value: "0".to_string(),
+        })
+        .expect("expected zero digit draft update");
+    let first_digit_detail = first_digit
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected stream inspector detail");
+    assert!(first_digit_detail.property_fields.iter().any(|field| {
+        field.key == "stream:stream-feed:overall_mole_fraction:methane"
+            && field.current_value == "0"
+            && field.status_label != "Invalid"
+    }));
+    assert_eq!(
+        first_digit_detail
+            .property_composition_summary
+            .as_ref()
+            .map(|summary| (summary.status_label, summary.current_sum_text.as_str())),
+        Some(("Invalid", "0"))
+    );
+
+    let decimal_prefix = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id:
+                "inspector.update_stream_draft:stream:stream-feed:overall_mole_fraction:methane"
+                    .to_string(),
+            raw_value: "0.".to_string(),
+        })
+        .expect("expected decimal prefix draft update");
+    let decimal_prefix_detail = decimal_prefix
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected stream inspector detail");
+    assert!(decimal_prefix_detail.property_fields.iter().any(|field| {
+        field.key == "stream:stream-feed:overall_mole_fraction:methane"
+            && field.current_value == "0."
+            && field.status_label != "Invalid"
+    }));
+    assert_eq!(
+        decimal_prefix_detail
+            .property_composition_summary
+            .as_ref()
+            .map(|summary| (summary.status_label, summary.current_sum_text.as_str())),
+        Some(("Invalid", "0"))
+    );
+
+    let completed_fraction = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id:
+                "inspector.update_stream_draft:stream:stream-feed:overall_mole_fraction:methane"
+                    .to_string(),
+            raw_value: "0.5".to_string(),
+        })
+        .expect("expected completed fraction draft update");
+    let completed_detail = completed_fraction
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected stream inspector detail");
+    assert!(completed_detail.property_fields.iter().any(|field| {
+        field.key == "stream:stream-feed:overall_mole_fraction:methane"
+            && field.current_value == "0.5"
+            && field.status_label == "Draft"
+    }));
+    assert_eq!(
+        completed_detail
+            .property_composition_summary
+            .as_ref()
+            .map(|summary| (summary.status_label, summary.current_sum_text.as_str())),
+        Some(("Draft", "0.500000"))
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
 fn gui_driver_routes_document_history_commands_through_command_surface() {
     let mut driver = StudioGuiDriver::new(&synced_workspace_config()).expect("expected driver");
     driver
@@ -1388,6 +1510,71 @@ fn gui_driver_routes_shortcut_into_ui_command_dispatch() {
 }
 
 #[test]
+fn gui_driver_f5_run_command_uses_modeling_readiness_before_solve_dispatch() {
+    let (config, project_path) = feed_missing_composition_synced_config();
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::ShortcutPressed {
+            shortcut: StudioGuiShortcut {
+                modifiers: Vec::new(),
+                key: crate::StudioGuiShortcutKey::F5,
+            },
+            focus_context: StudioGuiFocusContext::Global,
+        })
+        .expect("expected F5 dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => match &executed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::WorkspaceRun(run) => {
+                    assert_eq!(
+                        run.package_id.as_deref(),
+                        Some("binary-hydrocarbon-lite-v1")
+                    );
+                    assert!(matches!(
+                        run.outcome,
+                        crate::StudioWorkspaceRunOutcome::Blocked(
+                            crate::StudioWorkspaceRunBlocked {
+                                reason:
+                                    crate::StudioWorkspaceRunBlockedReason::ModelingInputsNotReady,
+                                ..
+                            }
+                        )
+                    ));
+                }
+                other => panic!("expected workspace run dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        },
+        other => panic!("expected executed shortcut outcome, got {other:?}"),
+    }
+    assert!(dispatch.window.runtime.latest_failure.is_none());
+    assert_eq!(
+        dispatch
+            .window
+            .runtime
+            .run_panel
+            .presentation
+            .view
+            .notice
+            .as_ref()
+            .map(|notice| (notice.level, notice.title.as_str())),
+        Some((
+            rf_ui::RunPanelNoticeLevel::Warning,
+            "Model inputs are not ready"
+        ))
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
 fn gui_driver_automatic_runs_after_canvas_write_when_workspace_is_active() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
@@ -1501,7 +1688,7 @@ fn gui_driver_automatic_runs_after_canvas_write_when_workspace_is_active() {
 }
 
 #[test]
-fn gui_driver_recovery_then_resume_rejoins_automatic_mainline() {
+fn gui_driver_recovery_then_resume_rejoins_modeling_readiness_mainline() {
     let mut driver =
         StudioGuiDriver::new(&unbound_outlet_failure_synced_config()).expect("expected driver");
     let _ = driver
@@ -1598,15 +1785,21 @@ fn gui_driver_recovery_then_resume_rejoins_automatic_mainline() {
                 crate::StudioAppResultDispatch::WorkspaceRun(run) => {
                     assert!(matches!(
                         run.outcome,
-                        crate::StudioWorkspaceRunOutcome::Started(_)
+                        crate::StudioWorkspaceRunOutcome::Blocked(
+                            crate::StudioWorkspaceRunBlocked {
+                                reason:
+                                    crate::StudioWorkspaceRunBlockedReason::ModelingInputsNotReady,
+                                ..
+                            }
+                        )
                     ));
-                    assert_eq!(run.simulation_mode, rf_ui::SimulationMode::Active);
-                    assert_eq!(run.pending_reason, None);
-                    assert_eq!(run.run_status, rf_ui::RunStatus::Converged);
+                    assert_eq!(run.simulation_mode, rf_ui::SimulationMode::Hold);
                     assert_eq!(
-                        run.latest_snapshot_id.as_deref(),
-                        Some("example-unbound-outlet-port-rev-1-seq-1")
+                        run.pending_reason,
+                        Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
                     );
+                    assert_eq!(run.run_status, rf_ui::RunStatus::Dirty);
+                    assert_eq!(run.latest_snapshot_id, None);
                 }
                 other => panic!("expected workspace run dispatch, got {other:?}"),
             },
@@ -1616,20 +1809,15 @@ fn gui_driver_recovery_then_resume_rejoins_automatic_mainline() {
     }
     assert_eq!(
         resumed.snapshot.runtime.control_state.run_status,
-        rf_ui::RunStatus::Converged
+        rf_ui::RunStatus::Dirty
     );
     assert_eq!(
-        resumed
-            .snapshot
-            .runtime
-            .control_state
-            .latest_snapshot_id
-            .as_deref(),
-        Some("example-unbound-outlet-port-rev-1-seq-1")
+        resumed.snapshot.runtime.control_state.pending_reason,
+        Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
     );
     assert_eq!(
         resumed.snapshot.runtime.run_panel.view().status_label,
-        "Converged"
+        "Dirty"
     );
 }
 

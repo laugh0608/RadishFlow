@@ -55,6 +55,28 @@ pub(super) fn solver_failure_config() -> (StudioRuntimeConfig, PathBuf) {
     )
 }
 
+pub(super) fn feed_missing_composition_config() -> (StudioRuntimeConfig, PathBuf) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-gui-host-feed-missing-composition-{timestamp}.rfproj.json"
+    ));
+    let project = crate::test_support::build_feed_missing_composition_project_json();
+    fs::write(&project_path, project).expect("expected feed missing composition project");
+
+    (
+        StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            ..lease_expiring_config()
+        },
+        project_path,
+    )
+}
+
 pub(super) fn flash_drum_local_rules_synced_config() -> (StudioRuntimeConfig, PathBuf) {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -205,6 +227,111 @@ pub(super) fn cycle_reconnect_config() -> (StudioRuntimeConfig, PathBuf) {
     let project =
         rf_store::project_file_to_pretty_json(&project).expect("expected project serialization");
     fs::write(&project_path, project).expect("expected cycle reconnect project");
+
+    (
+        StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            ..lease_expiring_config()
+        },
+        project_path,
+    )
+}
+
+pub(super) fn ambiguous_reconnect_config() -> (StudioRuntimeConfig, PathBuf) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-gui-host-ambiguous-reconnect-{timestamp}.rfproj.json"
+    ));
+    let mut flowsheet = rf_model::Flowsheet::new("reconnect-ambiguous");
+    flowsheet
+        .insert_stream(rf_model::MaterialStreamState::new(
+            "stream-heated",
+            "Heated",
+        ))
+        .expect("expected heated stream");
+    flowsheet
+        .insert_unit(rf_model::UnitNode::new(
+            "heater-1",
+            "Heater",
+            "heater",
+            vec![
+                rf_model::UnitPort::new(
+                    "inlet",
+                    rf_types::PortDirection::Inlet,
+                    rf_types::PortKind::Material,
+                    None,
+                ),
+                rf_model::UnitPort::new(
+                    "outlet",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    Some("stream-heated".into()),
+                ),
+            ],
+        ))
+        .expect("expected heater insert");
+    flowsheet
+        .insert_unit(rf_model::UnitNode::new(
+            "flash-1",
+            "Flash",
+            "flash_drum",
+            vec![
+                rf_model::UnitPort::new(
+                    "inlet",
+                    rf_types::PortDirection::Inlet,
+                    rf_types::PortKind::Material,
+                    None,
+                ),
+                rf_model::UnitPort::new(
+                    "vapor",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    None,
+                ),
+                rf_model::UnitPort::new(
+                    "liquid",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    None,
+                ),
+            ],
+        ))
+        .expect("expected flash insert");
+    flowsheet
+        .insert_unit(rf_model::UnitNode::new(
+            "valve-1",
+            "Valve",
+            "valve",
+            vec![
+                rf_model::UnitPort::new(
+                    "inlet",
+                    rf_types::PortDirection::Inlet,
+                    rf_types::PortKind::Material,
+                    None,
+                ),
+                rf_model::UnitPort::new(
+                    "outlet",
+                    rf_types::PortDirection::Outlet,
+                    rf_types::PortKind::Material,
+                    None,
+                ),
+            ],
+        ))
+        .expect("expected valve insert");
+    let project = rf_store::StoredProjectFile::new(
+        flowsheet,
+        rf_store::StoredDocumentMetadata::new(
+            "doc-reconnect-ambiguous",
+            "Reconnect Ambiguous",
+            SystemTime::UNIX_EPOCH,
+        ),
+    );
+    let project =
+        rf_store::project_file_to_pretty_json(&project).expect("expected project serialization");
+    fs::write(&project_path, project).expect("expected ambiguous reconnect project");
 
     (
         StudioRuntimeConfig {

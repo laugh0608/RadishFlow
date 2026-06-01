@@ -56,7 +56,7 @@ function Get-PackagePlatform {
     $runsOnWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
         [System.Runtime.InteropServices.OSPlatform]::Windows)
     if (-not $runsOnWindows) {
-        throw 'MVP alpha packaging currently supports Windows artifacts only.'
+        throw 'Windows staging packaging currently supports Windows artifacts only.'
     }
 
     switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) {
@@ -263,14 +263,14 @@ $manifest = @(
     'examples=examples/flowsheets',
     'sampleComponents=examples/sample-components',
     "releaseNotes=$releaseNotesPackagePath",
-    'notes=This MVP alpha package is a portable zip/staging artifact, not an installer.'
+    'notes=This package is a portable zip/staging artifact, not an installer or release node.'
 )
 $manifest | Set-Content -LiteralPath (Join-Path $stagingDir 'PACKAGE-MANIFEST.txt') -Encoding UTF8
 
 $packageReadme = @'
-# RadishFlow MVP Alpha Package
+# RadishFlow Portable Staging Package
 
-This package is a portable MVP alpha artifact for internal local review. It is not an installer and does not represent a public demo or release candidate.
+This package is a portable staging artifact for internal local review. It is not an installer, public demo, release candidate, or Git tag.
 
 Start:
 
@@ -290,7 +290,7 @@ Included:
 - flowsheet files under `examples/flowsheets`
 - sample property package payloads under `examples/sample-components`
 - quick start, result review, acceptance, versioning, and license documents
-- release notes under `docs/releases` when a matching version note exists
+- staging notes under `docs/releases` when a matching version note exists
 
 The Studio Home / Workbench example picker only surfaces the demo-safe official hydrocarbon examples. Additional synthetic or PME validation files may still be present in `examples/flowsheets` for regression and external validation.
 
@@ -303,7 +303,7 @@ Not included:
 - third-party CAPE-OPEN model loading
 - free-form connection editing, automatic routing, full drag layout, viewport persistence, or full result reports
 
-Run repository validation before publishing a release tag:
+Run repository validation before sharing a staging artifact:
 
 ```powershell
 pwsh ./scripts/check-repo.ps1

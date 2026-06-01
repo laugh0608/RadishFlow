@@ -5,6 +5,11 @@ use super::*;
 use crate::{
     StudioGuiDiagnosticStreamSnapshot, StudioGuiFailureDiagnosticContextSnapshot,
     StudioGuiFailureDiagnosticPortSnapshot, WorkspaceControlState,
+    studio_stream_reconnect_presentation::{
+        StudioStreamReconnectAvailability, StudioStreamReconnectMissingSide,
+        stream_reconnect_already_connected, stream_reconnect_from_candidates,
+        stream_reconnect_missing_endpoint, stream_reconnect_missing_stream,
+    },
 };
 use std::collections::BTreeSet;
 
@@ -32,6 +37,10 @@ impl StudioGuiHost {
 
     pub fn state(&self) -> &StudioAppHostState {
         self.controller.state()
+    }
+
+    pub fn document(&self) -> &rf_ui::FlowsheetDocument {
+        self.controller.document()
     }
 
     pub fn ui_commands(&self) -> StudioAppHostUiCommandModel {
@@ -148,6 +157,7 @@ impl StudioGuiHost {
         let control_state = self.controller.workspace_control_state();
         let run_panel = self.controller.run_panel_widget();
         let latest_solve_snapshot = self.controller.latest_solve_snapshot();
+        let stale_solve_snapshot = self.controller.stale_solve_snapshot();
         let latest_failure_diagnostic_context = failure_diagnostic_context_from_controller(
             &self.controller,
             &control_state,
@@ -170,6 +180,7 @@ impl StudioGuiHost {
                 control_state,
                 run_panel,
                 latest_solve_snapshot,
+                stale_solve_snapshot,
                 latest_failure_diagnostic_context,
                 active_inspector_target,
                 active_inspector_detail,
@@ -700,6 +711,7 @@ fn stream_connection_actions(
                 "Remove material port bindings for `{stream_id_label}` while keeping the stream specification."
             ),
             command_id: "canvas.disconnect_selected_stream".to_string(),
+            enabled: true,
         });
     }
     if let Some(detail) = stream_endpoint_disconnect_detail(
@@ -713,6 +725,7 @@ fn stream_connection_actions(
             label: "Disconnect source".to_string(),
             detail,
             command_id: "canvas.disconnect_selected_stream_source".to_string(),
+            enabled: true,
         });
     }
     if let Some(detail) = stream_endpoint_disconnect_detail(
@@ -726,21 +739,23 @@ fn stream_connection_actions(
             label: "Disconnect sink".to_string(),
             detail,
             command_id: "canvas.disconnect_selected_stream_sink".to_string(),
+            enabled: true,
         });
     }
-    if let Some(detail) = stream_reconnect_detail(flowsheet, stream_id) {
-        actions.push(StudioGuiInspectorConnectionActionSnapshot {
-            label: "Reconnect stream".to_string(),
-            detail,
-            command_id: "canvas.reconnect_selected_stream".to_string(),
-        });
-    }
+    let reconnect = stream_reconnect_availability(flowsheet, stream_id);
+    actions.push(StudioGuiInspectorConnectionActionSnapshot {
+        label: "Reconnect stream".to_string(),
+        detail: reconnect.action_detail(stream_id.as_str()),
+        command_id: "canvas.reconnect_selected_stream".to_string(),
+        enabled: reconnect.is_available(),
+    });
     actions.extend([StudioGuiInspectorConnectionActionSnapshot {
         label: "Delete stream".to_string(),
         detail: format!(
             "Remove material port bindings for `{stream_id_label}` and delete the stream."
         ),
         command_id: "canvas.delete_selected_stream".to_string(),
+        enabled: true,
     }]);
     actions
 }
@@ -792,14 +807,17 @@ fn unique_material_stream_endpoint_label(
     (endpoints.len() == 1).then(|| endpoints.remove(0))
 }
 
-fn stream_reconnect_detail(
+fn stream_reconnect_availability(
     flowsheet: &rf_model::Flowsheet,
     stream_id: &rf_types::StreamId,
-) -> Option<String> {
+) -> StudioStreamReconnectAvailability {
+    if !flowsheet.streams.contains_key(stream_id) {
+        return stream_reconnect_missing_stream();
+    }
+
     let mut source_unit_id = None;
-    let mut source_binding = None;
     let mut sink_unit_id = None;
-    let mut sink_binding = None;
+    let mut latest_sink_binding = None;
     let mut source_count = 0usize;
     let mut sink_count = 0usize;
 
@@ -815,12 +833,11 @@ fn stream_reconnect_detail(
                 rf_types::PortDirection::Outlet => {
                     source_count += 1;
                     source_unit_id = Some(unit.id.clone());
-                    source_binding = Some(format!("{}:{}", unit.id, port.name));
                 }
                 rf_types::PortDirection::Inlet => {
                     sink_count += 1;
                     sink_unit_id = Some(unit.id.clone());
-                    sink_binding = Some(format!("{}:{}", unit.id, port.name));
+                    latest_sink_binding = Some(format!("{}:{}", unit.id, port.name));
                 }
             }
         }
@@ -828,37 +845,61 @@ fn stream_reconnect_detail(
 
     match (source_count, sink_count) {
         (1, 0) => {
-            let source_unit_id = source_unit_id?;
-            let targets = available_material_reconnect_sink_labels(flowsheet, &source_unit_id);
-            (targets.len() == 1).then(|| {
-                format!(
-                    "Reconnect `{}` from `{}` to the only available material inlet `{}`.",
-                    stream_id.as_str(),
-                    source_binding.expect("checked source binding"),
-                    targets[0]
-                )
-            })
+            let Some(source_unit_id) = source_unit_id else {
+                return stream_reconnect_missing_endpoint();
+            };
+            let candidates = material_reconnect_sink_candidates(flowsheet, &source_unit_id);
+            stream_reconnect_from_host_candidates(
+                stream_id.as_str(),
+                StudioStreamReconnectMissingSide::Sink,
+                candidates,
+            )
         }
         (0, 1) => {
-            let sink_unit_id = sink_unit_id?;
-            let targets = available_material_reconnect_source_labels(flowsheet, &sink_unit_id);
-            (targets.len() == 1).then(|| {
-                format!(
-                    "Reconnect `{}` from the only available material outlet `{}` to `{}`.",
-                    stream_id.as_str(),
-                    targets[0],
-                    sink_binding.expect("checked sink binding")
-                )
-            })
+            let Some(sink_unit_id) = sink_unit_id else {
+                return stream_reconnect_missing_endpoint();
+            };
+            let candidates = material_reconnect_source_candidates(flowsheet, &sink_unit_id);
+            stream_reconnect_from_host_candidates(
+                stream_id.as_str(),
+                StudioStreamReconnectMissingSide::Source,
+                candidates,
+            )
         }
-        _ => None,
+        (1, 1) => stream_reconnect_already_connected(
+            latest_sink_binding.unwrap_or_else(|| "connected sink".to_string()),
+        ),
+        _ => stream_reconnect_missing_endpoint(),
     }
 }
 
-fn available_material_reconnect_sink_labels(
+fn stream_reconnect_from_host_candidates(
+    stream_id: &str,
+    missing_side: StudioStreamReconnectMissingSide,
+    candidates: Vec<(String, bool)>,
+) -> StudioStreamReconnectAvailability {
+    let candidate_count = candidates.len();
+    let cycle_blocked_count = candidates
+        .iter()
+        .filter(|(_, would_create_cycle)| *would_create_cycle)
+        .count();
+    let available_targets = candidates
+        .into_iter()
+        .filter_map(|(label, would_create_cycle)| (!would_create_cycle).then_some(label))
+        .collect::<Vec<_>>();
+    stream_reconnect_from_candidates(
+        stream_id,
+        missing_side,
+        candidate_count,
+        cycle_blocked_count,
+        available_targets,
+    )
+}
+
+fn material_reconnect_sink_candidates(
     flowsheet: &rf_model::Flowsheet,
     source_unit_id: &rf_types::UnitId,
-) -> Vec<String> {
+) -> Vec<(String, bool)> {
     flowsheet
         .units
         .values()
@@ -870,17 +911,21 @@ fn available_material_reconnect_sink_labels(
                     port.kind == rf_types::PortKind::Material
                         && port.direction == rf_types::PortDirection::Inlet
                         && port.stream_id.is_none()
-                        && !would_create_unit_dependency_cycle(flowsheet, source_unit_id, &unit.id)
                 })
-                .map(|port| format!("{}:{}", unit.id, port.name))
+                .map(|port| {
+                    (
+                        format!("{}:{}", unit.id, port.name),
+                        would_create_unit_dependency_cycle(flowsheet, source_unit_id, &unit.id),
+                    )
+                })
         })
         .collect()
 }
 
-fn available_material_reconnect_source_labels(
+fn material_reconnect_source_candidates(
     flowsheet: &rf_model::Flowsheet,
     sink_unit_id: &rf_types::UnitId,
-) -> Vec<String> {
+) -> Vec<(String, bool)> {
     flowsheet
         .units
         .values()
@@ -892,9 +937,13 @@ fn available_material_reconnect_source_labels(
                     port.kind == rf_types::PortKind::Material
                         && port.direction == rf_types::PortDirection::Outlet
                         && port.stream_id.is_none()
-                        && !would_create_unit_dependency_cycle(flowsheet, &unit.id, sink_unit_id)
                 })
-                .map(|port| format!("{}:{}", unit.id, port.name))
+                .map(|port| {
+                    (
+                        format!("{}:{}", unit.id, port.name),
+                        would_create_unit_dependency_cycle(flowsheet, &unit.id, sink_unit_id),
+                    )
+                })
         })
         .collect()
 }
@@ -967,6 +1016,21 @@ fn unit_property_fields(
     drafts: &rf_ui::InspectorDraftState,
 ) -> Vec<StudioGuiInspectorTargetFieldSnapshot> {
     match unit.kind.as_str() {
+        "feed" => [
+            (
+                rf_ui::UnitInspectorDraftField::OutletTemperatureK,
+                "Source temperature (K)",
+            ),
+            (
+                rf_ui::UnitInspectorDraftField::OutletPressurePa,
+                "Source pressure (Pa)",
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(field, label)| {
+            unit_number_property_field(flowsheet, unit, drafts, field, label)
+        })
+        .collect(),
         "heater" | "cooler" => [
             (
                 rf_ui::UnitInspectorDraftField::OutletTemperatureK,
@@ -991,14 +1055,29 @@ fn unit_property_fields(
         )
         .into_iter()
         .collect(),
-        "flash_drum" => unit_number_property_field(
+        "mixer" => unit_number_property_field(
             flowsheet,
             unit,
             drafts,
             rf_ui::UnitInspectorDraftField::OutletPressurePa,
-            "Flash pressure (Pa)",
+            "Outlet pressure (Pa)",
         )
         .into_iter()
+        .collect(),
+        "flash_drum" => [
+            (
+                rf_ui::UnitInspectorDraftField::OutletTemperatureK,
+                "Flash temperature (K)",
+            ),
+            (
+                rf_ui::UnitInspectorDraftField::OutletPressurePa,
+                "Flash pressure (Pa)",
+            ),
+        ]
+        .into_iter()
+        .filter_map(|(field, label)| {
+            unit_number_property_field(flowsheet, unit, drafts, field, label)
+        })
         .collect(),
         _ => Vec::new(),
     }
@@ -1313,12 +1392,12 @@ fn unit_parameter_invalid_notice(
     if field.key.ends_with(":outlet_pressure_pa") {
         if unit_outlet_pressure_cannot_exceed_inlet(unit) {
             return format!(
-                "{} must be a positive finite outlet absolute pressure in Pa and cannot exceed the connected inlet pressure.",
+                "{} must be a positive finite outlet pressure in Pa and cannot exceed connected inlet pressure.",
                 field.label
             );
         }
         return format!(
-            "{} must be a positive finite outlet absolute pressure in Pa.",
+            "{} must be a positive finite outlet pressure in Pa.",
             field.label
         );
     }
@@ -1333,39 +1412,51 @@ fn unit_parameter_constraint_text(
 ) -> String {
     match field {
         rf_ui::UnitInspectorDraftField::OutletTemperatureK => {
-            "SI unit: K. Enter a positive finite outlet temperature; the committed value is used by the solver and synced to the outlet stream template.".to_string()
+            if unit.kind == "feed" {
+                return "Unit K; positive finite source outlet temperature; commit syncs the Feed outlet template.".to_string();
+            }
+            if unit.kind == "flash_drum" {
+                return "Unit K; positive finite flash temperature; commit syncs liquid/vapor outlet templates.".to_string();
+            }
+            "Unit K; positive finite outlet temperature; commit syncs the outlet stream template."
+                .to_string()
         }
         rf_ui::UnitInspectorDraftField::OutletPressurePa => {
             if unit_outlet_pressure_cannot_exceed_inlet(unit) {
-                let inlet_limit = connected_inlet_stream(flowsheet, unit).map(|stream| {
-                    format!(" Current inlet pressure limit: {:.0} Pa.", stream.pressure_pa)
-                });
+                let inlet_limit = connected_inlet_pressure_limit(flowsheet, unit)
+                    .map(|pressure_pa| format!(" Inlet limit: {pressure_pa:.0} Pa."));
                 return format!(
-                    "SI unit: Pa. Enter a positive finite outlet absolute pressure; Heater, Cooler, and Valve outlet pressure cannot exceed the connected inlet pressure.{}",
+                    "Unit Pa; positive finite outlet pressure; cannot exceed connected inlet pressure.{}",
                     inlet_limit.unwrap_or_default()
                 );
             }
-            "SI unit: Pa. Enter a positive finite flash outlet pressure; the committed value is used by the solver and synced to the Flash Drum liquid/vapor outlet stream templates.".to_string()
+            if unit.kind == "feed" {
+                return "Unit Pa; positive finite source outlet pressure; commit syncs the Feed outlet template.".to_string();
+            }
+            "Unit Pa; positive finite flash pressure; commit syncs liquid/vapor outlet templates."
+                .to_string()
         }
     }
 }
 
 fn unit_outlet_pressure_cannot_exceed_inlet(unit: &rf_model::UnitNode) -> bool {
-    matches!(unit.kind.as_str(), "heater" | "cooler" | "valve")
+    matches!(unit.kind.as_str(), "mixer" | "heater" | "cooler" | "valve")
 }
 
-fn connected_inlet_stream<'a>(
-    flowsheet: &'a rf_model::Flowsheet,
+fn connected_inlet_pressure_limit(
+    flowsheet: &rf_model::Flowsheet,
     unit: &rf_model::UnitNode,
-) -> Option<&'a rf_model::MaterialStreamState> {
+) -> Option<f64> {
     unit.ports
         .iter()
-        .find(|port| {
+        .filter(|port| {
             port.direction == rf_types::PortDirection::Inlet
                 && port.kind == rf_types::PortKind::Material
         })
-        .and_then(|port| port.stream_id.as_ref())
-        .and_then(|stream_id| flowsheet.streams.get(stream_id))
+        .filter_map(|port| port.stream_id.as_ref())
+        .filter_map(|stream_id| flowsheet.streams.get(stream_id))
+        .map(|stream| stream.pressure_pa)
+        .reduce(f64::min)
 }
 
 fn stream_property_notices(
@@ -1576,6 +1667,7 @@ fn workspace_document_snapshot_from_controller(
     controller: &crate::StudioAppHostController,
 ) -> crate::StudioGuiWorkspaceDocumentSnapshot {
     let document = controller.document();
+    let selected_property_package_id = document.flowsheet.property_package_id();
     crate::StudioGuiWorkspaceDocumentSnapshot {
         document_id: document.metadata.document_id.as_str().to_string(),
         title: document.metadata.title.clone(),
@@ -1586,10 +1678,60 @@ fn workspace_document_snapshot_from_controller(
         project_path: controller
             .document_path()
             .map(|path| path.display().to_string()),
+        property_package_id: selected_property_package_id.map(|package_id| package_id.to_string()),
+        property_package_choices: crate::STUDIO_BUILTIN_PROPERTY_PACKAGES
+            .iter()
+            .map(|package| crate::StudioGuiPropertyPackageChoiceSnapshot {
+                package_id: package.package_id.to_string(),
+                label: package.label.to_string(),
+                detail: package.detail.to_string(),
+                component_summary: package.component_summary.to_string(),
+                command_id: crate::property_package_select_command_id(package.package_id),
+                selected: selected_property_package_id == Some(package.package_id),
+                enabled: true,
+            })
+            .collect(),
+        project_component_choices: crate::STUDIO_BUILTIN_PROJECT_COMPONENTS
+            .iter()
+            .map(|component| {
+                let component_id = rf_types::ComponentId::new(component.component_id);
+                let selected = document.flowsheet.components.contains_key(&component_id);
+                let referenced = flowsheet_component_is_referenced(&document.flowsheet, &component_id);
+                crate::StudioGuiProjectComponentChoiceSnapshot {
+                    component_id: component.component_id.to_string(),
+                    name: component.name.to_string(),
+                    formula: Some(component.formula.to_string()),
+                    selected,
+                    select_command_id: crate::project_component_select_command_id(
+                        component.component_id,
+                    ),
+                    remove_command_id: crate::project_component_remove_command_id(
+                        component.component_id,
+                    ),
+                    remove_enabled: selected && !referenced,
+                    remove_detail: if referenced {
+                        "Remove this component from stream compositions before removing it from the project."
+                            .to_string()
+                    } else {
+                        "Remove this unused component from the current flowsheet.".to_string()
+                    },
+                }
+            })
+            .collect(),
         unit_count: document.flowsheet.units.len(),
         stream_count: document.flowsheet.streams.len(),
         snapshot_history_count: controller.snapshot_history_count(),
     }
+}
+
+fn flowsheet_component_is_referenced(
+    flowsheet: &rf_model::Flowsheet,
+    component_id: &rf_types::ComponentId,
+) -> bool {
+    flowsheet
+        .streams
+        .values()
+        .any(|stream| stream.overall_mole_fractions.contains_key(component_id))
 }
 
 #[cfg(test)]

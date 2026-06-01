@@ -77,6 +77,12 @@ fn solve_snapshot_light_text_export_uses_current_snapshot_results() {
     assert!(text.contains("stream-feed"));
     assert!(text.contains("stream-cooled"));
     assert!(text.contains("phase_region="));
+    assert!(
+        text.contains("Units\nunit_id\tstep\tstatus\tsummary\tconsumed_streams\tproduced_streams")
+    );
+    assert!(text.contains("cooler-1"));
+    assert!(text.contains("stream-feed"));
+    assert!(text.contains("stream-cooled"));
     assert!(text.contains("Steps\nindex\tunit_id\tstatus\tsummary"));
     assert!(text.contains("cooler-1"));
     assert!(text.contains("flash-1"));
@@ -89,6 +95,44 @@ fn solve_snapshot_light_text_export_uses_current_snapshot_results() {
         !text.contains("rfstudio-layout"),
         "snapshot export must not include shell layout sidecar state"
     );
+}
+
+#[test]
+fn official_binary_demo_case_exports_keep_result_review_paths() {
+    for (project_json, intermediate_stream_id, upstream_unit_id) in [
+        (
+            include_str!(
+                "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-heated",
+            "heater-1",
+        ),
+        (
+            include_str!(
+                "../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            "stream-mix-out",
+            "mixer-1",
+        ),
+    ] {
+        let snapshot = solve_binary_hydrocarbon_lite_snapshot(project_json);
+        let text = snapshot.light_text_export();
+
+        assert!(text.contains(intermediate_stream_id));
+        assert!(text.contains("stream-liquid"));
+        assert!(text.contains("stream-vapor"));
+        assert!(text.contains("phase_region="));
+        assert!(
+            text.contains("J/mol"),
+            "export should carry materialized H text for `{intermediate_stream_id}`"
+        );
+        assert!(text.contains(upstream_unit_id));
+        assert!(text.contains("flash-1"));
+        assert!(
+            text.contains(&format!("{intermediate_stream_id} (T ")),
+            "unit/step rows should keep the intermediate stream reference summary"
+        );
+    }
 }
 
 fn assert_flash_consumer_preserves_snapshot_stream_reference(
@@ -499,7 +543,9 @@ fn assert_window_model_preserves_ui_stream_window_absence(
     let ui_stream = find_ui_snapshot_stream(ui_snapshot, stream_id);
     assert!(
         ui_stream.bubble_dew_window.is_none(),
-        "expected ui snapshot bubble/dew window absence for `{stream_id}`"
+        "expected ui snapshot bubble/dew window absence for `{stream_id}`, flow={} window={:?}",
+        ui_stream.total_molar_flow_mol_s,
+        ui_stream.bubble_dew_window
     );
 
     let result_inspector = snapshot.result_inspector(Some(stream_id));
@@ -1024,6 +1070,35 @@ fn failure_synced_config(project_file_name: &str) -> StudioRuntimeConfig {
 
 fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
     failure_synced_config("unbound-outlet-port.rfproj.json")
+}
+
+fn missing_components_blocked_run_synced_config() -> (StudioRuntimeConfig, PathBuf) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-window-model-missing-components-{timestamp}.rfproj.json"
+    ));
+    let mut project = parse_project_file_json(include_str!(
+        "../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected heater project parse");
+    project.document.flowsheet.components.clear();
+    let project_json =
+        project_file_to_pretty_json(&project).expect("expected blocked project json");
+    fs::write(&project_path, project_json).expect("expected blocked project write");
+
+    (
+        StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            untitled_blank_project: None,
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            trigger: StudioRuntimeTrigger::WidgetAction(rf_ui::RunPanelActionId::RunManual),
+        },
+        project_path,
+    )
 }
 
 fn missing_upstream_failure_synced_config() -> StudioRuntimeConfig {
@@ -1597,8 +1672,7 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
             field.key == "unit:heater-1:outlet_temperature_k"
                 && field.label == "Outlet temperature (K)"
                 && field.constraint_text.as_deref().is_some_and(|text| {
-                    text.contains("SI unit: K")
-                        && text.contains("positive finite outlet temperature")
+                    text.contains("Unit K") && text.contains("positive finite outlet temperature")
                 })
                 && field.value_kind_label == "Number"
                 && field.status_label == "Synced"
@@ -1958,8 +2032,8 @@ fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_valve_
         field
             .constraint_text
             .as_deref()
-            .is_some_and(|text| text.contains("SI unit: Pa")
-                && text.contains("cannot exceed the connected inlet pressure")
+            .is_some_and(|text| text.contains("Unit Pa")
+                && text.contains("cannot exceed connected inlet pressure")
                 && text.contains("700000 Pa"))
     );
     assert!(
@@ -1968,7 +2042,7 @@ fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_valve_
                 && notice.message.contains("Outlet pressure (Pa)")
                 && notice
                     .message
-                    .contains("cannot exceed the connected inlet pressure")
+                    .contains("cannot exceed connected inlet pressure")
         }),
         "expected field-specific invalid valve pressure notice"
     );
@@ -2016,8 +2090,8 @@ fn studio_gui_window_model_surfaces_heater_pressure_parameter() {
         pressure
             .constraint_text
             .as_deref()
-            .is_some_and(|text| text.contains("SI unit: Pa")
-                && text.contains("cannot exceed the connected inlet pressure")
+            .is_some_and(|text| text.contains("Unit Pa")
+                && text.contains("cannot exceed connected inlet pressure")
                 && text.contains("120000 Pa"))
     );
 }
@@ -2061,8 +2135,8 @@ fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_heater
         field
             .constraint_text
             .as_deref()
-            .is_some_and(|text| text.contains("SI unit: Pa")
-                && text.contains("cannot exceed the connected inlet pressure")
+            .is_some_and(|text| text.contains("Unit Pa")
+                && text.contains("cannot exceed connected inlet pressure")
                 && text.contains("120000 Pa"))
     );
     assert!(
@@ -2071,14 +2145,14 @@ fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_heater
                 && notice.message.contains("Outlet pressure (Pa)")
                 && notice
                     .message
-                    .contains("cannot exceed the connected inlet pressure")
+                    .contains("cannot exceed connected inlet pressure")
         }),
         "expected field-specific invalid heater pressure notice"
     );
 }
 
 #[test]
-fn studio_gui_window_model_surfaces_flash_drum_pressure_parameter() {
+fn studio_gui_window_model_surfaces_flash_drum_parameters() {
     let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
     driver
@@ -2095,12 +2169,30 @@ fn studio_gui_window_model_surfaces_flash_drum_pressure_parameter() {
         .runtime
         .active_inspector_detail
         .expect("expected active flash inspector detail");
+    let temperature_field = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:flash-1:outlet_temperature_k")
+        .expect("expected flash temperature field");
     let field = detail
         .property_fields
         .iter()
         .find(|field| field.key == "unit:flash-1:outlet_pressure_pa")
         .expect("expected flash pressure field");
 
+    assert_eq!(temperature_field.label, "Flash temperature (K)");
+    assert_eq!(temperature_field.value_kind_label, "Number");
+    assert_eq!(temperature_field.status_label, "Synced");
+    assert_eq!(
+        temperature_field.draft_update_command_id,
+        "inspector.update_stream_draft:unit:flash-1:outlet_temperature_k"
+    );
+    assert!(temperature_field.commit_command_id.is_none());
+    assert!(temperature_field.constraint_text.as_deref().is_some_and(
+        |text| text.contains("Unit K")
+            && text.contains("positive finite flash temperature")
+            && text.contains("liquid/vapor outlet templates")
+    ));
     assert_eq!(field.label, "Flash pressure (Pa)");
     assert_eq!(field.value_kind_label, "Number");
     assert_eq!(field.status_label, "Synced");
@@ -2113,10 +2205,112 @@ fn studio_gui_window_model_surfaces_flash_drum_pressure_parameter() {
         field
             .constraint_text
             .as_deref()
-            .is_some_and(|text| text.contains("SI unit: Pa")
-                && text.contains("positive finite flash outlet pressure")
-                && text.contains("liquid/vapor outlet stream templates")
-                && !text.contains("cannot exceed the connected inlet pressure"))
+            .is_some_and(|text| text.contains("Unit Pa")
+                && text.contains("positive finite flash pressure")
+                && text.contains("liquid/vapor outlet templates")
+                && !text.contains("cannot exceed connected inlet pressure"))
+    );
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_feed_source_parameters() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:feed-1".to_string(),
+        })
+        .expect("expected feed focus dispatch");
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected active feed inspector detail");
+    let temperature_field = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:feed-1:outlet_temperature_k")
+        .expect("expected feed temperature field");
+    let pressure_field = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:feed-1:outlet_pressure_pa")
+        .expect("expected feed pressure field");
+
+    assert_eq!(temperature_field.label, "Source temperature (K)");
+    assert_eq!(temperature_field.value_kind_label, "Number");
+    assert_eq!(temperature_field.status_label, "Synced");
+    assert_eq!(
+        temperature_field.draft_update_command_id,
+        "inspector.update_stream_draft:unit:feed-1:outlet_temperature_k"
+    );
+    assert!(temperature_field.constraint_text.as_deref().is_some_and(
+        |text| text.contains("Unit K")
+            && text.contains("positive finite source outlet temperature")
+            && text.contains("Feed outlet template")
+    ));
+
+    assert_eq!(pressure_field.label, "Source pressure (Pa)");
+    assert_eq!(pressure_field.value_kind_label, "Number");
+    assert_eq!(pressure_field.status_label, "Synced");
+    assert_eq!(
+        pressure_field.draft_update_command_id,
+        "inspector.update_stream_draft:unit:feed-1:outlet_pressure_pa"
+    );
+    assert!(
+        pressure_field
+            .constraint_text
+            .as_deref()
+            .is_some_and(|text| text.contains("Unit Pa")
+                && text.contains("positive finite source outlet pressure")
+                && text.contains("Feed outlet template"))
+    );
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_mixer_pressure_parameter() {
+    let config = synced_example_config("feed-mixer-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:mixer-1".to_string(),
+        })
+        .expect("expected mixer focus dispatch");
+    let detail = dispatch
+        .window
+        .runtime
+        .active_inspector_detail
+        .expect("expected active mixer inspector detail");
+    let field = detail
+        .property_fields
+        .iter()
+        .find(|field| field.key == "unit:mixer-1:outlet_pressure_pa")
+        .expect("expected mixer pressure field");
+
+    assert_eq!(field.label, "Outlet pressure (Pa)");
+    assert_eq!(field.value_kind_label, "Number");
+    assert_eq!(field.status_label, "Synced");
+    assert_eq!(
+        field.draft_update_command_id,
+        "inspector.update_stream_draft:unit:mixer-1:outlet_pressure_pa"
+    );
+    assert!(field.commit_command_id.is_none());
+    assert!(
+        field
+            .constraint_text
+            .as_deref()
+            .is_some_and(|text| text.contains("Unit Pa")
+                && text.contains("positive finite outlet pressure")
+                && text.contains("cannot exceed connected inlet pressure")
+                && text.contains("Inlet limit"))
     );
 }
 
@@ -3350,7 +3544,41 @@ fn studio_gui_window_model_dispatches_official_near_boundary_flash_focus_command
 }
 
 #[test]
-fn studio_gui_window_model_surfaces_failure_result_until_rerun_succeeds() {
+fn studio_gui_window_model_keeps_modeling_readiness_out_of_failure_recovery() {
+    let (config, project_path) = missing_components_blocked_run_synced_config();
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let blocked = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected readiness-blocked run dispatch");
+    let window = blocked.window;
+
+    assert!(
+        window.runtime.latest_failure.is_none(),
+        "blocked modeling input should not materialize as a visible Run Panel failure"
+    );
+    assert!(
+        window.runtime.latest_solve_snapshot.is_none(),
+        "blocked modeling input should stop before a solve snapshot is created"
+    );
+    let recovery_items = window.commands.palette_items("recovery");
+    assert!(
+        recovery_items.iter().any(|item| {
+            item.command_id == "run_panel.recover_failure" && item.label.contains("[disabled]")
+        }),
+        "blocked modeling input must keep Run Panel recovery disabled"
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_failure_result_until_recovery_then_readiness_block() {
     let mut driver =
         StudioGuiDriver::new(&unbound_outlet_failure_synced_config()).expect("expected driver");
     let _ = driver
@@ -3506,21 +3734,41 @@ fn studio_gui_window_model_surfaces_failure_result_until_rerun_succeeds() {
         .dispatch_event(StudioGuiEvent::UiCommandRequested {
             command_id: "run_panel.resume_workspace".to_string(),
         })
-        .expect("expected successful rerun dispatch");
+        .expect("expected readiness rerun dispatch");
 
     assert_eq!(
         rerun.window.runtime.control_state.run_status,
-        rf_ui::RunStatus::Converged
+        rf_ui::RunStatus::Dirty
     );
     assert_eq!(rerun.window.runtime.latest_failure, None);
-    let snapshot = rerun
-        .window
-        .runtime
-        .latest_solve_snapshot
-        .expect("expected solve snapshot after recovery rerun");
-    let inspector = snapshot.result_inspector(None);
-    assert!(inspector.selected_stream.is_some());
-    assert!(!inspector.has_stale_selection);
+    assert!(rerun.window.runtime.latest_solve_snapshot.is_none());
+    assert_eq!(
+        rerun
+            .window
+            .runtime
+            .run_panel
+            .presentation
+            .view
+            .notice
+            .as_ref()
+            .map(|notice| (notice.level, notice.title.as_str())),
+        Some((
+            rf_ui::RunPanelNoticeLevel::Warning,
+            "Model inputs are not ready"
+        ))
+    );
+    assert!(
+        rerun
+            .window
+            .runtime
+            .run_panel
+            .presentation
+            .view
+            .notice
+            .as_ref()
+            .map(|notice| notice.message.contains("positive finite"))
+            .unwrap_or(false)
+    );
 }
 
 #[test]

@@ -130,6 +130,30 @@ fn open_project_from_input_rebuilds_runtime_and_records_feedback() {
 fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
     let cases = [
         UnitParameterShellCase {
+            name: "feed-temperature",
+            project_json: include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            unit_id: "feed-1",
+            draft_key: "unit:feed-1:outlet_temperature_k",
+            raw_value: "310",
+            expected_value: 310.0,
+            outlet_stream_ids: &["stream-feed"],
+            field: UnitParameterShellField::OutletTemperatureK,
+        },
+        UnitParameterShellCase {
+            name: "feed-pressure",
+            project_json: include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            unit_id: "feed-1",
+            draft_key: "unit:feed-1:outlet_pressure_pa",
+            raw_value: "130000",
+            expected_value: 130_000.0,
+            outlet_stream_ids: &["stream-feed"],
+            field: UnitParameterShellField::OutletPressurePa,
+        },
+        UnitParameterShellCase {
             name: "heater",
             project_json: include_str!(
                 "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
@@ -178,6 +202,18 @@ fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
             field: UnitParameterShellField::OutletPressurePa,
         },
         UnitParameterShellCase {
+            name: "mixer-pressure",
+            project_json: include_str!(
+                "../../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            unit_id: "mixer-1",
+            draft_key: "unit:mixer-1:outlet_pressure_pa",
+            raw_value: "640000",
+            expected_value: 640_000.0,
+            outlet_stream_ids: &["stream-mix-out"],
+            field: UnitParameterShellField::OutletPressurePa,
+        },
+        UnitParameterShellCase {
             name: "valve",
             project_json: include_str!(
                 "../../../../../examples/flowsheets/feed-valve-flash-binary-hydrocarbon.rfproj.json"
@@ -190,7 +226,19 @@ fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
             field: UnitParameterShellField::OutletPressurePa,
         },
         UnitParameterShellCase {
-            name: "flash",
+            name: "flash-temperature",
+            project_json: include_str!(
+                "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+            ),
+            unit_id: "flash-1",
+            draft_key: "unit:flash-1:outlet_temperature_k",
+            raw_value: "335",
+            expected_value: 335.0,
+            outlet_stream_ids: &["stream-liquid", "stream-vapor"],
+            field: UnitParameterShellField::OutletTemperatureK,
+        },
+        UnitParameterShellCase {
+            name: "flash-pressure",
             project_json: include_str!(
                 "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
             ),
@@ -283,6 +331,367 @@ fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
     }
 }
 
+#[test]
+fn property_package_selection_saves_reopens_and_preferred_run_uses_selection() {
+    let project_path = temporary_project_path("property-package-selection");
+    let mut project = rf_store::parse_project_file_json(include_str!(
+        "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected heater flash project fixture");
+    project
+        .document
+        .flowsheet
+        .set_property_package_id(Some("legacy-package".to_string()))
+        .expect("expected legacy package marker");
+    write_project_file(&project_path, &project).expect("expected temp project write");
+    let config = StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..synced_workspace_config()
+    };
+    let mut app = ready_app_state(&config);
+
+    let opened = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        opened
+            .runtime
+            .workspace_document
+            .property_package_id
+            .as_deref(),
+        Some("legacy-package")
+    );
+    let command_id = opened
+        .runtime
+        .workspace_document
+        .property_package_choices
+        .iter()
+        .find(|choice| choice.package_id == "binary-hydrocarbon-lite-v1")
+        .expect("expected built-in package choice")
+        .command_id
+        .clone();
+
+    app.dispatch_ui_command(command_id);
+    let selected = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        selected
+            .runtime
+            .workspace_document
+            .property_package_id
+            .as_deref(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert!(selected.runtime.workspace_document.has_unsaved_changes);
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    assert_eq!(
+        saved.document.flowsheet.property_package_id(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+
+    app.open_project(project_path.clone(), "project");
+    let reopened = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        reopened
+            .runtime
+            .workspace_document
+            .property_package_id
+            .as_deref(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert!(!reopened.runtime.workspace_document.has_unsaved_changes);
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        rerun.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    assert!(
+        rerun
+            .runtime
+            .control_state
+            .latest_log_entry
+            .as_ref()
+            .map(|entry| entry
+                .message
+                .contains("with property package `binary-hydrocarbon-lite-v1`"))
+            .unwrap_or(false),
+        "Preferred run should use the flowsheet package selection"
+    );
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn project_component_selection_saves_reopens_and_feeds_composition_choices() {
+    let project_path = temporary_project_path("project-component-selection");
+    let mut project = rf_store::parse_project_file_json(include_str!(
+        "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected heater flash project fixture");
+    project.document.flowsheet.components.clear();
+    for stream in project.document.flowsheet.streams.values_mut() {
+        stream.overall_mole_fractions.clear();
+    }
+    write_project_file(&project_path, &project).expect("expected temp project write");
+    let config = StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..synced_workspace_config()
+    };
+    let mut app = ready_app_state(&config);
+
+    let opened = app.platform_host.snapshot().window_model();
+    for component_id in ["methane", "ethane"] {
+        let choice = opened
+            .runtime
+            .workspace_document
+            .project_component_choices
+            .iter()
+            .find(|choice| choice.component_id == component_id)
+            .unwrap_or_else(|| panic!("expected {component_id} component choice"));
+        assert!(!choice.selected);
+        app.dispatch_ui_command(choice.select_command_id.clone());
+    }
+
+    app.dispatch_ui_command("inspector.focus_stream:stream-feed");
+    for component_id in ["methane", "ethane"] {
+        let window = app.platform_host.snapshot().window_model();
+        let detail = window
+            .runtime
+            .active_inspector_detail
+            .as_ref()
+            .expect("expected active stream inspector");
+        let command_id = detail
+            .property_composition_component_actions
+            .iter()
+            .find(|action| action.component_id == component_id)
+            .unwrap_or_else(|| panic!("expected {component_id} composition action"))
+            .action
+            .command_id
+            .clone();
+        app.dispatch_inspector_composition_component_add(command_id);
+    }
+
+    let edited = app.platform_host.snapshot().window_model();
+    assert!(edited.runtime.workspace_document.has_unsaved_changes);
+    assert!(
+        edited
+            .runtime
+            .workspace_document
+            .project_component_choices
+            .iter()
+            .filter(|choice| choice.selected)
+            .map(|choice| choice.component_id.as_str())
+            .eq(["methane", "ethane"].into_iter())
+    );
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    assert!(
+        saved
+            .document
+            .flowsheet
+            .components
+            .contains_key(&rf_types::ComponentId::new("methane"))
+    );
+    assert!(
+        saved
+            .document
+            .flowsheet
+            .components
+            .contains_key(&rf_types::ComponentId::new("ethane"))
+    );
+    let feed = &saved.document.flowsheet.streams[&rf_types::StreamId::new("stream-feed")];
+    assert_eq!(
+        feed.overall_mole_fractions[&rf_types::ComponentId::new("methane")],
+        1.0
+    );
+    assert_eq!(
+        feed.overall_mole_fractions[&rf_types::ComponentId::new("ethane")],
+        0.0
+    );
+
+    app.open_project(project_path.clone(), "project");
+    let reopened = app.platform_host.snapshot().window_model();
+    assert!(!reopened.runtime.workspace_document.has_unsaved_changes);
+    assert!(
+        reopened
+            .runtime
+            .workspace_document
+            .project_component_choices
+            .iter()
+            .filter(|choice| choice.selected)
+            .map(|choice| choice.component_id.as_str())
+            .eq(["methane", "ethane"].into_iter())
+    );
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        rerun.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn feed_composition_drafts_normalize_save_reopen_and_rerun_official_case() {
+    let project_path = temporary_project_path("feed-composition-input");
+    let project = rf_store::parse_project_file_json(include_str!(
+        "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .expect("expected heater flash project fixture");
+    write_project_file(&project_path, &project).expect("expected temp project write");
+    let config = StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..synced_workspace_config()
+    };
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("inspector.focus_stream:stream-feed");
+    for (component_id, raw_value) in [("methane", "0.2"), ("ethane", "0.6")] {
+        app.dispatch_inspector_field_draft_update(
+            radishflow_studio::inspector_draft_update_command_id(&format!(
+                "stream:stream-feed:overall_mole_fraction:{component_id}"
+            )),
+            raw_value,
+        );
+    }
+
+    let draft_window = app.platform_host.snapshot().window_model();
+    let detail = draft_window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected feed stream inspector");
+    assert_eq!(
+        detail
+            .property_composition_summary
+            .as_ref()
+            .map(|summary| summary.status_label),
+        Some("Draft")
+    );
+    let normalize_command_id = detail
+        .property_composition_normalize_command_id
+        .clone()
+        .expect("expected composition normalize command");
+
+    app.dispatch_inspector_composition_normalize(normalize_command_id);
+    let normalized = app.platform_host.snapshot().window_model();
+    assert!(normalized.runtime.workspace_document.has_unsaved_changes);
+
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    let saved_feed = &saved.document.flowsheet.streams[&rf_types::StreamId::new("stream-feed")];
+    assert_close(
+        saved_feed.overall_mole_fractions[&rf_types::ComponentId::new("methane")],
+        0.25,
+    );
+    assert_close(
+        saved_feed.overall_mole_fractions[&rf_types::ComponentId::new("ethane")],
+        0.75,
+    );
+
+    app.open_project(project_path.clone(), "project");
+    let reopened = app.platform_host.snapshot().window_model();
+    assert!(!reopened.runtime.workspace_document.has_unsaved_changes);
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        rerun.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    let feed_result = rerun
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected solve snapshot")
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-feed")
+        .expect("expected feed stream result");
+    assert_stream_fraction(feed_result, "methane", 0.25);
+    assert_stream_fraction(feed_result, "ethane", 0.75);
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
+fn selected_stream_reconnect_saves_reopens_and_reruns_official_case() {
+    let project_path = temporary_project_path("selected-stream-reconnect");
+    let project = feed_heater_flash_binary_hydrocarbon_project();
+    write_project_file(&project_path, &project).expect("expected temp project write");
+    let config = StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..synced_workspace_config()
+    };
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("inspector.focus_stream:stream-heated");
+    app.dispatch_ui_command("canvas.disconnect_selected_stream_sink");
+    let disconnected = app.platform_host.snapshot().window_model();
+    assert!(disconnected.runtime.workspace_document.has_unsaved_changes);
+    let reconnect_action = disconnected
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected stream inspector detail")
+        .connection_actions
+        .iter()
+        .find(|action| action.command_id == "canvas.reconnect_selected_stream")
+        .expect("expected reconnect action");
+    assert!(reconnect_action.enabled);
+    assert!(
+        reconnect_action
+            .hover_text
+            .contains("only available material inlet `flash-1:inlet`"),
+        "expected unique flash inlet reconnect detail, got {reconnect_action:?}"
+    );
+
+    app.dispatch_ui_command("canvas.reconnect_selected_stream");
+    app.save_project();
+    let saved = read_project_file(&project_path).expect("expected saved project read");
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "heater-1", "outlet"),
+        Some("stream-heated")
+    );
+    assert_eq!(
+        stored_unit_port_stream_id(&saved, "flash-1", "inlet"),
+        Some("stream-heated")
+    );
+
+    app.open_project(project_path.clone(), "project");
+    let reopened = app.platform_host.snapshot().window_model();
+    assert!(!reopened.runtime.workspace_document.has_unsaved_changes);
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        rerun.runtime.control_state.run_status,
+        rf_ui::RunStatus::Converged
+    );
+    let flash_step = rerun
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected solve snapshot")
+        .steps
+        .iter()
+        .find(|step| step.unit_id == "flash-1")
+        .expect("expected flash step");
+    assert!(
+        flash_step
+            .consumed_stream_results
+            .iter()
+            .any(|stream| stream.stream_id == "stream-heated"),
+        "Flash Drum should consume the reconnected heater outlet stream"
+    );
+
+    let _ = std::fs::remove_file(project_path);
+}
+
 #[derive(Debug, Clone, Copy)]
 struct UnitParameterShellCase {
     name: &'static str,
@@ -309,6 +718,26 @@ fn temporary_project_path(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
         "radishflow-studio-shell-unit-parameter-{name}-{timestamp}.rfproj.json"
     ))
+}
+
+fn assert_stream_fraction(
+    stream: &radishflow_studio::StudioGuiWindowStreamResultModel,
+    component_id: &str,
+    expected: f64,
+) {
+    let row = stream
+        .composition_rows
+        .iter()
+        .find(|row| row.component_id == component_id)
+        .unwrap_or_else(|| panic!("expected {component_id} composition row"));
+    assert_close(row.fraction, expected);
+}
+
+fn assert_close(actual: f64, expected: f64) {
+    assert!(
+        (actual - expected).abs() <= 1e-12,
+        "expected {actual} to equal {expected}"
+    );
 }
 
 fn assert_saved_unit_parameter(project: &StoredProjectFile, case: UnitParameterShellCase) {
@@ -467,7 +896,24 @@ fn create_blank_project_opens_untitled_blank_workspace_without_picker() {
     assert_eq!(window.runtime.workspace_document.project_path, None);
     assert!(
         window.runtime.workspace_document.has_unsaved_changes,
-        "bootstrap should mark the default blank thermo basis as an explicit unsaved project edit"
+        "untitled blank projects still need Save As even before semantic edits"
+    );
+    assert_eq!(
+        window
+            .runtime
+            .workspace_document
+            .property_package_id
+            .as_deref(),
+        None
+    );
+    assert!(
+        window
+            .runtime
+            .workspace_document
+            .project_component_choices
+            .iter()
+            .all(|choice| !choice.selected),
+        "blank projects should expose component choices without preselecting them"
     );
     assert_eq!(window.runtime.workspace_document.unit_count, 0);
     assert_eq!(window.runtime.workspace_document.stream_count, 0);
@@ -741,14 +1187,8 @@ fn closing_dirty_workspace_requires_explicit_confirmation() {
     assert!(app.project_open.pending_close_window_confirmation.is_some());
     assert_eq!(
         app.project_open.notice.as_ref().map(|notice| notice.level),
-        Some(ProjectOpenNoticeLevel::Warning)
-    );
-    assert_eq!(
-        app.project_open
-            .notice
-            .as_ref()
-            .map(|notice| notice.title.as_str()),
-        Some("未保存更改")
+        None,
+        "close confirmation should be rendered as a dialog instead of a top notice"
     );
 
     let _ = std::fs::remove_file(project_path);

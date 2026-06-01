@@ -121,6 +121,8 @@ impl ReadyAppState {
             });
         } else if let Some(failure) = window.runtime.latest_failure.as_ref() {
             self.render_latest_failure_summary(ui, failure);
+        } else if let Some(stale_snapshot) = window.runtime.stale_solve_snapshot.as_ref() {
+            self.render_stale_solve_snapshot_notice(ui, stale_snapshot);
         } else {
             ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
         }
@@ -330,11 +332,32 @@ impl ReadyAppState {
 
         egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.set_width(ui.available_width());
+            let current_package_id = window
+                .runtime
+                .workspace_document
+                .property_package_id
+                .as_deref()
+                .unwrap_or("unselected");
             ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new("binary-hydrocarbon-lite-v1").strong());
+                ui.label(egui::RichText::new(current_package_id).strong());
                 render_status_chip(
                     ui,
-                    self.locale.runtime_label("Ready").as_ref(),
+                    match self.locale {
+                        StudioShellLocale::En => {
+                            if current_package_id == "unselected" {
+                                "Unselected"
+                            } else {
+                                "Selected"
+                            }
+                        }
+                        StudioShellLocale::ZhCn => {
+                            if current_package_id == "unselected" {
+                                "未选择"
+                            } else {
+                                "已选择"
+                            }
+                        }
+                    },
                     egui::Color32::from_rgb(66, 118, 92),
                 );
             });
@@ -342,9 +365,9 @@ impl ReadyAppState {
                 ui,
                 match self.locale {
                     StudioShellLocale::En => {
-                        "Local binary hydrocarbon package used by the bundled examples."
+                        "Choose the built-in property package stored in the current flowsheet."
                     }
-                    StudioShellLocale::ZhCn => "本地二元烃物性包，用于内置示例和当前工作台。",
+                    StudioShellLocale::ZhCn => "选择写入当前 flowsheet 的内置物性包。",
                 },
             );
             ui.add_space(4.0);
@@ -356,7 +379,15 @@ impl ReadyAppState {
                         StudioShellLocale::En => "Components",
                         StudioShellLocale::ZhCn => "组分",
                     });
-                    ui.small("Methane, Ethane");
+                    let component_summary = window
+                        .runtime
+                        .workspace_document
+                        .property_package_choices
+                        .iter()
+                        .find(|choice| choice.selected)
+                        .map(|choice| choice.component_summary.as_str())
+                        .unwrap_or("-");
+                    ui.small(component_summary);
                     ui.end_row();
 
                     ui.small(match self.locale {
@@ -383,6 +414,102 @@ impl ReadyAppState {
                     ui.small(window.runtime.example_projects.len().to_string());
                     ui.end_row();
                 });
+        });
+
+        ui.add_space(8.0);
+        for choice in &window.runtime.workspace_document.property_package_choices {
+            let label = match self.locale {
+                StudioShellLocale::En => choice.label.as_str().to_string(),
+                StudioShellLocale::ZhCn => match choice.package_id.as_str() {
+                    "binary-hydrocarbon-lite-v1" => "二元烃 Lite".to_string(),
+                    _ => choice.label.clone(),
+                },
+            };
+            let response = ui
+                .add_enabled(
+                    choice.enabled,
+                    egui::Button::new(label)
+                        .selected(choice.selected)
+                        .min_size(egui::vec2(ui.available_width(), 30.0)),
+                )
+                .on_hover_text(&choice.detail);
+            render_wrapped_small(ui, &choice.package_id);
+            render_wrapped_small(ui, &choice.component_summary);
+            if response.clicked() {
+                self.dispatch_ui_command(&choice.command_id);
+            }
+            ui.add_space(6.0);
+        }
+
+        ui.add_space(4.0);
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.label(egui::RichText::new(match self.locale {
+                StudioShellLocale::En => "Project components",
+                StudioShellLocale::ZhCn => "项目组分",
+            }).strong());
+            render_wrapped_small(
+                ui,
+                match self.locale {
+                    StudioShellLocale::En => {
+                        "Choose from the controlled built-in component catalog stored in the current flowsheet."
+                    }
+                    StudioShellLocale::ZhCn => "从受控内置组分目录选择写入当前 flowsheet 的项目组分。",
+                },
+            );
+            ui.add_space(4.0);
+            for component in &window.runtime.workspace_document.project_component_choices {
+                ui.horizontal(|ui| {
+                    let status = if component.selected {
+                        match self.locale {
+                            StudioShellLocale::En => "Selected",
+                            StudioShellLocale::ZhCn => "已选择",
+                        }
+                    } else {
+                        match self.locale {
+                            StudioShellLocale::En => "Available",
+                            StudioShellLocale::ZhCn => "可选",
+                        }
+                    };
+                    ui.label(egui::RichText::new(&component.name).strong());
+                    if let Some(formula) = component.formula.as_ref() {
+                        ui.small(formula);
+                    }
+                    ui.small(status);
+                });
+
+                if component.selected {
+                    let remove_label = match self.locale {
+                        StudioShellLocale::En => "Remove",
+                        StudioShellLocale::ZhCn => "移除",
+                    };
+                    if ui
+                        .add_enabled(
+                            component.remove_enabled,
+                            egui::Button::new(remove_label)
+                                .min_size(egui::vec2(ui.available_width(), 28.0)),
+                        )
+                        .on_hover_text(&component.remove_detail)
+                        .clicked()
+                    {
+                        self.dispatch_ui_command(&component.remove_command_id);
+                    }
+                } else {
+                    let select_label = match self.locale {
+                        StudioShellLocale::En => "Select",
+                        StudioShellLocale::ZhCn => "选择",
+                    };
+                    if ui
+                        .button(select_label)
+                        .on_hover_text(&component.component_id)
+                        .clicked()
+                    {
+                        self.dispatch_ui_command(&component.select_command_id);
+                    }
+                }
+                render_wrapped_small(ui, &component.component_id);
+                ui.add_space(6.0);
+            }
         });
 
         if let Some(entitlement_host) = window.runtime.entitlement_host.as_ref() {
@@ -456,6 +583,29 @@ impl ReadyAppState {
         if !failure.diagnostic_actions.is_empty() {
             self.render_diagnostic_target_actions(ui, &failure.diagnostic_actions);
         }
+    }
+
+    pub(in crate::studio_gui_shell) fn render_stale_solve_snapshot_notice(
+        &self,
+        ui: &mut egui::Ui,
+        stale_snapshot: &radishflow_studio::StudioGuiWindowStaleSolveSnapshotModel,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            render_status_chip(
+                ui,
+                self.locale.runtime_label("dirty").as_ref(),
+                run_status_color("dirty"),
+            );
+            ui.label(egui::RichText::new(self.locale.stale_solve_snapshot_title()).strong());
+        });
+        ui.colored_label(
+            notice_color(rf_ui::RunPanelNoticeLevel::Warning),
+            self.locale.stale_solve_snapshot_detail(
+                &stale_snapshot.snapshot_id,
+                stale_snapshot.snapshot_document_revision,
+                stale_snapshot.current_document_revision,
+            ),
+        );
     }
 
     pub(in crate::studio_gui_shell) fn render_runtime_area_contents(
@@ -696,34 +846,6 @@ impl ReadyAppState {
                     }
                 });
             }
-            if self
-                .project_open
-                .pending_close_window_confirmation
-                .is_some()
-            {
-                ui.horizontal_wrapped(|ui| {
-                    if ui
-                        .button(self.locale.text(ShellText::SaveAndCloseProject))
-                        .clicked()
-                        && self.save_pending_close_window()
-                    {
-                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-                    }
-                    if ui
-                        .button(self.locale.text(ShellText::DiscardAndCloseProject))
-                        .clicked()
-                        && self.confirm_pending_close_window()
-                    {
-                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-                    }
-                    if ui
-                        .button(self.locale.text(ShellText::CancelCloseProject))
-                        .clicked()
-                    {
-                        self.cancel_pending_close_window();
-                    }
-                });
-            }
             if self.project_open.pending_blank_project_confirmation {
                 ui.horizontal_wrapped(|ui| {
                     if ui
@@ -900,6 +1022,8 @@ impl ReadyAppState {
                 if !failure.diagnostic_actions.is_empty() {
                     self.render_diagnostic_target_actions(ui, &failure.diagnostic_actions);
                 }
+            } else if let Some(stale_snapshot) = window.runtime.stale_solve_snapshot.as_ref() {
+                self.render_stale_solve_snapshot_notice(ui, stale_snapshot);
             } else {
                 ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
             }
@@ -1239,7 +1363,7 @@ impl ReadyAppState {
         ui.add_space(8.0);
     }
 
-    fn render_unit_execution_result_inspector(
+    pub(in crate::studio_gui_shell) fn render_unit_execution_result_inspector(
         &mut self,
         ui: &mut egui::Ui,
         unit: &radishflow_studio::StudioGuiWindowUnitExecutionResultModel,
@@ -1385,7 +1509,15 @@ impl ReadyAppState {
                 ui.small(egui::RichText::new("Connections").strong());
                 for action in &detail.connection_actions {
                     if ui
-                        .small_button(self.locale.runtime_label(&action.label).as_ref())
+                        .add_enabled(
+                            action.enabled,
+                            egui::Button::new(
+                                egui::RichText::new(
+                                    self.locale.runtime_label(&action.label).as_ref(),
+                                )
+                                .small(),
+                            ),
+                        )
                         .on_hover_text(self.locale.runtime_label(&action.hover_text).as_ref())
                         .clicked()
                     {
@@ -1481,137 +1613,9 @@ impl ReadyAppState {
                     }
                 });
             }
-            egui::Grid::new(format!("inspector-fields:{}", detail.target.command_id))
-                .num_columns(5)
-                .spacing([8.0, 3.0])
-                .show(ui, |ui| {
-                    ui.small(
-                        egui::RichText::new(self.locale.text(ShellText::InspectorFieldName))
-                            .strong(),
-                    );
-                    ui.small(
-                        egui::RichText::new(self.locale.text(ShellText::InspectorFieldKind))
-                            .strong(),
-                    );
-                    ui.small(
-                        egui::RichText::new(self.locale.text(ShellText::InspectorFieldValue))
-                            .strong(),
-                    );
-                    ui.small(
-                        egui::RichText::new(self.locale.text(ShellText::InspectorFieldStatus))
-                            .strong(),
-                    );
-                    ui.small(
-                        egui::RichText::new(self.locale.text(ShellText::InspectorFieldAction))
-                            .strong(),
-                    );
-                    ui.end_row();
-                    for field in &detail.property_fields {
-                        ui.vertical(|ui| {
-                            render_wrapped_small(ui, &field.label);
-                            if let Some(constraint_text) = field.constraint_text.as_ref() {
-                                ui.small(egui::RichText::new(constraint_text).weak());
-                            }
-                        });
-                        render_wrapped_small(
-                            ui,
-                            self.locale.runtime_label(field.value_kind_label).as_ref(),
-                        );
-                        let mut draft_value = field.current_value.clone();
-                        let response = ui
-                            .add_sized([150.0, 22.0], egui::TextEdit::singleline(&mut draft_value));
-                        if response.changed() {
-                            self.dispatch_inspector_field_draft_update(
-                                field.draft_update_command_id.clone(),
-                                draft_value,
-                            );
-                        }
-                        let submit_on_enter = response.lost_focus()
-                            && ui.input(|input| {
-                                input.key_pressed(egui::Key::Enter)
-                                    && input.modifiers == egui::Modifiers::NONE
-                            });
-                        render_status_chip(
-                            ui,
-                            self.locale.runtime_label(field.status_label).as_ref(),
-                            inspector_field_status_color(field.status_label),
-                        );
-                        if let Some(command_id) = field.commit_command_id.as_ref() {
-                            ui.horizontal_wrapped(|ui| {
-                                if submit_on_enter
-                                    || ui
-                                        .small_button(
-                                            self.locale.text(ShellText::InspectorFieldApply),
-                                        )
-                                        .clicked()
-                                {
-                                    self.dispatch_inspector_field_draft_commit(command_id.clone());
-                                }
-                                if let Some(discard_command_id) = field.discard_command_id.as_ref()
-                                {
-                                    if ui
-                                        .small_button(
-                                            self.locale.text(ShellText::InspectorFieldDiscard),
-                                        )
-                                        .clicked()
-                                    {
-                                        self.dispatch_inspector_field_draft_discard(
-                                            discard_command_id.clone(),
-                                        );
-                                    }
-                                }
-                                if let Some(remove_command_id) = field.remove_command_id.as_ref() {
-                                    if ui
-                                        .small_button(
-                                            self.locale.text(
-                                                ShellText::InspectorRemoveCompositionComponent,
-                                            ),
-                                        )
-                                        .clicked()
-                                    {
-                                        self.dispatch_inspector_composition_component_remove(
-                                            remove_command_id.clone(),
-                                        );
-                                    }
-                                }
-                            });
-                        } else if field.discard_command_id.is_some()
-                            || field.remove_command_id.is_some()
-                        {
-                            ui.horizontal_wrapped(|ui| {
-                                if let Some(command_id) = field.discard_command_id.as_ref() {
-                                    if ui
-                                        .small_button(
-                                            self.locale.text(ShellText::InspectorFieldDiscard),
-                                        )
-                                        .clicked()
-                                    {
-                                        self.dispatch_inspector_field_draft_discard(
-                                            command_id.clone(),
-                                        );
-                                    }
-                                }
-                                if let Some(remove_command_id) = field.remove_command_id.as_ref() {
-                                    if ui
-                                        .small_button(
-                                            self.locale.text(
-                                                ShellText::InspectorRemoveCompositionComponent,
-                                            ),
-                                        )
-                                        .clicked()
-                                    {
-                                        self.dispatch_inspector_composition_component_remove(
-                                            remove_command_id.clone(),
-                                        );
-                                    }
-                                }
-                            });
-                        } else {
-                            ui.small("-");
-                        }
-                        ui.end_row();
-                    }
-                });
+            for field in &detail.property_fields {
+                self.render_inspector_property_field(ui, field);
+            }
         }
 
         if !detail.unit_ports.is_empty() {
@@ -1644,7 +1648,10 @@ impl ReadyAppState {
                         render_wrapped_small(ui, &port.direction);
                         render_wrapped_small(ui, &port.kind);
                         match (&port.stream_id, &port.stream_action) {
-                            (_, Some(action)) => {
+                            (Some(stream_id), Some(action)) => {
+                                self.render_port_stream_action(ui, stream_id, action);
+                            }
+                            (None, Some(action)) => {
                                 let _ = self.render_small_command_action(ui, action);
                             }
                             (Some(stream_id), None) => render_wrapped_small(ui, stream_id),
@@ -1722,6 +1729,82 @@ impl ReadyAppState {
                     ui.add_space(4.0);
                 }
             });
+        }
+    }
+
+    fn render_inspector_property_field(
+        &mut self,
+        ui: &mut egui::Ui,
+        field: &radishflow_studio::StudioGuiWindowInspectorTargetFieldModel,
+    ) {
+        ui.add_space(6.0);
+        ui.horizontal_wrapped(|ui| {
+            ui.label(egui::RichText::new(inspector_field_label(self.locale, field)).strong());
+            render_status_chip(
+                ui,
+                self.locale.runtime_label(field.status_label).as_ref(),
+                inspector_field_status_color(field.status_label),
+            );
+            ui.small(self.locale.runtime_label(field.value_kind_label).as_ref());
+        });
+
+        ui.horizontal_wrapped(|ui| {
+            let input_width = (ui.available_width() * 0.58).clamp(120.0, 240.0);
+            let mut draft_value = field.current_value.clone();
+            let response = ui.add_sized(
+                [input_width, 24.0],
+                egui::TextEdit::singleline(&mut draft_value)
+                    .id_salt(format!("inspector-property-field:{}", field.key)),
+            );
+            if response.changed() {
+                self.dispatch_inspector_field_draft_update(
+                    field.draft_update_command_id.clone(),
+                    draft_value,
+                );
+            }
+            let submit_on_enter = response.lost_focus()
+                && ui.input(|input| {
+                    input.key_pressed(egui::Key::Enter) && input.modifiers == egui::Modifiers::NONE
+                });
+            if let Some(unit_label) = inspector_field_unit_label(field) {
+                ui.small(egui::RichText::new(unit_label).strong());
+            }
+
+            if let Some(command_id) = field.commit_command_id.as_ref() {
+                if submit_on_enter
+                    || ui
+                        .small_button(self.locale.text(ShellText::InspectorFieldApply))
+                        .clicked()
+                {
+                    self.dispatch_inspector_field_draft_commit(command_id.clone());
+                }
+            }
+            if let Some(command_id) = field.discard_command_id.as_ref() {
+                if ui
+                    .small_button(self.locale.text(ShellText::InspectorFieldDiscard))
+                    .clicked()
+                {
+                    self.dispatch_inspector_field_draft_discard(command_id.clone());
+                }
+            }
+            if let Some(remove_command_id) = field.remove_command_id.as_ref() {
+                if ui
+                    .small_button(
+                        self.locale
+                            .text(ShellText::InspectorRemoveCompositionComponent),
+                    )
+                    .clicked()
+                {
+                    self.dispatch_inspector_composition_component_remove(remove_command_id.clone());
+                }
+            }
+        });
+
+        if let Some(constraint_text) = field.constraint_text.as_ref() {
+            render_wrapped_small(
+                ui,
+                localized_inspector_constraint(self.locale, constraint_text).as_ref(),
+            );
         }
     }
 
@@ -2199,6 +2282,25 @@ impl ReadyAppState {
         response
     }
 
+    fn render_port_stream_action(
+        &mut self,
+        ui: &mut egui::Ui,
+        stream_id: &str,
+        action: &radishflow_studio::StudioGuiWindowCommandActionModel,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            render_wrapped_small(ui, stream_id);
+            let label = match self.locale {
+                StudioShellLocale::En => "Open stream",
+                StudioShellLocale::ZhCn => "打开流股",
+            };
+            let response = ui.small_button(label).on_hover_text(&action.hover_text);
+            if response.clicked() {
+                self.dispatch_ui_command(&action.command_id);
+            }
+        });
+    }
+
     fn localized_command_action_label<'a>(
         &'a self,
         action: &'a radishflow_studio::StudioGuiWindowCommandActionModel,
@@ -2238,5 +2340,82 @@ impl ReadyAppState {
             }
         }
         std::borrow::Cow::Borrowed(summary)
+    }
+}
+
+fn inspector_field_label<'a>(
+    locale: StudioShellLocale,
+    field: &'a radishflow_studio::StudioGuiWindowInspectorTargetFieldModel,
+) -> std::borrow::Cow<'a, str> {
+    if matches!(locale, StudioShellLocale::ZhCn) {
+        match field.label.as_str() {
+            "Source temperature (K)" => return std::borrow::Cow::Borrowed("源温度"),
+            "Source pressure (Pa)" => return std::borrow::Cow::Borrowed("源压力"),
+            "Outlet temperature (K)" => return std::borrow::Cow::Borrowed("出口温度"),
+            "Outlet pressure (Pa)" => return std::borrow::Cow::Borrowed("出口压力"),
+            "Flash temperature (K)" => return std::borrow::Cow::Borrowed("闪蒸温度"),
+            "Flash pressure (Pa)" => return std::borrow::Cow::Borrowed("闪蒸压力"),
+            "Temperature (K)" => return std::borrow::Cow::Borrowed("温度"),
+            "Pressure (Pa)" => return std::borrow::Cow::Borrowed("压力"),
+            "Total molar flow (mol/s)" => return std::borrow::Cow::Borrowed("总摩尔流量"),
+            "Name" => return std::borrow::Cow::Borrowed("名称"),
+            _ => {}
+        }
+    }
+
+    if let Some((label, _unit)) = field.label.rsplit_once(" (") {
+        return std::borrow::Cow::Owned(label.to_string());
+    }
+    std::borrow::Cow::Borrowed(field.label.as_str())
+}
+
+fn inspector_field_unit_label(
+    field: &radishflow_studio::StudioGuiWindowInspectorTargetFieldModel,
+) -> Option<&str> {
+    field
+        .label
+        .rsplit_once(" (")
+        .and_then(|(_, unit)| unit.strip_suffix(')'))
+}
+
+fn localized_inspector_constraint<'a>(
+    locale: StudioShellLocale,
+    text: &'a str,
+) -> std::borrow::Cow<'a, str> {
+    if !matches!(locale, StudioShellLocale::ZhCn) {
+        return std::borrow::Cow::Borrowed(text);
+    }
+
+    match text {
+        "Unit K; positive finite source outlet temperature; commit syncs the Feed outlet template." => {
+            std::borrow::Cow::Borrowed("单位 K；输入正数，提交后同步 Feed outlet。")
+        }
+        "Unit K; positive finite flash temperature; commit syncs liquid/vapor outlet templates." => {
+            std::borrow::Cow::Borrowed("单位 K；输入正数，提交后同步液相 / 气相出口。")
+        }
+        "Unit K; positive finite outlet temperature; commit syncs the outlet stream template." => {
+            std::borrow::Cow::Borrowed("单位 K；输入正数，提交后同步出口流股。")
+        }
+        "Unit Pa; positive finite source outlet pressure; commit syncs the Feed outlet template." => {
+            std::borrow::Cow::Borrowed("单位 Pa；输入正数，提交后同步 Feed outlet。")
+        }
+        "Unit Pa; positive finite flash pressure; commit syncs liquid/vapor outlet templates." => {
+            std::borrow::Cow::Borrowed("单位 Pa；输入正数，提交后同步液相 / 气相出口。")
+        }
+        _ => {
+            if let Some(limit) = text.strip_prefix(
+                "Unit Pa; positive finite outlet pressure; cannot exceed connected inlet pressure. Inlet limit: ",
+            ) {
+                return std::borrow::Cow::Owned(format!(
+                    "单位 Pa；输入正数，不能高于已连接入口压力。入口上限: {limit}"
+                ));
+            }
+            if text
+                == "Unit Pa; positive finite outlet pressure; cannot exceed connected inlet pressure."
+            {
+                return std::borrow::Cow::Borrowed("单位 Pa；输入正数，不能高于已连接入口压力。");
+            }
+            std::borrow::Cow::Borrowed(text)
+        }
     }
 }

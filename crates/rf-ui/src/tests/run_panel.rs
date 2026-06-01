@@ -687,6 +687,64 @@ fn recording_unit_parameter_failure_targets_related_port() {
 }
 
 #[test]
+fn recording_stream_input_failure_targets_related_stream() {
+    let mut app_state = AppState::new(sample_document());
+    let summary = DiagnosticSummary::new(
+        0,
+        DiagnosticSeverity::Error,
+        "solver.step.stream_input: solver step 2 stream input validation failed",
+    )
+    .with_primary_code("solver.step.stream_input")
+    .with_related_unit_ids(vec![UnitId::new("heater-1")])
+    .with_related_stream_ids(vec![StreamId::new("stream-feed")])
+    .with_related_port_targets(vec![DiagnosticPortTarget::new("heater-1", "inlet")]);
+
+    app_state.record_failure(0, RunStatus::Error, summary);
+
+    assert_eq!(
+        app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        Some("Stream input invalid")
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .run_panel
+            .notice
+            .as_ref()
+            .and_then(|notice| notice.recovery_action.as_ref())
+            .map(|action| {
+                (
+                    action.title,
+                    action.detail,
+                    action
+                        .target_stream_id
+                        .as_ref()
+                        .map(|stream_id| stream_id.as_str()),
+                    action
+                        .target_unit_id
+                        .as_ref()
+                        .map(|unit_id| unit_id.as_str()),
+                    action.target_port_name.as_deref(),
+                    action.effect_label(),
+                )
+            }),
+        Some((
+            "Inspect stream inputs",
+            "检查入口流股的组成、流量、温度和压力是否已经提交，并确认这些输入来自当前项目组件列表。",
+            Some("stream-feed"),
+            None,
+            None,
+            "Inspector focus",
+        ))
+    );
+}
+
+#[test]
 fn recording_connection_validation_subcode_refines_run_panel_notice_and_recovery() {
     let mut app_state = AppState::new(sample_document());
     let summary = DiagnosticSummary::new(

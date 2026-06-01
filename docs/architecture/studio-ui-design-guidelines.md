@@ -1,6 +1,6 @@
 # Studio UI Design Guidelines
 
-更新时间：2026-05-23
+更新时间：2026-06-01
 
 ## 用途
 
@@ -19,7 +19,7 @@ RadishFlow Studio 继续走轻量、清晰、工程化的浅色桌面应用风�
 - 画布是主舞台，其他区域为画布建模、求解运行和结果审阅服务。
 - 顶部只放全局身份、主路径命令和运行状态，不堆调试计数、窗口控制或完整命令清单。
 - 左右侧栏各有稳定职责，不把对象库、属性编辑、日志、授权、结果和调试信息混在同一列里。
-- 结果展示只读消费 `SolveSnapshot`，不新增 Studio shell 私有结果缓存或第二套求解解释。
+- 结果展示只读消费当前 revision 的最新 `SolveSnapshot`，不新增 Studio shell 私有结果缓存或第二套求解解释；文档编辑后旧快照只用于过期提示，不继续驱动结果审阅、结果表或导出。
 - MVP α 阶段优化信息层级和操作路径，不扩自由连线编辑器、完整拖拽布局、自动布线和完整报表。
 
 ## 参考图启发
@@ -113,7 +113,7 @@ UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使
 - 建模对象、连接建议、运行、结果和错误分别属于哪个区域。
 - 人工 smoke 时应该按什么路径操作和观察结果。
 
-2026-05-16 已完成 Home Dashboard 与 Workbench 第一轮真实 UI 收口。2026-05-17 已继续完成 Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、Home 打开路径、Canvas 可读性、运行后结果视图和 Workbench 高频残余文案收口。后续不再回到“先讨论首页分区”或继续扩画布建模能力的阶段；下一轮应优先做视觉 smoke，只修真实 demo blocker。
+2026-05-16 已完成 Home Dashboard 与 Workbench 第一轮真实 UI 收口。2026-05-17 已继续完成 Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、Home 打开路径、Canvas 可读性、运行后结果视图和 Workbench 高频残余文案收口。2026-05-25 已进入 MVP β 小案例作者体验：Home 可从空白项目进入 `Mixer-Flash` 或 `Heater-Flash` 作者路径，Workbench `放置` 面板显示只读任务清单。后续不再回到“先讨论首页分区”或继续扩画布建模能力的阶段；下一轮应优先做可复现作者路径和真实窗口 smoke，只修阻碍主路径的问题。
 
 2026-05-17 日终截图复核后保留的两项 UI blocker 已在 2026-05-18 收口：
 
@@ -161,7 +161,8 @@ Studio 默认工作台建议分为六个稳定区域。
 - 页面应保留 `radishflow-workbench-concept.png` 的轻量浅色风格、克制蓝色主强调、状态 chip 和清晰分区，但不显示流程图画布。
 - `radishflow-home-dashboard-concept-v2-20260516.png` 当前作为启动首页视觉基线：它比早期概念稿更接近当前信息架构，Start actions、Recent Cases、Example Cases、Environment 和 Messages 的职责边界更清楚。
 - `radishflow-home-dashboard-concept.png` 保留为早期概念稿参考：它的信息架构方向正确，但字段和示例数据偏概念演示，不作为后续实现的优先基线。
-- Start actions 只保留当前主路径：`新建项目`、`打开项目`、`打开示例项目`；登录放在顶部 App Bar，不把完整命令面板或调试入口放进第一视野。最近项目的继续入口由 `最近项目` 列表行承载，不再作为左侧重复按钮常驻。
+- Start actions 只保留当前主路径：`新建项目`、当前小案例作者入口、`打开项目`、`打开示例项目`；登录放在顶部 App Bar，不把完整命令面板或调试入口放进第一视野。最近项目的继续入口由 `最近项目` 列表行承载，不再作为左侧重复按钮常驻。
+- 小案例作者入口只负责创建空白项目并打开对应任务清单，不自动生成 flowsheet，不写 `FlowsheetDocument`，不进入 undo，也不替代 placement / suggestion / parameter / run / save / export 工作流。
 - 最近项目和示例项目必须可扫读：名称、路径或来源、最后打开时间、流程摘要、组分 / 物性包摘要、状态标签；整行应可选择，双击整行可打开。
 - 客户端 / 服务端 / 设备信息默认以状态卡或紧凑 section 呈现；详细路径、backend、cache 细节和诊断信息进入展开项。
 - 登录入口应优先是 `登录` 按钮，而不是内嵌账号密码表单；桌面登录继续遵守 OIDC Authorization Code + PKCE + 系统浏览器 + loopback redirect 的边界。
@@ -170,7 +171,7 @@ Studio 默认工作台建议分为六个稳定区域。
 建议首屏布局：
 
 - 顶部 App Bar：`RadishFlow Studio`、版本 / build commit、登录状态、服务端状态、语言 / 设置入口。
-- 左侧 Start Actions：新建项目、打开项目、打开示例项目。
+- 左侧 Start Actions：新建项目、`Mixer-Flash` / `Heater-Flash` 小案例作者入口、打开项目、打开示例项目。
 - 中央内容：最近打开的项目列表和示例项目列表；首版 demo 前默认只暴露 official hydrocarbon 演示路径，即 `Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum`。Synthetic / PME 验证样例可保留为文件或专题入口，但不进入首页高频示例列表。
 - 右侧 Environment Status：客户端信息、服务端信息、设备信息、本地缓存 / 示例路径状态。
 - 底部 Messages：最近环境警告、登录 / 授权提示、示例路径或物性包缓存诊断。
@@ -179,8 +180,8 @@ Studio 默认工作台建议分为六个稳定区域。
 
 | 区域 | 第一屏保留字段 | 折叠或二级字段 |
 | --- | --- | --- |
-| Top App Bar | 应用名、`v26.5.1-dev internal` 或当前版本、`Local ready`、`Server offline`、`Signed out`、单位集、登录 / 设置 / 帮助入口 | 完整 build commit、完整控制面 URL、语言高级设置、开发诊断 |
-| Start Actions | `新建项目`、`打开项目`、`打开示例项目`；无最近项目时 `打开示例项目` 为优先入口 | 命令面板、最近工作区完整列表、保存 / 另存为、运行按钮 |
+| Top App Bar | 应用名、`development build` 或当前人工确认的版本标识、`Local ready`、`Server offline`、`Signed out`、单位集、登录 / 设置 / 帮助入口 | 完整 build commit、完整控制面 URL、语言高级设置、开发诊断 |
+| Start Actions | `新建项目`、`创建 Mixer-Flash 小案例`、`创建 Heater-Flash 小案例`、`打开项目`、`打开示例项目`；无最近项目时 `打开示例项目` 或小案例作者入口为优先入口 | 命令面板、最近工作区完整列表、保存 / 另存为、运行按钮 |
 | Recent Cases | 项目名称、路径或来源、最后打开时间、物性包、状态；选中态和双击打开行为 | 流股数、单元数、诊断数、最新求解摘要、完整路径展开 |
 | Example Cases | 示例类型、短流程图摘要、组件摘要、物性包、状态；选中态和双击打开行为 | 长说明、教程步骤、完整 flowsheet 预览、PME 操作说明 |
 | Environment | `Client`、`Server`、`Device` 三组健康摘要；只显示影响“能否开始”的状态 | cache 根目录、examples 绝对路径、backend 细节、原始错误文本、设备资源曲线 |
@@ -206,10 +207,11 @@ Studio 默认工作台建议分为六个稳定区域。
 动作契约：
 
 - `New Project` / `新建项目` 创建 MVP 默认空白项目，进入工作台；该动作不依赖登录或服务端。
+- 小案例作者入口创建 MVP 默认空白项目，进入工作台并切到左侧 `放置`；当前支持 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条作者清单。清单状态必须从当前 canvas unit / stream / solve snapshot 推导，不反向修改项目语义。
 - `Open Project` / `打开项目` 使用系统文件选择器打开用户项目，进入工作台；打开成功后更新 MRU。
 - `Open Example Project` / `打开示例项目` 从 Example Cases 选择或打开示例文件夹，成功后进入工作台并更新 MRU 来源。
 - `Recent Cases` 和 `Example Cases` 的行点击只改变选择态，整行双击触发打开；文件缺失时不静默失败，应把该项目行标为 `Missing file` 并产生 `Messages` 行。
-- 若当前工作区存在未保存变更，`新建项目`、`打开项目`、`打开示例项目` 和列表双击打开都必须进入显式继续 / 取消确认，不得只显示无法行动的 discard 提示。
+- 若当前工作区存在未保存变更，`新建项目`、小案例作者入口、`打开项目`、`打开示例项目` 和列表双击打开都必须进入显式继续 / 取消确认，不得只显示无法行动的 discard 提示。
 - `Sign in` 只启动 OIDC / PKCE 系统浏览器登录；不在首页内嵌账号密码表单。
 - `Messages` 中的 `Sign in`、`Open Examples Folder`、`Open Cache Folder` 等动作应复用正式 command surface；若实现阶段暂需过渡，也不能长期保留和菜单 / 命令面板平行的私有分支。
 
@@ -247,7 +249,7 @@ Studio 默认工作台建议分为六个稳定区域。
 职责：
 
 - 示例管理：内置示例列表、最近项目、打开示例入口和示例说明摘要。
-- 当前项目树：Components、Property Package、Streams、Units、Results、Diagnostics。
+- 当前项目树：Project components、Property Package、Streams、Units、Results、Diagnostics。
 - 建模对象库：Feed、Mixer、Heater/Cooler、Valve、Flash Drum 等 MVP 对象。
 - 搜索和分类过滤。
 
@@ -258,6 +260,7 @@ Studio 默认工作台建议分为六个稳定区域。
 - suggestion 是辅助建模入口，不和对象库按钮混排成一列命令。
 - 示例、项目树与对象库可以用 tab 或分段控件切换，避免同时展开造成拥挤。
 - 打开示例不应只依赖顶部按钮；左侧必须有稳定、可扫读的示例管理入口。
+- 项目级输入不应只藏在右侧 tab。当前左侧 `项目` 面板必须能扫读受控项目组分和当前物性包，且组分选择 / 移除入口应直接作用于 `Flowsheet.components`，不引入 shell 私有组分状态。
 
 ### 中央 Flowsheet Canvas
 
@@ -269,7 +272,7 @@ Studio 默认工作台建议分为六个稳定区域。
 规则：
 
 - 画布默认占窗口最大面积，左右侧栏和底部面板不得压缩到只剩小预览。
-- 打开示例或项目后，Canvas viewport 应根据当前单元与流股 bounds 做初始 fit-to-content / center；小流程不应固定在左上角。这只属于初始呈现优化，不引入自动布线、自由连线或视口持久化。
+- 打开示例或项目后，Canvas viewport 应根据当前单元与流股 bounds 做初始 fit-to-content / center；小流程不应固定在左上角。用户拖动空白画布后的 viewport offset 可写入 layout sidecar，但仍只属于呈现状态，不引入自动布线、自由连线或完整视图持久化。
 - 画布工具条应以图标或短标签表达选择、放置、suggestion 接受 / 拒绝、平移、缩放、适配视图和受控恢复动作；不要把当前 MVP 误设计成自由连线工具条。
 - 本地建模 suggestion 的接受动作应使用明确的 `连接流股` / `Connect stream` 或 `创建流股` / `Create stream`，不用泛化的 `Apply` 让用户猜测会改写什么。
 - 选中 material stream 后可暴露 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 与 `Delete stream`；`Reconnect stream` 只允许把单端缺口接到唯一、未占用且不会形成 unit dependency cycle 的端点。文案必须体现这些动作属于受控恢复，不是任意端口重连、自动布线或完整拖拽布局编辑。
@@ -291,9 +294,10 @@ Studio 默认工作台建议分为六个稳定区域。
 
 - 右侧默认只展示和当前选择或当前任务相关的信息。
 - 建议以 `检查器 / 运行 / 结果 / 物性包` tab 或等价分段组织；授权 / entitlement 在当前 demo 主路径中低频，默认不应压过物性包和结果审阅。
+- `物性包` tab 可继续承载本地 package 摘要、内置 package 选择和同一套项目组分选择入口，但它不是唯一入口；用户刚进入 Workbench 时应能先从左侧项目树发现项目组分状态。
 - 属性字段采用 label + input + unit + validation 的行结构；单位必须紧贴数值，不藏在说明文字里。
 - 从左侧 Project、Canvas 对象列表或结果定位动作选择 stream / unit 后，应自然切换到对应检查器；stream 优先暴露 `T / P / F`、组成草稿和提交/归一化动作，unit 优先暴露已进入 MVP 的关键参数、端口、关联步骤、关联诊断和最新只读结果。
-- Unit Inspector 当前只把 `Heater / Cooler` 的 outlet temperature / outlet pressure、`Valve` 的 outlet pressure 与 `Flash Drum` 的 flash pressure 作为可编辑参数行；其余单元信息仍以端口、关联步骤、关联诊断和最新只读结果为主，不提前设计完整单元参数表。
+- Unit Inspector 当前只把 `Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 与 `Flash Drum` 的 flash temperature / pressure 作为可编辑参数行；字段必须显示 SI 单位和约束提示，提交走正式文档命令并同步对应 outlet stream 模板。若字段值来自 outlet stream 模板 / fallback 而 unit parameter 尚未显式存在，同值提交仍应写入正式 `SetUnitParameter`。其余单元信息仍以端口、关联步骤、关联诊断和最新只读结果为主，不提前设计完整单元参数表。
 - 结果检查器中面向用户的组成、相态和摘要行应优先使用本地化结构化短句；`z: ...`、`phases: ...` 这类原始调试文本只应进入 hover、日志或开发诊断，不应作为默认结果正文。
 - 草稿态、未归一组成、运行阻断和只读结果要有稳定视觉语义。
 - Runtime 中的开发态活动、平台 timer、GUI activity、原始项目路径编辑默认折叠。
@@ -311,7 +315,7 @@ Studio 默认工作台建议分为六个稳定区域。
 
 - 默认 Messages 可更紧凑；无错误、无运行日志堆积时建议约 130-160 px 保持可行动摘要。Results / Diagnostics 可按内容需要更高，后续再评估用户可手动折叠 / resize。
 - Messages 放用户可行动摘要，Run Log 放较原始的运行过程。
-- 结果表格按 stream-centric / unit-centric 组织，保持和 `SolveSnapshot` 语义一致。
+- 结果表格按 stream-centric / unit-centric 组织，保持和当前 `SolveSnapshot` 语义一致；当前快照复制 / 导出可包含 `Streams / Review / Units / Steps / Diagnostics` 轻量文本区，但不应设计成完整报表、模板或批量导出系统。若文档已编辑且结果过期，结果表应显示重新运行提示，而不是继续展示旧表格。
 - 底部面板不应默认展示整屏原始日志；原始日志作为展开详情或复制入口。
 
 ### 底部 Status Bar
@@ -449,4 +453,5 @@ RadishFlow 默认浅色中性底，搭配少量语义色。
 - 禁用运行或保存时，用户是否能知道原因？
 - 选择流股或单元后，是否能自然进入检查器并看到可编辑参数、组成和端口关联？
 - 结果入口是否直接来自 `SolveSnapshot`，没有新增 shell-local 结果真相源？
+- 文档编辑后旧结果是否被明确标记为过期，并且不会继续驱动结果表、Result Inspector、Results commands 或导出？
 - 改动是否仍遵守 MVP α 非目标：不扩自由连线、完整拖拽布局、自动布线和完整报表？

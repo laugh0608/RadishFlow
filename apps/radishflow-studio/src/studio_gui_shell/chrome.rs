@@ -446,9 +446,16 @@ impl ReadyAppState {
         self.render_project_tree_row(
             ui,
             self.locale.text(ShellText::PropertyPackage),
-            "binary-hydrocarbon-lite-v1",
+            document
+                .property_package_id
+                .as_deref()
+                .unwrap_or("unselected"),
             None,
         );
+        ui.add_space(6.0);
+        self.render_project_components(ui, document);
+        ui.add_space(6.0);
+
         self.render_project_tree_row(
             ui,
             self.locale.text(ShellText::Streams),
@@ -523,6 +530,75 @@ impl ReadyAppState {
         );
     }
 
+    fn render_project_components(
+        &mut self,
+        ui: &mut egui::Ui,
+        document: &radishflow_studio::StudioGuiWorkspaceDocumentSnapshot,
+    ) {
+        self.render_project_tree_row(
+            ui,
+            match self.locale {
+                StudioShellLocale::En => "Project components",
+                StudioShellLocale::ZhCn => "项目组分",
+            },
+            "",
+            Some(
+                document
+                    .project_component_choices
+                    .iter()
+                    .filter(|choice| choice.selected)
+                    .count(),
+            ),
+        );
+
+        for component in &document.project_component_choices {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new(&component.name).strong());
+                if let Some(formula) = component.formula.as_ref() {
+                    ui.small(formula);
+                }
+                let status = if component.selected {
+                    match self.locale {
+                        StudioShellLocale::En => "Selected",
+                        StudioShellLocale::ZhCn => "已选择",
+                    }
+                } else {
+                    match self.locale {
+                        StudioShellLocale::En => "Available",
+                        StudioShellLocale::ZhCn => "可选",
+                    }
+                };
+                ui.small(status);
+            });
+
+            if component.selected {
+                let remove_label = match self.locale {
+                    StudioShellLocale::En => "Remove",
+                    StudioShellLocale::ZhCn => "移除",
+                };
+                if ui
+                    .add_enabled(component.remove_enabled, egui::Button::new(remove_label))
+                    .on_hover_text(&component.remove_detail)
+                    .clicked()
+                {
+                    self.dispatch_ui_command(&component.remove_command_id);
+                }
+            } else {
+                let select_label = match self.locale {
+                    StudioShellLocale::En => "Select",
+                    StudioShellLocale::ZhCn => "选择",
+                };
+                if ui
+                    .button(select_label)
+                    .on_hover_text(&component.component_id)
+                    .clicked()
+                {
+                    self.dispatch_ui_command(&component.select_command_id);
+                }
+            }
+        }
+    }
+
     fn render_project_tree_row(
         &self,
         ui: &mut egui::Ui,
@@ -576,6 +652,9 @@ impl ReadyAppState {
             );
             ui.add_space(6.0);
         }
+
+        self.render_authoring_checklists(ui, window);
+        ui.add_space(8.0);
 
         for option in &palette.options {
             let option_label = self.locale.runtime_label(&option.label);
@@ -878,8 +957,16 @@ impl ReadyAppState {
         }
     }
 
-    fn render_bottom_results_table(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+    pub(in crate::studio_gui_shell) fn render_bottom_results_table(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+    ) {
         let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() else {
+            if let Some(stale_snapshot) = window.runtime.stale_solve_snapshot.as_ref() {
+                self.render_stale_solve_snapshot_notice(ui, stale_snapshot);
+                return;
+            }
             ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
             return;
         };
@@ -922,6 +1009,53 @@ impl ReadyAppState {
                     ui.end_row();
                 }
             });
+
+        let unit_steps = latest_unit_steps(&snapshot.steps);
+        if !unit_steps.is_empty() {
+            ui.add_space(8.0);
+            ui.strong(self.locale.text(ShellText::Units));
+            egui::Grid::new(format!(
+                "bottom-results-units-table:{}",
+                snapshot.snapshot_id
+            ))
+            .num_columns(5)
+            .striped(true)
+            .min_col_width(78.0)
+            .show(ui, |ui| {
+                ui.strong(result_table_header(self.locale, ResultTableHeader::Unit));
+                ui.strong(result_table_header(self.locale, ResultTableHeader::Status));
+                ui.strong(result_table_header(self.locale, ResultTableHeader::Step));
+                ui.strong(self.locale.text(ShellText::InspectorConsumedStreams));
+                ui.strong(self.locale.text(ShellText::InspectorProducedStreams));
+                ui.end_row();
+
+                for step in unit_steps {
+                    let unit_response = ui
+                        .add(egui::Button::new(&step.unit_id).frame(false))
+                        .on_hover_text(&step.summary);
+                    if unit_response.clicked() {
+                        self.result_inspector
+                            .select_unit(&snapshot.snapshot_id, step.unit_id.clone());
+                        self.right_sidebar_tab = StudioShellRightSidebarTab::Results;
+                    }
+                    ui.label(
+                        self.locale
+                            .runtime_label(step.execution_status_label)
+                            .as_ref(),
+                    );
+                    ui.label(format!("#{}", step.index));
+                    render_wrapped_small(
+                        ui,
+                        result_table_stream_references(&step.consumed_stream_results),
+                    );
+                    render_wrapped_small(
+                        ui,
+                        result_table_stream_references(&step.produced_stream_results),
+                    );
+                    ui.end_row();
+                }
+            });
+        }
     }
 
     fn render_bottom_diagnostics(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
@@ -1327,6 +1461,9 @@ fn window_command_toolbar_item<'a>(
 #[derive(Debug, Clone, Copy)]
 enum ResultTableHeader {
     Stream,
+    Unit,
+    Status,
+    Step,
     Phase,
 }
 
@@ -1334,13 +1471,51 @@ fn result_table_header(locale: StudioShellLocale, header: ResultTableHeader) -> 
     match locale {
         StudioShellLocale::En => match header {
             ResultTableHeader::Stream => "Stream",
+            ResultTableHeader::Unit => "Unit",
+            ResultTableHeader::Status => "Status",
+            ResultTableHeader::Step => "Step",
             ResultTableHeader::Phase => "Phase",
         },
         StudioShellLocale::ZhCn => match header {
             ResultTableHeader::Stream => "流股",
+            ResultTableHeader::Unit => "单元",
+            ResultTableHeader::Status => "状态",
+            ResultTableHeader::Step => "步骤",
             ResultTableHeader::Phase => "相态",
         },
     }
+}
+
+fn latest_unit_steps(
+    steps: &[radishflow_studio::StudioGuiWindowSolveStepModel],
+) -> Vec<&radishflow_studio::StudioGuiWindowSolveStepModel> {
+    let mut unit_steps = Vec::new();
+    for step in steps {
+        if let Some(index) = unit_steps.iter().position(
+            |existing: &&radishflow_studio::StudioGuiWindowSolveStepModel| {
+                existing.unit_id == step.unit_id
+            },
+        ) {
+            unit_steps[index] = step;
+        } else {
+            unit_steps.push(step);
+        }
+    }
+    unit_steps
+}
+
+fn result_table_stream_references(
+    streams: &[radishflow_studio::StudioGuiWindowStreamResultReferenceModel],
+) -> String {
+    if streams.is_empty() {
+        return "-".to_string();
+    }
+
+    streams
+        .iter()
+        .map(|stream| stream.stream_id.as_str())
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 fn result_table_phase_summary(

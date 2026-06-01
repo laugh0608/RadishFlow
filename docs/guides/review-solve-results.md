@@ -1,6 +1,6 @@
 # Review Solve Results
 
-更新时间：2026-05-23
+更新时间：2026-05-31
 
 ## 目的
 
@@ -14,6 +14,7 @@
 - `检查` / `诊断目标` / `结果` commands 应该怎样帮助你核对同一份结果
 - `H`、`phase_region`、`bubble_dew_window` 在结果区里分别代表什么
 - 当前快照复制 / 导出应该怎样理解
+- 从小案例作者路径运行后应该先核对哪些结果
 
 它不是架构文档，也不展开测试或实现细节。
 
@@ -27,6 +28,8 @@
 
 如果只是第一次上手，先从第一条开始；如果你更想看 non-flash intermediate 的 `bubble_dew_window`，第二条更直观。
 
+如果你是从 Home 的 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例` 进入，先按 `docs/guides/author-small-cases.md` 完成放置、连接和参数提交，再回到本文档审阅结果。
+
 ## 先看哪四处
 
 一次运行成功后，先按下面顺序看：
@@ -39,6 +42,32 @@
 当前这四处都应该只读消费同一份 `SolveSnapshot` DTO；如果某个字段只在其中一处出现，通常应先怀疑消费层回归，而不是先猜数值层分叉。
 
 当前中文 UI 中，这四处通常对应右侧 `结果` tab、右侧 `检查器` tab 中的关联结果、底部 `结果表 / 诊断`，以及命令入口中的结果定位项。英文术语在本文档中只用于指代内部结果组织方式，不表示默认界面必须显示英文。
+
+## 小案例作者路径的结果核对
+
+从 `Mixer-Flash` 作者路径运行后，先按下面链路核对：
+
+- 输入流股：两股 Feed outlet 的 `T / P / F / composition / H / bubble_dew_window`
+- 中间流股：mixer outlet 的总摩尔流量应为两股 Feed outlet 之和，composition 应为摩尔流量加权结果
+- `Mixer` 单元结果：输入流股应包含两个 Feed outlet，产出流股应是 mixer outlet
+- `Flash Drum` 单元结果：输入流股应是 mixer outlet，产出流股应包含 liquid / vapor
+- Flash 分割：liquid / vapor 两股 outlet 的总摩尔流量之和应等于 flash inlet
+- 相态 / 焓值：flowing outlet 应能看到 phase row 和 `H`；two-phase case 中 liquid / vapor outlet 的窗口分别落在 bubble / dew 边界
+- 右侧 `结果` 区的复制 / 导出文本应来自同一份最新 `SolveSnapshot`
+
+从 `Heater-Flash` 作者路径运行后，先按下面链路核对：
+
+- 输入流股：Feed outlet 的 `T / P / F / composition / H / bubble_dew_window`
+- 中间流股：heater outlet 的温度和压力应反映已提交的 `Heater` outlet temperature / outlet pressure
+- `Heater` 单元结果：输入流股应是 Feed outlet，产出流股应是 heater outlet
+- `Flash Drum` 单元结果：输入流股应是 heater outlet，不应直接消费 Feed outlet
+- Flash 分割：liquid / vapor 两股 outlet 的总摩尔流量之和应等于 flash inlet；若是 vapor-only 条件，零流量 liquid outlet 允许缺席 phase rows、`H` 和窗口
+- 相态 / 焓值：flowing vapor outlet 应能看到 Vapor phase row、`H` 和 vapor-only 窗口
+- flash liquid / vapor outlet：应能在 stream result 和 unit result 中互相定位
+
+这些核对只读消费运行后的 `SolveSnapshot`。如果结果不符合预期，先回到 `检查器` 查看单元参数是否已经提交，再检查 Canvas suggestion 是否已经把对应 source / sink 端点补齐。
+
+official hydrocarbon demo 的稳定数值口径详见 `docs/guides/author-small-cases.md` 中的“结果核对与案例说明 v0”。本文只说明阅读顺序，不复制每个示例的输入表。
 
 ## 先定 selector，再看 comparison / unit
 
@@ -167,18 +196,31 @@ Studio 不应再通过全局 stream 列表按 id 回填、拼装或猜测第二�
 - `检查` 只是定位到当前已有 stream/unit 结果，不会重新求解
 - `诊断目标` 只汇总当前 `SolveSnapshot`、相关 step 和相关 diagnostic 已经存在的目标，不是 shell 私造的第三套导航模型
 - `Results` commands 也只派发既有 `inspector.focus_stream:*` / `inspector.focus_unit:*`，不会创建第二套结果缓存
-- `复制快照` / `导出文本` 只把当前同一份 `SolveSnapshot` 格式化为纯文本，覆盖流股摘要、求解步骤和诊断；它们不写项目文件、不进入 undo，也不是完整报表、模板系统或批量导出入口
+- `复制快照` / `导出文本` 只把当前同一份 `SolveSnapshot` 格式化为纯文本，覆盖流股摘要、Review 摘要、单元结果、求解步骤和诊断；它们不写项目文件、不进入 undo，也不是完整报表、模板系统或批量导出入口
 - 如果某个 section 没有 `诊断目标`，应先理解为“当前没有已物化目标”，而不是默认它被隐藏或漏显示
 
 底部 `结果表` 当前采用中文 `流股 / 相态` 表头。`相态` 列应显示短摘要，例如 `总体 1.000`、`气相 1.000`、`无`，过长的原始相态明细只适合放进 tooltip、日志或开发诊断，不应撑开表格或裁切主要数值列。
+
+## 底部结果表
+
+底部 `结果表` 当前分两段展示同一份 `SolveSnapshot`：
+
+- 上半段是流股表：按流股列出 `T / P / F / H / 相态`，点击流股会切到右侧 `结果` 对应流股。
+- 下半段是单元表：按每个单元的最新求解步骤列出状态、step 序号、消费流股和产出流股，点击单元会切到右侧 `结果` 的单元结果面。
+
+这张表只用于快速核对当前快照，不保存结果、不触发求解，也不是完整报表系统。小案例作者路径运行后，建议先在流股表确认关键 outlet，再在单元表确认 upstream / downstream 消费关系是否正确。
 
 ## 当前快照复制 / 导出
 
 右侧 `结果` 区当前提供 `复制快照` 与 `导出文本...`。它们只把当前最新 `SolveSnapshot` 格式化成轻量纯文本，内容覆盖：
 
 - 流股摘要
+- Review 摘要：source / intermediate / terminal streams、latest unit results、diagnostics count
+- 单元结果摘要
 - 求解步骤
 - 诊断条目
+
+其中 `Review` 区按 case-level 审阅顺序汇总 source、intermediate、terminal stream，并列出 latest unit results 的状态、消费流股和产出流股；`Units` 区按单元列出最新 step、状态、summary、输入流股和输出流股，便于人工复核 unit-centric 结果。它们都从当前同一份 `SolveSnapshot` 派生，不是独立结果模型。
 
 稳定边界：
 

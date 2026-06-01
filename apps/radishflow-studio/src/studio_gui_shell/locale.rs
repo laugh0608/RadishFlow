@@ -79,11 +79,6 @@ pub(super) enum ShellText {
     ActiveInspectorTarget,
     NoActiveInspectorTarget,
     InspectorProperties,
-    InspectorFieldName,
-    InspectorFieldKind,
-    InspectorFieldValue,
-    InspectorFieldStatus,
-    InspectorFieldAction,
     InspectorFieldApply,
     InspectorFieldApplyAll,
     InspectorFieldDiscard,
@@ -371,6 +366,29 @@ impl StudioShellLocale {
         }
     }
 
+    pub(super) fn stale_solve_snapshot_title(self) -> &'static str {
+        match self {
+            StudioShellLocale::En => "Results are out of date",
+            StudioShellLocale::ZhCn => "结果已过期",
+        }
+    }
+
+    pub(super) fn stale_solve_snapshot_detail(
+        self,
+        snapshot_id: &str,
+        snapshot_document_revision: u64,
+        current_document_revision: u64,
+    ) -> String {
+        match self {
+            StudioShellLocale::En => format!(
+                "Snapshot {snapshot_id} was produced from document revision {snapshot_document_revision}; current document revision is {current_document_revision}. Run again before reviewing or exporting results."
+            ),
+            StudioShellLocale::ZhCn => format!(
+                "快照 {snapshot_id} 来自文档修订 {snapshot_document_revision}；当前文档修订为 {current_document_revision}。请重新运行后再审阅或导出结果。"
+            ),
+        }
+    }
+
     pub(super) fn solve_snapshot_primary_summary(
         self,
         unit_count: usize,
@@ -467,11 +485,6 @@ impl ShellText {
                 "Select a stream or unit from Project or the canvas."
             }
             ShellText::InspectorProperties => "Properties",
-            ShellText::InspectorFieldName => "Field",
-            ShellText::InspectorFieldKind => "Kind",
-            ShellText::InspectorFieldValue => "Value",
-            ShellText::InspectorFieldStatus => "Status",
-            ShellText::InspectorFieldAction => "Action",
             ShellText::InspectorFieldApply => "Apply",
             ShellText::InspectorFieldApplyAll => "Apply all",
             ShellText::InspectorFieldDiscard => "Discard",
@@ -624,11 +637,6 @@ impl ShellText {
             ShellText::ActiveInspectorTarget => "检查器目标",
             ShellText::NoActiveInspectorTarget => "请从左侧项目树或画布选择流股/单元。",
             ShellText::InspectorProperties => "属性",
-            ShellText::InspectorFieldName => "字段",
-            ShellText::InspectorFieldKind => "类型",
-            ShellText::InspectorFieldValue => "值",
-            ShellText::InspectorFieldStatus => "状态",
-            ShellText::InspectorFieldAction => "操作",
             ShellText::InspectorFieldApply => "应用",
             ShellText::InspectorFieldApplyAll => "全部应用",
             ShellText::InspectorFieldDiscard => "丢弃",

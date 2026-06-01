@@ -697,6 +697,19 @@ impl StudioAppHost {
         .cloned()
     }
 
+    pub fn stale_solve_snapshot(&self) -> Option<rf_ui::SolveSnapshot> {
+        rf_ui::stale_snapshot(
+            &self
+                .window_host_manager
+                .session()
+                .host_port()
+                .runtime()
+                .app_state()
+                .workspace,
+        )
+        .cloned()
+    }
+
     pub fn snapshot_history_count(&self) -> usize {
         self.window_host_manager
             .session()
@@ -976,6 +989,10 @@ impl StudioAppHostController {
 
     pub fn latest_solve_snapshot(&self) -> Option<rf_ui::SolveSnapshot> {
         self.app_host.latest_solve_snapshot()
+    }
+
+    pub fn stale_solve_snapshot(&self) -> Option<rf_ui::SolveSnapshot> {
+        self.app_host.stale_solve_snapshot()
     }
 
     pub fn snapshot_history_count(&self) -> usize {

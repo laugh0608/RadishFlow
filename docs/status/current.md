@@ -1,88 +1,109 @@
 # 当前状态
 
-更新时间：2026-05-23
+更新时间：2026-06-01
 
 ## 用途
 
-用途：为新会话恢复上下文、判断“今天做什么”提供入口。
-读者：开发者、用户、AI / Agent。
+用途：为新会话恢复上下文、判断“今天做什么”提供入口。  
+读者：开发者、用户、AI / Agent。  
 不包含：完整历史流水、详细设计推演、测试日志和长期说明书。
 
 默认先读本文档。只有当任务需要具体实现细节、历史依据或专题边界时，再读取下方“按需阅读”列表。`AGENTS.md` / `CLAUDE.md` 只保留长期协作规则，不承载当前阶段流水。
 
-## 当前阶段
+## 阶段结论
 
-- 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN/COM 适配层构建稳态流程模拟软件。
-- 当前主线：MVP 第一阶段最小闭环已经可验证，`v26.5.1-dev` 已作为内部验收 tag 创建并推送；首版 demo 前的 Home / Workbench 产品可用性 blocker 已收口，当前重新回到功能开发。
-- 当前重点：进入“受控扩展高频建模能力”阶段。已收口 `Heater / Cooler / Valve / Flash Drum` 参数链路、连接失败恢复、空白项目 Mixer 路径、受控流股断开 / 删除 / 单端唯一候选重连、source / sink 断开提示、关闭脏工作区保护、suggestion 下一步可见性、sidecar 级单元定位 / 拖动 / viewport 记忆、`SolveSnapshot` 轻量文本复制 / 导出。后续允许继续推进窄口径单元参数、受控重连细化和 sidecar 级布局体验；仍不做自由连线、自动布线、完整拖拽布局、完整报表或第三方 CAPE-OPEN / 物性包加载。
-- 当前验证基线：功能改动优先执行相关 focused tests；阶段性收口执行 `pwsh ./scripts/check-repo.ps1`。
+- 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN / COM 适配层构建稳态流程模拟软件。
+- MVP 第一阶段 M1-M5、MVP α 内部验收和首版 demo 前硬化期已经阶段性收口。
+- **MVP β 第一刀：小案例作者体验 v0 已通过。**
+- **MVP β 第二刀：建模输入能力 v0 已通过。**
+- **MVP β 后续能力包：结果核对与案例说明 v0 已落地第一版。**
+- **MVP β 下一组高频建模能力：受控连接恢复 v0 与剩余单元建模闭环 v0 已完成 focused 收口。**
+- **MVP β 失败修复闭环 v0 已完成 focused 收口：缺物性包、缺项目组分、缺 composition、参数越界、连接 blocker、cycle 与 invalid port signature 已锁定。**
+- **MVP β 人工 smoke v0 已通过：Smoke A-D 均已由人工完成，未发现 blocker。**
+- **MVP β 阶段基线验证已通过：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。**
+- **MVP β 下一阶段已切到通用小流程建模 v1：目标从复现指定案例推进到空白项目中受控组合小流程。**
+- **通用小流程建模 v1 第十一切片已完成 focused 推进：普通空白项目结果审阅入口已覆盖 Results commands、轻量导出、底部结果表、Result Inspector 呈现、关键结果合理性核对、单相 Flash 零流量出口缺席语义、重开后正式求解失败的诊断上下文定位，以及 case-level review summary。**
+- **通用小流程建模 v1 第十二切片已完成 focused 推进：普通空白项目成功求解后修改 Feed composition、unit 参数或连接状态时，旧结果不再作为当前结果入口暴露，并由 stale notice 指向重新运行；rerun 后 Result Inspector、底部结果表、Results commands、轻量导出和 case-level review summary 回到最新 `SolveSnapshot`。**
+- **通用小流程建模 v1 第十三切片已完成 focused 推进：Run Panel `Resume` 与手动 `Run` 使用同一 modeling readiness 入口；空白项目待运行状态下的 Resume 不绕过建模输入诊断，不制造正式求解失败。**
+- **通用小流程建模 v1 第十四切片已完成 focused 推进：AppHost、StudioGuiDriver、StudioGuiHost command registry 等非 shell 运行入口共用同一 modeling readiness 判断；Feed 输入缺口和必要单元参数缺失不再绕过 readiness 进入正式求解失败，物性包解析、结构性连接、拓扑与求解阶段失败仍保留 Run Panel 正式诊断 / recovery。**
+- **阶段性门禁已调整：MVP β smoke、指定小案例入口和结果审阅覆盖面不再作为日常推进 gate；后续以普通空白项目真实建模缺口、结果新旧状态表达和 readiness / Run Panel 边界为主线。**
+- 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
-## 最近完成摘要
+## 当前开发策略
 
-- Studio 已具备 MVP α 最小可操作闭环：打开示例、新建空白、最短建模、运行、审阅结果、保存 / 另存为和重开项目。
-- Canvas 当前覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 三条最短可求解路径；连接仍通过本地 suggestion 和正式 `DocumentCommand` 完成，不是自由连线编辑器。
-- Result Inspector / Active Inspector 只读消费同一份 `SolveSnapshot`，可审阅 stream-centric / unit-centric 结果、相结果、`bubble_dew_window`、overall enthalpy、关联步骤和诊断目标。
-- `rf-thermo` / `rf-flash` / `rf-solver` / `rf-ffi` 已围绕 official / synthetic near-boundary、phase region、enthalpy、JSON/error 与结构化 stream snapshot 形成当前回归基线。
-- Stream Inspector 已收口 composition draft、显式提交、normalize、discard、受控组件添加 / 删除和运行前阻断；不做隐式差值补偿。
-- 仓库基础治理已补齐根 `README.md`、文本格式门禁、代码规范、文档体量治理、路线图拆分和周志月份归档；默认入口文档继续保持摘要化。
-- 2026-05-13 至 2026-05-14 的人工 Studio smoke blocker 已收口：首屏主路径、运行门控、GUI panic 降级、Windows debug 主线程栈、最后窗口关闭、顶部快速操作、工作台重排和 Inspector 可发现性均已处理。
-- 2026-05-16 MVP α Studio 用户视角 Smoke A / B / C 已人工通过；同日中文界面资源已覆盖 smoke 高频路径，结构化 JSON 测试夹具也已避免 IDE 保存字段顺序导致的回归噪声。
-- 2026-05-16 已补 MVP α Windows 便携包入口：`scripts/package.ps1` 生成 staging / zip，附带 Studio exe、正向示例、样例物性包、关键文档、内部包记录和许可文件；Studio 打包后会优先从 exe 同目录的 `examples/flowsheets` 发现内置示例。该包仅作为内部验证产物，不代表首版 demo 或对外发布。
-- 2026-05-16 已新增 `docs/releases/v26.5.1-dev.md`，记录内部便携包、验证结果和包内边界；2026-05-18 已在最终仓库级验证与包内 smoke 通过后创建并推送 `v26.5.1-dev` 内部验收 tag。
-- 2026-05-16 晚间已完成 Studio Home Dashboard 与 Workbench 第一轮 UI 收口：Home Dashboard 默认中文、三栏布局稳定、Recent / Example / Environment / Messages 分区清晰；Workbench 顶部主路径、左侧 Project、中央 Canvas header、右侧 Inspector / Results / Run / Package 和底部 drawer 已压缩信息噪声；关闭最后窗口前的一帧黑屏也已优化。
-- 2026-05-17 已完成 Canvas viewport 初始自动居中：画布在打开项目后的首轮渲染根据当前单元 / 流股 bounds 计算 shell-local viewport transform，让打开示例或项目后的小流程自然位于可视区域中央；后续 layout nudge 复用同一 offset，不会被每帧重新居中抵消。点击放置会反算回原始 sidecar 坐标，不写入项目语义、不进入 CommandHistory，也不引入视口持久化。首页中文文案中的 `打开 Case` / `示例 Case` 等高频残留已改为 `打开项目` / `打开示例` / `示例项目`，Workbench 打开项目消息也已中文化。
-- 2026-05-17 人工截图审阅后已修复 `Feed Heater Flash` 示例默认布局顺序：Canvas presentation 现在按物料流依赖给未定位单元排序，`feed-1 / heater-1 / flash-1` 会按工艺顺序从左到右显示；加载本地 sidecar 时也会过滤当前项目已不存在的 unit id。首页示例项目行按钮已从 `打开项目` 改为 `打开示例`。
-- 2026-05-17 已完成人工 UI smoke 后的 Canvas 可读性第一轮打磨：流线增加名称标签和白色底衬，单元块略增高；已绑定端口点击可直接聚焦流股 Inspector；运行成功后自动切到结果，失败后切到运行和消息。
-- 2026-05-17 已按截图审阅建议收口 Home Dashboard 打开路径：左侧只保留 `新建项目`、`打开项目`、`打开示例项目`，最近项目和示例项目列表改为可选择、可双击打开；列表行内不再重复放置打开按钮。同步修正 Canvas 终端流股标签的垂直错位和内容 bounds，降低液相 / 气相出口标签重叠和右侧裁切概率。
-- 2026-05-17 人工复测发现首页双击只命中项目标题文本、未覆盖整行卡片；现已改为整张最近项目 / 示例项目卡片响应点击和双击打开。Canvas 终端流股标签同步改为短名称并从端口右侧绘制，避免被 Flash Drum 单元块遮住。后续 smoke 又暴露 Home 在未保存空白项目后只能显示 discard 提示、没有继续 / 取消动作；现已让打开项目、打开示例项目和新建项目统一进入可确认流程。
-- 2026-05-17 已按最新截图完成运行后结果视图收口：右侧结果检查器的流股 / 单元 / 对比 selector 不再为每个选项重复渲染 `Inspect`，中文界面中的 inspect 小按钮统一显示为 `检查`；底部结果表改为中文 `流股 / 相态` 表头，并以短相态摘要替代过长 `phases: ...` 原始文本，完整相态仍保留在 tooltip。已补回归覆盖打开示例、运行、查看结果、回 Home、再从最近项目打开并重新运行的路径。
-- 2026-05-17 已根据最新截图继续清理 Workbench 高频残余：Canvas 面板头隐藏开发态计数摘要，运行结果摘要改为中文结构化计数，左侧对象行去掉重复 `检查` 按钮，底部空相态显示短值 `无`，非空画布不再常驻“选择画布工具”提示。
-- 2026-05-18 已收口日终保留的两个 UI blocker：Canvas 中间连接流股在短线段空间不足时不再绘制名称标签，避免 `Feed -> Valve -> Flash Drum` 等紧凑链路遮挡单元块或端口；右侧 Result Inspector 的默认组成 / 相态摘要改为结构化短行，模型层不再生成 `z:` / `phases:` 前缀。`pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
-- 2026-05-18 人工从 IDE 启动 `Feed Valve Flash Binary Hydrocarbon Example` 复核通过，未发现新的 UI blocker；同日已刷新 `v26.5.1-dev` 内部便携包 staging / zip，并从包目录启动执行 smoke，未发现包内示例发现、打开示例、运行、结果审阅等主路径问题。最终包 manifest 记录 `gitCommit=7479e82`、`gitDirty=false`，`v26.5.1-dev` tag 已推送到远端。
-- 2026-05-18 首版 demo 前产品可用性评审发现并收口 DocsRepro / Home 示例入口 blocker：默认 Home / Workbench 示例选择器只保留四条 official hydrocarbon 演示路径，避免 synthetic / PME 验证样例以“就绪示例”进入高频入口；`Feed Heater Flash` 首页标题改回单一 `加热器` 语义；quick start、run-first、versioning、release notes 与 package README 模板已同步当前 Windows 内部便携包和已推送 tag 口径。
-- 2026-05-18 在 demo blocker 收口后转回功能开发：`UnitNode` 新增可选 SI 参数结构，Unit Inspector 暴露 Heater/Cooler outlet temperature 与 Valve outlet pressure 的字段级草稿编辑；提交走 `DocumentCommand::SetUnitParameter`，同步 outlet stream 模板并触发求解 dirty 状态；顺序求解器优先使用已提交单元参数，旧项目无参数时保持原有行为。
-- 2026-05-20 至 2026-05-23 已复核单元参数闭环：`rf-store` 锁定单元参数随项目 JSON round-trip，Studio shell focused 回归覆盖官方 Heater / Cooler / Valve / Flash Drum 示例和空白项目 Heater 最短路径从 Unit Inspector 编辑参数、保存、重开到再次运行收敛，并断言求解结果使用保存后的 outlet temperature / outlet pressure / flash pressure；Unit Inspector 字段带 SI 约束提示，Heater / Cooler / Valve outlet pressure 草稿高于已连接 inlet pressure 时标为 invalid；Flash Drum flash pressure 提交后同步 liquid / vapor 两个出口模板。
-- 2026-05-20 已补连接类失败恢复路径 focused 覆盖：`missing_upstream_source`、`missing_stream_reference`、`duplicate_upstream_source`、`duplicate_downstream_sink`、`unbound_outlet_port`、`orphan_stream`、`invalid_port_signature`、two-unit cycle 与 self-loop cycle 的失败 detail / Run Panel recovery / Canvas 或端口 attention 回归已覆盖；Canvas attention 不再只从 Run Panel notice 反推单一 recovery target，而是优先使用当前文档 revision 的 solver failure diagnostic，从而保留完整 unit / stream / port targets。
-- 2026-05-20 已补空白项目 Mixer 最短建模路径 focused 覆盖：通过 Canvas suggestion 创建 `Feed + Feed -> Mixer -> Flash Drum`，保存后断言 unit / stream / port 绑定，重开后确认 mixer outlet 总摩尔流量为两股入口之和。
-- 2026-05-22 已补 Canvas / Inspector 受控流股恢复入口：选中物料流股后可执行 `Disconnect stream` 解除所有物料端口绑定并保留流股规格，或执行 `Delete stream` 解除绑定后删除流股；两者均通过正式 `DocumentCommand` 与 undo history，不做自由连线、自动布线或完整拖拽布局。
-- 2026-05-23 人工复核确认流股连接 / 断开交互已经顺滑；同日补关闭脏工作区确认、focused suggestion 下一步显示、单端流股唯一候选重连、cycle-forming 候选过滤、已连接流股 source / sink 端点级断开与不可用原因提示。随后补选中单元在 Canvas 空白处点击定位、直接拖动到 sidecar 坐标，并补空白画布拖拽的 viewport offset 记忆；这些布局 / 视口状态只写 `<project>.rfstudio-layout.json`，不写项目语义、不进 undo、不扩完整拖拽布局编辑器或完整视图持久化系统。
-- 2026-05-23 已补当前结果快照轻量复制 / 导出：右侧 `结果` 区可把当前 `SolveSnapshot` 复制到剪贴板或导出 `.txt`；内容只来自结果 DTO，覆盖流股摘要、步骤和诊断，不写项目、不进 undo、不扩报表、模板或批量导出。
+当前项目由个人开发者推进，后续不再用“持续补细颗粒度体验缺口”的方式消耗主线节奏。已经通过的阶段只修真实 blocker：
 
-见 `docs/devlogs/2026-05/2026-W21.md`、`docs/devlogs/2026-05/2026-W20.md`。
+- 无法完成主路径建模
+- 无法运行或运行结果明显错误
+- 保存 / 重开破坏项目
+- 文档事实源与代码能力明显冲突
+- 仓库级验证或核心 focused test 失败
 
-## 下一步建议
+阶段性门禁调整如下：
 
-1. 下一步做 selected stream 重连 presentation 一致性：统一 Canvas / Inspector / shell 不可用原因展示，不新增端口选择器、自由连线或自动布线。
-2. 每个新能力必须走正式 command / validation / undo，或明确标记为 shell-local state；同时补 focused tests 和必要文档。
-3. 若要刷新新的便携包或 tag，应创建新提交 / 新版本节点，不移动已推送的 `v26.5.1-dev` tag。
-4. 不把受控扩展误扩成自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统或对外发布自动化。
+- `Mixer-Flash` / `Heater-Flash` 作者路径、MVP β Smoke A-D 和结果审阅对象覆盖不再作为日常开发 gate；它们保留为代表性回归和阶段收口参考。
+- `Cooler` / `Valve` 已可作为通用空白建模的一等受控路径继续推进；当前仍不新增 Home 作者入口。
+- UI 约束从“不做 UI”调整为“不做视觉精修和大改版”；允许服务建模正确性的状态表达、旧结果失效提示、结果新旧标识和轻量审阅材料改进。
+- 轻量结果审阅可继续增强单次 `SolveSnapshot` 摘要；完整报表、模板、打印、批量导出和跨快照报表仍不进入当前阶段。
+- readiness 只拦截确定的建模输入缺失；结构性连接、拓扑、非法旧项目或求解阶段参数失败继续交给正式 Run Panel 诊断 / recovery。
+
+不再主动追逐 hover、提示、按钮文案、局部 selector、presentation 小瑕疵或更多同构作者入口。
+
+## 下阶段目标
+
+建模输入能力 v0、结果核对与案例说明 v0、受控连接恢复 v0、剩余单元建模闭环 v0、失败修复闭环 v0、MVP β 人工 smoke v0 与仓库级阶段基线验证均已通过。当前继续推进 **通用小流程建模 v1**；不回到零散 UI 打磨，也不把工作停在案例说明或验收文档上。
+
+通用小流程建模 v1 目标：
+
+- 普通空白项目不再进入或自动匹配 `Mixer-Flash` / `Heater-Flash` 小案例状态。
+- 运行前检查按当前 `Flowsheet` 的真实建模输入判断，不再按某个案例步骤阻断；物性包选择仍由正式 run package resolution 判断，避免 shell 误拦可由本地唯一缓存包解析的旧示例项目。
+- 在受控范围内支持用户自行组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`。
+- 缺项目组分、缺 Feed composition、Feed source stream 状态缺口、必要单元参数缺失和组成未归一等建模输入问题应由 readiness 定位到具体 stream / unit；未连接 material port、缺失 stream reference、重复 source / sink、orphan stream 和 cycle 等结构性问题继续进入正式 Run Panel 诊断 / recovery；缺物性包继续走正式运行命令的 package 解析与 Run Panel 诊断。
+- 保存 / 重开 / rerun 仍必须稳定；不引入自由连线编辑器、自动布线、完整拖拽布局器或完整报表系统。
+
+当前进展摘要：
+
+- 空白项目需显式选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane，Feed composition 和 Unit 参数均走正式 Inspector draft / commit / undo / save / reopen 路径。
+- 通用 readiness 已按真实 `Flowsheet` 检查 Feed source stream T/P/F/z、项目组分、composition 归一和必要单元参数；结构性连接 / 拓扑 / 求解阶段参数失败继续走正式 Run Panel 诊断 / recovery。
+- `Run` 与 `Resume` 两个用户运行入口已统一使用同一 readiness 判断；shell、AppHost、StudioGuiDriver 与 command registry 分发不再各自维护不同建模输入口径；在 Hold 且存在 pending reason 的空白项目中，Resume 保留 pending reason 并引导用户先补建模输入。
+- 普通空白项目已覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 的显式输入、保存 / 重开 / rerun、结果审阅和关键结果合理性。
+- 结果审阅当前包括 Result Inspector、底部结果表、Results commands、轻量导出、case-level `review_summary`、单相 Flash 零流量出口缺席语义和失败态定位。
+- 编辑后重跑一致性已覆盖 Feed composition、unit 参数和连接状态变更；旧快照只作为 stale notice 来源，不再驱动结果审阅或导出入口。
+- 下一步建议继续观察普通空白项目真实建模缺口与 readiness / Run Panel 诊断边界：只在发现主路径 blocker、结果判断缺口或文档事实源冲突时继续推进。
+
+## 验证节奏
+
+- 核心数据、求解、保存和项目格式：必须测试。
+- 新能力主路径：至少覆盖一条 happy path focused test。
+- UI 展示细节：除非曾经造成 blocker，否则不为单个小展示点新增测试。
+- 阶段收口：执行 `pwsh ./scripts/check-repo.ps1`。
+- 若仓库级验证在沙盒中出现明显环境性失败，可按协作规则申请真实环境复验。
 
 ## 暂不推进
 
-- 不继续堆叠零散按钮、临时面板、调试状态或只为单次 smoke 服务的 presentation；UI 改进应按明确专题推进。
-- 不做自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统；允许受控重连、sidecar 级单元拖动 / viewport 记忆和轻量结果审阅增强。
+- 不继续在 β 第一刀上追加同构 Home 作者入口或同类 checklist；既有小案例清单只作为导航提示，不作为通用建模运行 gate。
+- 仍不推进 tag、release notes、便携包刷新或对外发布自动化；这些事项等待后续明确发布节点。
+- 不做自由连线编辑器、任意端口选择器、自动布线系统、完整拖拽布局编辑器、完整报表系统、跨快照报表、模板导出、完整参数表。
+- 不引入第三方 CAPE-OPEN 模型、第三方物性包加载、完整组分数据库或完整 Thermodynamics PMC。
 - 不把 CAPE-OPEN / COM 语义倒灌到 Rust Core。
-- 不引入第三方 CAPE-OPEN 模型加载。
-- 不把 smoke test driver、PME 调试路径或单个宿主兼容逻辑提升为通用库 API。
 - 不为未来可能需求预先堆叠不明意义的 helper / manager / orchestrator / context / adapter。
-- 不再主动扩 near-boundary / command surface / runtime click 的细枝末节测试；除非它们直接暴露 MVP α 验收 blocker。
 
 ## 按需阅读
 
-- 需要仓库全局模块边界：`docs/architecture/overview.md`
-- 需要 MVP 范围和非目标：`docs/mvp/scope.md`
-- 需要 MVP α 验收矩阵：`docs/mvp/alpha-acceptance-checklist.md`
-- 需要最新流水和决策依据：`docs/devlogs/2026-05/2026-W21.md`
-- 需要热力学 / 闪蒸细节：`docs/thermo/mvp-model.md`
-- 需要 CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
-- App/Canvas/UI：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`、`docs/architecture/studio-ui-design-guidelines.md`、`docs/architecture/studio-visual-system.md`
-- 需要代码风格、命名或抽象判断：`docs/development/code-style.md`
-- 需要文档篇幅和拆分规则：`docs/README.md`
+- 最新流水和决策依据：`docs/devlogs/2026-06/2026-W23.md`
+- 上周阶段收口：`docs/devlogs/2026-05/2026-W22.md`
+- MVP β 人工 smoke 与验收标准：`docs/mvp/beta-acceptance-checklist.md`
+- MVP 范围和非目标：`docs/mvp/scope.md`
+- MVP 路线图：`docs/radishflow-mvp-roadmap.md`
+- 仓库全局模块边界：`docs/architecture/overview.md`
+- App / Canvas / UI：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`、`docs/architecture/studio-ui-design-guidelines.md`
+- 热力学 / 闪蒸细节：`docs/thermo/mvp-model.md`
+- CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
+- 代码风格、命名或抽象判断：`docs/development/code-style.md`
+- 文档篇幅和拆分规则：`docs/README.md`
 
 ## 更新规则
 
-- 本文档目标上限为 8k 字符；超过上限时应优先删减历史流水、重复背景和过细实现细节。
-- 本文档只保留当前阶段、最近完成摘要、下一步建议、暂不推进项和按需阅读入口。
+- 本文档只保留当前阶段、下阶段目标、验证节奏和暂不推进项。
 - 历史流水写入周志；长期边界写入专题文档；不要把本文档写成长篇进度报告。
-- 协作入口文件只保留长期稳定规则；阶段性变化优先更新本文档和对应专题文档，再按需同步入口文件中的引用关系。
-- 每次完成重要阶段收口后，优先更新本文档顶部状态和“下一步建议”。
+- 每次完成重要阶段收口后，优先更新本文档顶部阶段结论和下阶段目标。

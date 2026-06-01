@@ -118,6 +118,7 @@ pub struct StudioGuiWindowRuntimeAreaModel {
     pub control_state: WorkspaceControlState,
     pub run_panel: rf_ui::RunPanelWidgetModel,
     pub latest_solve_snapshot: Option<StudioGuiWindowSolveSnapshotModel>,
+    pub stale_solve_snapshot: Option<StudioGuiWindowStaleSolveSnapshotModel>,
     pub latest_failure: Option<StudioGuiWindowFailureResultModel>,
     pub active_inspector_target: Option<StudioGuiWindowInspectorTargetModel>,
     pub active_inspector_detail: Option<StudioGuiWindowInspectorTargetDetailModel>,
@@ -133,14 +134,44 @@ pub struct StudioGuiWindowRuntimeAreaModel {
 pub struct StudioGuiWindowSolveSnapshotModel {
     pub snapshot_id: String,
     pub sequence: u64,
+    pub document_revision: u64,
     pub status_label: &'static str,
     pub summary: String,
     pub diagnostic_count: usize,
     pub step_count: usize,
     pub stream_count: usize,
+    pub review_summary: StudioGuiWindowResultReviewSummaryModel,
     pub streams: Vec<StudioGuiWindowStreamResultModel>,
     pub steps: Vec<StudioGuiWindowSolveStepModel>,
     pub diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowStaleSolveSnapshotModel {
+    pub snapshot_id: String,
+    pub sequence: u64,
+    pub snapshot_document_revision: u64,
+    pub current_document_revision: u64,
+    pub title: &'static str,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowResultReviewSummaryModel {
+    pub status_label: &'static str,
+    pub diagnostic_count: usize,
+    pub source_stream_results: Vec<StudioGuiWindowStreamResultReferenceModel>,
+    pub intermediate_stream_results: Vec<StudioGuiWindowStreamResultReferenceModel>,
+    pub terminal_stream_results: Vec<StudioGuiWindowStreamResultReferenceModel>,
+    pub unit_results: Vec<StudioGuiWindowResultReviewUnitModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowResultReviewUnitModel {
+    pub unit_id: String,
+    pub status_label: &'static str,
+    pub consumed_stream_ids: Vec<String>,
+    pub produced_stream_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -186,6 +217,14 @@ pub struct StudioGuiWindowCommandActionModel {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowInspectorConnectionActionModel {
+    pub label: String,
+    pub hover_text: String,
+    pub command_id: String,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowInspectorTargetModel {
     pub kind_label: &'static str,
     pub target_id: String,
@@ -215,7 +254,7 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub property_composition_normalize_command_id: Option<String>,
     pub property_composition_component_actions:
         Vec<StudioGuiWindowInspectorCompositionComponentActionModel>,
-    pub connection_actions: Vec<StudioGuiWindowCommandActionModel>,
+    pub connection_actions: Vec<StudioGuiWindowInspectorConnectionActionModel>,
     pub unit_ports: Vec<StudioGuiWindowInspectorTargetPortModel>,
     pub latest_unit_result: Option<StudioGuiWindowUnitExecutionResultModel>,
     pub latest_stream_result: Option<StudioGuiWindowStreamResultModel>,
@@ -749,6 +788,17 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
         .latest_solve_snapshot
         .as_ref()
         .map(solve_snapshot_model_from_ui);
+    let stale_solve_snapshot =
+        snapshot
+            .runtime
+            .stale_solve_snapshot
+            .as_ref()
+            .map(|stale_snapshot| {
+                stale_solve_snapshot_model_from_ui(
+                    stale_snapshot,
+                    snapshot.runtime.workspace_document.revision,
+                )
+            });
     let latest_failure = latest_solve_snapshot
         .is_none()
         .then(|| {
@@ -785,6 +835,7 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
         control_state: snapshot.runtime.control_state.clone(),
         run_panel: snapshot.runtime.run_panel.clone(),
         latest_solve_snapshot,
+        stale_solve_snapshot,
         latest_failure,
         active_inspector_target: snapshot
             .runtime
@@ -1132,10 +1183,11 @@ fn inspector_target_detail_model_from_snapshot(
         connection_actions: detail
             .connection_actions
             .iter()
-            .map(|action| StudioGuiWindowCommandActionModel {
+            .map(|action| StudioGuiWindowInspectorConnectionActionModel {
                 label: action.label.clone(),
                 hover_text: action.detail.clone(),
                 command_id: action.command_id.clone(),
+                enabled: action.enabled,
             })
             .collect(),
         unit_ports: detail
@@ -1372,79 +1424,188 @@ fn latest_unit_result_for_target(
 fn solve_snapshot_model_from_ui(
     snapshot: &rf_ui::SolveSnapshot,
 ) -> StudioGuiWindowSolveSnapshotModel {
+    let status_label = run_status_label(snapshot.status);
+    let streams = snapshot
+        .streams
+        .iter()
+        .map(stream_result_model_from_ui)
+        .collect::<Vec<_>>();
+    let steps = snapshot
+        .steps
+        .iter()
+        .map(|step| {
+            let produced_stream_results = step
+                .streams
+                .iter()
+                .map(stream_result_reference_model_from_ui)
+                .collect::<Vec<_>>();
+            let produced_streams = step
+                .streams
+                .iter()
+                .map(|stream| stream.stream_id.as_str().to_string())
+                .collect::<Vec<_>>();
+            let consumed_stream_results = step
+                .consumed_streams
+                .iter()
+                .map(stream_result_reference_model_from_ui)
+                .collect::<Vec<_>>();
+            let consumed_streams = step
+                .consumed_streams
+                .iter()
+                .map(|stream| stream.stream_id.as_str().to_string())
+                .collect::<Vec<_>>();
+            let unit_action = inspector_unit_action(step.unit_id.as_str());
+            let consumed_stream_actions = consumed_stream_results
+                .iter()
+                .map(|stream| stream.focus_action.clone())
+                .collect::<Vec<_>>();
+            let produced_stream_actions = produced_stream_results
+                .iter()
+                .map(|stream| stream.focus_action.clone())
+                .collect::<Vec<_>>();
+            let diagnostic_actions = solve_step_diagnostic_actions(
+                step.index,
+                &step.unit_id,
+                &unit_action,
+                &consumed_streams,
+                &consumed_stream_actions,
+                &produced_streams,
+                &produced_stream_actions,
+            );
+            StudioGuiWindowSolveStepModel {
+                index: step.index,
+                unit_id: step.unit_id.as_str().to_string(),
+                summary: step.summary.clone(),
+                execution_status_label: run_status_label(step.execution.status),
+                consumed_stream_results,
+                consumed_stream_actions,
+                unit_action,
+                produced_stream_results,
+                produced_stream_actions,
+                diagnostic_actions,
+            }
+        })
+        .collect::<Vec<_>>();
+    let diagnostics = snapshot
+        .diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic_model_from_ui(diagnostic, &snapshot.streams))
+        .collect::<Vec<_>>();
+    let review_summary =
+        result_review_summary_model_from_parts(status_label, diagnostics.len(), &streams, &steps);
+
     StudioGuiWindowSolveSnapshotModel {
         snapshot_id: snapshot.id.as_str().to_string(),
         sequence: snapshot.sequence,
-        status_label: run_status_label(snapshot.status),
+        document_revision: snapshot.document_revision,
+        status_label,
         summary: snapshot.summary.primary_message.clone(),
-        diagnostic_count: snapshot.diagnostics.len(),
-        step_count: snapshot.steps.len(),
-        stream_count: snapshot.streams.len(),
-        streams: snapshot
-            .streams
-            .iter()
-            .map(stream_result_model_from_ui)
-            .collect(),
-        steps: snapshot
-            .steps
-            .iter()
-            .map(|step| {
-                let produced_stream_results = step
-                    .streams
-                    .iter()
-                    .map(stream_result_reference_model_from_ui)
-                    .collect::<Vec<_>>();
-                let produced_streams = produced_stream_results
-                    .iter()
-                    .map(|stream| stream.stream_id.clone())
-                    .collect::<Vec<_>>();
-                let consumed_stream_results = step
-                    .consumed_streams
-                    .iter()
-                    .map(stream_result_reference_model_from_ui)
-                    .collect::<Vec<_>>();
-                let consumed_streams = consumed_stream_results
-                    .iter()
-                    .map(|stream| stream.stream_id.clone())
-                    .collect::<Vec<_>>();
-                let unit_action = inspector_unit_action(step.unit_id.as_str());
-                let consumed_stream_actions = consumed_stream_results
-                    .iter()
-                    .map(|stream| stream.focus_action.clone())
-                    .collect::<Vec<_>>();
-                let produced_stream_actions = produced_stream_results
-                    .iter()
-                    .map(|stream| stream.focus_action.clone())
-                    .collect::<Vec<_>>();
-                let diagnostic_actions = solve_step_diagnostic_actions(
-                    step.index,
-                    &step.unit_id,
-                    &unit_action,
-                    &consumed_streams,
-                    &consumed_stream_actions,
-                    &produced_streams,
-                    &produced_stream_actions,
-                );
-                StudioGuiWindowSolveStepModel {
-                    index: step.index,
-                    unit_id: step.unit_id.as_str().to_string(),
-                    summary: step.summary.clone(),
-                    execution_status_label: run_status_label(step.execution.status),
-                    consumed_stream_results,
-                    consumed_stream_actions,
-                    unit_action,
-                    produced_stream_results,
-                    produced_stream_actions,
-                    diagnostic_actions,
-                }
-            })
-            .collect(),
-        diagnostics: snapshot
-            .diagnostics
-            .iter()
-            .map(|diagnostic| diagnostic_model_from_ui(diagnostic, &snapshot.streams))
-            .collect(),
+        diagnostic_count: diagnostics.len(),
+        step_count: steps.len(),
+        stream_count: streams.len(),
+        review_summary,
+        streams,
+        steps,
+        diagnostics,
     }
+}
+
+fn stale_solve_snapshot_model_from_ui(
+    snapshot: &rf_ui::SolveSnapshot,
+    current_document_revision: u64,
+) -> StudioGuiWindowStaleSolveSnapshotModel {
+    StudioGuiWindowStaleSolveSnapshotModel {
+        snapshot_id: snapshot.id.as_str().to_string(),
+        sequence: snapshot.sequence,
+        snapshot_document_revision: snapshot.document_revision,
+        current_document_revision,
+        title: "Results are out of date",
+        detail: format!(
+            "Snapshot {} was produced from document revision {}; current document revision is {}. Run again before reviewing or exporting results.",
+            snapshot.id.as_str(),
+            snapshot.document_revision,
+            current_document_revision
+        ),
+    }
+}
+
+fn result_review_summary_model_from_parts(
+    status_label: &'static str,
+    diagnostic_count: usize,
+    streams: &[StudioGuiWindowStreamResultModel],
+    steps: &[StudioGuiWindowSolveStepModel],
+) -> StudioGuiWindowResultReviewSummaryModel {
+    let mut consumed_stream_ids = BTreeSet::new();
+    let mut produced_stream_ids = BTreeSet::new();
+    let mut source_unit_produced_stream_ids = BTreeSet::new();
+    for step in steps {
+        consumed_stream_ids.extend(step.consumed_stream_ids().map(str::to_string));
+        produced_stream_ids.extend(step.produced_stream_ids().map(str::to_string));
+        if step.consumed_stream_results.is_empty() {
+            source_unit_produced_stream_ids.extend(step.produced_stream_ids().map(str::to_string));
+        }
+    }
+
+    let source_stream_results = streams
+        .iter()
+        .filter(|stream| {
+            consumed_stream_ids.contains(&stream.stream_id)
+                && source_unit_produced_stream_ids.contains(&stream.stream_id)
+        })
+        .map(stream_result_reference_model_from_window_stream)
+        .collect();
+    let intermediate_stream_results = streams
+        .iter()
+        .filter(|stream| {
+            consumed_stream_ids.contains(&stream.stream_id)
+                && produced_stream_ids.contains(&stream.stream_id)
+                && !source_unit_produced_stream_ids.contains(&stream.stream_id)
+        })
+        .map(stream_result_reference_model_from_window_stream)
+        .collect();
+    let terminal_stream_results = streams
+        .iter()
+        .filter(|stream| {
+            produced_stream_ids.contains(&stream.stream_id)
+                && !consumed_stream_ids.contains(&stream.stream_id)
+        })
+        .map(stream_result_reference_model_from_window_stream)
+        .collect();
+    let unit_results = latest_unit_steps_for_review(steps)
+        .into_iter()
+        .map(|step| StudioGuiWindowResultReviewUnitModel {
+            unit_id: step.unit_id.clone(),
+            status_label: step.execution_status_label,
+            consumed_stream_ids: step.consumed_stream_ids().map(str::to_string).collect(),
+            produced_stream_ids: step.produced_stream_ids().map(str::to_string).collect(),
+        })
+        .collect();
+
+    StudioGuiWindowResultReviewSummaryModel {
+        status_label,
+        diagnostic_count,
+        source_stream_results,
+        intermediate_stream_results,
+        terminal_stream_results,
+        unit_results,
+    }
+}
+
+fn latest_unit_steps_for_review(
+    steps: &[StudioGuiWindowSolveStepModel],
+) -> Vec<&StudioGuiWindowSolveStepModel> {
+    let mut unit_steps = Vec::new();
+    for step in steps {
+        if let Some(index) = unit_steps
+            .iter()
+            .position(|existing: &&StudioGuiWindowSolveStepModel| existing.unit_id == step.unit_id)
+        {
+            unit_steps[index] = step;
+        } else {
+            unit_steps.push(step);
+        }
+    }
+    unit_steps
 }
 
 fn diagnostic_model_from_ui(
@@ -1721,6 +1882,22 @@ fn stream_result_reference_model_from_ui(
             None,
         ),
         focus_action: inspector_stream_action(stream.stream_id.as_str()),
+    }
+}
+
+fn stream_result_reference_model_from_window_stream(
+    stream: &StudioGuiWindowStreamResultModel,
+) -> StudioGuiWindowStreamResultReferenceModel {
+    StudioGuiWindowStreamResultReferenceModel {
+        stream_id: stream.stream_id.clone(),
+        summary: stream_result_numeric_summary(
+            &stream.temperature_text,
+            &stream.pressure_text,
+            &stream.molar_flow_text,
+            stream.molar_enthalpy_text.as_deref(),
+            Some(&stream.composition_text),
+        ),
+        focus_action: inspector_stream_action(&stream.stream_id),
     }
 }
 

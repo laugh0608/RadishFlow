@@ -537,6 +537,10 @@ impl StudioGuiPlatformHost {
         self.driver.state()
     }
 
+    pub fn document(&self) -> &rf_ui::FlowsheetDocument {
+        self.driver.document()
+    }
+
     pub fn snapshot(&self) -> StudioGuiSnapshot {
         self.enrich_snapshot(self.driver.snapshot())
     }

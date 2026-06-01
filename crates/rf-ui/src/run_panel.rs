@@ -303,12 +303,16 @@ pub fn run_panel_failure_title_for_diagnostic_code(primary_code: Option<&str>) -
         "Connection validation failed"
     } else if diagnostic_code_in_family(primary_code, "solver.topological_ordering") {
         "Topological ordering failed"
+    } else if diagnostic_code_in_family(primary_code, "workspace.run.property_package_missing") {
+        "Property package unavailable"
     } else if diagnostic_code_in_family(primary_code, "solver.step.lookup") {
         "Unit lookup failed"
     } else if diagnostic_code_in_family(primary_code, "solver.step.spec") {
         "Unit specification failed"
     } else if diagnostic_code_in_family(primary_code, "solver.step.parameter") {
         "Unit parameter invalid"
+    } else if diagnostic_code_in_family(primary_code, "solver.step.stream_input") {
+        "Stream input invalid"
     } else if diagnostic_code_in_family(primary_code, "solver.step.instantiation") {
         "Operation instantiation failed"
     } else if diagnostic_code_in_family(primary_code, "solver.step.inlet") {
@@ -427,6 +431,12 @@ pub fn run_panel_failure_recovery_action_for_diagnostic_code(
             "Break cycle",
             "消除自环或多单元回路后再重试，当前顺序模块法只支持无回路 flowsheet。",
         ))
+    } else if diagnostic_code_in_family(primary_code, "workspace.run.property_package_missing") {
+        Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::RepairLocalCache,
+            "Repair property package",
+            "确认项目选择的 property package 已在本地缓存中，或重新选择当前可用的内置物性包后再运行。",
+        ))
     } else if diagnostic_code_in_family(primary_code, "solver.step.lookup") {
         Some(RunPanelRecoveryAction::new(
             RunPanelRecoveryActionKind::VerifyUnitExists,
@@ -444,6 +454,12 @@ pub fn run_panel_failure_recovery_action_for_diagnostic_code(
             RunPanelRecoveryActionKind::InspectUnitSpec,
             "Inspect unit parameters",
             "检查 Unit Inspector 中的参数值和 SI 约束，确认参数与已连接入口状态一致。",
+        ))
+    } else if diagnostic_code_in_family(primary_code, "solver.step.stream_input") {
+        Some(RunPanelRecoveryAction::new(
+            RunPanelRecoveryActionKind::InspectExecutionInputs,
+            "Inspect stream inputs",
+            "检查入口流股的组成、流量、温度和压力是否已经提交，并确认这些输入来自当前项目组件列表。",
         ))
     } else if diagnostic_code_in_family(primary_code, "solver.step.instantiation") {
         Some(RunPanelRecoveryAction::new(
@@ -562,12 +578,17 @@ fn prefers_stream_recovery_target(primary_code: Option<&str>) -> bool {
         primary_code,
         "solver.connection_validation.duplicate_downstream_sink",
     ) || diagnostic_code_matches(primary_code, "solver.connection_validation.orphan_stream")
+        || diagnostic_code_in_family(primary_code, "solver.step.stream_input")
 }
 
 fn preferred_recovery_port_target<'a>(
     primary_code: Option<&str>,
     related_port_targets: &'a [DiagnosticPortTarget],
 ) -> Option<&'a DiagnosticPortTarget> {
+    if diagnostic_code_in_family(primary_code, "solver.step.stream_input") {
+        return None;
+    }
+
     if related_port_targets.is_empty() {
         return None;
     }

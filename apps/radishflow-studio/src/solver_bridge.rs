@@ -6,11 +6,13 @@ use rf_store::StoredAuthCacheIndex;
 use rf_thermo::{
     CachedPropertyPackageProvider, PlaceholderThermoProvider, PropertyPackageProvider,
 };
-use rf_types::{RfError, RfResult};
+use rf_types::{ErrorCode, RfError, RfResult};
 use rf_ui::{AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, RunStatus};
 
 pub(crate) const WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE: &str =
     "workspace.run.local_cache_unavailable";
+pub(crate) const WORKSPACE_RUN_DIAGNOSTIC_PROPERTY_PACKAGE_MISSING: &str =
+    "workspace.run.property_package_missing";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioSolveRequest {
@@ -83,6 +85,7 @@ where
     let thermo_system = match package_provider.load_system(package_id) {
         Ok(system) => system,
         Err(error) => {
+            let error = workspace_property_package_load_error(error);
             record_solve_failure(
                 app_state,
                 revision,
@@ -132,6 +135,16 @@ where
         ),
     );
     Ok(())
+}
+
+fn workspace_property_package_load_error(error: RfError) -> RfError {
+    if error.context().diagnostic_code().is_none()
+        && matches!(error.code(), ErrorCode::MissingEntity)
+    {
+        error.with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_PROPERTY_PACKAGE_MISSING)
+    } else {
+        error
+    }
 }
 
 pub fn solve_workspace_from_auth_cache(
@@ -191,8 +204,8 @@ mod tests {
 
     use super::{
         SolveFailureContext, StudioSolveRequest, WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE,
-        next_solver_snapshot_sequence, solve_workspace_from_auth_cache,
-        solve_workspace_with_property_package,
+        WORKSPACE_RUN_DIAGNOSTIC_PROPERTY_PACKAGE_MISSING, next_solver_snapshot_sequence,
+        solve_workspace_from_auth_cache, solve_workspace_with_property_package,
     };
     use crate::test_support::{
         OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
@@ -280,7 +293,7 @@ mod tests {
     }
 
     #[test]
-    fn solve_workspace_records_failure_when_package_is_missing() {
+    fn solve_workspace_records_workspace_code_when_package_is_missing() {
         let provider = InMemoryPropertyPackageProvider::default();
         let project = parse_project_file_json(include_str!(
             "../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
@@ -307,7 +320,7 @@ mod tests {
                 .latest_diagnostic
                 .as_ref()
                 .and_then(|summary| summary.primary_code.as_deref()),
-            None
+            Some(WORKSPACE_RUN_DIAGNOSTIC_PROPERTY_PACKAGE_MISSING)
         );
         assert_eq!(app_state.log_feed.entries.len(), 1);
     }
@@ -325,6 +338,12 @@ mod tests {
             .get_mut(&"stream-throttled".into())
             .expect("expected throttled stream")
             .pressure_pa = 730_000.0;
+        flowsheet
+            .units
+            .get_mut(&"valve-1".into())
+            .expect("expected valve unit")
+            .parameters
+            .outlet_pressure_pa = Some(730_000.0);
         let mut app_state = AppState::new(FlowsheetDocument::new(
             flowsheet,
             DocumentMetadata::new("doc-6", "Valve Failure Demo", timestamp(80)),
@@ -341,7 +360,7 @@ mod tests {
         )
         .expect_err("expected solve failure");
 
-        assert!(error.message().contains("solver.step.execution:"));
+        assert!(error.message().contains("solver.step.parameter:"));
         assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
         assert_eq!(
             app_state
@@ -350,7 +369,7 @@ mod tests {
                 .latest_diagnostic
                 .as_ref()
                 .and_then(|summary| summary.primary_code.as_deref()),
-            Some("solver.step.execution")
+            Some("solver.step.parameter")
         );
         assert_eq!(
             app_state

@@ -98,6 +98,20 @@ impl StoredProjectFile {
             )));
         }
 
-        self.document.metadata.validate()
+        self.document.metadata.validate()?;
+        validate_flowsheet_thermo_config(&self.document.flowsheet)
     }
+}
+
+fn validate_flowsheet_thermo_config(flowsheet: &Flowsheet) -> RfResult<()> {
+    if flowsheet
+        .property_package_id()
+        .is_some_and(|package_id| package_id.trim().is_empty())
+    {
+        return Err(RfError::invalid_input(
+            "stored project flowsheet thermo property_package_id must be non-empty",
+        ));
+    }
+
+    Ok(())
 }

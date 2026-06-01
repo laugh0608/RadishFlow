@@ -1,23 +1,16 @@
 # App Architecture
 
-更新时间：2026-05-23
+更新时间：2026-06-01
 
 ## 当前目标
 
-现阶段 App 方向已推进到 MVP α 验收硬化与 Studio 可用性收口。当前仍不做完整商业化界面或复杂交互扩张，但需要把已进入验收路径的 Studio 首页、工作台分区、运行入口、消息反馈和关闭行为规范化，避免用户无法判断如何打开示例、如何运行、结果在哪里、错误在哪里以及窗口是否正常退出。
+现阶段 App 方向聚焦 MVP β Studio 建模与结果核对闭环。不做完整商业化界面或复杂交互扩张；本文只冻结 App 边界。
 
-当前关注：
+不扩展自由连线、完整拖拽布局、完整报表或未来型多文档工作台。
 
-- App 壳层职责
-- UI / Core 边界
-- 文档模型与状态组织
-- 画布、属性面板、运行控制、结果展示关系
+## 冻结决策
 
-不扩展自由连线编辑器、完整拖拽布局编辑器、完整报表系统或未来型多文档工作台。
-
-## 当前已冻结决策
-
-截至 2026-03-29，以下 App 架构决策已经冻结：
+冻结决策：
 
 1. MVP 保持单文档工作区，不做多文档容器优先设计
 2. “单文档工作区”不等于“单文件实现”，代码仍按职责拆分，避免单文件持续膨胀
@@ -26,6 +19,7 @@
 5. 求解结果采用独立 `SolveSnapshot`，不直接污染 `FlowsheetDocument`
 6. 结果快照保留按步展开能力，为后续结果审阅、差异比较和操作脚本留接口
 7. 撤销/重做当前采用 snapshot-backed `CommandHistory`：历史记录仍保留语义 `DocumentCommand`，执行时应用对应 `before / after` flowsheet 快照
+8. 用户可触达运行入口在求解前统一使用通用 `Flowsheet` readiness 检查真实建模输入，不使用小案例作者清单作为运行 gate
 
 ## 顶层分层
 
@@ -41,7 +35,7 @@
 
 ### `apps/radishflow-studio`
 
-这是应用组合根，而不是业务逻辑仓库。
+这是应用组合根。
 
 职责：
 
@@ -51,10 +45,10 @@
 - 工作区与文档生命周期管理
 - 将 `rf-ui`、`rf-canvas`、`rf-store`、`rf-solver` 能力组装成桌面应用
 - 负责 `AuthSessionState` / `EntitlementState` 与 `StoredAuthCacheIndex` 之间的桥接与同步
-- 负责控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的 HTTP client、协议映射与应用层编排
-- 负责把下载租约、下载 fetcher 与本地缓存落盘串成单一路径
+- 负责控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的协议映射、下载租约与本地缓存落盘编排
 - 负责从 `PropertyPackageProvider` 或本地 auth cache 组装最小真实求解链路，并把 `rf-solver::SolveSnapshot` 回写到 `rf-ui::AppState`
-- 负责把 Studio shell 入口组织为可复现的 MVP α 工作流：启动后默认显示 Home Dashboard，进入 case 后暴露 `Home / 打开示例 / 新建空白 / 打开项目... / 运行 / 保存 / 另存为... / 视图`，默认隐藏低频命令和调试式布局控制，保留命令面板
+- 负责把 Studio shell 入口组织为可复现的 MVP α / β 工作流：默认显示 Home，可从空白项目进入小案例作者路径，进入 case 后暴露主路径命令
+- 负责让顶部 `Run`、Run Panel `Resume`、`F5 / Shift+F5`、AppHost、StudioGuiDriver、StudioGuiHost command registry 等正式运行入口复用同一层建模输入 readiness；shell 只负责 notice、focus 和用户反馈，不在各入口复制另一套输入判断
 - 负责在 GUI shell 层提供用户操作与求解审计输出；默认 stderr 日志只作为开发态 smoke 和诊断入口，不替代未来正式审计 / telemetry 设计
 - 负责遵守 `eframe` / `winit` 事件循环约束：Windows 事件循环在主线程创建；干净最后窗口 close 不得被 `CancelClose` 拦截，关闭前清理逻辑窗口并停止当帧 fallback 布局；脏工作区 close 必须先确认保存 / 舍弃 / 取消
 
@@ -68,15 +62,15 @@
 
 ### Studio Shell UI 规范化边界
 
-2026-05-17 人工 smoke 已确认，Studio 首页、工作台分区、运行后结果视图和 Home 项目切换确认流程已经落地。shell UI 边界按以下稳定入口治理：
+Studio 首页、工作台分区、运行后结果视图和 Home 项目切换确认流程已落地。shell UI 边界按以下稳定入口治理：
 
 - Home Dashboard：应用启动后的默认首页，只承载 Start actions、Recent Cases、Example Cases、Environment 和 Messages；不读取 `SolveSnapshot`，不直接承载流程图编辑。
-- Home 项目入口：左侧 Start actions 保留 `新建项目`、`打开项目`、`打开示例项目`；最近项目和示例项目由列表行承载选择态与双击打开。
+- Home 项目入口：左侧 Start actions 保留 `新建项目`、小案例作者入口、`打开项目`、`打开示例项目`；最近项目和示例项目由列表行承载选择态与双击打开。小案例作者入口只创建空白项目并切到 `放置`，清单只读 canvas，不生成 flowsheet、不写项目、不进 undo。
 - 未保存确认：新建、打开或列表双击时，若有未保存变更，必须先进入继续 / 取消确认。
 - 顶部主路径：进入 case 后只保留用户主路径、当前项目摘要和必要状态，不把调试计数和菜单全集置于第一视野。
 - 操作入口：`Home`、打开示例、新建空白、打开项目、运行、保存、另存为和视图保持可发现；低频命令进入 `视图`。
-- 工作台分区：左侧 `项目 / 示例项目 / 放置` 负责项目对象、示例入口与 MVP 放置入口；右侧 `检查器 / 结果 / 运行 / 物性包` 负责属性编辑、结果审阅、运行上下文和物性包状态；底部 `消息 / 运行日志 / 结果表 / 诊断` 承接可行动消息、运行日志和表格结果。
-- 结果反馈：成功后 shell 可切到右侧 `结果` 和底部 `结果表`，失败后切到右侧 `运行`。结果面只读消费`SolveSnapshot`。`复制快照`/`导出文本` 只格式化快照，不写项目/undo，不扩批量导出。
+- 工作台分区：左侧 `项目 / 示例项目 / 放置` 负责项目对象、项目级输入摘要、示例入口与 MVP 放置入口；其中 `项目` 面板可直接暴露受控物性包和项目组分选择，空白项目不隐式预选求解输入。右侧 `检查器 / 结果 / 运行 / 物性包` 负责属性编辑、结果审阅、运行上下文和物性包状态；底部 `消息 / 运行日志 / 结果表 / 诊断` 承接可行动消息、运行日志和表格结果。
+- 结果反馈：成功后 shell 可切到右侧 `结果` 和底部 `结果表`，失败后切到右侧 `运行`。结果面只读消费当前 revision 的最新 `SolveSnapshot`；文档编辑导致结果过期时只显示 stale notice，不继续用旧快照驱动 Result Inspector、结果表、Results commands 或复制 / 导出。`复制快照` / `导出文本` 格式化快照的 `Streams / Review / Units / Steps / Diagnostics`，不写项目 / undo，不扩报表 / 批量导出
 - 日志与审计：开发态 stderr 与 GUI activity 可继续服务 smoke，但正式 UI 只展示用户能采取行动的摘要，不把平台 timer 或 host internals 混入主路径
 - 关闭行为：干净最后窗口应自然结束进程；shell 可在清理逻辑窗口后停止当帧渲染，但不能拦截原生关闭请求。脏工作区必须先取消本次 close，请用户选择保存并关闭、舍弃并关闭或取消关闭；保存失败、另存为取消或覆盖确认未完成时保持打开。
 
@@ -328,108 +322,7 @@
 
 ## 最小状态草案
 
-在继续深化 `rf-ui` 之前，当前建议把最小状态对象先冻结到以下轮廓：
-
-```rust
-pub struct AppState {
-    pub workspace: WorkspaceState,
-    pub auth_session: AuthSessionState,
-    pub entitlement: EntitlementState,
-    pub preferences: UserPreferences,
-    pub log_feed: AppLogFeed,
-}
-
-pub struct WorkspaceState {
-    pub document: FlowsheetDocument,
-    pub document_path: Option<PathBuf>,
-    pub last_saved_revision: Option<u64>,
-    pub selection: SelectionState,
-    pub panels: UiPanelsState,
-    pub drafts: InspectorDraftState,
-    pub command_history: CommandHistory,
-    pub solve_session: SolveSessionState,
-    pub snapshot_history: VecDeque<SolveSnapshot>,
-    pub run_panel: RunPanelState,
-}
-
-pub struct FlowsheetDocument {
-    pub revision: u64,
-    pub flowsheet: Flowsheet,
-    pub metadata: DocumentMetadata,
-}
-
-pub struct CommandHistory {
-    pub entries: Vec<CommandHistoryEntry>,
-    pub cursor: usize,
-}
-
-pub struct SolveSessionState {
-    pub mode: SimulationMode,
-    pub status: RunStatus,
-    pub observed_revision: u64,
-    pub pending_reason: Option<SolvePendingReason>,
-    pub latest_snapshot: Option<SolveSnapshotId>,
-    pub latest_diagnostic: Option<DiagnosticSummary>,
-}
-
-pub struct SolveSnapshot {
-    pub id: SolveSnapshotId,
-    pub document_revision: u64,
-    pub sequence: u64,
-    pub status: RunStatus,
-    pub summary: DiagnosticSummary,
-    pub diagnostics: Vec<DiagnosticSnapshot>,
-    pub steps: Vec<StepSnapshot>,
-}
-
-pub struct DocumentMetadata {
-    pub document_id: DocumentId,
-    pub title: String,
-    pub schema_version: u32,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-pub struct UserPreferences {
-    pub theme: AppTheme,
-    pub locale: LocaleCode,
-    pub recent_project_paths: Vec<PathBuf>,
-    pub panel_defaults: PanelLayoutPreferences,
-    pub snapshot_history_limit: usize,
-}
-
-pub struct AuthSessionState {
-    pub status: AuthSessionStatus,
-    pub authority_url: Option<String>,
-    pub current_user: Option<AuthenticatedUser>,
-    pub token_lease: Option<TokenLease>,
-    pub last_authenticated_at: Option<DateTime<Utc>>,
-    pub last_error: Option<String>,
-}
-
-pub struct EntitlementState {
-    pub status: EntitlementStatus,
-    pub snapshot: Option<EntitlementSnapshot>,
-    pub package_manifests: BTreeMap<String, PropertyPackageManifest>,
-    pub last_synced_at: Option<DateTime<Utc>>,
-    pub last_error: Option<String>,
-}
-
-pub struct DiagnosticSummary {
-    pub document_revision: u64,
-    pub highest_severity: DiagnosticSeverity,
-    pub primary_message: String,
-    pub diagnostic_count: usize,
-    pub related_unit_ids: Vec<UnitId>,
-}
-
-pub enum SolvePendingReason {
-    DocumentRevisionAdvanced,
-    ModeActivated,
-    ManualRunRequested,
-    SnapshotMissing,
-}
-```
+最小状态对象已在上文按 ownership 和字段清单分别冻结；这里不再重复完整 Rust 结构体草案，避免文档同时维护两份同源字段列表。实现以 `rf-ui` 当前类型定义为准，本文只保留架构边界。
 
 这里有几条已经冻结的实现口径：
 
@@ -570,8 +463,6 @@ pub enum SolvePendingReason {
 - `SetSimulationMode`、`RunSolve`、`ClearResults` 属于运行控制动作，直接作用于 `SolveSessionState`
 - `OpenDocument`、`SaveDocument`、`SaveDocumentAs` 属于文档生命周期动作，不进入 undo/redo 历史
 
-这条边界如果现在不冻结，后面 undo/redo 会很快被无价值噪声淹没。
-
 ## 草稿态结构建议
 
 字段级草稿态建议不要散落在控件内部，而是集中表达成可检查对象。
@@ -704,8 +595,11 @@ pub struct StepSnapshot {
 - 草稿值不立即写回 `FlowsheetDocument`
 - 当发生 `Enter`、失焦、点击应用等语义提交时，才生成命令并写回文档
 - 写回文档后再决定是否触发结构检查与自动求解
-- Unit Inspector 只暴露关键参数：`Heater / Cooler` 写回 `outlet_temperature_k` 与 `outlet_pressure_pa`，`Valve` 与 `Flash Drum` 写回 `outlet_pressure_pa`，并通过 `SetUnitParameter` 同步出口模板；Heater / Cooler / Valve 的 outlet pressure 不能高于已连接 inlet pressure，Flash Drum 同步两出口模板并作为 TP Flash pressure 使用
+- 项目级物性包和组分选择属于文档语义输入；空白项目不自动补 package / components，Stream Inspector 只能从当前 `Flowsheet.components` 中添加组成条目
+- Stream Inspector 的 `T / P / F / composition` 也采用草稿提交；普通 Studio 运行入口会在缺少 Feed composition 时先走建模输入 readiness，已经进入求解阶段的 stream 输入不一致仍可归类为 `solver.step.stream_input`，并携带 stream / inlet target
+- Unit Inspector参数：`Feed`、`Heater / Cooler`、`Flash Drum` 写回 `outlet_temperature_k` / `outlet_pressure_pa`，`Mixer`、`Valve` 写回 `outlet_pressure_pa`；提交 `SetUnitParameter` 同步模板，Mixer pressure 不高于 inlet pressure，Heater / Cooler / Valve 不高于 inlet pressure；若字段值来自 outlet stream 模板 / fallback 而 unit parameter 尚未显式存在，同值提交仍应生成正式参数命令
 - Unit Inspector 参数字段必须携带 SI 单位和约束 presentation；无效草稿不写文档/历史/模板。已入文档的无效参数由 `solver.step.parameter` 等诊断暴露，并携带 unit / port / stream context
+- 运行前 readiness 只读取已提交的文档态输入，不读取 Inspector 草稿，也不自动补写默认值；未就绪时 shell 显示“模型输入未完成”并聚焦到对应 package / stream / unit
 
 采用这个方案的原因：
 
@@ -718,6 +612,25 @@ pub struct StepSnapshot {
 - 草稿态不进入命令历史
 - 只有成功提交到文档的变更才形成命令
 - 只有影响方程系统的提交才触发求解相关检查
+
+### 运行前 readiness
+
+Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前，会先做一层通用建模输入检查。当前包括顶部 `Run`、Run Panel `Resume`、`F5 / Shift+F5`、命令面板、AppHost、StudioGuiDriver 与 StudioGuiHost command registry 等正式入口。它的职责是阻止明显未完成的建模输入进入求解器，让用户先回到具体 package / stream / unit 补齐输入。
+
+当前检查范围：
+
+- 至少存在一个 unit。
+- 项目必须至少选择一组 project components；stream composition 中引用的 component 必须已经进入项目组分列表。
+- Feed source stream 必须具备正有限 `temperature_k`、`pressure_pa`、`total_molar_flow_mol_s`，并具备非空、数值有效、归一到 1 的 `overall_mole_fractions`。
+- `Heater / Cooler / Flash Drum` 必须提交 `outlet_temperature_k` 和 `outlet_pressure_pa`。
+- `Mixer / Valve` 必须提交 `outlet_pressure_pa`。
+
+明确不属于这层 readiness 的内容：
+
+- 不解析或选择 property package。缺物性包、缓存缺失或多包歧义继续交给正式 run package resolution 和 Run Panel 诊断。
+- 不替代结构性连接 / 拓扑诊断。缺 material port 绑定、坏 stream reference、重复 source / sink、orphan stream、cycle 等问题继续走正式 Run Panel 诊断 / recovery。
+- 不消费 `Mixer-Flash` / `Heater-Flash` 作者清单状态。作者清单只作为导航提示，不作为普通空白项目的运行 gate。
+- 不隐式归一 composition，不隐式写入 unit 参数，不用 outlet stream template 代替用户提交的 `UnitOperationParameters`。求解器保留对旧项目的兼容 fallback，但 Studio 运行前检查以用户已提交的文档态建模输入为准。
 
 ## 求解模式与运行状态
 
@@ -793,7 +706,7 @@ pub struct StepSnapshot {
 - 默认包选择当前采取保守策略：无 entitlement 时仅在本地缓存中唯一包可选时自动选中；有 entitlement 时仅在“本地缓存 ∩ entitlement manifests”唯一时自动选中，多包场景必须显式指定 package
 - 由 `WorkspaceSolveService` 负责生成默认 `snapshot_id` / `sequence`
 - `WorkspaceSolveService` 明确区分 `Manual` / `Automatic` 触发，并把 `SimulationMode` 与 `pending_reason` 的运行门控收口在应用层
-- `ResumeWorkspace` 当前会先把工作区切到 `Active`，再按 Automatic 语义发起运行，作为 `Hold -> Active` 恢复路径的第一版显式应用入口
+- `ResumeWorkspace` 当前会先复用同一层 package / readiness preflight；如果建模输入未就绪则保持 `Hold` / pending 状态并返回 modeling notice，只有 preflight 通过后才切到 `Active` 并按 Automatic 语义发起运行
 - 先把 `SolveSessionState` 推进到 `Checking -> Runnable -> Solving`
 - 通过 `PropertyPackageProvider` 或 `CachedPropertyPackageProvider` 加载 `ThermoSystem`
 - 组装 `PlaceholderThermoProvider + PlaceholderTpFlashSolver + SequentialModularSolver`
@@ -821,7 +734,7 @@ pub struct StepSnapshot {
 当前已落地与仍待细化的边界：
 
 - 手动运行已经进入真实 GUI 工作台主路径：顶部 `运行` 直接派发 `run_panel.run_manual`，并通过 command registry 的 availability / disabled reason 控制按钮状态
-- Home Dashboard 当前是 Studio shell 的默认第一视野；`新建项目 / 打开项目 / 打开示例项目` 和列表双击只触发生命周期动作，不写入当前 `FlowsheetDocument`
+- Home 是默认第一视野；`新建项目 / 小案例作者入口 / 打开项目 / 打开示例项目` 和列表双击只触发生命周期或清单选择，不写入当前 `FlowsheetDocument`
 - Home 与工作台的项目切换入口当前已统一纳入未保存变更确认流程；继续才丢弃当前工作区，取消不改变当前项目、MRU 或 `FlowsheetDocument`
 - `Home / 打开示例 / 新建空白 / 打开项目... / 保存 / 另存为... / 视图 / 命令面板` 当前作为进入 case 后的 Studio shell 主路径；默认隐藏命令大全只是 shell 启动时的 host-local transient layout preference，不写入项目文档语义
 - `StudioAppFacade`、`WorkspaceControlAction`、`WorkspaceControlState`、`RunPanelWidgetModel` 与 `run_panel_driver` 已经构成手动运行入口的稳定链路；后续仍待细化的是后台调度、取消、自动运行与 `Hold -> Active` 恢复在最终 GUI 中的完整交互表达
@@ -833,6 +746,8 @@ pub struct StepSnapshot {
 - Studio 当前结果检查器的 `selected_stream / comparison_stream / selected_unit` 也已冻结为 shell-local 视图选择态：它们只决定当前显示哪一块 `SolveSnapshot` 结果面，不缓存第二份结果；若 base stream 切换成当前 compared stream，comparison 允许按现有规则清空，但这仍只是 selector state 复位，不代表结果语义变化；最终 UI 的选择区应使用紧凑可选项，不为每个候选重复渲染 `Inspect`
 - Studio 当前 near-boundary 结果消费链已收口到 `window_model -> shell runtime` 的同一条 action surface：`inspector.focus_stream:*` / `inspector.focus_unit:*`、comparison 检查动作和诊断目标 section 都应从同一份 `StudioGuiWindowDiagnosticTargetActionModel` 或既有 focus action 派生；GUI 不应再发明 target 语义或导航分支
 - Studio 当前 `StudioGuiCommandRegistry` 也会从最新 `SolveSnapshot` 派生 `Results` command section：result stream / unit navigation 只暴露为既有 `inspector.focus_stream:*` / `inspector.focus_unit:*` command，palette、menu、command list 与 runtime 小型 action button 都继续通过 `dispatch_ui_command(command_id)` 进入同一条 host 派发链，不在各自入口复制 target 解析
+- Studio 当前 window-model 也会从同一份 `SolveSnapshot` 派生 case-level `review_summary`：按 source / intermediate / terminal stream 分组，并列出 latest unit results 的 consumed / produced streams 与 diagnostics count。该摘要只服务结果审阅和轻量导出，不成为第二套结果缓存或报表模型。
+- Studio 当前 window-model 也会在文档 revision 推进后暴露 `stale_solve_snapshot` presentation：它只说明上一份快照来自旧 revision，并提示用户重新运行；旧快照不再作为当前 Result Inspector、底部结果表、Results commands、轻量导出或 `review_summary` 的数据源。
 - Studio 当前失败详情只消费 `latest_diagnostic`，显示 primary code、revision、severity、count 与相关 target；GUI 不从 message 文本反解析或私造端口级 command
 - Studio 当前 Run Panel recovery action 必须区分聚焦与修复：前者只定位 target，后者才通过 `run_panel.recover_failure` 执行断开坏引用、删除 orphan stream、创建/绑定 outlet stream 或恢复 canonical port 等 mutation。用户主动选中流股后的整股断开 / 端点级断开 / 重连 / 删除走对应 `canvas.*selected_stream*` 命令，不复用 failure-only recovery command
 - `StudioAppHostController` 当前对 `DispatchCanvasInteraction` 不应再无条件 `refresh_local_canvas_suggestions()`；local-rules refresh 只应发生在真正改写文档或显式要求重算 suggestion 的路径上，否则会把 `FocusNext/Reject` 刚生成的正式焦点状态冲回首条 suggestion，破坏 GUI 命令面的连续交互语义

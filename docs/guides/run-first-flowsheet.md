@@ -1,6 +1,6 @@
 # Run First Flowsheet
 
-更新时间：2026-05-23
+更新时间：2026-06-01
 
 ## 目的
 
@@ -19,13 +19,13 @@
 
 ## 0. 前提
 
-如果从内部便携包体验，进入包目录后直接启动：
+如果从历史内部便携 staging 体验，进入 staging 目录后直接启动：
 
 ```powershell
 .\radishflow-studio.exe
 ```
 
-包内示例位于 `examples/flowsheets`。当前包是 Windows 便携包 / staging 形态，不是安装器；不会执行 COM 注册、PME 自动化或第三方 CAPE-OPEN 模型加载。
+包内示例位于 `examples/flowsheets`。当前 staging 是 Windows 便携目录形态，不是安装器、正式 demo 或 release 节点；不会执行 COM 注册、PME 自动化或第三方 CAPE-OPEN 模型加载。
 
 如果从仓库开发态体验，建议当前工作区至少可通过最小构建检查：
 
@@ -109,6 +109,8 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 3. 底部 `结果表` 与 `诊断`
 4. 右侧 `检查器` 中当前对象的关联结果
 
+如果需要快速交叉核对整条 case，可以再导出当前快照文本。导出中的 `Review` section 会按 source / intermediate / terminal streams、latest unit results 和 diagnostics count 汇总同一份 `SolveSnapshot`，便于先确认输入流股、中间流股、Flash 出口和单元消费 / 产出关系。
+
 当前你应该特别注意以下结果字段：
 
 - `T / P / F / H`
@@ -161,13 +163,14 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 如果想验证“不是只会打开示例”，可以用当前 MVP α 支持的最短空白路径：
 
 1. 在首页点击 `新建项目`，或进入工作台后点击顶部 `新建空白`，进入未命名空白项目。
-2. 左侧切到 `放置`，放置 `进料` 和 `闪蒸罐`；需要中间设备时可加 `加热器 / 冷却器 / 阀门`，需要双入口时可加第二个 `进料` 和 `混合器`。按钮文案当前是 `放置进料`、`放置闪蒸罐` 等，项目对象名仍可显示为 `Feed`、`Flash Drum` 等领域名。
-3. 每次放置单元后，在 Canvas 中点击落点提交；这只提交当前放置意图，不是完整拖拽布局编辑器。
-4. 使用 Canvas suggestion 中的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` 动作补齐 `source -> sink` 端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
-5. 从左侧 `项目` 或 Canvas 对象列表选择 stream / unit，右侧 `检查器` 会显示当前对象。
-6. 流股检查器当前可编辑 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 和已有 flowsheet component catalog 中的组成条目；组成修改需要显式提交、归一化或丢弃。
-7. 单元检查器当前已暴露首批高频参数：Heater / Cooler 的 outlet temperature / outlet pressure、Valve 的 outlet pressure 与 Flash Drum 的 flash pressure；字段使用 SI 单位并显示约束提示，Heater / Cooler / Valve outlet pressure 若高于已连接 inlet pressure 会停留在无效草稿态。其余内容仍以端口、关联步骤、关联诊断和最新 `SolveSnapshot` 中的单元结果为主，不等同于完整单元参数表。
-8. 点击 `运行`，成功后右侧会自动切到 `结果`，底部会自动切到 `结果表`；失败时会切到右侧 `运行` 和底部 `消息`，方便先看诊断。
+2. 左侧 `项目` 面板会显示当前物性包和 `项目组分`。空白项目不会预选求解输入；先选择内置 `binary-hydrocarbon-lite-v1` package，再选择 methane / ethane。它们会写入 `Flowsheet.thermo.property_package_id` 和 `Flowsheet.components`，并决定后续 Stream Inspector 中可添加的组成条目。
+3. 左侧切到 `放置`，放置 `进料` 和 `闪蒸罐`；需要中间设备时可加 `加热器 / 冷却器 / 阀门`，需要双入口时可加第二个 `进料` 和 `混合器`。按钮文案当前是 `放置进料`、`放置闪蒸罐` 等，项目对象名仍可显示为 `Feed`、`Flash Drum` 等领域名。
+4. 每次放置单元后，在 Canvas 中点击落点提交；这只提交当前放置意图，不是完整拖拽布局编辑器。
+5. 使用 Canvas suggestion 中的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` 动作补齐 `source -> sink` 端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
+6. 从左侧 `项目` 或 Canvas 对象列表选择 stream / unit，右侧 `检查器` 会显示当前对象。
+7. 流股检查器当前可编辑 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 和已有 flowsheet component catalog 中的组成条目；组成修改需要显式提交、归一化或丢弃。若流股缺少项目组分，可先通过检查器中的受控 add component 动作添加，再编辑对应摩尔分率。
+8. 单元检查器当前已暴露首批高频参数：Feed 的 source temperature / pressure、Heater / Cooler 的 outlet temperature / outlet pressure、Mixer / Valve 的 outlet pressure 与 Flash Drum 的 flash temperature / flash pressure；字段使用 SI 单位并显示约束提示，Mixer outlet pressure 不能高于两股已连接 inlet pressure 的较低值，Heater / Cooler / Valve outlet pressure 若高于已连接 inlet pressure 会停留在无效草稿态。其余内容仍以端口、关联步骤、关联诊断和最新 `SolveSnapshot` 中的单元结果为主，不等同于完整单元参数表。若字段显示的是 outlet stream 模板值，但单元参数尚未显式提交，仍应点提交；即使输入值与显示值相同，也会写入正式单元参数。
+9. 点击 `运行`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐并运行成功后，右侧会自动切到 `结果`，底部会自动切到 `结果表`。正式物性包解析失败、结构性连接错误、拓扑错误和求解阶段参数失败仍由 Run Panel 诊断 / recovery 承载。
 
 如果误接或漏接了流股，可以选中对应 material stream 后使用右侧检查器或 Canvas 操作区中的受控恢复动作：
 
@@ -178,9 +181,35 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 这些动作都进入 undo/redo 历史，但仍不是自由连线、任意端口选择或自动布线工具。
 
-当前仍不支持自由拉线、任意端口点击创建、任意端口重连、自动布线、完整组件库、完整物性包浏览/切换或完整单元参数表。这些缺口若影响验证，应记录为 MVP α 后续任务，而不是用 shell 私有状态绕过。
+当前仍不支持自由拉线、任意端口点击创建、任意端口重连、自动布线、完整组件库、第三方物性包加载、完整物性包浏览器或完整单元参数表。当前只支持受控内置 package 与 methane / ethane 项目组分选择；这些能力不等同于完整组分数据库或完整物性包系统。
 
-## 7. 常见阻塞点
+## 7. MVP β 小案例作者路径
+
+如果你已经能跑通内置示例，下一步建议从空白项目手工复现一个小案例。当前推荐先用 `Feed + Feed -> Mixer -> Flash Drum`，因为它同时覆盖双入口连接、单元参数、保存重开和结果导出；也可以从首页选择 `创建 Heater-Flash 小案例`，用同一任务清单机制复现 `Feed -> Heater -> Flash Drum`。更完整的小案例作者说明见 `docs/guides/author-small-cases.md`。
+
+建议步骤：
+
+1. 在首页点击 `创建 Mixer-Flash 小案例`，或手动新建空白项目后切到左侧 `放置`。该入口只负责打开作者任务清单，不会自动生成 flowsheet。
+2. 放置两个 `Feed`、一个 `Mixer` 和一个 `Flash Drum`。
+3. 依次接受本地 suggestion，形成：
+   - `Feed 1 -> Mixer.inlet_a`
+   - `Feed 2 -> Mixer.inlet_b`
+   - `Mixer.outlet -> Flash Drum.inlet`
+   - `Flash Drum.liquid / vapor` 两个出口流股
+4. 在单元检查器中提交一组 SI 参数：
+   - `Feed 1` source temperature = `305 K`，source pressure = `130000 Pa`
+   - `Feed 2` source temperature = `315 K`，source pressure = `120000 Pa`
+   - `Mixer` outlet pressure = `90000 Pa`
+   - `Flash Drum` flash temperature = `300 K`，flash pressure = `85000 Pa`
+5. 点击顶部 `运行`，确认运行收敛，`stream-mixer-1-outlet` 总摩尔流量为两股入口之和。
+6. 保存项目，关闭或重新打开该项目，再次运行。
+7. 在右侧 `结果` 区复制当前 `SolveSnapshot`，或导出为轻量 `.txt`；文本中的 `Review` section 可快速核对 source / intermediate / terminal streams 与 latest unit results。
+
+这条路径的目标不是新增项目向导，而是验证用户能按现有 `放置 -> suggestion -> 单元参数 -> 运行 -> 保存重开 -> 结果导出` 工作流复现一个小案例。连接仍通过正式 suggestion 和 `DocumentCommand` 完成；参数仍只覆盖当前已暴露的 MVP 高频字段；导出只消费当前结果 DTO，不写项目、不进入 undo，也不是完整报表系统。
+
+如果选择 `创建 Heater-Flash 小案例`，操作顺序相同，但目标链路改为 `Feed -> Heater -> Flash Drum`。清单会要求放置一个 `Feed`、创建 Feed outlet、放置并连接 `Heater`、创建 Heater outlet、连接到 `Flash Drum`、创建 liquid / vapor outlet，然后运行并检查结果。该路径的详细核对点见 `docs/guides/author-small-cases.md`。
+
+## 8. 常见阻塞点
 
 如果当前示例没有直接跑通，优先检查以下几类问题：
 
@@ -188,7 +217,9 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - 文档态流股组成是否未归一到 1
 - 当前运行环境下是否出现多包可选且未显式指定 package
 - 项目是否被改成了不完整连接或不一致端口绑定
-- Heater / Cooler / Valve outlet pressure 是否高于已连接 inlet pressure；Flash Drum flash pressure 是否为正有限 Pa 值。若越界值已存在于项目文档，运行诊断会归类为 `solver.step.parameter`
+- Feed source temperature / pressure / molar flow 是否为正有限 SI 值，Feed composition 是否引用已选择项目组分并归一；Flash Drum flash temperature / flash pressure、Heater / Cooler outlet temperature / pressure、Mixer / Valve outlet pressure 等必要参数是否已经提交
+- Mixer / Heater / Cooler / Valve outlet pressure 是否高于已连接 inlet pressure 约束。若越界值已存在于项目文档，运行诊断会归类为 `solver.step.parameter`
+- 已连接到下游单元的 stream 是否已经写入至少一项 overall mole fraction；若缺少可消费组成，运行诊断会归类为 `solver.step.stream_input`，并应优先定位到相关 stream 和 inlet port
 - 顶部 `运行` 是否处于 disabled 状态，以及 hover 文案给出的原因
 - 启动 Studio 的终端 stderr 是否有 `[radishflow-studio]` 审计线或 GUI panic 提示
 
@@ -214,7 +245,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - `Normalize composition`：显式把当前组成归一化；它不会代替用户猜测新增或删除组分
 - `Remove` / add component：只在当前 flowsheet 已有组件目录内操作，不触发项目级组件迁移
 
-## 8. 下一步建议
+## 9. 下一步建议
 
 如果这次运行已经走通，下一步建议按下面顺序继续：
 

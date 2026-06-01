@@ -37,7 +37,11 @@ mod studio_gui_window_model;
 mod studio_inspector_draft_command;
 mod studio_inspector_target_command;
 mod studio_local_rules;
+mod studio_modeling_readiness;
+mod studio_project_component_selection;
+mod studio_property_package_selection;
 mod studio_runtime;
+mod studio_stream_reconnect_presentation;
 mod studio_window_host;
 mod studio_window_host_manager;
 mod studio_window_session;
@@ -144,7 +148,10 @@ pub use inspector_draft_driver::{
     remove_inspector_composition_component, remove_inspector_composition_component_at,
     update_inspector_draft,
 };
-pub use inspector_target_driver::{InspectorTargetFocusOutcome, focus_inspector_target};
+pub use inspector_target_driver::{
+    InspectorTargetClearOutcome, InspectorTargetFocusOutcome, clear_inspector_target,
+    focus_inspector_target,
+};
 pub use property_package_download::{
     PROPERTY_PACKAGE_DOWNLOAD_KIND, PROPERTY_PACKAGE_DOWNLOAD_SCHEMA_VERSION,
     PropertyPackageDownload, PropertyPackageDownloadAntoineCoefficients,
@@ -263,7 +270,8 @@ pub use studio_gui_snapshot::{
     StudioGuiInspectorPropertyNoticeSnapshot, StudioGuiInspectorTargetDetailSnapshot,
     StudioGuiInspectorTargetFieldSnapshot, StudioGuiInspectorTargetFieldValidationSnapshot,
     StudioGuiInspectorTargetFieldValueKindSnapshot, StudioGuiInspectorTargetPortSnapshot,
-    StudioGuiInspectorTargetSummaryRowSnapshot, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
+    StudioGuiInspectorTargetSummaryRowSnapshot, StudioGuiProjectComponentChoiceSnapshot,
+    StudioGuiPropertyPackageChoiceSnapshot, StudioGuiRuntimeSnapshot, StudioGuiSnapshot,
     StudioGuiWorkspaceDocumentSnapshot,
 };
 pub use studio_gui_timer_host::{
@@ -290,19 +298,22 @@ pub use studio_gui_window_model::{
     StudioGuiWindowFailureDiagnosticDetailModel, StudioGuiWindowFailureDiagnosticPortTargetModel,
     StudioGuiWindowFailureResultModel, StudioGuiWindowHeaderModel,
     StudioGuiWindowInspectorCompositionComponentActionModel,
-    StudioGuiWindowInspectorCompositionSummaryModel, StudioGuiWindowInspectorPropertyNoticeModel,
-    StudioGuiWindowInspectorTargetDetailModel, StudioGuiWindowInspectorTargetFieldModel,
-    StudioGuiWindowInspectorTargetModel, StudioGuiWindowInspectorTargetPortModel,
-    StudioGuiWindowInspectorTargetSummaryRowModel, StudioGuiWindowModel,
-    StudioGuiWindowPhaseResultModel, StudioGuiWindowResultInspectorComparisonModel,
+    StudioGuiWindowInspectorCompositionSummaryModel, StudioGuiWindowInspectorConnectionActionModel,
+    StudioGuiWindowInspectorPropertyNoticeModel, StudioGuiWindowInspectorTargetDetailModel,
+    StudioGuiWindowInspectorTargetFieldModel, StudioGuiWindowInspectorTargetModel,
+    StudioGuiWindowInspectorTargetPortModel, StudioGuiWindowInspectorTargetSummaryRowModel,
+    StudioGuiWindowModel, StudioGuiWindowPhaseResultModel,
+    StudioGuiWindowResultInspectorComparisonModel,
     StudioGuiWindowResultInspectorComparisonRowModel,
     StudioGuiWindowResultInspectorCompositionComparisonRowModel,
     StudioGuiWindowResultInspectorModel, StudioGuiWindowResultInspectorPhaseComparisonRowModel,
-    StudioGuiWindowResultInspectorStreamOptionModel, StudioGuiWindowRuntimeAreaModel,
+    StudioGuiWindowResultInspectorStreamOptionModel, StudioGuiWindowResultReviewSummaryModel,
+    StudioGuiWindowResultReviewUnitModel, StudioGuiWindowRuntimeAreaModel,
     StudioGuiWindowSolveSnapshotModel, StudioGuiWindowSolveStepModel,
-    StudioGuiWindowStreamResultModel, StudioGuiWindowStreamResultReferenceModel,
-    StudioGuiWindowStreamSummaryRowModel, StudioGuiWindowToolbarItemModel,
-    StudioGuiWindowToolbarSectionModel, StudioGuiWindowUnitExecutionResultModel,
+    StudioGuiWindowStaleSolveSnapshotModel, StudioGuiWindowStreamResultModel,
+    StudioGuiWindowStreamResultReferenceModel, StudioGuiWindowStreamSummaryRowModel,
+    StudioGuiWindowToolbarItemModel, StudioGuiWindowToolbarSectionModel,
+    StudioGuiWindowUnitExecutionResultModel,
 };
 pub use studio_inspector_draft_command::{
     StudioInspectorCompositionComponentAddCommand,
@@ -322,6 +333,28 @@ pub use studio_inspector_draft_command::{
 };
 pub use studio_inspector_target_command::{
     inspector_target_command_id, inspector_target_from_command_id,
+};
+pub use studio_modeling_readiness::{
+    StudioModelingFocusTarget, StudioModelingReadinessTask, StudioModelingRunBlocker,
+    StudioModelingUnitParameter, studio_modeling_run_blocked_detail_en,
+    studio_modeling_run_blocked_detail_zh, studio_modeling_run_blocked_title_en,
+    studio_modeling_run_blocked_title_zh, studio_modeling_run_blocker,
+};
+pub use studio_project_component_selection::{
+    PROJECT_COMPONENT_REMOVE_COMMAND_PREFIX, PROJECT_COMPONENT_SELECT_COMMAND_PREFIX,
+    ProjectComponentSelectionOutcome, STUDIO_BUILTIN_PROJECT_COMPONENTS,
+    StudioBuiltinProjectComponent, StudioProjectComponentSelectionCommand,
+    builtin_project_component, project_component_remove_command_from_id,
+    project_component_remove_command_id, project_component_select_command_from_id,
+    project_component_select_command_id, remove_project_component, remove_project_component_at,
+    select_project_component, select_project_component_at,
+};
+pub use studio_property_package_selection::{
+    PROPERTY_PACKAGE_SELECT_COMMAND_PREFIX, PropertyPackageSelectionOutcome,
+    STUDIO_BUILTIN_PROPERTY_PACKAGES, StudioBuiltinPropertyPackage,
+    StudioPropertyPackageSelectionCommand, builtin_property_package,
+    property_package_select_command_from_id, property_package_select_command_id,
+    select_property_package, select_property_package_at,
 };
 pub use studio_runtime::{
     StudioRuntime, StudioRuntimeConfig, StudioRuntimeDispatch, StudioRuntimeEffect,

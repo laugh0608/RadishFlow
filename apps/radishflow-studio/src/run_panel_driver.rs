@@ -245,6 +245,12 @@ mod tests {
             .get_mut(&"stream-throttled".into())
             .expect("expected throttled stream")
             .pressure_pa = 730_000.0;
+        flowsheet
+            .units
+            .get_mut(&"valve-1".into())
+            .expect("expected valve unit")
+            .parameters
+            .outlet_pressure_pa = Some(730_000.0);
         let mut app_state = AppState::new(FlowsheetDocument::new(
             flowsheet,
             DocumentMetadata::new("doc-driver-recovery", "Driver Recovery Demo", timestamp(90)),
@@ -257,7 +263,7 @@ mod tests {
         let outcome = apply_run_panel_recovery_action(&mut app_state)
             .expect("expected run panel recovery outcome");
 
-        assert_eq!(outcome.action.title, "Inspect unit inputs");
+        assert_eq!(outcome.action.title, "Inspect unit parameters");
         assert_eq!(
             outcome.applied_target,
             Some(InspectorTarget::Unit(rf_types::UnitId::new("valve-1")))

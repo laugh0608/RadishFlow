@@ -3,8 +3,9 @@ use std::path::Path;
 
 use radishflow_studio::{
     RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppCommand, StudioAppFacade,
-    StudioAppResultDispatch, StudioWorkspaceRunOutcome, WorkspaceControlAction,
-    WorkspaceRunCommand, WorkspaceRunPackageSelection, apply_run_panel_recovery_action,
+    StudioAppResultDispatch, StudioWorkspaceRunBlocked, StudioWorkspaceRunBlockedReason,
+    StudioWorkspaceRunOutcome, WorkspaceControlAction, WorkspaceRunCommand,
+    WorkspaceRunPackageSelection, apply_run_panel_recovery_action,
     dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_workspace_control_action_with_auth_cache,
 };
@@ -198,6 +199,35 @@ fn apply_binary_demo_composition(
         .insert(ComponentId::new("ethane"), overall_mole_fractions[1]);
 }
 
+fn set_app_unit_outlet_temperature(app_state: &mut AppState, unit_id: &str, temperature_k: f64) {
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new(unit_id))
+        .expect("expected unit")
+        .parameters
+        .outlet_temperature_k = Some(temperature_k);
+}
+
+fn set_app_unit_outlet_pressure(app_state: &mut AppState, unit_id: &str, pressure_pa: f64) {
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new(unit_id))
+        .expect("expected unit")
+        .parameters
+        .outlet_pressure_pa = Some(pressure_pa);
+}
+
+fn set_app_flash_case_parameters(app_state: &mut AppState, case: &NearBoundaryStreamWindowCase) {
+    set_app_unit_outlet_temperature(app_state, "flash-1", case.temperature_k);
+    set_app_unit_outlet_pressure(app_state, "flash-1", case.pressure_pa);
+}
+
 fn app_state_for_heater_boundary_case(
     document_id: &str,
     title: &str,
@@ -230,6 +260,9 @@ fn app_state_for_heater_boundary_case(
         .expect("expected heated stream");
     heated.temperature_k = case.temperature_k;
     heated.pressure_pa = case.pressure_pa;
+    set_app_unit_outlet_temperature(&mut app_state, "heater-1", case.temperature_k);
+    set_app_unit_outlet_pressure(&mut app_state, "heater-1", case.pressure_pa);
+    set_app_flash_case_parameters(&mut app_state, case);
     app_state
 }
 
@@ -334,6 +367,9 @@ fn app_state_for_synthetic_heater_boundary_case(
         .expect("expected heated stream");
     heated.temperature_k = case.temperature_k;
     heated.pressure_pa = case.pressure_pa;
+    set_app_unit_outlet_temperature(&mut app_state, "heater-1", case.temperature_k);
+    set_app_unit_outlet_pressure(&mut app_state, "heater-1", case.pressure_pa);
+    set_app_flash_case_parameters(&mut app_state, case);
     app_state
 }
 
@@ -1086,6 +1122,12 @@ fn run_panel_recovery_action_focuses_failed_unit_end_to_end() {
         .get_mut(&"stream-throttled".into())
         .expect("expected throttled stream")
         .pressure_pa = 730_000.0;
+    flowsheet
+        .units
+        .get_mut(&UnitId::new("valve-1"))
+        .expect("expected valve unit")
+        .parameters
+        .outlet_pressure_pa = Some(730_000.0);
     let mut app_state = AppState::new(FlowsheetDocument::new(
         flowsheet,
         DocumentMetadata::new(
@@ -1102,7 +1144,7 @@ fn run_panel_recovery_action_focuses_failed_unit_end_to_end() {
     let recovery =
         apply_run_panel_recovery_action(&mut app_state).expect("expected recovery action");
 
-    assert_eq!(recovery.action.title, "Inspect unit inputs");
+    assert_eq!(recovery.action.title, "Inspect unit parameters");
     assert_eq!(
         recovery.applied_target,
         Some(InspectorTarget::Unit("valve-1".into()))
@@ -1753,7 +1795,7 @@ fn run_panel_recovery_action_creates_stream_for_unbound_outlet_end_to_end() {
 }
 
 #[test]
-fn run_panel_recovery_action_creates_stream_for_unbound_outlet_and_reruns_successfully() {
+fn run_panel_recovery_action_creates_stream_for_unbound_outlet_then_readiness_blocks_rerun() {
     let cache_root = unique_temp_path("integration-run-panel-unbound-outlet-recovery-rerun");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
     write_official_binary_hydrocarbon_cached_package(
@@ -1787,33 +1829,31 @@ fn run_panel_recovery_action_creates_stream_for_unbound_outlet_and_reruns_succes
 
     let rerun =
         dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
-            .expect("expected successful rerun after recovery");
+            .expect("expected readiness rerun after recovery");
 
     match rerun.dispatch {
         RunPanelWidgetDispatchOutcome::Executed(outcome) => match outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => {
                 assert!(matches!(
                     dispatch.outcome,
-                    StudioWorkspaceRunOutcome::Started(_)
+                    StudioWorkspaceRunOutcome::Blocked(StudioWorkspaceRunBlocked {
+                        reason: StudioWorkspaceRunBlockedReason::ModelingInputsNotReady,
+                        ..
+                    })
                 ));
-                assert_eq!(
-                    dispatch.latest_snapshot_id.as_deref(),
-                    Some("doc-control-unbound-outlet-recovery-rerun-rev-1-seq-1")
-                );
+                assert_eq!(dispatch.latest_snapshot_id, None);
             }
             _ => panic!("expected workspace run dispatch"),
         },
         _ => panic!("expected executed rerun outcome"),
     }
-    assert_eq!(rerun.state.control_state.run_status, RunStatus::Converged);
+    assert_eq!(rerun.state.control_state.run_status, RunStatus::Dirty);
     assert_eq!(
-        rerun.state.control_state.latest_snapshot_id.as_deref(),
-        Some("doc-control-unbound-outlet-recovery-rerun-rev-1-seq-1")
+        rerun.state.control_state.pending_reason,
+        Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
     );
-    assert_eq!(
-        app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
-        Some("doc-control-unbound-outlet-recovery-rerun-rev-1-seq-1")
-    );
+    assert_eq!(rerun.state.control_state.latest_snapshot_id, None);
+    assert_eq!(app_state.workspace.run_panel.latest_snapshot_id, None);
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
 }

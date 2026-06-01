@@ -67,9 +67,10 @@ impl AppState {
         }
         let original_value =
             unit_inspector_parameter_value(&self.workspace.document.flowsheet, unit_id, &field)?;
+        let missing_explicit_parameter = !unit_inspector_parameter_is_explicit(unit, &field);
         let raw_value = raw_value.into();
         let key = unit_inspector_draft_key(unit_id, &field);
-        let (draft_value, is_dirty, validation) =
+        let (mut draft_value, mut is_dirty, validation) =
             unit_draft_value_from_raw(original_value, raw_value, |value| {
                 is_valid_unit_parameter_value_for_unit(
                     &self.workspace.document.flowsheet,
@@ -78,6 +79,14 @@ impl AppState {
                     value,
                 )
             });
+        if missing_explicit_parameter && validation == DraftValidationState::Valid {
+            if let DraftValue::Number(draft) = &mut draft_value {
+                if !draft.is_dirty {
+                    draft.is_dirty = true;
+                    is_dirty = true;
+                }
+            }
+        }
 
         if !is_dirty && validation != DraftValidationState::Invalid {
             self.workspace.drafts.fields.remove(&key);
@@ -207,6 +216,15 @@ pub fn unit_inspector_parameter_value(
     }
 }
 
+fn unit_inspector_parameter_is_explicit(unit: &UnitNode, field: &UnitInspectorDraftField) -> bool {
+    match field {
+        UnitInspectorDraftField::OutletTemperatureK => {
+            unit.parameters.outlet_temperature_k.is_some()
+        }
+        UnitInspectorDraftField::OutletPressurePa => unit.parameters.outlet_pressure_pa.is_some(),
+    }
+}
+
 fn unit_draft_value_from_raw(
     original_value: f64,
     raw_value: String,
@@ -271,14 +289,26 @@ fn unit_command_value_from_draft(
 
 fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorDraftField> {
     match unit.kind.as_str() {
+        rf_unitops::FEED_KIND => {
+            vec![
+                UnitInspectorDraftField::OutletTemperatureK,
+                UnitInspectorDraftField::OutletPressurePa,
+            ]
+        }
         rf_unitops::HEATER_KIND | rf_unitops::COOLER_KIND => {
             vec![
                 UnitInspectorDraftField::OutletTemperatureK,
                 UnitInspectorDraftField::OutletPressurePa,
             ]
         }
-        rf_unitops::VALVE_KIND | rf_unitops::FLASH_DRUM_KIND => {
+        rf_unitops::MIXER_KIND | rf_unitops::VALVE_KIND => {
             vec![UnitInspectorDraftField::OutletPressurePa]
+        }
+        rf_unitops::FLASH_DRUM_KIND => {
+            vec![
+                UnitInspectorDraftField::OutletTemperatureK,
+                UnitInspectorDraftField::OutletPressurePa,
+            ]
         }
         _ => Vec::new(),
     }
@@ -369,8 +399,8 @@ fn is_valid_unit_parameter_value_for_unit(
     if unit_outlet_pressure_cannot_exceed_inlet(unit)
         && matches!(field, UnitInspectorDraftField::OutletPressurePa)
     {
-        return inlet_stream(flowsheet, unit)
-            .map(|stream| value <= stream.pressure_pa)
+        return inlet_pressure_limit(flowsheet, unit)
+            .map(|pressure_pa| value <= pressure_pa)
             .unwrap_or(true);
     }
 
@@ -380,16 +410,21 @@ fn is_valid_unit_parameter_value_for_unit(
 fn unit_outlet_pressure_cannot_exceed_inlet(unit: &UnitNode) -> bool {
     matches!(
         unit.kind.as_str(),
-        rf_unitops::HEATER_KIND | rf_unitops::COOLER_KIND | rf_unitops::VALVE_KIND
+        rf_unitops::MIXER_KIND
+            | rf_unitops::HEATER_KIND
+            | rf_unitops::COOLER_KIND
+            | rf_unitops::VALVE_KIND
     )
 }
 
-fn inlet_stream<'a>(flowsheet: &'a Flowsheet, unit: &UnitNode) -> Option<&'a MaterialStreamState> {
+fn inlet_pressure_limit(flowsheet: &Flowsheet, unit: &UnitNode) -> Option<f64> {
     unit.ports
         .iter()
-        .find(|port| port.direction == PortDirection::Inlet && port.kind == PortKind::Material)
-        .and_then(|port| port.stream_id.as_ref())
-        .and_then(|stream_id| flowsheet.streams.get(stream_id))
+        .filter(|port| port.direction == PortDirection::Inlet && port.kind == PortKind::Material)
+        .filter_map(|port| port.stream_id.as_ref())
+        .filter_map(|stream_id| flowsheet.streams.get(stream_id))
+        .map(|stream| stream.pressure_pa)
+        .reduce(f64::min)
 }
 
 fn outlet_stream<'a>(flowsheet: &'a Flowsheet, unit: &UnitNode) -> Option<&'a MaterialStreamState> {
@@ -413,11 +448,15 @@ fn outlet_stream_id(unit: &UnitNode) -> Option<&StreamId> {
 
 fn default_unit_parameter_value(unit: &UnitNode, field: &UnitInspectorDraftField) -> Option<f64> {
     match (unit.kind.as_str(), field) {
+        (rf_unitops::FEED_KIND, UnitInspectorDraftField::OutletTemperatureK) => Some(298.15),
+        (rf_unitops::FEED_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         (rf_unitops::HEATER_KIND, UnitInspectorDraftField::OutletTemperatureK) => Some(345.0),
         (rf_unitops::HEATER_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         (rf_unitops::COOLER_KIND, UnitInspectorDraftField::OutletTemperatureK) => Some(285.0),
         (rf_unitops::COOLER_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
+        (rf_unitops::MIXER_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         (rf_unitops::VALVE_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(90_000.0),
+        (rf_unitops::FLASH_DRUM_KIND, UnitInspectorDraftField::OutletTemperatureK) => Some(298.15),
         (rf_unitops::FLASH_DRUM_KIND, UnitInspectorDraftField::OutletPressurePa) => Some(101_325.0),
         _ => None,
     }

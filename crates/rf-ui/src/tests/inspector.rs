@@ -111,6 +111,101 @@ fn focusing_inspector_target_selects_stream_and_clears_previous_unit() {
 }
 
 #[test]
+fn adding_flowsheet_component_records_document_command() {
+    let document = sample_document();
+    let mut app_state = AppState::new(document);
+    let component = rf_model::Component::new("component-c", "Component C").with_formula("C");
+
+    let revision = app_state
+        .add_flowsheet_component(component, timestamp(42))
+        .expect("expected component add")
+        .expect("expected applied component add");
+
+    assert_eq!(revision, 1);
+    assert!(
+        app_state
+            .workspace
+            .document
+            .flowsheet
+            .components
+            .contains_key(&ComponentId::new("component-c"))
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
+        Some(&DocumentCommand::AddComponent {
+            component_id: ComponentId::new("component-c"),
+            name: "Component C".to_string(),
+            formula: Some("C".to_string()),
+        })
+    );
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
+}
+
+#[test]
+fn removing_flowsheet_component_rejects_stream_composition_references() {
+    let mut document = inspector_focus_document();
+    document
+        .flowsheet
+        .insert_component(rf_model::Component::new("component-a", "Component A"))
+        .expect("expected component-a insert");
+    let mut app_state = AppState::new(document);
+
+    let error = app_state
+        .remove_flowsheet_component(ComponentId::new("component-a"), timestamp(42))
+        .expect_err("expected referenced component removal to fail");
+
+    assert!(
+        error
+            .to_string()
+            .contains("component `component-a` is still referenced by stream `stream-feed`")
+    );
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.command_history.is_empty());
+}
+
+#[test]
+fn removing_unused_flowsheet_component_records_document_command() {
+    let mut document = sample_document();
+    document
+        .flowsheet
+        .insert_component(rf_model::Component::new("component-c", "Component C"))
+        .expect("expected component-c insert");
+    let mut app_state = AppState::new(document);
+
+    let revision = app_state
+        .remove_flowsheet_component(ComponentId::new("component-c"), timestamp(42))
+        .expect("expected component remove")
+        .expect("expected applied component remove");
+
+    assert_eq!(revision, 1);
+    assert!(
+        !app_state
+            .workspace
+            .document
+            .flowsheet
+            .components
+            .contains_key(&ComponentId::new("component-c"))
+    );
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
+        Some(&DocumentCommand::RemoveComponent {
+            component_id: ComponentId::new("component-c"),
+        })
+    );
+}
+
+#[test]
 fn focusing_missing_inspector_target_keeps_current_focus() {
     let document = inspector_focus_document();
     let mut app_state = AppState::new(document);
@@ -183,6 +278,38 @@ fn unit_parameter_document() -> FlowsheetDocument {
     )
 }
 
+fn feed_parameter_document() -> FlowsheetDocument {
+    let mut flowsheet = Flowsheet::new("feed-parameter-demo");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-feed",
+            "Feed",
+            300.0,
+            120_000.0,
+            5.0,
+            Default::default(),
+        ))
+        .expect("expected feed stream insert");
+    flowsheet
+        .insert_unit(UnitNode::new(
+            "feed-1",
+            "Feed",
+            "feed",
+            vec![UnitPort::new(
+                "outlet",
+                PortDirection::Outlet,
+                PortKind::Material,
+                Some("stream-feed".into()),
+            )],
+        ))
+        .expect("expected feed insert");
+
+    FlowsheetDocument::new(
+        flowsheet,
+        DocumentMetadata::new("doc-feed-parameter", "Feed Parameter Demo", timestamp(10)),
+    )
+}
+
 fn valve_parameter_document() -> FlowsheetDocument {
     let mut flowsheet = Flowsheet::new("valve-demo");
     flowsheet
@@ -230,6 +357,72 @@ fn valve_parameter_document() -> FlowsheetDocument {
     FlowsheetDocument::new(
         flowsheet,
         DocumentMetadata::new("doc-valve-parameter", "Valve Parameter Demo", timestamp(10)),
+    )
+}
+
+fn mixer_parameter_document() -> FlowsheetDocument {
+    let mut flowsheet = Flowsheet::new("mixer-demo");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-feed-a",
+            "Feed A",
+            315.0,
+            120_000.0,
+            2.0,
+            Default::default(),
+        ))
+        .expect("expected feed a stream insert");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-feed-b",
+            "Feed B",
+            325.0,
+            100_000.0,
+            3.0,
+            Default::default(),
+        ))
+        .expect("expected feed b stream insert");
+    flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-mixed",
+            "Mixer Outlet",
+            321.0,
+            100_000.0,
+            0.0,
+            Default::default(),
+        ))
+        .expect("expected mixer outlet stream insert");
+    flowsheet
+        .insert_unit(UnitNode::new(
+            "mixer-1",
+            "Mixer",
+            "mixer",
+            vec![
+                UnitPort::new(
+                    "inlet_a",
+                    PortDirection::Inlet,
+                    PortKind::Material,
+                    Some("stream-feed-a".into()),
+                ),
+                UnitPort::new(
+                    "inlet_b",
+                    PortDirection::Inlet,
+                    PortKind::Material,
+                    Some("stream-feed-b".into()),
+                ),
+                UnitPort::new(
+                    "outlet",
+                    PortDirection::Outlet,
+                    PortKind::Material,
+                    Some("stream-mixed".into()),
+                ),
+            ],
+        ))
+        .expect("expected mixer insert");
+
+    FlowsheetDocument::new(
+        flowsheet,
+        DocumentMetadata::new("doc-mixer-parameter", "Mixer Parameter Demo", timestamp(10)),
     )
 }
 
@@ -378,6 +571,47 @@ fn committing_unit_inspector_draft_sets_parameter_and_syncs_outlet_template() {
 }
 
 #[test]
+fn committing_displayed_outlet_value_sets_missing_explicit_unit_parameter() {
+    let mut app_state = AppState::new(unit_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("heater-1")));
+    let update = app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            "345",
+        )
+        .expect("expected heater temperature draft update");
+
+    assert!(update.is_dirty);
+    assert_eq!(update.validation, crate::DraftValidationState::Valid);
+
+    let outcome = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("heater-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            timestamp(42),
+        )
+        .expect("expected heater temperature draft commit")
+        .expect("expected committed heater temperature draft");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetUnitParameter {
+            unit_id: UnitId::new("heater-1"),
+            parameter: "outlet_temperature_k".to_string(),
+            value: CommandValue::Number(345.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("heater-1")]
+            .parameters
+            .outlet_temperature_k,
+        Some(345.0)
+    );
+}
+
+#[test]
 fn committing_heater_pressure_parameter_syncs_outlet_template() {
     let mut app_state = AppState::new(unit_parameter_document());
     app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("heater-1")));
@@ -422,6 +656,94 @@ fn committing_heater_pressure_parameter_syncs_outlet_template() {
         Some(SolvePendingReason::DocumentRevisionAdvanced)
     );
     assert!(app_state.workspace.drafts.fields.is_empty());
+}
+
+#[test]
+fn committing_mixer_pressure_parameter_syncs_outlet_template() {
+    let mut app_state = AppState::new(mixer_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("mixer-1")));
+    app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("mixer-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            "95000",
+        )
+        .expect("expected mixer pressure draft update");
+
+    let outcome = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("mixer-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            timestamp(42),
+        )
+        .expect("expected mixer pressure draft commit")
+        .expect("expected committed mixer pressure draft");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetUnitParameter {
+            unit_id: UnitId::new("mixer-1"),
+            parameter: "outlet_pressure_pa".to_string(),
+            value: CommandValue::Number(95_000.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("mixer-1")]
+            .parameters
+            .outlet_pressure_pa,
+        Some(95_000.0)
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-mixed")].pressure_pa,
+        95_000.0
+    );
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
+    assert!(app_state.workspace.drafts.fields.is_empty());
+}
+
+#[test]
+fn updating_mixer_pressure_above_lowest_inlet_marks_draft_invalid() {
+    let mut app_state = AppState::new(mixer_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("mixer-1")));
+
+    let outcome = app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("mixer-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            "105000",
+        )
+        .expect("expected mixer pressure draft update");
+
+    assert_eq!(outcome.key, "unit:mixer-1:outlet_pressure_pa");
+    assert!(outcome.is_dirty);
+    assert_eq!(outcome.validation, crate::DraftValidationState::Invalid);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("mixer-1")]
+            .parameters
+            .outlet_pressure_pa,
+        None
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-mixed")].pressure_pa,
+        100_000.0
+    );
+
+    let ignored = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("mixer-1"),
+            crate::UnitInspectorDraftField::OutletPressurePa,
+            timestamp(42),
+        )
+        .expect("expected invalid commit to be ignored");
+
+    assert_eq!(ignored, None);
+    assert_eq!(app_state.workspace.document.revision, 0);
+    assert!(app_state.workspace.drafts.fields.contains_key(&outcome.key));
 }
 
 #[test]
@@ -507,6 +829,108 @@ fn committing_flash_pressure_parameter_syncs_both_outlet_templates() {
             88_000.0
         );
     }
+}
+
+#[test]
+fn committing_flash_temperature_parameter_syncs_both_outlet_templates() {
+    let mut app_state = AppState::new(flash_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("flash-1")));
+    let update = app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("flash-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            "335",
+        )
+        .expect("expected flash temperature draft update");
+
+    assert_eq!(update.key, "unit:flash-1:outlet_temperature_k");
+    assert!(update.is_dirty);
+    assert_eq!(update.validation, crate::DraftValidationState::Valid);
+
+    let outcome = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("flash-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            timestamp(42),
+        )
+        .expect("expected flash temperature draft commit")
+        .expect("expected committed flash temperature draft");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetUnitParameter {
+            unit_id: UnitId::new("flash-1"),
+            parameter: "outlet_temperature_k".to_string(),
+            value: CommandValue::Number(335.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("flash-1")]
+            .parameters
+            .outlet_temperature_k,
+        Some(335.0)
+    );
+    for stream_id in ["stream-liquid", "stream-vapor"] {
+        assert_eq!(
+            app_state.workspace.document.flowsheet.streams[&StreamId::new(stream_id)].temperature_k,
+            335.0
+        );
+    }
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
+}
+
+#[test]
+fn committing_feed_temperature_parameter_syncs_source_stream_template() {
+    let mut app_state = AppState::new(feed_parameter_document());
+    app_state.focus_inspector_target(crate::InspectorTarget::Unit(UnitId::new("feed-1")));
+    let update = app_state
+        .update_unit_inspector_draft(
+            &UnitId::new("feed-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            "310",
+        )
+        .expect("expected feed temperature draft update");
+
+    assert_eq!(update.key, "unit:feed-1:outlet_temperature_k");
+    assert!(update.is_dirty);
+    assert_eq!(update.validation, crate::DraftValidationState::Valid);
+
+    let outcome = app_state
+        .commit_unit_inspector_draft(
+            &UnitId::new("feed-1"),
+            crate::UnitInspectorDraftField::OutletTemperatureK,
+            timestamp(42),
+        )
+        .expect("expected feed temperature draft commit")
+        .expect("expected committed feed temperature draft");
+
+    assert_eq!(outcome.revision, 1);
+    assert_eq!(
+        outcome.command,
+        DocumentCommand::SetUnitParameter {
+            unit_id: UnitId::new("feed-1"),
+            parameter: "outlet_temperature_k".to_string(),
+            value: CommandValue::Number(310.0),
+        }
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.units[&UnitId::new("feed-1")]
+            .parameters
+            .outlet_temperature_k,
+        Some(310.0)
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")].temperature_k,
+        310.0
+    );
+    assert_eq!(
+        app_state.workspace.solve_session.pending_reason,
+        Some(SolvePendingReason::DocumentRevisionAdvanced)
+    );
 }
 
 #[test]
@@ -748,6 +1172,104 @@ fn committing_stream_inspector_composition_draft_updates_overall_mole_fraction()
         0.25
     );
     assert!(!app_state.workspace.drafts.fields.contains_key(&update.key));
+}
+
+#[test]
+fn updating_zero_composition_draft_keeps_field_valid_before_positive_fraction_entry() {
+    let mut document = inspector_focus_document();
+    let stream_id = StreamId::new("stream-feed");
+    let component_a = ComponentId::new("component-a");
+    let component_b = ComponentId::new("component-b");
+    for fraction in document
+        .flowsheet
+        .streams
+        .get_mut(&stream_id)
+        .expect("expected feed stream")
+        .overall_mole_fractions
+        .values_mut()
+    {
+        *fraction = 0.0;
+    }
+    let mut app_state = AppState::new(document);
+    app_state.focus_inspector_target(crate::InspectorTarget::Stream(stream_id.clone()));
+
+    let first_digit = app_state
+        .update_stream_inspector_draft(
+            &stream_id,
+            crate::StreamInspectorDraftField::OverallMoleFraction(component_a.clone()),
+            "0",
+        )
+        .expect("expected zero composition draft update");
+
+    assert_eq!(first_digit.validation, crate::DraftValidationState::Valid);
+    assert!(!first_digit.is_dirty);
+    assert!(
+        !app_state
+            .workspace
+            .drafts
+            .fields
+            .contains_key(&first_digit.key)
+    );
+
+    let decimal_prefix = app_state
+        .update_stream_inspector_draft(
+            &stream_id,
+            crate::StreamInspectorDraftField::OverallMoleFraction(component_a.clone()),
+            "0.",
+        )
+        .expect("expected decimal prefix composition draft update");
+
+    assert_eq!(
+        decimal_prefix.validation,
+        crate::DraftValidationState::Valid
+    );
+    assert!(!decimal_prefix.is_dirty);
+    assert_eq!(
+        app_state.workspace.drafts.fields.get(&decimal_prefix.key),
+        Some(&crate::DraftValue::Number(crate::FieldDraft {
+            original: "0".to_string(),
+            current: "0.".to_string(),
+            is_dirty: false,
+            validation: crate::DraftValidationState::Valid,
+        }))
+    );
+
+    let completed_fraction = app_state
+        .update_stream_inspector_draft(
+            &stream_id,
+            crate::StreamInspectorDraftField::OverallMoleFraction(component_a.clone()),
+            "0.5",
+        )
+        .expect("expected positive composition draft update");
+
+    assert_eq!(
+        completed_fraction.validation,
+        crate::DraftValidationState::Valid
+    );
+    assert!(completed_fraction.is_dirty);
+    assert_eq!(
+        app_state
+            .workspace
+            .drafts
+            .fields
+            .get(&completed_fraction.key),
+        Some(&crate::DraftValue::Number(crate::FieldDraft {
+            original: "0".to_string(),
+            current: "0.5".to_string(),
+            is_dirty: true,
+            validation: crate::DraftValidationState::Valid,
+        }))
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&stream_id].overall_mole_fractions
+            [&component_a],
+        0.0
+    );
+    assert_eq!(
+        app_state.workspace.document.flowsheet.streams[&stream_id].overall_mole_fractions
+            [&component_b],
+        0.0
+    );
 }
 
 #[test]

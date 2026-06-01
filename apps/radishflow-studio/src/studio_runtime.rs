@@ -872,6 +872,9 @@ mod tests {
             StudioRuntimeDispatch::InspectorTarget(_) => {
                 panic!("expected entitlement session event dispatch")
             }
+            StudioRuntimeDispatch::ClearInspectorTarget(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
             StudioRuntimeDispatch::InspectorDraftUpdate(_) => {
                 panic!("expected entitlement session event dispatch")
             }
@@ -894,6 +897,15 @@ mod tests {
                 panic!("expected entitlement session event dispatch")
             }
             StudioRuntimeDispatch::InspectorCompositionComponentRemove(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
+            StudioRuntimeDispatch::PropertyPackageSelection(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
+            StudioRuntimeDispatch::ProjectComponentSelection(_) => {
+                panic!("expected entitlement session event dispatch")
+            }
+            StudioRuntimeDispatch::ProjectComponentRemoval(_) => {
                 panic!("expected entitlement session event dispatch")
             }
             StudioRuntimeDispatch::DocumentHistory(_) => {

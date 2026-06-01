@@ -38,6 +38,18 @@ impl ReadyAppState {
     }
 
     pub(super) fn create_blank_project(&mut self) {
+        self.request_blank_project(None);
+    }
+
+    pub(super) fn start_mixer_flash_authoring_case(&mut self) {
+        self.request_blank_project(Some(AuthoringCaseKind::MixerFlash));
+    }
+
+    pub(super) fn start_heater_flash_authoring_case(&mut self) {
+        self.request_blank_project(Some(AuthoringCaseKind::HeaterFlash));
+    }
+
+    fn request_blank_project(&mut self, authoring_case: Option<AuthoringCaseKind>) {
         if self
             .platform_host
             .snapshot()
@@ -47,6 +59,7 @@ impl ReadyAppState {
         {
             self.project_open.pending_confirmation = None;
             self.project_open.pending_blank_project_confirmation = true;
+            self.project_open.pending_authoring_blank_project = authoring_case;
             self.project_open.pending_save_as_overwrite = None;
             self.project_open.pending_close_window_confirmation = None;
             self.project_open.notice = Some(ProjectOpenNotice {
@@ -57,19 +70,22 @@ impl ReadyAppState {
             return;
         }
 
-        self.create_blank_project_without_confirmation();
+        self.create_blank_project_without_confirmation(authoring_case);
     }
 
     pub(super) fn confirm_pending_blank_project(&mut self) {
         if !self.project_open.pending_blank_project_confirmation {
             return;
         }
+        let authoring_case = self.project_open.pending_authoring_blank_project;
         self.project_open.pending_blank_project_confirmation = false;
-        self.create_blank_project_without_confirmation();
+        self.project_open.pending_authoring_blank_project = None;
+        self.create_blank_project_without_confirmation(authoring_case);
     }
 
     pub(super) fn cancel_pending_blank_project(&mut self) {
         self.project_open.pending_blank_project_confirmation = false;
+        self.project_open.pending_authoring_blank_project = None;
         self.project_open.notice = Some(ProjectOpenNotice {
             level: ProjectOpenNoticeLevel::Info,
             title: blank_project_canceled_notice_title(self.locale).to_string(),
@@ -77,7 +93,10 @@ impl ReadyAppState {
         });
     }
 
-    fn create_blank_project_without_confirmation(&mut self) {
+    fn create_blank_project_without_confirmation(
+        &mut self,
+        authoring_case: Option<AuthoringCaseKind>,
+    ) {
         let config = studio_shell_blank_runtime_config();
 
         match StudioGuiPlatformHost::new(&config) {
@@ -100,18 +119,26 @@ impl ReadyAppState {
                 self.project_open.path_input.clear();
                 self.project_open.pending_confirmation = None;
                 self.project_open.pending_blank_project_confirmation = false;
+                self.project_open.pending_authoring_blank_project = None;
                 self.project_open.pending_save_as_overwrite = None;
                 self.project_open.pending_close_window_confirmation = None;
                 self.project_open.notice = Some(ProjectOpenNotice {
                     level: ProjectOpenNoticeLevel::Info,
-                    title: "Blank project created".to_string(),
-                    detail:
-                        "Created an untitled blank project. Use Save to choose a .rfproj.json path."
-                            .to_string(),
+                    title: blank_project_created_notice_title(self.locale, authoring_case)
+                        .to_string(),
+                    detail: blank_project_created_notice_detail(self.locale, authoring_case)
+                        .to_string(),
                 });
                 self.screen = StudioShellScreen::Workbench;
-                self.platform_host
-                    .record_activity_line("created untitled blank project".to_string());
+                self.active_authoring_case = authoring_case;
+                if authoring_case.is_some() {
+                    self.left_sidebar_tab = StudioShellLeftSidebarTab::Palette;
+                    self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+                    self.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
+                }
+                self.platform_host.record_activity_line(
+                    blank_project_created_activity_line(authoring_case).to_string(),
+                );
                 self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
                 if let Err(error) = self.apply_default_hidden_commands_panel_for_current_window() {
                     self.platform_host.record_activity_line(format!(
@@ -406,6 +433,7 @@ impl ReadyAppState {
                 source_label: source_label.to_string(),
             });
             self.project_open.pending_blank_project_confirmation = false;
+            self.project_open.pending_authoring_blank_project = None;
             self.project_open.pending_save_as_overwrite = None;
             self.project_open.pending_close_window_confirmation = None;
             self.project_open.notice = Some(ProjectOpenNotice {
@@ -464,6 +492,7 @@ impl ReadyAppState {
                     self.record_and_persist_recent_project(project_path.clone());
                 self.project_open.pending_confirmation = None;
                 self.project_open.pending_blank_project_confirmation = false;
+                self.project_open.pending_authoring_blank_project = None;
                 self.project_open.pending_save_as_overwrite = None;
                 self.project_open.pending_close_window_confirmation = None;
                 self.project_open.notice =
@@ -477,6 +506,7 @@ impl ReadyAppState {
                         ),
                     }));
                 self.screen = StudioShellScreen::Workbench;
+                self.active_authoring_case = None;
                 self.platform_host.record_activity_line(format!(
                     "opened {source_label}: {}",
                     project_path.display()
@@ -565,6 +595,7 @@ impl ReadyAppState {
         if self.screen == StudioShellScreen::Home {
             self.render_home_dashboard(ctx, &window);
             self.render_command_palette(ctx, &window.commands);
+            self.render_pending_close_window_dialog(ctx);
             return;
         }
         self.render_top_bar(
@@ -580,6 +611,7 @@ impl ReadyAppState {
         self.render_center_stage(ctx, &window, &mut hovered_drop_target);
         self.render_command_palette(ctx, &window.commands);
         self.render_floating_drop_preview_overlay(ctx, &window);
+        self.render_pending_close_window_dialog(ctx);
         self.finish_drop_preview_cycle(
             ctx,
             window.layout_state.scope.window_id,
@@ -597,6 +629,7 @@ impl ReadyAppState {
         if self.screen == StudioShellScreen::Home {
             self.render_home_dashboard(ctx, &window);
             self.render_command_palette(ctx, &window.commands);
+            self.render_pending_close_window_dialog(ctx);
             return;
         }
 
@@ -613,6 +646,7 @@ impl ReadyAppState {
         self.render_center_stage(ctx, &window, &mut hovered_drop_target);
         self.render_command_palette(ctx, &window.commands);
         self.render_floating_drop_preview_overlay(ctx, &window);
+        self.render_pending_close_window_dialog(ctx);
     }
 
     pub(super) fn dispatch_run_panel_widget(&mut self, event: RunPanelWidgetEvent) {
@@ -637,6 +671,10 @@ impl ReadyAppState {
 
     pub(super) fn dispatch_ui_command(&mut self, command_id: impl Into<String>) {
         let command_id = command_id.into();
+        if self.intercept_modeling_readiness_run_if_needed(&command_id) {
+            return;
+        }
+
         let canvas_navigation = self.canvas_object_navigation_request(&command_id);
         match self.dispatch_event_result(StudioGuiEvent::UiCommandRequested {
             command_id: command_id.clone(),
@@ -654,6 +692,7 @@ impl ReadyAppState {
                 );
                 self.record_canvas_unit_layout_move_feedback(&dispatch);
                 self.record_ui_command_ignored_feedback(&dispatch.dispatch.outcome);
+                self.refresh_active_modeling_readiness_notice();
             }
             Err(error) => {
                 let message = format!("[{}] {}", error.code().as_str(), error.message());
@@ -792,6 +831,18 @@ impl ReadyAppState {
                     .record_activity_line(format!("event failed: {message}"));
             }
         }
+    }
+
+    pub(super) fn clear_canvas_selection(&mut self) {
+        let Some(window_id) = self.current_window_id() else {
+            return;
+        };
+        self.dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+            window_id,
+            trigger: StudioRuntimeTrigger::ClearInspectorTarget,
+        });
+        self.canvas_command_result = None;
+        self.canvas_viewport_navigation.active_anchor = None;
     }
 
     pub(super) fn update_canvas_viewport_offset(&mut self, offset: egui::Vec2) {
@@ -949,7 +1000,9 @@ impl ReadyAppState {
 
     pub(super) fn dispatch_event(&mut self, event: StudioGuiEvent) {
         match self.dispatch_event_result(event.clone()) {
-            Ok(_) => {}
+            Ok(_) => {
+                self.refresh_active_modeling_readiness_notice();
+            }
             Err(error) => {
                 let message = format!("[{}] {}", error.code().as_str(), error.message());
                 self.platform_host
@@ -1333,15 +1386,54 @@ impl ReadyAppState {
     fn request_close_window_confirmation(&mut self, window_id: StudioWindowHostId) {
         self.project_open.pending_confirmation = None;
         self.project_open.pending_blank_project_confirmation = false;
+        self.project_open.pending_authoring_blank_project = None;
         self.project_open.pending_save_as_overwrite = None;
         self.project_open.pending_close_window_confirmation = Some(window_id);
-        self.project_open.notice = Some(ProjectOpenNotice {
-            level: ProjectOpenNoticeLevel::Warning,
-            title: unsaved_changes_notice_title(self.locale).to_string(),
-            detail: close_workspace_discard_notice_detail(self.locale),
-        });
+        self.project_open.notice = None;
         self.platform_host
             .record_activity_line("close blocked by unsaved workspace changes".to_string());
+    }
+
+    fn render_pending_close_window_dialog(&mut self, ctx: &egui::Context) {
+        if self
+            .project_open
+            .pending_close_window_confirmation
+            .is_none()
+        {
+            return;
+        }
+
+        egui::Window::new(unsaved_changes_notice_title(self.locale))
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+            .show(ctx, |ui| {
+                ui.set_min_width(360.0);
+                render_wrapped_label(ui, close_workspace_discard_notice_detail(self.locale));
+                ui.add_space(8.0);
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .button(self.locale.text(ShellText::SaveAndCloseProject))
+                        .clicked()
+                        && self.save_pending_close_window()
+                    {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::DiscardAndCloseProject))
+                        .clicked()
+                        && self.confirm_pending_close_window()
+                    {
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                    }
+                    if ui
+                        .button(self.locale.text(ShellText::CancelCloseProject))
+                        .clicked()
+                    {
+                        self.cancel_pending_close_window();
+                    }
+                });
+            });
     }
 
     pub(super) fn save_pending_close_window(&mut self) -> bool {
@@ -1455,6 +1547,9 @@ impl ReadyAppState {
 
         let shortcuts = ctx.input(collect_shortcuts);
         for shortcut in shortcuts {
+            if self.intercept_modeling_readiness_shortcut_if_needed(&shortcut) {
+                continue;
+            }
             self.dispatch_event(StudioGuiEvent::ShortcutPressed {
                 shortcut,
                 focus_context,
@@ -1584,6 +1679,58 @@ fn blank_project_canceled_notice_title(locale: StudioShellLocale) -> &'static st
     match locale {
         StudioShellLocale::En => "Blank project canceled",
         StudioShellLocale::ZhCn => "已取消新建项目",
+    }
+}
+
+fn blank_project_created_notice_title(
+    locale: StudioShellLocale,
+    authoring_case: Option<AuthoringCaseKind>,
+) -> &'static str {
+    match (locale, authoring_case) {
+        (StudioShellLocale::En, Some(AuthoringCaseKind::MixerFlash)) => "Mixer-Flash case started",
+        (StudioShellLocale::En, Some(AuthoringCaseKind::HeaterFlash)) => {
+            "Heater-Flash case started"
+        }
+        (StudioShellLocale::En, None) => "Blank project created",
+        (StudioShellLocale::ZhCn, Some(AuthoringCaseKind::MixerFlash)) => {
+            "已开始 Mixer-Flash 小案例"
+        }
+        (StudioShellLocale::ZhCn, Some(AuthoringCaseKind::HeaterFlash)) => {
+            "已开始 Heater-Flash 小案例"
+        }
+        (StudioShellLocale::ZhCn, None) => "Blank project created",
+    }
+}
+
+fn blank_project_created_notice_detail(
+    locale: StudioShellLocale,
+    authoring_case: Option<AuthoringCaseKind>,
+) -> &'static str {
+    match (locale, authoring_case) {
+        (StudioShellLocale::En, Some(_)) => {
+            "Created an untitled blank project and opened the placement checklist."
+        }
+        (StudioShellLocale::En, None) => {
+            "Created an untitled blank project. Use Save to choose a .rfproj.json path."
+        }
+        (StudioShellLocale::ZhCn, Some(_)) => {
+            "已新建未命名空白项目，并打开放置面板中的小案例任务清单。"
+        }
+        (StudioShellLocale::ZhCn, None) => {
+            "Created an untitled blank project. Use Save to choose a .rfproj.json path."
+        }
+    }
+}
+
+fn blank_project_created_activity_line(authoring_case: Option<AuthoringCaseKind>) -> &'static str {
+    match authoring_case {
+        Some(AuthoringCaseKind::MixerFlash) => {
+            "started mixer-flash authoring case from blank project"
+        }
+        Some(AuthoringCaseKind::HeaterFlash) => {
+            "started heater-flash authoring case from blank project"
+        }
+        None => "created untitled blank project",
     }
 }
 

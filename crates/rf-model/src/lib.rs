@@ -185,9 +185,49 @@ impl UnitNode {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FlowsheetThermoConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub property_package_id: Option<String>,
+}
+
+impl FlowsheetThermoConfig {
+    pub fn with_property_package_id(package_id: impl Into<String>) -> RfResult<Self> {
+        let mut config = Self::default();
+        config.set_property_package_id(Some(package_id.into()))?;
+        Ok(config)
+    }
+
+    pub fn set_property_package_id(&mut self, package_id: Option<String>) -> RfResult<()> {
+        self.property_package_id = match package_id {
+            Some(package_id) => {
+                let package_id = package_id.trim();
+                if package_id.is_empty() {
+                    return Err(RfError::invalid_input(
+                        "flowsheet thermo config property_package_id must be non-empty",
+                    ));
+                }
+                Some(package_id.to_string())
+            }
+            None => None,
+        };
+        Ok(())
+    }
+
+    pub fn property_package_id(&self) -> Option<&str> {
+        self.property_package_id.as_deref()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.property_package_id.is_none()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Flowsheet {
     pub name: String,
+    #[serde(default, skip_serializing_if = "FlowsheetThermoConfig::is_empty")]
+    pub thermo: FlowsheetThermoConfig,
     pub components: BTreeMap<ComponentId, Component>,
     pub streams: BTreeMap<StreamId, MaterialStreamState>,
     pub units: BTreeMap<UnitId, UnitNode>,
@@ -197,10 +237,19 @@ impl Flowsheet {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
+            thermo: FlowsheetThermoConfig::default(),
             components: BTreeMap::new(),
             streams: BTreeMap::new(),
             units: BTreeMap::new(),
         }
+    }
+
+    pub fn set_property_package_id(&mut self, package_id: Option<String>) -> RfResult<()> {
+        self.thermo.set_property_package_id(package_id)
+    }
+
+    pub fn property_package_id(&self) -> Option<&str> {
+        self.thermo.property_package_id()
     }
 
     pub fn insert_component(&mut self, component: Component) -> RfResult<()> {

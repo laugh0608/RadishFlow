@@ -29,10 +29,12 @@ use rf_ui::{
 };
 
 mod app;
+mod authoring;
 mod chrome;
 mod fonts;
 mod home_dashboard;
 mod locale;
+mod modeling_readiness;
 mod panels;
 mod project_picker;
 mod utils;
@@ -87,6 +89,7 @@ struct ReadyAppState {
     project_open: ProjectOpenState,
     home_selected_recent_project: Option<PathBuf>,
     home_selected_example_project: Option<PathBuf>,
+    active_authoring_case: Option<AuthoringCaseKind>,
     result_inspector: ResultInspectorState,
     screen: StudioShellScreen,
     left_sidebar_tab: StudioShellLeftSidebarTab,
@@ -126,6 +129,7 @@ struct PanelDragSession {
 struct CanvasUnitDragState {
     unit_id: String,
     start_position: rf_ui::CanvasPoint,
+    pointer_offset: egui::Vec2,
     current_position: rf_ui::CanvasPoint,
 }
 
@@ -156,8 +160,15 @@ struct ProjectOpenState {
     notice: Option<ProjectOpenNotice>,
     pending_confirmation: Option<ProjectOpenRequest>,
     pending_blank_project_confirmation: bool,
+    pending_authoring_blank_project: Option<AuthoringCaseKind>,
     pending_save_as_overwrite: Option<PathBuf>,
     pending_close_window_confirmation: Option<StudioWindowHostId>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AuthoringCaseKind {
+    MixerFlash,
+    HeaterFlash,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -384,6 +395,7 @@ impl ReadyAppState {
             ),
             home_selected_recent_project: None,
             home_selected_example_project: None,
+            active_authoring_case: None,
             result_inspector: ResultInspectorState::default(),
             screen: StudioShellScreen::default(),
             left_sidebar_tab: StudioShellLeftSidebarTab::default(),
@@ -668,6 +680,7 @@ impl ProjectOpenState {
             notice: None,
             pending_confirmation: None,
             pending_blank_project_confirmation: false,
+            pending_authoring_blank_project: None,
             pending_save_as_overwrite: None,
             pending_close_window_confirmation: None,
         };

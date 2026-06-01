@@ -13,6 +13,29 @@ impl StudioGuiWindowSolveSnapshotModel {
                 self.stream_count, self.step_count, self.diagnostic_count
             ),
             String::new(),
+            "Review".to_string(),
+            tsv_row(["category", "items"]),
+            tsv_row([
+                "source_streams",
+                format_stream_references(&self.review_summary.source_stream_results).as_str(),
+            ]),
+            tsv_row([
+                "intermediate_streams",
+                format_stream_references(&self.review_summary.intermediate_stream_results).as_str(),
+            ]),
+            tsv_row([
+                "terminal_streams",
+                format_stream_references(&self.review_summary.terminal_stream_results).as_str(),
+            ]),
+            tsv_row([
+                "units",
+                format_review_units(&self.review_summary.unit_results).as_str(),
+            ]),
+            tsv_row([
+                "diagnostics",
+                self.review_summary.diagnostic_count.to_string().as_str(),
+            ]),
+            String::new(),
             "Streams".to_string(),
             tsv_row([
                 "stream_id",
@@ -43,6 +66,29 @@ impl StudioGuiWindowSolveSnapshotModel {
                     .map(format_bubble_dew_window)
                     .unwrap_or_else(|| "-".to_string())
                     .as_str(),
+            ]));
+        }
+
+        lines.extend([
+            String::new(),
+            "Units".to_string(),
+            tsv_row([
+                "unit_id",
+                "step",
+                "status",
+                "summary",
+                "consumed_streams",
+                "produced_streams",
+            ]),
+        ]);
+        for step in latest_unit_steps(&self.steps) {
+            lines.push(tsv_row([
+                step.unit_id.as_str(),
+                step.index.to_string().as_str(),
+                step.execution_status_label,
+                step.summary.as_str(),
+                format_stream_references(&step.consumed_stream_results).as_str(),
+                format_stream_references(&step.produced_stream_results).as_str(),
             ]));
         }
 
@@ -89,6 +135,23 @@ impl StudioGuiWindowSolveSnapshotModel {
     }
 }
 
+fn latest_unit_steps(
+    steps: &[StudioGuiWindowSolveStepModel],
+) -> Vec<&StudioGuiWindowSolveStepModel> {
+    let mut unit_steps: Vec<&StudioGuiWindowSolveStepModel> = Vec::new();
+    for step in steps {
+        if let Some(index) = unit_steps
+            .iter()
+            .position(|existing| existing.unit_id == step.unit_id)
+        {
+            unit_steps[index] = step;
+        } else {
+            unit_steps.push(step);
+        }
+    }
+    unit_steps
+}
+
 fn tsv_row<'a>(cells: impl IntoIterator<Item = &'a str>) -> String {
     cells
         .into_iter()
@@ -116,6 +179,22 @@ fn format_stream_references(streams: &[StudioGuiWindowStreamResultReferenceModel
     streams
         .iter()
         .map(|stream| format!("{} ({})", stream.stream_id, one_line(&stream.summary)))
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn format_review_units(units: &[StudioGuiWindowResultReviewUnitModel]) -> String {
+    units
+        .iter()
+        .map(|unit| {
+            format!(
+                "{} status={} consumed=[{}] produced=[{}]",
+                unit.unit_id,
+                unit.status_label,
+                unit.consumed_stream_ids.join(", "),
+                unit.produced_stream_ids.join(", ")
+            )
+        })
         .collect::<Vec<_>>()
         .join("; ")
 }

@@ -137,6 +137,17 @@ fn stored_unit_port_stream_id<'a>(
         .map(|stream_id| stream_id.as_str())
 }
 
+fn commit_unit_parameter(app: &mut ReadyAppState, unit_id: &str, draft_key: &str, raw_value: &str) {
+    app.dispatch_ui_command(format!("inspector.focus_unit:{unit_id}"));
+    app.dispatch_inspector_field_draft_update(
+        radishflow_studio::inspector_draft_update_command_id(draft_key),
+        raw_value,
+    );
+    app.dispatch_inspector_field_draft_commit(
+        radishflow_studio::inspector_draft_commit_command_id(draft_key),
+    );
+}
+
 fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
     StudioRuntimeConfig {
         project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -166,7 +177,9 @@ mod basic;
 mod canvas;
 mod command_palette;
 mod command_surface;
+mod failure_recovery_lifecycle;
 mod project_lifecycle;
+mod result_review;
 mod runtime;
 mod runtime_synthetic_flash_inlet_boundary;
 
@@ -548,6 +561,7 @@ fn solve_snapshot_copy_and_export_use_latest_result_without_dirtying_project() {
     app.export_solve_snapshot_to_path(&snapshot, export_path.clone());
     let exported = fs::read_to_string(&export_path).expect("expected result export read");
     assert!(exported.contains(&snapshot.snapshot_id));
+    assert!(exported.contains("Units\nunit_id\tstep\tstatus\tsummary"));
     assert!(exported.contains("stream-heated"));
     assert!(exported.contains("flash-1"));
     assert_eq!(
@@ -582,6 +596,31 @@ fn accept_canvas_suggestion_by_id(app: &mut ReadyAppState, suggestion_id: &str) 
     app.dispatch_event(StudioGuiEvent::CanvasSuggestionAcceptByIdRequested {
         suggestion_id: rf_ui::CanvasSuggestionId::new(suggestion_id),
     });
+}
+
+fn select_builtin_binary_hydrocarbon_basis(app: &mut ReadyAppState) {
+    app.dispatch_ui_command("project.property_package.select:binary-hydrocarbon-lite-v1");
+    app.dispatch_ui_command("project.component.select:methane");
+    app.dispatch_ui_command("project.component.select:ethane");
+
+    let document = &app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .workspace_document;
+    assert_eq!(
+        document.property_package_id.as_deref(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert!(
+        document
+            .project_component_choices
+            .iter()
+            .filter(|choice| choice.selected)
+            .map(|choice| choice.component_id.as_str())
+            .eq(["methane", "ethane"].into_iter())
+    );
 }
 
 struct TestProjectFilePicker {

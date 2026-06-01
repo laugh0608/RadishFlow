@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-05-23
+更新时间：2026-06-01
 
 ## 目的
 
@@ -9,7 +9,7 @@
 它回答的是：
 
 - 当前 Studio 已经能做什么
-- 如何从内部便携包或开发态启动 Studio
+- 如何从历史便携 staging 或开发态启动 Studio
 - 第一次建议打开哪个示例
 - 接下来应该看哪些文档
 
@@ -17,25 +17,29 @@
 
 ## 当前能做什么
 
-截至 2026-05-23，Studio 当前已经具备以下最小闭环：
+截至 2026-06-01，Studio 当前已经具备以下主路径能力：
 
 - 启动后默认进入中文 Home Dashboard，可从 `开始 / 最近项目 / 示例项目 / 环境 / 消息` 分区判断从哪里开始
-- 新建未命名空白项目，并用 MVP 默认 `methane / ethane` 二元体系进入最短建模路径
+- 新建未命名空白项目，并从受控内置列表显式选择 `binary-hydrocarbon-lite-v1` 与 `methane / ethane` 后进入最短建模路径
 - 打开已有 `*.rfproj.json` 项目
 - 通过首页 `新建项目`、`打开项目`、`打开示例项目` 或进入工作台后的顶部主路径切换项目
+- 通过首页 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例` 从空白项目进入对应作者路径，并在左侧 `放置` 面板查看任务清单
 - 最近项目和示例项目列表行可选择，也可双击整行打开；文件缺失时只降级对应行状态，不阻断首页
 - 进入项目后在顶部主路径直接使用 `Home / 打开示例 / 新建空白 / 打开项目... / 运行 / 保存 / 另存为... / 视图`
-- 运行仓库内或便携包内的 official hydrocarbon 正向示例 flowsheet
+- 运行仓库内或便携 staging 内的 official hydrocarbon 正向示例 flowsheet
 - 在左侧 `项目 / 示例项目 / 放置`、中央 `Canvas`、右侧 `检查器 / 结果 / 运行 / 物性包` 和底部 `消息 / 运行日志 / 结果表 / 诊断` 中完成当前 MVP α 工作流
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
-- 复制当前 `SolveSnapshot` 文本，或导出当前快照为轻量 `.txt`
+- 复制当前 `SolveSnapshot` 文本，或导出当前快照为轻量 `.txt`；导出文本包含 `Streams / Review / Units / Steps / Diagnostics`
 - 通过 `检查`、`诊断目标`、结果选择项和命令入口在流股、单元、步骤和当前检查器之间定位同一份结果
 - 在流股检查器中编辑流股基础字段与组成草稿，并显式提交、归一化或丢弃
-- 在单元检查器中编辑首批关键单元参数：`Heater / Cooler` 的 outlet temperature / outlet pressure、`Valve` 的 outlet pressure 和 `Flash Drum` 的 flash pressure
+- 在单元检查器中编辑首批关键单元参数：`Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 和 `Flash Drum` 的 flash temperature / flash pressure
+- 顶部 `运行`、Run Panel `Resume`、`F5 / Shift+F5`、命令面板、AppHost / StudioGuiDriver / StudioGuiHost command registry 等正式入口共享同一层建模输入 readiness；建模输入缺失不会因入口不同绕过诊断
+- 成功运行后若项目文档继续编辑，旧 `SolveSnapshot` 会标为过期；Result Inspector、底部结果表、Results commands、复制 / 导出和 `Review` 摘要只继续消费当前 revision 的最新快照
 - 选中物料流股后，可通过 Canvas / Inspector 的 `Disconnect stream` 解除端口绑定并保留流股规格，或通过 `Delete stream` 解除绑定后删除错误流股；单端流股还可在唯一且不会成环的候选存在时执行受控 `Reconnect stream`
 - 执行基础 `undo / redo`
 - 保存当前项目，或通过顶部 `另存为...` / 未命名项目首次 `保存` 到新路径
 - 保存并恢复 Canvas placement / viewport sidecar：`<project>.rfstudio-layout.json`；当前可拖动单元位置、平移 viewport，并用 `Fit to content` 重新居中
+- Studio shell 使用随应用打包的 `InterVariable` 与 `SourceHanSansSC` 字体资源显示中文 UI，不依赖操作系统中某个固定 CJK 字体名称
 - 默认隐藏低频命令大全；需要完整命令列表时可从顶部 `视图` 或命令面板入口展开
 
 当前最短可求解建模路径已经覆盖：
@@ -59,7 +63,7 @@ Studio 现在还不是完整产品说明书意义上的“成熟桌面软件”�
 
 ## 启动方式
 
-如果你拿到的是内部便携包，先解压或进入 staging 目录：
+如果你拿到的是历史内部便携 staging，先解压或进入 staging 目录。下面路径只作为历史示例，不代表当前正式版本节点：
 
 ```text
 artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/
@@ -77,13 +81,13 @@ artifacts/packages/RadishFlow-v26.5.1-dev-windows-x64/
 examples/flowsheets
 ```
 
-当前 Studio 会优先从 exe 同目录发现内置示例；如果不是从便携包启动，则回退到仓库内 `examples/flowsheets`。
+当前 Studio 会优先从 exe 同目录发现内置示例；如果不是从便携 staging 启动，则回退到仓库内 `examples/flowsheets`。
 
 说明：
 
-- 这是 Windows 内部便携包 / staging 形态，不是安装器
+- 这是 Windows 内部便携 staging 形态，不是安装器、正式 demo 或 release 节点
 - 不会执行 COM 注册、PME 自动化、Windows Registry 写入或第三方 CAPE-OPEN 模型加载
-- 包内 `PACKAGE-MANIFEST.txt` 应记录 `version=v26.5.1-dev`、`gitCommit=7479e82`、`gitDirty=false`
+- 历史 staging 的 `PACKAGE-MANIFEST.txt` 可能记录 `version=v26.5.1-dev`、`gitCommit=7479e82`、`gitDirty=false`；这些字段只说明当时 staging 的构建信息，不等同于当前正式 tag
 
 开发态启动方式如下。
 
@@ -122,11 +126,13 @@ cargo run -p radishflow-studio
 
 - `docs/guides/run-first-flowsheet.md`
 
+如果内置示例已经跑通，下一步建议从首页点击 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例`，按 `docs/guides/author-small-cases.md` 从空白项目复现小案例：放置单元、接受 suggestion、提交单元参数、运行、保存重开、重跑并导出当前结果。这些作者入口只打开空白项目和任务清单，不是自由连线、自动布线或完整项目向导。
+
 ## 启动首页
 
 启动后，第一视野是 Home Dashboard，而不是直接进入某个项目的画布。首页的稳定分区如下：
 
-- `开始`：`新建项目`、`打开项目`、`打开示例项目`
+- `开始`：`新建项目`、`创建 Mixer-Flash 小案例`、`创建 Heater-Flash 小案例`、`打开项目`、`打开示例项目`
 - `最近项目`：显示最近项目、路径摘要、物性包和就绪 / 缺失状态；整行可选择，双击可打开
 - `示例项目`：显示内置示例、流程摘要、组分和物性包；整行可选择，双击可打开
 - `环境`：显示客户端、服务端和设备三组摘要
@@ -134,20 +140,29 @@ cargo run -p radishflow-studio
 
 工程术语、文件名、包名和路径会保留原文；用户动作、状态和环境字段默认使用中文。首页不承载流程图编辑，打开项目或示例后才进入工作台。
 
-首版 demo 前，Home / Workbench 的默认示例选择器只暴露四条 official hydrocarbon 演示路径：`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum`。仓库和便携包内仍可能附带 synthetic 或 PME 验证样例文件，但这些文件主要服务回归或外部验证，不作为首页高频演示入口。
+首版 demo 前，Home / Workbench 的默认示例选择器只暴露四条 official hydrocarbon 演示路径：`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum`。仓库和便携 staging 内仍可能附带 synthetic 或 PME 验证样例文件，但这些文件主要服务回归或外部验证，不作为首页高频演示入口。
 
-若当前工作区存在未保存变更，首页的 `新建项目`、`打开项目`、`打开示例项目` 以及工作台顶部的项目切换入口都会先进入显式确认流程；继续后才丢弃当前未保存内容，取消则保持当前项目不变。
+若当前工作区存在未保存变更，首页的 `新建项目`、两个小案例作者入口、`打开项目`、`打开示例项目` 以及工作台顶部的项目切换入口都会先进入显式确认流程；继续后才丢弃当前未保存内容，取消则保持当前项目不变。
+
+小案例作者入口当前支持：
+
+- `Mixer-Flash`：`Feed + Feed -> Mixer -> Flash Drum`
+- `Heater-Flash`：`Feed -> Heater -> Flash Drum`
+
+入口只决定左侧 `放置` 面板展示哪一条任务清单。清单状态从当前 canvas unit / stream / solve snapshot 推导，不会自动补单元、自动连线或修改项目文档。
 
 ## 工作台主路径
 
 进入项目后，顶部第一行展示应用、当前项目和状态 chip；第二行提供当前主路径：
 
 - `Home`：返回启动首页
-- `打开示例`：打开仓库或便携包内置正向示例
+- `打开示例`：打开仓库或便携 staging 内置正向示例
 - `新建空白`：新建未命名空白项目；不会立刻弹出保存对话框
 - `打开项目...`：从磁盘选择已有 `*.rfproj.json`
 - `运行`：对当前工作区执行一次手动运行；不可用时 hover 会说明原因
 - `保存`：保存当前项目
+
+新建或打开项目后，左侧 `项目` 面板会显示当前 `物性包` 和 `项目组分`。MVP β 建模输入 v0 只提供受控内置 `binary-hydrocarbon-lite-v1` 物性包和 methane / ethane 组分目录；空白项目初始不预选，选择后分别写入 `Flowsheet.thermo.property_package_id` 与 `Flowsheet.components`，并决定 Stream Inspector 中 Feed composition 可添加的组分。右侧 `物性包` tab 仍保留同一组项目级输入入口和本地包摘要。
 - `另存为...`：把当前项目另存到新的 `*.rfproj.json` 路径；未命名空白项目首次 `保存` 也会进入这条选择器路径
 - `视图`：收纳低频视图入口、语言切换、命令面板和开发诊断入口
 
@@ -158,14 +173,15 @@ cargo run -p radishflow-studio
 如果不想先打开示例，可以直接走当前最小空白建模路径：
 
 1. 在首页点击 `新建项目`，或进入工作台后点击顶部 `新建空白`。
-2. 在左侧切到 `放置`，用 `放置进料`、`放置闪蒸罐` 或 `放置加热器 / 放置冷却器 / 放置阀门 / 放置混合器` 开始放置单元。
-3. 在 Canvas 中点击落点提交当前放置意图。
-4. 使用 Canvas 上的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` suggestion 补齐端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
-5. 在左侧 `项目` 或 Canvas 对象列表中选择 stream / unit，右侧 `检查器` 会切到对应对象。
-6. 在流股检查器中编辑 `T / P / F` 和组成草稿；字段提交、全部应用、组成归一化都是显式动作。
-7. 选中 `Heater / Cooler / Valve / Flash Drum` 时，可在单元检查器中编辑已暴露的 outlet temperature、outlet pressure 或 flash pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。
-8. 若流股错连或漏连，先选中该 material stream，再使用 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 或 `Delete stream` 这组受控恢复动作；`Reconnect stream` 只在单端唯一候选且不会形成 unit dependency cycle 时可用。
-9. 点击顶部 `运行`，结果只从最新 `SolveSnapshot` 展示到右侧 `结果` 和底部 `结果表`。
+2. 在左侧 `项目` 或右侧 `物性包` tab 中选择 `binary-hydrocarbon-lite-v1`，再选择 methane / ethane 项目组分。
+3. 在左侧切到 `放置`，用 `放置进料`、`放置闪蒸罐` 或 `放置加热器 / 放置冷却器 / 放置阀门 / 放置混合器` 开始放置单元。
+4. 在 Canvas 中点击落点提交当前放置意图。
+5. 使用 Canvas 上的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` suggestion 补齐端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
+6. 在左侧 `项目` 或 Canvas 对象列表中选择 stream / unit，右侧 `检查器` 会切到对应对象。
+7. 在流股检查器中编辑 `T / P / F` 和组成草稿；字段提交、全部应用、组成归一化都是显式动作。
+8. 选中 `Feed / Heater / Cooler / Mixer / Valve / Flash Drum` 时，可在单元检查器中编辑已暴露的 source temperature、source pressure、outlet temperature、outlet pressure、flash temperature 或 flash pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。若字段当前显示的是 outlet stream 模板值，但对应 unit parameter 尚未显式提交，即使输入值与显示值相同，也应提交一次，让正式 `SetUnitParameter` 写入项目文档。
+9. 若流股错连或漏连，先选中该 material stream，再使用 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 或 `Delete stream` 这组受控恢复动作；`Reconnect stream` 只在单端唯一候选且不会形成 unit dependency cycle 时可用。
+10. 点击顶部 `运行`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐后，结果只从当前 revision 的最新 `SolveSnapshot` 展示到右侧 `结果`、底部 `结果表`、Results commands 和轻量导出的 `Review` 摘要。正式物性包解析失败、结构性连接错误、拓扑错误和求解阶段参数失败继续由 Run Panel 诊断 / recovery 承载。
 
 当前连接仍通过本地 suggestion 和正式 `DocumentCommand` 完成，不是自由拉线编辑器；单元参数编辑也仍限制在上述 MVP 已暴露字段，不等同于完整单元参数表。
 
@@ -173,12 +189,16 @@ cargo run -p radishflow-studio
 
 当前首批单元参数字段只覆盖最短建模路径中的高频项：
 
+- `Feed`：source outlet temperature，单位 K；source outlet pressure，单位 Pa；提交后同步 Feed outlet stream 模板
 - `Heater / Cooler`：`outlet temperature`，单位 K
 - `Heater / Cooler`：`outlet pressure`，单位 Pa；不能高于已连接 inlet pressure
+- `Mixer`：`outlet pressure`，单位 Pa；不能高于两股已连接 inlet pressure 的较低值
 - `Valve`：`outlet pressure`，单位 Pa；不能高于已连接 inlet pressure
-- `Flash Drum`：`flash pressure`，单位 Pa；提交后同步 liquid / vapor 两个出口流股模板，并作为 TP Flash pressure 参与求解
+- `Flash Drum`：`flash temperature`，单位 K；`flash pressure`，单位 Pa；提交后同步 liquid / vapor 两个出口流股模板，并作为 TP Flash 输入参与求解
 
-`Heater / Cooler / Valve` 的 outlet pressure 若高于已连接 inlet pressure，会在单元检查器草稿态直接标记为无效，保持草稿、不写回项目文档，也不会同步 outlet stream 模板。Flash Drum 的 flash pressure 当前只要求正有限 Pa 值，不施加 inlet pressure 上限。若旧项目或外部编辑已经把越界参数写入文档，运行会产生 `solver.step.parameter` 诊断，并把 failure detail、端口 attention 和 recovery action 指向相关 unit / port / stream。
+`Mixer / Heater / Cooler / Valve` 的 outlet pressure 若高于已连接 inlet pressure 约束，会在单元检查器草稿态直接标记为无效，保持草稿、不写回项目文档，也不会同步 outlet stream 模板。Flash Drum 的 flash temperature / flash pressure 当前只要求正有限 SI 值，不施加 inlet pressure 上限。若旧项目或外部编辑已经把越界参数写入文档，运行会产生 `solver.step.parameter` 诊断，并把 failure detail、端口 attention 和 recovery action 指向相关 unit / port / stream。
+
+运行前 readiness 不再使用 `Mixer-Flash` 或 `Heater-Flash` 小案例清单作为 gate。普通空白项目按当前 `Flowsheet` 判断：Feed source stream 必须有正有限温度、压力和摩尔流量，composition 必须引用已选择项目组分并归一；Heater / Cooler / Flash Drum 必须提交出口温度和压力，Mixer / Valve 必须提交出口压力。缺 material port 绑定、坏 stream reference、重复 source / sink、orphan stream、cycle 等结构性问题仍交给正式 Run Panel 诊断 / recovery；物性包缺失也继续交给正式运行命令的 package resolution 诊断。
 
 连接类失败同样会尽量携带可修复目标：例如缺失 upstream source、未绑定 outlet port、cycle、自环、坏 stream 引用、重复 source / sink 或 orphan stream。Run Panel 中的 recovery action 可能只是聚焦相关 unit / port / stream，也可能执行明确的局部修复动作；按钮文案应区分这两类行为。
 
@@ -216,6 +236,7 @@ Canvas 中的单元位置和 viewport offset 保存到项目同目录的 `<proje
 - 右侧 `检查器 / 结果 / 运行 / 物性包` tabs，其中 `检查器` 负责当前对象参数、组成、端口和关联结果，`结果` 负责只读结果审阅，`物性包` 负责本地包和同步状态摘要
 - 底部 `消息 / 运行日志 / 结果表 / 诊断` drawer，其中结果表只读消费当前 `SolveSnapshot`，默认消息区比结果 / 诊断页更紧凑
 - `诊断目标` 中可直接定位的流股 / 单元结果目标
+- 当前快照导出中的 `Review` 摘要：按 source / intermediate / terminal streams 与 latest unit results 快速核对同一条结果链路
 
 如果运行成功，Studio 会自动把右侧切到 `结果`、底部切到 `结果表`。`Flash Drum` 相关结果当前应能进一步展示：
 
@@ -232,7 +253,7 @@ Canvas 中的单元位置和 viewport offset 保存到项目同目录的 `<proje
 - `Unnormalized` 表示组成已经进入项目文档，但总和不是 1
 - `Normalize composition` 会按当前组成显式归一化
 - 组分添加 / 删除只从当前 flowsheet component catalog 派生，不创建完整组件库
-- 运行前若仍有未提交草稿或未归一化文档组成，应先阻断并显示诊断，不做隐式差值补偿
+- 运行前若文档组成缺失、引用未选择项目组分、数值无效或未归一化，应先阻断并显示诊断，不做隐式差值补偿
 
 ## 运行反馈和退出
 

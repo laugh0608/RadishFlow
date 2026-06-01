@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::time::UNIX_EPOCH;
 
 use rf_model::{Component, Flowsheet};
 use rf_store::{read_property_package_manifest, read_property_package_payload};
@@ -10,7 +11,7 @@ use rf_ui::{
 use super::{
     BootstrapSession, StudioBootstrapConfig, StudioBootstrapDispatch,
     StudioBootstrapEntitlementSeed, StudioBootstrapEntitlementSessionEvent, StudioBootstrapTrigger,
-    run_studio_bootstrap,
+    StudioBootstrapUntitledProject, run_studio_bootstrap,
 };
 use crate::{
     EntitlementPreflightAction, EntitlementSessionEvent, EntitlementSessionEventOutcome,
@@ -19,6 +20,39 @@ use crate::{
     StudioEntitlementOutcome, StudioRuntime, StudioWorkspaceRunOutcome, WorkspaceRunCommand,
     WorkspaceRunPackageSelection, WorkspaceSolveSkipReason,
 };
+
+#[test]
+fn bootstrap_keeps_untitled_blank_project_thermo_basis_unselected() {
+    let session = BootstrapSession::new(&StudioBootstrapConfig {
+        untitled_blank_project: Some(StudioBootstrapUntitledProject::new(
+            "doc-blank",
+            "Blank Project",
+            UNIX_EPOCH,
+        )),
+        ..StudioBootstrapConfig::default()
+    })
+    .expect("expected bootstrap session");
+
+    assert_eq!(
+        session
+            .app_state
+            .workspace
+            .document
+            .flowsheet
+            .property_package_id(),
+        None
+    );
+    assert!(
+        session
+            .app_state
+            .workspace
+            .document
+            .flowsheet
+            .components
+            .is_empty()
+    );
+    assert_eq!(session.app_state.workspace.document.revision, 0);
+}
 
 #[test]
 fn bootstrap_runs_sample_workspace_from_main_entry_boundary() {
@@ -534,6 +568,16 @@ fn bootstrap_can_dispatch_run_panel_recovery_action() {
         .get_mut(&rf_types::StreamId::new("stream-throttled"))
         .expect("expected throttled stream")
         .pressure_pa = 730_000.0;
+    session
+        .app_state
+        .workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&rf_types::UnitId::new("valve-1"))
+        .expect("expected valve unit")
+        .parameters
+        .outlet_pressure_pa = Some(730_000.0);
 
     let report = session
         .run_trigger(&StudioBootstrapTrigger::WidgetAction(
@@ -559,7 +603,7 @@ fn bootstrap_can_dispatch_run_panel_recovery_action() {
 
     match &recovery_report.dispatch {
         StudioBootstrapDispatch::RunPanelRecovery(outcome) => {
-            assert_eq!(outcome.action.title, "Inspect unit inputs");
+            assert_eq!(outcome.action.title, "Inspect unit parameters");
             assert_eq!(
                 outcome.applied_target,
                 Some(rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(
@@ -569,15 +613,6 @@ fn bootstrap_can_dispatch_run_panel_recovery_action() {
         }
         other => panic!("expected run panel recovery dispatch, got {other:?}"),
     }
-    assert_eq!(
-        recovery_report
-            .run_panel
-            .text()
-            .lines
-            .iter()
-            .find(|line| line.as_str() == "Suggested target: unit valve-1"),
-        Some(&"Suggested target: unit valve-1".to_string())
-    );
     assert!(recovery_report.control_state.notice.is_some());
 }
 
@@ -1034,6 +1069,9 @@ fn app_command(report: &super::StudioBootstrapReport) -> &crate::StudioAppComman
         StudioBootstrapDispatch::InspectorTarget(_) => {
             panic!("expected app command dispatch")
         }
+        StudioBootstrapDispatch::ClearInspectorTarget(_) => {
+            panic!("expected app command dispatch")
+        }
         StudioBootstrapDispatch::InspectorDraftUpdate(_) => {
             panic!("expected app command dispatch")
         }
@@ -1056,6 +1094,15 @@ fn app_command(report: &super::StudioBootstrapReport) -> &crate::StudioAppComman
             panic!("expected app command dispatch")
         }
         StudioBootstrapDispatch::InspectorCompositionComponentRemove(_) => {
+            panic!("expected app command dispatch")
+        }
+        StudioBootstrapDispatch::PropertyPackageSelection(_) => {
+            panic!("expected app command dispatch")
+        }
+        StudioBootstrapDispatch::ProjectComponentSelection(_) => {
+            panic!("expected app command dispatch")
+        }
+        StudioBootstrapDispatch::ProjectComponentRemoval(_) => {
             panic!("expected app command dispatch")
         }
         StudioBootstrapDispatch::DocumentHistory(_) => {
@@ -1084,6 +1131,9 @@ fn session_event(
         StudioBootstrapDispatch::InspectorTarget(_) => {
             panic!("expected entitlement session event dispatch")
         }
+        StudioBootstrapDispatch::ClearInspectorTarget(_) => {
+            panic!("expected entitlement session event dispatch")
+        }
         StudioBootstrapDispatch::InspectorDraftUpdate(_) => {
             panic!("expected entitlement session event dispatch")
         }
@@ -1106,6 +1156,15 @@ fn session_event(
             panic!("expected entitlement session event dispatch")
         }
         StudioBootstrapDispatch::InspectorCompositionComponentRemove(_) => {
+            panic!("expected entitlement session event dispatch")
+        }
+        StudioBootstrapDispatch::PropertyPackageSelection(_) => {
+            panic!("expected entitlement session event dispatch")
+        }
+        StudioBootstrapDispatch::ProjectComponentSelection(_) => {
+            panic!("expected entitlement session event dispatch")
+        }
+        StudioBootstrapDispatch::ProjectComponentRemoval(_) => {
             panic!("expected entitlement session event dispatch")
         }
         StudioBootstrapDispatch::DocumentHistory(_) => {

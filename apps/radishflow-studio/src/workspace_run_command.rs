@@ -141,6 +141,10 @@ fn resolve_preferred_package_id(
     app_state: &AppState,
     auth_cache_index: &StoredAuthCacheIndex,
 ) -> RfResult<String> {
+    if let Some(package_id) = app_state.workspace.document.flowsheet.property_package_id() {
+        return resolve_explicit_package_id(app_state, auth_cache_index, package_id);
+    }
+
     let cached_package_ids = auth_cache_index
         .property_packages
         .iter()
@@ -303,6 +307,26 @@ mod tests {
             Some(WORKSPACE_RUN_DIAGNOSTIC_EXPLICIT_PACKAGE_SELECTION_REQUIRED)
         );
         assert!(error.message().contains("explicit package selection"));
+    }
+
+    #[test]
+    fn preferred_package_uses_document_property_package_selection() {
+        let mut document = sample_document();
+        document
+            .flowsheet
+            .set_property_package_id(Some("pkg-2".to_string()))
+            .expect("expected property package selection");
+        let app_state = AppState::new(document);
+        let auth_cache_index = sample_auth_cache_index(&["pkg-1", "pkg-2"]);
+
+        let package_id = resolve_workspace_run_package_id(
+            &app_state,
+            &auth_cache_index,
+            &WorkspaceRunPackageSelection::Preferred,
+        )
+        .expect("expected document selected package");
+
+        assert_eq!(package_id, "pkg-2");
     }
 
     #[test]

@@ -59,6 +59,137 @@ fn app_host_controller_ignores_recovery_ui_action_without_windows() {
 }
 
 #[test]
+fn app_host_keeps_recovery_disabled_after_blocked_workspace_run() {
+    let (config, project_path) = missing_components_blocked_run_config();
+    let mut app_host = StudioAppHost::new(&config).expect("expected app host");
+    let opened = app_host
+        .execute_command(StudioAppHostCommand::OpenWindow)
+        .expect("expected window open");
+    let window = match &opened.outcome {
+        StudioAppHostCommandOutcome::WindowOpened(opened) => {
+            registration_from_opened_window(opened)
+        }
+        other => panic!("expected opened window outcome, got {other:?}"),
+    };
+
+    let blocked_run = app_host
+        .execute_command(StudioAppHostCommand::DispatchWindowTrigger {
+            window_id: window.window_id,
+            trigger: StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+        })
+        .expect("expected blocked run dispatch");
+    match &blocked_run.outcome {
+        StudioAppHostCommandOutcome::WindowDispatched(dispatch) => {
+            match &dispatch.dispatch.host_output.runtime_output.report.dispatch {
+                crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::WorkspaceRun(dispatch) => {
+                        assert!(matches!(
+                            dispatch.outcome,
+                            crate::StudioWorkspaceRunOutcome::Blocked(_)
+                        ));
+                    }
+                    other => panic!("expected workspace run dispatch, got {other:?}"),
+                },
+                other => panic!("expected app command dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected window trigger dispatch, got {other:?}"),
+    }
+
+    assert_eq!(
+        blocked_run
+            .snapshot
+            .ui_actions
+            .iter()
+            .find(|state| state.action == StudioAppHostUiAction::RecoverRunPanelFailure)
+            .expect("expected recovery ui action state"),
+        &StudioAppHostUiActionState {
+            action: StudioAppHostUiAction::RecoverRunPanelFailure,
+            availability: StudioAppHostUiActionAvailability::Disabled {
+                reason: StudioAppHostUiActionDisabledReason::NoRunPanelRecovery,
+                target_window_id: Some(window.window_id),
+            },
+        }
+    );
+    let recovery = app_host
+        .execute_command(StudioAppHostCommand::DispatchUiAction {
+            action: StudioAppHostUiAction::RecoverRunPanelFailure,
+        })
+        .expect_err("expected unavailable recovery action to stay rejected");
+    assert_eq!(recovery.code(), rf_types::ErrorCode::InvalidInput);
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn app_host_ui_run_action_uses_modeling_readiness_before_solve_dispatch() {
+    let (config, project_path) = feed_missing_composition_config();
+    let mut app_host = StudioAppHost::new(&config).expect("expected app host");
+    let opened = app_host
+        .execute_command(StudioAppHostCommand::OpenWindow)
+        .expect("expected window open");
+    let window = match &opened.outcome {
+        StudioAppHostCommandOutcome::WindowOpened(opened) => {
+            registration_from_opened_window(opened)
+        }
+        other => panic!("expected opened window outcome, got {other:?}"),
+    };
+
+    let blocked_run = app_host
+        .execute_command(StudioAppHostCommand::DispatchUiAction {
+            action: StudioAppHostUiAction::RunManualWorkspace,
+        })
+        .expect("expected blocked run dispatch");
+
+    match &blocked_run.outcome {
+        StudioAppHostCommandOutcome::WindowDispatched(dispatch) => {
+            assert_eq!(dispatch.target_window_id, window.window_id);
+            match &dispatch.dispatch.host_output.runtime_output.report.dispatch {
+                crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::WorkspaceRun(run) => {
+                        assert_eq!(
+                            run.package_id.as_deref(),
+                            Some("binary-hydrocarbon-lite-v1")
+                        );
+                        assert!(matches!(
+                            run.outcome,
+                            crate::StudioWorkspaceRunOutcome::Blocked(
+                                crate::StudioWorkspaceRunBlocked {
+                                    reason:
+                                        crate::StudioWorkspaceRunBlockedReason::ModelingInputsNotReady,
+                                    ..
+                                }
+                            )
+                        ));
+                    }
+                    other => panic!("expected workspace run dispatch, got {other:?}"),
+                },
+                other => panic!("expected app command dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected window dispatch outcome, got {other:?}"),
+    }
+
+    assert_eq!(
+        blocked_run
+            .snapshot
+            .ui_actions
+            .iter()
+            .find(|state| state.action == StudioAppHostUiAction::RecoverRunPanelFailure)
+            .expect("expected recovery ui action state"),
+        &StudioAppHostUiActionState {
+            action: StudioAppHostUiAction::RecoverRunPanelFailure,
+            availability: StudioAppHostUiActionAvailability::Disabled {
+                reason: StudioAppHostUiActionDisabledReason::NoRunPanelRecovery,
+                target_window_id: Some(window.window_id),
+            },
+        }
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
 fn app_host_controller_ignores_ui_actions_without_windows() {
     let mut controller =
         StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");
@@ -634,7 +765,7 @@ fn app_host_controller_dispatches_recovery_ui_command_by_command_id() {
             assert_eq!(recovery.target_window_id, opened.registration.window_id);
             match &recovery.effects.runtime_report.dispatch {
                 crate::StudioRuntimeDispatch::RunPanelRecovery(outcome) => {
-                    assert_eq!(outcome.action.title, "Inspect unit inputs");
+                    assert_eq!(outcome.action.title, "Inspect unit parameters");
                 }
                 other => panic!("expected run panel recovery dispatch, got {other:?}"),
             }

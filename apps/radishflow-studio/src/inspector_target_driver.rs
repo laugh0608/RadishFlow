@@ -7,6 +7,12 @@ pub struct InspectorTargetFocusOutcome {
     pub active_target: Option<InspectorTarget>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InspectorTargetClearOutcome {
+    pub previous_target: Option<InspectorTarget>,
+    pub active_target: Option<InspectorTarget>,
+}
+
 pub fn focus_inspector_target(
     app_state: &mut AppState,
     target: InspectorTarget,
@@ -21,13 +27,23 @@ pub fn focus_inspector_target(
     }
 }
 
+pub fn clear_inspector_target(app_state: &mut AppState) -> InspectorTargetClearOutcome {
+    let previous_target = app_state.clear_inspector_target();
+    let active_target = app_state.workspace.drafts.active_target.clone();
+
+    InspectorTargetClearOutcome {
+        previous_target,
+        active_target,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
     use rf_types::{PortDirection, PortKind, StreamId, UnitId};
     use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, InspectorTarget};
 
-    use crate::focus_inspector_target;
+    use crate::{clear_inspector_target, focus_inspector_target};
 
     #[test]
     fn inspector_target_driver_focuses_existing_stream() {
@@ -90,5 +106,28 @@ mod tests {
             outcome.active_target,
             Some(InspectorTarget::Unit(UnitId::new("feed-1")))
         );
+    }
+
+    #[test]
+    fn inspector_target_driver_clears_active_target_and_selection() {
+        let mut flowsheet = Flowsheet::new("demo");
+        flowsheet
+            .insert_unit(UnitNode::new("feed-1", "Feed", "feed", Vec::new()))
+            .expect("expected unit insert");
+        let mut app_state = AppState::new(FlowsheetDocument::new(
+            flowsheet,
+            DocumentMetadata::new("doc", "Demo", std::time::UNIX_EPOCH),
+        ));
+        focus_inspector_target(&mut app_state, InspectorTarget::Unit(UnitId::new("feed-1")));
+
+        let outcome = clear_inspector_target(&mut app_state);
+
+        assert_eq!(
+            outcome.previous_target,
+            Some(InspectorTarget::Unit(UnitId::new("feed-1")))
+        );
+        assert_eq!(outcome.active_target, None);
+        assert!(app_state.workspace.selection.selected_units.is_empty());
+        assert!(app_state.workspace.selection.selected_streams.is_empty());
     }
 }

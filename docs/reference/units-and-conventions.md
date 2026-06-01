@@ -1,6 +1,6 @@
 # Units And Conventions
 
-更新时间：2026-05-10
+更新时间：2026-06-01
 
 ## 目的
 
@@ -43,14 +43,35 @@
 
 | 单元 | 字段 | 单位 | 语义 |
 | --- | --- | --- | --- |
+| `Feed` | `outlet_temperature_k` | `K` | source outlet 温度，同步 Feed outlet 模板 |
+| `Feed` | `outlet_pressure_pa` | `Pa` | source outlet 绝压，同步 Feed outlet 模板 |
 | `Heater` / `Cooler` | `outlet_temperature_k` | `K` | 目标 outlet 温度 |
 | `Heater` / `Cooler` | `outlet_pressure_pa` | `Pa` | 目标 outlet 绝压，不高于已连接 inlet pressure |
-| `Valve` | `outlet_pressure_pa` | `Pa` | 目标 outlet 绝压 |
+| `Mixer` | `outlet_pressure_pa` | `Pa` | 目标 outlet 绝压，不高于两股已连接 inlet pressure 的较低值 |
+| `Valve` | `outlet_pressure_pa` | `Pa` | 目标 outlet 绝压，不高于已连接 inlet pressure |
+| `Flash Drum` | `outlet_temperature_k` | `K` | flash temperature，同步 liquid / vapor outlet 模板 |
 | `Flash Drum` | `outlet_pressure_pa` | `Pa` | flash pressure，同步 liquid / vapor outlet 模板 |
 
-这些字段属于项目 flowsheet 语义，会通过正式参数提交流写回项目模型。Studio 提交时会同步对应 outlet stream 模板，求解器优先读取单元参数；旧项目或未设置参数时仍可按已有 outlet stream 模板兼容读取。
+这些字段属于项目 flowsheet 语义，会通过正式参数提交流写回项目模型。Studio 提交时会同步对应 outlet stream 模板，求解器优先读取单元参数；旧项目或外部项目未设置参数时，底层求解仍可按已有 outlet stream 模板兼容读取。Studio 运行前 readiness 不把这类兼容 fallback 视为用户已提交参数；若检查器字段显示的是模板 / fallback 值但 unit parameter 为空，同值提交仍应生成正式 `SetUnitParameter`。
 
 当前不引入完整单元参数表，也不把这些字段扩展成第二套单位系统。
+
+## Studio 运行前必填输入
+
+Studio 用户可触达的正式运行入口在调用求解前会先检查当前 `Flowsheet` 的通用建模输入。下表描述的是 Studio readiness 的最低要求，不等同于 solver 内部所有数值约束，也不替代结构性连接 / 拓扑诊断：
+
+| 对象 | 必填输入 | 约束 |
+| --- | --- | --- |
+| Project | `Flowsheet.components` | 至少选择项目组分；composition 引用的 component 必须在项目组分列表中 |
+| Feed source stream | `temperature_k` | 正有限 K |
+| Feed source stream | `pressure_pa` | 正有限 Pa |
+| Feed source stream | `total_molar_flow_mol_s` | 正有限 mol/s |
+| Feed source stream | `overall_mole_fractions` | 非空；所有分率有限且在 `[0, 1]`；总和归一到 `1`；组分必须来自项目组分 |
+| `Heater` / `Cooler` | `outlet_temperature_k`、`outlet_pressure_pa` | 必须通过 Unit Inspector 或项目文件显式进入 `UnitOperationParameters` |
+| `Flash Drum` | `outlet_temperature_k`、`outlet_pressure_pa` | 分别表示 flash temperature / pressure，必须进入 `UnitOperationParameters` |
+| `Mixer` / `Valve` | `outlet_pressure_pa` | 必须进入 `UnitOperationParameters` |
+
+Property package 不在这层 readiness 中解析。缺失、缓存不可用或多包歧义继续由正式 run package resolution 和 Run Panel 诊断处理。Material port 绑定缺失、坏 stream reference、重复 source / sink、orphan stream、cycle 等结构性连接 / 拓扑问题也不归入“模型输入未完成”，继续由正式 Run Panel 诊断 / recovery 处理。
 
 ## 流股组成约定
 

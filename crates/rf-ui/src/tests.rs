@@ -243,6 +243,36 @@ fn commit_document_change_advances_revision_and_marks_solve_pending() {
 }
 
 #[test]
+fn setting_flowsheet_property_package_advances_document_revision() {
+    let mut app_state = AppState::new(sample_document());
+
+    let revision = app_state
+        .set_flowsheet_property_package_id(
+            Some(" binary-hydrocarbon-lite-v1 ".to_string()),
+            timestamp(20),
+        )
+        .expect("expected property package update");
+
+    assert_eq!(revision, Some(1));
+    assert_eq!(
+        app_state.workspace.document.flowsheet.property_package_id(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert_eq!(app_state.workspace.command_history.len(), 1);
+    assert_eq!(
+        app_state
+            .workspace
+            .command_history
+            .current_entry()
+            .map(|entry| &entry.command),
+        Some(&DocumentCommand::SetPropertyPackage {
+            package_id: Some("binary-hydrocarbon-lite-v1".to_string())
+        })
+    );
+    assert_eq!(app_state.workspace.solve_session.status, RunStatus::Dirty);
+}
+
+#[test]
 fn commit_document_change_clears_stale_current_snapshot_summary() {
     let mut app_state = AppState::new(sample_document());
     let snapshot = SolveSnapshot::new(
@@ -267,6 +297,10 @@ fn commit_document_change_clears_stale_current_snapshot_summary() {
     assert_eq!(app_state.workspace.solve_session.latest_snapshot, None);
     assert_eq!(app_state.workspace.solve_session.latest_diagnostic, None);
     assert!(latest_snapshot(&app_state.workspace).is_none());
+    let stale_snapshot = crate::stale_snapshot(&app_state.workspace)
+        .expect("expected stale snapshot after document revision advanced");
+    assert_eq!(stale_snapshot.id.as_str(), "snapshot-ui-stale");
+    assert_eq!(stale_snapshot.document_revision, 0);
     assert_eq!(app_state.workspace.run_panel.latest_snapshot_id, None);
     assert_eq!(app_state.workspace.run_panel.latest_snapshot_summary, None);
     assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Dirty);

@@ -17,8 +17,8 @@
 - 禁止 force push
 - 禁止删除分支
 - 仅允许通过 Pull Request 合并
-- 要求 `Repo Hygiene` 与 `Rust Baseline` 检查通过
-- `PR Checks` 当前拆分为 `Repo Hygiene` 与 `Rust Baseline` 两个 job，保留拆分式门禁，但不引入当前仓库并不存在的 `Frontend Lint`
+- 要求 `Repo Hygiene`、Linux `Rust Baseline`、`Rust Baseline (macOS)` 与 `Rust Baseline (Windows)` 检查通过
+- `PR Checks` 当前拆分为 `Repo Hygiene` 与三平台 Rust baseline job，保留拆分式门禁，但不引入当前仓库并不存在的 `Frontend Lint`
 - GitHub 对 Actions required status checks 当前按 job 名匹配，不看 workflow 前缀或事件后缀，因此 ruleset 中固定写 job 名
 - `PR Checks` 只响应 `pull_request -> master`，避免与 tag / 手动检查共用同一个 workflow 名称后产生状态名漂移
 - 允许 `merge` 与 `rebase` 两种合并方式，禁用 `squash`
@@ -35,7 +35,7 @@
 ## 检查入口
 
 - `scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 当前复用同一套 Rust `xtask` 实现
-- CI 当前默认在 Linux runner 上使用 `.sh` 入口，本地 Windows 仍可继续使用 `.ps1`
+- CI 当前在 Linux / macOS runner 上使用 `.sh` 入口，在 Windows runner 上使用 `.ps1`
 
 ## 应用方式
 

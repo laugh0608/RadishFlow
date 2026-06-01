@@ -15,9 +15,35 @@ pub struct StudioGuiWorkspaceDocumentSnapshot {
     pub last_saved_revision: Option<u64>,
     pub has_unsaved_changes: bool,
     pub project_path: Option<String>,
+    pub property_package_id: Option<String>,
+    pub property_package_choices: Vec<StudioGuiPropertyPackageChoiceSnapshot>,
+    pub project_component_choices: Vec<StudioGuiProjectComponentChoiceSnapshot>,
     pub unit_count: usize,
     pub stream_count: usize,
     pub snapshot_history_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiPropertyPackageChoiceSnapshot {
+    pub package_id: String,
+    pub label: String,
+    pub detail: String,
+    pub component_summary: String,
+    pub command_id: String,
+    pub selected: bool,
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiProjectComponentChoiceSnapshot {
+    pub component_id: String,
+    pub name: String,
+    pub formula: Option<String>,
+    pub selected: bool,
+    pub select_command_id: String,
+    pub remove_command_id: String,
+    pub remove_enabled: bool,
+    pub remove_detail: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -27,6 +53,7 @@ pub struct StudioGuiRuntimeSnapshot {
     pub control_state: WorkspaceControlState,
     pub run_panel: rf_ui::RunPanelWidgetModel,
     pub latest_solve_snapshot: Option<rf_ui::SolveSnapshot>,
+    pub stale_solve_snapshot: Option<rf_ui::SolveSnapshot>,
     pub latest_failure_diagnostic_context: Option<StudioGuiFailureDiagnosticContextSnapshot>,
     pub active_inspector_target: Option<rf_ui::InspectorTarget>,
     pub active_inspector_detail: Option<StudioGuiInspectorTargetDetailSnapshot>,
@@ -123,6 +150,7 @@ pub struct StudioGuiInspectorConnectionActionSnapshot {
     pub label: String,
     pub detail: String,
     pub command_id: String,
+    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

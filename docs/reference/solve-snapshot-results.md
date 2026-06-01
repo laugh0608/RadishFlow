@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-05-23
+更新时间：2026-05-31
 
 ## 目的
 
@@ -43,6 +43,7 @@
 - stream comparison
 - diagnostic target / focus action
 - `Results` command section 中的 stream / unit result navigation
+- case-level review summary
 - 当前快照文本 formatter，用于复制或导出 `.txt`
 
 ## `SolveSnapshot` 的稳定语义
@@ -126,6 +127,8 @@ source stream 当前不是“只有文档态输入，没有结果态”的对象
 
 这几处不应各自维护第二套 `H / phase_region / bubble_dew_window` 口径。
 
+当前 official demo case 与空白作者路径都应按这条链路核对 `Heater -> Flash`、`Mixer -> Flash`、`Cooler -> Flash` 和 `Valve -> Flash`：上游单元产出的中间流股、全局 stream 结果和 flash step 消费的输入流股必须保持同一份数值语义。
+
 ### 3. Flash outlet
 
 `Flash Drum` outlet 需要区分 flowing outlet 和零流量对侧 outlet。
@@ -181,6 +184,20 @@ unit-centric 视图当前只是在同一份快照里按单元重新组织结果�
 
 它不应自己再从全局 stream map 组一套“更完整的单元结果”。
 
+### case-level review summary
+
+case-level `review_summary` 是 Studio window-model 从同一份最新 `SolveSnapshot` 派生的审阅摘要，用于让用户先按流程链路确认“哪些结果对象应该被看见”。
+
+当前分组语义：
+
+- `source_stream_results`：source unit 产出、且被下游单元消费的流股，例如 Feed outlet。
+- `intermediate_stream_results`：既由上游单元产出、又被下游单元消费的非 source 流股，例如 heater / cooler / valve / mixer outlet。
+- `terminal_stream_results`：由单元产出、但不再被下游单元消费的终端产品流股，例如 Flash Drum liquid / vapor outlet。
+- `unit_results`：每个单元当前最新 step 的状态、消费流股和产出流股。
+- `diagnostic_count`：当前快照中的诊断条目数量。
+
+这层摘要不改变 `SolveSnapshot.streams`、`StepSnapshot.consumed_streams` 或 `StepSnapshot.streams` 的正式语义，也不承担结果推导、重新计算或报表模板职责。若某个流股在 `Review` 分组和 step 明细中表现不一致，应优先按消费层 bug 排查，而不是让 `Review` 自行补造结果。
+
 ### diagnostic target / focus action
 
 当前 `inspector.focus_stream:*` 与 `inspector.focus_unit:*` 的正式语义只是“定位到某个当前已有结果对象”。
@@ -201,9 +218,24 @@ unit-centric 视图当前只是在同一份快照里按单元重新组织结果�
 - `DiagnosticTargets` section 只汇总这组已存在 target，不另造 shell 私有状态机
 - runtime 最终渲染面的 `Inspect` 标签和 `source | target | summary` 文本只负责展示这组 action，不重写其语义
 
+当前稳定诊断口径：
+
+- `solver.step.stream_input` 表示下游单元消费的输入流股缺少可用 stream specification，例如已连接 stream 没有至少一项 overall mole fraction。target 应优先携带相关 stream 与 inlet port，让 Run Panel recovery / focus 进入可编辑的 stream 输入，而不是把问题误归因为下游单元故障。
+- `solver.step.parameter` 表示已进入项目文档的单元参数不满足当前单元约束，例如 pressure / temperature 不是正有限值，或 outlet pressure 高于已连接 inlet pressure。target 应携带 unit / port / stream context，修复入口是 Unit Inspector 的参数字段。
+
+UI / shell 不应通过解析错误文本反推出这些分类；分类、summary 和 target 应来自结构化 diagnostic DTO。
+
 ### text copy / export
 
-当前快照复制和文本导出只消费同一份最新 `SolveSnapshot`，并把已物化的流股摘要、求解步骤和诊断格式化为纯文本。
+当前快照复制和文本导出只消费同一份最新 `SolveSnapshot`，并把已物化的流股摘要、case-level review summary、单元结果、求解步骤和诊断格式化为纯文本。
+
+稳定 section 口径：
+
+- `Streams`：来自 `SolveSnapshot.streams` 的流股摘要
+- `Review`：按 source / intermediate / terminal streams、latest unit results 和 diagnostics count 汇总同一份快照
+- `Units`：按单元列出当前最新 step、状态、summary、输入流股和输出流股
+- `Steps`：来自 `StepSnapshot` 的求解步骤摘要
+- `Diagnostics`：来自当前快照的诊断条目
 
 稳定边界：
 

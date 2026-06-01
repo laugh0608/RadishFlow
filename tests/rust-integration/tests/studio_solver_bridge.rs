@@ -183,6 +183,35 @@ fn apply_binary_demo_composition(
         .insert(ComponentId::new("ethane"), overall_mole_fractions[1]);
 }
 
+fn set_app_unit_outlet_temperature(app_state: &mut AppState, unit_id: &str, temperature_k: f64) {
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new(unit_id))
+        .expect("expected unit")
+        .parameters
+        .outlet_temperature_k = Some(temperature_k);
+}
+
+fn set_app_unit_outlet_pressure(app_state: &mut AppState, unit_id: &str, pressure_pa: f64) {
+    app_state
+        .workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new(unit_id))
+        .expect("expected unit")
+        .parameters
+        .outlet_pressure_pa = Some(pressure_pa);
+}
+
+fn set_app_flash_case_parameters(app_state: &mut AppState, case: &NearBoundaryStreamWindowCase) {
+    set_app_unit_outlet_temperature(app_state, "flash-1", case.temperature_k);
+    set_app_unit_outlet_pressure(app_state, "flash-1", case.pressure_pa);
+}
+
 fn app_state_for_heater_boundary_case(
     document_id: &str,
     title: &str,
@@ -215,6 +244,9 @@ fn app_state_for_heater_boundary_case(
         .expect("expected heated stream");
     heated.temperature_k = case.temperature_k;
     heated.pressure_pa = case.pressure_pa;
+    set_app_unit_outlet_temperature(&mut app_state, "heater-1", case.temperature_k);
+    set_app_unit_outlet_pressure(&mut app_state, "heater-1", case.pressure_pa);
+    set_app_flash_case_parameters(&mut app_state, case);
     app_state
 }
 
@@ -313,6 +345,9 @@ fn app_state_for_synthetic_heater_boundary_case(
         .expect("expected heated stream");
     heated.temperature_k = case.temperature_k;
     heated.pressure_pa = case.pressure_pa;
+    set_app_unit_outlet_temperature(&mut app_state, "heater-1", case.temperature_k);
+    set_app_unit_outlet_pressure(&mut app_state, "heater-1", case.pressure_pa);
+    set_app_flash_case_parameters(&mut app_state, case);
     app_state
 }
 
@@ -688,6 +723,12 @@ fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end
         .get_mut(&"stream-throttled".into())
         .expect("expected throttled stream")
         .pressure_pa = 130_000.0;
+    flowsheet
+        .units
+        .get_mut(&UnitId::new("valve-1"))
+        .expect("expected valve unit")
+        .parameters
+        .outlet_pressure_pa = Some(130_000.0);
     let mut app_state = AppState::new(FlowsheetDocument::new(
         flowsheet,
         DocumentMetadata::new("doc-studio-failure", "Studio Failure Demo", timestamp(20)),
@@ -700,7 +741,7 @@ fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end
     )
     .expect_err("expected solve failure");
 
-    assert!(error.message().contains("solver.step.execution:"));
+    assert!(error.message().contains("solver.step.parameter:"));
     assert_eq!(app_state.workspace.solve_session.status, RunStatus::Error);
     let summary = app_state
         .workspace
@@ -710,7 +751,7 @@ fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end
         .expect("expected failure summary");
     assert_eq!(
         summary.primary_code.as_deref(),
-        Some("solver.step.execution")
+        Some("solver.step.parameter")
     );
     assert_eq!(summary.related_unit_ids, vec![UnitId::new("valve-1")]);
 
@@ -720,10 +761,10 @@ fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end
         .notice
         .as_ref()
         .expect("expected run panel notice");
-    assert_eq!(notice.title, "Unit execution failed");
+    assert_eq!(notice.title, "Unit parameter invalid");
     assert_eq!(
         notice.recovery_action.as_ref().map(|action| action.kind),
-        Some(RunPanelRecoveryActionKind::InspectExecutionInputs)
+        Some(RunPanelRecoveryActionKind::InspectUnitSpec)
     );
     assert_eq!(
         notice
@@ -735,7 +776,7 @@ fn studio_solver_bridge_records_solver_failure_notice_and_target_unit_end_to_end
 }
 
 #[test]
-fn studio_solver_bridge_records_missing_package_without_solver_code_end_to_end() {
+fn studio_solver_bridge_records_missing_package_workspace_code_end_to_end() {
     let provider = InMemoryPropertyPackageProvider::default();
     let mut app_state = app_state_from_project(
         include_str!("../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json"),
@@ -761,7 +802,10 @@ fn studio_solver_bridge_records_missing_package_without_solver_code_end_to_end()
         .latest_diagnostic
         .as_ref()
         .expect("expected failure summary");
-    assert_eq!(summary.primary_code, None);
+    assert_eq!(
+        summary.primary_code.as_deref(),
+        Some("workspace.run.property_package_missing")
+    );
     assert!(summary.related_unit_ids.is_empty());
 
     let notice = app_state
@@ -770,8 +814,25 @@ fn studio_solver_bridge_records_missing_package_without_solver_code_end_to_end()
         .notice
         .as_ref()
         .expect("expected run panel notice");
-    assert_eq!(notice.title, "Run failed");
-    assert!(notice.recovery_action.is_none());
+    assert_eq!(notice.title, "Property package unavailable");
+    assert_eq!(
+        notice.recovery_action.as_ref().map(|action| {
+            (
+                action.kind,
+                action.title,
+                action.target_unit_id.as_ref(),
+                action.target_stream_id.as_ref(),
+                action.mutation.as_ref(),
+            )
+        }),
+        Some((
+            RunPanelRecoveryActionKind::RepairLocalCache,
+            "Repair property package",
+            None,
+            None,
+            None,
+        ))
+    );
 }
 
 #[test]
