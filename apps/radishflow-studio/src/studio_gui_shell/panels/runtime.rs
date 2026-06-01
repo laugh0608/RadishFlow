@@ -121,6 +121,8 @@ impl ReadyAppState {
             });
         } else if let Some(failure) = window.runtime.latest_failure.as_ref() {
             self.render_latest_failure_summary(ui, failure);
+        } else if let Some(stale_snapshot) = window.runtime.stale_solve_snapshot.as_ref() {
+            self.render_stale_solve_snapshot_notice(ui, stale_snapshot);
         } else {
             ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
         }
@@ -583,6 +585,29 @@ impl ReadyAppState {
         }
     }
 
+    pub(in crate::studio_gui_shell) fn render_stale_solve_snapshot_notice(
+        &self,
+        ui: &mut egui::Ui,
+        stale_snapshot: &radishflow_studio::StudioGuiWindowStaleSolveSnapshotModel,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            render_status_chip(
+                ui,
+                self.locale.runtime_label("dirty").as_ref(),
+                run_status_color("dirty"),
+            );
+            ui.label(egui::RichText::new(self.locale.stale_solve_snapshot_title()).strong());
+        });
+        ui.colored_label(
+            notice_color(rf_ui::RunPanelNoticeLevel::Warning),
+            self.locale.stale_solve_snapshot_detail(
+                &stale_snapshot.snapshot_id,
+                stale_snapshot.snapshot_document_revision,
+                stale_snapshot.current_document_revision,
+            ),
+        );
+    }
+
     pub(in crate::studio_gui_shell) fn render_runtime_area_contents(
         &mut self,
         ui: &mut egui::Ui,
@@ -997,6 +1022,8 @@ impl ReadyAppState {
                 if !failure.diagnostic_actions.is_empty() {
                     self.render_diagnostic_target_actions(ui, &failure.diagnostic_actions);
                 }
+            } else if let Some(stale_snapshot) = window.runtime.stale_solve_snapshot.as_ref() {
+                self.render_stale_solve_snapshot_notice(ui, stale_snapshot);
             } else {
                 ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
             }

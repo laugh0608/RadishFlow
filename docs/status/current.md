@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-05-31
+更新时间：2026-06-01
 
 ## 用途
 
@@ -23,28 +23,9 @@
 - **MVP β 阶段基线验证已通过：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。**
 - **MVP β 下一阶段已切到通用小流程建模 v1：目标从复现指定案例推进到空白项目中受控组合小流程。**
 - **通用小流程建模 v1 第十一切片已完成 focused 推进：普通空白项目结果审阅入口已覆盖 Results commands、轻量导出、底部结果表、Result Inspector 呈现、关键结果合理性核对、单相 Flash 零流量出口缺席语义、重开后正式求解失败的诊断上下文定位，以及 case-level review summary。**
-- **阶段性门禁已调整：MVP β smoke、指定小案例入口和结果审阅覆盖面不再作为日常推进 gate；后续以普通空白项目编辑后重跑一致性、旧结果失效语义和真实建模缺口为主线。**
+- **通用小流程建模 v1 第十二切片已完成 focused 推进：普通空白项目成功求解后修改 Feed composition、unit 参数或连接状态时，旧结果不再作为当前结果入口暴露，并由 stale notice 指向重新运行；rerun 后 Result Inspector、底部结果表、Results commands、轻量导出和 case-level review summary 回到最新 `SolveSnapshot`。**
+- **阶段性门禁已调整：MVP β smoke、指定小案例入口和结果审阅覆盖面不再作为日常推进 gate；后续以普通空白项目真实建模缺口、结果新旧状态表达和 readiness / Run Panel 边界为主线。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
-
-β 第一刀通过依据：
-
-- Studio 可从 Home 进入 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条空白项目作者路径。
-- 两条路径均复用正式 placement / suggestion / Unit Inspector / run / save / reopen / result review / snapshot export 边界，不是项目向导、自由连线或自动建模系统。
-- 运行成功后可在右侧 `结果`、底部 `结果表` 和 `复制快照` / `导出文本` 中审阅同一份 `SolveSnapshot`。
-- 2026-05-26 仓库级验证 `pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
-
-β 第二刀通过依据：
-
-- 空白项目初始不预选物性包或组分；用户需显式选择 `binary-hydrocarbon-lite-v1`、methane、ethane。
-- 项目级物性包选择、项目组分选择、Feed composition draft / normalize / commit、Unit 参数输入、保存 / 重开和 `Preferred` run 已形成可复验闭环。
-- `Heater-Flash` 与 `Mixer-Flash` 两条 official demo case 已写清输入表和结果核对点，并由空白项目 focused 回归覆盖到最新 `SolveSnapshot`。
-- 2026-05-27 仓库级验证 `pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
-
-结果核对与案例说明 v0 第一版依据：
-
-- `docs/guides/author-small-cases.md` 已按 official hydrocarbon `Heater-Flash` / `Mixer-Flash` demo case 整理关键输入、关键中间流股、flash 分割、相态和焓值核对路径。
-- `docs/guides/review-solve-results.md` 已把小案例审阅顺序从“先看哪些对象”细化为输入流股、非 flash 中间流股、unit step、flash 分割、相态 / `H` 和轻量导出的核对链路。
-- focused 验证覆盖 solver `SolveSnapshot` 中 official demo case 的输入、中间流股、unit step 消费 / 产出、flash 分割、相态 / `H`，并覆盖 Studio window-model 轻量导出是否保留这些核对对象。
 
 ## 当前开发策略
 
@@ -68,17 +49,7 @@
 
 ## 下阶段目标
 
-**MVP β 人工 smoke v0 已通过。**
-
-建模输入能力 v0、结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0、失败修复闭环 v0、MVP β 人工 smoke v0 与仓库级阶段基线验证均已通过。下一步推进 **通用小流程建模 v1**；不回到零散 UI 打磨，也不把工作停在案例说明或验收文档上。
-
-人工 smoke v0 已通过的路径：
-
-- 打开 official demo case，运行、结果审阅、保存 / 重开 / rerun。
-- 从 Home 作者入口手工复现 `Mixer-Flash` 和 `Heater-Flash` 空白项目路径。
-- 覆盖代表性失败恢复：缺 Feed composition 诊断与修复、selected stream 断开 / 重连 / 保存重开。
-
-通过 / 失败记录以 `docs/mvp/beta-acceptance-checklist.md` 为准；当前仍不推进 tag、release notes、便携包刷新或对外发布自动化。
+建模输入能力 v0、结果核对与案例说明 v0、受控连接恢复 v0、剩余单元建模闭环 v0、失败修复闭环 v0、MVP β 人工 smoke v0 与仓库级阶段基线验证均已通过。当前继续推进 **通用小流程建模 v1**；不回到零散 UI 打磨，也不把工作停在案例说明或验收文档上。
 
 通用小流程建模 v1 目标：
 
@@ -88,27 +59,14 @@
 - 缺项目组分、缺 Feed composition、Feed source stream 状态缺口、必要单元参数缺失和组成未归一等建模输入问题应由 readiness 定位到具体 stream / unit；未连接 material port、缺失 stream reference、重复 source / sink、orphan stream 和 cycle 等结构性问题继续进入正式 Run Panel 诊断 / recovery；缺物性包继续走正式运行命令的 package 解析与 Run Panel 诊断。
 - 保存 / 重开 / rerun 仍必须稳定；不引入自由连线编辑器、自动布线、完整拖拽布局器或完整报表系统。
 
-当前推进切片：
+当前进展摘要：
 
-- 已落地“项目级物性包选择”主路径：`Flowsheet` 承载热力学配置，项目 JSON 可保存 / 重开该选择，`Preferred` 运行解析优先使用项目中保存的 package。
-- Studio 已从只读展示推进到受控内置物性包选择 UI：右侧 `物性包` 页展示内置 package 选项，选择写入 `Flowsheet.thermo.property_package_id`，保存 / 重开保持，并由 `Preferred` 运行使用。
-- 已落地“项目组分选择 v0”：Studio 左侧 `项目` 面板和右侧 `物性包` 页暴露受控内置 methane / ethane 组分目录，选择写入 `Flowsheet.components`，保存 / 重开保持；删除只允许未被任何 stream composition 引用的组件，Feed composition 的受控添加项继续从项目组件列表派生。
-- 已修正空白项目主路径：新建未命名空白项目不再预写默认物性包和默认组分；用户需从受控内置列表显式选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane 后，再进入 Feed composition、单元参数、运行、保存 / 重开路径。
-- 已修正 Unit Inspector 参数输入页 blocker：单元参数不再用窄表格挤压长字段说明，改为本地化短标签、输入框、单位、状态和操作的紧凑行布局；约束提示缩短为辅助说明，不再把英文长句挤成竖排。
-- 已补 Feed composition 输入主路径回归：从 official Heater-Flash 示例复制临时项目，走真实 Stream Inspector draft update / normalize / save / reopen / Preferred run 路径，把 `stream-feed` 组成从草稿归一到 methane 0.25 / ethane 0.75，并在保存项目和求解结果中核对。
-- 已推进 official demo case 复现验收：`docs/guides/author-small-cases.md` 写清 `Heater-Flash` 与 `Mixer-Flash` 两条输入表和结果核对点；空白项目 focused 回归覆盖项目组分、内置物性包、Feed composition、Unit 参数、保存 / 重开、Preferred run 与 `SolveSnapshot` 核对。
-- 已推进结果核对与案例说明 v0 第一版：两条 official demo case 的输入、中间流股、flash 分割、相态 / 焓值核对路径已写入 guide，并补 focused test 锁定 solver snapshot 与 Studio 轻量导出的关键审阅对象。
-- 已修正小案例作者清单输入就绪缺口：清单不再只看拓扑和快照，也会提示物性包、项目组分、Feed composition 和必要单元参数是否已提交，避免拓扑完成后直接运行才暴露缺组成错误。
-- 已修正缺少流股组成时的求解诊断：下游单元消费未提交 composition 的流股时，solver 现在返回 `solver.step.stream_input`，并携带相关 stream 与 inlet 端口；Run Panel 恢复动作聚焦到流股输入，而不是泛化为单元执行失败。
-- 已完成受控连接恢复 v0 focused 收口：验证锁定 official Heater-Flash case 中 selected stream 断开 sink、重连唯一 Flash inlet、保存 / 重开 / rerun 后仍由 Flash Drum 消费 heater outlet 的闭环。
-- 已完成剩余单元建模闭环 v0 focused 收口：补 focused 验证覆盖空白项目中显式选择内置物性包 / 组分后，手工搭建 `Feed -> Cooler -> Flash Drum` 与 `Feed -> Valve -> Flash Drum`，提交 Feed composition 和单元参数，保存 / 重开 / rerun，并核对中间流股、flash consumed stream、液/汽出口、相态 / `H` 基础审阅对象；2026-05-27 仓库级验证 `pwsh ./scripts/check-repo.ps1` 已在真实环境通过。
-- 已完成失败修复闭环 v0 focused 收口：回归覆盖缺物性包、缺项目组分、缺 Feed composition、Valve 参数越界、主要连接 blocker、cycle 和 invalid port signature；2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。
-- 已完成 MVP β 人工 smoke v0：Smoke A-D 已由人工执行并通过，未发现 `AuthoringPath`、`ModelingInput`、`FailureRecovery`、`ResultReview` 或 `Persistence` blocker；记录已落到 `docs/mvp/beta-acceptance-checklist.md`。
-- 已完成 MVP β 阶段基线验证：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过。
-- 已启动通用小流程建模 v1 第一切片：运行按钮不再由 active 小案例清单拦截，改为所有项目共享的建模输入 readiness；普通空白项目与小案例入口都会用“模型输入未完成”指向真实 flowsheet 缺口，property package 解析仍留在正式 run command。
-- 已推进通用小流程建模 v1 第二切片：运行前 readiness 已按 Feed source stream 状态检查 T/P/F/z、项目组分引用和 composition 归一，并按 unit kind 要求 Heater / Cooler / Flash Drum 的出口 T/P 以及 Mixer / Valve 的出口压力；官方示例项目同步补齐正式单元参数，普通空白项目不再靠拓扑建议直接运行。
-- 已推进通用小流程建模 v1 第三至第十一切片：`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum` 均覆盖显式输入、保存端口绑定、重开 rerun、单元 step、结果检查器、Results commands、轻量导出和 outlet T/P/F/H；底部结果表与 Result Inspector focused 回归已锁定输入流股、中间流股、Flash 液 / 汽出口、unit consumed / produced stream references、composition、phase 与 bubble/dew window 入口；结果合理性回归已覆盖 Flash split 总量 / 组分物料衡算、单入口单元出口 T/P/F/z 一致性和 Mixer 流量加权 composition；单相 Flash 零流量 outlet 已锁定不伪造 `H`、phase rows 或 bubble/dew window，右侧 Result Inspector 以 `none` 相态摘要表达缺席语义；普通空白项目重开后若进入正式求解失败，failure diagnostic detail 已锁定相关 unit、stream、port context 和可聚焦 action；window-model 已新增 case-level `review_summary`，按 source / intermediate / terminal streams、latest unit results 和 diagnostics 汇总同一份 `SolveSnapshot`，轻量导出同步输出 `Review` section；host / window-model 层已补回归锁定 blocked modeling input 不启用 failure recovery，结构性连接 / 拓扑错误继续进入正式 Run Panel 诊断 / recovery。
-- 下一步建议推进普通空白项目编辑后重跑一致性：成功求解后修改 Feed composition、unit 参数或连接状态时，旧结果应有清楚的失效语义；rerun 后 Result Inspector、底部结果表、Results commands、轻量导出和 case-level review summary 都应切到最新 `SolveSnapshot`。
+- 空白项目需显式选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane，Feed composition 和 Unit 参数均走正式 Inspector draft / commit / undo / save / reopen 路径。
+- 通用 readiness 已按真实 `Flowsheet` 检查 Feed source stream T/P/F/z、项目组分、composition 归一和必要单元参数；结构性连接 / 拓扑 / 求解阶段参数失败继续走正式 Run Panel 诊断 / recovery。
+- 普通空白项目已覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 的显式输入、保存 / 重开 / rerun、结果审阅和关键结果合理性。
+- 结果审阅当前包括 Result Inspector、底部结果表、Results commands、轻量导出、case-level `review_summary`、单相 Flash 零流量出口缺席语义和失败态定位。
+- 编辑后重跑一致性已覆盖 Feed composition、unit 参数和连接状态变更；旧快照只作为 stale notice 来源，不再驱动结果审阅或导出入口。
+- 下一步建议继续观察普通空白项目真实建模缺口与 readiness / Run Panel 诊断边界：只在发现主路径 blocker、结果判断缺口或文档事实源冲突时继续推进。
 
 ## 验证节奏
 
@@ -129,7 +87,8 @@
 
 ## 按需阅读
 
-- 最新流水和决策依据：`docs/devlogs/2026-05/2026-W22.md`
+- 最新流水和决策依据：`docs/devlogs/2026-06/2026-W23.md`
+- 上周阶段收口：`docs/devlogs/2026-05/2026-W22.md`
 - MVP β 人工 smoke 与验收标准：`docs/mvp/beta-acceptance-checklist.md`
 - MVP 范围和非目标：`docs/mvp/scope.md`
 - MVP 路线图：`docs/radishflow-mvp-roadmap.md`

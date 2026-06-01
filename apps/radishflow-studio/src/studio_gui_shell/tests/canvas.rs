@@ -151,6 +151,60 @@ fn assert_result_command_available(
     }
 }
 
+fn assert_result_command_absent(
+    commands: &radishflow_studio::StudioGuiWindowCommandAreaModel,
+    query: &str,
+    command_id: &str,
+) {
+    let items = commands.palette_items(query);
+    assert!(
+        items.iter().all(|item| item.command_id != command_id),
+        "expected result command {command_id} to be absent for query {query}; got {items:?}"
+    );
+}
+
+fn assert_stale_solve_snapshot_notice(
+    window: &radishflow_studio::StudioGuiWindowModel,
+    previous_snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+) {
+    assert_eq!(
+        window.runtime.latest_solve_snapshot, None,
+        "edited documents must not expose the old solve snapshot as current results"
+    );
+    assert_eq!(
+        window.runtime.latest_failure, None,
+        "editing after a successful solve should not turn stale results into a run failure"
+    );
+    assert_eq!(
+        window.runtime.control_state.run_status,
+        rf_ui::RunStatus::Dirty
+    );
+    assert_eq!(
+        window.runtime.control_state.pending_reason,
+        Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+    );
+    let stale = window
+        .runtime
+        .stale_solve_snapshot
+        .as_ref()
+        .expect("expected stale solve snapshot notice");
+    assert_eq!(stale.snapshot_id, previous_snapshot.snapshot_id);
+    assert_eq!(stale.sequence, previous_snapshot.sequence);
+    assert_eq!(
+        stale.snapshot_document_revision,
+        previous_snapshot.document_revision
+    );
+    assert_eq!(
+        stale.current_document_revision,
+        window.runtime.workspace_document.revision
+    );
+    assert!(
+        stale.detail.contains("Run again"),
+        "expected stale notice to tell users to rerun, got `{}`",
+        stale.detail
+    );
+}
+
 fn commit_stream_field(app: &mut ReadyAppState, stream_id: &str, field: &str, raw_value: &str) {
     app.dispatch_ui_command(format!("inspector.focus_stream:{stream_id}"));
     app.dispatch_inspector_field_draft_update(
@@ -1185,6 +1239,186 @@ fn blank_project_single_inlet_flash_paths_save_reopen_and_rerun() {
 
         let _ = fs::remove_file(project_path);
     }
+}
+
+#[test]
+fn blank_project_editing_inputs_invalidates_current_results_until_rerun() {
+    let (config, project_path) = blank_workspace_config();
+    let mut app = ready_app_state(&config);
+    let case = SingleInletFlashAuthoringCase {
+        case_name: "heater",
+        begin_unit_command: "canvas.begin_place_unit.heater",
+        unit_id: "heater-1",
+        connect_unit_inlet_suggestion: "local.heater.connect_inlet.heater-1.stream-feed-1-outlet",
+        create_unit_outlet_suggestion: "local.heater.create_outlet.heater-1",
+        unit_outlet_stream_id: "stream-heater-1-outlet",
+        unit_outlet_temperature_k: Some(358.5),
+        unit_outlet_pressure_pa: 90_000.0,
+        flash_temperature_k: 300.0,
+        flash_pressure_pa: 85_000.0,
+    };
+    author_single_inlet_flash_case_from_blank(&mut app, case);
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let solved = app.platform_host.snapshot().window_model();
+    let solved_snapshot = solved
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected solved snapshot")
+        .clone();
+    assert_eq!(
+        solved_snapshot.document_revision,
+        solved.runtime.workspace_document.revision
+    );
+
+    normalize_stream_composition(
+        &mut app,
+        "stream-feed-1-outlet",
+        &[("methane", "0.6"), ("ethane", "0.4")],
+    );
+    let feed_edited = app.platform_host.snapshot().window_model();
+    assert_stale_solve_snapshot_notice(&feed_edited, &solved_snapshot);
+    assert_result_command_absent(
+        &feed_edited.commands,
+        "result snapshot stream-heater-1-outlet",
+        "inspector.focus_stream:stream-heater-1-outlet",
+    );
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let feed_rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(feed_rerun.runtime.stale_solve_snapshot, None);
+    let feed_rerun_snapshot = feed_rerun
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected rerun snapshot after feed edit")
+        .clone();
+    assert_ne!(
+        feed_rerun_snapshot.snapshot_id, solved_snapshot.snapshot_id,
+        "rerun should expose a new snapshot identity"
+    );
+    assert_eq!(
+        feed_rerun_snapshot.document_revision,
+        feed_rerun.runtime.workspace_document.revision
+    );
+    let feed_result = snapshot_stream(&feed_rerun_snapshot, "stream-feed-1-outlet");
+    assert_stream_fraction(feed_result, "methane", 0.6);
+    assert_stream_fraction(feed_result, "ethane", 0.4);
+    assert_case_review_summary_covers_flow(
+        &feed_rerun_snapshot,
+        &["stream-feed-1-outlet"],
+        &["stream-heater-1-outlet"],
+        &["stream-flash-1-liquid", "stream-flash-1-vapor"],
+        &["feed-1", "heater-1", "flash-1"],
+    );
+
+    commit_unit_parameter(
+        &mut app,
+        "heater-1",
+        "unit:heater-1:outlet_temperature_k",
+        "340",
+    );
+    let unit_edited = app.platform_host.snapshot().window_model();
+    assert_stale_solve_snapshot_notice(&unit_edited, &feed_rerun_snapshot);
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let unit_rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(unit_rerun.runtime.stale_solve_snapshot, None);
+    let unit_rerun_snapshot = unit_rerun
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected rerun snapshot after unit parameter edit");
+    assert_eq!(
+        unit_rerun_snapshot.document_revision,
+        unit_rerun.runtime.workspace_document.revision
+    );
+    let heater_outlet = snapshot_stream(unit_rerun_snapshot, "stream-heater-1-outlet");
+    assert_eq!(heater_outlet.temperature_k, 340.0);
+    assert_result_command_available(
+        &unit_rerun.commands,
+        "result snapshot stream-heater-1-outlet",
+        "inspector.focus_stream:stream-heater-1-outlet",
+        "Results > Streams >",
+        &["stream-heater-1-outlet", "SolveSnapshot", "H "],
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn blank_project_editing_connections_invalidates_current_results_until_reconnect_rerun() {
+    let (config, project_path) = blank_workspace_config();
+    let mut app = ready_app_state(&config);
+    let case = SingleInletFlashAuthoringCase {
+        case_name: "heater",
+        begin_unit_command: "canvas.begin_place_unit.heater",
+        unit_id: "heater-1",
+        connect_unit_inlet_suggestion: "local.heater.connect_inlet.heater-1.stream-feed-1-outlet",
+        create_unit_outlet_suggestion: "local.heater.create_outlet.heater-1",
+        unit_outlet_stream_id: "stream-heater-1-outlet",
+        unit_outlet_temperature_k: Some(358.5),
+        unit_outlet_pressure_pa: 90_000.0,
+        flash_temperature_k: 300.0,
+        flash_pressure_pa: 85_000.0,
+    };
+    author_single_inlet_flash_case_from_blank(&mut app, case);
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let solved = app.platform_host.snapshot().window_model();
+    let solved_snapshot = solved
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected solved snapshot")
+        .clone();
+
+    app.dispatch_ui_command("inspector.focus_stream:stream-heater-1-outlet");
+    app.dispatch_ui_command("canvas.disconnect_selected_stream_sink");
+    let disconnected = app.platform_host.snapshot().window_model();
+    assert_stale_solve_snapshot_notice(&disconnected, &solved_snapshot);
+    assert_result_command_absent(
+        &disconnected.commands,
+        "result snapshot heater-1",
+        "inspector.focus_unit:heater-1",
+    );
+
+    let reconnect_action = disconnected
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected selected stream detail")
+        .connection_actions
+        .iter()
+        .find(|action| action.command_id == "canvas.reconnect_selected_stream")
+        .expect("expected reconnect action");
+    assert!(reconnect_action.enabled);
+
+    app.dispatch_ui_command("canvas.reconnect_selected_stream");
+    let reconnected = app.platform_host.snapshot().window_model();
+    assert_stale_solve_snapshot_notice(&reconnected, &solved_snapshot);
+
+    app.dispatch_ui_command("run_panel.run_manual");
+    let rerun = app.platform_host.snapshot().window_model();
+    assert_eq!(rerun.runtime.stale_solve_snapshot, None);
+    let rerun_snapshot = rerun
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected rerun snapshot after reconnect");
+    assert_eq!(
+        rerun_snapshot.document_revision,
+        rerun.runtime.workspace_document.revision
+    );
+    assert_snapshot_step_links(
+        rerun_snapshot,
+        "flash-1",
+        "stream-heater-1-outlet",
+        &["stream-flash-1-liquid", "stream-flash-1-vapor"],
+    );
+
+    let _ = fs::remove_file(project_path);
 }
 
 #[test]

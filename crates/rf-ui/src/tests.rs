@@ -297,6 +297,10 @@ fn commit_document_change_clears_stale_current_snapshot_summary() {
     assert_eq!(app_state.workspace.solve_session.latest_snapshot, None);
     assert_eq!(app_state.workspace.solve_session.latest_diagnostic, None);
     assert!(latest_snapshot(&app_state.workspace).is_none());
+    let stale_snapshot = crate::stale_snapshot(&app_state.workspace)
+        .expect("expected stale snapshot after document revision advanced");
+    assert_eq!(stale_snapshot.id.as_str(), "snapshot-ui-stale");
+    assert_eq!(stale_snapshot.document_revision, 0);
     assert_eq!(app_state.workspace.run_panel.latest_snapshot_id, None);
     assert_eq!(app_state.workspace.run_panel.latest_snapshot_summary, None);
     assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Dirty);

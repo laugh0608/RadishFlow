@@ -1916,3 +1916,18 @@ pub fn latest_snapshot(workspace: &WorkspaceState) -> Option<&SolveSnapshot> {
         .find(|snapshot| &snapshot.id == latest_snapshot_id)?;
     (snapshot.document_revision == workspace.solve_session.observed_revision).then_some(snapshot)
 }
+
+pub fn stale_snapshot(workspace: &WorkspaceState) -> Option<&SolveSnapshot> {
+    if workspace.solve_session.latest_snapshot.is_some()
+        || workspace.solve_session.pending_reason
+            != Some(SolvePendingReason::DocumentRevisionAdvanced)
+    {
+        return None;
+    }
+
+    workspace
+        .snapshot_history
+        .iter()
+        .rev()
+        .find(|snapshot| snapshot.document_revision != workspace.solve_session.observed_revision)
+}

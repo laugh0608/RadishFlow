@@ -72,8 +72,9 @@ pub use state::{
     StreamInspectorDraftUpdateResult, StreamReconnectEditResult, UiPanelsState,
     UnitInspectorDraftCommitResult, UnitInspectorDraftDiscardResult, UnitInspectorDraftField,
     UnitInspectorDraftUpdateResult, UserPreferences, WorkspaceState, latest_snapshot,
-    latest_snapshot_id, stream_inspector_draft_key, stream_inspector_draft_key_parts,
-    unit_inspector_draft_key, unit_inspector_draft_key_parts, unit_inspector_parameter_value,
+    latest_snapshot_id, stale_snapshot, stream_inspector_draft_key,
+    stream_inspector_draft_key_parts, unit_inspector_draft_key, unit_inspector_draft_key_parts,
+    unit_inspector_parameter_value,
 };
 
 #[cfg(test)]

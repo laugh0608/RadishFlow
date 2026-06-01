@@ -118,6 +118,7 @@ pub struct StudioGuiWindowRuntimeAreaModel {
     pub control_state: WorkspaceControlState,
     pub run_panel: rf_ui::RunPanelWidgetModel,
     pub latest_solve_snapshot: Option<StudioGuiWindowSolveSnapshotModel>,
+    pub stale_solve_snapshot: Option<StudioGuiWindowStaleSolveSnapshotModel>,
     pub latest_failure: Option<StudioGuiWindowFailureResultModel>,
     pub active_inspector_target: Option<StudioGuiWindowInspectorTargetModel>,
     pub active_inspector_detail: Option<StudioGuiWindowInspectorTargetDetailModel>,
@@ -133,6 +134,7 @@ pub struct StudioGuiWindowRuntimeAreaModel {
 pub struct StudioGuiWindowSolveSnapshotModel {
     pub snapshot_id: String,
     pub sequence: u64,
+    pub document_revision: u64,
     pub status_label: &'static str,
     pub summary: String,
     pub diagnostic_count: usize,
@@ -142,6 +144,16 @@ pub struct StudioGuiWindowSolveSnapshotModel {
     pub streams: Vec<StudioGuiWindowStreamResultModel>,
     pub steps: Vec<StudioGuiWindowSolveStepModel>,
     pub diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowStaleSolveSnapshotModel {
+    pub snapshot_id: String,
+    pub sequence: u64,
+    pub snapshot_document_revision: u64,
+    pub current_document_revision: u64,
+    pub title: &'static str,
+    pub detail: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -776,6 +788,17 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
         .latest_solve_snapshot
         .as_ref()
         .map(solve_snapshot_model_from_ui);
+    let stale_solve_snapshot =
+        snapshot
+            .runtime
+            .stale_solve_snapshot
+            .as_ref()
+            .map(|stale_snapshot| {
+                stale_solve_snapshot_model_from_ui(
+                    stale_snapshot,
+                    snapshot.runtime.workspace_document.revision,
+                )
+            });
     let latest_failure = latest_solve_snapshot
         .is_none()
         .then(|| {
@@ -812,6 +835,7 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
         control_state: snapshot.runtime.control_state.clone(),
         run_panel: snapshot.runtime.run_panel.clone(),
         latest_solve_snapshot,
+        stale_solve_snapshot,
         latest_failure,
         active_inspector_target: snapshot
             .runtime
@@ -1473,6 +1497,7 @@ fn solve_snapshot_model_from_ui(
     StudioGuiWindowSolveSnapshotModel {
         snapshot_id: snapshot.id.as_str().to_string(),
         sequence: snapshot.sequence,
+        document_revision: snapshot.document_revision,
         status_label,
         summary: snapshot.summary.primary_message.clone(),
         diagnostic_count: diagnostics.len(),
@@ -1482,6 +1507,25 @@ fn solve_snapshot_model_from_ui(
         streams,
         steps,
         diagnostics,
+    }
+}
+
+fn stale_solve_snapshot_model_from_ui(
+    snapshot: &rf_ui::SolveSnapshot,
+    current_document_revision: u64,
+) -> StudioGuiWindowStaleSolveSnapshotModel {
+    StudioGuiWindowStaleSolveSnapshotModel {
+        snapshot_id: snapshot.id.as_str().to_string(),
+        sequence: snapshot.sequence,
+        snapshot_document_revision: snapshot.document_revision,
+        current_document_revision,
+        title: "Results are out of date",
+        detail: format!(
+            "Snapshot {} was produced from document revision {}; current document revision is {}. Run again before reviewing or exporting results.",
+            snapshot.id.as_str(),
+            snapshot.document_revision,
+            current_document_revision
+        ),
     }
 }
 

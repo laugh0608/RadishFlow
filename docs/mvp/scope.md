@@ -1,6 +1,6 @@
 # MVP Scope
 
-更新时间：2026-05-31
+更新时间：2026-06-01
 
 ## MVP 目标
 
@@ -171,9 +171,9 @@ App 与交互层当前进一步冻结以下口径：
 
 截至 2026-05-28，失败修复闭环 v0、MVP β 人工 smoke v0 与仓库级阶段基线验证均已通过，通用小流程建模 v1 已推进前两步。普通空白项目不再进入或自动匹配 `Mixer-Flash` / `Heater-Flash` 小案例状态；运行前检查按当前 `Flowsheet` 的项目组分、material port 连接、stream reference、Feed source stream T/P/F/z、composition 归一和 Heater / Cooler / Valve / Mixer / Flash Drum 必要参数判断，并定位到具体 stream / unit / port。物性包选择继续由正式 run package resolution 判断，避免 shell 误拦仍可由本地唯一缓存包解析的旧示例项目。官方示例项目若要直接运行，也必须携带正式 `UnitOperationParameters`，不再依赖 outlet stream template fallback 代表用户已提交参数。既有小案例清单只保留为导航提示，不作为通用建模运行 gate；仍不推进 tag、release notes、便携包刷新、自由连线编辑器、自动布线、完整拖拽布局器或完整报表系统。
 
-截至 2026-05-31，通用小流程建模 v1 已推进到第十一切片。普通空白项目中的 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 已覆盖显式输入、保存 / 重开 / rerun、单元 step、Result Inspector、底部结果表、Results commands、轻量导出、关键结果合理性、单相 Flash 零流量出口缺席语义、重开失败态定位和 case-level review summary。结果审阅仍只消费同一份最新 `SolveSnapshot`，不新增完整报表系统、跨快照历史或 shell 私有结果真相源。
+截至 2026-06-01，通用小流程建模 v1 已推进到第十二切片。普通空白项目中的 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 已覆盖显式输入、保存 / 重开 / rerun、单元 step、Result Inspector、底部结果表、Results commands、轻量导出、关键结果合理性、单相 Flash 零流量出口缺席语义、重开失败态定位、case-level review summary，以及编辑后旧结果失效语义。结果审阅仍只消费当前 revision 的最新 `SolveSnapshot`；文档编辑后旧快照只可作为 stale notice 来源，不新增完整报表系统、跨快照历史或 shell 私有结果真相源。
 
-同日阶段门禁进一步调整：MVP β smoke、指定小案例作者入口和结果审阅覆盖面已完成其阶段职责，不再作为日常推进 gate。后续可以围绕普通空白项目的编辑后重跑一致性、旧结果失效语义、结果新旧状态表达和轻量单次快照审阅材料继续推进；这些改动仍必须服务建模正确性和结果可判断性，不进入视觉精修、大改版、完整报表、模板、打印、批量导出或跨快照报表。
+阶段门禁进一步调整：MVP β smoke、指定小案例作者入口和结果审阅覆盖面已完成其阶段职责，不再作为日常推进 gate。后续可以围绕普通空白项目真实建模缺口、结果新旧状态表达和 readiness / Run Panel 边界继续推进；这些改动仍必须服务建模正确性和结果可判断性，不进入视觉精修、大改版、完整报表、模板、打印、批量导出或跨快照报表。
 
 当前仍保留的硬边界不变：不加载第三方 CAPE-OPEN 单元或第三方 Property Package，不做完整组分数据库、完整 Thermodynamics PMC、动态模拟、CFD、自由连线编辑器、任意端口选择器、自动布线或完整拖拽布局器；CAPE-OPEN / COM 语义仍不得倒灌到 Rust Core。readiness 只拦截确定的建模输入缺失，结构性连接 / 拓扑 / 非法旧项目 / 求解阶段参数失败继续由正式 Run Panel 诊断和 recovery 承担。
 

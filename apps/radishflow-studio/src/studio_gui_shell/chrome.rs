@@ -963,6 +963,10 @@ impl ReadyAppState {
         window: &StudioGuiWindowModel,
     ) {
         let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() else {
+            if let Some(stale_snapshot) = window.runtime.stale_solve_snapshot.as_ref() {
+                self.render_stale_solve_snapshot_notice(ui, stale_snapshot);
+                return;
+            }
             ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
             return;
         };

@@ -157,6 +157,7 @@ impl StudioGuiHost {
         let control_state = self.controller.workspace_control_state();
         let run_panel = self.controller.run_panel_widget();
         let latest_solve_snapshot = self.controller.latest_solve_snapshot();
+        let stale_solve_snapshot = self.controller.stale_solve_snapshot();
         let latest_failure_diagnostic_context = failure_diagnostic_context_from_controller(
             &self.controller,
             &control_state,
@@ -179,6 +180,7 @@ impl StudioGuiHost {
                 control_state,
                 run_panel,
                 latest_solve_snapshot,
+                stale_solve_snapshot,
                 latest_failure_diagnostic_context,
                 active_inspector_target,
                 active_inspector_detail,
