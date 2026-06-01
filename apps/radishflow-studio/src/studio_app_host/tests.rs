@@ -76,6 +76,29 @@ fn missing_components_blocked_run_config() -> (crate::StudioRuntimeConfig, PathB
     )
 }
 
+fn feed_missing_composition_config() -> (crate::StudioRuntimeConfig, PathBuf) {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected time after epoch")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-app-host-feed-missing-composition-{unique}.rfproj.json"
+    ));
+    let project_json = crate::test_support::build_feed_missing_composition_project_json();
+    fs::write(&project_path, project_json).expect("expected temporary blocked project");
+
+    (
+        crate::StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            untitled_blank_project: None,
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            trigger: crate::StudioRuntimeTrigger::WidgetAction(RunPanelActionId::RunManual),
+        },
+        project_path,
+    )
+}
+
 fn flash_drum_local_rules_synced_config() -> (crate::StudioRuntimeConfig, PathBuf) {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)

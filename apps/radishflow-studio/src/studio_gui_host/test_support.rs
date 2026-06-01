@@ -55,6 +55,28 @@ pub(super) fn solver_failure_config() -> (StudioRuntimeConfig, PathBuf) {
     )
 }
 
+pub(super) fn feed_missing_composition_config() -> (StudioRuntimeConfig, PathBuf) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-gui-host-feed-missing-composition-{timestamp}.rfproj.json"
+    ));
+    let project = crate::test_support::build_feed_missing_composition_project_json();
+    fs::write(&project_path, project).expect("expected feed missing composition project");
+
+    (
+        StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
+            entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
+            ..lease_expiring_config()
+        },
+        project_path,
+    )
+}
+
 pub(super) fn flash_drum_local_rules_synced_config() -> (StudioRuntimeConfig, PathBuf) {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)

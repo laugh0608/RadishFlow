@@ -91,6 +91,26 @@ pub(super) fn flash_drum_local_rules_synced_config() -> (StudioRuntimeConfig, Pa
     )
 }
 
+pub(super) fn feed_missing_composition_synced_config() -> (StudioRuntimeConfig, PathBuf) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("expected current timestamp")
+        .as_nanos();
+    let project_path = std::env::temp_dir().join(format!(
+        "radishflow-studio-driver-feed-missing-composition-{timestamp}.rfproj.json"
+    ));
+    let project = crate::test_support::build_feed_missing_composition_project_json();
+    fs::write(&project_path, project).expect("expected feed missing composition project");
+
+    (
+        StudioRuntimeConfig {
+            project_path: project_path.clone(),
+            ..synced_workspace_config()
+        },
+        project_path,
+    )
+}
+
 pub(super) fn unbound_outlet_failure_synced_config() -> StudioRuntimeConfig {
     StudioRuntimeConfig {
         project_path: PathBuf::from(env!("CARGO_MANIFEST_DIR"))

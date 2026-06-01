@@ -122,6 +122,74 @@ fn app_host_keeps_recovery_disabled_after_blocked_workspace_run() {
 }
 
 #[test]
+fn app_host_ui_run_action_uses_modeling_readiness_before_solve_dispatch() {
+    let (config, project_path) = feed_missing_composition_config();
+    let mut app_host = StudioAppHost::new(&config).expect("expected app host");
+    let opened = app_host
+        .execute_command(StudioAppHostCommand::OpenWindow)
+        .expect("expected window open");
+    let window = match &opened.outcome {
+        StudioAppHostCommandOutcome::WindowOpened(opened) => {
+            registration_from_opened_window(opened)
+        }
+        other => panic!("expected opened window outcome, got {other:?}"),
+    };
+
+    let blocked_run = app_host
+        .execute_command(StudioAppHostCommand::DispatchUiAction {
+            action: StudioAppHostUiAction::RunManualWorkspace,
+        })
+        .expect("expected blocked run dispatch");
+
+    match &blocked_run.outcome {
+        StudioAppHostCommandOutcome::WindowDispatched(dispatch) => {
+            assert_eq!(dispatch.target_window_id, window.window_id);
+            match &dispatch.dispatch.host_output.runtime_output.report.dispatch {
+                crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::WorkspaceRun(run) => {
+                        assert_eq!(
+                            run.package_id.as_deref(),
+                            Some("binary-hydrocarbon-lite-v1")
+                        );
+                        assert!(matches!(
+                            run.outcome,
+                            crate::StudioWorkspaceRunOutcome::Blocked(
+                                crate::StudioWorkspaceRunBlocked {
+                                    reason:
+                                        crate::StudioWorkspaceRunBlockedReason::ModelingInputsNotReady,
+                                    ..
+                                }
+                            )
+                        ));
+                    }
+                    other => panic!("expected workspace run dispatch, got {other:?}"),
+                },
+                other => panic!("expected app command dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected window dispatch outcome, got {other:?}"),
+    }
+
+    assert_eq!(
+        blocked_run
+            .snapshot
+            .ui_actions
+            .iter()
+            .find(|state| state.action == StudioAppHostUiAction::RecoverRunPanelFailure)
+            .expect("expected recovery ui action state"),
+        &StudioAppHostUiActionState {
+            action: StudioAppHostUiAction::RecoverRunPanelFailure,
+            availability: StudioAppHostUiActionAvailability::Disabled {
+                reason: StudioAppHostUiActionDisabledReason::NoRunPanelRecovery,
+                target_window_id: Some(window.window_id),
+            },
+        }
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
 fn app_host_controller_ignores_ui_actions_without_windows() {
     let mut controller =
         StudioAppHostController::new(&lease_expiring_config()).expect("expected controller");

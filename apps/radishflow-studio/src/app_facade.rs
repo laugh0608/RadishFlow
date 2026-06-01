@@ -9,10 +9,11 @@ use rf_ui::{
 };
 
 use crate::{
-    StudioSolveRequest, WorkspaceRunCommand, WorkspaceRunPackageSelection, WorkspaceSolveDispatch,
-    WorkspaceSolveService, WorkspaceSolveSkipReason, WorkspaceSolveTrigger,
-    resolve_workspace_run_package_id,
+    StudioModelingReadinessTask, StudioSolveRequest, WorkspaceRunCommand,
+    WorkspaceRunPackageSelection, WorkspaceSolveDispatch, WorkspaceSolveService,
+    WorkspaceSolveSkipReason, WorkspaceSolveTrigger, resolve_workspace_run_package_id,
     solver_bridge::WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE,
+    studio_modeling_run_blocked_detail_en, studio_modeling_run_blocker,
     workspace_run_command::{
         WORKSPACE_RUN_DIAGNOSTIC_CACHED_PACKAGE_MISSING,
         WORKSPACE_RUN_DIAGNOSTIC_ENTITLEMENT_MISMATCH,
@@ -127,6 +128,7 @@ pub enum StudioWorkspaceRunBlockedReason {
     ExplicitPackageSelectionRequired,
     EntitlementMismatch,
     InvalidSelection,
+    ModelingInputsNotReady,
     MissingProjectComponents,
     PendingInspectorDrafts,
     UnnormalizedStreamComposition,
@@ -284,14 +286,14 @@ impl StudioAppFacade {
         context: &StudioAppAuthCacheContext<'_>,
         command: &WorkspaceRunCommand,
     ) -> RfResult<StudioWorkspaceRunDispatch> {
-        if let Some(skip_reason) = self.solve_service.skip_reason(app_state, command.trigger) {
-            let outcome = StudioWorkspaceRunOutcome::Skipped(skip_reason);
+        if let Some(blocked) = workspace_pending_inspector_draft_block(app_state) {
+            let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
             record_workspace_run_outcome(app_state, &outcome);
             return Ok(map_workspace_run_dispatch(app_state, None, outcome));
         }
 
-        if let Some(blocked) = workspace_run_preflight_block(app_state) {
-            let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
+        if let Some(skip_reason) = self.solve_service.skip_reason(app_state, command.trigger) {
+            let outcome = StudioWorkspaceRunOutcome::Skipped(skip_reason);
             record_workspace_run_outcome(app_state, &outcome);
             return Ok(map_workspace_run_dispatch(app_state, None, outcome));
         }
@@ -309,6 +311,16 @@ impl StudioAppFacade {
                 return Ok(map_workspace_run_dispatch(app_state, None, outcome));
             }
         };
+
+        if let Some(blocked) = workspace_modeling_readiness_block(app_state) {
+            let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
+            record_workspace_run_outcome(app_state, &outcome);
+            return Ok(map_workspace_run_dispatch(
+                app_state,
+                Some(package_id),
+                outcome,
+            ));
+        }
 
         match self.solve_service.dispatch_from_auth_cache(
             app_state,
@@ -345,6 +357,36 @@ impl StudioAppFacade {
         context: &StudioAppAuthCacheContext<'_>,
         selection: &WorkspaceRunPackageSelection,
     ) -> RfResult<StudioWorkspaceRunDispatch> {
+        if let Some(blocked) = workspace_pending_inspector_draft_block(app_state) {
+            let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
+            record_workspace_run_outcome(app_state, &outcome);
+            return Ok(map_workspace_run_dispatch(app_state, None, outcome));
+        }
+
+        let package_id = match resolve_workspace_run_package_id(
+            app_state,
+            context.auth_cache_index,
+            selection,
+        ) {
+            Ok(package_id) => package_id,
+            Err(error) => {
+                let blocked = map_workspace_run_blocked(&error);
+                let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
+                record_workspace_run_outcome(app_state, &outcome);
+                return Ok(map_workspace_run_dispatch(app_state, None, outcome));
+            }
+        };
+
+        if let Some(blocked) = workspace_modeling_readiness_block(app_state) {
+            let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
+            record_workspace_run_outcome(app_state, &outcome);
+            return Ok(map_workspace_run_dispatch(
+                app_state,
+                Some(package_id),
+                outcome,
+            ));
+        }
+
         app_state.set_simulation_mode(SimulationMode::Active);
         app_state.push_log(AppLogLevel::Info, "Activated workspace simulation mode");
 
@@ -439,7 +481,9 @@ fn map_workspace_solve_dispatch(dispatch: WorkspaceSolveDispatch) -> StudioWorks
     }
 }
 
-fn workspace_run_preflight_block(app_state: &AppState) -> Option<StudioWorkspaceRunBlocked> {
+fn workspace_pending_inspector_draft_block(
+    app_state: &AppState,
+) -> Option<StudioWorkspaceRunBlocked> {
     let invalid_draft_count = app_state
         .workspace
         .drafts
@@ -474,75 +518,39 @@ fn workspace_run_preflight_block(app_state: &AppState) -> Option<StudioWorkspace
         });
     }
 
-    workspace_missing_project_component_block(app_state)
-        .or_else(|| workspace_unnormalized_stream_composition_block(app_state))
+    None
 }
 
-fn workspace_missing_project_component_block(
-    app_state: &AppState,
-) -> Option<StudioWorkspaceRunBlocked> {
-    let flowsheet = &app_state.workspace.document.flowsheet;
-
-    flowsheet.streams.values().find_map(|stream| {
-        stream
-            .overall_mole_fractions
-            .keys()
-            .find(|component_id| !flowsheet.components.contains_key(*component_id))
-            .map(|component_id| StudioWorkspaceRunBlocked {
-                reason: StudioWorkspaceRunBlockedReason::MissingProjectComponents,
-                message: format!(
-                    "stream `{}` composition references component `{component_id}` that is not selected in project components. Select the component before running; stream composition must stay inside the project component list.",
-                    stream.id
-                ),
-            })
+fn workspace_modeling_readiness_block(app_state: &AppState) -> Option<StudioWorkspaceRunBlocked> {
+    studio_modeling_run_blocker(&app_state.workspace.document).map(|blocker| {
+        StudioWorkspaceRunBlocked {
+            reason: modeling_readiness_blocked_reason(&blocker.task),
+            message: studio_modeling_run_blocked_detail_en(&blocker.task),
+        }
     })
 }
 
-fn workspace_unnormalized_stream_composition_block(
-    app_state: &AppState,
-) -> Option<StudioWorkspaceRunBlocked> {
-    app_state
-        .workspace
-        .document
-        .flowsheet
-        .streams
-        .values()
-        .find_map(|stream| {
-            if stream.overall_mole_fractions.is_empty() {
-                return None;
-            }
-
-            let sum = stream
-                .overall_mole_fractions
-                .values()
-                .try_fold(0.0, |sum, value| {
-                    (value.is_finite() && (0.0..=1.0).contains(value)).then_some(sum + value)
-                });
-            match sum {
-                Some(sum) if (sum - 1.0).abs() <= 1e-9 => None,
-                Some(sum) if sum.is_finite() && sum > 0.0 => Some(StudioWorkspaceRunBlocked {
-                    reason: StudioWorkspaceRunBlockedReason::UnnormalizedStreamComposition,
-                    message: format!(
-                        "stream `{}` overall mole fractions sum to {sum:.6}, not 1.000000. Normalize composition explicitly before running; no automatic compensation is applied by the run command.",
-                        stream.id
-                    ),
-                }),
-                Some(sum) => Some(StudioWorkspaceRunBlocked {
-                    reason: StudioWorkspaceRunBlockedReason::UnnormalizedStreamComposition,
-                    message: format!(
-                        "stream `{}` overall mole fraction sum `{sum}` is not positive and finite. Fix composition explicitly before running.",
-                        stream.id
-                    ),
-                }),
-                None => Some(StudioWorkspaceRunBlocked {
-                    reason: StudioWorkspaceRunBlockedReason::UnnormalizedStreamComposition,
-                    message: format!(
-                        "stream `{}` overall mole fractions must be finite values between zero and one before running.",
-                        stream.id
-                    ),
-                }),
-            }
-        })
+fn modeling_readiness_blocked_reason(
+    task: &StudioModelingReadinessTask,
+) -> StudioWorkspaceRunBlockedReason {
+    match task {
+        StudioModelingReadinessTask::SelectProjectComponents
+        | StudioModelingReadinessTask::SelectReferencedProjectComponent { .. } => {
+            StudioWorkspaceRunBlockedReason::MissingProjectComponents
+        }
+        StudioModelingReadinessTask::NormalizeStreamComposition { .. }
+        | StudioModelingReadinessTask::FixStreamCompositionValues { .. } => {
+            StudioWorkspaceRunBlockedReason::UnnormalizedStreamComposition
+        }
+        StudioModelingReadinessTask::PlaceFirstUnit
+        | StudioModelingReadinessTask::FixFeedSourceTemperature { .. }
+        | StudioModelingReadinessTask::FixFeedSourcePressure { .. }
+        | StudioModelingReadinessTask::FixFeedSourceMolarFlow { .. }
+        | StudioModelingReadinessTask::CommitFeedComposition { .. }
+        | StudioModelingReadinessTask::CommitUnitParameter { .. } => {
+            StudioWorkspaceRunBlockedReason::ModelingInputsNotReady
+        }
+    }
 }
 
 fn draft_is_dirty(draft: &DraftValue) -> bool {

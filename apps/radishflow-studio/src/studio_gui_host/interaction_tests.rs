@@ -79,6 +79,73 @@ fn gui_host_dispatches_ui_command_and_refreshes_command_registry() {
 }
 
 #[test]
+fn gui_host_run_command_uses_modeling_readiness_before_solve_dispatch() {
+    let (config, project_path) = feed_missing_composition_config();
+    let mut gui_host = StudioGuiHost::new(&config).expect("expected gui host");
+    let opened = gui_host.open_window().expect("expected window open");
+    assert!(
+        gui_host
+            .command_registry()
+            .sections
+            .iter()
+            .flat_map(|section| &section.commands)
+            .any(|command| command.command_id == "run_panel.run_manual" && command.enabled)
+    );
+
+    let dispatch = gui_host
+        .dispatch_ui_command("run_panel.run_manual")
+        .expect("expected gui host ui command dispatch");
+
+    match dispatch {
+        StudioGuiHostUiCommandDispatchResult::Executed(dispatch) => {
+            assert_eq!(dispatch.target_window_id, opened.registration.window_id);
+            match &dispatch.effects.runtime_report.dispatch {
+                crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                    crate::StudioAppResultDispatch::WorkspaceRun(run) => {
+                        assert_eq!(
+                            run.package_id.as_deref(),
+                            Some("binary-hydrocarbon-lite-v1")
+                        );
+                        assert!(matches!(
+                            run.outcome,
+                            crate::StudioWorkspaceRunOutcome::Blocked(
+                                crate::StudioWorkspaceRunBlocked {
+                                    reason:
+                                        crate::StudioWorkspaceRunBlockedReason::ModelingInputsNotReady,
+                                    ..
+                                }
+                            )
+                        ));
+                    }
+                    other => panic!("expected workspace run dispatch, got {other:?}"),
+                },
+                other => panic!("expected app command dispatch, got {other:?}"),
+            }
+        }
+        other => panic!("expected executed ui command result, got {other:?}"),
+    }
+
+    let window = gui_host.window_model_for_window(None);
+    assert!(window.runtime.latest_failure.is_none());
+    assert_eq!(
+        window
+            .runtime
+            .run_panel
+            .presentation
+            .view
+            .notice
+            .as_ref()
+            .map(|notice| (notice.level, notice.title.as_str())),
+        Some((
+            rf_ui::RunPanelNoticeLevel::Warning,
+            "Model inputs are not ready"
+        ))
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
 fn gui_host_dispatches_property_package_selection_command() {
     let mut gui_host = StudioGuiHost::new(&lease_expiring_config()).expect("expected gui host");
     let opened = gui_host.open_window().expect("expected window open");

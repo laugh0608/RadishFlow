@@ -309,6 +309,9 @@ fn notice_title_for_blocked_outcome(
             "Entitlement update required"
         }
         crate::StudioWorkspaceRunBlockedReason::InvalidSelection => "Run blocked",
+        crate::StudioWorkspaceRunBlockedReason::ModelingInputsNotReady => {
+            "Model inputs are not ready"
+        }
         crate::StudioWorkspaceRunBlockedReason::MissingProjectComponents => {
             "Project components required"
         }
@@ -923,7 +926,10 @@ mod tests {
 
         match outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => {
-                assert_eq!(dispatch.package_id, None);
+                assert_eq!(
+                    dispatch.package_id.as_deref(),
+                    Some("binary-hydrocarbon-lite-v1")
+                );
                 assert!(matches!(
                     dispatch.outcome,
                     StudioWorkspaceRunOutcome::Blocked(crate::StudioWorkspaceRunBlocked {
@@ -1007,7 +1013,10 @@ mod tests {
 
         match outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => {
-                assert_eq!(dispatch.package_id, None);
+                assert_eq!(
+                    dispatch.package_id.as_deref(),
+                    Some("binary-hydrocarbon-lite-v1")
+                );
                 assert!(matches!(
                     dispatch.outcome,
                     StudioWorkspaceRunOutcome::Blocked(crate::StudioWorkspaceRunBlocked {
@@ -1140,7 +1149,7 @@ mod tests {
     }
 
     #[test]
-    fn solver_stream_input_failure_uses_stream_focused_notice() {
+    fn feed_stream_input_gap_uses_modeling_readiness_notice() {
         let cache_root = unique_temp_path("workspace-control-stream-input-failure");
         let mut auth_cache_index = StoredAuthCacheIndex::new(
             "https://id.radish.local",
@@ -1179,43 +1188,38 @@ mod tests {
             &context,
             &WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Preferred),
         )
-        .expect("expected failed control action");
+        .expect("expected blocked control action");
 
         match outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => {
                 assert!(matches!(
                     dispatch.outcome,
-                    StudioWorkspaceRunOutcome::Failed(_)
+                    StudioWorkspaceRunOutcome::Blocked(crate::StudioWorkspaceRunBlocked {
+                        reason: crate::StudioWorkspaceRunBlockedReason::ModelingInputsNotReady,
+                        ..
+                    })
                 ));
             }
             _ => panic!("expected workspace run dispatch"),
         }
-        assert_eq!(outcome.control_state.run_status, RunStatus::Error);
+        assert_eq!(outcome.control_state.run_status, RunStatus::Idle);
         assert_eq!(
             outcome
                 .control_state
                 .notice
                 .as_ref()
                 .map(|notice| (notice.level, notice.title.as_str())),
-            Some((rf_ui::RunPanelNoticeLevel::Error, "Stream input invalid"))
+            Some((
+                rf_ui::RunPanelNoticeLevel::Warning,
+                "Model inputs are not ready"
+            ))
         );
-        let diagnostic = app_state
-            .workspace
-            .solve_session
-            .latest_diagnostic
-            .as_ref()
-            .expect("expected latest diagnostic");
-        assert_eq!(
-            diagnostic.primary_code.as_deref(),
-            Some("solver.step.stream_input")
-        );
-        assert_eq!(
-            diagnostic.related_stream_ids,
-            vec![rf_types::StreamId::new("stream-feed")]
-        );
-        assert_eq!(
-            diagnostic.related_port_targets,
-            vec![rf_types::DiagnosticPortTarget::new("heater-1", "inlet")]
+        assert!(
+            app_state
+                .workspace
+                .solve_session
+                .latest_diagnostic
+                .is_none()
         );
         assert_eq!(
             app_state
@@ -1224,16 +1228,8 @@ mod tests {
                 .notice
                 .as_ref()
                 .and_then(|notice| notice.recovery_action.as_ref())
-                .map(|action| {
-                    (
-                        action.title,
-                        action
-                            .target_stream_id
-                            .as_ref()
-                            .map(|stream_id| stream_id.as_str()),
-                    )
-                }),
-            Some(("Inspect stream inputs", Some("stream-feed")))
+                .map(|action| action.title),
+            None
         );
 
         std::fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");

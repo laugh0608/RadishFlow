@@ -3,8 +3,9 @@ use std::path::Path;
 
 use radishflow_studio::{
     RunPanelWidgetDispatchOutcome, StudioAppAuthCacheContext, StudioAppCommand, StudioAppFacade,
-    StudioAppResultDispatch, StudioWorkspaceRunOutcome, WorkspaceControlAction,
-    WorkspaceRunCommand, WorkspaceRunPackageSelection, apply_run_panel_recovery_action,
+    StudioAppResultDispatch, StudioWorkspaceRunBlocked, StudioWorkspaceRunBlockedReason,
+    StudioWorkspaceRunOutcome, WorkspaceControlAction, WorkspaceRunCommand,
+    WorkspaceRunPackageSelection, apply_run_panel_recovery_action,
     dispatch_run_panel_primary_action_with_auth_cache,
     dispatch_workspace_control_action_with_auth_cache,
 };
@@ -1794,7 +1795,7 @@ fn run_panel_recovery_action_creates_stream_for_unbound_outlet_end_to_end() {
 }
 
 #[test]
-fn run_panel_recovery_action_creates_stream_for_unbound_outlet_and_reruns_successfully() {
+fn run_panel_recovery_action_creates_stream_for_unbound_outlet_then_readiness_blocks_rerun() {
     let cache_root = unique_temp_path("integration-run-panel-unbound-outlet-recovery-rerun");
     let mut auth_cache_index = sample_auth_cache_index(&[]);
     write_official_binary_hydrocarbon_cached_package(
@@ -1828,33 +1829,31 @@ fn run_panel_recovery_action_creates_stream_for_unbound_outlet_and_reruns_succes
 
     let rerun =
         dispatch_run_panel_primary_action_with_auth_cache(&facade, &mut app_state, &context)
-            .expect("expected successful rerun after recovery");
+            .expect("expected readiness rerun after recovery");
 
     match rerun.dispatch {
         RunPanelWidgetDispatchOutcome::Executed(outcome) => match outcome.dispatch {
             StudioAppResultDispatch::WorkspaceRun(dispatch) => {
                 assert!(matches!(
                     dispatch.outcome,
-                    StudioWorkspaceRunOutcome::Started(_)
+                    StudioWorkspaceRunOutcome::Blocked(StudioWorkspaceRunBlocked {
+                        reason: StudioWorkspaceRunBlockedReason::ModelingInputsNotReady,
+                        ..
+                    })
                 ));
-                assert_eq!(
-                    dispatch.latest_snapshot_id.as_deref(),
-                    Some("doc-control-unbound-outlet-recovery-rerun-rev-1-seq-1")
-                );
+                assert_eq!(dispatch.latest_snapshot_id, None);
             }
             _ => panic!("expected workspace run dispatch"),
         },
         _ => panic!("expected executed rerun outcome"),
     }
-    assert_eq!(rerun.state.control_state.run_status, RunStatus::Converged);
+    assert_eq!(rerun.state.control_state.run_status, RunStatus::Dirty);
     assert_eq!(
-        rerun.state.control_state.latest_snapshot_id.as_deref(),
-        Some("doc-control-unbound-outlet-recovery-rerun-rev-1-seq-1")
+        rerun.state.control_state.pending_reason,
+        Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
     );
-    assert_eq!(
-        app_state.workspace.run_panel.latest_snapshot_id.as_deref(),
-        Some("doc-control-unbound-outlet-recovery-rerun-rev-1-seq-1")
-    );
+    assert_eq!(rerun.state.control_state.latest_snapshot_id, None);
+    assert_eq!(app_state.workspace.run_panel.latest_snapshot_id, None);
 
     fs::remove_dir_all(cache_root).expect("expected temp dir cleanup");
 }

@@ -3,9 +3,9 @@ use std::fs;
 use rf_store::{read_project_file, write_project_file};
 
 use super::test_support::{
-    find_menu_command, find_menu_command_by_label, flash_drum_local_rules_config,
-    flash_drum_local_rules_synced_config, lease_expiring_config, synced_workspace_config,
-    unbound_outlet_failure_synced_config,
+    feed_missing_composition_synced_config, find_menu_command, find_menu_command_by_label,
+    flash_drum_local_rules_config, flash_drum_local_rules_synced_config, lease_expiring_config,
+    synced_workspace_config, unbound_outlet_failure_synced_config,
 };
 use super::*;
 use crate::test_support::SYNTHETIC_COMPONENT_C_ID;
@@ -1510,6 +1510,71 @@ fn gui_driver_routes_shortcut_into_ui_command_dispatch() {
 }
 
 #[test]
+fn gui_driver_f5_run_command_uses_modeling_readiness_before_solve_dispatch() {
+    let (config, project_path) = feed_missing_composition_synced_config();
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    let _ = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::ShortcutPressed {
+            shortcut: StudioGuiShortcut {
+                modifiers: Vec::new(),
+                key: crate::StudioGuiShortcutKey::F5,
+            },
+            focus_context: StudioGuiFocusContext::Global,
+        })
+        .expect("expected F5 dispatch");
+
+    match dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        )) => match &executed.effects.runtime_report.dispatch {
+            crate::StudioRuntimeDispatch::AppCommand(outcome) => match &outcome.dispatch {
+                crate::StudioAppResultDispatch::WorkspaceRun(run) => {
+                    assert_eq!(
+                        run.package_id.as_deref(),
+                        Some("binary-hydrocarbon-lite-v1")
+                    );
+                    assert!(matches!(
+                        run.outcome,
+                        crate::StudioWorkspaceRunOutcome::Blocked(
+                            crate::StudioWorkspaceRunBlocked {
+                                reason:
+                                    crate::StudioWorkspaceRunBlockedReason::ModelingInputsNotReady,
+                                ..
+                            }
+                        )
+                    ));
+                }
+                other => panic!("expected workspace run dispatch, got {other:?}"),
+            },
+            other => panic!("expected app command dispatch, got {other:?}"),
+        },
+        other => panic!("expected executed shortcut outcome, got {other:?}"),
+    }
+    assert!(dispatch.window.runtime.latest_failure.is_none());
+    assert_eq!(
+        dispatch
+            .window
+            .runtime
+            .run_panel
+            .presentation
+            .view
+            .notice
+            .as_ref()
+            .map(|notice| (notice.level, notice.title.as_str())),
+        Some((
+            rf_ui::RunPanelNoticeLevel::Warning,
+            "Model inputs are not ready"
+        ))
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
 fn gui_driver_automatic_runs_after_canvas_write_when_workspace_is_active() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
@@ -1623,7 +1688,7 @@ fn gui_driver_automatic_runs_after_canvas_write_when_workspace_is_active() {
 }
 
 #[test]
-fn gui_driver_recovery_then_resume_rejoins_automatic_mainline() {
+fn gui_driver_recovery_then_resume_rejoins_modeling_readiness_mainline() {
     let mut driver =
         StudioGuiDriver::new(&unbound_outlet_failure_synced_config()).expect("expected driver");
     let _ = driver
@@ -1720,15 +1785,21 @@ fn gui_driver_recovery_then_resume_rejoins_automatic_mainline() {
                 crate::StudioAppResultDispatch::WorkspaceRun(run) => {
                     assert!(matches!(
                         run.outcome,
-                        crate::StudioWorkspaceRunOutcome::Started(_)
+                        crate::StudioWorkspaceRunOutcome::Blocked(
+                            crate::StudioWorkspaceRunBlocked {
+                                reason:
+                                    crate::StudioWorkspaceRunBlockedReason::ModelingInputsNotReady,
+                                ..
+                            }
+                        )
                     ));
-                    assert_eq!(run.simulation_mode, rf_ui::SimulationMode::Active);
-                    assert_eq!(run.pending_reason, None);
-                    assert_eq!(run.run_status, rf_ui::RunStatus::Converged);
+                    assert_eq!(run.simulation_mode, rf_ui::SimulationMode::Hold);
                     assert_eq!(
-                        run.latest_snapshot_id.as_deref(),
-                        Some("example-unbound-outlet-port-rev-1-seq-1")
+                        run.pending_reason,
+                        Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
                     );
+                    assert_eq!(run.run_status, rf_ui::RunStatus::Dirty);
+                    assert_eq!(run.latest_snapshot_id, None);
                 }
                 other => panic!("expected workspace run dispatch, got {other:?}"),
             },
@@ -1738,20 +1809,15 @@ fn gui_driver_recovery_then_resume_rejoins_automatic_mainline() {
     }
     assert_eq!(
         resumed.snapshot.runtime.control_state.run_status,
-        rf_ui::RunStatus::Converged
+        rf_ui::RunStatus::Dirty
     );
     assert_eq!(
-        resumed
-            .snapshot
-            .runtime
-            .control_state
-            .latest_snapshot_id
-            .as_deref(),
-        Some("example-unbound-outlet-port-rev-1-seq-1")
+        resumed.snapshot.runtime.control_state.pending_reason,
+        Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
     );
     assert_eq!(
         resumed.snapshot.runtime.run_panel.view().status_label,
-        "Converged"
+        "Dirty"
     );
 }
 

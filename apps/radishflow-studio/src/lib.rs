@@ -37,6 +37,7 @@ mod studio_gui_window_model;
 mod studio_inspector_draft_command;
 mod studio_inspector_target_command;
 mod studio_local_rules;
+mod studio_modeling_readiness;
 mod studio_project_component_selection;
 mod studio_property_package_selection;
 mod studio_runtime;
@@ -332,6 +333,12 @@ pub use studio_inspector_draft_command::{
 };
 pub use studio_inspector_target_command::{
     inspector_target_command_id, inspector_target_from_command_id,
+};
+pub use studio_modeling_readiness::{
+    StudioModelingFocusTarget, StudioModelingReadinessTask, StudioModelingRunBlocker,
+    StudioModelingUnitParameter, studio_modeling_run_blocked_detail_en,
+    studio_modeling_run_blocked_detail_zh, studio_modeling_run_blocked_title_en,
+    studio_modeling_run_blocked_title_zh, studio_modeling_run_blocker,
 };
 pub use studio_project_component_selection::{
     PROJECT_COMPONENT_REMOVE_COMMAND_PREFIX, PROJECT_COMPONENT_SELECT_COMMAND_PREFIX,

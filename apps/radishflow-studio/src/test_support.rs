@@ -123,6 +123,20 @@ pub fn build_flash_drum_local_rules_synced_project_json() -> String {
     serialize_project_file(&project)
 }
 
+#[doc(hidden)]
+pub fn build_feed_missing_composition_project_json() -> String {
+    let mut project = official_heater_binary_hydrocarbon_project_file();
+    project
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&StreamId::new("stream-feed"))
+        .expect("expected feed stream")
+        .overall_mole_fractions
+        .clear();
+    serialize_project_file(&project)
+}
+
 fn official_heater_binary_hydrocarbon_project_file() -> StoredProjectFile {
     parse_project_file_json(official_heater_binary_hydrocarbon_project_json())
         .expect("expected official heater binary hydrocarbon project")

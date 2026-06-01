@@ -3578,7 +3578,7 @@ fn studio_gui_window_model_keeps_modeling_readiness_out_of_failure_recovery() {
 }
 
 #[test]
-fn studio_gui_window_model_surfaces_failure_result_until_rerun_succeeds() {
+fn studio_gui_window_model_surfaces_failure_result_until_recovery_then_readiness_block() {
     let mut driver =
         StudioGuiDriver::new(&unbound_outlet_failure_synced_config()).expect("expected driver");
     let _ = driver
@@ -3734,21 +3734,41 @@ fn studio_gui_window_model_surfaces_failure_result_until_rerun_succeeds() {
         .dispatch_event(StudioGuiEvent::UiCommandRequested {
             command_id: "run_panel.resume_workspace".to_string(),
         })
-        .expect("expected successful rerun dispatch");
+        .expect("expected readiness rerun dispatch");
 
     assert_eq!(
         rerun.window.runtime.control_state.run_status,
-        rf_ui::RunStatus::Converged
+        rf_ui::RunStatus::Dirty
     );
     assert_eq!(rerun.window.runtime.latest_failure, None);
-    let snapshot = rerun
-        .window
-        .runtime
-        .latest_solve_snapshot
-        .expect("expected solve snapshot after recovery rerun");
-    let inspector = snapshot.result_inspector(None);
-    assert!(inspector.selected_stream.is_some());
-    assert!(!inspector.has_stale_selection);
+    assert!(rerun.window.runtime.latest_solve_snapshot.is_none());
+    assert_eq!(
+        rerun
+            .window
+            .runtime
+            .run_panel
+            .presentation
+            .view
+            .notice
+            .as_ref()
+            .map(|notice| (notice.level, notice.title.as_str())),
+        Some((
+            rf_ui::RunPanelNoticeLevel::Warning,
+            "Model inputs are not ready"
+        ))
+    );
+    assert!(
+        rerun
+            .window
+            .runtime
+            .run_panel
+            .presentation
+            .view
+            .notice
+            .as_ref()
+            .map(|notice| notice.message.contains("positive finite"))
+            .unwrap_or(false)
+    );
 }
 
 #[test]
