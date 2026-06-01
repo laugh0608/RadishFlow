@@ -1,6 +1,6 @@
 # Author Small Cases
 
-更新时间：2026-05-31
+更新时间：2026-06-01
 
 ## 用途
 
@@ -37,7 +37,7 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 
 清单不会成为真相源，也不会反向修正文档。如果清单显示未完成，应回到 Canvas suggestion、Inspector 参数或运行结果中完成正式操作。
 
-手动运行按钮不再由这个清单阻断。无论是否从 Home 小案例入口进入，运行前都会使用通用 `Flowsheet` readiness：缺 material port / stream reference、缺项目组分、Feed source stream T/P/F/z 未就绪、composition 引用未选项目组分或未归一、必要单元参数未提交，都会显示“模型输入未完成”并聚焦到具体对象。缺 property package 仍交给正式 Run Panel package resolution 诊断。
+手动运行按钮不再由这个清单阻断。无论是否从 Home 小案例入口进入，运行前都会使用通用 `Flowsheet` readiness 处理建模输入缺失：缺项目组分、Feed source stream T/P/F/z 未就绪、composition 引用未选项目组分或未归一、必要单元参数未提交，都会显示“模型输入未完成”并聚焦到具体对象。缺 property package 仍交给正式 Run Panel package resolution 诊断；缺 material port 绑定、坏 stream reference、重复 source / sink、orphan stream、cycle 等结构性连接 / 拓扑问题继续由正式 Run Panel 诊断 / recovery 承载。
 
 ## 建模输入前置项
 
@@ -107,6 +107,8 @@ Flash Drum -> liquid / vapor
 | Mixer | outlet pressure | `90000 Pa` |
 | Flash Drum | flash temperature / pressure | `300 K` / `85000 Pa` |
 
+如果单元检查器里已经显示 outlet stream 模板值，但对应 unit parameter 还没有显式写入项目，仍需要提交一次该字段；即使输入值和当前显示值相同，提交也会写入正式单元参数。
+
 10. 点击顶部 `运行`。
 11. 在右侧 `结果` 和底部 `结果表` 检查收敛结果；底部表应同时显示流股结果和单元最新步骤。
 12. 保存项目，重开后再次运行，确认结果仍可复现。
@@ -163,6 +165,8 @@ Flash Drum -> liquid / vapor
 | Heater | outlet temperature / pressure | `358.5 K` / `90000 Pa` |
 | Flash Drum | flash temperature / pressure | `300 K` / `85000 Pa` |
 
+如果单元检查器里已经显示 heater outlet stream 模板值，但对应 unit parameter 还没有显式写入项目，仍需要提交一次 `Heater` 的 outlet temperature / pressure；同值提交也会写入正式单元参数。
+
 10. 点击顶部 `运行`。
 11. 在右侧 `结果` 中先看 heater outlet，再看 flash liquid / vapor outlet；底部 `结果表` 可同时核对 Heater 与 Flash Drum 的消费 / 产出流股。
 12. 保存项目，重开后再次运行。
@@ -192,7 +196,7 @@ Official demo case 的结果核对路径：
 - 任务清单不是文档语义：它只从当前 canvas / solve snapshot 推导状态。
 - `Connect stream` / `Create stream` 仍是正式 suggestion action；接受后才会通过文档命令写回。
 - 单元参数必须显式提交；仅在输入框中修改草稿不会改变运行结果。
-- 如果拓扑已完成但 Feed composition 未提交，运行会以 `solver.step.stream_input` 失败，并指向被下游单元消费的入口流股；应回到该 Feed outlet stream 的检查器提交组成。
+- 如果拓扑已完成但 Feed composition 未提交，普通 Studio 入口会先以“模型输入未完成”阻断，并聚焦到该 Feed outlet stream；`solver.step.stream_input` 仍保留给已经进入求解阶段的流股输入失败或外部不一致项目诊断。
 - 结果复制 / 导出只消费当前 `SolveSnapshot`，不写项目，也不是完整报表系统；其中 `Review` 只是对同一份快照的 case-level 摘要，不是第二套结果。
 
 ## 相关文档

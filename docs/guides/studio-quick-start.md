@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-05-31
+更新时间：2026-06-01
 
 ## 目的
 
@@ -17,7 +17,7 @@
 
 ## 当前能做什么
 
-截至 2026-05-31，Studio 当前已经具备以下主路径能力：
+截至 2026-06-01，Studio 当前已经具备以下主路径能力：
 
 - 启动后默认进入中文 Home Dashboard，可从 `开始 / 最近项目 / 示例项目 / 环境 / 消息` 分区判断从哪里开始
 - 新建未命名空白项目，并从受控内置列表显式选择 `binary-hydrocarbon-lite-v1` 与 `methane / ethane` 后进入最短建模路径
@@ -33,10 +33,13 @@
 - 通过 `检查`、`诊断目标`、结果选择项和命令入口在流股、单元、步骤和当前检查器之间定位同一份结果
 - 在流股检查器中编辑流股基础字段与组成草稿，并显式提交、归一化或丢弃
 - 在单元检查器中编辑首批关键单元参数：`Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 和 `Flash Drum` 的 flash temperature / flash pressure
+- 顶部 `运行`、Run Panel `Resume`、`F5 / Shift+F5`、命令面板、AppHost / StudioGuiDriver / StudioGuiHost command registry 等正式入口共享同一层建模输入 readiness；建模输入缺失不会因入口不同绕过诊断
+- 成功运行后若项目文档继续编辑，旧 `SolveSnapshot` 会标为过期；Result Inspector、底部结果表、Results commands、复制 / 导出和 `Review` 摘要只继续消费当前 revision 的最新快照
 - 选中物料流股后，可通过 Canvas / Inspector 的 `Disconnect stream` 解除端口绑定并保留流股规格，或通过 `Delete stream` 解除绑定后删除错误流股；单端流股还可在唯一且不会成环的候选存在时执行受控 `Reconnect stream`
 - 执行基础 `undo / redo`
 - 保存当前项目，或通过顶部 `另存为...` / 未命名项目首次 `保存` 到新路径
 - 保存并恢复 Canvas placement / viewport sidecar：`<project>.rfstudio-layout.json`；当前可拖动单元位置、平移 viewport，并用 `Fit to content` 重新居中
+- Studio shell 使用随应用打包的 `InterVariable` 与 `SourceHanSansSC` 字体资源显示中文 UI，不依赖操作系统中某个固定 CJK 字体名称
 - 默认隐藏低频命令大全；需要完整命令列表时可从顶部 `视图` 或命令面板入口展开
 
 当前最短可求解建模路径已经覆盖：
@@ -176,9 +179,9 @@ cargo run -p radishflow-studio
 5. 使用 Canvas 上的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` suggestion 补齐端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
 6. 在左侧 `项目` 或 Canvas 对象列表中选择 stream / unit，右侧 `检查器` 会切到对应对象。
 7. 在流股检查器中编辑 `T / P / F` 和组成草稿；字段提交、全部应用、组成归一化都是显式动作。
-8. 选中 `Feed / Heater / Cooler / Mixer / Valve / Flash Drum` 时，可在单元检查器中编辑已暴露的 source temperature、source pressure、outlet temperature、outlet pressure、flash temperature 或 flash pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。
+8. 选中 `Feed / Heater / Cooler / Mixer / Valve / Flash Drum` 时，可在单元检查器中编辑已暴露的 source temperature、source pressure、outlet temperature、outlet pressure、flash temperature 或 flash pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。若字段当前显示的是 outlet stream 模板值，但对应 unit parameter 尚未显式提交，即使输入值与显示值相同，也应提交一次，让正式 `SetUnitParameter` 写入项目文档。
 9. 若流股错连或漏连，先选中该 material stream，再使用 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 或 `Delete stream` 这组受控恢复动作；`Reconnect stream` 只在单端唯一候选且不会形成 unit dependency cycle 时可用。
-10. 点击顶部 `运行`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一、material port 连接或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐后，结果只从最新 `SolveSnapshot` 展示到右侧 `结果`、底部 `结果表` 和轻量导出的 `Review` 摘要。
+10. 点击顶部 `运行`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐后，结果只从当前 revision 的最新 `SolveSnapshot` 展示到右侧 `结果`、底部 `结果表`、Results commands 和轻量导出的 `Review` 摘要。正式物性包解析失败、结构性连接错误、拓扑错误和求解阶段参数失败继续由 Run Panel 诊断 / recovery 承载。
 
 当前连接仍通过本地 suggestion 和正式 `DocumentCommand` 完成，不是自由拉线编辑器；单元参数编辑也仍限制在上述 MVP 已暴露字段，不等同于完整单元参数表。
 
@@ -195,7 +198,7 @@ cargo run -p radishflow-studio
 
 `Mixer / Heater / Cooler / Valve` 的 outlet pressure 若高于已连接 inlet pressure 约束，会在单元检查器草稿态直接标记为无效，保持草稿、不写回项目文档，也不会同步 outlet stream 模板。Flash Drum 的 flash temperature / flash pressure 当前只要求正有限 SI 值，不施加 inlet pressure 上限。若旧项目或外部编辑已经把越界参数写入文档，运行会产生 `solver.step.parameter` 诊断，并把 failure detail、端口 attention 和 recovery action 指向相关 unit / port / stream。
 
-运行前 readiness 不再使用 `Mixer-Flash` 或 `Heater-Flash` 小案例清单作为 gate。普通空白项目按当前 `Flowsheet` 判断：Feed source stream 必须有正有限温度、压力和摩尔流量，composition 必须引用已选择项目组分并归一；Heater / Cooler / Flash Drum 必须提交出口温度和压力，Mixer / Valve 必须提交出口压力。物性包缺失仍交给正式运行命令的 package resolution 诊断。
+运行前 readiness 不再使用 `Mixer-Flash` 或 `Heater-Flash` 小案例清单作为 gate。普通空白项目按当前 `Flowsheet` 判断：Feed source stream 必须有正有限温度、压力和摩尔流量，composition 必须引用已选择项目组分并归一；Heater / Cooler / Flash Drum 必须提交出口温度和压力，Mixer / Valve 必须提交出口压力。缺 material port 绑定、坏 stream reference、重复 source / sink、orphan stream、cycle 等结构性问题仍交给正式 Run Panel 诊断 / recovery；物性包缺失也继续交给正式运行命令的 package resolution 诊断。
 
 连接类失败同样会尽量携带可修复目标：例如缺失 upstream source、未绑定 outlet port、cycle、自环、坏 stream 引用、重复 source / sink 或 orphan stream。Run Panel 中的 recovery action 可能只是聚焦相关 unit / port / stream，也可能执行明确的局部修复动作；按钮文案应区分这两类行为。
 

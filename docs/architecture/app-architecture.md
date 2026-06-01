@@ -19,7 +19,7 @@
 5. 求解结果采用独立 `SolveSnapshot`，不直接污染 `FlowsheetDocument`
 6. 结果快照保留按步展开能力，为后续结果审阅、差异比较和操作脚本留接口
 7. 撤销/重做当前采用 snapshot-backed `CommandHistory`：历史记录仍保留语义 `DocumentCommand`，执行时应用对应 `before / after` flowsheet 快照
-8. 手动运行前使用通用 `Flowsheet` readiness 检查真实建模输入，不使用小案例作者清单作为运行 gate
+8. 用户可触达运行入口在求解前统一使用通用 `Flowsheet` readiness 检查真实建模输入，不使用小案例作者清单作为运行 gate
 
 ## 顶层分层
 
@@ -48,6 +48,7 @@
 - 负责控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的协议映射、下载租约与本地缓存落盘编排
 - 负责从 `PropertyPackageProvider` 或本地 auth cache 组装最小真实求解链路，并把 `rf-solver::SolveSnapshot` 回写到 `rf-ui::AppState`
 - 负责把 Studio shell 入口组织为可复现的 MVP α / β 工作流：默认显示 Home，可从空白项目进入小案例作者路径，进入 case 后暴露主路径命令
+- 负责让顶部 `Run`、Run Panel `Resume`、`F5 / Shift+F5`、AppHost、StudioGuiDriver、StudioGuiHost command registry 等正式运行入口复用同一层建模输入 readiness；shell 只负责 notice、focus 和用户反馈，不在各入口复制另一套输入判断
 - 负责在 GUI shell 层提供用户操作与求解审计输出；默认 stderr 日志只作为开发态 smoke 和诊断入口，不替代未来正式审计 / telemetry 设计
 - 负责遵守 `eframe` / `winit` 事件循环约束：Windows 事件循环在主线程创建；干净最后窗口 close 不得被 `CancelClose` 拦截，关闭前清理逻辑窗口并停止当帧 fallback 布局；脏工作区 close 必须先确认保存 / 舍弃 / 取消
 
@@ -595,10 +596,10 @@ pub struct StepSnapshot {
 - 当发生 `Enter`、失焦、点击应用等语义提交时，才生成命令并写回文档
 - 写回文档后再决定是否触发结构检查与自动求解
 - 项目级物性包和组分选择属于文档语义输入；空白项目不自动补 package / components，Stream Inspector 只能从当前 `Flowsheet.components` 中添加组成条目
-- Stream Inspector 的 `T / P / F / composition` 也采用草稿提交；下游单元消费到缺少 overall composition 的 stream 时，诊断归类为 `solver.step.stream_input`，并携带 stream / inlet target
-- Unit Inspector参数：`Feed`、`Heater / Cooler`、`Flash Drum` 写回 `outlet_temperature_k` / `outlet_pressure_pa`，`Mixer`、`Valve` 写回 `outlet_pressure_pa`；提交 `SetUnitParameter` 同步模板，Mixer pressure 不高于 inlet pressure，Heater / Cooler / Valve 不高于 inlet pressure
+- Stream Inspector 的 `T / P / F / composition` 也采用草稿提交；普通 Studio 运行入口会在缺少 Feed composition 时先走建模输入 readiness，已经进入求解阶段的 stream 输入不一致仍可归类为 `solver.step.stream_input`，并携带 stream / inlet target
+- Unit Inspector参数：`Feed`、`Heater / Cooler`、`Flash Drum` 写回 `outlet_temperature_k` / `outlet_pressure_pa`，`Mixer`、`Valve` 写回 `outlet_pressure_pa`；提交 `SetUnitParameter` 同步模板，Mixer pressure 不高于 inlet pressure，Heater / Cooler / Valve 不高于 inlet pressure；若字段值来自 outlet stream 模板 / fallback 而 unit parameter 尚未显式存在，同值提交仍应生成正式参数命令
 - Unit Inspector 参数字段必须携带 SI 单位和约束 presentation；无效草稿不写文档/历史/模板。已入文档的无效参数由 `solver.step.parameter` 等诊断暴露，并携带 unit / port / stream context
-- 手动运行前 readiness 只读取已提交的文档态输入，不读取 Inspector 草稿，也不自动补写默认值；未就绪时 shell 显示“模型输入未完成”并聚焦到对应 package / stream / unit / port
+- 运行前 readiness 只读取已提交的文档态输入，不读取 Inspector 草稿，也不自动补写默认值；未就绪时 shell 显示“模型输入未完成”并聚焦到对应 package / stream / unit
 
 采用这个方案的原因：
 
@@ -614,12 +615,11 @@ pub struct StepSnapshot {
 
 ### 运行前 readiness
 
-Studio 的手动运行入口在调用正式 Run Panel 求解命令前，会先做一层通用建模输入检查。它的职责是阻止明显未完成的流程进入求解器，让用户先回到具体 stream / unit / port 补齐输入。
+Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前，会先做一层通用建模输入检查。当前包括顶部 `Run`、Run Panel `Resume`、`F5 / Shift+F5`、命令面板、AppHost、StudioGuiDriver 与 StudioGuiHost command registry 等正式入口。它的职责是阻止明显未完成的建模输入进入求解器，让用户先回到具体 package / stream / unit 补齐输入。
 
 当前检查范围：
 
 - 至少存在一个 unit。
-- 所有 material port 必须已绑定 stream，且绑定的 stream reference 必须存在。
 - 项目必须至少选择一组 project components；stream composition 中引用的 component 必须已经进入项目组分列表。
 - Feed source stream 必须具备正有限 `temperature_k`、`pressure_pa`、`total_molar_flow_mol_s`，并具备非空、数值有效、归一到 1 的 `overall_mole_fractions`。
 - `Heater / Cooler / Flash Drum` 必须提交 `outlet_temperature_k` 和 `outlet_pressure_pa`。
@@ -628,6 +628,7 @@ Studio 的手动运行入口在调用正式 Run Panel 求解命令前，会先�
 明确不属于这层 readiness 的内容：
 
 - 不解析或选择 property package。缺物性包、缓存缺失或多包歧义继续交给正式 run package resolution 和 Run Panel 诊断。
+- 不替代结构性连接 / 拓扑诊断。缺 material port 绑定、坏 stream reference、重复 source / sink、orphan stream、cycle 等问题继续走正式 Run Panel 诊断 / recovery。
 - 不消费 `Mixer-Flash` / `Heater-Flash` 作者清单状态。作者清单只作为导航提示，不作为普通空白项目的运行 gate。
 - 不隐式归一 composition，不隐式写入 unit 参数，不用 outlet stream template 代替用户提交的 `UnitOperationParameters`。求解器保留对旧项目的兼容 fallback，但 Studio 运行前检查以用户已提交的文档态建模输入为准。
 
@@ -705,7 +706,7 @@ Studio 的手动运行入口在调用正式 Run Panel 求解命令前，会先�
 - 默认包选择当前采取保守策略：无 entitlement 时仅在本地缓存中唯一包可选时自动选中；有 entitlement 时仅在“本地缓存 ∩ entitlement manifests”唯一时自动选中，多包场景必须显式指定 package
 - 由 `WorkspaceSolveService` 负责生成默认 `snapshot_id` / `sequence`
 - `WorkspaceSolveService` 明确区分 `Manual` / `Automatic` 触发，并把 `SimulationMode` 与 `pending_reason` 的运行门控收口在应用层
-- `ResumeWorkspace` 当前会先把工作区切到 `Active`，再按 Automatic 语义发起运行，作为 `Hold -> Active` 恢复路径的第一版显式应用入口
+- `ResumeWorkspace` 当前会先复用同一层 package / readiness preflight；如果建模输入未就绪则保持 `Hold` / pending 状态并返回 modeling notice，只有 preflight 通过后才切到 `Active` 并按 Automatic 语义发起运行
 - 先把 `SolveSessionState` 推进到 `Checking -> Runnable -> Solving`
 - 通过 `PropertyPackageProvider` 或 `CachedPropertyPackageProvider` 加载 `ThermoSystem`
 - 组装 `PlaceholderThermoProvider + PlaceholderTpFlashSolver + SequentialModularSolver`

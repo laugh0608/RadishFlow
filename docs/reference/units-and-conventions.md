@@ -1,6 +1,6 @@
 # Units And Conventions
 
-更新时间：2026-05-28
+更新时间：2026-06-01
 
 ## 目的
 
@@ -52,18 +52,17 @@
 | `Flash Drum` | `outlet_temperature_k` | `K` | flash temperature，同步 liquid / vapor outlet 模板 |
 | `Flash Drum` | `outlet_pressure_pa` | `Pa` | flash pressure，同步 liquid / vapor outlet 模板 |
 
-这些字段属于项目 flowsheet 语义，会通过正式参数提交流写回项目模型。Studio 提交时会同步对应 outlet stream 模板，求解器优先读取单元参数；旧项目或外部项目未设置参数时，底层求解仍可按已有 outlet stream 模板兼容读取。Studio 手动运行前 readiness 不把这类兼容 fallback 视为用户已提交参数。
+这些字段属于项目 flowsheet 语义，会通过正式参数提交流写回项目模型。Studio 提交时会同步对应 outlet stream 模板，求解器优先读取单元参数；旧项目或外部项目未设置参数时，底层求解仍可按已有 outlet stream 模板兼容读取。Studio 运行前 readiness 不把这类兼容 fallback 视为用户已提交参数；若检查器字段显示的是模板 / fallback 值但 unit parameter 为空，同值提交仍应生成正式 `SetUnitParameter`。
 
 当前不引入完整单元参数表，也不把这些字段扩展成第二套单位系统。
 
 ## Studio 运行前必填输入
 
-Studio 手动运行前会先检查当前 `Flowsheet` 的通用建模输入。下表描述的是 Studio readiness 的最低要求，不等同于 solver 内部所有数值约束：
+Studio 用户可触达的正式运行入口在调用求解前会先检查当前 `Flowsheet` 的通用建模输入。下表描述的是 Studio readiness 的最低要求，不等同于 solver 内部所有数值约束，也不替代结构性连接 / 拓扑诊断：
 
 | 对象 | 必填输入 | 约束 |
 | --- | --- | --- |
 | Project | `Flowsheet.components` | 至少选择项目组分；composition 引用的 component 必须在项目组分列表中 |
-| Material ports | `stream_id` | 所有 material port 必须绑定 stream，且引用的 stream 必须存在 |
 | Feed source stream | `temperature_k` | 正有限 K |
 | Feed source stream | `pressure_pa` | 正有限 Pa |
 | Feed source stream | `total_molar_flow_mol_s` | 正有限 mol/s |
@@ -72,7 +71,7 @@ Studio 手动运行前会先检查当前 `Flowsheet` 的通用建模输入。下
 | `Flash Drum` | `outlet_temperature_k`、`outlet_pressure_pa` | 分别表示 flash temperature / pressure，必须进入 `UnitOperationParameters` |
 | `Mixer` / `Valve` | `outlet_pressure_pa` | 必须进入 `UnitOperationParameters` |
 
-Property package 不在这层 readiness 中解析。缺失、缓存不可用或多包歧义继续由正式 run package resolution 和 Run Panel 诊断处理。
+Property package 不在这层 readiness 中解析。缺失、缓存不可用或多包歧义继续由正式 run package resolution 和 Run Panel 诊断处理。Material port 绑定缺失、坏 stream reference、重复 source / sink、orphan stream、cycle 等结构性连接 / 拓扑问题也不归入“模型输入未完成”，继续由正式 Run Panel 诊断 / recovery 处理。
 
 ## 流股组成约定
 
