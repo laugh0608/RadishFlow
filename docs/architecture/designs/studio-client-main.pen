@@ -1,0 +1,3659 @@
+{
+  "version": "2.13",
+  "children": [
+    {
+      "type": "frame",
+      "id": "aLsDk",
+      "x": 0,
+      "y": 0,
+      "name": "Home - Ready",
+      "clip": true,
+      "width": 1440,
+      "height": 960,
+      "fill": "#F5F7FA",
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "HEWA2",
+          "x": 0,
+          "y": 0,
+          "name": "App Bar",
+          "width": 1440,
+          "height": 56,
+          "fill": "#FFFFFF",
+          "stroke": "#D8DEE8",
+          "strokeWidth": {
+            "bottom": 1
+          },
+          "gap": 18,
+          "padding": [
+            0,
+            20
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "CrEHF",
+              "name": "Brand",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": 220,
+              "content": "RadishFlow Studio",
+              "fontFamily": "Inter",
+              "fontSize": 18,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "text",
+              "id": "HsWWT",
+              "name": "Context title",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": 360,
+              "content": "Start workspace",
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "frame",
+              "id": "SwzNL",
+              "name": "Build chip",
+              "width": 140,
+              "height": 28,
+              "fill": "#EEF4FF",
+              "cornerRadius": 14,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "LHAFU",
+                  "name": "Build chip label",
+                  "fill": "#2563EB",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "development build",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "Medium"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "NGxZd",
+              "name": "Run status chip",
+              "width": 130,
+              "height": 28,
+              "fill": "#EEF3F8",
+              "cornerRadius": 14,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "m2TKMR",
+                  "name": "Run status chip label",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Local ready",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "Medium"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "f9FoCj",
+          "x": 0,
+          "y": 56,
+          "name": "Start rail",
+          "width": 288,
+          "height": 704,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "wLU5v",
+              "name": "Start title",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Start",
+              "fontFamily": "Inter",
+              "fontSize": 20,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "frame",
+              "id": "qXkE4",
+              "name": "New project",
+              "width": 240,
+              "height": 36,
+              "fill": "#2563EB",
+              "cornerRadius": 6,
+              "stroke": "#2563EB",
+              "strokeWidth": 1,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Z74YP6",
+                  "name": "New project label",
+                  "fill": "#FFFFFF",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "新建项目",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Medium"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "u5ZKH",
+              "name": "Open project",
+              "width": 240,
+              "height": 36,
+              "fill": "#EEF3F8",
+              "cornerRadius": 6,
+              "stroke": "#D8DEE8",
+              "strokeWidth": 1,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "FBXPK",
+                  "name": "Open project label",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "打开项目",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Medium"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "kd4DW",
+              "name": "Open example",
+              "width": 240,
+              "height": 36,
+              "fill": "#EEF3F8",
+              "cornerRadius": 6,
+              "stroke": "#D8DEE8",
+              "strokeWidth": 1,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "rsBKX",
+                  "name": "Open example label",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "打开示例项目",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Medium"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "agZIG",
+              "name": "Author links",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "次级入口\n创建 Mixer-Flash 小案例\n创建 Heater-Flash 小案例",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "JKTnd",
+          "x": 288,
+          "y": 56,
+          "name": "Recent and examples",
+          "width": 816,
+          "height": 704,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "IDIH9",
+              "name": "Recent heading",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "最近项目",
+              "fontFamily": "Inter",
+              "fontSize": 18,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "frame",
+              "id": "uR40s",
+              "name": "Recent row Blank Project",
+              "width": "fill_container",
+              "height": 64,
+              "fill": "#FAFBFC",
+              "cornerRadius": 6,
+              "stroke": "#D8DEE8",
+              "strokeWidth": 1,
+              "gap": 16,
+              "padding": [
+                0,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "pjuoK",
+                  "name": "Recent name Blank Project",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": 260,
+                  "content": "Blank Project",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "Medium"
+                },
+                {
+                  "type": "text",
+                  "id": "PvFpS",
+                  "name": "Recent meta Blank Project",
+                  "fill": "#667085",
+                  "textGrowth": "fixed-width",
+                  "width": 260,
+                  "content": "binary-hydrocarbon-lite-v1",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "frame",
+                  "id": "Up6f8",
+                  "name": "Recent status Blank Project",
+                  "width": 92,
+                  "height": 28,
+                  "fill": "#FFF7E6",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "jm364",
+                      "name": "Recent status Blank Project label",
+                      "fill": "#B45309",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Modified",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "MfOSC",
+              "name": "Recent row Valve Flash Review",
+              "width": "fill_container",
+              "height": 64,
+              "fill": "#FAFBFC",
+              "cornerRadius": 6,
+              "stroke": "#D8DEE8",
+              "strokeWidth": 1,
+              "gap": 16,
+              "padding": [
+                0,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "MFM8y",
+                  "name": "Recent name Valve Flash Review",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": 260,
+                  "content": "Valve Flash Review",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "Medium"
+                },
+                {
+                  "type": "text",
+                  "id": "Ev1KJ",
+                  "name": "Recent meta Valve Flash Review",
+                  "fill": "#667085",
+                  "textGrowth": "fixed-width",
+                  "width": 260,
+                  "content": "methane, ethane",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "frame",
+                  "id": "ipLKX",
+                  "name": "Recent status Valve Flash Review",
+                  "width": 92,
+                  "height": 28,
+                  "fill": "#EAF7EE",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "r6cvlu",
+                      "name": "Recent status Valve Flash Review label",
+                      "fill": "#15803D",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Ready",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "RfdX5",
+              "name": "Example heading",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "示例项目",
+              "fontFamily": "Inter",
+              "fontSize": 18,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "frame",
+              "id": "B6ehQ",
+              "name": "Example row Feed -> Cooler -> Flash Drum",
+              "width": "fill_container",
+              "height": 54,
+              "fill": "#FFFFFF",
+              "cornerRadius": 6,
+              "stroke": "#D8DEE8",
+              "strokeWidth": 1,
+              "gap": 16,
+              "padding": [
+                0,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "r8HXK",
+                  "name": "Example name Feed -> Cooler -> Flash Drum",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": 360,
+                  "content": "Feed -> Cooler -> Flash Drum",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "Medium"
+                },
+                {
+                  "type": "text",
+                  "id": "BzxHY",
+                  "name": "Example meta Feed -> Cooler -> Flash Drum",
+                  "fill": "#667085",
+                  "textGrowth": "fixed-width",
+                  "width": 180,
+                  "content": "methane, ethane",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "frame",
+                  "id": "qnxPc",
+                  "name": "Example ready Feed -> Cooler -> Flash Drum",
+                  "width": 78,
+                  "height": 28,
+                  "fill": "#EAF7EE",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "e2SsRQ",
+                      "name": "Example ready Feed -> Cooler -> Flash Drum label",
+                      "fill": "#15803D",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Ready",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "zVhsk",
+              "name": "Example row Feed -> Valve -> Flash Drum",
+              "width": "fill_container",
+              "height": 54,
+              "fill": "#FFFFFF",
+              "cornerRadius": 6,
+              "stroke": "#D8DEE8",
+              "strokeWidth": 1,
+              "gap": 16,
+              "padding": [
+                0,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ZPNXu",
+                  "name": "Example name Feed -> Valve -> Flash Drum",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": 360,
+                  "content": "Feed -> Valve -> Flash Drum",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "Medium"
+                },
+                {
+                  "type": "text",
+                  "id": "u0vggG",
+                  "name": "Example meta Feed -> Valve -> Flash Drum",
+                  "fill": "#667085",
+                  "textGrowth": "fixed-width",
+                  "width": 180,
+                  "content": "methane, ethane",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "frame",
+                  "id": "v3h2Ba",
+                  "name": "Example ready Feed -> Valve -> Flash Drum",
+                  "width": 78,
+                  "height": 28,
+                  "fill": "#EAF7EE",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "k5y2m",
+                      "name": "Example ready Feed -> Valve -> Flash Drum label",
+                      "fill": "#15803D",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Ready",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "WzEjR",
+              "name": "Example row Feed + Feed -> Mixer -> Flash Drum",
+              "width": "fill_container",
+              "height": 54,
+              "fill": "#FFFFFF",
+              "cornerRadius": 6,
+              "stroke": "#D8DEE8",
+              "strokeWidth": 1,
+              "gap": 16,
+              "padding": [
+                0,
+                14
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "cK39G",
+                  "name": "Example name Feed + Feed -> Mixer -> Flash Drum",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": 360,
+                  "content": "Feed + Feed -> Mixer -> Flash Drum",
+                  "fontFamily": "Inter",
+                  "fontSize": 14,
+                  "fontWeight": "Medium"
+                },
+                {
+                  "type": "text",
+                  "id": "HBHy1",
+                  "name": "Example meta Feed + Feed -> Mixer -> Flash Drum",
+                  "fill": "#667085",
+                  "textGrowth": "fixed-width",
+                  "width": 180,
+                  "content": "methane, ethane",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "frame",
+                  "id": "FgkCG",
+                  "name": "Example ready Feed + Feed -> Mixer -> Flash Drum",
+                  "width": 78,
+                  "height": 28,
+                  "fill": "#EAF7EE",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Yuzi2",
+                      "name": "Example ready Feed + Feed -> Mixer -> Flash Drum label",
+                      "fill": "#15803D",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Ready",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "jusQR",
+          "x": 1104,
+          "y": 56,
+          "name": "Environment rail",
+          "width": 336,
+          "height": 704,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "wBXW9",
+              "name": "Client title",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Client",
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "text",
+              "id": "ffnq0",
+              "name": "Client body",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Development build\nExamples available",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "text",
+              "id": "uHgyd",
+              "name": "Server title",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Server",
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "text",
+              "id": "U60bw1",
+              "name": "Server body",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Signed out\nLocal run enabled",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "text",
+              "id": "MPrMW",
+              "name": "Device title",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Device",
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "text",
+              "id": "kYfMp",
+              "name": "Device body",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Runtime ready\nCache ready",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "zAPtG",
+          "x": 0,
+          "y": 760,
+          "name": "Bottom Drawer",
+          "width": 1440,
+          "height": 200,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "V7hybs",
+              "name": "Bottom tabs",
+              "width": "fill_container",
+              "height": 30,
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "yG4tc",
+                  "name": "Tab Messages",
+                  "width": 130,
+                  "height": 28,
+                  "fill": "#EAF0FF",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "e5A3OY",
+                      "name": "Tab Messages label",
+                      "fill": "#2563EB",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Messages",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "rE1fS",
+                  "name": "Tab Diagnostics",
+                  "width": 130,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "gyy0v",
+                      "name": "Tab Diagnostics label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Diagnostics",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "hwAXY",
+                  "name": "Tab Results Table",
+                  "width": 130,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "I0jncb",
+                      "name": "Tab Results Table label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Results Table",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iENcn",
+              "name": "Message row PACKAGE",
+              "width": "fill_container",
+              "height": 30,
+              "fill": "#FAFBFC",
+              "cornerRadius": 6,
+              "gap": 12,
+              "padding": [
+                0,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "GXhmi",
+                  "name": "Domain PACKAGE",
+                  "width": 86,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "TTi2c",
+                      "name": "Domain PACKAGE label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "PACKAGE",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "NGkmG",
+                  "name": "Message PACKAGE",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": 720,
+                  "content": "内置物性包缓存可用",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "text",
+                  "id": "vSlzb",
+                  "name": "Action PACKAGE",
+                  "fill": "#2563EB",
+                  "textGrowth": "fixed-width",
+                  "width": 160,
+                  "content": "View packages",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Medium"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Tycom",
+              "name": "Message row EXAMPLES",
+              "width": "fill_container",
+              "height": 30,
+              "fill": "#FAFBFC",
+              "cornerRadius": 6,
+              "gap": 12,
+              "padding": [
+                0,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "peGIk",
+                  "name": "Domain EXAMPLES",
+                  "width": 86,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "obT5C",
+                      "name": "Domain EXAMPLES label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "EXAMPLES",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "m4027",
+                  "name": "Message EXAMPLES",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": 720,
+                  "content": "示例项目目录可读",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "text",
+                  "id": "WaCRP",
+                  "name": "Action EXAMPLES",
+                  "fill": "#2563EB",
+                  "textGrowth": "fixed-width",
+                  "width": 160,
+                  "content": "Open examples",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Medium"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "S82f7r",
+      "x": 1520,
+      "y": 0,
+      "name": "Workbench - Modeling",
+      "clip": true,
+      "width": 1440,
+      "height": 960,
+      "fill": "#F5F7FA",
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "yXeFu",
+          "x": 0,
+          "y": 0,
+          "name": "App Bar",
+          "width": 1440,
+          "height": 56,
+          "fill": "#FFFFFF",
+          "stroke": "#D8DEE8",
+          "strokeWidth": {
+            "bottom": 1
+          },
+          "gap": 18,
+          "padding": [
+            0,
+            20
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "ApChi",
+              "name": "Brand",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": 220,
+              "content": "RadishFlow Studio",
+              "fontFamily": "Inter",
+              "fontSize": 18,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "text",
+              "id": "rpMi7",
+              "name": "Context title",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": 360,
+              "content": "Blank Project",
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "frame",
+              "id": "nco5j",
+              "name": "Build chip",
+              "width": 140,
+              "height": 28,
+              "fill": "#EEF4FF",
+              "cornerRadius": 14,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "DTSaB",
+                  "name": "Build chip label",
+                  "fill": "#2563EB",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "development build",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "Medium"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "TpI81",
+              "name": "Run status chip",
+              "width": 130,
+              "height": 28,
+              "fill": "#EEF3F8",
+              "cornerRadius": 14,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "TWiOL",
+                  "name": "Run status chip label",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Ready to run",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "Medium"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "U8PI3S",
+          "x": 0,
+          "y": 56,
+          "name": "Project palette rail",
+          "width": 288,
+          "height": 704,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "hweWV",
+              "name": "Left tabs",
+              "fill": "#2563EB",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "项目    放置",
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": "Medium"
+            },
+            {
+              "type": "text",
+              "id": "F1pLa",
+              "name": "Package",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Package\nbinary-hydrocarbon-lite-v1",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "text",
+              "id": "B98joa",
+              "name": "Components",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Components\nmethane\nethane",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "text",
+              "id": "tWN3y",
+              "name": "Place units",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Place\nFeed\nMixer\nCooler\nValve\nFlash Drum",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Q3GFg",
+          "x": 288,
+          "y": 56,
+          "name": "Canvas stage",
+          "width": 816,
+          "height": 704,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "ggB4q",
+              "name": "Canvas header",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Flowsheet canvas",
+              "fontFamily": "Inter",
+              "fontSize": 18,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "frame",
+              "id": "s5wezc",
+              "name": "Canvas body",
+              "width": "fill_container",
+              "height": 560,
+              "fill": "#FAFCFE",
+              "cornerRadius": 8,
+              "stroke": "#D8DEE8",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Ird7J",
+                  "x": 48,
+                  "y": 190,
+                  "name": "Unit Feed",
+                  "width": 110,
+                  "height": 72,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#D8DEE8",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "bHzNO",
+                      "name": "Unit label Feed",
+                      "fill": "#182233",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Feed",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "SemiBold"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "QOZ1v",
+                  "x": 250,
+                  "y": 190,
+                  "name": "Unit Cooler",
+                  "width": 110,
+                  "height": 72,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#D8DEE8",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "yRsJp",
+                      "name": "Unit label Cooler",
+                      "fill": "#182233",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Cooler",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "SemiBold"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "iT1DD",
+                  "x": 500,
+                  "y": 178,
+                  "name": "Unit Flash Drum",
+                  "width": 130,
+                  "height": 72,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#D8DEE8",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "XgHie",
+                      "name": "Unit label Flash Drum",
+                      "fill": "#182233",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Flash Drum",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "SemiBold"
+                    }
+                  ]
+                },
+                {
+                  "type": "rectangle",
+                  "id": "fIWRu",
+                  "x": 158,
+                  "y": 226,
+                  "name": "Stream feed to cooler",
+                  "fill": "#2563EB",
+                  "width": 92,
+                  "height": 2
+                },
+                {
+                  "type": "rectangle",
+                  "id": "ZvFhr",
+                  "x": 360,
+                  "y": 226,
+                  "name": "Stream cooler to flash",
+                  "fill": "#2563EB",
+                  "width": 140,
+                  "height": 2
+                },
+                {
+                  "type": "rectangle",
+                  "id": "MPKe8",
+                  "x": 630,
+                  "y": 200,
+                  "name": "Liquid outlet line",
+                  "fill": "#15803D",
+                  "width": 90,
+                  "height": 2
+                },
+                {
+                  "type": "rectangle",
+                  "id": "D0A17",
+                  "x": 630,
+                  "y": 252,
+                  "name": "Vapor outlet line",
+                  "fill": "#B45309",
+                  "width": 90,
+                  "height": 2
+                },
+                {
+                  "type": "text",
+                  "id": "v1LQg",
+                  "x": 174,
+                  "y": 202,
+                  "name": "Stream label one",
+                  "fill": "#667085",
+                  "textGrowth": "fixed-width",
+                  "width": 160,
+                  "content": "stream-feed-1-outlet",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "text",
+                  "id": "E6wHmC",
+                  "x": 376,
+                  "y": 202,
+                  "name": "Stream label two",
+                  "fill": "#667085",
+                  "textGrowth": "fixed-width",
+                  "width": 170,
+                  "content": "stream-cooler-1-outlet",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "Regular"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "c4Syc8",
+          "x": 1104,
+          "y": 56,
+          "name": "Inspector rail",
+          "width": 336,
+          "height": 704,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "hwuBw",
+              "name": "Inspector target",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Unit cooler-1",
+              "fontFamily": "Inter",
+              "fontSize": 16,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "text",
+              "id": "Y7gYp",
+              "name": "Inspector fields",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "outlet_temperature_k   286 K   Synced\noutlet_pressure_pa      90000 Pa   Synced",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "text",
+              "id": "wkcNv",
+              "name": "Ports",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Ports\ninlet connected\noutlet connected",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "frame",
+              "id": "Ftji3",
+              "name": "Commit field",
+              "width": 260,
+              "height": 36,
+              "fill": "#EEF3F8",
+              "cornerRadius": 6,
+              "stroke": "#D8DEE8",
+              "strokeWidth": 1,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "hM6gN",
+                  "name": "Commit field label",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Commit changes",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Medium"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "QzpZB",
+          "x": 0,
+          "y": 760,
+          "name": "Bottom Drawer",
+          "width": 1440,
+          "height": 200,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "eFGzY",
+              "name": "Bottom tabs",
+              "width": "fill_container",
+              "height": 30,
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ifNav",
+                  "name": "Tab Messages",
+                  "width": 130,
+                  "height": 28,
+                  "fill": "#EAF0FF",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "f8kR9F",
+                      "name": "Tab Messages label",
+                      "fill": "#2563EB",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Messages",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "z0kguP",
+                  "name": "Tab Diagnostics",
+                  "width": 130,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "iiEo5",
+                      "name": "Tab Diagnostics label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Diagnostics",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "m2xlYb",
+                  "name": "Tab Results Table",
+                  "width": 130,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "r9DqI",
+                      "name": "Tab Results Table label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Results Table",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "tPs4A",
+              "name": "Message row CANVAS",
+              "width": "fill_container",
+              "height": 30,
+              "fill": "#FAFBFC",
+              "cornerRadius": 6,
+              "gap": 12,
+              "padding": [
+                0,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Lk0yn",
+                  "name": "Domain CANVAS",
+                  "width": 86,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ycPAn",
+                      "name": "Domain CANVAS label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "CANVAS",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "P5AJ6",
+                  "name": "Message CANVAS",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": 720,
+                  "content": "Accepted cooler outlet suggestion",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "text",
+                  "id": "OmyOF",
+                  "name": "Action CANVAS",
+                  "fill": "#2563EB",
+                  "textGrowth": "fixed-width",
+                  "width": 160,
+                  "content": "Undo",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Medium"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Bb2gi",
+              "name": "Message row INPUT",
+              "width": "fill_container",
+              "height": 30,
+              "fill": "#FAFBFC",
+              "cornerRadius": 6,
+              "gap": 12,
+              "padding": [
+                0,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "NocXP",
+                  "name": "Domain INPUT",
+                  "width": 86,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "N5lFa5",
+                      "name": "Domain INPUT label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "INPUT",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "EYTLB",
+                  "name": "Message INPUT",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": 720,
+                  "content": "Unit parameters synced",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "text",
+                  "id": "s2npX",
+                  "name": "Action INPUT",
+                  "fill": "#2563EB",
+                  "textGrowth": "fixed-width",
+                  "width": 160,
+                  "content": "Run",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Medium"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "W3HQqZ",
+      "x": 3040,
+      "y": 0,
+      "name": "Workbench - Readiness",
+      "clip": true,
+      "width": 1440,
+      "height": 960,
+      "fill": "#F5F7FA",
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "JBbmH",
+          "x": 0,
+          "y": 0,
+          "name": "App Bar",
+          "width": 1440,
+          "height": 56,
+          "fill": "#FFFFFF",
+          "stroke": "#D8DEE8",
+          "strokeWidth": {
+            "bottom": 1
+          },
+          "gap": 18,
+          "padding": [
+            0,
+            20
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "s5Za2e",
+              "name": "Brand",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": 220,
+              "content": "RadishFlow Studio",
+              "fontFamily": "Inter",
+              "fontSize": 18,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "text",
+              "id": "IRCTu",
+              "name": "Context title",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": 360,
+              "content": "Blank Project",
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "frame",
+              "id": "FKoPv",
+              "name": "Build chip",
+              "width": 140,
+              "height": 28,
+              "fill": "#EEF4FF",
+              "cornerRadius": 14,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "TACbv",
+                  "name": "Build chip label",
+                  "fill": "#2563EB",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "development build",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "Medium"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "JFHWs",
+              "name": "Run status chip",
+              "width": 130,
+              "height": 28,
+              "fill": "#FFF4E5",
+              "cornerRadius": 14,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "npHui",
+                  "name": "Run status chip label",
+                  "fill": "#B45309",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Blocked",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "Medium"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "MBXUK",
+          "x": 0,
+          "y": 56,
+          "name": "Project palette rail",
+          "width": 288,
+          "height": 704,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "C59GxK",
+              "name": "Left tabs",
+              "fill": "#2563EB",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "项目    放置",
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": "Medium"
+            },
+            {
+              "type": "text",
+              "id": "XMzp8",
+              "name": "Package",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Package\nbinary-hydrocarbon-lite-v1",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "text",
+              "id": "RQR87",
+              "name": "Components",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Components\nmethane\nethane",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "text",
+              "id": "quUzD",
+              "name": "Place units",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Place\nFeed\nMixer\nCooler\nValve\nFlash Drum",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "wIPXU",
+          "x": 288,
+          "y": 56,
+          "name": "Canvas stage",
+          "width": 816,
+          "height": 704,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "h8durG",
+              "name": "Canvas header",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Flowsheet canvas",
+              "fontFamily": "Inter",
+              "fontSize": 18,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "frame",
+              "id": "w944gs",
+              "name": "Canvas body",
+              "width": "fill_container",
+              "height": 560,
+              "fill": "#FAFCFE",
+              "cornerRadius": 8,
+              "stroke": "#D8DEE8",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Ns1p5",
+                  "x": 48,
+                  "y": 190,
+                  "name": "Unit Feed",
+                  "width": 110,
+                  "height": 72,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#D8DEE8",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "hVv5g",
+                      "name": "Unit label Feed",
+                      "fill": "#182233",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Feed",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "SemiBold"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "EyOLp",
+                  "x": 250,
+                  "y": 190,
+                  "name": "Unit Cooler",
+                  "width": 110,
+                  "height": 72,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#D8DEE8",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "C3HDz9",
+                      "name": "Unit label Cooler",
+                      "fill": "#182233",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Cooler",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "SemiBold"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "S8JNC",
+                  "x": 500,
+                  "y": 178,
+                  "name": "Unit Flash Drum",
+                  "width": 130,
+                  "height": 72,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#B45309",
+                  "strokeWidth": 2,
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "estNa",
+                      "name": "Unit label Flash Drum",
+                      "fill": "#182233",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Flash Drum",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "SemiBold"
+                    }
+                  ]
+                },
+                {
+                  "type": "rectangle",
+                  "id": "auSfw",
+                  "x": 158,
+                  "y": 226,
+                  "name": "Stream feed to cooler",
+                  "fill": "#2563EB",
+                  "width": 92,
+                  "height": 2
+                },
+                {
+                  "type": "rectangle",
+                  "id": "QWqK1",
+                  "x": 360,
+                  "y": 226,
+                  "name": "Stream cooler to flash",
+                  "fill": "#2563EB",
+                  "width": 140,
+                  "height": 2
+                },
+                {
+                  "type": "rectangle",
+                  "id": "s2ccc",
+                  "x": 630,
+                  "y": 200,
+                  "name": "Liquid outlet line",
+                  "fill": "#15803D",
+                  "width": 90,
+                  "height": 2
+                },
+                {
+                  "type": "rectangle",
+                  "id": "IgVvC",
+                  "x": 630,
+                  "y": 252,
+                  "name": "Vapor outlet line",
+                  "fill": "#B45309",
+                  "width": 90,
+                  "height": 2
+                },
+                {
+                  "type": "text",
+                  "id": "FAJCQ",
+                  "x": 174,
+                  "y": 202,
+                  "name": "Stream label one",
+                  "fill": "#667085",
+                  "textGrowth": "fixed-width",
+                  "width": 160,
+                  "content": "stream-feed-1-outlet",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "text",
+                  "id": "BGVnE",
+                  "x": 376,
+                  "y": 202,
+                  "name": "Stream label two",
+                  "fill": "#667085",
+                  "textGrowth": "fixed-width",
+                  "width": 170,
+                  "content": "stream-cooler-1-outlet",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "frame",
+                  "id": "TgxY8",
+                  "x": 478,
+                  "y": 118,
+                  "name": "Attention chip",
+                  "width": 190,
+                  "height": 28,
+                  "fill": "#FFF4E5",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "norrJ",
+                      "name": "Attention chip label",
+                      "fill": "#B45309",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "needs outlet temperature",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "w1sm8",
+          "x": 1104,
+          "y": 56,
+          "name": "Inspector rail",
+          "width": 336,
+          "height": 704,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "PBnu0",
+              "name": "Inspector target",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Unit flash-1",
+              "fontFamily": "Inter",
+              "fontSize": 16,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "text",
+              "id": "g9t3Fc",
+              "name": "Inspector fields",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "outlet_temperature_k   300 K   Draft\noutlet_pressure_pa      85000 Pa",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "text",
+              "id": "aLsJw",
+              "name": "Ports",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Ports\ninlet connected\noutlet connected",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "frame",
+              "id": "vpKIg",
+              "name": "Commit field",
+              "width": 260,
+              "height": 36,
+              "fill": "#2563EB",
+              "cornerRadius": 6,
+              "stroke": "#2563EB",
+              "strokeWidth": 1,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "N3b3j5",
+                  "name": "Commit field label",
+                  "fill": "#FFFFFF",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Commit temperature",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Medium"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "L33wEr",
+          "x": 0,
+          "y": 760,
+          "name": "Bottom Drawer",
+          "width": 1440,
+          "height": 200,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "o3U0L",
+              "name": "Bottom tabs",
+              "width": "fill_container",
+              "height": 30,
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "k4tnS",
+                  "name": "Tab Messages",
+                  "width": 130,
+                  "height": 28,
+                  "fill": "#EAF0FF",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "E8zPpq",
+                      "name": "Tab Messages label",
+                      "fill": "#2563EB",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Messages",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "W9Et1u",
+                  "name": "Tab Diagnostics",
+                  "width": 130,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "p55JtO",
+                      "name": "Tab Diagnostics label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Diagnostics",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "k1a2x",
+                  "name": "Tab Results Table",
+                  "width": 130,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "WtDdN",
+                      "name": "Tab Results Table label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Results Table",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "m5xc5s",
+              "name": "Message row READY",
+              "width": "fill_container",
+              "height": 30,
+              "fill": "#FAFBFC",
+              "cornerRadius": 6,
+              "gap": 12,
+              "padding": [
+                0,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "j5Lii",
+                  "name": "Domain READY",
+                  "width": 86,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "mXSFU",
+                      "name": "Domain READY label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "READY",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Mi0km",
+                  "name": "Message READY",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": 720,
+                  "content": "模型输入未完成：Flash Drum 需要提交出口温度",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "text",
+                  "id": "hUtzY",
+                  "name": "Action READY",
+                  "fill": "#2563EB",
+                  "textGrowth": "fixed-width",
+                  "width": 160,
+                  "content": "Focus field",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Medium"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "D3R16d",
+              "name": "Message row RUN",
+              "width": "fill_container",
+              "height": 30,
+              "fill": "#FAFBFC",
+              "cornerRadius": 6,
+              "gap": 12,
+              "padding": [
+                0,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "JYRd7",
+                  "name": "Domain RUN",
+                  "width": 86,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Q0ptkz",
+                      "name": "Domain RUN label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "RUN",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "j1qGeS",
+                  "name": "Message RUN",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": 720,
+                  "content": "正式求解尚未开始",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "text",
+                  "id": "myr26",
+                  "name": "Action RUN",
+                  "fill": "#2563EB",
+                  "textGrowth": "fixed-width",
+                  "width": 160,
+                  "content": "Review inputs",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Medium"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "xMLiy",
+      "x": 4560,
+      "y": 0,
+      "name": "Workbench - Results",
+      "clip": true,
+      "width": 1440,
+      "height": 960,
+      "fill": "#F5F7FA",
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "BFuvM",
+          "x": 0,
+          "y": 0,
+          "name": "App Bar",
+          "width": 1440,
+          "height": 56,
+          "fill": "#FFFFFF",
+          "stroke": "#D8DEE8",
+          "strokeWidth": {
+            "bottom": 1
+          },
+          "gap": 18,
+          "padding": [
+            0,
+            20
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "qz1Id",
+              "name": "Brand",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": 220,
+              "content": "RadishFlow Studio",
+              "fontFamily": "Inter",
+              "fontSize": 18,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "text",
+              "id": "f0LIE9",
+              "name": "Context title",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": 360,
+              "content": "Blank Project",
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "frame",
+              "id": "SWZxj",
+              "name": "Build chip",
+              "width": 140,
+              "height": 28,
+              "fill": "#EEF4FF",
+              "cornerRadius": 14,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "LnHqD",
+                  "name": "Build chip label",
+                  "fill": "#2563EB",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "development build",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "Medium"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "d2BT1",
+              "name": "Run status chip",
+              "width": 130,
+              "height": 28,
+              "fill": "#EAF7EE",
+              "cornerRadius": 14,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "HJf2g",
+                  "name": "Run status chip label",
+                  "fill": "#15803D",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Converged",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "Medium"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "gYw6R",
+          "x": 0,
+          "y": 56,
+          "name": "Project palette rail",
+          "width": 288,
+          "height": 704,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "km6kx",
+              "name": "Left tabs",
+              "fill": "#2563EB",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "项目    放置",
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": "Medium"
+            },
+            {
+              "type": "text",
+              "id": "eTIn7",
+              "name": "Package",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Package\nbinary-hydrocarbon-lite-v1",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "text",
+              "id": "W6SO2",
+              "name": "Components",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Components\nmethane\nethane",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "text",
+              "id": "YiFlY",
+              "name": "Place units",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Place\nFeed\nMixer\nCooler\nValve\nFlash Drum",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "g3anP",
+          "x": 288,
+          "y": 56,
+          "name": "Canvas stage",
+          "width": 816,
+          "height": 704,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "FfpA1",
+              "name": "Canvas header",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Flowsheet canvas",
+              "fontFamily": "Inter",
+              "fontSize": 18,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "frame",
+              "id": "ZOLrK",
+              "name": "Canvas body",
+              "width": "fill_container",
+              "height": 560,
+              "fill": "#FAFCFE",
+              "cornerRadius": 8,
+              "stroke": "#D8DEE8",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "reVfx",
+                  "x": 48,
+                  "y": 190,
+                  "name": "Unit Feed",
+                  "width": 110,
+                  "height": 72,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#D8DEE8",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HDsjn",
+                      "name": "Unit label Feed",
+                      "fill": "#182233",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Feed",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "SemiBold"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Zsg7G",
+                  "x": 250,
+                  "y": 190,
+                  "name": "Unit Cooler",
+                  "width": 110,
+                  "height": 72,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#D8DEE8",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "C1H1ii",
+                      "name": "Unit label Cooler",
+                      "fill": "#182233",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Cooler",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "SemiBold"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "CQVIP",
+                  "x": 500,
+                  "y": 178,
+                  "name": "Unit Flash Drum",
+                  "width": 130,
+                  "height": 72,
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 8,
+                  "stroke": "#D8DEE8",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "q5Poh",
+                      "name": "Unit label Flash Drum",
+                      "fill": "#182233",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Flash Drum",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "SemiBold"
+                    }
+                  ]
+                },
+                {
+                  "type": "rectangle",
+                  "id": "kXnNJ",
+                  "x": 158,
+                  "y": 226,
+                  "name": "Stream feed to cooler",
+                  "fill": "#2563EB",
+                  "width": 92,
+                  "height": 2
+                },
+                {
+                  "type": "rectangle",
+                  "id": "UeqOH",
+                  "x": 360,
+                  "y": 226,
+                  "name": "Stream cooler to flash",
+                  "fill": "#2563EB",
+                  "width": 140,
+                  "height": 2
+                },
+                {
+                  "type": "rectangle",
+                  "id": "aeEIB",
+                  "x": 630,
+                  "y": 200,
+                  "name": "Liquid outlet line",
+                  "fill": "#15803D",
+                  "width": 90,
+                  "height": 2
+                },
+                {
+                  "type": "rectangle",
+                  "id": "BWYyb",
+                  "x": 630,
+                  "y": 252,
+                  "name": "Vapor outlet line",
+                  "fill": "#B45309",
+                  "width": 90,
+                  "height": 2
+                },
+                {
+                  "type": "text",
+                  "id": "H4Ezbv",
+                  "x": 174,
+                  "y": 202,
+                  "name": "Stream label one",
+                  "fill": "#667085",
+                  "textGrowth": "fixed-width",
+                  "width": 160,
+                  "content": "stream-feed-1-outlet",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "text",
+                  "id": "bRErO",
+                  "x": 376,
+                  "y": 202,
+                  "name": "Stream label two",
+                  "fill": "#667085",
+                  "textGrowth": "fixed-width",
+                  "width": 170,
+                  "content": "stream-cooler-1-outlet",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "frame",
+                  "id": "d3fag7",
+                  "x": 60,
+                  "y": 278,
+                  "name": "Result source badge",
+                  "width": 74,
+                  "height": 28,
+                  "fill": "#EEF4FF",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "b0TL1",
+                      "name": "Result source badge label",
+                      "fill": "#2563EB",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "source",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "vMApX",
+                  "x": 262,
+                  "y": 278,
+                  "name": "Result intermediate badge",
+                  "width": 112,
+                  "height": 28,
+                  "fill": "#EEF4FF",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "UbTUB",
+                      "name": "Result intermediate badge label",
+                      "fill": "#2563EB",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "intermediate",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "AtXaz",
+                  "x": 500,
+                  "y": 278,
+                  "name": "Result terminal badge",
+                  "width": 140,
+                  "height": 28,
+                  "fill": "#EAF7EE",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "bHnSe",
+                      "name": "Result terminal badge label",
+                      "fill": "#15803D",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "terminal outlets",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "nN70V",
+          "x": 1104,
+          "y": 56,
+          "name": "Result Inspector",
+          "width": 336,
+          "height": 704,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "sys91",
+              "name": "Result target",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Selected stream\nstream-cooler-1-outlet",
+              "fontFamily": "Inter",
+              "fontSize": 14,
+              "fontWeight": "SemiBold"
+            },
+            {
+              "type": "text",
+              "id": "TZ3o5",
+              "name": "Result summary",
+              "fill": "#182233",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "T 286 K\nP 90000 Pa\nF 1.0 mol/s\nH available",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "text",
+              "id": "kyBQw",
+              "name": "Composition",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Composition\nmethane 0.25\nethane 0.75",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "text",
+              "id": "mh4XH",
+              "name": "Unit references",
+              "fill": "#667085",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Produced by cooler-1\nConsumed by flash-1",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "Regular"
+            },
+            {
+              "type": "frame",
+              "id": "o7iOZ",
+              "name": "Export snapshot",
+              "width": 260,
+              "height": 36,
+              "fill": "#EEF3F8",
+              "cornerRadius": 6,
+              "stroke": "#D8DEE8",
+              "strokeWidth": 1,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "tUh0l",
+                  "name": "Export snapshot label",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Export current snapshot",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Medium"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "K3dR62",
+          "x": 0,
+          "y": 760,
+          "name": "Bottom Drawer",
+          "width": 1440,
+          "height": 200,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "frame",
+              "id": "O3BY2",
+              "name": "Bottom tabs",
+              "width": "fill_container",
+              "height": 30,
+              "gap": 8,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "M7V6e",
+                  "name": "Tab Messages",
+                  "width": 130,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "A0z9K8",
+                      "name": "Tab Messages label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Messages",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wcHsc",
+                  "name": "Tab Diagnostics",
+                  "width": 130,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "wpakq",
+                      "name": "Tab Diagnostics label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Diagnostics",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "a71ALL",
+                  "name": "Tab Results Table",
+                  "width": 130,
+                  "height": 28,
+                  "fill": "#EAF0FF",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "SXHy1",
+                      "name": "Tab Results Table label",
+                      "fill": "#2563EB",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Results Table",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "KLRGM",
+              "name": "Message row STREAMS",
+              "width": "fill_container",
+              "height": 30,
+              "fill": "#FAFBFC",
+              "cornerRadius": 6,
+              "gap": 12,
+              "padding": [
+                0,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Y7SQd",
+                  "name": "Domain STREAMS",
+                  "width": 86,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "fo5u4",
+                      "name": "Domain STREAMS label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "STREAMS",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "WCAGO",
+                  "name": "Message STREAMS",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": 720,
+                  "content": "source / intermediate / terminal streams visible",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "text",
+                  "id": "b7xe1T",
+                  "name": "Action STREAMS",
+                  "fill": "#2563EB",
+                  "textGrowth": "fixed-width",
+                  "width": 160,
+                  "content": "Export",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Medium"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "FQMUC",
+              "name": "Message row UNITS",
+              "width": "fill_container",
+              "height": 30,
+              "fill": "#FAFBFC",
+              "cornerRadius": 6,
+              "gap": 12,
+              "padding": [
+                0,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "seONc",
+                  "name": "Domain UNITS",
+                  "width": 86,
+                  "height": 28,
+                  "fill": "#EEF3F8",
+                  "cornerRadius": 14,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "jShYs",
+                      "name": "Domain UNITS label",
+                      "fill": "#667085",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "UNITS",
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "Medium"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Dkzgt",
+                  "name": "Message UNITS",
+                  "fill": "#182233",
+                  "textGrowth": "fixed-width",
+                  "width": 720,
+                  "content": "cooler-1 and flash-1 converged",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Regular"
+                },
+                {
+                  "type": "text",
+                  "id": "wBMJ8",
+                  "name": "Action UNITS",
+                  "fill": "#2563EB",
+                  "textGrowth": "fixed-width",
+                  "width": 160,
+                  "content": "Inspect",
+                  "fontFamily": "Inter",
+                  "fontSize": 13,
+                  "fontWeight": "Medium"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "themes": {
+    "Mode": [
+      "Light",
+      "Dark"
+    ]
+  },
+  "variables": {
+    "--sidebar": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#E7E8E5"
+        },
+        {
+          "value": "#18181b",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--sidebar-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#666666"
+        },
+        {
+          "value": "#fafafa",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--sidebar-primary": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#18181b"
+        },
+        {
+          "value": "#18181b",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--sidebar-primary-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#fafafa"
+        },
+        {
+          "value": "#fafafa",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--sidebar-border": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#CBCCC9"
+        },
+        {
+          "value": "#ffffff1a",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--sidebar-accent": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#CBCCC9"
+        },
+        {
+          "value": "#2a2a30",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--sidebar-accent-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#18181b"
+        },
+        {
+          "value": "#fafafa",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--sidebar-ring": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#71717a"
+        },
+        {
+          "value": "#71717a",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--background": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#F2F3F0"
+        },
+        {
+          "value": "#111111",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#111111"
+        },
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--card": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFFFF"
+        },
+        {
+          "value": "#1A1A1A",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--card-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#111111"
+        },
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--popover": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFFFF"
+        },
+        {
+          "value": "#1A1A1A",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--popover-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#111111"
+        },
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--primary": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FF8400"
+        },
+        {
+          "value": "#FF8400",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--primary-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#111111"
+        },
+        {
+          "value": "#111111",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--secondary": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#E7E8E5"
+        },
+        {
+          "value": "#2E2E2E",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--secondary-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#111111"
+        },
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--muted": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#F2F3F0"
+        },
+        {
+          "value": "#2E2E2E",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--muted-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#666666"
+        },
+        {
+          "value": "#B8B9B6",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--accent": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#F2F3F0"
+        },
+        {
+          "value": "#111111",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--accent-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#111111"
+        },
+        {
+          "value": "#F2F3F0",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--destructive": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#D93C15"
+        },
+        {
+          "value": "#FF5C33",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--border": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#CBCCC9"
+        },
+        {
+          "value": "#2E2E2E",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--input": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#CBCCC9"
+        },
+        {
+          "value": "#2E2E2E",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--ring": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#666666"
+        },
+        {
+          "value": "#666666",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--white": {
+      "type": "color",
+      "value": "#FFFFFF"
+    },
+    "--black": {
+      "type": "color",
+      "value": "#000000"
+    },
+    "--font-primary": {
+      "type": "string",
+      "value": "JetBrains Mono"
+    },
+    "--font-secondary": {
+      "type": "string",
+      "value": "Geist"
+    },
+    "--radius-none": {
+      "type": "number",
+      "value": 0
+    },
+    "--radius-pill": {
+      "type": "number",
+      "value": 999
+    },
+    "--color-success": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#DFE6E1"
+        },
+        {
+          "value": "#222924",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--color-success-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#004D1A"
+        },
+        {
+          "value": "#B6FFCE",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--color-warning": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#E9E3D8"
+        },
+        {
+          "value": "#291C0F",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--color-warning-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#804200"
+        },
+        {
+          "value": "#FF8400",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--color-error": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#E5DCDA"
+        },
+        {
+          "value": "#24100B",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--color-error-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#8C1C00"
+        },
+        {
+          "value": "#FF5C33",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--color-info": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#DFDFE6"
+        },
+        {
+          "value": "#222229",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--color-info-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#000066"
+        },
+        {
+          "value": "#B2B2FF",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--radius-m": {
+      "type": "number",
+      "value": 16
+    }
+  }
+}

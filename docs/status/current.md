@@ -31,6 +31,7 @@
 - **通用小流程建模 v1 当前阶段基线验证已通过：2026-06-02 真实环境 `./scripts/check-repo.sh` 通过。**
 - **通用小流程建模 v1 阶段收口复核已通过：普通空白项目 `Feed -> Flash Drum`、`Feed -> Cooler -> Flash Drum`、`Feed -> Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 均已完成显式输入、运行、保存、重开、rerun 与结果审阅复核，未发现 blocker。**
 - **下一阶段切到 Studio UI 专题设计前置：先整理信息架构、主工作流、端点清单和设计稿规则，再进入代码实现；不在现有 UI 上继续叠加零散补丁。**
+- **Studio UI P0 设计稿已落库：`docs/architecture/designs/studio-client-main.pen` 已按专题命名保存，下一步先由 Pencil 打开评审信息架构，再决定是否进入 P1 单元模块 UI 或修正 P0 brief。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前开发策略

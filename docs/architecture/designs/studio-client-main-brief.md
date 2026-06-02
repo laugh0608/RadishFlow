@@ -4,11 +4,11 @@
 
 ## 用途
 
-用途：为 P0 `studio-client-main.pen` 信息架构稿提供可评审的文字 brief，确保 Pencil 设计稿创建前已经明确页面、状态来源、主工作流和暂不纳入项。  
+用途：为 P0 `studio-client-main.pen` 信息架构稿提供可评审的文字 brief，确保 Pencil 设计稿创建与评审时已经明确页面、状态来源、主工作流和暂不纳入项。  
 读者：准备绘制或评审 `docs/architecture/designs/studio-client-main.pen` 的设计协作者。  
 不包含：`.pen` 设计稿本体、视觉 token、实现代码、完整控件规格或完整交互动画。
 
-本 brief 对应 `docs/architecture/studio-ui-topic-plan.md` 中的 P0 Studio 客户端本体端点。`.pen` 文件仍应通过 Pencil MCP 工具创建和维护；本文件只作为设计前置材料和评审索引。
+本 brief 对应 `docs/architecture/studio-ui-topic-plan.md` 中的 P0 Studio 客户端本体端点。`.pen` 文件仍应通过 Pencil MCP 工具创建、维护和验证；本文件只作为设计前置材料和评审索引。
 
 ## 设计目标
 
