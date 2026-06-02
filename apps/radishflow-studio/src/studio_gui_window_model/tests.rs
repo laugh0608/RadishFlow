@@ -2243,10 +2243,15 @@ fn studio_gui_window_model_surfaces_feed_source_parameters() {
 
     assert_eq!(temperature_field.label, "Source temperature (K)");
     assert_eq!(temperature_field.value_kind_label, "Number");
-    assert_eq!(temperature_field.status_label, "Synced");
+    assert_eq!(temperature_field.status_label, "Draft");
+    assert!(temperature_field.is_dirty);
     assert_eq!(
         temperature_field.draft_update_command_id,
         "inspector.update_stream_draft:unit:feed-1:outlet_temperature_k"
+    );
+    assert_eq!(
+        temperature_field.commit_command_id.as_deref(),
+        Some("inspector.commit_stream_draft:unit:feed-1:outlet_temperature_k")
     );
     assert!(temperature_field.constraint_text.as_deref().is_some_and(
         |text| text.contains("Unit K")
@@ -2256,10 +2261,15 @@ fn studio_gui_window_model_surfaces_feed_source_parameters() {
 
     assert_eq!(pressure_field.label, "Source pressure (Pa)");
     assert_eq!(pressure_field.value_kind_label, "Number");
-    assert_eq!(pressure_field.status_label, "Synced");
+    assert_eq!(pressure_field.status_label, "Draft");
+    assert!(pressure_field.is_dirty);
     assert_eq!(
         pressure_field.draft_update_command_id,
         "inspector.update_stream_draft:unit:feed-1:outlet_pressure_pa"
+    );
+    assert_eq!(
+        pressure_field.commit_command_id.as_deref(),
+        Some("inspector.commit_stream_draft:unit:feed-1:outlet_pressure_pa")
     );
     assert!(
         pressure_field

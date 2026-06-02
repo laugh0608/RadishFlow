@@ -278,7 +278,8 @@ fn runtime_panel_renders_unit_parameter_fields_as_compact_localized_rows() {
             && active_texts.iter().any(|text| text == "Pa")
             && active_texts.iter().any(|text| text == "300")
             && active_texts.iter().any(|text| text == "120000")
-            && active_texts.iter().any(|text| text == "已同步"),
+            && active_texts.iter().any(|text| text == "草稿")
+            && active_texts.iter().any(|text| text == "应用"),
         "expected compact localized feed parameter rows, rendered texts: {active_texts:?}"
     );
     assert!(
