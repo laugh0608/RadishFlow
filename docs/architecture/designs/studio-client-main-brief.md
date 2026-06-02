@@ -33,6 +33,30 @@
 
 P0 不拆单独移动端 frame，不画控制面后台 frame。
 
+## 全局线框规格
+
+首版线框稿优先表达信息架构，采用低保真浅色框架，不做最终视觉：
+
+- Frame 背景：`#F5F7FA`。
+- 主要面板背景：`#FFFFFF`。
+- 分隔线：`#D8DEE8`。
+- 主强调：克制蓝色，仅用于主动作和运行状态。
+- 字体：系统 sans-serif；中文标签可用现有 Studio 中文文案。
+- 圆角：常规面板 6-8 px，按钮 6 px。
+- 阴影：不在主面板使用，弹层或菜单后续再定。
+
+桌面 frame 使用 `1440 x 960`，建议固定区域：
+
+| 区域 | X | Y | W | H | 说明 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| App Bar | 0 | 0 | 1440 | 56 | 全局标题、项目状态、运行主命令 |
+| Left Rail | 0 | 56 | 288 | 704 | Home start / Workbench project and palette |
+| Main Stage | 288 | 56 | 816 | 704 | Home 列表或 Workbench Canvas |
+| Right Rail | 1104 | 56 | 336 | 704 | Environment / Inspector / Result |
+| Bottom Drawer | 0 | 760 | 1440 | 200 | Messages / Diagnostics / Results Table |
+
+线框稿中应保留 frame 名称、区域名和状态 chip，避免放长篇说明。具体字段解释进入 brief 或后续评审记录，不塞进画布。
+
 ## Home - Ready
 
 ### 布局
@@ -60,6 +84,22 @@ P0 不拆单独移动端 frame，不画控制面后台 frame。
 - 完整小案例 checklist。
 - 未来 release / package / installer 状态。
 
+### 线框内容
+
+| 区域 | 内容 |
+| --- | --- |
+| App Bar | `RadishFlow Studio`、`development build`、`Local ready`、`Signed out`、`Settings` |
+| Left Rail | 主按钮 `新建项目`；次级按钮 `打开项目`、`打开示例项目`；低权重链接 `创建 Mixer-Flash 小案例`、`创建 Heater-Flash 小案例` |
+| Main Stage | 上半区 `最近项目` 列表；下半区 `示例项目` 列表；每行包含名称、路径 / 来源、package、状态 chip |
+| Right Rail | `Client`、`Server`、`Device` 三个状态 section；每个 section 2-3 行摘要 |
+| Bottom Drawer | Messages 列表，包含 severity、domain、summary、action |
+
+示例行建议：
+
+- Recent：`Blank Project` / `binary-hydrocarbon-lite-v1` / `Modified`。
+- Example：`Feed -> Cooler -> Flash Drum` / `methane, ethane` / `Ready`。
+- Message：`PACKAGE` / `内置物性包缓存可用` / `View packages`。
+
 ## Workbench - Modeling
 
 ### 布局
@@ -84,6 +124,33 @@ P0 不拆单独移动端 frame，不画控制面后台 frame。
 - Inspector 字段必须显示单位、草稿状态、提交命令和约束提示。
 - 运行状态和保存状态放在顶部，不散落到多个面板。
 
+### 线框内容
+
+| 区域 | 内容 |
+| --- | --- |
+| App Bar | 项目名 `Blank Project`、保存状态 `Unsaved`、`运行`、`保存`、run status `Ready to run` |
+| Left Rail | Tabs：`项目` / `放置`；项目 tab 显示 package、components；放置 tab 显示 Feed、Mixer、Cooler、Valve、Flash Drum |
+| Main Stage | Canvas 网格；单元块 Feed、Cooler、Flash Drum；流股线 `stream-feed-1-outlet`、`stream-cooler-1-outlet`、liquid / vapor outlets；suggestion chip |
+| Right Rail | Inspector target：`Unit cooler-1`；字段 `outlet_temperature_k`、`outlet_pressure_pa`；Ports；Actions |
+| Bottom Drawer | Messages tab active；短行显示最近提交、suggestion 接受、保存状态 |
+
+Canvas 示例结构：
+
+```text
+Feed ── stream-feed-1-outlet ── Cooler ── stream-cooler-1-outlet ── Flash Drum
+                                                           ├─ stream-flash-1-liquid
+                                                           └─ stream-flash-1-vapor
+```
+
+Inspector 字段行应包含：
+
+| 字段 | 显示 |
+| --- | --- |
+| `outlet_temperature_k` | label、input、unit `K`、state `Draft` / `Synced`、commit icon |
+| `outlet_pressure_pa` | label、input、unit `Pa`、constraint `<= inlet pressure`、commit icon |
+| `Ports` | inlet connected、outlet connected |
+| `Related` | latest diagnostics empty、result unavailable before run |
+
 ## Workbench - Readiness
 
 ### 场景
@@ -106,6 +173,25 @@ P0 不拆单独移动端 frame，不画控制面后台 frame。
 ### 边界
 
 不把结构性连接、拓扑、非法旧项目或求解阶段参数失败画成 readiness。它们继续走正式 Run Panel 诊断 / recovery。
+
+### 线框内容
+
+| 区域 | 内容 |
+| --- | --- |
+| App Bar | run status `Blocked`；primary action 保持 `运行`，状态摘要说明 `Modeling inputs not ready` |
+| Left Rail | 保持当前项目 / 放置上下文，不跳转到 checklist |
+| Main Stage | Canvas 中目标对象显示 attention outline，例如 `flash-1` |
+| Right Rail | Inspector 聚焦 `Unit flash-1`；缺失字段 `outlet_temperature_k` 显示可提交 displayed default |
+| Bottom Drawer | Messages active；notice 标题 `模型输入未完成`；detail 指向 `Flash Drum 出口温度` |
+
+Readiness notice 线框文案只保留短句：
+
+```text
+模型输入未完成
+Flash Drum flash-1 需要提交出口温度。
+```
+
+字段提交后，frame 注释应说明下一状态推进到 `outlet_pressure_pa`，但不需要再画一个额外 frame。
 
 ## Workbench - Results
 
@@ -138,6 +224,33 @@ P0 不拆单独移动端 frame，不画控制面后台 frame。
 - stale notice 显示旧 snapshot 和当前 document revision 已不一致。
 - 主动作指向 rerun。
 - 旧结果不驱动导出或 Result Inspector。
+
+### 线框内容
+
+| 区域 | 内容 |
+| --- | --- |
+| App Bar | run status `Converged`、snapshot id short、`Run again`、`Save` |
+| Left Rail | 项目对象列表可继续导航；选中 stream / unit 同步 Canvas focus |
+| Main Stage | Canvas 显示结果 badge：source、intermediate、terminal；不把完整结果数字塞进画布 |
+| Right Rail | Result Inspector；stream selector、unit selector、summary rows、phase rows |
+| Bottom Drawer | Results Table active；Streams / Units / Diagnostics tabs；Export current snapshot |
+
+Result Inspector 示例内容：
+
+| 区块 | 内容 |
+| --- | --- |
+| Selected stream | `stream-cooler-1-outlet` |
+| Summary | `T K`、`P Pa`、`F mol/s`、`H J/mol` |
+| Composition | methane、ethane |
+| Phase | overall、liquid / vapor when present |
+| Unit references | consumed by `flash-1`、produced by `cooler-1` |
+
+Stale notice 可作为 Results frame 内的右栏局部 variant 标注，不需要新增主 frame：
+
+```text
+结果已过期
+当前项目已编辑，请重新运行以查看最新结果。
+```
 
 ## 命令与状态映射
 
