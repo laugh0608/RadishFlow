@@ -44,6 +44,7 @@ P0 不拆单独移动端 frame，不画控制面后台 frame。
 - 字体：系统 sans-serif；中文标签可用现有 Studio 中文文案。
 - 圆角：常规面板 6-8 px，按钮 6 px。
 - 阴影：不在主面板使用，弹层或菜单后续再定。
+- 评审时同时对照 `docs/architecture/assets/studio-ui/baseline/radishflow-home-dashboard-concept-v2-20260516.png` 和 `docs/architecture/assets/studio-ui/baseline/radishflow-workbench-concept.png`，让 Home / Workbench 的分区、信息密度和状态层级逐步靠近这两张基线图。
 
 桌面 frame 使用 `1440 x 960`，建议固定区域：
 

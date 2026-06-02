@@ -31,7 +31,7 @@
 - **通用小流程建模 v1 当前阶段基线验证已通过：2026-06-02 真实环境 `./scripts/check-repo.sh` 通过。**
 - **通用小流程建模 v1 阶段收口复核已通过：普通空白项目 `Feed -> Flash Drum`、`Feed -> Cooler -> Flash Drum`、`Feed -> Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 均已完成显式输入、运行、保存、重开、rerun 与结果审阅复核，未发现 blocker。**
 - **下一阶段切到 Studio UI 专题设计前置：先整理信息架构、主工作流、端点清单和设计稿规则，再进入代码实现；不在现有 UI 上继续叠加零散补丁。**
-- **Studio UI P0 设计稿已落库：`docs/architecture/designs/studio-client-main.pen` 已按专题命名保存，下一步先由 Pencil 打开评审信息架构，再决定是否进入 P1 单元模块 UI 或修正 P0 brief。**
+- **Studio UI P0 设计稿已落库：`docs/architecture/designs/studio-client-main.pen` 已按专题命名保存，下一步先由 Pencil 打开评审信息架构，并让 Home / Workbench UI 朝两张 `baseline/` 视觉基线靠近，再决定是否进入 P1 单元模块 UI 或修正 P0 brief。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前开发策略
@@ -69,7 +69,7 @@
 Studio UI 专题设计前置目标：
 
 - 先基于 `docs/architecture/studio-ui-topic-plan.md`、`docs/architecture/studio-ui-design-guidelines.md` 与 `docs/architecture/ui-inspiration-reference.md` 整理 Studio 客户端本体、单元模块 UI、服务端 / 控制面 UI、移动端或只读视图的端点边界。
-- 优先产出信息架构、主工作流、状态模型、页面职责和 `.pen` 设计稿命名 / 保存规则；设计稿评审通过后再进入实现。
+- 优先产出信息架构、主工作流、状态模型、页面职责和 `.pen` 设计稿命名 / 保存规则；P0 评审时同时对照两张 `baseline/` 视觉基线，设计稿评审通过后再进入实现。
 - Studio 客户端本体优先覆盖 Home、Workbench、Canvas、Inspector、Result、Package / Auth 的职责关系，不提前扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
 - 单元模块 UI 优先统一参数、端口、运行结果、诊断和帮助入口的界面规则，不把每个单元做成一套临时面板。
 - 任何代码实现都必须继续遵守 presentation / command / state 边界；视觉优化不得绕过正式 UI 模型堆 shell 私有状态。

@@ -179,7 +179,7 @@ docs/architecture/designs/studio-client-main-brief.md
 
 1. 评审本文档的端点边界和暂不纳入项。
 2. 创建并评审 `studio-client-main.pen` 的信息架构稿。
-3. 对照 `docs/architecture/studio-ui-design-guidelines.md` 和 `docs/architecture/ui-inspiration-reference.md`，确认主工作流和状态来源没有冲突。
+3. 对照 `docs/architecture/studio-ui-design-guidelines.md`、`docs/architecture/assets/studio-ui/baseline/` 和 `docs/architecture/ui-inspiration-reference.md`，确认主工作流、状态来源和 Home / Workbench 视觉方向没有冲突。
 4. 决定是否拆分 P0 子稿。
 5. 创建并评审 `unit-module-panel.pen`。
 6. 仅在 P0 / P1 稳定后，评估 P2 是否需要进入设计稿细化。
