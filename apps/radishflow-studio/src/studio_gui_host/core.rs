@@ -1091,14 +1091,42 @@ fn unit_number_property_field(
     label: &str,
 ) -> Option<StudioGuiInspectorTargetFieldSnapshot> {
     let original = rf_ui::unit_inspector_parameter_value(flowsheet, &unit.id, &field)?;
-    let mut property_field = inspector_number_field(
-        drafts,
-        rf_ui::unit_inspector_draft_key(&unit.id, &field),
-        label,
-        original,
-    );
+    let key = rf_ui::unit_inspector_draft_key(&unit.id, &field);
+    let mut property_field = inspector_number_field(drafts, key.clone(), label, original);
+    if unit_parameter_display_value_needs_explicit_commit(flowsheet, unit, drafts, &field, original)
+    {
+        property_field.is_dirty = true;
+        property_field.validation = StudioGuiInspectorTargetFieldValidationSnapshot::Valid;
+        property_field.commit_command_id = Some(crate::inspector_draft_commit_command_id(&key));
+        property_field.discard_command_id = None;
+    }
     property_field.constraint_text = Some(unit_parameter_constraint_text(flowsheet, unit, &field));
     Some(property_field)
+}
+
+fn unit_parameter_display_value_needs_explicit_commit(
+    flowsheet: &rf_model::Flowsheet,
+    unit: &rf_model::UnitNode,
+    drafts: &rf_ui::InspectorDraftState,
+    field: &rf_ui::UnitInspectorDraftField,
+    value: f64,
+) -> bool {
+    let key = rf_ui::unit_inspector_draft_key(&unit.id, field);
+    if drafts.fields.contains_key(&key) || rf_ui::unit_inspector_parameter_is_explicit(unit, field)
+    {
+        return false;
+    }
+    if !value.is_finite() || value <= 0.0 {
+        return false;
+    }
+    if matches!(field, rf_ui::UnitInspectorDraftField::OutletPressurePa)
+        && unit_outlet_pressure_cannot_exceed_inlet(unit)
+    {
+        return connected_inlet_pressure_limit(flowsheet, unit)
+            .map(|pressure_pa| value <= pressure_pa)
+            .unwrap_or(true);
+    }
+    true
 }
 
 fn stream_property_fields(

@@ -78,6 +78,25 @@ fn render_alpha_workbench_texts(app: &mut ReadyAppState) -> Vec<String> {
     texts
 }
 
+fn active_inspector_field_commit_command(app: &ReadyAppState, field_key: &str) -> String {
+    app.platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active inspector detail")
+        .property_fields
+        .iter()
+        .find(|field| field.key == field_key)
+        .unwrap_or_else(|| panic!("expected active inspector field `{field_key}`"))
+        .commit_command_id
+        .clone()
+        .unwrap_or_else(|| {
+            panic!("expected active inspector field `{field_key}` to be committable")
+        })
+}
+
 fn render_bottom_drawer_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
     let window = snapshot.window_model();
@@ -851,6 +870,34 @@ fn blank_project_feed_flash_run_requires_flash_parameters_after_feed_inputs() {
         notice.detail.contains("出口温度"),
         "expected flash parameter readiness detail, got {notice:?}"
     );
+
+    let flash_temperature_commit =
+        active_inspector_field_commit_command(&app, "unit:flash-1:outlet_temperature_k");
+    app.dispatch_inspector_field_draft_commit(flash_temperature_commit);
+
+    let notice = app
+        .project_open
+        .notice
+        .as_ref()
+        .expect("expected next flash parameter readiness notice");
+    assert_eq!(notice.title, "模型输入未完成");
+    assert!(
+        notice.detail.contains("出口压力"),
+        "expected readiness notice to advance to flash pressure, got {notice:?}"
+    );
+
+    let flash_pressure_commit =
+        active_inspector_field_commit_command(&app, "unit:flash-1:outlet_pressure_pa");
+    app.dispatch_inspector_field_draft_commit(flash_pressure_commit);
+
+    assert_eq!(
+        app.project_open
+            .notice
+            .as_ref()
+            .map(|notice| notice.title.as_str()),
+        None,
+        "modeling readiness notice should clear after displayed flash defaults are committed"
+    );
 }
 
 #[test]
@@ -883,12 +930,9 @@ fn modeling_readiness_notice_refreshes_after_committing_displayed_unit_defaults(
         "expected missing heater temperature notice, got {notice:?}"
     );
 
-    commit_unit_parameter(
-        &mut app,
-        "heater-1",
-        "unit:heater-1:outlet_temperature_k",
-        "345",
-    );
+    let heater_temperature_commit =
+        active_inspector_field_commit_command(&app, "unit:heater-1:outlet_temperature_k");
+    app.dispatch_inspector_field_draft_commit(heater_temperature_commit);
 
     let notice = app
         .project_open
@@ -901,12 +945,9 @@ fn modeling_readiness_notice_refreshes_after_committing_displayed_unit_defaults(
         "expected readiness notice to advance to heater pressure, got {notice:?}"
     );
 
-    commit_unit_parameter(
-        &mut app,
-        "heater-1",
-        "unit:heater-1:outlet_pressure_pa",
-        "101325",
-    );
+    let heater_pressure_commit =
+        active_inspector_field_commit_command(&app, "unit:heater-1:outlet_pressure_pa");
+    app.dispatch_inspector_field_draft_commit(heater_pressure_commit);
 
     assert_eq!(
         app.project_open
