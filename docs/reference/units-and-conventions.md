@@ -1,6 +1,6 @@
 # Units And Conventions
 
-更新时间：2026-06-01
+更新时间：2026-06-02
 
 ## 目的
 
@@ -55,6 +55,20 @@
 这些字段属于项目 flowsheet 语义，会通过正式参数提交流写回项目模型。Studio 提交时会同步对应 outlet stream 模板，求解器优先读取单元参数；旧项目或外部项目未设置参数时，底层求解仍可按已有 outlet stream 模板兼容读取。Studio 运行前 readiness 不把这类兼容 fallback 视为用户已提交参数；若检查器字段显示的是模板 / fallback 值但 unit parameter 为空，同值提交仍应生成正式 `SetUnitParameter`。
 
 当前不引入完整单元参数表，也不把这些字段扩展成第二套单位系统。
+
+### 检查器显示值与正式参数
+
+Unit Inspector 中的数值来源需要区分三层：
+
+| 层级 | 来源 | 是否满足 readiness |
+| --- | --- | --- |
+| 已提交单元参数 | `UnitOperationParameters` 中的字段，例如 `outlet_temperature_k` | 是 |
+| outlet stream 模板值 | 已连接 / 已创建 outlet stream 当前的 `temperature_k` 或 `pressure_pa` | 否，除非用户提交后写入单元参数 |
+| 内置默认显示值 | 单元类型给出的正有限默认值 | 否，除非用户提交后写入单元参数 |
+
+因此，检查器字段显示一个看起来可用的 SI 数值，不等于该单元参数已经进入项目语义。若字段来自 outlet stream 模板值或内置默认显示值，Studio 应把该字段呈现为可提交状态，并暴露正式提交命令；用户提交后生成 `DocumentCommand::SetUnitParameter`，写入 `UnitOperationParameters`，推进文档 revision，并刷新运行前 readiness。
+
+这条规则适用于当前可编辑单元参数：Feed source T/P、Heater / Cooler outlet T/P、Valve outlet P、Mixer outlet P，以及 Flash Drum flash T/P。无效草稿仍不能写回项目；已进入项目文件的无效参数则由正式求解诊断报告。
 
 ## Studio 运行前必填输入
 

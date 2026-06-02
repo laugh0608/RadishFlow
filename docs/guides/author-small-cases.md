@@ -1,6 +1,6 @@
 # Author Small Cases
 
-更新时间：2026-06-01
+更新时间：2026-06-02
 
 ## 用途
 
@@ -107,7 +107,7 @@ Flash Drum -> liquid / vapor
 | Mixer | outlet pressure | `90000 Pa` |
 | Flash Drum | flash temperature / pressure | `300 K` / `85000 Pa` |
 
-如果单元检查器里已经显示 outlet stream 模板值，但对应 unit parameter 还没有显式写入项目，仍需要提交一次该字段；即使输入值和当前显示值相同，提交也会写入正式单元参数。
+如果单元检查器里已经显示 outlet stream 模板值或内置默认值，但对应 unit parameter 还没有显式写入项目，仍需要提交一次该字段；即使输入值和当前显示值相同，提交也会写入正式单元参数。字段来源与 readiness 关系见 `docs/reference/units-and-conventions.md`。
 
 10. 点击顶部 `运行`。
 11. 在右侧 `结果` 和底部 `结果表` 检查收敛结果；底部表应同时显示流股结果和单元最新步骤。
@@ -165,7 +165,7 @@ Flash Drum -> liquid / vapor
 | Heater | outlet temperature / pressure | `358.5 K` / `90000 Pa` |
 | Flash Drum | flash temperature / pressure | `300 K` / `85000 Pa` |
 
-如果单元检查器里已经显示 heater outlet stream 模板值，但对应 unit parameter 还没有显式写入项目，仍需要提交一次 `Heater` 的 outlet temperature / pressure；同值提交也会写入正式单元参数。
+如果单元检查器里已经显示 heater outlet stream 模板值或内置默认值，但对应 unit parameter 还没有显式写入项目，仍需要提交一次 `Heater` 的 outlet temperature / pressure；同值提交也会写入正式单元参数。字段来源与 readiness 关系见 `docs/reference/units-and-conventions.md`。
 
 10. 点击顶部 `运行`。
 11. 在右侧 `结果` 中先看 heater outlet，再看 flash liquid / vapor outlet；底部 `结果表` 可同时核对 Heater 与 Flash Drum 的消费 / 产出流股。
