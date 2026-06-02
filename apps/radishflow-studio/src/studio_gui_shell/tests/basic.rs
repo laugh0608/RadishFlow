@@ -97,6 +97,80 @@ fn active_inspector_field_commit_command(app: &ReadyAppState, field_key: &str) -
         })
 }
 
+fn assert_close(actual: f64, expected: f64) {
+    assert!(
+        (actual - expected).abs() <= 1e-12,
+        "expected {actual} to equal {expected}"
+    );
+}
+
+fn commit_displayed_unit_parameter(
+    app: &mut ReadyAppState,
+    unit_id: &str,
+    field_key: &str,
+    expected_value: f64,
+) {
+    app.dispatch_ui_command(format!("inspector.focus_unit:{unit_id}"));
+    let before_window = app.platform_host.snapshot().window_model();
+    let before_field = before_window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active unit inspector detail")
+        .property_fields
+        .iter()
+        .find(|field| field.key == field_key)
+        .unwrap_or_else(|| panic!("expected unit inspector field `{field_key}`"));
+    assert_eq!(
+        before_field.status_label, "Draft",
+        "displayed fallback/default `{field_key}` should be presented as a committable draft"
+    );
+    assert!(
+        before_field.is_dirty,
+        "displayed fallback/default `{field_key}` should require explicit commit"
+    );
+    assert_close(
+        before_field
+            .current_value
+            .parse::<f64>()
+            .unwrap_or_else(|_| panic!("expected numeric field value for `{field_key}`")),
+        expected_value,
+    );
+    let commit_command = before_field
+        .commit_command_id
+        .clone()
+        .unwrap_or_else(|| panic!("expected commit command for `{field_key}`"));
+
+    app.dispatch_inspector_field_draft_commit(commit_command);
+
+    let unit = &app.platform_host.document().flowsheet.units[&UnitId::new(unit_id)];
+    let committed = if field_key.ends_with(":outlet_temperature_k") {
+        unit.parameters.outlet_temperature_k
+    } else if field_key.ends_with(":outlet_pressure_pa") {
+        unit.parameters.outlet_pressure_pa
+    } else {
+        panic!("unsupported unit parameter field `{field_key}`");
+    };
+    assert_eq!(
+        committed,
+        Some(expected_value),
+        "expected `{field_key}` to be written into UnitOperationParameters"
+    );
+
+    let after_window = app.platform_host.snapshot().window_model();
+    let after_field = after_window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active unit inspector detail after commit")
+        .property_fields
+        .iter()
+        .find(|field| field.key == field_key)
+        .unwrap_or_else(|| panic!("expected committed unit inspector field `{field_key}`"));
+    assert_eq!(after_field.status_label, "Synced");
+    assert!(after_field.commit_command_id.is_none());
+}
+
 fn render_bottom_drawer_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
     let window = snapshot.window_model();
@@ -825,6 +899,89 @@ fn blank_project_feed_source_run_requires_positive_molar_flow() {
     assert!(
         notice.detail.contains("摩尔流量"),
         "expected feed source molar-flow readiness detail, got {notice:?}"
+    );
+}
+
+#[test]
+fn blank_project_unit_default_parameter_fields_are_directly_committable() {
+    let mut feed_app = ready_app_state(&synced_workspace_config());
+    feed_app.create_blank_project();
+    feed_app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    feed_app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut feed_app, "local.feed.create_outlet.feed-1");
+
+    commit_displayed_unit_parameter(
+        &mut feed_app,
+        "feed-1",
+        "unit:feed-1:outlet_temperature_k",
+        298.15,
+    );
+    commit_displayed_unit_parameter(
+        &mut feed_app,
+        "feed-1",
+        "unit:feed-1:outlet_pressure_pa",
+        101_325.0,
+    );
+
+    for (begin_command, connect_suggestion, outlet_suggestion, unit_id, fields) in [
+        (
+            "canvas.begin_place_unit.cooler",
+            "local.cooler.connect_inlet.cooler-1.stream-feed-1-outlet",
+            "local.cooler.create_outlet.cooler-1",
+            "cooler-1",
+            vec![
+                ("unit:cooler-1:outlet_temperature_k", 285.0),
+                ("unit:cooler-1:outlet_pressure_pa", 101_325.0),
+            ],
+        ),
+        (
+            "canvas.begin_place_unit.valve",
+            "local.valve.connect_inlet.valve-1.stream-feed-1-outlet",
+            "local.valve.create_outlet.valve-1",
+            "valve-1",
+            vec![("unit:valve-1:outlet_pressure_pa", 90_000.0)],
+        ),
+    ] {
+        let mut app = ready_app_state(&synced_workspace_config());
+        app.create_blank_project();
+        app.dispatch_ui_command("canvas.begin_place_unit.feed");
+        app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+        accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
+        app.dispatch_ui_command(begin_command);
+        app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(180.0, 40.0));
+        accept_canvas_suggestion_by_id(&mut app, connect_suggestion);
+        accept_canvas_suggestion_by_id(&mut app, outlet_suggestion);
+
+        for (field_key, expected_value) in fields {
+            commit_displayed_unit_parameter(&mut app, unit_id, field_key, expected_value);
+        }
+    }
+
+    let mut mixer_app = ready_app_state(&synced_workspace_config());
+    mixer_app.create_blank_project();
+    mixer_app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    mixer_app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    accept_canvas_suggestion_by_id(&mut mixer_app, "local.feed.create_outlet.feed-1");
+    mixer_app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    mixer_app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 140.0));
+    accept_canvas_suggestion_by_id(&mut mixer_app, "local.feed.create_outlet.feed-2");
+    mixer_app.dispatch_ui_command("canvas.begin_place_unit.mixer");
+    mixer_app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(210.0, 90.0));
+    accept_canvas_suggestion_by_id(
+        &mut mixer_app,
+        "local.mixer.connect_inlet_a.mixer-1.stream-feed-1-outlet",
+    );
+    accept_canvas_suggestion_by_id(
+        &mut mixer_app,
+        "local.mixer.connect_inlet_b.mixer-1.stream-feed-2-outlet",
+    );
+    accept_canvas_suggestion_by_id(&mut mixer_app, "local.mixer.create_outlet.mixer-1");
+
+    commit_displayed_unit_parameter(
+        &mut mixer_app,
+        "mixer-1",
+        "unit:mixer-1:outlet_pressure_pa",
+        101_325.0,
     );
 }
 
