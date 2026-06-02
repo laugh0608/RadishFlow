@@ -24,16 +24,16 @@ RadishFlow Studio 继续走轻量、清晰、工程化的浅色桌面应用风�
 
 ## 参考图启发
 
-UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使用从本文档出发的相对路径，便于在 Markdown 预览中直接打开。2026-05-23 新增的优秀产品灵感参考已单独整理到 `docs/architecture/ui-inspiration-reference.md`，用于后续 UI 专题评审，不作为当前实现可直接照抄的视觉稿。
+UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baseline/` 只放当前 RadishFlow 自身的视觉基线图；同级目录下其他图片均为参考素材或历史对照，不作为实现优先基线。下表使用从本文档出发的相对路径，便于在 Markdown 预览中直接打开。2026-05-23 新增的优秀产品灵感参考已单独整理到 `docs/architecture/ui-inspiration-reference.md`，用于后续 UI 专题评审，不作为当前实现可直接照抄的视觉稿。
 
 | 素材 | 路径 | 用途 |
 | --- | --- | --- |
 | Studio 视觉系统规范 | [studio-visual-system.md](studio-visual-system.md) | RadishFlow Studio 的视觉定位、token、色彩角色、控件状态和视觉验收口径 |
 | 外部优秀产品灵感参考 | [ui-inspiration-reference.md](ui-inspiration-reference.md) | AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 截图的设计语言提炼，用于后续 UI 专题的视觉、排版和信息密度参考 |
 | 当前 RadishFlow UI | [radishflow-current-workbench-20260516.png](assets/studio-ui/radishflow-current-workbench-20260516.png) | 2026-05-16 当前真实 Studio 截图，用于识别首页 / 工作台重排前的混乱分区和测试痛点 |
-| RadishFlow 工作台概念稿 | [radishflow-workbench-concept.png](assets/studio-ui/radishflow-workbench-concept.png) | 进入项目后的工作台概念稿，状态、SI 单位、单文档标题和结果区关系更符合当前规范 |
+| RadishFlow 工作台视觉基线 | [radishflow-workbench-concept.png](assets/studio-ui/baseline/radishflow-workbench-concept.png) | 进入项目后的工作台基线图，状态、SI 单位、单文档标题和结果区关系更符合当前规范 |
 | RadishFlow Home 概念稿 | [radishflow-home-dashboard-concept.png](assets/studio-ui/radishflow-home-dashboard-concept.png) | 启动首页 / 示例页概念稿，展示 Start actions、Recent Cases、Example Cases、Environment 和 Messages 分区 |
-| RadishFlow Home 概念稿 v2 | [radishflow-home-dashboard-concept-v2-20260516.png](assets/studio-ui/radishflow-home-dashboard-concept-v2-20260516.png) | 当前 Home Dashboard 视觉基线，收窄 Environment 字段，突出 Continue Last Case / 示例入口和可行动 Messages |
+| RadishFlow Home 视觉基线 | [radishflow-home-dashboard-concept-v2-20260516.png](assets/studio-ui/baseline/radishflow-home-dashboard-concept-v2-20260516.png) | 当前 Home Dashboard 视觉基线，收窄 Environment 字段，突出 Continue Last Case / 示例入口和可行动 Messages |
 | 外部参考：深色工程工作台 | [reference-dark-engineering-workbench.png](assets/studio-ui/reference-dark-engineering-workbench.png) | 深色工程工作台分区、运行状态和底部结果区参考 |
 | 外部参考：浅色 ribbon 项目状态 | [reference-light-ribbon-project-status.png](assets/studio-ui/reference-light-ribbon-project-status.png) | 浅色 ribbon / 左侧模型树 / 右侧状态面板参考 |
 | 外部参考：浅色 flowsheet 工作台 | [reference-light-flowsheet-workbench.png](assets/studio-ui/reference-light-flowsheet-workbench.png) | 接近 RadishFlow 方向的浅色流程模拟工作台参考 |
@@ -50,7 +50,7 @@ UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使
 
 后续应保留当前风格基调，但把功能分区从“开发态信息平铺”重排为“建模工作台”。
 
-`radishflow-current-workbench-20260516.png` 是当前真实 UI 备份，用于对照识别首屏信息过载、按钮堆叠、Canvas header 混乱、结果 / 诊断入口分散等问题。`radishflow-workbench-concept.png` 当前可作为下一轮真实 UI 重排的视觉基线：保留轻量浅色桌面应用气质、单文档项目标题、顶部主路径命令、中央 flowsheet canvas、左侧 Project / Palette、右侧检查器 tabs、底部 Results Table / Messages 区和 SI 单位展示。后续实现时仍需把它转译为现有 `egui` 组件和 `SolveSnapshot` / window model 边界，不直接把图中所有视觉细节视为代码契约。
+`radishflow-current-workbench-20260516.png` 是当前真实 UI 备份，用于对照识别首屏信息过载、按钮堆叠、Canvas header 混乱、结果 / 诊断入口分散等问题。`baseline/radishflow-workbench-concept.png` 当前作为下一轮真实 UI 重排的视觉基线：保留轻量浅色桌面应用气质、单文档项目标题、顶部主路径命令、中央 flowsheet canvas、左侧 Project / Palette、右侧检查器 tabs、底部 Results Table / Messages 区和 SI 单位展示。后续实现时仍需把它转译为现有 `egui` 组件和 `SolveSnapshot` / window model 边界，不直接把图中所有视觉细节视为代码契约。
 
 ### Aspen / HYSYS 类界面
 
@@ -158,8 +158,8 @@ Studio 默认工作台建议分为六个稳定区域。
 
 - Home Dashboard 不是营销欢迎页，也不是完整控制台；它是工程软件启动面板。
 - Home Dashboard 默认使用中文界面；工程术语、包名、版本、路径和文件扩展名保留原文，用户动作、状态、消息和环境字段使用中文。
-- 页面应保留 `radishflow-workbench-concept.png` 的轻量浅色风格、克制蓝色主强调、状态 chip 和清晰分区，但不显示流程图画布。
-- `radishflow-home-dashboard-concept-v2-20260516.png` 当前作为启动首页视觉基线：它比早期概念稿更接近当前信息架构，Start actions、Recent Cases、Example Cases、Environment 和 Messages 的职责边界更清楚。
+- 页面应保留 `baseline/radishflow-workbench-concept.png` 的轻量浅色风格、克制蓝色主强调、状态 chip 和清晰分区，但不显示流程图画布。
+- `baseline/radishflow-home-dashboard-concept-v2-20260516.png` 当前作为启动首页视觉基线：它比早期概念稿更接近当前信息架构，Start actions、Recent Cases、Example Cases、Environment 和 Messages 的职责边界更清楚。
 - `radishflow-home-dashboard-concept.png` 保留为早期概念稿参考：它的信息架构方向正确，但字段和示例数据偏概念演示，不作为后续实现的优先基线。
 - Start actions 只保留当前主路径：`新建项目`、当前小案例作者入口、`打开项目`、`打开示例项目`；登录放在顶部 App Bar，不把完整命令面板或调试入口放进第一视野。最近项目的继续入口由 `最近项目` 列表行承载，不再作为左侧重复按钮常驻。
 - 小案例作者入口只负责创建空白项目并打开对应任务清单，不自动生成 flowsheet，不写 `FlowsheetDocument`，不进入 undo，也不替代 placement / suggestion / parameter / run / save / export 工作流。
