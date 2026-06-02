@@ -29,7 +29,8 @@
 - **通用小流程建模 v1 第十五切片已完成 focused 推进：Mac 真实 UI 字体与普通空白项目 Heater 默认参数提交 / readiness notice 推进人工复核已通过；缺显式 unit parameter 的 Inspector 显示值现在可直接提交为正式参数。**
 - **通用小流程建模 v1 第十六切片已完成 focused 推进：Feed、Cooler、Valve、Mixer、Flash Drum 的 Inspector 显示默认 / 模板参数均已通过真实窗口模型提交命令回归，提交后写入正式 `UnitOperationParameters`。**
 - **通用小流程建模 v1 当前阶段基线验证已通过：2026-06-02 真实环境 `./scripts/check-repo.sh` 通过。**
-- **阶段性门禁已调整：MVP β smoke、指定小案例入口和结果审阅覆盖面不再作为日常推进 gate；后续以普通空白项目真实建模缺口、结果新旧状态表达和 readiness / Run Panel 边界为主线。**
+- **通用小流程建模 v1 阶段收口复核已通过：普通空白项目 `Feed -> Flash Drum`、`Feed -> Cooler -> Flash Drum`、`Feed -> Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 均已完成显式输入、运行、保存、重开、rerun 与结果审阅复核，未发现 blocker。**
+- **下一阶段切到 Studio UI 专题设计前置：先整理信息架构、主工作流、端点清单和设计稿规则，再进入代码实现；不在现有 UI 上继续叠加零散补丁。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前开发策略
@@ -45,18 +46,18 @@
 阶段性门禁调整如下：
 
 - `Mixer-Flash` / `Heater-Flash` 作者路径、MVP β Smoke A-D 和结果审阅对象覆盖不再作为日常开发 gate；它们保留为代表性回归和阶段收口参考。
-- `Cooler` / `Valve` 已可作为通用空白建模的一等受控路径继续推进；当前仍不新增 Home 作者入口。
-- UI 约束从“不做 UI”调整为“不做视觉精修和大改版”；允许服务建模正确性的状态表达、旧结果失效提示、结果新旧标识和轻量审阅材料改进。
-- 轻量结果审阅可继续增强单次 `SolveSnapshot` 摘要；完整报表、模板、打印、批量导出和跨快照报表仍不进入当前阶段。
+- `Cooler` / `Valve` 已作为通用空白建模的一等受控路径完成复核；当前仍不新增 Home 作者入口。
+- UI 工作进入专题设计前置，不在功能推进中继续分散修补按钮、文案、hover、局部 selector 或展示小瑕疵。
+- 轻量结果审阅已满足当前主路径判断；完整报表、模板、打印、批量导出和跨快照报表仍不进入当前阶段。
 - readiness 只拦截确定的建模输入缺失；结构性连接、拓扑、非法旧项目或求解阶段参数失败继续交给正式 Run Panel 诊断 / recovery。
 
 不再主动追逐 hover、提示、按钮文案、局部 selector、presentation 小瑕疵或更多同构作者入口。
 
 ## 下阶段目标
 
-建模输入能力 v0、结果核对与案例说明 v0、受控连接恢复 v0、剩余单元建模闭环 v0、失败修复闭环 v0、MVP β 人工 smoke v0 与仓库级阶段基线验证均已通过。当前继续推进 **通用小流程建模 v1**；不回到零散 UI 打磨，也不把工作停在案例说明或验收文档上。
+建模输入能力 v0、结果核对与案例说明 v0、受控连接恢复 v0、剩余单元建模闭环 v0、失败修复闭环 v0、MVP β 人工 smoke v0、通用小流程建模 v1 与仓库级阶段基线验证均已通过。下一步推进 **Studio UI 专题设计前置**；不回到零散 UI 打磨，也不把工作停在案例说明或验收文档上。
 
-通用小流程建模 v1 目标：
+通用小流程建模 v1 已完成的能力基线：
 
 - 普通空白项目不再进入或自动匹配 `Mixer-Flash` / `Heater-Flash` 小案例状态。
 - 运行前检查按当前 `Flowsheet` 的真实建模输入判断，不再按某个案例步骤阻断；物性包选择仍由正式 run package resolution 判断，避免 shell 误拦可由本地唯一缓存包解析的旧示例项目。
@@ -64,15 +65,13 @@
 - 缺项目组分、缺 Feed composition、Feed source stream 状态缺口、必要单元参数缺失和组成未归一等建模输入问题应由 readiness 定位到具体 stream / unit；未连接 material port、缺失 stream reference、重复 source / sink、orphan stream 和 cycle 等结构性问题继续进入正式 Run Panel 诊断 / recovery；缺物性包继续走正式运行命令的 package 解析与 Run Panel 诊断。
 - 保存 / 重开 / rerun 仍必须稳定；不引入自由连线编辑器、自动布线、完整拖拽布局器或完整报表系统。
 
-当前进展摘要：
+Studio UI 专题设计前置目标：
 
-- 空白项目需显式选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane，Feed composition 和 Unit 参数均走正式 Inspector draft / commit / undo / save / reopen 路径。
-- 通用 readiness 已按真实 `Flowsheet` 检查 Feed source stream T/P/F/z、项目组分、composition 归一和必要单元参数；结构性连接 / 拓扑 / 求解阶段参数失败继续走正式 Run Panel 诊断 / recovery。
-- `Run` 与 `Resume` 两个用户运行入口已统一使用同一 readiness 判断；shell、AppHost、StudioGuiDriver 与 command registry 分发不再各自维护不同建模输入口径；在 Hold 且存在 pending reason 的空白项目中，Resume 保留 pending reason 并引导用户先补建模输入。
-- 普通空白项目已覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 的显式输入、保存 / 重开 / rerun、结果审阅和关键结果合理性。
-- 结果审阅当前包括 Result Inspector、底部结果表、Results commands、轻量导出、case-level `review_summary`、单相 Flash 零流量出口缺席语义和失败态定位。
-- 编辑后重跑一致性已覆盖 Feed composition、unit 参数和连接状态变更；旧快照只作为 stale notice 来源，不再驱动结果审阅或导出入口。
-- Mac 真实 UI 字体显示与普通空白项目 Heater 默认参数提交路径已由人工复核通过；Inspector 显示值与正式 unit parameter 的提交流程已对当前可编辑单元参数完成 focused 扫描；2026-06-02 真实环境仓库级验证已通过。下一步继续观察普通空白项目真实建模缺口与 readiness / Run Panel 诊断边界：只在发现主路径 blocker、结果判断缺口或文档事实源冲突时继续推进。
+- 先基于 `docs/architecture/studio-ui-design-guidelines.md` 与 `docs/architecture/ui-inspiration-reference.md` 整理 Studio 客户端本体、单元模块 UI、服务端 / 控制面 UI、移动端或只读视图的端点边界。
+- 优先产出信息架构、主工作流、状态模型、页面职责和 `.pen` 设计稿命名 / 保存规则；设计稿评审通过后再进入实现。
+- Studio 客户端本体优先覆盖 Home、Workbench、Canvas、Inspector、Result、Package / Auth 的职责关系，不提前扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
+- 单元模块 UI 优先统一参数、端口、运行结果、诊断和帮助入口的界面规则，不把每个单元做成一套临时面板。
+- 任何代码实现都必须继续遵守 presentation / command / state 边界；视觉优化不得绕过正式 UI 模型堆 shell 私有状态。
 
 ## 验证节奏
 
