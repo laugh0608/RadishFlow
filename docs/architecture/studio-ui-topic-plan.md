@@ -159,9 +159,16 @@ docs/architecture/designs/control-plane-admin.pen
 docs/architecture/designs/readonly-mobile-view.pen
 ```
 
+设计 brief：
+
+```text
+docs/architecture/designs/studio-client-main-brief.md
+```
+
 规则：
 
 - `.pen` 文件只通过 Pencil MCP 工具读取、生成、验证和导出，不用普通文本工具读取或改写。
+- 若 `.pen` 创建前需要先评审信息架构，可在同目录维护对应 Markdown brief；brief 只记录设计输入和评审问题，不替代 `.pen` 设计稿。
 - 设计稿必须随仓库保存和同步，不只保留在个人本地或聊天记录里。
 - 每个设计稿必须在评审记录中说明参考了哪些原则，不能复制外部产品品牌、图标、具体配色或页面结构。
 - P0 设计稿先产出信息架构和主工作流，再细化视觉。
