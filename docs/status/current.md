@@ -67,7 +67,7 @@
 
 Studio UI 专题设计前置目标：
 
-- 先基于 `docs/architecture/studio-ui-design-guidelines.md` 与 `docs/architecture/ui-inspiration-reference.md` 整理 Studio 客户端本体、单元模块 UI、服务端 / 控制面 UI、移动端或只读视图的端点边界。
+- 先基于 `docs/architecture/studio-ui-topic-plan.md`、`docs/architecture/studio-ui-design-guidelines.md` 与 `docs/architecture/ui-inspiration-reference.md` 整理 Studio 客户端本体、单元模块 UI、服务端 / 控制面 UI、移动端或只读视图的端点边界。
 - 优先产出信息架构、主工作流、状态模型、页面职责和 `.pen` 设计稿命名 / 保存规则；设计稿评审通过后再进入实现。
 - Studio 客户端本体优先覆盖 Home、Workbench、Canvas、Inspector、Result、Package / Auth 的职责关系，不提前扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
 - 单元模块 UI 优先统一参数、端口、运行结果、诊断和帮助入口的界面规则，不把每个单元做成一套临时面板。
@@ -94,6 +94,7 @@ Studio UI 专题设计前置目标：
 
 - 最新流水和决策依据：`docs/devlogs/2026-06/2026-W23.md`
 - 上周阶段收口：`docs/devlogs/2026-05/2026-W22.md`
+- UI 专题设计前置：`docs/architecture/studio-ui-topic-plan.md`
 - MVP β 人工 smoke 与验收标准：`docs/mvp/beta-acceptance-checklist.md`
 - MVP 范围和非目标：`docs/mvp/scope.md`
 - MVP 路线图：`docs/radishflow-mvp-roadmap.md`

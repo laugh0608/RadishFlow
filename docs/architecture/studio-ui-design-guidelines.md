@@ -124,7 +124,7 @@ UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使
 
 ## 后续 UI 专题与设计稿资产
 
-当前文档记录的是 MVP α 阶段已经形成的 Studio UI 规范和真实 UI 收口经验，不等同于完整产品 UI 设计系统。长期视觉系统、token、色彩角色、控件状态和视觉验收口径见 `studio-visual-system.md`。后续应在路线图中单独安排 UI 专题阶段，集中处理各端页面和单元模块 UI 缺乏统一设计的问题，而不是继续在功能开发中分散修补。
+当前文档记录的是 MVP α 阶段已经形成的 Studio UI 规范和真实 UI 收口经验，不等同于完整产品 UI 设计系统。长期视觉系统、token、色彩角色、控件状态和视觉验收口径见 `studio-visual-system.md`。Studio UI 专题阶段的端点边界、主工作流、状态模型和 `.pen` 设计稿规则见 `studio-ui-topic-plan.md`；本文继续承担设计规范职责，不承载阶段推进流水。
 
 专题启动前应先冻结端点清单、设计稿目录和命名规则。候选端点包括但不限于：
 

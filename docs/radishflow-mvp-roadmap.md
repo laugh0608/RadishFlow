@@ -93,7 +93,7 @@
 - 允许服务建模正确性的 UI 状态表达和轻量结果审阅材料改进，但当前不继续扩同类补丁；视觉精修、大改版、完整报表、模板、打印、批量导出和跨快照报表仍不进入当前阶段。
 - readiness 后续只能继续承担确定的建模输入缺失门禁；结构性连接、拓扑、非法旧项目或求解阶段参数失败继续由正式 Run Panel 诊断 / recovery 承担，不把 readiness 扩成第二套 solver。
 - CAPE-OPEN / PME 只修真实验证暴露的 blocker，不继续主动扩第三方宿主矩阵。
-- 下一组计划进入 Studio UI 专题设计前置：先整理端点清单、信息架构、主工作流、状态模型、设计稿目录和 `.pen` 命名 / 保存规则，再按评审后的设计稿进入代码实现；不扩自由连线、任意端口选择器、完整拖拽布局、自动布线、完整参数表或完整结果报表。
+- 下一组计划进入 Studio UI 专题设计前置：先按 `docs/architecture/studio-ui-topic-plan.md` 整理端点清单、信息架构、主工作流、状态模型、设计稿目录和 `.pen` 命名 / 保存规则，再按评审后的设计稿进入代码实现；不扩自由连线、任意端口选择器、完整拖拽布局、自动布线、完整参数表或完整结果报表。
 
 ## 远期产品方向
 
@@ -129,6 +129,7 @@ MVP β 功能推进不应把 UI 问题长期拆成零散按钮、临时面板或
 ## 相关入口
 
 - 当前阶段和下一步：`docs/status/current.md`
+- Studio UI 专题计划：`docs/architecture/studio-ui-topic-plan.md`
 - MVP α 验收记录：`docs/mvp/alpha-acceptance-checklist.md`
 - MVP β 人工 smoke 与验收标准：`docs/mvp/beta-acceptance-checklist.md`
 - MVP 冻结范围：`docs/mvp/scope.md`

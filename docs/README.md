@@ -50,6 +50,7 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | `architecture/overview.md` | 当前仓库分层、crate 边界与阶段职责 |
 | `architecture/app-architecture.md` | 桌面 App 的状态、命令与模块边界 |
 | `architecture/canvas-interaction-contract.md` | 画布视图模式、流线状态与 suggestion 契约 |
+| `architecture/studio-ui-topic-plan.md` | Studio UI 专题阶段的端点边界、信息架构、主工作流和 `.pen` 设计稿规则 |
 | `architecture/studio-ui-design-guidelines.md` | Studio 首屏、画布、面板、按钮、文字和结果审阅的 UI 设计规范 |
 | `architecture/studio-visual-system.md` | Studio 视觉定位、token、色彩角色、控件状态和视觉验收口径 |
 | `architecture/ui-inspiration-reference.md` | AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 等优秀产品截图的 UI 设计灵感参考 |
