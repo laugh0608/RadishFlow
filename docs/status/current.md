@@ -31,7 +31,7 @@
 - **通用小流程建模 v1 当前阶段基线验证已通过：2026-06-02 真实环境 `./scripts/check-repo.sh` 通过。**
 - **通用小流程建模 v1 阶段收口复核已通过：普通空白项目 `Feed -> Flash Drum`、`Feed -> Cooler -> Flash Drum`、`Feed -> Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 均已完成显式输入、运行、保存、重开、rerun 与结果审阅复核，未发现 blocker。**
 - **下一阶段切到 Studio UI 专题设计前置：先整理信息架构、主工作流、端点清单和设计稿规则，再进入代码实现；不在现有 UI 上继续叠加零散补丁。**
-- **Studio UI P0 / P1 Workbench Shell 已完成方向修正：`studio-client-main.pen` 与 `unit-module-panel.pen` 的 Workbench frame 已改为顶部窄导航栏 + 上下文工具栏、左侧项目 / 放置 tabs、右侧 Inspector / Results、底部左侧运行信息 tabs + 右侧状态汇总；顶部导航中 `物性` 前置，语言 / 单位集 / 偏好进入独立 `设置`。**
+- **Studio UI 主设计稿已收敛到 `studio-client-main.pen`：当前稿覆盖高密度 Home、顶部导航下的独立物性页、流程图工作台、模块设置 / 模块结果和底部运行 / 状态分栏；重复的 `unit-module-panel.pen` 不再作为活跃设计稿维护。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前开发策略
@@ -69,10 +69,10 @@
 Studio UI 专题设计前置目标：
 
 - 先基于 `docs/architecture/studio-ui-topic-plan.md`、`docs/architecture/studio-ui-design-guidelines.md` 与 `docs/architecture/ui-inspiration-reference.md` 整理 Studio 客户端本体、单元模块 UI、服务端 / 控制面 UI、移动端或只读视图的端点边界。
-- P0 / P1 Workbench Shell 已按成熟流程模拟软件的信息分层完成方向修正：顶部使用 `首页 / 文件 / 物性 / 流程图 / 设备 / 运行 / 结果 / 工具 / 设置`，底部使用左侧运行信息 tabs 与右侧状态汇总。后续优先评审这套壳能否稳定承载参数、端口、运行结果、诊断和帮助入口，再决定是否进入代码实现。
+- P0 Studio 主设计稿已按成熟流程模拟软件的信息分层完成方向修正：顶部使用 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`，`物性` 是独立页面，底部使用左侧运行信息 tabs 与右侧状态汇总。后续优先评审 `studio-client-main.pen` 的 Home、物性页、流程图工作台、模块设置 / 模块结果结构能否稳定承载参数、端口、运行结果、诊断和帮助入口，再决定是否进入代码实现。
 - P0 / P1 评审时继续对照两张 `baseline/` 视觉基线，确保 Home / Workbench 的分区、信息密度、状态 chip 和主操作层级与项目视觉方向一致。
 - Studio 客户端本体优先覆盖 Home、Workbench、Canvas、Inspector、Result、Package / Auth 的职责关系，不提前扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
-- 单元模块 UI 优先统一参数、端口、运行结果、诊断和帮助入口的界面规则，不把每个单元做成一套临时面板。
+- 模块设置 / 模块结果优先先在 `studio-client-main.pen` 中统一参数、端口、运行结果、诊断和帮助入口；若后续细节不足，再按窄口径创建 `module-settings-panel.pen`，不重复整套 Workbench。
 - 任何代码实现都必须继续遵守 presentation / command / state 边界；视觉优化不得绕过正式 UI 模型堆 shell 私有状态。
 
 ## 验证节奏
