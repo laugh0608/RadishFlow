@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-06-02
+更新时间：2026-06-03
 
 ## 当前目标
 
@@ -73,6 +73,8 @@ Studio 首页、工作台分区、运行后结果视图和 Home 项目切换确�
 - 结果反馈：成功后 shell 可切到右侧 `结果` 和底部 `结果表`，失败后切到右侧 `运行`。结果面只读消费当前 revision 的最新 `SolveSnapshot`；文档编辑导致结果过期时只显示 stale notice，不继续用旧快照驱动 Result Inspector、结果表、Results commands 或复制 / 导出。`复制快照` / `导出文本` 格式化快照的 `Streams / Review / Units / Steps / Diagnostics`，不写项目 / undo，不扩报表 / 批量导出
 - 日志与审计：开发态 stderr 与 GUI activity 可继续服务 smoke，但正式 UI 只展示用户能采取行动的摘要，不把平台 timer 或 host internals 混入主路径
 - 关闭行为：干净最后窗口应自然结束进程；shell 可在清理逻辑窗口后停止当帧渲染，但不能拦截原生关闭请求。脏工作区必须先取消本次 close，请用户选择保存并关闭、舍弃并关闭或取消关闭；保存失败、另存为取消或覆盖确认未完成时保持打开。
+
+下一轮 Studio UI 主设计稿已收敛到 `docs/architecture/designs/studio-client-main.pen`。它是设计目标，不代表当前代码已完成重排。实现时必须继续复用同一份 `WorkspaceDocument`、inspector draft、command surface、run panel state 和 latest current-revision `SolveSnapshot`；独立 `物性` 页面仍通过正式 document command 写入 package / components；顶部两层导航、左侧 `模块 / 项目`、右侧 `检查器 / 模块设置 / 模块结果` 和底部分栏都只是 UI 编排变化，不得新增私有选择、结果、诊断或参数缓存。
 
 ### `rf-ui`
 
