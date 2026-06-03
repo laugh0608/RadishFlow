@@ -31,9 +31,9 @@
 | `Workbench 变体 - Heater Inspector` | 1440 x 960 | 对照基线工作台，展示选中 Heater / Cooler 时右侧 Inspector 的紧凑参数、结果和状态 |
 | `Workbench 变体 - Feed / Mixer Inspector` | 1440 x 960 | 同一 Workbench 中切换到 Feed / Mixer 的 Inspector 变体，覆盖 source 输入、composition、双入口和 outlet pressure |
 | `Workbench 变体 - Flash Drum Inspector` | 1440 x 960 | 同一 Workbench 中切换到 Flash Drum 的 Inspector 变体，覆盖 flash T/P、liquid / vapor outlets 和 readiness 缺口 |
-| `Workbench 变体 - Readiness / Diagnostics` | 1440 x 960 | 表达 readiness、正式 Run Panel diagnostics、stale result 在右侧面板和底部 drawer 中的关系 |
+| `Workbench 变体 - Readiness / Diagnostics` | 1440 x 960 | 表达 readiness、正式 Run Panel diagnostics、stale result 在右侧面板、底部左侧诊断区和右侧状态汇总中的关系 |
 
-P1 不画 Home、控制面、移动端、独立单元详情页或完整报表。P1 的视觉方向应贴近 `docs/architecture/assets/studio-ui/baseline/radishflow-workbench-concept.png`：左侧 Project / Palette，中间 Canvas，右侧 Inspector / Results / Run / Entitlement，底部 Messages / Results Table / Diagnostics。
+P1 不画 Home、控制面、移动端、独立单元详情页或完整报表。P1 的视觉方向应贴近 `docs/architecture/assets/studio-ui/baseline/radishflow-workbench-concept.png`，但 Workbench 壳必须采用 P0 最新修正：顶部窄导航栏 + 上下文工具栏，导航顺序为 `首页`、`文件`、`物性`、`流程图`、`设备`、`运行`、`结果`、`工具`、`设置`；底部为左侧运行 / 消息 tabs 与右侧 `状态汇总` 分栏。
 
 ## 统一面板结构
 
@@ -41,7 +41,7 @@ P1 单元模块 UI 使用 P0 Workbench 的右侧面板作为承载面。不同�
 
 | 区域 | 职责 | 不承担 |
 | --- | --- | --- |
-| Workbench Shell | 顶部命令、左侧项目树、中间 Canvas、底部 drawer 的稳定壳 | 为单元切换重建整页布局 |
+| Workbench Shell | 顶部导航 / 上下文工具栏、左侧项目树 / 放置入口、中间 Canvas、右侧 Inspector / Results、底部左右分栏和状态栏的稳定壳 | 为单元切换重建整页布局 |
 | Inspector Header | 单元名称、类型、状态、当前选择 | 全局运行按钮、项目保存、完整命令面板 |
 | Specifications / Parameters | 当前单元可编辑输入、单位、草稿状态、提交动作、约束提示 | 完整高级参数表、未来模型选项 |
 | Ports | inlet / outlet、连接对象、suggestion、diagnostic attention | 自由端口选择器、任意连线编辑 |
@@ -52,10 +52,13 @@ P1 单元模块 UI 使用 P0 Workbench 的右侧面板作为承载面。不同�
 
 P1 信息架构稿必须避免用长文本和空格模拟真实控件：
 
+- 顶部使用两层 Workbench 导航：窄导航栏前置 `物性`，独立 `设置` 承载语言、单位集和偏好；下方上下文工具栏随当前导航显示项目名、保存、检查输入、运行和当前状态。
 - 左侧 Project tree 使用稳定分组、计数 badge、对象行和选中态，不使用纯文本项目符号清单。
+- 左侧栏只保留 `项目` 与 `放置` 两个 tab：`项目` 展示当前项目物性包、组分、流股和模块；`放置` 展示流股和单元模块 palette。
 - 右侧 Inspector 的 `General`、`Specifications`、`Ports`、`Results` 使用稳定行结构，字段名、值、单位和状态分列表达。
-- 底部 `Results Table` 使用明确列结构，至少包含 `Stream`、`T (K)`、`P (Pa)`、`F (mol/s)`、`Phase`，不通过空格对齐。
-- Diagnostics notice 只出现在诊断或 stale 状态中，不覆盖 Results Table 的表格内容。
+- 底部左侧分 tabs：`消息`、`运行日志`、`收敛`、`建议`、`诊断`；其中结果表或诊断列表必须使用明确列结构，不通过空格对齐。
+- 底部右侧 `状态汇总` 显示当前案例总状态、最新运行、收敛状态、迭代次数或 `N/A`、执行步数、诊断数、snapshot / revision 一致性；不得伪造现有模型没有提供的数据。
+- Diagnostics notice 只出现在诊断、readiness 或 stale 状态中，不覆盖结果表或状态汇总。
 - 底部状态栏按左侧状态 / 中间模式 / 右侧缩放与选择分区，不靠空格堆在同一文本块里。
 
 ## 覆盖对象
@@ -189,10 +192,11 @@ P1 设计稿进入代码实现前，先按现有边界拆成小切片，不直�
 
 | 切片 | 目标 | 主要落点 |
 | --- | --- | --- |
-| Workbench shell 分区 | 左侧 Project / Palette、中间 Canvas、右侧 tabs、底部 drawer 与状态栏先形成稳定容器 | `apps/radishflow-studio/src/studio_gui_shell/panels/` |
+| Workbench shell 分区 | 顶部导航 / 工具栏、左侧 Project / Palette、中间 Canvas、右侧 tabs、底部左右分栏与状态栏先形成稳定容器 | `apps/radishflow-studio/src/studio_gui_shell/panels/` |
 | Active Inspector 结构化行 | `General`、`Specifications`、`Ports`、`Results`、`Diagnostics` 使用统一行结构和状态 chip | `StudioGuiWindowInspectorTargetDetailModel`、`studio_gui_shell/panels/runtime.rs` 的 inspector 渲染函数 |
-| Results Table | 底部结果表按列渲染 `Stream`、`T (K)`、`P (Pa)`、`F (mol/s)`、`Phase`，不靠字符串空格排版 | 现有 bottom results table 渲染与 `SolveSnapshot` presentation |
-| Diagnostics notice | readiness / stale / formal diagnostics 只在对应区域呈现，不覆盖结果表 | modeling readiness、Run Panel diagnostics、bottom drawer |
+| Bottom split | 底部左侧 tabs 与右侧 `状态汇总` 分开，状态汇总只消费正式状态 / snapshot | Run Panel、readiness、diagnostics、`SolveSnapshot` presentation |
+| Results Table | 左侧底部结果 / 诊断表按列渲染，不靠字符串空格排版 | 现有 bottom results table 渲染与 `SolveSnapshot` presentation |
+| Diagnostics notice | readiness / stale / formal diagnostics 只在对应区域呈现，不覆盖结果表或状态汇总 | modeling readiness、Run Panel diagnostics、bottom drawer |
 | 渲染文件拆分 | `runtime.rs` 已明显过大，实现 P1 前应先按 inspector / result / diagnostics 或 bottom drawer 拆分子模块 | `apps/radishflow-studio/src/studio_gui_shell/panels/` |
 
 实现顺序建议：

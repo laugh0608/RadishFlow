@@ -22,6 +22,34 @@
 
 ## 评审记录
 
+### 2026-06-03 Workbench Shell 方向修正
+
+结论：**原 P0 / P1 Workbench 壳仍偏向旧快速操作栏，不满足成熟流程模拟软件的工作台分层要求；后续 P0 / P1 设计稿统一改为两层顶部导航 + 底部左右分栏结构。**
+
+修正依据：
+
+- 进入画布工作区后，`打开项目`、`打开示例` 不应继续作为顶部主按钮；它们属于 `文件` 或 Home，而不是建模工作台的第一视野。
+- 顶部参考 Aspen / PRO/II / HYSYS 的任务分组，但不采用完整厚重 ribbon：使用一条窄导航栏加一条上下文工具栏。
+- 物性系统是流程模拟软件核心，顶部导航顺序中 `物性` 应前置；语言、单位集、界面偏好等进入独立 `设置`，不混入物性。
+- 底部不再是单一 drawer：左侧承载运行日志、收敛 / 迭代、建议、诊断；右侧承载当前案例状态汇总。
+- 左侧栏保持当前方向，稳定为 `项目` 与 `放置` 两个 tab。
+
+Workbench 顶部结构：
+
+| 层级 | 内容 | 说明 |
+| --- | --- | --- |
+| 顶部导航栏 | `首页`、`文件`、`物性`、`流程图`、`设备`、`运行`、`结果`、`工具`、`设置` | `物性` 前置；`设置` 承载语言、单位集和偏好 |
+| 上下文工具栏 | 随当前导航显示保存、检查输入、运行、放置设备、画布工具、结果动作等 | 不把 Home / 文件打开动作常驻为工作台主按钮 |
+
+Workbench 底部结构：
+
+| 区域 | Tabs | 说明 |
+| --- | --- | --- |
+| 左侧底部 | `消息`、`运行日志`、`收敛`、`建议`、`诊断` | 承载运行过程、迭代 / 收敛、建模建议和诊断列表 |
+| 右侧底部 | `状态汇总` | 显示当前案例总状态、收敛状态、执行步数、迭代次数、诊断数和 snapshot / revision 一致性 |
+
+状态汇总只消费既有状态来源：Run Panel / workspace control model、shared modeling readiness、formal diagnostics、latest current-revision `SolveSnapshot` 和 stale snapshot presentation。若当前求解器没有真实迭代次数，线框稿显示 `N/A` 或 `Sequential steps`，不得伪造收敛迭代数据。
+
 ### 2026-06-03 P0 信息架构评审
 
 结论：**通过 P0 信息架构评审，可以进入 P1 `unit-module-panel.pen` 设计准备；不代表进入 UI 代码实现。**
@@ -31,7 +59,7 @@
 - Pencil 已打开 `docs/architecture/designs/studio-client-main.pen`，顶层包含 `Home - Ready`、`Workbench - Modeling`、`Workbench - Readiness`、`Workbench - Results` 四个 frame。
 - `snapshot_layout` 未报告 layout problems；四个 frame 没有发现明显崩坏、裁切或根级结构异常。
 - Home frame 覆盖开始入口、最近项目、示例项目、环境状态和 Messages，职责与 P0 Home 边界一致。
-- Workbench Modeling frame 覆盖 App Bar、Project / Palette、Canvas、Inspector 和 Bottom Drawer；以 `Feed -> Cooler -> Flash Drum` 表达当前受控建模组合，并保留 Feed、Mixer、Cooler、Valve、Flash Drum 的放置入口。
+- Workbench Modeling frame 覆盖顶部导航 / 上下文工具栏、Project / Palette、Canvas、Inspector、底部左侧运行信息区和右侧状态汇总；以 `Feed -> Cooler -> Flash Drum` 表达当前受控建模组合，并保留 Feed、Mixer、Cooler、Valve、Flash Drum 的放置入口。
 - Workbench Readiness frame 能表达 modeling readiness 阻断、目标对象 attention、Inspector 缺失字段提交入口和底部 notice；没有把结构性连接、拓扑或求解阶段失败混入 readiness。
 - Workbench Results frame 能表达 latest `SolveSnapshot` 的 Result Inspector、底部 Results Table、stream / unit 聚焦与轻量导出；评审中已补充旧结果失效的 stale notice 局部变体，明确旧快照不驱动 Inspector 或导出，并指向 rerun。
 
@@ -76,11 +104,14 @@ P0 不拆单独移动端 frame，不画控制面后台 frame。
 
 | 区域 | X | Y | W | H | 说明 |
 | --- | ---: | ---: | ---: | ---: | --- |
-| App Bar | 0 | 0 | 1440 | 56 | 全局标题、项目状态、运行主命令 |
-| Left Rail | 0 | 56 | 288 | 704 | Home start / Workbench project and palette |
-| Main Stage | 288 | 56 | 816 | 704 | Home 列表或 Workbench Canvas |
-| Right Rail | 1104 | 56 | 336 | 704 | Environment / Inspector / Result |
-| Bottom Drawer | 0 | 760 | 1440 | 200 | Messages / Diagnostics / Results Table |
+| Top Navigation | 0 | 0 | 1440 | 36 | Home / File / Property / Flowsheet / Equipment / Run / Results / Tools / Settings |
+| Context Toolbar | 0 | 36 | 1440 | 56 | 当前导航下的主路径工具 |
+| Left Rail | 0 | 92 | 288 | 648 | Workbench project and placement tabs |
+| Main Stage | 288 | 92 | 816 | 648 | Home 列表或 Workbench Canvas |
+| Right Rail | 1104 | 92 | 336 | 648 | Inspector / Result / Run / Property |
+| Bottom Left | 0 | 740 | 864 | 190 | Messages / Run Log / Convergence / Suggestions / Diagnostics |
+| Bottom Right | 864 | 740 | 576 | 190 | Case Status Summary |
+| Status Bar | 0 | 930 | 1440 | 30 | Ready / units / mode / zoom / selection |
 
 线框稿中应保留 frame 名称、区域名和状态 chip，避免放长篇说明。具体字段解释进入 brief 或后续评审记录，不塞进画布。
 
@@ -88,7 +119,7 @@ P0 不拆单独移动端 frame，不画控制面后台 frame。
 
 ### 布局
 
-- 顶部 App Bar：应用名、开发构建标识、登录状态、服务端状态、设置入口。
+- Home 顶部栏：应用名、开发构建标识、登录状态、服务端状态、设置入口。
 - 左侧 Start：`新建项目`、`打开项目`、`打开示例项目`，小案例作者入口降级为次级入口。
 - 中央 Recent / Examples：最近项目列表和示例项目列表，以列表扫读为主，不使用营销卡片。
 - 右侧 Environment：Client、Server、Device 三组状态摘要。
@@ -115,11 +146,11 @@ P0 不拆单独移动端 frame，不画控制面后台 frame。
 
 | 区域 | 内容 |
 | --- | --- |
-| App Bar | `RadishFlow Studio`、`development build`、`Local ready`、`Signed out`、`Settings` |
+| Home Top Bar | `RadishFlow Studio`、`development build`、`Local ready`、`Signed out`、`Settings` |
 | Left Rail | 主按钮 `新建项目`；次级按钮 `打开项目`、`打开示例项目`；低权重链接 `创建 Mixer-Flash 小案例`、`创建 Heater-Flash 小案例` |
 | Main Stage | 上半区 `最近项目` 列表；下半区 `示例项目` 列表；每行包含名称、路径 / 来源、package、状态 chip |
 | Right Rail | `Client`、`Server`、`Device` 三个状态 section；每个 section 2-3 行摘要 |
-| Bottom Drawer | Messages 列表，包含 severity、domain、summary、action |
+| Bottom Messages | Messages 列表，包含 severity、domain、summary、action |
 
 示例行建议：
 
@@ -131,11 +162,11 @@ P0 不拆单独移动端 frame，不画控制面后台 frame。
 
 ### 布局
 
-- 顶部命令带：项目标题、保存状态、`运行`、`保存`、`打开`、运行状态摘要。
+- 顶部两层：第一层为窄导航栏，顺序为 `首页`、`文件`、`物性`、`流程图`、`设备`、`运行`、`结果`、`工具`、`设置`；第二层为上下文工具栏，显示当前工作区主路径动作。
 - 左栏：`项目` 与 `放置` 两个主 tab。项目 tab 负责 package / components；放置 tab 负责当前内置单元。
 - 中央 Canvas：主舞台，显示单元、流股、端口状态和受控 suggestion。
 - 右栏 Inspector：当前 stream / unit 的字段、端口和关联动作。
-- 底部 Drawer：Messages / Diagnostics / Results Table tabs，建模中默认显示 Messages。
+- 底部左右分栏：左侧 tabs 为 `消息`、`运行日志`、`收敛`、`建议`、`诊断`；右侧先只显示 `状态汇总`。
 
 ### 必须覆盖的对象
 
@@ -155,11 +186,13 @@ P0 不拆单独移动端 frame，不画控制面后台 frame。
 
 | 区域 | 内容 |
 | --- | --- |
-| App Bar | 项目名 `Blank Project`、保存状态 `Unsaved`、`运行`、`保存`、run status `Ready to run` |
+| Top Navigation | `首页`、`文件`、`物性`、`流程图`、`设备`、`运行`、`结果`、`工具`、`设置`；当前可高亮 `流程图` 或 `设备` |
+| Context Toolbar | 项目名 `Blank Project`、保存状态 `Unsaved`、`检查输入`、`运行`、`保存`、run status `Ready to run` |
 | Left Rail | Tabs：`项目` / `放置`；项目 tab 显示 package、components；放置 tab 显示 Feed、Mixer、Cooler、Valve、Flash Drum |
 | Main Stage | Canvas 网格；单元块 Feed、Cooler、Flash Drum；流股线 `stream-feed-1-outlet`、`stream-cooler-1-outlet`、liquid / vapor outlets；suggestion chip |
 | Right Rail | Inspector target：`Unit cooler-1`；字段 `outlet_temperature_k`、`outlet_pressure_pa`；Ports；Actions |
-| Bottom Drawer | Messages tab active；短行显示最近提交、suggestion 接受、保存状态 |
+| Bottom Left | `消息` tab active；短行显示最近提交、suggestion 接受、保存状态 |
+| Bottom Right | `状态汇总`：case `Ready`、latest run `Not run`、convergence `N/A`、diagnostics `0` |
 
 Canvas 示例结构：
 
@@ -205,11 +238,12 @@ Inspector 字段行应包含：
 
 | 区域 | 内容 |
 | --- | --- |
-| App Bar | run status `Blocked`；primary action 保持 `运行`，状态摘要说明 `Modeling inputs not ready` |
+| Context Toolbar | run status `Blocked`；primary action 保持 `运行`，状态摘要说明 `Modeling inputs not ready` |
 | Left Rail | 保持当前项目 / 放置上下文，不跳转到 checklist |
 | Main Stage | Canvas 中目标对象显示 attention outline，例如 `flash-1` |
 | Right Rail | Inspector 聚焦 `Unit flash-1`；缺失字段 `outlet_temperature_k` 显示可提交 displayed default |
-| Bottom Drawer | Messages active；notice 标题 `模型输入未完成`；detail 指向 `Flash Drum 出口温度` |
+| Bottom Left | `诊断` 或 `消息` active；notice 标题 `模型输入未完成`；detail 指向 `Flash Drum 出口温度` |
+| Bottom Right | `状态汇总`：case `Blocked`、latest run `N/A`、convergence `N/A`、blocking inputs `1` |
 
 Readiness notice 线框文案只保留短句：
 
@@ -256,11 +290,12 @@ Flash Drum flash-1 需要提交出口温度。
 
 | 区域 | 内容 |
 | --- | --- |
-| App Bar | run status `Converged`、snapshot id short、`Run again`、`Save` |
+| Top Navigation / Toolbar | `结果` 导航高亮；toolbar 显示 `结果汇总`、`流股表`、`单元结果`、`导出快照`、`重新运行` |
 | Left Rail | 项目对象列表可继续导航；选中 stream / unit 同步 Canvas focus |
 | Main Stage | Canvas 显示结果 badge：source、intermediate、terminal；不把完整结果数字塞进画布 |
 | Right Rail | Result Inspector；stream selector、unit selector、summary rows、phase rows |
-| Bottom Drawer | Results Table active；Streams / Units / Diagnostics tabs；Export current snapshot |
+| Bottom Left | `收敛` 或结果表相关 tab active；展示 solver、execution steps、diagnostics 摘要 |
+| Bottom Right | `状态汇总` 显示 case `Converged`、latest run `Success`、convergence、执行步数、诊断数 |
 
 Result Inspector 示例内容：
 
