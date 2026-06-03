@@ -6,7 +6,7 @@
       "id": "hITKH",
       "x": 0,
       "y": 0,
-      "name": "Home - Ready",
+      "name": "首页 - 就绪",
       "clip": true,
       "width": 1440,
       "height": 960,
@@ -37,7 +37,7 @@
           "fill": "#475569",
           "textGrowth": "fixed-width",
           "width": 420,
-          "content": "Home - Ready",
+          "content": "首页 - 就绪",
           "lineHeight": 1.25,
           "fontFamily": "Geist",
           "fontSize": 15,
@@ -61,7 +61,7 @@
               "id": "n2zZf",
               "name": "Home - Ready local label",
               "fill": "#047857",
-              "content": "Local ready",
+              "content": "本地就绪",
               "fontFamily": "Geist",
               "fontSize": 12,
               "fontWeight": "600"
@@ -86,7 +86,7 @@
               "id": "WKq7p",
               "name": "Home - Ready auth label",
               "fill": "#475569",
-              "content": "Signed out",
+              "content": "未登录",
               "fontFamily": "Geist",
               "fontSize": 12,
               "fontWeight": "600"
@@ -126,7 +126,7 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 220,
-              "content": "Start",
+              "content": "开始",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
               "fontSize": 18,
@@ -237,7 +237,8 @@
               "content": "创建 Mixer-Flash 小案例\n创建 Heater-Flash 小案例",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             }
           ]
         },
@@ -293,7 +294,7 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 210,
-              "content": "Blank Project",
+              "content": "空白项目",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
               "fontSize": 12,
@@ -311,7 +312,8 @@
               "content": "binary-hydrocarbon-lite-v1",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -331,7 +333,7 @@
                   "id": "ZjeAd",
                   "name": "Recent state 0 label",
                   "fill": "#92400E",
-                  "content": "Modified",
+                  "content": "已修改",
                   "fontFamily": "Geist",
                   "fontSize": 12,
                   "fontWeight": "600"
@@ -379,7 +381,8 @@
               "content": "Peng-Robinson (PR)",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -399,7 +402,7 @@
                   "id": "EXYzs",
                   "name": "Recent state 1 label",
                   "fill": "#047857",
-                  "content": "Ready",
+                  "content": "就绪",
                   "fontFamily": "Geist",
                   "fontSize": 12,
                   "fontWeight": "600"
@@ -447,7 +450,8 @@
               "content": "SRK",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -467,7 +471,7 @@
                   "id": "FN47G",
                   "name": "Recent state 2 label",
                   "fill": "#047857",
-                  "content": "Ready",
+                  "content": "就绪",
                   "fontFamily": "Geist",
                   "fontSize": 12,
                   "fontWeight": "600"
@@ -530,7 +534,8 @@
               "content": "methane, ethane",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -550,7 +555,7 @@
                   "id": "kviFj",
                   "name": "Example ready 0 label",
                   "fill": "#047857",
-                  "content": "Ready",
+                  "content": "就绪",
                   "fontFamily": "Geist",
                   "fontSize": 12,
                   "fontWeight": "600"
@@ -598,7 +603,8 @@
               "content": "methane, ethane",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -618,7 +624,7 @@
                   "id": "qA14q",
                   "name": "Example ready 1 label",
                   "fill": "#047857",
-                  "content": "Ready",
+                  "content": "就绪",
                   "fontFamily": "Geist",
                   "fontSize": 12,
                   "fontWeight": "600"
@@ -666,7 +672,8 @@
               "content": "methane, ethane",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -686,7 +693,7 @@
                   "id": "Tcvvs",
                   "name": "Example ready 2 label",
                   "fill": "#047857",
-                  "content": "Ready",
+                  "content": "就绪",
                   "fontFamily": "Geist",
                   "fontSize": 12,
                   "fontWeight": "600"
@@ -718,7 +725,7 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 220,
-              "content": "Environment",
+              "content": "环境",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
               "fontSize": 18,
@@ -747,7 +754,7 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 120,
-              "content": "Client",
+              "content": "客户端",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
               "fontSize": 13,
@@ -762,10 +769,11 @@
               "fill": "#475569",
               "textGrowth": "fixed-width",
               "width": 220,
-              "content": "Studio v26.5.1-dev\nExamples Ready",
+              "content": "Studio v26.5.1-dev\n示例就绪",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -790,7 +798,7 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 120,
-              "content": "Server",
+              "content": "服务端",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
               "fontSize": 13,
@@ -805,10 +813,11 @@
               "fill": "#475569",
               "textGrowth": "fixed-width",
               "width": 220,
-              "content": "Signed out\nControl Plane Offline",
+              "content": "未登录\n控制面离线",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -833,7 +842,7 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 120,
-              "content": "Device",
+              "content": "设备",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
               "fontSize": 13,
@@ -848,10 +857,11 @@
               "fill": "#475569",
               "textGrowth": "fixed-width",
               "width": 220,
-              "content": "Cache Ready\nRuntime Ready",
+              "content": "缓存就绪\n运行时就绪",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             }
           ]
         },
@@ -907,10 +917,11 @@
                   "fill": "#475569",
                   "textGrowth": "fixed-width",
                   "width": 1092,
-                  "content": "You are not signed in. Cloud packages unavailable.",
+                  "content": "你尚未登录，云端物性包不可用。",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -921,7 +932,7 @@
                   "fill": "#2563EB",
                   "textGrowth": "fixed-width",
                   "width": 140,
-                  "content": "Sign in",
+                  "content": "登录",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
                   "fontSize": 12,
@@ -967,10 +978,11 @@
                   "fill": "#475569",
                   "textGrowth": "fixed-width",
                   "width": 1092,
-                  "content": "Built-in examples are available locally.",
+                  "content": "内置示例可在本地使用。",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -981,7 +993,7 @@
                   "fill": "#2563EB",
                   "textGrowth": "fixed-width",
                   "width": 140,
-                  "content": "Open Examples",
+                  "content": "打开示例",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
                   "fontSize": 12,
@@ -1027,10 +1039,11 @@
                   "fill": "#475569",
                   "textGrowth": "fixed-width",
                   "width": 1092,
-                  "content": "Local property package cache is ready.",
+                  "content": "本地物性包缓存已就绪。",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -1041,7 +1054,7 @@
                   "fill": "#2563EB",
                   "textGrowth": "fixed-width",
                   "width": 140,
-                  "content": "View packages",
+                  "content": "查看物性包",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
                   "fontSize": 12,
@@ -1058,7 +1071,7 @@
       "id": "QRYVF",
       "x": 1520,
       "y": 0,
-      "name": "Workbench - Modeling",
+      "name": "工作台 - 建模",
       "clip": true,
       "width": 1440,
       "height": 960,
@@ -1089,7 +1102,7 @@
           "fill": "#475569",
           "textGrowth": "fixed-width",
           "width": 420,
-          "content": "Workbench - Modeling",
+          "content": "工作台 - 建模",
           "lineHeight": 1.25,
           "fontFamily": "Geist",
           "fontSize": 15,
@@ -1113,7 +1126,7 @@
               "id": "KvTsy",
               "name": "Workbench - Modeling local label",
               "fill": "#047857",
-              "content": "Local ready",
+              "content": "本地就绪",
               "fontFamily": "Geist",
               "fontSize": 12,
               "fontWeight": "600"
@@ -1138,7 +1151,7 @@
               "id": "YkwGm",
               "name": "Workbench - Modeling auth label",
               "fill": "#475569",
-              "content": "Signed out",
+              "content": "未登录",
               "fontFamily": "Geist",
               "fontSize": 12,
               "fontWeight": "600"
@@ -1178,7 +1191,7 @@
               "fill": "#2563EB",
               "textGrowth": "fixed-width",
               "width": 230,
-              "content": "Project    Palette",
+              "content": "项目    放置",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
               "fontSize": 14,
@@ -1193,10 +1206,11 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 230,
-              "content": "Components 2\nProperty Package PR\nStreams\nUnits\nResults\nDiagnostics",
+              "content": "组分 2\n物性包 PR\n流股\n单元\n结果\n诊断",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 13
+              "fontSize": 13,
+              "fontWeight": "normal"
             }
           ]
         },
@@ -1223,7 +1237,7 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 240,
-              "content": "Flowsheet canvas",
+              "content": "流程图画布",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
               "fontSize": 14,
@@ -1380,7 +1394,7 @@
                   "id": "UPvIy",
                   "name": "Suggestion chip label",
                   "fill": "#1D4ED8",
-                  "content": "suggested outlet",
+                  "content": "建议 outlet",
                   "fontFamily": "Geist",
                   "fontSize": 12,
                   "fontWeight": "600"
@@ -1412,7 +1426,7 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 220,
-              "content": "Unit cooler-1",
+              "content": "单元 cooler-1",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
               "fontSize": 18,
@@ -1474,7 +1488,8 @@
                   "content": "K",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -1494,7 +1509,7 @@
                       "id": "Ixrov",
                       "name": "Field state outlet_temperature_k label",
                       "fill": "#1D4ED8",
-                      "content": "Draft",
+                      "content": "草稿",
                       "fontFamily": "Geist",
                       "fontSize": 12,
                       "fontWeight": "600"
@@ -1559,7 +1574,8 @@
                   "content": "Pa",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -1579,7 +1595,7 @@
                       "id": "FQ6z4",
                       "name": "Field state outlet_pressure_pa label",
                       "fill": "#047857",
-                      "content": "Synced",
+                      "content": "已同步",
                       "fontFamily": "Geist",
                       "fontSize": 12,
                       "fontWeight": "600"
@@ -1597,10 +1613,11 @@
               "fill": "#475569",
               "textGrowth": "fixed-width",
               "width": 260,
-              "content": "Ports\ninlet connected\noutlet suggested",
+              "content": "端口\ninlet 已连接\noutlet 有建议",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "text",
@@ -1611,10 +1628,11 @@
               "fill": "#475569",
               "textGrowth": "fixed-width",
               "width": 260,
-              "content": "Related\nresult unavailable before run\nno diagnostics",
+              "content": "关联\n运行前结果不可用\n无诊断",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             }
           ]
         },
@@ -1655,7 +1673,7 @@
                   "fill": "#1D4ED8",
                   "textGrowth": "fixed-width",
                   "width": 90,
-                  "content": "FIELD",
+                  "content": "字段",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
                   "fontSize": 12,
@@ -1670,10 +1688,11 @@
                   "fill": "#475569",
                   "textGrowth": "fixed-width",
                   "width": 1092,
-                  "content": "cooler-1 outlet temperature edited.",
+                  "content": "cooler-1 出口温度已编辑。",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -1684,7 +1703,7 @@
                   "fill": "#2563EB",
                   "textGrowth": "fixed-width",
                   "width": 140,
-                  "content": "Commit",
+                  "content": "提交",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
                   "fontSize": 12,
@@ -1715,7 +1734,7 @@
                   "fill": "#1D4ED8",
                   "textGrowth": "fixed-width",
                   "width": 90,
-                  "content": "SUGGEST",
+                  "content": "建议",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
                   "fontSize": 12,
@@ -1730,10 +1749,11 @@
                   "fill": "#475569",
                   "textGrowth": "fixed-width",
                   "width": 1092,
-                  "content": "Connect cooler outlet to flash inlet.",
+                  "content": "将 cooler outlet 连接到 flash inlet。",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -1744,7 +1764,7 @@
                   "fill": "#2563EB",
                   "textGrowth": "fixed-width",
                   "width": 140,
-                  "content": "Accept",
+                  "content": "接受",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
                   "fontSize": 12,
@@ -1761,7 +1781,7 @@
       "id": "d4OcvP",
       "x": 3040,
       "y": 0,
-      "name": "Workbench - Readiness",
+      "name": "工作台 - Readiness",
       "clip": true,
       "width": 1440,
       "height": 960,
@@ -1792,7 +1812,7 @@
           "fill": "#475569",
           "textGrowth": "fixed-width",
           "width": 420,
-          "content": "Workbench - Readiness",
+          "content": "工作台 - Readiness",
           "lineHeight": 1.25,
           "fontFamily": "Geist",
           "fontSize": 15,
@@ -1816,7 +1836,7 @@
               "id": "Zsjnt",
               "name": "Workbench - Readiness local label",
               "fill": "#047857",
-              "content": "Local ready",
+              "content": "本地就绪",
               "fontFamily": "Geist",
               "fontSize": 12,
               "fontWeight": "600"
@@ -1841,7 +1861,7 @@
               "id": "JUgwy",
               "name": "Workbench - Readiness auth label",
               "fill": "#475569",
-              "content": "Signed out",
+              "content": "未登录",
               "fontFamily": "Geist",
               "fontSize": 12,
               "fontWeight": "600"
@@ -1881,10 +1901,11 @@
               "fill": "#475569",
               "textGrowth": "fixed-width",
               "width": 230,
-              "content": "Project and Palette stay in context.\nNo checklist jump.",
+              "content": "项目和放置上下文保持不变。\n不跳转到 checklist。",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 13
+              "fontSize": 13,
+              "fontWeight": "normal"
             }
           ]
         },
@@ -1911,7 +1932,7 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 240,
-              "content": "Flowsheet canvas",
+              "content": "流程图画布",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
               "fontSize": 14,
@@ -2061,7 +2082,7 @@
                   "id": "tHr26",
                   "name": "Attention chip label",
                   "fill": "#C2410C",
-                  "content": "missing flash T",
+                  "content": "缺 flash T",
                   "fontFamily": "Geist",
                   "fontSize": 12,
                   "fontWeight": "600"
@@ -2093,7 +2114,7 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 220,
-              "content": "Unit flash-1",
+              "content": "单元 flash-1",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
               "fontSize": 18,
@@ -2155,7 +2176,8 @@
                   "content": "K",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -2175,7 +2197,7 @@
                       "id": "a3NEI",
                       "name": "Field state flash_temperature_k label",
                       "fill": "#C2410C",
-                      "content": "Blocked",
+                      "content": "阻断",
                       "fontFamily": "Geist",
                       "fontSize": 12,
                       "fontWeight": "600"
@@ -2240,7 +2262,8 @@
                   "content": "Pa",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -2260,7 +2283,7 @@
                       "id": "R4VzUa",
                       "name": "Field state flash_pressure_pa label",
                       "fill": "#1D4ED8",
-                      "content": "Draft",
+                      "content": "草稿",
                       "fontFamily": "Geist",
                       "fontSize": 12,
                       "fontWeight": "600"
@@ -2323,7 +2346,7 @@
                   "fill": "#1D4ED8",
                   "textGrowth": "fixed-width",
                   "width": 90,
-                  "content": "INPUT",
+                  "content": "输入",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
                   "fontSize": 12,
@@ -2341,7 +2364,8 @@
                   "content": "模型输入未完成：Flash Drum 出口温度。",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -2352,7 +2376,7 @@
                   "fill": "#2563EB",
                   "textGrowth": "fixed-width",
                   "width": 140,
-                  "content": "Focus field",
+                  "content": "聚焦字段",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
                   "fontSize": 12,
@@ -2369,7 +2393,7 @@
       "id": "aKSTn",
       "x": 4560,
       "y": 0,
-      "name": "Workbench - Results",
+      "name": "工作台 - 结果",
       "clip": true,
       "width": 1440,
       "height": 960,
@@ -2400,7 +2424,7 @@
           "fill": "#475569",
           "textGrowth": "fixed-width",
           "width": 420,
-          "content": "Workbench - Results",
+          "content": "工作台 - 结果",
           "lineHeight": 1.25,
           "fontFamily": "Geist",
           "fontSize": 15,
@@ -2424,7 +2448,7 @@
               "id": "Dk1Qa",
               "name": "Workbench - Results local label",
               "fill": "#047857",
-              "content": "Local ready",
+              "content": "本地就绪",
               "fontFamily": "Geist",
               "fontSize": 12,
               "fontWeight": "600"
@@ -2449,7 +2473,7 @@
               "id": "Gjq7T",
               "name": "Workbench - Results auth label",
               "fill": "#475569",
-              "content": "Signed out",
+              "content": "未登录",
               "fontFamily": "Geist",
               "fontSize": 12,
               "fontWeight": "600"
@@ -2489,10 +2513,11 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 230,
-              "content": "Streams\nFeed\nCooled Feed\nLiquid Outlet\nVapor Outlet\n\nUnits\nCooler\nFlash Drum",
+              "content": "流股\nFeed\nCooled Feed\nLiquid Outlet\nVapor Outlet\n\n单元\nCooler\nFlash Drum",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 13
+              "fontSize": 13,
+              "fontWeight": "normal"
             }
           ]
         },
@@ -2519,7 +2544,7 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 240,
-              "content": "Flowsheet canvas",
+              "content": "流程图画布",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
               "fontSize": 14,
@@ -2758,7 +2783,7 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 220,
-              "content": "Result Inspector",
+              "content": "结果检查器",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
               "fontSize": 18,
@@ -2773,10 +2798,11 @@
               "fill": "#0F172A",
               "textGrowth": "fixed-width",
               "width": 280,
-              "content": "Selected stream\nstream-cooler-1-outlet\n\nSummary\nT K 280.0\nP Pa 450000\nF mol/s 2.778\nH J/mol ...\n\nPhase\noverall / liquid / vapor",
+              "content": "选中流股\nstream-cooler-1-outlet\n\n摘要\nT K 280.0\nP Pa 450000\nF mol/s 2.778\nH J/mol ...\n\n相态\noverall / liquid / vapor",
               "lineHeight": 1.25,
               "fontFamily": "Geist",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -2819,7 +2845,8 @@
                   "content": "当前项目已编辑，请重新运行以查看最新结果。旧快照不驱动 Inspector 或导出。",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -2844,7 +2871,7 @@
                       "fill": "#FFFFFF",
                       "textGrowth": "fixed-width",
                       "width": 88,
-                      "content": "Run again",
+                      "content": "重新运行",
                       "lineHeight": 1.25,
                       "fontFamily": "Geist",
                       "fontSize": 12,
@@ -2893,7 +2920,7 @@
                   "fill": "#1D4ED8",
                   "textGrowth": "fixed-width",
                   "width": 90,
-                  "content": "STREAM",
+                  "content": "流股",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
                   "fontSize": 12,
@@ -2911,7 +2938,8 @@
                   "content": "stream-cooler-1-outlet  T/P/F/phase",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -2922,7 +2950,7 @@
                   "fill": "#2563EB",
                   "textGrowth": "fixed-width",
                   "width": 140,
-                  "content": "Export current",
+                  "content": "导出当前结果",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
                   "fontSize": 12,
@@ -2971,7 +2999,8 @@
                   "content": "flash-1 consumed / produced streams",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "text",
@@ -2982,7 +3011,7 @@
                   "fill": "#2563EB",
                   "textGrowth": "fixed-width",
                   "width": 140,
-                  "content": "Focus",
+                  "content": "聚焦",
                   "lineHeight": 1.25,
                   "fontFamily": "Geist",
                   "fontSize": 12,
