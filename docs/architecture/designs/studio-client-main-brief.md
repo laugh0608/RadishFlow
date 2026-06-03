@@ -1,6 +1,6 @@
 # Studio Client Main Design Brief
 
-更新时间：2026-06-02
+更新时间：2026-06-03
 
 ## 用途
 
@@ -19,6 +19,32 @@
 - 用户能完成当前已通过的四条普通空白项目主路径。
 - readiness、Run Panel 诊断、旧结果失效和最新结果审阅有清晰但克制的状态表达。
 - 所有状态都能映射到既有 presentation / command / state 模型。
+
+## 评审记录
+
+### 2026-06-03 P0 信息架构评审
+
+结论：**通过 P0 信息架构评审，可以进入 P1 `unit-module-panel.pen` 设计准备；不代表进入 UI 代码实现。**
+
+评审依据：
+
+- Pencil 已打开 `docs/architecture/designs/studio-client-main.pen`，顶层包含 `Home - Ready`、`Workbench - Modeling`、`Workbench - Readiness`、`Workbench - Results` 四个 frame。
+- `snapshot_layout` 未报告 layout problems；四个 frame 没有发现明显崩坏、裁切或根级结构异常。
+- Home frame 覆盖开始入口、最近项目、示例项目、环境状态和 Messages，职责与 P0 Home 边界一致。
+- Workbench Modeling frame 覆盖 App Bar、Project / Palette、Canvas、Inspector 和 Bottom Drawer；以 `Feed -> Cooler -> Flash Drum` 表达当前受控建模组合，并保留 Feed、Mixer、Cooler、Valve、Flash Drum 的放置入口。
+- Workbench Readiness frame 能表达 modeling readiness 阻断、目标对象 attention、Inspector 缺失字段提交入口和底部 notice；没有把结构性连接、拓扑或求解阶段失败混入 readiness。
+- Workbench Results frame 能表达 latest `SolveSnapshot` 的 Result Inspector、底部 Results Table、stream / unit 聚焦与轻量导出；评审中已补充旧结果失效的 stale notice 局部变体，明确旧快照不驱动 Inspector 或导出，并指向 rerun。
+
+允许偏离点：
+
+- 当前 `.pen` 仍是低保真信息架构稿，不要求达到 `baseline/` 两张视觉基线的最终视觉密度和组件精度。
+- P0 没有单独绘制 `Feed -> Flash Drum`、`Feed -> Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 的完整 frame；这些路径通过同一 Workbench 区域职责和 P1 单元模块 UI 规则继续承接。
+- P0 暂不拆分 Home / Canvas / Result 子稿；若后续实现前发现单个域过大，再按 `studio-client-*` 前缀拆分。
+
+后续要求：
+
+- P1 `unit-module-panel.pen` 应沿用 P0 的 Inspector / Result / Diagnostics 区域职责，不为每个单元新建互不一致的临时面板。
+- 进入代码实现前仍必须回看两张 `baseline/` 视觉基线，把 P0 低保真线框转译为当前 `egui` presentation / command / state 边界可承载的真实 UI。
 
 ## 设计画板建议
 

@@ -1,0 +1,4983 @@
+{
+  "version": "2.13",
+  "children": [
+    {
+      "type": "frame",
+      "id": "GKTVx",
+      "x": 0,
+      "y": 0,
+      "name": "Unit Panel - Shared Anatomy",
+      "clip": true,
+      "width": 1440,
+      "height": 960,
+      "fill": "#F5F7FA",
+      "layout": "none",
+      "children": [
+        {
+          "type": "text",
+          "id": "nLbkC",
+          "x": 24,
+          "y": 22,
+          "name": "Unit Panel - Shared Anatomy title",
+          "fill": "#0F172A",
+          "textGrowth": "fixed-width",
+          "width": 360,
+          "content": "Unit Panel - Shared Anatomy",
+          "lineHeight": 1.25,
+          "fontFamily": "Geist",
+          "fontSize": 22,
+          "fontWeight": "700"
+        },
+        {
+          "type": "text",
+          "id": "mYuz7",
+          "x": 24,
+          "y": 50,
+          "name": "Unit Panel - Shared Anatomy subtitle",
+          "fill": "#64748B",
+          "textGrowth": "fixed-width",
+          "width": 640,
+          "content": "P1 Unit Module UI / parameters, ports, results, diagnostics",
+          "lineHeight": 1.25,
+          "fontFamily": "Geist",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "NClWy",
+          "x": 1220,
+          "y": 22,
+          "name": "Unit Panel - Shared Anatomy scope chip",
+          "width": 106,
+          "height": 26,
+          "fill": "#DBEAFE",
+          "cornerRadius": 999,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "sOBdz",
+              "name": "Unit Panel - Shared Anatomy scope chip label",
+              "fill": "#1D4ED8",
+              "content": "P1 design",
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "WkMVV",
+          "x": 1328,
+          "y": 22,
+          "name": "Unit Panel - Shared Anatomy no code chip",
+          "width": 106,
+          "height": 26,
+          "fill": "#F1F5F9",
+          "cornerRadius": 999,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "wwJdY",
+              "name": "Unit Panel - Shared Anatomy no code chip label",
+              "fill": "#475569",
+              "content": "no UI code",
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "id": "q1uxhk",
+          "x": 0,
+          "y": 80,
+          "name": "Unit Panel - Shared Anatomy header line",
+          "fill": "#D8DEE8",
+          "width": 1440,
+          "height": 1
+        },
+        {
+          "type": "frame",
+          "id": "NlR5z",
+          "x": 24,
+          "y": 112,
+          "name": "Shared rules map",
+          "width": 450,
+          "height": 728,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "text",
+              "id": "Uah4A",
+              "x": 20,
+              "y": 18,
+              "name": "Shared rules title",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 390,
+              "content": "Shared unit panel contract",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 20,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "K4ybS",
+              "x": 20,
+              "y": 62,
+              "name": "Rule Unit Header",
+              "width": 410,
+              "height": 78,
+              "fill": "#F8FAFC",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none"
+            },
+            {
+              "type": "text",
+              "id": "Z9mug",
+              "x": 36,
+              "y": 78,
+              "name": "Rule label Unit Header",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 150,
+              "content": "Unit Header",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "YYkd1",
+              "x": 176,
+              "y": 78,
+              "name": "Rule desc Unit Header",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 230,
+              "content": "unit name, type, status, selected object",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "YY6Og",
+              "x": 20,
+              "y": 166,
+              "name": "Rule Parameters",
+              "width": 410,
+              "height": 78,
+              "fill": "#F8FAFC",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none"
+            },
+            {
+              "type": "text",
+              "id": "Ip0V3",
+              "x": 36,
+              "y": 182,
+              "name": "Rule label Parameters",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 150,
+              "content": "Parameters",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "UXBsv",
+              "x": 176,
+              "y": 182,
+              "name": "Rule desc Parameters",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 230,
+              "content": "SI unit, value source, draft, commit",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "uDohZ",
+              "x": 20,
+              "y": 270,
+              "name": "Rule Ports",
+              "width": 410,
+              "height": 78,
+              "fill": "#F8FAFC",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none"
+            },
+            {
+              "type": "text",
+              "id": "G1gFh",
+              "x": 36,
+              "y": 286,
+              "name": "Rule label Ports",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 150,
+              "content": "Ports",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "v8kk2",
+              "x": 176,
+              "y": 286,
+              "name": "Rule desc Ports",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 230,
+              "content": "connected, missing, suggested, attention",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "F7bZ97",
+              "x": 20,
+              "y": 374,
+              "name": "Rule Results",
+              "width": 410,
+              "height": 78,
+              "fill": "#F8FAFC",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none"
+            },
+            {
+              "type": "text",
+              "id": "zhlq1",
+              "x": 36,
+              "y": 390,
+              "name": "Rule label Results",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 150,
+              "content": "Results",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "O01Yy",
+              "x": 176,
+              "y": 390,
+              "name": "Rule desc Results",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 230,
+              "content": "current SolveSnapshot only",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "n5XSP",
+              "x": 20,
+              "y": 478,
+              "name": "Rule Diagnostics",
+              "width": 410,
+              "height": 78,
+              "fill": "#F8FAFC",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none"
+            },
+            {
+              "type": "text",
+              "id": "FTrw3",
+              "x": 36,
+              "y": 494,
+              "name": "Rule label Diagnostics",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 150,
+              "content": "Diagnostics",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "P8uvJ",
+              "x": 176,
+              "y": 494,
+              "name": "Rule desc Diagnostics",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 230,
+              "content": "readiness or formal solve diagnostics",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "qz6jZ",
+              "x": 20,
+              "y": 582,
+              "name": "Rule Help",
+              "width": 410,
+              "height": 78,
+              "fill": "#F8FAFC",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none"
+            },
+            {
+              "type": "text",
+              "id": "YZqZe",
+              "x": 36,
+              "y": 598,
+              "name": "Rule label Help",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 150,
+              "content": "Help",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 13,
+              "fontWeight": "700"
+            },
+            {
+              "type": "text",
+              "id": "M1IDU2",
+              "x": 176,
+              "y": 598,
+              "name": "Rule desc Help",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 230,
+              "content": "short field-level guidance",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "yt7Eq",
+          "x": 508,
+          "y": 112,
+          "name": "Inspector anatomy panel",
+          "width": 420,
+          "height": 728,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#CBD5E1",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "text",
+              "id": "RPt9E",
+              "x": 18,
+              "y": 18,
+              "name": "Anatomy header",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 190,
+              "content": "Unit cooler-1",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 18,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "eGbIp",
+              "x": 292,
+              "y": 14,
+              "name": "Validated chip",
+              "width": 106,
+              "height": 26,
+              "fill": "#ECFDF5",
+              "cornerRadius": 999,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "MbHPi",
+                  "name": "Validated chip label",
+                  "fill": "#047857",
+                  "content": "Validated",
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "g5Nqm",
+              "x": 18,
+              "y": 66,
+              "name": "Parameter section title",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 384,
+              "content": "Parameters",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "RPRGi",
+              "x": 18,
+              "y": 90,
+              "name": "Parameter section title divider",
+              "fill": "#E5E7EB",
+              "width": 384,
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "VUpgk",
+              "x": 18,
+              "y": 104,
+              "name": "Field outlet_temperature_k",
+              "width": 384,
+              "height": 38,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "v7sfG",
+                  "x": 10,
+                  "y": 10,
+                  "name": "Field label outlet_temperature_k",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "outlet_temperature_k",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "l20As",
+                  "x": 202,
+                  "y": 10,
+                  "name": "Field value outlet_temperature_k",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 74,
+                  "content": "330.0",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "YbOz5",
+                  "x": 284,
+                  "y": 10,
+                  "name": "Field unit outlet_temperature_k",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": 34,
+                  "content": "K",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "a8dtV",
+                  "x": 288,
+                  "y": 7,
+                  "name": "Field state outlet_temperature_k",
+                  "width": 78,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "g3K6NL",
+                      "name": "Field state outlet_temperature_k label",
+                      "fill": "#1D4ED8",
+                      "content": "Draft",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "krkRE",
+              "x": 18,
+              "y": 150,
+              "name": "Field outlet_pressure_pa",
+              "width": 384,
+              "height": 38,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "rHOuK",
+                  "x": 10,
+                  "y": 10,
+                  "name": "Field label outlet_pressure_pa",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "outlet_pressure_pa",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "NwZbX",
+                  "x": 202,
+                  "y": 10,
+                  "name": "Field value outlet_pressure_pa",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 74,
+                  "content": "450000",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "xDN8S",
+                  "x": 284,
+                  "y": 10,
+                  "name": "Field unit outlet_pressure_pa",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": 34,
+                  "content": "Pa",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "Nm3v4",
+                  "x": 288,
+                  "y": 7,
+                  "name": "Field state outlet_pressure_pa",
+                  "width": 78,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "v84TGX",
+                      "name": "Field state outlet_pressure_pa label",
+                      "fill": "#1D4ED8",
+                      "content": "Synced",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "VEMbz",
+              "x": 18,
+              "y": 214,
+              "name": "Ports section title",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 384,
+              "content": "Ports",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "OzMqr",
+              "x": 18,
+              "y": 238,
+              "name": "Ports section title divider",
+              "fill": "#E5E7EB",
+              "width": 384,
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "wSGlb",
+              "x": 18,
+              "y": 252,
+              "name": "Port inlet",
+              "width": 384,
+              "height": 34,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Njnx2",
+                  "x": 10,
+                  "y": 9,
+                  "name": "Port label inlet",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 92,
+                  "content": "inlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "Xk8gv",
+                  "x": 108,
+                  "y": 9,
+                  "name": "Port target inlet",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 164,
+                  "content": "stream-feed-1-outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "AMdfs",
+                  "x": 270,
+                  "y": 5,
+                  "name": "Port state inlet",
+                  "width": 78,
+                  "height": 26,
+                  "fill": "#ECFDF5",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "IbAEr",
+                      "name": "Port state inlet label",
+                      "fill": "#047857",
+                      "content": "Connected",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jBvdP",
+              "x": 18,
+              "y": 294,
+              "name": "Port outlet",
+              "width": 384,
+              "height": 34,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "bfPOa",
+                  "x": 10,
+                  "y": 9,
+                  "name": "Port label outlet",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 92,
+                  "content": "outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "AmivE",
+                  "x": 108,
+                  "y": 9,
+                  "name": "Port target outlet",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 164,
+                  "content": "stream-cooler-1-outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "HsKKS",
+                  "x": 270,
+                  "y": 5,
+                  "name": "Port state outlet",
+                  "width": 78,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "zNSNX",
+                      "name": "Port state outlet label",
+                      "fill": "#1D4ED8",
+                      "content": "Suggested",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "U1V6Pb",
+              "x": 18,
+              "y": 360,
+              "name": "Results section title",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 384,
+              "content": "Results",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "o90RrS",
+              "x": 18,
+              "y": 384,
+              "name": "Results section title divider",
+              "fill": "#E5E7EB",
+              "width": 384,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "tmpb1",
+              "x": 18,
+              "y": 398,
+              "name": "Results body",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 360,
+              "content": "Unavailable before run -> Current SolveSnapshot -> Stale rerun notice",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "Ya5a4",
+              "x": 18,
+              "y": 464,
+              "name": "Diagnostics section title",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 384,
+              "content": "Diagnostics",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "Q88ZnQ",
+              "x": 18,
+              "y": 488,
+              "name": "Diagnostics section title divider",
+              "fill": "#E5E7EB",
+              "width": 384,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "OK0rr",
+              "x": 18,
+              "y": 502,
+              "name": "Diagnostics body",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 360,
+              "content": "Readiness points to a field. Formal diagnostics point to stream, unit, port or recovery action.",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "O5TTA",
+              "x": 18,
+              "y": 578,
+              "name": "Help section title",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 384,
+              "content": "Help",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "hR6nt",
+              "x": 18,
+              "y": 602,
+              "name": "Help section title divider",
+              "fill": "#E5E7EB",
+              "width": 384,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "nhvhu",
+              "x": 18,
+              "y": 616,
+              "name": "Help body",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 360,
+              "content": "Short explanation for current field and main path only.",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "CrKMK",
+          "x": 960,
+          "y": 112,
+          "name": "State legend",
+          "width": 392,
+          "height": 728,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#D8DEE8",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "text",
+              "id": "vTnew",
+              "x": 18,
+              "y": 18,
+              "name": "Legend title",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 300,
+              "content": "State vocabulary",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 18,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "U7VzU",
+              "x": 18,
+              "y": 60,
+              "name": "Legend chip Draft",
+              "width": 106,
+              "height": 26,
+              "fill": "#EFF6FF",
+              "cornerRadius": 999,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "kFqNm",
+                  "name": "Legend chip Draft label",
+                  "fill": "#1D4ED8",
+                  "content": "Draft",
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "ygWL9",
+              "x": 140,
+              "y": 65,
+              "name": "Legend desc Draft",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 230,
+              "content": "edited not committed",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "isg74",
+              "x": 18,
+              "y": 134,
+              "name": "Legend chip Displayed default",
+              "width": 106,
+              "height": 26,
+              "fill": "#F8FAFC",
+              "cornerRadius": 999,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "H4pPy0",
+                  "name": "Legend chip Displayed default label",
+                  "fill": "#475569",
+                  "content": "Default",
+                  "fontFamily": "Geist",
+                  "fontSize": 11,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "hmZQA",
+              "x": 140,
+              "y": 139,
+              "name": "Legend desc Displayed default",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 230,
+              "content": "template value can commit",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "ZPKqG",
+              "x": 18,
+              "y": 208,
+              "name": "Legend chip Synced",
+              "width": 106,
+              "height": 26,
+              "fill": "#ECFDF5",
+              "cornerRadius": 999,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "EZJHQ",
+                  "name": "Legend chip Synced label",
+                  "fill": "#047857",
+                  "content": "Synced",
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "b1F6c",
+              "x": 140,
+              "y": 213,
+              "name": "Legend desc Synced",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 230,
+              "content": "formal parameter written",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "y4tC9",
+              "x": 18,
+              "y": 282,
+              "name": "Legend chip Invalid",
+              "width": 106,
+              "height": 26,
+              "fill": "#FEF2F2",
+              "cornerRadius": 999,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "S7gyBe",
+                  "name": "Legend chip Invalid label",
+                  "fill": "#B91C1C",
+                  "content": "Invalid",
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "X83Z8",
+              "x": 140,
+              "y": 287,
+              "name": "Legend desc Invalid",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 230,
+              "content": "constraint violation",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "o6Secn",
+              "x": 18,
+              "y": 356,
+              "name": "Legend chip Blocked",
+              "width": 106,
+              "height": 26,
+              "fill": "#FFF7ED",
+              "cornerRadius": 999,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "TSjiW",
+                  "name": "Legend chip Blocked label",
+                  "fill": "#C2410C",
+                  "content": "Blocked",
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "e8tex",
+              "x": 140,
+              "y": 361,
+              "name": "Legend desc Blocked",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 230,
+              "content": "modeling input missing",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "k8tXtj",
+              "x": 18,
+              "y": 430,
+              "name": "Legend chip Stale",
+              "width": 106,
+              "height": 26,
+              "fill": "#FEF3C7",
+              "cornerRadius": 999,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "R3hG2",
+                  "name": "Legend chip Stale label",
+                  "fill": "#92400E",
+                  "content": "Stale",
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "W0eVv2",
+              "x": 140,
+              "y": 435,
+              "name": "Legend desc Stale",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 230,
+              "content": "old snapshot, rerun",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "FFJyT",
+      "x": 1520,
+      "y": 0,
+      "name": "Unit Panel - Feed and Mixer",
+      "clip": true,
+      "width": 1440,
+      "height": 960,
+      "fill": "#F5F7FA",
+      "layout": "none",
+      "children": [
+        {
+          "type": "text",
+          "id": "tQYGx",
+          "x": 24,
+          "y": 22,
+          "name": "Unit Panel - Feed and Mixer title",
+          "fill": "#0F172A",
+          "textGrowth": "fixed-width",
+          "width": 360,
+          "content": "Unit Panel - Feed and Mixer",
+          "lineHeight": 1.25,
+          "fontFamily": "Geist",
+          "fontSize": 22,
+          "fontWeight": "700"
+        },
+        {
+          "type": "text",
+          "id": "UFi80",
+          "x": 24,
+          "y": 50,
+          "name": "Unit Panel - Feed and Mixer subtitle",
+          "fill": "#64748B",
+          "textGrowth": "fixed-width",
+          "width": 640,
+          "content": "P1 Unit Module UI / parameters, ports, results, diagnostics",
+          "lineHeight": 1.25,
+          "fontFamily": "Geist",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "KlvQk",
+          "x": 1220,
+          "y": 22,
+          "name": "Unit Panel - Feed and Mixer scope chip",
+          "width": 106,
+          "height": 26,
+          "fill": "#DBEAFE",
+          "cornerRadius": 999,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "q2LjOi",
+              "name": "Unit Panel - Feed and Mixer scope chip label",
+              "fill": "#1D4ED8",
+              "content": "P1 design",
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Hi67N",
+          "x": 1328,
+          "y": 22,
+          "name": "Unit Panel - Feed and Mixer no code chip",
+          "width": 106,
+          "height": 26,
+          "fill": "#F1F5F9",
+          "cornerRadius": 999,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "p31gU",
+              "name": "Unit Panel - Feed and Mixer no code chip label",
+              "fill": "#475569",
+              "content": "no UI code",
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "id": "dJvjK",
+          "x": 0,
+          "y": 80,
+          "name": "Unit Panel - Feed and Mixer header line",
+          "fill": "#D8DEE8",
+          "width": 1440,
+          "height": 1
+        },
+        {
+          "type": "frame",
+          "id": "SO1FP",
+          "x": 24,
+          "y": 112,
+          "name": "Feed inspector",
+          "width": 650,
+          "height": 728,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#CBD5E1",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "text",
+              "id": "IIqNR",
+              "x": 18,
+              "y": 18,
+              "name": "Feed title",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 210,
+              "content": "Feed feed-1",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 18,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "AXYwr",
+              "x": 532,
+              "y": 14,
+              "name": "Feed blocked",
+              "width": 106,
+              "height": 26,
+              "fill": "#FFF7ED",
+              "cornerRadius": 999,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "P5EGc",
+                  "name": "Feed blocked label",
+                  "fill": "#C2410C",
+                  "content": "Blocked",
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "pxRjN",
+              "x": 18,
+              "y": 66,
+              "name": "Feed params",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Source parameters",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "i8Rq4i",
+              "x": 18,
+              "y": 90,
+              "name": "Feed params divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "x4K7eR",
+              "x": 18,
+              "y": 104,
+              "name": "Field source_temperature_k",
+              "width": 614,
+              "height": 38,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "d130hS",
+                  "x": 10,
+                  "y": 10,
+                  "name": "Field label source_temperature_k",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "source_temperature_k",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "khaPj",
+                  "x": 432,
+                  "y": 10,
+                  "name": "Field value source_temperature_k",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 74,
+                  "content": "300.0",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "uicNX",
+                  "x": 514,
+                  "y": 10,
+                  "name": "Field unit source_temperature_k",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": 34,
+                  "content": "K",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "nOEKb",
+                  "x": 510,
+                  "y": 7,
+                  "name": "Field state source_temperature_k",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "VXW3W",
+                      "name": "Field state source_temperature_k label",
+                      "fill": "#1D4ED8",
+                      "content": "Default",
+                      "fontFamily": "Geist",
+                      "fontSize": 11,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Ubdz1",
+              "x": 18,
+              "y": 150,
+              "name": "Field source_pressure_pa",
+              "width": 614,
+              "height": 38,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "o7lvF",
+                  "x": 10,
+                  "y": 10,
+                  "name": "Field label source_pressure_pa",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "source_pressure_pa",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "MuzNR",
+                  "x": 432,
+                  "y": 10,
+                  "name": "Field value source_pressure_pa",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 74,
+                  "content": "500000",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "K8LkJ",
+                  "x": 514,
+                  "y": 10,
+                  "name": "Field unit source_pressure_pa",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": 34,
+                  "content": "Pa",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "eygeI",
+                  "x": 510,
+                  "y": 7,
+                  "name": "Field state source_pressure_pa",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "adjqW",
+                      "name": "Field state source_pressure_pa label",
+                      "fill": "#1D4ED8",
+                      "content": "Synced",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "PtSLy",
+              "x": 18,
+              "y": 196,
+              "name": "Field molar_flow_mol_s",
+              "width": 614,
+              "height": 38,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ZtnsP",
+                  "x": 10,
+                  "y": 10,
+                  "name": "Field label molar_flow_mol_s",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "molar_flow_mol_s",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "PtfKU",
+                  "x": 432,
+                  "y": 10,
+                  "name": "Field value molar_flow_mol_s",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 74,
+                  "content": "2.778",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "JAt75",
+                  "x": 514,
+                  "y": 10,
+                  "name": "Field unit molar_flow_mol_s",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": 34,
+                  "content": "mol/s",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "gl2fW",
+                  "x": 510,
+                  "y": 7,
+                  "name": "Field state molar_flow_mol_s",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "JJsj9",
+                      "name": "Field state molar_flow_mol_s label",
+                      "fill": "#1D4ED8",
+                      "content": "Draft",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "DN1lZ",
+              "x": 18,
+              "y": 242,
+              "name": "Field composition",
+              "width": 614,
+              "height": 38,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "SlveR",
+                  "x": 10,
+                  "y": 10,
+                  "name": "Field label composition",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "composition",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "OE7st",
+                  "x": 432,
+                  "y": 10,
+                  "name": "Field value composition",
+                  "fill": "#0F172A",
+                  "content": "CH4/C2H6",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "qLJhX",
+                  "x": 514,
+                  "y": 10,
+                  "name": "Field unit composition",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": 34,
+                  "content": "z",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "cI257",
+                  "x": 510,
+                  "y": 7,
+                  "name": "Field state composition",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "e9x2cQ",
+                      "name": "Field state composition label",
+                      "fill": "#1D4ED8",
+                      "content": "Invalid",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "P0S0YF",
+              "x": 18,
+              "y": 306,
+              "name": "Feed ports",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Ports",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "dksw3",
+              "x": 18,
+              "y": 330,
+              "name": "Feed ports divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "GxDKO",
+              "x": 18,
+              "y": 344,
+              "name": "Port outlet",
+              "width": 614,
+              "height": 34,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ynk90",
+                  "x": 10,
+                  "y": 9,
+                  "name": "Port label outlet",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 92,
+                  "content": "outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "ylq3c",
+                  "x": 108,
+                  "y": 9,
+                  "name": "Port target outlet",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 394,
+                  "content": "stream-feed-1-outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "ZmKWL",
+                  "x": 500,
+                  "y": 5,
+                  "name": "Port state outlet",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#ECFDF5",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "KiO5g",
+                      "name": "Port state outlet label",
+                      "fill": "#047857",
+                      "content": "Connected",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "zqNzx",
+              "x": 18,
+              "y": 410,
+              "name": "Feed result",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Result preview",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "FLSCu",
+              "x": 18,
+              "y": 434,
+              "name": "Feed result divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "tOi4g",
+              "x": 18,
+              "y": 448,
+              "name": "Feed result text",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 580,
+              "content": "Before run: result unavailable. After run: source stream T/P/F/composition/phase summary from latest SolveSnapshot.",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "B5j4w",
+              "x": 18,
+              "y": 520,
+              "name": "Feed diagnostics",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Diagnostics",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "vqWpH",
+              "x": 18,
+              "y": 544,
+              "name": "Feed diagnostics divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "ns7g3",
+              "x": 18,
+              "y": 558,
+              "name": "Feed diagnostic text",
+              "fill": "#C2410C",
+              "textGrowth": "fixed-width",
+              "width": 580,
+              "content": "Composition not normalized -> focus composition field -> commit through inspector draft command.",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "500"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ZqkpY",
+          "x": 706,
+          "y": 112,
+          "name": "Mixer inspector",
+          "width": 650,
+          "height": 728,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#CBD5E1",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "text",
+              "id": "mNeNL",
+              "x": 18,
+              "y": 18,
+              "name": "Mixer title",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 210,
+              "content": "Mixer mixer-1",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 18,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "KdtzS",
+              "x": 542,
+              "y": 14,
+              "name": "Mixer ready",
+              "width": 106,
+              "height": 26,
+              "fill": "#ECFDF5",
+              "cornerRadius": 999,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "TcEBo",
+                  "name": "Mixer ready label",
+                  "fill": "#047857",
+                  "content": "Ready",
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "O5U0nj",
+              "x": 18,
+              "y": 66,
+              "name": "Mixer params",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Mixer parameters",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "SxEv5",
+              "x": 18,
+              "y": 90,
+              "name": "Mixer params divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "UbKC2",
+              "x": 18,
+              "y": 104,
+              "name": "Field inlet_a",
+              "width": 614,
+              "height": 38,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "S79Kq",
+                  "x": 10,
+                  "y": 10,
+                  "name": "Field label inlet_a",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "inlet_a",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "RdMcd",
+                  "x": 432,
+                  "y": 10,
+                  "name": "Field value inlet_a",
+                  "fill": "#0F172A",
+                  "content": "feed-a",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "bDPty",
+                  "x": 514,
+                  "y": 10,
+                  "name": "Field unit inlet_a",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": 34,
+                  "content": "ref",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "EYjGp",
+                  "x": 510,
+                  "y": 7,
+                  "name": "Field state inlet_a",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "NGEmk",
+                      "name": "Field state inlet_a label",
+                      "fill": "#1D4ED8",
+                      "content": "Synced",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "w1ZBQ",
+              "x": 18,
+              "y": 150,
+              "name": "Field inlet_b",
+              "width": 614,
+              "height": 38,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "aRJ1Y",
+                  "x": 10,
+                  "y": 10,
+                  "name": "Field label inlet_b",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "inlet_b",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "nu3hT",
+                  "x": 432,
+                  "y": 10,
+                  "name": "Field value inlet_b",
+                  "fill": "#0F172A",
+                  "content": "feed-b",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "j9TNce",
+                  "x": 514,
+                  "y": 10,
+                  "name": "Field unit inlet_b",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": 34,
+                  "content": "ref",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "FEqcT",
+                  "x": 510,
+                  "y": 7,
+                  "name": "Field state inlet_b",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "V2gVu6",
+                      "name": "Field state inlet_b label",
+                      "fill": "#1D4ED8",
+                      "content": "Synced",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jpVIz",
+              "x": 18,
+              "y": 196,
+              "name": "Field outlet_pressure_pa",
+              "width": 614,
+              "height": 38,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "SAvvZ",
+                  "x": 10,
+                  "y": 10,
+                  "name": "Field label outlet_pressure_pa",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "outlet_pressure_pa",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "m9dZVM",
+                  "x": 432,
+                  "y": 10,
+                  "name": "Field value outlet_pressure_pa",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 74,
+                  "content": "500000",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "tjVCz",
+                  "x": 514,
+                  "y": 10,
+                  "name": "Field unit outlet_pressure_pa",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": 34,
+                  "content": "Pa",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "o3bGJM",
+                  "x": 510,
+                  "y": 7,
+                  "name": "Field state outlet_pressure_pa",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "B3nfC",
+                      "name": "Field state outlet_pressure_pa label",
+                      "fill": "#1D4ED8",
+                      "content": "Draft",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "Gnzk0",
+              "x": 18,
+              "y": 260,
+              "name": "Mixer ports",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Ports",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "hLtVq",
+              "x": 18,
+              "y": 284,
+              "name": "Mixer ports divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "lB5t0",
+              "x": 18,
+              "y": 298,
+              "name": "Port inlet A",
+              "width": 614,
+              "height": 34,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "lDWd6",
+                  "x": 10,
+                  "y": 9,
+                  "name": "Port label inlet A",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 92,
+                  "content": "inlet A",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "G85oJd",
+                  "x": 108,
+                  "y": 9,
+                  "name": "Port target inlet A",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 394,
+                  "content": "stream-feed-a-outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "Hfbha",
+                  "x": 500,
+                  "y": 5,
+                  "name": "Port state inlet A",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#ECFDF5",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "DQRRb",
+                      "name": "Port state inlet A label",
+                      "fill": "#047857",
+                      "content": "Connected",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "FOiSL",
+              "x": 18,
+              "y": 340,
+              "name": "Port inlet B",
+              "width": 614,
+              "height": 34,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "UfLc7",
+                  "x": 10,
+                  "y": 9,
+                  "name": "Port label inlet B",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 92,
+                  "content": "inlet B",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "G7SWr7",
+                  "x": 108,
+                  "y": 9,
+                  "name": "Port target inlet B",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 394,
+                  "content": "stream-feed-b-outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "U7QjiM",
+                  "x": 500,
+                  "y": 5,
+                  "name": "Port state inlet B",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#ECFDF5",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "K8N0cN",
+                      "name": "Port state inlet B label",
+                      "fill": "#047857",
+                      "content": "Connected",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Htxf3",
+              "x": 18,
+              "y": 382,
+              "name": "Port outlet",
+              "width": 614,
+              "height": 34,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "RDydi",
+                  "x": 10,
+                  "y": 9,
+                  "name": "Port label outlet",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 92,
+                  "content": "outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "XYc5Z",
+                  "x": 108,
+                  "y": 9,
+                  "name": "Port target outlet",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 394,
+                  "content": "stream-mixer-1-outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "Z0Ao7T",
+                  "x": 500,
+                  "y": 5,
+                  "name": "Port state outlet",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "h4nJ4L",
+                      "name": "Port state outlet label",
+                      "fill": "#1D4ED8",
+                      "content": "Suggested",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "nnfwf",
+              "x": 18,
+              "y": 448,
+              "name": "Mixer results",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Results",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "MErtc",
+              "x": 18,
+              "y": 472,
+              "name": "Mixer results divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "aUQja",
+              "x": 18,
+              "y": 486,
+              "name": "Mixer result text",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 580,
+              "content": "Consumed streams: inlet A/B. Produced stream: mixed outlet. Result summary shows weighted outlet T/P/F/composition.",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "KBSIu",
+              "x": 18,
+              "y": 560,
+              "name": "Mixer help",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Help",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "wBe8N",
+              "x": 18,
+              "y": 584,
+              "name": "Mixer help divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "HVwGK",
+              "x": 18,
+              "y": 598,
+              "name": "Mixer help text",
+              "fill": "#64748B",
+              "textGrowth": "fixed-width",
+              "width": 580,
+              "content": "Only explain two inlets and outlet pressure; no advanced mixing model matrix here.",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "W84tXL",
+      "x": 3040,
+      "y": 0,
+      "name": "Unit Panel - Cooler Valve",
+      "clip": true,
+      "width": 1440,
+      "height": 960,
+      "fill": "#F5F7FA",
+      "layout": "none",
+      "children": [
+        {
+          "type": "text",
+          "id": "rQZPg",
+          "x": 24,
+          "y": 22,
+          "name": "Unit Panel - Cooler Valve title",
+          "fill": "#0F172A",
+          "textGrowth": "fixed-width",
+          "width": 360,
+          "content": "Unit Panel - Cooler Valve",
+          "lineHeight": 1.25,
+          "fontFamily": "Geist",
+          "fontSize": 22,
+          "fontWeight": "700"
+        },
+        {
+          "type": "text",
+          "id": "G4dXOQ",
+          "x": 24,
+          "y": 50,
+          "name": "Unit Panel - Cooler Valve subtitle",
+          "fill": "#64748B",
+          "textGrowth": "fixed-width",
+          "width": 640,
+          "content": "P1 Unit Module UI / parameters, ports, results, diagnostics",
+          "lineHeight": 1.25,
+          "fontFamily": "Geist",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "FtMjp",
+          "x": 1220,
+          "y": 22,
+          "name": "Unit Panel - Cooler Valve scope chip",
+          "width": 106,
+          "height": 26,
+          "fill": "#DBEAFE",
+          "cornerRadius": 999,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "jVFM5",
+              "name": "Unit Panel - Cooler Valve scope chip label",
+              "fill": "#1D4ED8",
+              "content": "P1 design",
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "j5DPf9",
+          "x": 1328,
+          "y": 22,
+          "name": "Unit Panel - Cooler Valve no code chip",
+          "width": 106,
+          "height": 26,
+          "fill": "#F1F5F9",
+          "cornerRadius": 999,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "S0jJZ",
+              "name": "Unit Panel - Cooler Valve no code chip label",
+              "fill": "#475569",
+              "content": "no UI code",
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "id": "f7Z7Q",
+          "x": 0,
+          "y": 80,
+          "name": "Unit Panel - Cooler Valve header line",
+          "fill": "#D8DEE8",
+          "width": 1440,
+          "height": 1
+        },
+        {
+          "type": "frame",
+          "id": "o7HB26",
+          "x": 24,
+          "y": 112,
+          "name": "Cooler inspector",
+          "width": 650,
+          "height": 728,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#CBD5E1",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "text",
+              "id": "QLdfs",
+              "x": 18,
+              "y": 18,
+              "name": "Cooler title",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 230,
+              "content": "Cooler cooler-1",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 18,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "q3iMEA",
+              "x": 542,
+              "y": 14,
+              "name": "Cooler draft",
+              "width": 106,
+              "height": 26,
+              "fill": "#EFF6FF",
+              "cornerRadius": 999,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "F9XRG",
+                  "name": "Cooler draft label",
+                  "fill": "#1D4ED8",
+                  "content": "Draft",
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "rfa3g",
+              "x": 18,
+              "y": 66,
+              "name": "Cooler params",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Heater / Cooler parameters",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "X47jEC",
+              "x": 18,
+              "y": 90,
+              "name": "Cooler params divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "fFQV4",
+              "x": 18,
+              "y": 104,
+              "name": "Field outlet_temperature_k",
+              "width": 614,
+              "height": 38,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "wV6fW",
+                  "x": 10,
+                  "y": 10,
+                  "name": "Field label outlet_temperature_k",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "outlet_temperature_k",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "X5wVC",
+                  "x": 432,
+                  "y": 10,
+                  "name": "Field value outlet_temperature_k",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 74,
+                  "content": "280.0",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "F6nsrK",
+                  "x": 514,
+                  "y": 10,
+                  "name": "Field unit outlet_temperature_k",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": 34,
+                  "content": "K",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "PyLyI",
+                  "x": 510,
+                  "y": 7,
+                  "name": "Field state outlet_temperature_k",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ZViZ4",
+                      "name": "Field state outlet_temperature_k label",
+                      "fill": "#1D4ED8",
+                      "content": "Draft",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "rNl4T",
+              "x": 18,
+              "y": 150,
+              "name": "Field outlet_pressure_pa",
+              "width": 614,
+              "height": 38,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "tYZkj",
+                  "x": 10,
+                  "y": 10,
+                  "name": "Field label outlet_pressure_pa",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "outlet_pressure_pa",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "drx8x",
+                  "x": 432,
+                  "y": 10,
+                  "name": "Field value outlet_pressure_pa",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 74,
+                  "content": "450000",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "ah18v",
+                  "x": 514,
+                  "y": 10,
+                  "name": "Field unit outlet_pressure_pa",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": 34,
+                  "content": "Pa",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "lMHPH",
+                  "x": 510,
+                  "y": 7,
+                  "name": "Field state outlet_pressure_pa",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "G6dpY",
+                      "name": "Field state outlet_pressure_pa label",
+                      "fill": "#1D4ED8",
+                      "content": "Synced",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "n4jaF",
+              "x": 18,
+              "y": 214,
+              "name": "Cooler ports",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Ports",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "EybYq",
+              "x": 18,
+              "y": 238,
+              "name": "Cooler ports divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "Uhsqs",
+              "x": 18,
+              "y": 252,
+              "name": "Port inlet",
+              "width": 614,
+              "height": 34,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "QMhOa",
+                  "x": 10,
+                  "y": 9,
+                  "name": "Port label inlet",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 92,
+                  "content": "inlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "eCbsI",
+                  "x": 108,
+                  "y": 9,
+                  "name": "Port target inlet",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 394,
+                  "content": "stream-feed-1-outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "R663n",
+                  "x": 500,
+                  "y": 5,
+                  "name": "Port state inlet",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#ECFDF5",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "GFs3K",
+                      "name": "Port state inlet label",
+                      "fill": "#047857",
+                      "content": "Connected",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "KOATT",
+              "x": 18,
+              "y": 294,
+              "name": "Port outlet",
+              "width": 614,
+              "height": 34,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "naWpM",
+                  "x": 10,
+                  "y": 9,
+                  "name": "Port label outlet",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 92,
+                  "content": "outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "ZZw2X",
+                  "x": 108,
+                  "y": 9,
+                  "name": "Port target outlet",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 394,
+                  "content": "stream-cooler-1-outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "N9jjf",
+                  "x": 500,
+                  "y": 5,
+                  "name": "Port state outlet",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "lALWR",
+                      "name": "Port state outlet label",
+                      "fill": "#1D4ED8",
+                      "content": "Suggested",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "k1N3Fp",
+              "x": 18,
+              "y": 360,
+              "name": "Cooler results",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Intermediate stream result",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "I79YT",
+              "x": 18,
+              "y": 384,
+              "name": "Cooler results divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "u9tt5K",
+              "x": 18,
+              "y": 398,
+              "name": "Cooler result text",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 580,
+              "content": "Produced outlet stream exposes T, P, F, phase summary and related unit step. No full report surface.",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "xw5pH",
+              "x": 18,
+              "y": 470,
+              "name": "Cooler diagnostics",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Diagnostics",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "o6t6Y",
+              "x": 18,
+              "y": 494,
+              "name": "Cooler diagnostics divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "Oc9QU",
+              "x": 18,
+              "y": 508,
+              "name": "Cooler diag text",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 580,
+              "content": "Pressure constraint belongs to parameter field. Structural unbound outlet remains formal diagnostics / recovery.",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "NLssY",
+          "x": 706,
+          "y": 112,
+          "name": "Valve inspector",
+          "width": 650,
+          "height": 728,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#CBD5E1",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "text",
+              "id": "LoUWf",
+              "x": 18,
+              "y": 18,
+              "name": "Valve title",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 210,
+              "content": "Valve valve-1",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 18,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "p6HR5D",
+              "x": 526,
+              "y": 14,
+              "name": "Valve attention",
+              "width": 106,
+              "height": 26,
+              "fill": "#FFF7ED",
+              "cornerRadius": 999,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "rt5Ub",
+                  "name": "Valve attention label",
+                  "fill": "#C2410C",
+                  "content": "Attention",
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "HEyXJ",
+              "x": 18,
+              "y": 66,
+              "name": "Valve params",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Valve parameters",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "w0BRw",
+              "x": 18,
+              "y": 90,
+              "name": "Valve params divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "VikMx",
+              "x": 18,
+              "y": 104,
+              "name": "Field outlet_pressure_pa",
+              "width": 614,
+              "height": 38,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "tmuZl",
+                  "x": 10,
+                  "y": 10,
+                  "name": "Field label outlet_pressure_pa",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "outlet_pressure_pa",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "gOQgo",
+                  "x": 432,
+                  "y": 10,
+                  "name": "Field value outlet_pressure_pa",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 74,
+                  "content": "300000",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "wBuOC",
+                  "x": 514,
+                  "y": 10,
+                  "name": "Field unit outlet_pressure_pa",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": 34,
+                  "content": "Pa",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "BEpys",
+                  "x": 510,
+                  "y": 7,
+                  "name": "Field state outlet_pressure_pa",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "rIbFT",
+                      "name": "Field state outlet_pressure_pa label",
+                      "fill": "#1D4ED8",
+                      "content": "Default",
+                      "fontFamily": "Geist",
+                      "fontSize": 11,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "ppP5o",
+              "x": 18,
+              "y": 168,
+              "name": "Valve ports",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Ports",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "DuB0r",
+              "x": 18,
+              "y": 192,
+              "name": "Valve ports divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "Cwj5t",
+              "x": 18,
+              "y": 206,
+              "name": "Port inlet",
+              "width": 614,
+              "height": 34,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "B5n3P",
+                  "x": 10,
+                  "y": 9,
+                  "name": "Port label inlet",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 92,
+                  "content": "inlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "hfzAJ",
+                  "x": 108,
+                  "y": 9,
+                  "name": "Port target inlet",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 394,
+                  "content": "stream-feed-1-outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "LQtaa",
+                  "x": 500,
+                  "y": 5,
+                  "name": "Port state inlet",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#ECFDF5",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "BmMYU",
+                      "name": "Port state inlet label",
+                      "fill": "#047857",
+                      "content": "Connected",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "OY9mq",
+              "x": 18,
+              "y": 248,
+              "name": "Port outlet",
+              "width": 614,
+              "height": 34,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "SzxHB",
+                  "x": 10,
+                  "y": 9,
+                  "name": "Port label outlet",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 92,
+                  "content": "outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "viAub",
+                  "x": 108,
+                  "y": 9,
+                  "name": "Port target outlet",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 394,
+                  "content": "stream-valve-1-outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "ODEKi",
+                  "x": 500,
+                  "y": 5,
+                  "name": "Port state outlet",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#FEF2F2",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "X1HSJM",
+                      "name": "Port state outlet label",
+                      "fill": "#B91C1C",
+                      "content": "Missing",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "KNgWM",
+              "x": 18,
+              "y": 314,
+              "name": "Valve results",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Throttled stream result",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "tpOmv",
+              "x": 18,
+              "y": 338,
+              "name": "Valve results divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "cTxNW",
+              "x": 18,
+              "y": 352,
+              "name": "Valve result text",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 580,
+              "content": "Current result shows pressure drop, produced outlet stream and phase summary when latest SolveSnapshot exists.",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "Kc6bN",
+              "x": 18,
+              "y": 424,
+              "name": "Valve diagnostics",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Diagnostics",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "d7aIZT",
+              "x": 18,
+              "y": 448,
+              "name": "Valve diagnostics divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "fyDDt",
+              "x": 18,
+              "y": 462,
+              "name": "Valve diag text",
+              "fill": "#C2410C",
+              "textGrowth": "fixed-width",
+              "width": 580,
+              "content": "Missing outlet connection is not readiness. It remains Run Panel diagnostic with recovery action.",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "500"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "YaFSC",
+      "x": 4560,
+      "y": 0,
+      "name": "Unit Panel - Flash Drum",
+      "clip": true,
+      "width": 1440,
+      "height": 960,
+      "fill": "#F5F7FA",
+      "layout": "none",
+      "children": [
+        {
+          "type": "text",
+          "id": "hnUQz",
+          "x": 24,
+          "y": 22,
+          "name": "Unit Panel - Flash Drum title",
+          "fill": "#0F172A",
+          "textGrowth": "fixed-width",
+          "width": 360,
+          "content": "Unit Panel - Flash Drum",
+          "lineHeight": 1.25,
+          "fontFamily": "Geist",
+          "fontSize": 22,
+          "fontWeight": "700"
+        },
+        {
+          "type": "text",
+          "id": "VfqiS",
+          "x": 24,
+          "y": 50,
+          "name": "Unit Panel - Flash Drum subtitle",
+          "fill": "#64748B",
+          "textGrowth": "fixed-width",
+          "width": 640,
+          "content": "P1 Unit Module UI / parameters, ports, results, diagnostics",
+          "lineHeight": 1.25,
+          "fontFamily": "Geist",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "Z0n78U",
+          "x": 1220,
+          "y": 22,
+          "name": "Unit Panel - Flash Drum scope chip",
+          "width": 106,
+          "height": 26,
+          "fill": "#DBEAFE",
+          "cornerRadius": 999,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "kuFV6",
+              "name": "Unit Panel - Flash Drum scope chip label",
+              "fill": "#1D4ED8",
+              "content": "P1 design",
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "YnfzX",
+          "x": 1328,
+          "y": 22,
+          "name": "Unit Panel - Flash Drum no code chip",
+          "width": 106,
+          "height": 26,
+          "fill": "#F1F5F9",
+          "cornerRadius": 999,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "cIt05",
+              "name": "Unit Panel - Flash Drum no code chip label",
+              "fill": "#475569",
+              "content": "no UI code",
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "id": "g7rHvO",
+          "x": 0,
+          "y": 80,
+          "name": "Unit Panel - Flash Drum header line",
+          "fill": "#D8DEE8",
+          "width": 1440,
+          "height": 1
+        },
+        {
+          "type": "frame",
+          "id": "r0ROjl",
+          "x": 24,
+          "y": 112,
+          "name": "Flash inspector",
+          "width": 650,
+          "height": 728,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#CBD5E1",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "text",
+              "id": "hiFFf",
+              "x": 18,
+              "y": 18,
+              "name": "Flash title",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 260,
+              "content": "Flash Drum flash-1",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 18,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "EHuHQ",
+              "x": 532,
+              "y": 14,
+              "name": "Flash blocked",
+              "width": 106,
+              "height": 26,
+              "fill": "#FFF7ED",
+              "cornerRadius": 999,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "mCFd6",
+                  "name": "Flash blocked label",
+                  "fill": "#C2410C",
+                  "content": "Blocked",
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "zihUZ",
+              "x": 18,
+              "y": 66,
+              "name": "Flash params",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Flash parameters",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "CqUSh",
+              "x": 18,
+              "y": 90,
+              "name": "Flash params divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "fD7yP",
+              "x": 18,
+              "y": 104,
+              "name": "Field flash_temperature_k",
+              "width": 614,
+              "height": 38,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ugjSJ",
+                  "x": 10,
+                  "y": 10,
+                  "name": "Field label flash_temperature_k",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "flash_temperature_k",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "Rf5B6",
+                  "x": 432,
+                  "y": 10,
+                  "name": "Field value flash_temperature_k",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 74,
+                  "content": "310.0",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "Mf6pU",
+                  "x": 514,
+                  "y": 10,
+                  "name": "Field unit flash_temperature_k",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": 34,
+                  "content": "K",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "KYJFg",
+                  "x": 510,
+                  "y": 7,
+                  "name": "Field state flash_temperature_k",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "l49Au",
+                      "name": "Field state flash_temperature_k label",
+                      "fill": "#1D4ED8",
+                      "content": "Default",
+                      "fontFamily": "Geist",
+                      "fontSize": 11,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fijWE",
+              "x": 18,
+              "y": 150,
+              "name": "Field flash_pressure_pa",
+              "width": 614,
+              "height": 38,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Z7pviu",
+                  "x": 10,
+                  "y": 10,
+                  "name": "Field label flash_pressure_pa",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 150,
+                  "content": "flash_pressure_pa",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "Czub7",
+                  "x": 432,
+                  "y": 10,
+                  "name": "Field value flash_pressure_pa",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 74,
+                  "content": "500000",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "bRDKo",
+                  "x": 514,
+                  "y": 10,
+                  "name": "Field unit flash_pressure_pa",
+                  "fill": "#64748B",
+                  "textGrowth": "fixed-width",
+                  "width": 34,
+                  "content": "Pa",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "rYB5O",
+                  "x": 510,
+                  "y": 7,
+                  "name": "Field state flash_pressure_pa",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "SnvFB",
+                      "name": "Field state flash_pressure_pa label",
+                      "fill": "#1D4ED8",
+                      "content": "Default",
+                      "fontFamily": "Geist",
+                      "fontSize": 11,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "N4HRqP",
+              "x": 18,
+              "y": 214,
+              "name": "Flash ports",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Ports",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "r8rljB",
+              "x": 18,
+              "y": 238,
+              "name": "Flash ports divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "rfHdb",
+              "x": 18,
+              "y": 252,
+              "name": "Port inlet",
+              "width": 614,
+              "height": 34,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "lZOVe",
+                  "x": 10,
+                  "y": 9,
+                  "name": "Port label inlet",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 92,
+                  "content": "inlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "QLGG1",
+                  "x": 108,
+                  "y": 9,
+                  "name": "Port target inlet",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 394,
+                  "content": "stream-cooler-1-outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "RoQOC",
+                  "x": 500,
+                  "y": 5,
+                  "name": "Port state inlet",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#ECFDF5",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "A6T0PJ",
+                      "name": "Port state inlet label",
+                      "fill": "#047857",
+                      "content": "Connected",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "d4tXO",
+              "x": 18,
+              "y": 294,
+              "name": "Port liquid outlet",
+              "width": 614,
+              "height": 34,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "q6Bd22",
+                  "x": 10,
+                  "y": 9,
+                  "name": "Port label liquid outlet",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 92,
+                  "content": "liquid outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "X0O6aF",
+                  "x": 108,
+                  "y": 9,
+                  "name": "Port target liquid outlet",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 394,
+                  "content": "stream-flash-1-liquid",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "drnGi",
+                  "x": 500,
+                  "y": 5,
+                  "name": "Port state liquid outlet",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "G3s5u",
+                      "name": "Port state liquid outlet label",
+                      "fill": "#1D4ED8",
+                      "content": "Suggested",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pZOAc",
+              "x": 18,
+              "y": 336,
+              "name": "Port vapor outlet",
+              "width": 614,
+              "height": 34,
+              "fill": "#FFFFFF",
+              "cornerRadius": 8,
+              "stroke": "#E5E7EB",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "GQaf8",
+                  "x": 10,
+                  "y": 9,
+                  "name": "Port label vapor outlet",
+                  "fill": "#475569",
+                  "textGrowth": "fixed-width",
+                  "width": 92,
+                  "content": "vapor outlet",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "500"
+                },
+                {
+                  "type": "text",
+                  "id": "h5yDX",
+                  "x": 108,
+                  "y": 9,
+                  "name": "Port target vapor outlet",
+                  "fill": "#0F172A",
+                  "textGrowth": "fixed-width",
+                  "width": 394,
+                  "content": "stream-flash-1-vapor",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "F4ELkr",
+                  "x": 500,
+                  "y": 5,
+                  "name": "Port state vapor outlet",
+                  "width": 86,
+                  "height": 26,
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "q5iMC",
+                      "name": "Port state vapor outlet label",
+                      "fill": "#1D4ED8",
+                      "content": "Suggested",
+                      "fontFamily": "Geist",
+                      "fontSize": 12,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "JHotE",
+              "x": 18,
+              "y": 402,
+              "name": "Flash readiness",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Readiness focus",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "S52gF",
+              "x": 18,
+              "y": 426,
+              "name": "Flash readiness divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "CNAJA",
+              "x": 18,
+              "y": 440,
+              "name": "Flash readiness body",
+              "fill": "#C2410C",
+              "textGrowth": "fixed-width",
+              "width": 580,
+              "content": "If flash temperature or pressure is missing, Inspector keeps displayed default commit path visible. It does not show a separate checklist.",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "500"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "dNvTk",
+          "x": 706,
+          "y": 112,
+          "name": "Flash result panel",
+          "width": 650,
+          "height": 728,
+          "fill": "#FFFFFF",
+          "cornerRadius": 8,
+          "stroke": "#CBD5E1",
+          "strokeWidth": 1,
+          "layout": "none",
+          "children": [
+            {
+              "type": "text",
+              "id": "bEYBA",
+              "x": 18,
+              "y": 18,
+              "name": "Flash result title",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 240,
+              "content": "Flash split results",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 18,
+              "fontWeight": "700"
+            },
+            {
+              "type": "frame",
+              "id": "N8wZOY",
+              "x": 542,
+              "y": 14,
+              "name": "Current result chip",
+              "width": 106,
+              "height": 26,
+              "fill": "#ECFDF5",
+              "cornerRadius": 999,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "HnMrt",
+                  "name": "Current result chip label",
+                  "fill": "#047857",
+                  "content": "Current",
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "o7fz6K",
+              "x": 18,
+              "y": 66,
+              "name": "Flash material balance",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Material balance",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "Upxy1",
+              "x": 18,
+              "y": 90,
+              "name": "Flash material balance divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "Jhthi",
+              "x": 18,
+              "y": 104,
+              "name": "Flash balance rows",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 580,
+              "content": "liquid outlet: F, composition, phase\nvapor outlet: F, composition, phase\nsingle-phase: zero-flow outlet may be absent",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "D1hqiU",
+              "x": 18,
+              "y": 190,
+              "name": "Flash thermodynamics",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Thermo summary",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "U4G2jr",
+              "x": 18,
+              "y": 214,
+              "name": "Flash thermodynamics divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "her1b",
+              "x": 18,
+              "y": 228,
+              "name": "Flash thermo rows",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 580,
+              "content": "phase region, bubble / dew window, overall enthalpy, consumed inlet reference",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "TXu55",
+              "x": 18,
+              "y": 294,
+              "name": "Flash stale",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Stale result state",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "EJD9p",
+              "x": 18,
+              "y": 318,
+              "name": "Flash stale divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "frame",
+              "id": "nBnfS",
+              "x": 18,
+              "y": 332,
+              "name": "Flash stale notice",
+              "width": 580,
+              "height": 102,
+              "fill": "#FFF7ED",
+              "cornerRadius": 8,
+              "stroke": "#FDBA74",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "cwyfE",
+                  "x": 14,
+                  "y": 12,
+                  "name": "Flash stale title",
+                  "fill": "#9A3412",
+                  "textGrowth": "fixed-width",
+                  "width": 200,
+                  "content": "结果已过期",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "RXZ7q",
+                  "x": 14,
+                  "y": 38,
+                  "name": "Flash stale body",
+                  "fill": "#7C2D12",
+                  "textGrowth": "fixed-width",
+                  "width": 540,
+                  "content": "当前项目已编辑，请重新运行。旧快照不驱动 Result Inspector、结果表或导出。",
+                  "lineHeight": 1.25,
+                  "fontFamily": "Geist",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "SQ8EB",
+              "x": 18,
+              "y": 474,
+              "name": "Flash diagnostics",
+              "fill": "#0F172A",
+              "textGrowth": "fixed-width",
+              "width": 614,
+              "content": "Diagnostics",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 14,
+              "fontWeight": "700"
+            },
+            {
+              "type": "rectangle",
+              "id": "SG06B",
+              "x": 18,
+              "y": 498,
+              "name": "Flash diagnostics divider",
+              "fill": "#E5E7EB",
+              "width": 614,
+              "height": 1
+            },
+            {
+              "type": "text",
+              "id": "wN7Si",
+              "x": 18,
+              "y": 512,
+              "name": "Flash diag rows",
+              "fill": "#475569",
+              "textGrowth": "fixed-width",
+              "width": 580,
+              "content": "Parameter missing -> readiness. Unbound stream or invalid topology -> formal Run Panel diagnostics / recovery.",
+              "lineHeight": 1.25,
+              "fontFamily": "Geist",
+              "fontSize": 12,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "themes": {
+    "Mode": [
+      "Light",
+      "Dark"
+    ]
+  },
+  "variables": {
+    "--sidebar": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#E7E8E5"
+        },
+        {
+          "value": "#18181b",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--sidebar-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#666666"
+        },
+        {
+          "value": "#fafafa",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--sidebar-primary": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#18181b"
+        },
+        {
+          "value": "#18181b",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--sidebar-primary-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#fafafa"
+        },
+        {
+          "value": "#fafafa",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--sidebar-border": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#CBCCC9"
+        },
+        {
+          "value": "#ffffff1a",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--sidebar-accent": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#CBCCC9"
+        },
+        {
+          "value": "#2a2a30",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--sidebar-accent-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#18181b"
+        },
+        {
+          "value": "#fafafa",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--sidebar-ring": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#71717a"
+        },
+        {
+          "value": "#71717a",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--background": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#F2F3F0"
+        },
+        {
+          "value": "#111111",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#111111"
+        },
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--card": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFFFF"
+        },
+        {
+          "value": "#1A1A1A",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--card-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#111111"
+        },
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--popover": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFFFF"
+        },
+        {
+          "value": "#1A1A1A",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--popover-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#111111"
+        },
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--primary": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FF8400"
+        },
+        {
+          "value": "#FF8400",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--primary-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#111111"
+        },
+        {
+          "value": "#111111",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--secondary": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#E7E8E5"
+        },
+        {
+          "value": "#2E2E2E",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--secondary-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#111111"
+        },
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--muted": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#F2F3F0"
+        },
+        {
+          "value": "#2E2E2E",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--muted-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#666666"
+        },
+        {
+          "value": "#B8B9B6",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--accent": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#F2F3F0"
+        },
+        {
+          "value": "#111111",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--accent-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#111111"
+        },
+        {
+          "value": "#F2F3F0",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--destructive": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#D93C15"
+        },
+        {
+          "value": "#FF5C33",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--border": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#CBCCC9"
+        },
+        {
+          "value": "#2E2E2E",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--input": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#CBCCC9"
+        },
+        {
+          "value": "#2E2E2E",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--ring": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#666666"
+        },
+        {
+          "value": "#666666",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--white": {
+      "type": "color",
+      "value": "#FFFFFF"
+    },
+    "--black": {
+      "type": "color",
+      "value": "#000000"
+    },
+    "--font-primary": {
+      "type": "string",
+      "value": "JetBrains Mono"
+    },
+    "--font-secondary": {
+      "type": "string",
+      "value": "Geist"
+    },
+    "--radius-none": {
+      "type": "number",
+      "value": 0
+    },
+    "--radius-pill": {
+      "type": "number",
+      "value": 999
+    },
+    "--color-success": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#DFE6E1"
+        },
+        {
+          "value": "#222924",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--color-success-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#004D1A"
+        },
+        {
+          "value": "#B6FFCE",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--color-warning": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#E9E3D8"
+        },
+        {
+          "value": "#291C0F",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--color-warning-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#804200"
+        },
+        {
+          "value": "#FF8400",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--color-error": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#E5DCDA"
+        },
+        {
+          "value": "#24100B",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--color-error-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#8C1C00"
+        },
+        {
+          "value": "#FF5C33",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--color-info": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#DFDFE6"
+        },
+        {
+          "value": "#222229",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--color-info-foreground": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#000066"
+        },
+        {
+          "value": "#B2B2FF",
+          "theme": {
+            "Mode": "Dark"
+          }
+        }
+      ]
+    },
+    "--radius-m": {
+      "type": "number",
+      "value": 16
+    }
+  }
+}

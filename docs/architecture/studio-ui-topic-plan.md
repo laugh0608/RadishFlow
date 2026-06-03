@@ -163,6 +163,7 @@ docs/architecture/designs/readonly-mobile-view.pen
 
 ```text
 docs/architecture/designs/studio-client-main-brief.md
+docs/architecture/designs/unit-module-panel-brief.md
 ```
 
 规则：
