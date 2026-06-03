@@ -183,6 +183,25 @@ P1 信息架构稿必须避免用长文本和空格模拟真实控件：
 | stale notice | stale snapshot presentation |
 | 帮助入口 | 当前字段 / 主路径短说明，不成为状态真相源 |
 
+## 实现前拆解
+
+P1 设计稿进入代码实现前，先按现有边界拆成小切片，不直接把新视觉一次性堆进 `runtime.rs`：
+
+| 切片 | 目标 | 主要落点 |
+| --- | --- | --- |
+| Workbench shell 分区 | 左侧 Project / Palette、中间 Canvas、右侧 tabs、底部 drawer 与状态栏先形成稳定容器 | `apps/radishflow-studio/src/studio_gui_shell/panels/` |
+| Active Inspector 结构化行 | `General`、`Specifications`、`Ports`、`Results`、`Diagnostics` 使用统一行结构和状态 chip | `StudioGuiWindowInspectorTargetDetailModel`、`studio_gui_shell/panels/runtime.rs` 的 inspector 渲染函数 |
+| Results Table | 底部结果表按列渲染 `Stream`、`T (K)`、`P (Pa)`、`F (mol/s)`、`Phase`，不靠字符串空格排版 | 现有 bottom results table 渲染与 `SolveSnapshot` presentation |
+| Diagnostics notice | readiness / stale / formal diagnostics 只在对应区域呈现，不覆盖结果表 | modeling readiness、Run Panel diagnostics、bottom drawer |
+| 渲染文件拆分 | `runtime.rs` 已明显过大，实现 P1 前应先按 inspector / result / diagnostics 或 bottom drawer 拆分子模块 | `apps/radishflow-studio/src/studio_gui_shell/panels/` |
+
+实现顺序建议：
+
+1. 先拆分渲染职责，保持行为不变，并用现有 UI rendering tests 验证。
+2. 再调整底部 Results Table 和状态栏结构，因为这两处主要是渲染结构问题，风险相对低。
+3. 再调整 Active Inspector 的字段、端口和最新结果区，必要时补 presentation 字段；新增字段必须来自 `StudioGuiWindowInspectorTargetDetailModel` 或正式 snapshot，不做 shell 私有状态。
+4. 最后处理 Diagnostics / stale notice 的版式协同，继续复用 shared modeling readiness、formal solve diagnostics 和 stale snapshot presentation。
+
 ## 暂不纳入
 
 - 不画独立单元详情页、完整参数表或高级模型配置。
