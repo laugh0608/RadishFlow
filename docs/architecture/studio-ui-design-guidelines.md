@@ -324,6 +324,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“下一轮主设�
 - 从左侧 Project、Canvas 对象列表或结果定位动作选择 stream / unit 后，应自然切换到对应检查器；stream 优先暴露 `T / P / F`、组成草稿和提交/归一化动作，unit 优先暴露已进入 MVP 的关键参数、端口、关联步骤、关联诊断和最新只读结果。
 - Unit Inspector 当前只把 `Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 与 `Flash Drum` 的 flash temperature / pressure 作为可编辑参数行；字段必须显示 SI 单位和约束提示，提交走正式文档命令并同步对应 outlet stream 模板。若字段值来自 outlet stream 模板 / fallback 而 unit parameter 尚未显式存在，同值提交仍应写入正式 `SetUnitParameter`。其余单元信息仍以端口、关联步骤、关联诊断和最新只读结果为主，不提前设计完整单元参数表。
 - 结果检查器中面向用户的组成、相态和摘要行应优先使用本地化结构化短句；`z: ...`、`phases: ...` 这类原始调试文本只应进入 hover、日志或开发诊断，不应作为默认结果正文。
+- 模块结果、环境摘要和状态摘要应使用状态 chip、metric card、stream chip 和短说明组合；避免把 `状态 / Duty / Outlet T / Diagnostics` 或 `客户端 / 服务端 / 缓存` 做成松散的两列文字直排。
 - 草稿态、未归一组成、运行阻断和只读结果要有稳定视觉语义。
 - Runtime 中的开发态活动、平台 timer、GUI activity、原始项目路径编辑默认折叠。
 
@@ -332,6 +333,9 @@ Studio UI 设计需要同时区分“当前已实现壳”和“下一轮主设�
 - 右侧栏收敛为 `检查器 / 模块设置 / 模块结果`。
 - `运行` 不再作为右侧常驻 tab；运行主按钮、Hold / Resume、检查输入和清理诊断进入顶部 `运行` 工具栏，详细日志进入底部运行信息区。
 - `物性包` 不再作为右侧常驻 tab；项目物性、组分、方法、交互参数、来源和分析进入独立 `物性` 页面。
+- 左侧模块库不做松散文本列表；物料流、能量流、信号流使用 palette item，单元操作分类使用 category card，选中态、计数和简短描述保持稳定位置。
+- 右侧检查器不做松散 label/value 文本堆叠；当前对象用 summary card，关键字段用 metric card，端口用 connection card，状态用 chip。
+- Home、Property、Flowsheet、Module / Results 四个主 frame 必须共享同一套浅色 shell 和卡片密度；Property 页面也应使用导航卡、组分卡、metric card 和 summary card，不保留旧式大表格 / 长段落正文作为主视觉。
 
 ### 底部 Workbench Drawer
 
@@ -354,6 +358,14 @@ Studio UI 设计需要同时区分“当前已实现壳”和“下一轮主设�
 - 底部从单一 drawer 拆为左右两栏。
 - 左侧 tabs：`消息`、`运行日志`、`收敛`、`建议`、`诊断`。
 - 右侧：`状态汇总`，显示当前案例状态、最新运行、收敛 / 迭代信息、诊断数和 snapshot / revision 一致性；没有真实迭代次数时显示 `N/A` 或 `Sequential steps`，不得伪造收敛数据。
+
+### 画布浮动工具条
+
+规则：
+
+- 浮动工具条必须服从浅色工作台基调，默认使用白色或极浅灰底、浅描边和深灰图标。
+- 当前工具使用浅蓝选中底和蓝色图标即可，不使用黑色高对比胶囊形工具条。
+- 工具条只放高频画布工具：选择、框选、平移、放大、缩小、适应流程、网格；低频命令进入顶部上下文工具栏或菜单。
 
 ### 底部 Status Bar
 
