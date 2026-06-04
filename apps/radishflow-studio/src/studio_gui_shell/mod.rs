@@ -64,13 +64,26 @@ pub fn run() -> eframe::Result<()> {
 }
 
 fn studio_native_options() -> eframe::NativeOptions {
-    eframe::NativeOptions {
+    let mut options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size(STUDIO_INITIAL_WINDOW_SIZE)
             .with_min_inner_size(STUDIO_MIN_WINDOW_SIZE),
         ..Default::default()
+    };
+    configure_studio_wgpu_backend(&mut options);
+    options
+}
+
+#[cfg(target_os = "macos")]
+fn configure_studio_wgpu_backend(options: &mut eframe::NativeOptions) {
+    options.renderer = eframe::Renderer::Wgpu;
+    if let eframe::egui_wgpu::WgpuSetup::CreateNew(setup) = &mut options.wgpu_options.wgpu_setup {
+        setup.instance_descriptor.backends = eframe::wgpu::Backends::METAL;
     }
 }
+
+#[cfg(not(target_os = "macos"))]
+fn configure_studio_wgpu_backend(_options: &mut eframe::NativeOptions) {}
 
 struct RadishFlowStudioApp {
     state: AppState,

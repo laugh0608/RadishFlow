@@ -354,6 +354,25 @@ fn native_options_start_with_room_for_alpha_workspace() {
     );
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn native_options_use_metal_only_on_macos_to_avoid_opengl_loader_noise() {
+    let options = studio_native_options();
+
+    assert_eq!(options.renderer, eframe::Renderer::Wgpu);
+    match options.wgpu_options.wgpu_setup {
+        eframe::egui_wgpu::WgpuSetup::CreateNew(setup) => {
+            assert_eq!(
+                setup.instance_descriptor.backends,
+                eframe::wgpu::Backends::METAL
+            );
+        }
+        eframe::egui_wgpu::WgpuSetup::Existing(_) => {
+            panic!("expected Studio native options to create a Metal-only wgpu instance");
+        }
+    }
+}
+
 #[test]
 fn top_bar_keeps_alpha_primary_path_visible_and_hides_low_frequency_controls() {
     let mut app = ready_app_state(&synced_workspace_config());
