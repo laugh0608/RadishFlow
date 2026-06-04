@@ -325,13 +325,37 @@ impl ReadyAppState {
             .resizable(false)
             .show(ctx, |ui| {
                 ui.horizontal_wrapped(|ui| {
-                    let run_panel_view = window.runtime.run_panel.view();
+                    ui.small(
+                        egui::RichText::new(
+                            self.locale
+                                .runtime_label(window.status_summary.title)
+                                .as_ref(),
+                        )
+                        .strong(),
+                    );
+                    for metric in &window.status_summary.metrics {
+                        if metric.label == "Run" {
+                            render_status_chip(
+                                ui,
+                                self.locale.runtime_label(&metric.status_label).as_ref(),
+                                run_status_color(&metric.status_label),
+                            );
+                            continue;
+                        }
+                        ui.separator();
+                        ui.small(format!(
+                            "{}: {}",
+                            self.locale.runtime_label(metric.label),
+                            self.locale.runtime_label(&metric.value)
+                        ));
+                    }
+                    ui.separator();
                     render_status_chip(
                         ui,
                         self.locale
-                            .runtime_label(run_panel_view.status_label)
+                            .runtime_label(window.status_summary.snapshot_consistency_label)
                             .as_ref(),
-                        run_status_color(run_panel_view.status_label),
+                        run_status_color(window.status_summary.snapshot_consistency_label),
                     );
                     ui.separator();
                     ui.small(self.locale.text(ShellText::UnitsSi));
@@ -339,11 +363,6 @@ impl ReadyAppState {
                     ui.small(self.locale.text(ShellText::SolverSequentialModular));
                     ui.separator();
                     ui.small(self.locale.text(ShellText::FlowsheetMode));
-                    ui.separator();
-                    ui.small(self.locale.unit_stream_counts(
-                        window.runtime.workspace_document.unit_count,
-                        window.runtime.workspace_document.stream_count,
-                    ));
                     if let Some(selection) = window.canvas.widget.view().current_selection.as_ref()
                     {
                         ui.separator();

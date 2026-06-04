@@ -174,6 +174,24 @@ impl StudioShellLocale {
         match label {
             "Active" => Cow::Borrowed("活动"),
             "Idle" => Cow::Borrowed("空闲"),
+            "Status Summary" => Cow::Borrowed("状态汇总"),
+            "Property" => Cow::Borrowed("物性"),
+            "Package" => Cow::Borrowed("物性包"),
+            "Components" => Cow::Borrowed("组分"),
+            "Case" => Cow::Borrowed("案例"),
+            "Run" => Cow::Borrowed("运行"),
+            "Convergence" => Cow::Borrowed("收敛"),
+            "Steps" => Cow::Borrowed("步骤"),
+            "Diagnostics" => Cow::Borrowed("诊断"),
+            "Saved" => Cow::Borrowed("已保存"),
+            "Modified" => Cow::Borrowed("已修改"),
+            "Unselected" => Cow::Borrowed("未选择"),
+            "Selected" => Cow::Borrowed("已选择"),
+            "None" => Cow::Borrowed("无"),
+            "Stale" => Cow::Borrowed("已过期"),
+            "Missing file" => Cow::Borrowed("文件缺失"),
+            "Sequential steps" => Cow::Borrowed("顺序步骤"),
+            "N/A" => Cow::Borrowed("无"),
             "Authenticated" => Cow::Borrowed("已认证"),
             "Unauthenticated" => Cow::Borrowed("未认证"),
             "Active entitlement" => Cow::Borrowed("授权有效"),
@@ -277,7 +295,6 @@ impl StudioShellLocale {
             "liquid_only" => Cow::Borrowed("纯液相"),
             "two_phase" => Cow::Borrowed("两相"),
             "vapor_only" => Cow::Borrowed("纯气相"),
-            "Run" => Cow::Borrowed("运行"),
             "Resume" => Cow::Borrowed("恢复"),
             "Activate" | "Active mode" => Cow::Borrowed("活动模式"),
             "Hold mode" => Cow::Borrowed("暂停模式"),
@@ -300,13 +317,6 @@ impl StudioShellLocale {
                 "attention" => format!("{count} 条关注"),
                 _ => format!("{count} {plural}"),
             },
-        }
-    }
-
-    pub(super) fn unit_stream_counts(self, unit_count: usize, stream_count: usize) -> String {
-        match self {
-            StudioShellLocale::En => format!("{unit_count} units / {stream_count} streams"),
-            StudioShellLocale::ZhCn => format!("{unit_count} 个单元 / {stream_count} 股流股"),
         }
     }
 

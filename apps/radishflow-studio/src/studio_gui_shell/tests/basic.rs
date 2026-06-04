@@ -331,6 +331,10 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     assert_eq!(locale.runtime_label("Unit").as_ref(), "单元");
     assert_eq!(locale.runtime_label("Stream").as_ref(), "流股");
     assert_eq!(locale.runtime_label("Idle").as_ref(), "空闲");
+    assert_eq!(locale.runtime_label("Status Summary").as_ref(), "状态汇总");
+    assert_eq!(locale.runtime_label("Case").as_ref(), "案例");
+    assert_eq!(locale.runtime_label("Saved").as_ref(), "已保存");
+    assert_eq!(locale.runtime_label("Unselected").as_ref(), "未选择");
     assert_eq!(locale.runtime_label("SnapshotMissing").as_ref(), "缺少快照");
     assert_eq!(locale.runtime_label("Place Feed").as_ref(), "放置进料");
     assert_eq!(
@@ -404,6 +408,9 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
         "消息",
         "结果表",
         "还没有求解快照。",
+        "状态汇总",
+        "案例: 已保存",
+        "收敛: 无",
         "单位: SI",
         "求解器: 顺序模块法",
         "流程图模式",

@@ -321,7 +321,7 @@ impl ReadyAppState {
     }
 
     fn render_home_example_cases(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
-        if window.runtime.example_projects.is_empty() {
+        if window.home.example_case_tiles.is_empty() {
             ui.group(|ui| {
                 ui.colored_label(
                     egui::Color32::from_rgb(160, 120, 40),
@@ -332,59 +332,71 @@ impl ReadyAppState {
             return;
         }
 
-        for example in window.runtime.example_projects.iter().take(6) {
+        for tile in window.home.example_case_tiles.iter().take(6) {
+            let example_path = window
+                .runtime
+                .example_projects
+                .iter()
+                .find(|example| example.id == tile.source_id)
+                .map(|example| example.project_path.clone());
             let is_selected = self
                 .home_selected_example_project
                 .as_ref()
-                .is_some_and(|selected| paths_match(selected, &example.project_path));
+                .zip(example_path.as_ref())
+                .is_some_and(|(selected, example_path)| paths_match(selected, example_path));
             let fill = if is_selected {
                 egui::Color32::from_rgb(230, 239, 252)
             } else {
                 ui.visuals().widgets.noninteractive.bg_fill
             };
-            let example_path = example.project_path.clone();
             let frame_response = egui::Frame::group(ui.style()).fill(fill).show(ui, |ui| {
                 ui.set_width(ui.available_width());
                 ui.horizontal(|ui| {
-                    let title = example_case_title(self.locale, example.id, example.title);
-                    ui.label(egui::RichText::new(title.as_ref()).strong());
+                    ui.label(
+                        egui::RichText::new(example_case_title(
+                            self.locale,
+                            &tile.source_id,
+                            &tile.title,
+                        ))
+                        .strong(),
+                    );
                     render_status_chip(
                         ui,
-                        home_text(self.locale, HomeText::Ready),
-                        egui::Color32::from_rgb(52, 128, 89),
+                        self.locale.runtime_label(tile.status_label).as_ref(),
+                        home_case_tile_status_color(tile.status),
                     );
                 });
                 render_wrapped_small(
                     ui,
-                    example_case_detail(self.locale, example.id, example.detail),
+                    example_case_detail(self.locale, &tile.source_id, &tile.detail),
                 );
                 ui.add_space(4.0);
-                render_muted_small(ui, example_case_flow_summary(self.locale, example.id));
+                render_home_thumbnail(ui, &tile.thumbnail);
+                render_muted_small(ui, example_case_flow_summary(self.locale, &tile.source_id));
                 ui.horizontal_wrapped(|ui| {
                     ui.small(home_text(self.locale, HomeText::Components));
-                    ui.small(example_case_components(self.locale, example.id));
+                    ui.small(&tile.component_summary);
                     ui.separator();
                     ui.small(home_text(self.locale, HomeText::PropertyPackage));
-                    ui.small(example_case_property_package(example.id));
+                    ui.small(&tile.package_summary);
                 });
             });
             let row_response = ui
                 .interact(
                     frame_response.response.rect,
-                    ui.make_persistent_id((
-                        "home-example-case-row",
-                        example_path.display().to_string(),
-                    )),
+                    ui.make_persistent_id(("home-example-case-row", tile.source_id.clone())),
                     egui::Sense::click(),
                 )
-                .on_hover_text(example_path.display().to_string())
+                .on_hover_text(&tile.path_text)
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
-            match home_case_row_action(row_response.clicked(), row_response.double_clicked()) {
-                HomeCaseRowAction::Open => self.open_example_project(example_path),
-                HomeCaseRowAction::Select => {
-                    self.home_selected_example_project = Some(example_path);
+            if let Some(example_path) = example_path {
+                match home_case_row_action(row_response.clicked(), row_response.double_clicked()) {
+                    HomeCaseRowAction::Open => self.open_example_project(example_path),
+                    HomeCaseRowAction::Select => {
+                        self.home_selected_example_project = Some(example_path);
+                    }
+                    HomeCaseRowAction::None => {}
                 }
-                HomeCaseRowAction::None => {}
             }
             ui.add_space(8.0);
         }
@@ -410,17 +422,21 @@ impl ReadyAppState {
             .as_ref()
             .is_none_or(|selected| {
                 !window
-                    .runtime
-                    .example_projects
+                    .home
+                    .example_case_tiles
                     .iter()
-                    .any(|example| paths_match(&example.project_path, selected))
+                    .any(|tile| tile.path_text == selected.display().to_string())
             })
         {
-            self.home_selected_example_project = window
-                .runtime
-                .example_projects
-                .first()
-                .map(|example| example.project_path.clone());
+            self.home_selected_example_project =
+                window.home.example_case_tiles.first().and_then(|tile| {
+                    window
+                        .runtime
+                        .example_projects
+                        .iter()
+                        .find(|example| example.id == tile.source_id)
+                        .map(|example| example.project_path.clone())
+                });
         }
     }
 
@@ -859,27 +875,101 @@ fn example_case_flow_summary(locale: StudioShellLocale, id: &str) -> &'static st
     }
 }
 
-fn example_case_components(locale: StudioShellLocale, id: &str) -> &'static str {
-    match locale {
-        StudioShellLocale::En => match id {
-            "water-ethanol-heater-flash" => "Water, Ethanol",
-            "feed-mixer-heater-flash" => "Component A, Component B",
-            _ => "Methane, Ethane",
-        },
-        StudioShellLocale::ZhCn => match id {
-            "water-ethanol-heater-flash" => "水, 乙醇",
-            "feed-mixer-heater-flash" => "Component A, Component B",
-            _ => "甲烷, 乙烷",
-        },
+fn home_case_tile_status_color(
+    status: radishflow_studio::StudioGuiWindowHomeCaseTileStatus,
+) -> egui::Color32 {
+    match status {
+        radishflow_studio::StudioGuiWindowHomeCaseTileStatus::Ready
+        | radishflow_studio::StudioGuiWindowHomeCaseTileStatus::Current => {
+            egui::Color32::from_rgb(52, 128, 89)
+        }
+        radishflow_studio::StudioGuiWindowHomeCaseTileStatus::MissingFile => {
+            egui::Color32::from_rgb(180, 70, 60)
+        }
     }
 }
 
-fn example_case_property_package(id: &str) -> &'static str {
-    match id {
-        "feed-mixer-heater-flash" => "binary-hydrocarbon-synthetic-demo-v1",
-        "water-ethanol-heater-flash" => "water-ethanol-lite-v1 / PME sample",
-        _ => "binary-hydrocarbon-lite-v1",
+fn render_home_thumbnail(
+    ui: &mut egui::Ui,
+    thumbnail: &radishflow_studio::StudioGuiWindowThumbnailFlowModel,
+) {
+    if thumbnail.nodes.is_empty() {
+        return;
     }
+
+    let stages = home_thumbnail_stages(thumbnail);
+    egui::Frame::new()
+        .fill(egui::Color32::from_rgb(244, 247, 251))
+        .stroke(egui::Stroke::new(
+            1.0,
+            egui::Color32::from_rgb(218, 226, 238),
+        ))
+        .corner_radius(6.0)
+        .inner_margin(egui::Margin::symmetric(8, 5))
+        .show(ui, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                for (stage_index, stage) in stages.iter().enumerate() {
+                    if stage_index > 0 {
+                        ui.small("->");
+                    }
+                    for node in stage {
+                        render_status_chip(ui, node, egui::Color32::from_rgb(86, 118, 168));
+                    }
+                }
+            });
+        });
+}
+
+fn home_thumbnail_stages(
+    thumbnail: &radishflow_studio::StudioGuiWindowThumbnailFlowModel,
+) -> Vec<Vec<&str>> {
+    let node_count = thumbnail.nodes.len();
+    let mut incoming_counts = vec![0usize; node_count];
+    for (_, to) in &thumbnail.edges {
+        if *to < node_count {
+            incoming_counts[*to] += 1;
+        }
+    }
+
+    let mut consumed = vec![false; node_count];
+    let mut stages = Vec::new();
+    while consumed.iter().any(|consumed| !*consumed) {
+        let stage_indices = incoming_counts
+            .iter()
+            .enumerate()
+            .filter_map(|(index, incoming_count)| {
+                if !consumed[index] && *incoming_count == 0 {
+                    Some(index)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        if stage_indices.is_empty() {
+            return thumbnail
+                .nodes
+                .iter()
+                .map(|node| vec![node.as_str()])
+                .collect();
+        }
+
+        for index in &stage_indices {
+            consumed[*index] = true;
+            for (from, to) in &thumbnail.edges {
+                if from == index && *to < node_count {
+                    incoming_counts[*to] = incoming_counts[*to].saturating_sub(1);
+                }
+            }
+        }
+        stages.push(
+            stage_indices
+                .into_iter()
+                .map(|index| thumbnail.nodes[index].as_str())
+                .collect(),
+        );
+    }
+
+    stages
 }
 
 fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {

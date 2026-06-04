@@ -330,34 +330,20 @@ impl ReadyAppState {
         });
         ui.add_space(4.0);
 
+        let property_page = &window.property_page;
         egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.set_width(ui.available_width());
-            let current_package_id = window
-                .runtime
-                .workspace_document
-                .property_package_id
+            let current_package_id = property_page
+                .selected_package_id
                 .as_deref()
                 .unwrap_or("unselected");
             ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new(current_package_id).strong());
                 render_status_chip(
                     ui,
-                    match self.locale {
-                        StudioShellLocale::En => {
-                            if current_package_id == "unselected" {
-                                "Unselected"
-                            } else {
-                                "Selected"
-                            }
-                        }
-                        StudioShellLocale::ZhCn => {
-                            if current_package_id == "unselected" {
-                                "未选择"
-                            } else {
-                                "已选择"
-                            }
-                        }
-                    },
+                    self.locale
+                        .runtime_label(property_page.package_status_label)
+                        .as_ref(),
                     egui::Color32::from_rgb(66, 118, 92),
                 );
             });
@@ -379,10 +365,8 @@ impl ReadyAppState {
                         StudioShellLocale::En => "Components",
                         StudioShellLocale::ZhCn => "组分",
                     });
-                    let component_summary = window
-                        .runtime
-                        .workspace_document
-                        .property_package_choices
+                    let component_summary = property_page
+                        .package_choices
                         .iter()
                         .find(|choice| choice.selected)
                         .map(|choice| choice.component_summary.as_str())
@@ -411,13 +395,13 @@ impl ReadyAppState {
                         StudioShellLocale::En => "Bundled examples",
                         StudioShellLocale::ZhCn => "内置示例",
                     });
-                    ui.small(window.runtime.example_projects.len().to_string());
+                    ui.small(window.home.example_case_tiles.len().to_string());
                     ui.end_row();
                 });
         });
 
         ui.add_space(8.0);
-        for choice in &window.runtime.workspace_document.property_package_choices {
+        for choice in &property_page.package_choices {
             let label = match self.locale {
                 StudioShellLocale::En => choice.label.as_str().to_string(),
                 StudioShellLocale::ZhCn => match choice.package_id.as_str() {
@@ -458,24 +442,18 @@ impl ReadyAppState {
                 },
             );
             ui.add_space(4.0);
-            for component in &window.runtime.workspace_document.project_component_choices {
+            for component in &property_page.component_choices {
                 ui.horizontal(|ui| {
                     let status = if component.selected {
-                        match self.locale {
-                            StudioShellLocale::En => "Selected",
-                            StudioShellLocale::ZhCn => "已选择",
-                        }
+                        self.locale.runtime_label("Selected")
                     } else {
-                        match self.locale {
-                            StudioShellLocale::En => "Available",
-                            StudioShellLocale::ZhCn => "可选",
-                        }
+                        self.locale.runtime_label("Available")
                     };
                     ui.label(egui::RichText::new(&component.name).strong());
                     if let Some(formula) = component.formula.as_ref() {
                         ui.small(formula);
                     }
-                    ui.small(status);
+                    ui.small(status.as_ref());
                 });
 
                 if component.selected {
