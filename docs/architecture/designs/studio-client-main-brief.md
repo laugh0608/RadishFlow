@@ -21,9 +21,22 @@
 
 `unit-module-panel.pen` 不再作为独立完整 Workbench 复制稿维护。后续如果确实需要细化单元模块详情，应新建窄口径 `module-settings-panel.pen`，只聚焦右侧栏、弹窗或画布标签页内的模块设置 / 结果结构，不重复整套 Home / Workbench 壳。
 
+## 当前实现映射
+
+当前已经允许从 presentation / window model 小切片进入代码实现，但仍不做 egui 大布局重排。首批实现只把设计稿中稳定的信息结构投影到 `StudioGuiWindowModel`：
+
+| 设计区域 | 当前实现映射 | 仍未完成 |
+| --- | --- | --- |
+| Home 示例 tile | `StudioGuiWindowHomeModel` / `StudioGuiWindowHomeCaseTileModel` 从 `runtime.example_projects` 派生流程缩影、标题、来源、路径 / package / components 摘要和状态；egui Home 示例区已消费该 DTO | 最近项目 tile 来源尚未上提到正式 window model；Home 仍未按设计稿重排为完整 tile gallery |
+| 独立物性页 | `StudioGuiWindowPropertyPageModel` 从 `workspace_document.property_package_choices`、`project_component_choices` 和已选 package / components 派生 package、component、metric 和 future section；命令仍走既有 package / component command id | 顶部导航下的独立 `物性` 页面尚未重排落地，当前右侧物性 tab 先消费同一 DTO |
+| 底部状态汇总 | `StudioGuiWindowStatusSummaryModel` 从 document saved/revision、run panel view、latest current-revision `SolveSnapshot`、stale snapshot 或 latest failure 派生；底部状态区域已消费该 DTO | 设计稿中的左右分栏底部结构尚未完整重排 |
+| 右侧 Inspector / Module Results | 当前先把 `runtime.rs` 拆为 `runtime/mod.rs`、`runtime/results.rs` 和 `runtime/inspector.rs`，为后续 DTO 细化留出边界 | selected unit result、stream chip、diagnostic action 和 solve step link 仍需后续映射到正式 window model DTO |
+
+这些 DTO 只服务展示和命令绑定，不是第二套项目、物性、运行、结果或诊断真相源。后续实现必须继续先确认状态来源，再补 presentation 字段和 focused 回归，最后才调整 egui 布局。
+
 ## 设计目标
 
-`studio-client-main.pen` 当前版本解决 Studio 客户端主信息架构，不进入 UI 代码实现：
+`studio-client-main.pen` 当前版本解决 Studio 客户端主信息架构，并作为上述小切片实现的设计依据：
 
 - Home 信息密度、风格和工作台保持一致，不再像低密度欢迎页。
 - 物性作为流程模拟核心能力，成为顶部导航下的独立页面，而不是塞进左侧栏或右侧栏。

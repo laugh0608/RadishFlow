@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-06-03
+更新时间：2026-06-04
 
 ## 当前目标
 
@@ -51,6 +51,7 @@
 - 负责让顶部 `Run`、Run Panel `Resume`、`F5 / Shift+F5`、AppHost、StudioGuiDriver、StudioGuiHost command registry 等正式运行入口复用同一层建模输入 readiness；shell 只负责 notice、focus 和用户反馈，不在各入口复制另一套输入判断
 - 负责在 GUI shell 层提供用户操作与求解审计输出；默认 stderr 日志只作为开发态 smoke 和诊断入口，不替代未来正式审计 / telemetry 设计
 - 负责遵守 `eframe` / `winit` 事件循环约束：Windows 事件循环在主线程创建；干净最后窗口 close 不得被 `CancelClose` 拦截，关闭前清理逻辑窗口并停止当帧 fallback 布局；脏工作区 close 必须先确认保存 / 舍弃 / 取消
+- 负责桌面窗口渲染后端选择：macOS 开发态使用 `eframe/wgpu` 并限制为 Metal backend，避免系统 OpenGL loader 探测噪声；直接运行裸二进制时的 App Intents / WindowTab / task port 系统日志不在运行时代码里兜底，后续由 `.app` bundle / `Info.plist` / 签名打包流程治理
 
 不应承担：
 
@@ -75,6 +76,14 @@ Studio 首页、工作台分区、运行后结果视图和 Home 项目切换确�
 - 关闭行为：干净最后窗口应自然结束进程；shell 可在清理逻辑窗口后停止当帧渲染，但不能拦截原生关闭请求。脏工作区必须先取消本次 close，请用户选择保存并关闭、舍弃并关闭或取消关闭；保存失败、另存为取消或覆盖确认未完成时保持打开。
 
 下一轮 Studio UI 主设计稿已收敛到 `docs/architecture/designs/studio-client-main.pen`。它是设计目标，不代表当前代码已完成重排。实现时必须继续复用同一份 `WorkspaceDocument`、inspector draft、command surface、run panel state 和 latest current-revision `SolveSnapshot`；独立 `物性` 页面仍通过正式 document command 写入 package / components；顶部两层导航、左侧 `模块 / 项目`、右侧 `检查器 / 模块设置 / 模块结果` 和底部分栏都只是 UI 编排变化，不得新增私有选择、结果、诊断或参数缓存。
+
+### Studio Main Presentation 边界
+
+Studio UI 专题代码实现从 `StudioGuiWindowModel` 派生 DTO 开始，不先做 egui 大布局重排。当前 `studio_main` 只投影 Home 示例 tile、Property page 和底部 status summary；详细映射见 `docs/architecture/designs/studio-client-main-brief.md`。
+
+egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、物性、运行、结果或诊断真相源。Home recent tile、独立 `物性` 页面、右侧 `模块设置 / 模块结果` 和底部分栏重排都仍需按正式 presentation / command / state 来源逐步推进。
+
+`studio_gui_shell/panels/runtime/` 当前拆为 `runtime/mod.rs`、`runtime/results.rs` 和 `runtime/inspector.rs`。后续 Module Results 或 Inspector 细化应先补正式 window model DTO 和 focused 回归，再让对应 runtime 子模块消费；不得为了贴近设计稿在 shell 中私造结果、诊断、端口或参数缓存。
 
 ### `rf-ui`
 
@@ -721,18 +730,8 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - `StudioWorkspaceModeDispatch` 当前已作为独立结果派发对象承接模式切换结果，避免 UI 侧把“切换模式”和“发起运行”混成同一种返回值
 - `WorkspaceControlState` 当前已作为运行栏/状态栏摘要对象，统一提供 mode、status、pending、最新快照摘要和当前可触发动作集合
 - `run_studio_bootstrap(...)` 当前也已把 `StudioBootstrapTrigger::{Intent, WidgetPrimaryAction, WidgetAction}` 作为配置入口，并通过 `run_panel_driver` 回收 `RunPanelWidgetModel + WorkspaceControlState`，作为最小桌面入口对运行栏契约的直接消费样例
-- `rf-ui` 当前已新增 `RunPanelState`，并由 `AppState::refresh_run_panel_state(...)` 基于 `SolveSessionState`、最新 `SolveSnapshot` 和最新日志自动推导；Studio 也可通过 `WorkspaceControlState -> RunPanelState` 的映射把控制面摘要写回 UI 状态
-- `rf-ui` 当前也已补出自有 `RunPanelIntent` / `RunPanelPackageSelection`；Studio 继续只负责把这些 UI 意图映射为 `WorkspaceControlAction` 并执行，避免 `rf-ui` 反向依赖 Studio 类型
-- `rf-ui` 当前已把运行栏按钮模型冻结为 `RunPanelCommandModel`：`Run`、`Resume`、`Hold`、`Active` 的按钮描述、可见性、可用性和默认主动作都由 UI 层派生，不再依赖 Studio 侧临时判断
-- `rf-ui` 当前也已补出 `RunPanelViewModel`，把主按钮/次按钮槽位、状态标签和最小渲染所需的运行栏数据冻结为 UI 内部展示 DTO
-- `rf-ui` 当前进一步补出 `RunPanelTextView`，把当前 bootstrap/CLI 入口所需的最小文本渲染组织也收回 UI 层
-- `rf-ui` 当前进一步把“动作是否可触发、触发后产出哪个 `RunPanelIntent`”也冻结进 `RunPanelViewModel` / `RunPanelRenderableAction`，避免最终 widget 再抄一遍启用判断
-- `rf-ui` 当前已用 `RunPanelPresentation` 把 `view + text + dispatchable intent` 收口为单一运行栏组件入口
-- `rf-ui` 当前进一步补出 `RunPanelWidgetModel` / `RunPanelWidgetEvent`，把最小 widget 激活语义也收回 UI 层
-- Studio 当前也已补出 `dispatch_run_panel_widget_event_with_auth_cache(...)`，把 widget 激活结果正式接回 `WorkspaceControlAction` 链路
-- Studio 当前进一步补出 `run_panel_driver`，把“构 widget -> 激活动作 -> 分发事件 -> 回收新 widget/control_state”收口为单独模块
-- `run_studio_bootstrap(...)` 当前已补出 `StudioBootstrapTrigger::{Intent, WidgetPrimaryAction, WidgetAction}`，并默认走 `WidgetPrimaryAction` 路径，作为最小桌面入口对运行栏组件驱动的第一版接线
-- `run_studio_bootstrap(...)` 与 `main.rs` 当前已开始直接消费这组运行栏组件/交互 DTO，而不再只打印控制面布尔摘要或在 Studio 里手拼文本布局
+- `rf-ui` 当前已把运行栏收口为 `RunPanelState`、`RunPanelIntent`、`RunPanelCommandModel`、`RunPanelViewModel`、`RunPanelPresentation` 和 `RunPanelWidgetModel`：按钮可见性、可用性、主动作、文本视图和可派发 intent 都由 UI 层派生，不在 Studio 侧重复判断。
+- Studio 通过 `run_panel_driver` 和 `dispatch_run_panel_widget_event_with_auth_cache(...)` 把 widget 激活结果接回 `WorkspaceControlAction`；`run_studio_bootstrap(...)` / `main.rs` 直接消费这组运行栏组件 DTO，不再手拼控制面布尔摘要。
 
 当前已落地与仍待细化的边界：
 
