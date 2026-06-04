@@ -32,7 +32,7 @@
 - **通用小流程建模 v1 阶段收口复核已通过：普通空白项目 `Feed -> Flash Drum`、`Feed -> Cooler -> Flash Drum`、`Feed -> Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 均已完成显式输入、运行、保存、重开、rerun 与结果审阅复核，未发现 blocker。**
 - **下一阶段已切到 Studio UI 专题：设计前置首轮已收敛，代码实现只从 presentation / window model 第一刀开始；不在现有 UI 上继续叠加零散补丁。**
 - **Studio UI 主设计稿已收敛到 `studio-client-main.pen`：当前稿覆盖高密度 Home、顶部导航下的独立物性页、流程图工作台、模块设置 / 模块结果和底部运行 / 状态分栏；重复的 `unit-module-panel.pen` 不再作为活跃设计稿维护。**
-- **Studio UI 实现第二刀已完成 focused 推进但仍不做 UI 大改：Home 示例 tile、右侧 Property tab 和底部 status bar 已开始消费 `StudioGuiWindowModel` 派生 DTO，后续布局重排继续以 presentation / command / state 边界为准。**
+- **Studio UI 实现第三刀已完成 focused 推进但仍不做 UI 大改：Home / Property / bottom status 已消费 `StudioGuiWindowModel` 派生 DTO，`runtime.rs` 已拆成 `runtime/mod.rs`、`runtime/results.rs` 与 `runtime/inspector.rs`，为后续 Inspector / Module Results presentation 细化留出边界。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前开发策略
