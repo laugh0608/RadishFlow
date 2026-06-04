@@ -173,9 +173,9 @@ Studio UI 设计需要同时区分“当前已实现壳”和“下一轮主设�
 - 页面应保留 `baseline/radishflow-workbench-concept.png` 的轻量浅色风格、克制蓝色主强调、状态 chip 和清晰分区，但不显示流程图画布。
 - `baseline/radishflow-home-dashboard-concept-v2-20260516.png` 当前作为启动首页视觉基线：它比早期概念稿更接近当前信息架构，Start actions、Recent Cases、Example Cases、Environment 和 Messages 的职责边界更清楚。
 - `radishflow-home-dashboard-concept.png` 保留为早期概念稿参考：它的信息架构方向正确，但字段和示例数据偏概念演示，不作为后续实现的优先基线。
-- Start actions 只保留当前主路径：`新建项目`、当前小案例作者入口、`打开项目`、`打开示例项目`；登录放在顶部 App Bar，不把完整命令面板或调试入口放进第一视野。最近项目的继续入口由 `最近项目` 列表行承载，不再作为左侧重复按钮常驻。当前评审结论是 Home 信息密度和工作台一致性仍不足，后续应优先对照 Home v2 基线做 focused 修正，而不是继续堆低密度欢迎文案。
+- Start actions 只保留当前主路径：`新建项目`、当前小案例作者入口、`打开项目`、`打开示例项目`；登录放在顶部 App Bar，不把完整命令面板或调试入口放进第一视野。最近项目的继续入口由 `最近项目` tile 承载，不再作为左侧重复按钮常驻。当前评审结论是 Home 信息密度和工作台一致性仍不足，后续应优先对照 Home v2 基线做 focused 修正，而不是继续堆低密度欢迎文案。
 - 小案例作者入口只负责创建空白项目并打开对应任务清单，不自动生成 flowsheet，不写 `FlowsheetDocument`，不进入 undo，也不替代 placement / suggestion / parameter / run / save / export 工作流。
-- 最近项目和示例项目必须可扫读：名称、路径或来源、最后打开时间、流程摘要、组分 / 物性包摘要、状态标签；整行应可选择，双击整行可打开。
+- 最近项目和示例项目必须可扫读：优先使用流程缩影 tile gallery，而不是纯文本列表或通用文件图标。每个 tile 包含浅色 flowsheet thumbnail、名称、路径或来源、最后打开时间、流程摘要、组分 / 物性包摘要和状态标签；单击选择，双击打开。
 - 客户端 / 服务端 / 设备信息默认以状态卡或紧凑 section 呈现；详细路径、backend、cache 细节和诊断信息进入展开项。
 - 登录入口应优先是 `登录` 按钮，而不是内嵌账号密码表单；桌面登录继续遵守 OIDC Authorization Code + PKCE + 系统浏览器 + loopback redirect 的边界。
 - 未登录、服务端不可用、物性包缓存缺失、示例目录缺失等问题应显示为可行动状态，不使用开发态错误文本。
@@ -194,8 +194,8 @@ Studio UI 设计需要同时区分“当前已实现壳”和“下一轮主设�
 | --- | --- | --- |
 | Top App Bar | 应用名、`development build` 或当前人工确认的版本标识、`Local ready`、`Server offline`、`Signed out`、单位集、登录 / 设置 / 帮助入口 | 完整 build commit、完整控制面 URL、语言高级设置、开发诊断 |
 | Start Actions | `新建项目`、`创建 Mixer-Flash 小案例`、`创建 Heater-Flash 小案例`、`打开项目`、`打开示例项目`；无最近项目时 `打开示例项目` 或小案例作者入口为优先入口 | 命令面板、最近工作区完整列表、保存 / 另存为、运行按钮 |
-| Recent Cases | 项目名称、路径或来源、最后打开时间、物性包、状态；选中态和双击打开行为 | 流股数、单元数、诊断数、最新求解摘要、完整路径展开 |
-| Example Cases | 示例类型、短流程图摘要、组件摘要、物性包、状态；选中态和双击打开行为 | 长说明、教程步骤、完整 flowsheet 预览、PME 操作说明 |
+| Recent Cases | 浅色流程缩影、项目名称、路径或来源、最后打开时间、物性包、状态；选中态和双击打开行为 | 流股数、单元数、诊断数、最新求解摘要、完整路径展开 |
+| Example Cases | 浅色流程缩影、示例类型、短流程图摘要、组件摘要、物性包、状态；选中态和双击打开行为 | 长说明、教程步骤、完整 flowsheet 预览、PME 操作说明 |
 | Environment | `Client`、`Server`、`Device` 三组健康摘要；只显示影响“能否开始”的状态 | cache 根目录、examples 绝对路径、backend 细节、原始错误文本、设备资源曲线 |
 | Messages | 最近 3-5 条可行动消息、严重度、领域标签、短动作入口 | 原始日志、GUI activity、platform timer、host internals、完整 trace |
 

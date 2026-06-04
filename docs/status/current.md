@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-06-03
+更新时间：2026-06-04
 
 ## 用途
 
@@ -69,7 +69,7 @@
 Studio UI 专题设计前置目标：
 
 - 先基于 `docs/architecture/studio-ui-topic-plan.md`、`docs/architecture/studio-ui-design-guidelines.md` 与 `docs/architecture/ui-inspiration-reference.md` 整理 Studio 客户端本体、单元模块 UI、服务端 / 控制面 UI、移动端或只读视图的端点边界。
-- P0 Studio 主设计稿已按成熟流程模拟软件的信息分层完成方向修正：顶部使用 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`，`物性` 是独立页面，底部使用左侧运行信息 tabs 与右侧状态汇总。后续优先评审 `studio-client-main.pen` 的 Home、物性页、流程图工作台、模块设置 / 模块结果结构能否稳定承载参数、端口、运行结果、诊断和帮助入口，再决定是否进入代码实现。
+- P0 Studio 主设计稿已按成熟流程模拟软件的信息分层完成方向修正：顶部使用 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`，`物性` 是独立页面，底部使用左侧运行信息 tabs 与右侧状态汇总。Home 最近 / 示例案例入口改为 RadishFlow 浅色流程缩影 tile gallery 方向：用 flowsheet thumbnail + 项目名 + 路径 / 来源 + 时间 + 状态 chip 表达案例，不照抄 HYSYS 深蓝文件图标或左侧文件菜单。后续优先评审 `studio-client-main.pen` 的 Home、物性页、流程图工作台、模块设置 / 模块结果结构能否稳定承载参数、端口、运行结果、诊断和帮助入口，再决定是否进入代码实现。
 - P0 / P1 评审时继续对照两张 `baseline/` 视觉基线，确保 Home / Workbench 的分区、信息密度、状态 chip 和主操作层级与项目视觉方向一致。
 - Studio 客户端本体优先覆盖 Home、Workbench、Canvas、Inspector、Result、Package / Auth 的职责关系，不提前扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
 - 模块设置 / 模块结果优先先在 `studio-client-main.pen` 中统一参数、端口、运行结果、诊断和帮助入口；若后续细节不足，再按窄口径创建 `module-settings-panel.pen`，不重复整套 Workbench。
