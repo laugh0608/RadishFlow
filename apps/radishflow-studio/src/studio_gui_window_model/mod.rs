@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 mod drop_preview;
 mod result_inspector;
 mod snapshot_export;
+mod studio_main;
 use crate::{
     EntitlementSessionHostRuntimeOutput, StudioExampleProjectModel, StudioGuiCanvasWidgetModel,
     StudioGuiCommandEntry, StudioGuiCommandMenuNode, StudioGuiCommandRegistry,
@@ -13,6 +14,14 @@ use crate::{
     StudioGuiWorkspaceDocumentSnapshot, StudioWindowHostId, WorkspaceControlState,
 };
 use drop_preview::{build_drop_preview_overlay, changed_area_ids_for_preview};
+pub use studio_main::{
+    StudioGuiWindowHomeCaseTileModel, StudioGuiWindowHomeCaseTileSource,
+    StudioGuiWindowHomeCaseTileStatus, StudioGuiWindowHomeModel,
+    StudioGuiWindowPropertyComponentModel, StudioGuiWindowPropertyMetricModel,
+    StudioGuiWindowPropertyPackageModel, StudioGuiWindowPropertyPageModel,
+    StudioGuiWindowStatusSummaryMetricModel, StudioGuiWindowStatusSummaryModel,
+    StudioGuiWindowThumbnailFlowModel,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowHeaderModel {
@@ -563,8 +572,11 @@ pub struct StudioGuiWindowDropPreviewModel {
 pub struct StudioGuiWindowModel {
     pub header: StudioGuiWindowHeaderModel,
     pub commands: StudioGuiWindowCommandAreaModel,
+    pub home: StudioGuiWindowHomeModel,
+    pub property_page: StudioGuiWindowPropertyPageModel,
     pub canvas: StudioGuiWindowCanvasAreaModel,
     pub runtime: StudioGuiWindowRuntimeAreaModel,
+    pub status_summary: StudioGuiWindowStatusSummaryModel,
     pub layout_state: StudioGuiWindowLayoutState,
     pub drop_preview: Option<StudioGuiWindowDropPreviewModel>,
 }
@@ -598,11 +610,15 @@ impl StudioGuiWindowModel {
                     .and_then(|layout_key| snapshot.window_drop_previews.get(layout_key))
                     .cloned()
             });
+        let runtime = runtime_from_snapshot(snapshot);
         let mut window = Self {
             header: header_from_snapshot(snapshot),
             commands: commands_from_registry(&snapshot.command_registry),
+            home: StudioGuiWindowHomeModel::from_runtime(&runtime),
+            property_page: StudioGuiWindowPropertyPageModel::from_runtime(&runtime),
             canvas: canvas_from_snapshot(snapshot),
-            runtime: runtime_from_snapshot(snapshot),
+            status_summary: StudioGuiWindowStatusSummaryModel::from_runtime(&runtime),
+            runtime,
             layout_state,
             drop_preview: None,
         };

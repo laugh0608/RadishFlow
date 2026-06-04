@@ -63,6 +63,18 @@ fn find_window_snapshot_stream<'a>(
         .expect("expected window snapshot stream")
 }
 
+fn find_status_summary_metric<'a>(
+    window: &'a crate::StudioGuiWindowModel,
+    label: &str,
+) -> &'a crate::StudioGuiWindowStatusSummaryMetricModel {
+    window
+        .status_summary
+        .metrics
+        .iter()
+        .find(|metric| metric.label == label)
+        .unwrap_or_else(|| panic!("expected status summary metric `{label}`"))
+}
+
 #[test]
 fn solve_snapshot_light_text_export_uses_current_snapshot_results() {
     let snapshot = solve_binary_hydrocarbon_lite_snapshot(include_str!(
@@ -1200,6 +1212,48 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
         "expected canvas command section when suggestions exist"
     );
 
+    assert_eq!(window.home.title, "Home");
+    assert!(window.home.recent_case_tiles.is_empty());
+    assert_eq!(window.home.example_case_tiles.len(), 4);
+    let mixer_tile = window
+        .home
+        .example_case_tiles
+        .iter()
+        .find(|tile| tile.source_id == "feed-mixer-flash")
+        .expect("expected mixer flash example tile");
+    assert_eq!(
+        mixer_tile.source,
+        crate::StudioGuiWindowHomeCaseTileSource::Example
+    );
+    assert_eq!(
+        mixer_tile.status,
+        crate::StudioGuiWindowHomeCaseTileStatus::Ready
+    );
+    assert_eq!(mixer_tile.package_summary, "binary-hydrocarbon-lite-v1");
+    assert_eq!(
+        mixer_tile
+            .thumbnail
+            .nodes
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+        vec!["Feed", "Feed", "Mixer", "Flash"]
+    );
+    assert_eq!(mixer_tile.thumbnail.edges, [(0, 2), (1, 2), (2, 3)]);
+
+    assert_eq!(window.property_page.title, "Property");
+    assert_eq!(window.property_page.selected_package_id.as_deref(), None);
+    assert_eq!(window.property_page.package_status_label, "Unselected");
+    assert_eq!(window.property_page.package_choices.len(), 1);
+    assert_eq!(
+        window.property_page.package_choices[0].command_id,
+        "project.property_package.select:binary-hydrocarbon-lite-v1"
+    );
+    assert!(
+        window.property_page.future_sections.contains(&"Analysis"),
+        "property page should expose future analysis space without implementing it"
+    );
+
     assert_eq!(window.canvas.title, "Canvas");
     assert_eq!(window.canvas.suggestion_count, 1);
     assert_eq!(window.canvas.enabled_action_count, 8);
@@ -1238,6 +1292,16 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
     assert_eq!(
         window.runtime.latest_log_entry,
         window.runtime.log_entries.last().cloned()
+    );
+    assert_eq!(window.status_summary.title, "Status Summary");
+    assert_eq!(find_status_summary_metric(&window, "Case").value, "Saved");
+    assert_eq!(find_status_summary_metric(&window, "Steps").value, "N/A");
+    assert_eq!(window.status_summary.snapshot_consistency_label, "None");
+    assert!(
+        window
+            .status_summary
+            .snapshot_consistency_detail
+            .contains("no solve snapshot is current")
     );
     assert_eq!(
         window.layout_state.scope.kind,
@@ -1278,11 +1342,28 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
     assert_eq!(window.runtime.workspace_document.revision, 0);
     assert_eq!(window.runtime.workspace_document.unit_count, 3);
     assert_eq!(window.runtime.workspace_document.snapshot_history_count, 1);
+    assert_eq!(window.property_page.selected_package_id.as_deref(), None);
+    assert_eq!(window.property_page.package_status_label, "Unselected");
+    assert_eq!(window.property_page.selected_component_count, 2);
 
     let snapshot = window
         .runtime
         .latest_solve_snapshot
+        .as_ref()
         .expect("expected latest solve snapshot");
+    assert_eq!(window.status_summary.snapshot_consistency_label, "Current");
+    assert_eq!(
+        find_status_summary_metric(&window, "Steps").value,
+        snapshot.step_count.to_string()
+    );
+    assert_eq!(
+        find_status_summary_metric(&window, "Diagnostics").value,
+        snapshot.diagnostic_count.to_string()
+    );
+    assert_eq!(
+        find_status_summary_metric(&window, "Convergence").value,
+        snapshot.status_label
+    );
     assert_eq!(snapshot.status_label, "Converged");
     assert_eq!(snapshot.stream_count, 4);
     assert_eq!(snapshot.step_count, 3);
