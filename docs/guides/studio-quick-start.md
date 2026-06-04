@@ -107,6 +107,7 @@ cargo run -p radishflow-studio
 
 - 这是长时间运行的桌面 UI 命令
 - Windows 当前已接入原生打开/另存为选择器；其他平台的文件工作流暂不承诺同等完成度
+- macOS 直接运行 `target/debug/radishflow-studio` 或从 RustRover debug 裸二进制时，终端可能输出 `com.apple.linkd.autoShortcut`、App Intents、`[WindowTab] Cannot index window tabs due to missing main bundle identifier` 或 task name port right 相关系统日志。只要窗口正常打开、退出码正常、功能路径可用，当前将其视为 macOS 非 `.app` bundle 开发态噪声；真正收口点放到未来 macOS `.app`、`Info.plist`、bundle identifier、签名或打包流程。
 
 ## 第一次建议体验什么
 
