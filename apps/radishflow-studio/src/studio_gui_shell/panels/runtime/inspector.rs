@@ -1,6 +1,204 @@
 use super::*;
 
 impl ReadyAppState {
+    pub(super) fn render_module_settings_panel(
+        &mut self,
+        ui: &mut egui::Ui,
+        settings: &radishflow_studio::StudioGuiWindowModuleSettingsModel,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            ui.label(
+                egui::RichText::new(self.locale.runtime_label(settings.title).as_ref()).strong(),
+            );
+            render_status_chip(
+                ui,
+                self.locale.runtime_label(settings.state_label).as_ref(),
+                module_settings_state_color(settings.state),
+            );
+            if let Some(unit) = settings.selected_unit.as_ref() {
+                ui.small(self.locale.runtime_label(unit.kind_label).as_ref());
+                let _ = self.render_small_command_action(ui, &unit.action);
+            }
+        });
+        render_wrapped_label(ui, &settings.detail);
+
+        if !settings.summary_rows.is_empty() {
+            egui::Grid::new(format!(
+                "module-settings-summary:{}",
+                settings
+                    .selected_unit
+                    .as_ref()
+                    .map(|unit| unit.command_id.as_str())
+                    .unwrap_or("none")
+            ))
+            .num_columns(2)
+            .spacing([8.0, 3.0])
+            .show(ui, |ui| {
+                for row in &settings.summary_rows {
+                    ui.small(egui::RichText::new(&row.label).strong());
+                    render_wrapped_small(ui, &row.value);
+                    ui.end_row();
+                }
+            });
+        }
+
+        if !settings.connection_actions.is_empty() {
+            ui.add_space(4.0);
+            ui.horizontal_wrapped(|ui| {
+                ui.small(egui::RichText::new("Connections").strong());
+                for action in &settings.connection_actions {
+                    if ui
+                        .add_enabled(
+                            action.enabled,
+                            egui::Button::new(
+                                egui::RichText::new(
+                                    self.locale.runtime_label(&action.label).as_ref(),
+                                )
+                                .small(),
+                            ),
+                        )
+                        .on_hover_text(self.locale.runtime_label(&action.hover_text).as_ref())
+                        .clicked()
+                    {
+                        self.dispatch_ui_command(&action.command_id);
+                    }
+                }
+            });
+        }
+
+        if !settings.parameter_fields.is_empty() {
+            ui.add_space(4.0);
+            ui.small(
+                egui::RichText::new(self.locale.text(ShellText::InspectorProperties)).strong(),
+            );
+            if let Some(command_id) = settings.parameter_batch_commit_command_id.as_ref() {
+                if ui
+                    .small_button(self.locale.text(ShellText::InspectorFieldApplyAll))
+                    .clicked()
+                {
+                    self.dispatch_inspector_field_draft_batch_commit(command_id.clone());
+                }
+            }
+            if let Some(command_id) = settings.parameter_batch_discard_command_id.as_ref() {
+                if ui
+                    .small_button(self.locale.text(ShellText::InspectorFieldDiscardAll))
+                    .clicked()
+                {
+                    self.dispatch_inspector_field_draft_batch_discard(command_id.clone());
+                }
+            }
+            for notice in &settings.parameter_notices {
+                ui.add_space(4.0);
+                ui.horizontal_wrapped(|ui| {
+                    render_status_chip(
+                        ui,
+                        self.locale.runtime_label(notice.status_label).as_ref(),
+                        inspector_field_status_color(notice.status_label),
+                    );
+                    render_wrapped_small(ui, &notice.message);
+                });
+            }
+            for field in &settings.parameter_fields {
+                self.render_inspector_property_field(ui, field);
+            }
+        }
+
+        if !settings.ports.is_empty() {
+            ui.add_space(4.0);
+            ui.small(egui::RichText::new(self.locale.text(ShellText::InspectorPorts)).strong());
+            egui::Grid::new(format!(
+                "module-settings-ports:{}",
+                settings
+                    .selected_unit
+                    .as_ref()
+                    .map(|unit| unit.command_id.as_str())
+                    .unwrap_or("none")
+            ))
+            .num_columns(5)
+            .spacing([8.0, 3.0])
+            .show(ui, |ui| {
+                ui.small(
+                    egui::RichText::new(self.locale.text(ShellText::InspectorPortName)).strong(),
+                );
+                ui.small(
+                    egui::RichText::new(self.locale.text(ShellText::InspectorPortDirection))
+                        .strong(),
+                );
+                ui.small(
+                    egui::RichText::new(self.locale.text(ShellText::InspectorPortKind)).strong(),
+                );
+                ui.small(
+                    egui::RichText::new(self.locale.text(ShellText::InspectorPortStream)).strong(),
+                );
+                ui.small(egui::RichText::new("Attention").strong());
+                ui.end_row();
+                for port in &settings.ports {
+                    render_wrapped_small(ui, &port.name);
+                    render_wrapped_small(ui, &port.direction);
+                    render_wrapped_small(ui, &port.kind);
+                    match (&port.stream_id, &port.stream_action) {
+                        (Some(stream_id), Some(action)) => {
+                            self.render_port_stream_action(ui, stream_id, action);
+                        }
+                        (None, Some(action)) => {
+                            let _ = self.render_small_command_action(ui, action);
+                        }
+                        (Some(stream_id), None) => render_wrapped_small(ui, stream_id),
+                        (None, None) => {
+                            ui.small("-");
+                        }
+                    };
+                    if let Some(summary) = port.attention_summary.as_ref() {
+                        ui.vertical(|ui| {
+                            render_status_chip(
+                                ui,
+                                "attention",
+                                notice_color(rf_ui::RunPanelNoticeLevel::Warning),
+                            );
+                            render_wrapped_small(ui, summary);
+                        });
+                    } else {
+                        ui.small("-");
+                    }
+                    ui.end_row();
+                }
+            });
+        }
+
+        ui.add_space(4.0);
+        ui.small(egui::RichText::new(self.locale.runtime_label("Help").as_ref()).strong());
+        if settings.help_actions.is_empty() {
+            render_wrapped_small(ui, &settings.help_detail);
+        } else {
+            ui.horizontal_wrapped(|ui| {
+                for action in &settings.help_actions {
+                    let _ = self.render_small_command_action(ui, action);
+                }
+            });
+        }
+
+        if !settings.diagnostic_actions.is_empty() {
+            ui.add_space(4.0);
+            ui.collapsing(self.locale.text(ShellText::DiagnosticTargets), |ui| {
+                self.render_diagnostic_target_actions(ui, &settings.diagnostic_actions);
+            });
+        }
+
+        if !settings.related_diagnostics.is_empty() {
+            ui.add_space(4.0);
+            ui.collapsing(self.locale.text(ShellText::RelatedDiagnostics), |ui| {
+                for (index, diagnostic) in settings.related_diagnostics.iter().enumerate() {
+                    self.render_diagnostic_summary(
+                        ui,
+                        diagnostic,
+                        format!("module-settings:diagnostic:{index}"),
+                    );
+                    ui.add_space(4.0);
+                }
+            });
+        }
+    }
+
     pub(super) fn render_active_inspector_detail(
         &mut self,
         ui: &mut egui::Ui,
@@ -430,6 +628,20 @@ fn localized_inspector_constraint<'a>(
                 return std::borrow::Cow::Borrowed("单位 Pa；输入正数，不能高于已连接入口压力。");
             }
             std::borrow::Cow::Borrowed(text)
+        }
+    }
+}
+
+fn module_settings_state_color(
+    state: radishflow_studio::StudioGuiWindowModuleSettingsState,
+) -> egui::Color32 {
+    match state {
+        radishflow_studio::StudioGuiWindowModuleSettingsState::Ready => {
+            egui::Color32::from_rgb(74, 132, 92)
+        }
+        radishflow_studio::StudioGuiWindowModuleSettingsState::UnitDetailUnavailable
+        | radishflow_studio::StudioGuiWindowModuleSettingsState::NoUnitSelected => {
+            egui::Color32::from_rgb(160, 120, 40)
         }
     }
 }

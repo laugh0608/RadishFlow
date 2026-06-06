@@ -28,6 +28,26 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         window: &StudioGuiWindowModel,
     ) {
+        if matches!(
+            window.module_settings.state,
+            radishflow_studio::StudioGuiWindowModuleSettingsState::Ready
+                | radishflow_studio::StudioGuiWindowModuleSettingsState::UnitDetailUnavailable
+        ) {
+            ui.push_id(
+                format!(
+                    "runtime:module-settings:{}",
+                    window
+                        .module_settings
+                        .selected_unit
+                        .as_ref()
+                        .map(|unit| unit.command_id.as_str())
+                        .unwrap_or("none")
+                ),
+                |ui| self.render_module_settings_panel(ui, &window.module_settings),
+            );
+            return;
+        }
+
         if let Some(detail) = window.runtime.active_inspector_detail.as_ref() {
             ui.push_id(
                 format!("runtime:active-inspector:{}", detail.target.command_id),

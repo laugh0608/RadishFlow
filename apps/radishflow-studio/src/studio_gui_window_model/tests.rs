@@ -2189,6 +2189,111 @@ fn studio_gui_window_model_surfaces_current_module_results_for_active_unit() {
 }
 
 #[test]
+fn studio_gui_window_model_surfaces_module_settings_for_active_unit() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected run dispatch");
+
+    let focus = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:heater-1".to_string(),
+        })
+        .expect("expected heater focus dispatch");
+    let window = focus.window;
+    let active_detail = window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active unit inspector detail");
+    let settings = &window.module_settings;
+
+    assert_eq!(settings.title, "Module Settings");
+    assert_eq!(
+        settings.state,
+        crate::StudioGuiWindowModuleSettingsState::Ready
+    );
+    assert_eq!(settings.state_label, "Ready");
+    assert_eq!(
+        settings
+            .selected_unit
+            .as_ref()
+            .map(|unit| (unit.kind_label, unit.target_id.as_str())),
+        Some(("Unit", "heater-1"))
+    );
+    assert_eq!(settings.summary_rows, active_detail.summary_rows);
+    assert_eq!(settings.parameter_fields, active_detail.property_fields);
+    assert_eq!(settings.parameter_notices, active_detail.property_notices);
+    assert_eq!(
+        settings.parameter_batch_commit_command_id,
+        active_detail.property_batch_commit_command_id
+    );
+    assert_eq!(
+        settings.parameter_batch_discard_command_id,
+        active_detail.property_batch_discard_command_id
+    );
+    assert_eq!(
+        settings.connection_actions,
+        active_detail.connection_actions
+    );
+    assert_eq!(settings.ports, active_detail.unit_ports);
+    assert_eq!(
+        settings.related_diagnostics,
+        active_detail.related_diagnostics
+    );
+    assert_eq!(
+        settings.diagnostic_actions,
+        active_detail.diagnostic_actions
+    );
+
+    assert!(settings.parameter_fields.iter().any(|field| {
+        field.key == "unit:heater-1:outlet_temperature_k"
+            && field.draft_update_command_id
+                == "inspector.update_stream_draft:unit:heater-1:outlet_temperature_k"
+    }));
+    assert!(settings.ports.iter().any(|port| {
+        port.name == "inlet"
+            && port.stream_id.as_deref() == Some("stream-feed")
+            && port
+                .stream_action
+                .as_ref()
+                .is_some_and(|action| action.command_id == "inspector.focus_stream:stream-feed")
+    }));
+    assert!(settings.ports.iter().any(|port| {
+        port.name == "outlet"
+            && port.stream_id.as_deref() == Some("stream-heated")
+            && port
+                .stream_action
+                .as_ref()
+                .is_some_and(|action| action.command_id == "inspector.focus_stream:stream-heated")
+    }));
+    assert!(settings.related_diagnostics.iter().any(|diagnostic| {
+        diagnostic.code == "solver.unit_executed"
+            && diagnostic
+                .related_unit_ids
+                .iter()
+                .any(|unit_id| unit_id == "heater-1")
+    }));
+    assert!(settings.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Inspector target"
+            && action.action.command_id == "inspector.focus_unit:heater-1"
+    }));
+    assert!(settings.help_actions.is_empty());
+    assert!(
+        settings
+            .help_detail
+            .contains("No formal module help command is registered for heater-1"),
+        "module settings must expose the current absence of a formal help command"
+    );
+}
+
+#[test]
 fn studio_gui_window_model_marks_module_results_stale_after_unit_parameter_edit() {
     let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");

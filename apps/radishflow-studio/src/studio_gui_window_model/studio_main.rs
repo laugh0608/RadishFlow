@@ -84,6 +84,33 @@ pub struct StudioGuiWindowPropertyPageModel {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioGuiWindowModuleSettingsState {
+    NoUnitSelected,
+    UnitDetailUnavailable,
+    Ready,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowModuleSettingsModel {
+    pub title: &'static str,
+    pub state: StudioGuiWindowModuleSettingsState,
+    pub state_label: &'static str,
+    pub detail: String,
+    pub selected_unit: Option<StudioGuiWindowInspectorTargetModel>,
+    pub summary_rows: Vec<StudioGuiWindowInspectorTargetSummaryRowModel>,
+    pub parameter_fields: Vec<StudioGuiWindowInspectorTargetFieldModel>,
+    pub parameter_notices: Vec<StudioGuiWindowInspectorPropertyNoticeModel>,
+    pub parameter_batch_commit_command_id: Option<String>,
+    pub parameter_batch_discard_command_id: Option<String>,
+    pub connection_actions: Vec<StudioGuiWindowInspectorConnectionActionModel>,
+    pub ports: Vec<StudioGuiWindowInspectorTargetPortModel>,
+    pub related_diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
+    pub diagnostic_actions: Vec<StudioGuiWindowDiagnosticTargetActionModel>,
+    pub help_actions: Vec<StudioGuiWindowCommandActionModel>,
+    pub help_detail: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioGuiWindowModuleResultsState {
     NoUnitSelected,
     NoCurrentResult,
@@ -212,6 +239,68 @@ impl StudioGuiWindowPropertyPageModel {
                 },
             ],
             future_sections: vec!["Parameters", "Analysis", "Sources"],
+        }
+    }
+}
+
+impl StudioGuiWindowModuleSettingsModel {
+    pub fn from_runtime(runtime: &StudioGuiWindowRuntimeAreaModel) -> Self {
+        let Some(selected_unit) = active_unit_target(runtime) else {
+            return module_settings_empty(
+                StudioGuiWindowModuleSettingsState::NoUnitSelected,
+                "Select a unit before editing module settings.",
+                "No formal help command is available without a selected unit.",
+            );
+        };
+
+        let Some(detail) = runtime.active_inspector_detail.as_ref().filter(|detail| {
+            detail.target.kind_label == "Unit" && detail.target.target_id == selected_unit.target_id
+        }) else {
+            return StudioGuiWindowModuleSettingsModel {
+                title: "Module Settings",
+                state: StudioGuiWindowModuleSettingsState::UnitDetailUnavailable,
+                state_label: module_settings_state_label(
+                    StudioGuiWindowModuleSettingsState::UnitDetailUnavailable,
+                ),
+                detail: format!(
+                    "Inspector detail for {} is not available yet.",
+                    selected_unit.target_id
+                ),
+                selected_unit: Some(selected_unit.clone()),
+                summary_rows: Vec::new(),
+                parameter_fields: Vec::new(),
+                parameter_notices: Vec::new(),
+                parameter_batch_commit_command_id: None,
+                parameter_batch_discard_command_id: None,
+                connection_actions: Vec::new(),
+                ports: Vec::new(),
+                related_diagnostics: Vec::new(),
+                diagnostic_actions: Vec::new(),
+                help_actions: Vec::new(),
+                help_detail: module_settings_help_detail(&selected_unit),
+            };
+        };
+
+        StudioGuiWindowModuleSettingsModel {
+            title: "Module Settings",
+            state: StudioGuiWindowModuleSettingsState::Ready,
+            state_label: module_settings_state_label(StudioGuiWindowModuleSettingsState::Ready),
+            detail: format!(
+                "Formal parameter drafts, ports, diagnostics, and commands for {}.",
+                detail.target.target_id
+            ),
+            selected_unit: Some(detail.target.clone()),
+            summary_rows: detail.summary_rows.clone(),
+            parameter_fields: detail.property_fields.clone(),
+            parameter_notices: detail.property_notices.clone(),
+            parameter_batch_commit_command_id: detail.property_batch_commit_command_id.clone(),
+            parameter_batch_discard_command_id: detail.property_batch_discard_command_id.clone(),
+            connection_actions: detail.connection_actions.clone(),
+            ports: detail.unit_ports.clone(),
+            related_diagnostics: detail.related_diagnostics.clone(),
+            diagnostic_actions: detail.diagnostic_actions.clone(),
+            help_actions: Vec::new(),
+            help_detail: module_settings_help_detail(&detail.target),
         }
     }
 }
@@ -430,6 +519,46 @@ fn active_unit_target(
         .map(|detail| detail.target.clone())
         .or_else(|| runtime.active_inspector_target.clone())
         .filter(|target| target.kind_label == "Unit")
+}
+
+fn module_settings_empty(
+    state: StudioGuiWindowModuleSettingsState,
+    detail: &str,
+    help_detail: &str,
+) -> StudioGuiWindowModuleSettingsModel {
+    StudioGuiWindowModuleSettingsModel {
+        title: "Module Settings",
+        state,
+        state_label: module_settings_state_label(state),
+        detail: detail.to_string(),
+        selected_unit: None,
+        summary_rows: Vec::new(),
+        parameter_fields: Vec::new(),
+        parameter_notices: Vec::new(),
+        parameter_batch_commit_command_id: None,
+        parameter_batch_discard_command_id: None,
+        connection_actions: Vec::new(),
+        ports: Vec::new(),
+        related_diagnostics: Vec::new(),
+        diagnostic_actions: Vec::new(),
+        help_actions: Vec::new(),
+        help_detail: help_detail.to_string(),
+    }
+}
+
+fn module_settings_state_label(state: StudioGuiWindowModuleSettingsState) -> &'static str {
+    match state {
+        StudioGuiWindowModuleSettingsState::NoUnitSelected => "No unit selected",
+        StudioGuiWindowModuleSettingsState::UnitDetailUnavailable => "Unit detail unavailable",
+        StudioGuiWindowModuleSettingsState::Ready => "Ready",
+    }
+}
+
+fn module_settings_help_detail(unit: &StudioGuiWindowInspectorTargetModel) -> String {
+    format!(
+        "No formal module help command is registered for {} yet.",
+        unit.target_id
+    )
 }
 
 fn module_results_empty(

@@ -82,6 +82,15 @@ fn render_runtime_results_tab_texts(
     })
 }
 
+fn render_runtime_inspector_tab_texts(
+    app: &mut ReadyAppState,
+    window: &radishflow_studio::StudioGuiWindowModel,
+) -> Vec<String> {
+    render_runtime_area_texts(app, |app, ui| {
+        app.render_runtime_inspector_tab(ui, window);
+    })
+}
+
 fn render_stream_result_inspector_texts(
     app: &mut ReadyAppState,
     scope_id: impl Into<String>,
@@ -1462,6 +1471,51 @@ fn runtime_results_tab_consumes_stale_module_results_without_old_unit_result() {
         !texts.iter().any(|text| text.contains("stream-heated"))
             && !texts.iter().any(|text| text.contains("345.00 K")),
         "stale module result must not render old unit stream results, rendered texts: {texts:?}"
+    );
+}
+
+#[test]
+fn runtime_inspector_tab_consumes_module_settings_dto_for_active_unit() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.dispatch_ui_command("inspector.focus_unit:heater-1");
+    let window = app.platform_host.snapshot().window_model();
+
+    assert_eq!(
+        window.module_settings.state,
+        radishflow_studio::StudioGuiWindowModuleSettingsState::Ready
+    );
+    let texts = render_runtime_inspector_tab_texts(&mut app, &window);
+
+    assert!(
+        texts.iter().any(|text| text == "模块设置")
+            && texts.iter().any(|text| text == "就绪")
+            && texts.iter().any(|text| text == "heater-1"),
+        "expected Inspector tab to render Module Settings heading and active unit, rendered texts: {texts:?}"
+    );
+    assert!(
+        texts
+            .iter()
+            .any(|text| text == app.locale.text(ShellText::InspectorProperties))
+            && texts
+                .iter()
+                .any(|text| text == app.locale.text(ShellText::InspectorPorts))
+            && texts.iter().any(|text| text == "outlet")
+            && texts.iter().any(|text| text == "stream-heated"),
+        "expected Module Settings to render formal parameter and port surfaces, rendered texts: {texts:?}"
+    );
+    assert!(
+        texts.iter().any(|text| text == "帮助")
+            && texts
+                .iter()
+                .any(|text| text.contains("No formal module help command")),
+        "expected Module Settings to expose the current absence of formal help commands, rendered texts: {texts:?}"
+    );
+    assert!(
+        !texts
+            .iter()
+            .any(|text| text == app.locale.text(ShellText::InspectorLatestResult)),
+        "Module Settings must not render Module Results latest-result content, rendered texts: {texts:?}"
     );
 }
 

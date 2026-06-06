@@ -305,6 +305,7 @@ pub use studio_gui_window_model::{
     StudioGuiWindowInspectorTargetFieldModel, StudioGuiWindowInspectorTargetModel,
     StudioGuiWindowInspectorTargetPortModel, StudioGuiWindowInspectorTargetSummaryRowModel,
     StudioGuiWindowModel, StudioGuiWindowModuleResultsModel, StudioGuiWindowModuleResultsState,
+    StudioGuiWindowModuleSettingsModel, StudioGuiWindowModuleSettingsState,
     StudioGuiWindowPhaseResultModel, StudioGuiWindowPropertyComponentModel,
     StudioGuiWindowPropertyMetricModel, StudioGuiWindowPropertyPackageModel,
     StudioGuiWindowPropertyPageModel, StudioGuiWindowResultInspectorComparisonModel,
