@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-05-31
+更新时间：2026-06-06
 
 ## 目的
 
@@ -12,6 +12,7 @@
 - source stream、非 flash 中间流股、flash outlet、step 输入/输出的正式边界是什么
 - `comparison`、`unit-centric` 和 `diagnostic action` 这些结果消费面分别依赖什么
 - `Results` command section、palette、menu、command list 和 runtime action button 如何共享同一条定位语义
+- `StudioGuiWindowModuleResultsModel` 如何从 current-revision latest `SolveSnapshot` 派生选中单元结果
 - 当前快照文本复制 / 导出和 `SolveSnapshot` 的关系
 - 结果消费层不应该做哪些“二次组装”或私有状态分叉
 
@@ -40,6 +41,7 @@
 
 - stream-centric 结果视图
 - unit-centric 结果视图
+- `StudioGuiWindowModuleResultsModel`
 - stream comparison
 - diagnostic target / focus action
 - `Results` command section 中的 stream / unit result navigation
@@ -92,7 +94,7 @@
 - `streams`：该单元实际产出的输出流股快照
 
 它们都应由 solver step 直接物化。  
-当前 workspace run path、Studio window-model、Result Inspector 和 Active Inspector 都应继续只读消费这两组结构化 DTO。
+当前 workspace run path、Studio window-model、Result Inspector 和 Module Results 都应继续只读消费这两组结构化 DTO。Module Settings 可以展示与选中单元相关的诊断目标，但不应重建 step 输入/输出结果，也不应把 latest-result 内容混入参数设置面。
 
 当前不应做的事：
 
@@ -184,6 +186,26 @@ unit-centric 视图当前只是在同一份快照里按单元重新组织结果�
 
 它不应自己再从全局 stream map 组一套“更完整的单元结果”。
 
+### Module Results
+
+`StudioGuiWindowModuleResultsModel` 是 Studio window-model 针对当前选中单元派生的 unit-centric presentation。它只读取 current-revision latest `SolveSnapshot`，并围绕 selected unit 暴露：
+
+- `selected_unit_result`
+- consumed / produced stream chip
+- related steps
+- related diagnostics
+- diagnostic actions
+
+当前状态语义：
+
+- `NoUnitSelected`：没有选中单元，不展示模块结果。
+- `NoCurrentResult`：当前文档 revision 尚无可用 latest result，提示先运行。
+- `Stale`：只存在旧 revision 的快照；展示 stale notice，不渲染旧 selected unit result、stream chip、related steps 或 diagnostic actions。
+- `NoUnitResult`：当前 latest `SolveSnapshot` 中没有该单元的 step result，可展示 related steps / diagnostics，但不补造 unit result。
+- `Current`：当前 latest `SolveSnapshot` 中存在该单元结果，正常展示 selected unit result 和关联对象。
+
+这层 DTO 不承担完整报表、跨快照历史、重新求解或结果补算职责。若 Module Results 与 Result Inspector / 底部结果表对同一单元的 consumed / produced stream 表达不一致，应优先按消费层 bug 排查，而不是让 Module Results 自行拼装另一套结果。
+
 ### case-level review summary
 
 case-level `review_summary` 是 Studio window-model 从同一份最新 `SolveSnapshot` 派生的审阅摘要，用于让用户先按流程链路确认“哪些结果对象应该被看见”。
@@ -207,7 +229,7 @@ case-level `review_summary` 是 Studio window-model 从同一份最新 `SolveSna
 - stream comparison 的 `Inspect`
 - unit-centric 视图的输入/输出流股 action
 - `DiagnosticTargets`
-- `Active Inspector` / `Result Inspector` / step 列表中的相关 action
+- `Module Settings` / `Module Results` / `Result Inspector` / step 列表中的相关 action
 - `Results` command section、command palette、menu 和 command list 中的 result navigation
 
 稳定边界：

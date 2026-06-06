@@ -1,10 +1,10 @@
 # App Architecture
 
-更新时间：2026-06-04
+更新时间：2026-06-06
 
 ## 当前目标
 
-现阶段 App 方向聚焦 MVP β Studio 建模与结果核对闭环。不做完整商业化界面或复杂交互扩张；本文只冻结 App 边界。
+现阶段 App 方向聚焦 MVP β Studio 建模与结果核对闭环；本文只冻结 App 边界，不展开完整商业化界面或复杂交互。
 
 不扩展自由连线、完整拖拽布局、完整报表或未来型多文档工作台。
 
@@ -51,7 +51,7 @@
 - 负责让顶部 `Run`、Run Panel `Resume`、`F5 / Shift+F5`、AppHost、StudioGuiDriver、StudioGuiHost command registry 等正式运行入口复用同一层建模输入 readiness；shell 只负责 notice、focus 和用户反馈，不在各入口复制另一套输入判断
 - 负责在 GUI shell 层提供用户操作与求解审计输出；默认 stderr 日志只作为开发态 smoke 和诊断入口，不替代未来正式审计 / telemetry 设计
 - 负责遵守 `eframe` / `winit` 事件循环约束：Windows 事件循环在主线程创建；干净最后窗口 close 不得被 `CancelClose` 拦截，关闭前清理逻辑窗口并停止当帧 fallback 布局；脏工作区 close 必须先确认保存 / 舍弃 / 取消
-- 负责桌面窗口渲染后端选择：macOS 开发态使用 `eframe/wgpu` 并限制为 Metal backend，避免系统 OpenGL loader 探测噪声；直接运行裸二进制时的 App Intents / WindowTab / task port 系统日志不在运行时代码里兜底，后续由 `.app` bundle / `Info.plist` / 签名打包流程治理
+- 负责桌面窗口渲染后端选择：macOS 开发态使用 `eframe/wgpu` + Metal backend；裸二进制系统日志后续由 `.app` bundle / `Info.plist` / 签名打包流程治理
 
 不应承担：
 
@@ -66,24 +66,24 @@
 Studio 首页、工作台分区、运行后结果视图和 Home 项目切换确认流程已落地。shell UI 边界按以下稳定入口治理：
 
 - Home Dashboard：应用启动后的默认首页，只承载 Start actions、Recent Cases、Example Cases、Environment 和 Messages；不读取 `SolveSnapshot`，不直接承载流程图编辑。
-- Home 项目入口：左侧 Start actions 保留 `新建项目`、小案例作者入口、`打开项目`、`打开示例项目`；最近项目和示例项目由列表行承载选择态与双击打开。小案例作者入口只创建空白项目并切到 `放置`，清单只读 canvas，不生成 flowsheet、不写项目、不进 undo。
-- 未保存确认：新建、打开或列表双击时，若有未保存变更，必须先进入继续 / 取消确认。
+- Home 项目入口：左侧 Start actions 保留 `新建项目`、小案例作者入口、`打开项目`、`打开示例项目`；最近项目和示例项目统一由 `StudioGuiWindowHomeCaseTileModel` 承载流程缩影、路径 / 来源、物性包、组分、状态与双击打开。小案例作者入口只创建空白项目并切到 `放置`，清单只读 canvas，不生成 flowsheet、不写项目、不进 undo。
+- 未保存确认：新建、打开或 case tile 双击时，若有未保存变更，必须先进入继续 / 取消确认。
 - 顶部主路径：进入 case 后只保留用户主路径、当前项目摘要和必要状态，不把调试计数和菜单全集置于第一视野。
 - 操作入口：`Home`、打开示例、新建空白、打开项目、运行、保存、另存为和视图保持可发现；低频命令进入 `视图`。
-- 工作台分区：左侧 `项目 / 示例项目 / 放置` 负责项目对象、项目级输入摘要、示例入口与 MVP 放置入口；其中 `项目` 面板可直接暴露受控物性包和项目组分选择，空白项目不隐式预选求解输入。右侧 `检查器 / 结果 / 运行 / 物性包` 负责属性编辑、结果审阅、运行上下文和物性包状态；底部 `消息 / 运行日志 / 结果表 / 诊断` 承接可行动消息、运行日志和表格结果。
+- 工作台分区：左侧 `项目 / 示例项目 / 放置` 负责项目对象、项目级输入摘要、示例入口与 MVP 放置入口；其中 `项目` 面板可直接暴露受控物性包和项目组分选择，空白项目不隐式预选求解输入。右侧当前仍是 `检查器 / 结果 / 运行 / 物性包` tabs；选中单元时 `检查器` 消费 `StudioGuiWindowModuleSettingsModel`，`结果` 消费 `StudioGuiWindowModuleResultsModel`。底部 `消息 / 运行日志 / 结果表 / 诊断` 承接可行动消息、运行日志和表格结果。
 - 结果反馈：成功后 shell 可切到右侧 `结果` 和底部 `结果表`，失败后切到右侧 `运行`。结果面只读消费当前 revision 的最新 `SolveSnapshot`；文档编辑导致结果过期时只显示 stale notice，不继续用旧快照驱动 Result Inspector、结果表、Results commands 或复制 / 导出。`复制快照` / `导出文本` 格式化快照的 `Streams / Review / Units / Steps / Diagnostics`，不写项目 / undo，不扩报表 / 批量导出
 - 日志与审计：开发态 stderr 与 GUI activity 可继续服务 smoke，但正式 UI 只展示用户能采取行动的摘要，不把平台 timer 或 host internals 混入主路径
 - 关闭行为：干净最后窗口应自然结束进程；shell 可在清理逻辑窗口后停止当帧渲染，但不能拦截原生关闭请求。脏工作区必须先取消本次 close，请用户选择保存并关闭、舍弃并关闭或取消关闭；保存失败、另存为取消或覆盖确认未完成时保持打开。
 
-下一轮 Studio UI 主设计稿已收敛到 `docs/architecture/designs/studio-client-main.pen`。它是设计目标，不代表当前代码已完成重排。实现时必须继续复用同一份 `WorkspaceDocument`、inspector draft、command surface、run panel state 和 latest current-revision `SolveSnapshot`；独立 `物性` 页面仍通过正式 document command 写入 package / components；顶部两层导航、左侧 `模块 / 项目`、右侧 `检查器 / 模块设置 / 模块结果` 和底部分栏都只是 UI 编排变化，不得新增私有选择、结果、诊断或参数缓存。
+下一轮 Studio UI 主设计稿已收敛到 `docs/architecture/designs/studio-client-main.pen`。它是设计目标，不代表当前代码已完成重排。实现时必须复用既有 `WorkspaceDocument`、inspector draft、command surface、run panel state 和 latest current-revision `SolveSnapshot`；布局变化不得新增私有选择、结果、诊断或参数缓存。
 
 ### Studio Main Presentation 边界
 
-Studio UI 专题代码实现从 `StudioGuiWindowModel` 派生 DTO 开始，不先做 egui 大布局重排。当前 `studio_main` 只投影 Home 示例 tile、Property page 和底部 status summary；详细映射见 `docs/architecture/designs/studio-client-main-brief.md`。
+Studio UI 专题代码实现从 `StudioGuiWindowModel` 派生 DTO 开始，不先做 egui 大布局重排。当前 `studio_main` 已投影 Home 示例 / 最近 case tile、Property page、底部 status summary、Module Settings 和 Module Results；详细映射见 `docs/architecture/designs/studio-client-main-brief.md`。
 
-egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、物性、运行、结果或诊断真相源。Home recent tile、独立 `物性` 页面、右侧 `模块设置 / 模块结果` 和底部分栏重排都仍需按正式 presentation / command / state 来源逐步推进。
+egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、物性、运行、结果或诊断真相源。Home recent tile 当前仍由 shell preferences / `project_open` 映射为同一 DTO，尚未上提到 `StudioGuiSnapshot`；独立 `物性` 页面、右侧完整 `检查器 / 模块设置 / 模块结果` tabs 和底部分栏重排都仍需按正式 presentation / command / state 来源逐步推进。
 
-`studio_gui_shell/panels/runtime/` 当前拆为 `runtime/mod.rs`、`runtime/results.rs` 和 `runtime/inspector.rs`。后续 Module Results 或 Inspector 细化应先补正式 window model DTO 和 focused 回归，再让对应 runtime 子模块消费；不得为了贴近设计稿在 shell 中私造结果、诊断、端口或参数缓存。
+`studio_gui_shell/panels/runtime/` 当前拆为 `runtime/mod.rs`、`runtime/results.rs` 和 `runtime/inspector.rs`。Module Settings 和 Module Results 细化必须继续先补正式 window model DTO 和 focused 回归，再让对应 runtime 子模块消费；不得在 shell 中私造结果、诊断、端口、参数或帮助命令缓存。当前模块帮助没有正式 command surface，只允许在 DTO 中表达为空状态。
 
 ### `rf-ui`
 
@@ -729,25 +729,26 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - `StudioWorkspaceRunDispatch` 当前已补充 `simulation_mode`、`pending_reason`、`latest_snapshot_summary`、`log_entry_count` 与 `latest_log_entry`，让入口层先消费结构化运行摘要，而不是直接翻读完整 `AppState`
 - `StudioWorkspaceModeDispatch` 当前已作为独立结果派发对象承接模式切换结果，避免 UI 侧把“切换模式”和“发起运行”混成同一种返回值
 - `WorkspaceControlState` 当前已作为运行栏/状态栏摘要对象，统一提供 mode、status、pending、最新快照摘要和当前可触发动作集合
-- `run_studio_bootstrap(...)` 当前也已把 `StudioBootstrapTrigger::{Intent, WidgetPrimaryAction, WidgetAction}` 作为配置入口，并通过 `run_panel_driver` 回收 `RunPanelWidgetModel + WorkspaceControlState`，作为最小桌面入口对运行栏契约的直接消费样例
-- `rf-ui` 当前已把运行栏收口为 `RunPanelState`、`RunPanelIntent`、`RunPanelCommandModel`、`RunPanelViewModel`、`RunPanelPresentation` 和 `RunPanelWidgetModel`：按钮可见性、可用性、主动作、文本视图和可派发 intent 都由 UI 层派生，不在 Studio 侧重复判断。
-- Studio 通过 `run_panel_driver` 和 `dispatch_run_panel_widget_event_with_auth_cache(...)` 把 widget 激活结果接回 `WorkspaceControlAction`；`run_studio_bootstrap(...)` / `main.rs` 直接消费这组运行栏组件 DTO，不再手拼控制面布尔摘要。
+- `run_studio_bootstrap(...)` 通过 `run_panel_driver` 直接消费 `RunPanelWidgetModel + WorkspaceControlState`，作为桌面入口样例
+- `rf-ui` 已把运行栏收口为 `RunPanelState`、`RunPanelIntent`、`RunPanelCommandModel`、`RunPanelViewModel`、`RunPanelPresentation` 和 `RunPanelWidgetModel`；Studio 侧只派发 widget 事件，不重复判断按钮和 intent。
 
 当前已落地与仍待细化的边界：
 
 - 手动运行已经进入真实 GUI 工作台主路径：顶部 `运行` 直接派发 `run_panel.run_manual`，并通过 command registry 的 availability / disabled reason 控制按钮状态
-- Home 是默认第一视野；`新建项目 / 小案例作者入口 / 打开项目 / 打开示例项目` 和列表双击只触发生命周期或清单选择，不写入当前 `FlowsheetDocument`
+- Home 是默认第一视野；`新建项目 / 小案例作者入口 / 打开项目 / 打开示例项目` 和 case tile 双击只触发生命周期或清单选择，不写入当前 `FlowsheetDocument`
 - Home 与工作台的项目切换入口当前已统一纳入未保存变更确认流程；继续才丢弃当前工作区，取消不改变当前项目、MRU 或 `FlowsheetDocument`
 - `Home / 打开示例 / 新建空白 / 打开项目... / 保存 / 另存为... / 视图 / 命令面板` 当前作为进入 case 后的 Studio shell 主路径；默认隐藏命令大全只是 shell 启动时的 host-local transient layout preference，不写入项目文档语义
 - `StudioAppFacade`、`WorkspaceControlAction`、`WorkspaceControlState`、`RunPanelWidgetModel` 与 `run_panel_driver` 已经构成手动运行入口的稳定链路；后续仍待细化的是后台调度、取消、自动运行与 `Hold -> Active` 恢复在最终 GUI 中的完整交互表达
 - Studio 当前又已把 app-host 侧 GUI 动作入口进一步冻结为 `StudioAppHostController::dispatch_ui_command(command_id)`，让菜单、快捷键和命令面板后续都可以直接按稳定 command id 触发，而不必继续持有 `UiAction` 枚举或回退到 raw host outcome
 - 当前首批已接成真实宿主命令的 run panel command registry 为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；后续桌面命令绑定应优先复用这组 registry，而不是在各入口重复解释 availability、disabled reason 或底层 widget 事件
 - Studio 当前又已把 canvas suggestion、layout nudge、单元拖动与选中流股恢复纳入同一条 command surface；相关 canvas command 都通过统一 GUI / driver 派发。layout nudge 和单元拖动只写 `<project>.rfstudio-layout.json` sidecar，不进文档 revision/history
-- `canvas.disconnect_selected_stream` / `canvas.disconnect_selected_stream_source` / `canvas.disconnect_selected_stream_sink` / `canvas.reconnect_selected_stream` / `canvas.delete_selected_stream` 是无自由连线阶段的受控恢复动作：整股断开保留流股，端点级断开只解除唯一 source 或 sink 绑定，重连只补齐单端唯一候选且候选不得形成 unit dependency cycle，删除先解绑再删除流股；这些动作进入 `CommandHistory`，但不得扩成端口选择器、自由连线、自动布线或完整拖拽布局
+- `canvas.disconnect_selected_stream` / `canvas.disconnect_selected_stream_source` / `canvas.disconnect_selected_stream_sink` / `canvas.reconnect_selected_stream` / `canvas.delete_selected_stream` 是无自由连线阶段的受控恢复动作：整股断开保留流股，端点级断开只解除唯一端点，重连只补齐单端唯一且不会成环的候选，删除先解绑再删除；这些动作进入 `CommandHistory`，但不得扩成端口选择器、自由连线、自动布线或完整拖拽布局
 - Studio 当前结果审阅/错误定位入口也已进一步收口为统一 `StudioGuiWindowDiagnosticTargetActionModel`：失败摘要、结果检查器、当前对象检查器与求解步骤都会汇总可执行诊断目标 action，真实 GUI 只消费这份 presentation 并继续通过既有 `command_id` 派发，不新增一条错误处理或导航私有分支
 - Studio 当前结果检查器的 `selected_stream / comparison_stream / selected_unit` 也已冻结为 shell-local 视图选择态：它们只决定当前显示哪一块 `SolveSnapshot` 结果面，不缓存第二份结果；若 base stream 切换成当前 compared stream，comparison 允许按现有规则清空，但这仍只是 selector state 复位，不代表结果语义变化；最终 UI 的选择区应使用紧凑可选项，不为每个候选重复渲染 `Inspect`
 - Studio 当前 near-boundary 结果消费链已收口到 `window_model -> shell runtime` 的同一条 action surface：`inspector.focus_stream:*` / `inspector.focus_unit:*`、comparison 检查动作和诊断目标 section 都应从同一份 `StudioGuiWindowDiagnosticTargetActionModel` 或既有 focus action 派生；GUI 不应再发明 target 语义或导航分支
 - Studio 当前 `StudioGuiCommandRegistry` 也会从最新 `SolveSnapshot` 派生 `Results` command section：result stream / unit navigation 只暴露为既有 `inspector.focus_stream:*` / `inspector.focus_unit:*` command，palette、menu、command list 与 runtime 小型 action button 都继续通过 `dispatch_ui_command(command_id)` 进入同一条 host 派发链，不在各自入口复制 target 解析
+- Studio 当前 `StudioGuiWindowModuleSettingsModel` 从 active unit inspector detail 派生参数字段、端口、连接动作、关联诊断和诊断目标 action；真实 GUI 只消费这份 presentation，不把 Module Results 的 latest-result 内容塞回 `检查器`。帮助入口当前没有正式 command surface，因此 `help_actions` 为空。
+- Studio 当前 `StudioGuiWindowModuleResultsModel` 从 current-revision latest `SolveSnapshot` 派生 selected unit result、consumed / produced stream chip、related steps、related diagnostics 和 diagnostic actions；若只有 stale snapshot，则只暴露 stale notice，不渲染旧 selected unit result 或旧关联对象。
 - Studio 当前 window-model 也会从同一份 `SolveSnapshot` 派生 case-level `review_summary`：按 source / intermediate / terminal stream 分组，并列出 latest unit results 的 consumed / produced streams 与 diagnostics count。该摘要只服务结果审阅和轻量导出，不成为第二套结果缓存或报表模型。
 - Studio 当前 window-model 也会在文档 revision 推进后暴露 `stale_solve_snapshot` presentation：它只说明上一份快照来自旧 revision，并提示用户重新运行；旧快照不再作为当前 Result Inspector、底部结果表、Results commands、轻量导出或 `review_summary` 的数据源。
 - Studio 当前失败详情只消费 `latest_diagnostic`，显示 primary code、revision、severity、count 与相关 target；GUI 不从 message 文本反解析或私造端口级 command
@@ -755,7 +756,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - `StudioAppHostController` 当前对 `DispatchCanvasInteraction` 不应再无条件 `refresh_local_canvas_suggestions()`；local-rules refresh 只应发生在真正改写文档或显式要求重算 suggestion 的路径上，否则会把 `FocusNext/Reject` 刚生成的正式焦点状态冲回首条 suggestion，破坏 GUI 命令面的连续交互语义
 - `studio_gui_shell` 当前也已通过 shell 级等价回归锁定 run panel、canvas suggestion、layout nudge 与选中流股恢复动作在菜单、工具栏、命令面板、Canvas / Inspector 入口之间的共享派发语义；真实 GUI 后续不应再为某个入口保留“看起来一样、实际另走一条逻辑”的私有状态改写分支
 - 同时已锁定 disabled 状态下 menu / toolbar / palette 不会偷偷改变工作区或 suggestion 焦点；后续若某个入口需要提示用户，也应停留在 presentation 层，而不是越过 disabled gate 直接改状态
-- Studio 当前已冻结第一版字段编辑快捷键策略：`Ctrl+S` 绑定 `file.save`，即使焦点在文本输入框内也继续通过正式 command surface 保存当前项目；`Ctrl+Z / Ctrl+Y` 绑定 `edit.undo / edit.redo`，但文本输入焦点下由输入框自身保留撤销/重做语义，不进入文档历史；普通焦点、画布焦点和 Inspector 面板焦点下才派发文档历史命令；`Enter` 在 Stream Inspector 字段输入中继续只提交当前字段，`Apply all` 仍保持显式按钮/命令，不设置隐式 Enter 批量提交
+- Studio 当前已冻结第一版字段编辑快捷键策略：`Ctrl+S` 始终通过正式 command surface 保存；`Ctrl+Z / Ctrl+Y` 在文本输入焦点下由输入框自身处理，普通焦点、画布焦点和 Inspector 面板焦点下才派发文档历史命令；`Enter` 在 Stream Inspector 字段输入中只提交当前字段，`Apply all` 仍保持显式按钮/命令
 - `apps/radishflow-studio/src` 当前也已开始按职责做浅层目录治理；`bootstrap`、`studio_gui_shell`、`studio_gui_host`、`studio_gui_driver`、`studio_gui_window_layout`、`studio_window_host_manager`、`entitlement_session_host`、`property_package_download_client`、`auth_cache_sync`、`app_facade` 与 `control_plane_client` 已转为目录模块。后续新增实现应优先并入同域子目录，而不是把大型模块重新铺回 `src/` 根
 
 ## 结果快照模型

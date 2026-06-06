@@ -1,6 +1,6 @@
 # Review Solve Results
 
-更新时间：2026-05-31
+更新时间：2026-06-06
 
 ## 目的
 
@@ -9,9 +9,10 @@
 它回答的是：
 
 - 先看哪几类流股和步骤
-- `流股选择`、`流股对比`、`单元结果` 三种结果面该怎么配合看
+- `流股选择`、`流股对比`、`Module Results` 三种结果面该怎么配合看
 - `source stream`、非 flash 中间流股、flash outlet、unit step 输入/输出各自该怎么看
 - `检查` / `诊断目标` / `结果` commands 应该怎样帮助你核对同一份结果
+- 当前对象 `检查器` / Module Settings 和 `结果` / Module Results 的职责边界是什么
 - `H`、`phase_region`、`bubble_dew_window` 在结果区里分别代表什么
 - 当前快照复制 / 导出应该怎样理解
 - 从小案例作者路径运行后应该先核对哪些结果
@@ -34,14 +35,14 @@
 
 一次运行成功后，先按下面顺序看：
 
-1. 右侧 `结果检查器` 的流股结果视图
-2. 右侧 `结果检查器` 的单元结果视图
-3. `关联求解步骤` / step 列表
-4. 当前对象 `检查器`
+1. 右侧 `结果` 区的当前快照摘要，以及选中单元的 Module Results 摘要
+2. 右侧 `结果` 区的流股结果视图和 comparison
+3. 底部 `结果表`、`关联求解步骤` / step 列表和诊断目标
+4. 当前对象 `检查器` / Module Settings 中的已提交参数、端口和关联诊断
 
-当前这四处都应该只读消费同一份 `SolveSnapshot` DTO；如果某个字段只在其中一处出现，通常应先怀疑消费层回归，而不是先猜数值层分叉。
+当前这些位置里的结果相关字段都应该只读消费同一份 `SolveSnapshot` DTO；如果某个结果字段只在其中一处出现，通常应先怀疑消费层回归，而不是先猜数值层分叉。Module Settings 中的参数字段和端口仍来自 active inspector / document command surface，不是结果快照字段。
 
-当前中文 UI 中，这四处通常对应右侧 `结果` tab、右侧 `检查器` tab 中的关联结果、底部 `结果表 / 诊断`，以及命令入口中的结果定位项。英文术语在本文档中只用于指代内部结果组织方式，不表示默认界面必须显示英文。
+当前中文 UI 中，这四处通常对应右侧 `结果` tab、右侧 `检查器` tab、底部 `结果表 / 诊断`，以及命令入口中的结果定位项。英文术语在本文档中只用于指代内部结果组织方式，不表示默认界面必须显示英文。右侧 `检查器` 在选中单元时消费 Module Settings DTO，负责参数、端口、连接动作、诊断动作和帮助空状态；latest unit result 应在 `结果` tab 的 Module Results 中看，不应回流到 Module Settings。
 
 ## 小案例作者路径的结果核对
 
@@ -49,8 +50,8 @@
 
 - 输入流股：两股 Feed outlet 的 `T / P / F / composition / H / bubble_dew_window`
 - 中间流股：mixer outlet 的总摩尔流量应为两股 Feed outlet 之和，composition 应为摩尔流量加权结果
-- `Mixer` 单元结果：输入流股应包含两个 Feed outlet，产出流股应是 mixer outlet
-- `Flash Drum` 单元结果：输入流股应是 mixer outlet，产出流股应包含 liquid / vapor
+- `Mixer` Module Results：输入流股应包含两个 Feed outlet，产出流股应是 mixer outlet
+- `Flash Drum` Module Results：输入流股应是 mixer outlet，产出流股应包含 liquid / vapor
 - Flash 分割：liquid / vapor 两股 outlet 的总摩尔流量之和应等于 flash inlet
 - 相态 / 焓值：flowing outlet 应能看到 phase row 和 `H`；two-phase case 中 liquid / vapor outlet 的窗口分别落在 bubble / dew 边界
 - 右侧 `结果` 区的复制 / 导出文本应来自同一份最新 `SolveSnapshot`
@@ -59,13 +60,13 @@
 
 - 输入流股：Feed outlet 的 `T / P / F / composition / H / bubble_dew_window`
 - 中间流股：heater outlet 的温度和压力应反映已提交的 `Heater` outlet temperature / outlet pressure
-- `Heater` 单元结果：输入流股应是 Feed outlet，产出流股应是 heater outlet
-- `Flash Drum` 单元结果：输入流股应是 heater outlet，不应直接消费 Feed outlet
+- `Heater` Module Results：输入流股应是 Feed outlet，产出流股应是 heater outlet
+- `Flash Drum` Module Results：输入流股应是 heater outlet，不应直接消费 Feed outlet
 - Flash 分割：liquid / vapor 两股 outlet 的总摩尔流量之和应等于 flash inlet；若是 vapor-only 条件，零流量 liquid outlet 允许缺席 phase rows、`H` 和窗口
 - 相态 / 焓值：flowing vapor outlet 应能看到 Vapor phase row、`H` 和 vapor-only 窗口
 - flash liquid / vapor outlet：应能在 stream result 和 unit result 中互相定位
 
-这些核对只读消费运行后的 `SolveSnapshot`。如果结果不符合预期，先回到 `检查器` 查看单元参数是否已经提交，再检查 Canvas suggestion 是否已经把对应 source / sink 端点补齐。
+这些核对只读消费运行后的 `SolveSnapshot`。如果结果不符合预期，先回到 `检查器` / Module Settings 查看单元参数是否已经提交、端口是否绑定、是否存在关联诊断，再检查 Canvas suggestion 是否已经把对应 source / sink 端点补齐。
 
 official hydrocarbon demo 的稳定数值口径详见 `docs/guides/author-small-cases.md` 中的“结果核对与案例说明 v0”。本文只说明阅读顺序，不复制每个示例的输入表。
 
@@ -88,9 +89,9 @@ official hydrocarbon demo 的稳定数值口径详见 `docs/guides/author-small-
 - `comparison` 只比较当前同一份 `SolveSnapshot` 里已经存在的两股流，不会触发第二次求解
 - 如果把 base stream 切成当前 compared stream，comparison 会被清空；这表示 selector state 复位，不表示结果丢失
 
-`selected unit` 也只是切换“看哪一个单元的结果面”，不应该改变任何 stream result 本身的数值语义。
+`selected unit` 也只是切换“看哪一个单元的结果面”。当前 Studio 会从同一份 latest current-revision `SolveSnapshot` 派生 `StudioGuiWindowModuleResultsModel`，不应该改变任何 stream result 本身的数值语义。
 
-右侧 `结果检查器` 的选择区应是紧凑可选项：流股、对比流股和单元以按钮 / chip 形式切换，不应为每个选项重复显示 `Inspect`。需要跳到对象详情时，使用当前选项、`检查` 动作、诊断目标或命令入口定位到同一份对象结果。
+右侧 `结果` 区的选择区应是紧凑可选项：流股、对比流股和单元以按钮 / chip 形式切换，不应为每个选项重复显示 `Inspect`。需要跳到对象详情时，使用当前选项、`检查` 动作、诊断目标或命令入口定位到同一份对象结果。
 
 ## 1. 先看 source stream
 
@@ -128,7 +129,7 @@ source stream 的这些字段不是给 downstream consumer 现算的临时值。
 
 ## 3. 再看 unit step 输入/输出
 
-切到 `结果检查器` 的单元结果视图后，重点看某个 step 的：
+切到选中单元的 Module Results 后，重点看某个 step 的：
 
 - `consumed_streams`
 - `streams`
@@ -140,6 +141,8 @@ source stream 的这些字段不是给 downstream consumer 现算的临时值。
 
 它们都应由 solver 直接物化，再沿 `rf-solver -> rf-ui::SolveSnapshot -> workspace run / Studio consumer` 透传。  
 Studio 不应再通过全局 stream 列表按 id 回填、拼装或猜测第二套 step 输入/输出结果。
+
+Module Results 当前还会把 selected unit result、consumed / produced stream chip、related steps、related diagnostics 和 diagnostic actions 放在同一块摘要中。它只是同一份 `SolveSnapshot` 的 unit-centric presentation，不是完整报表，也不是跨快照结果缓存。若项目文档编辑后旧快照变为 stale，Module Results 只显示 stale notice，不继续展示旧 selected unit result。
 
 ## 4. 最后看 flash outlet
 
@@ -175,7 +178,7 @@ Studio 不应再通过全局 stream 列表按 id 回填、拼装或猜测第二�
 
 这不是 UI 漏显示，而是当前稳定边界的一部分。
 
-## 5. 用 `检查`、`诊断目标` 和 `结果` commands 交叉核对
+## 5. 用 Module Results、`检查`、`诊断目标` 和 `结果` commands 交叉核对
 
 当前结果审阅不只靠静态字段，还可以借助两类动作面：
 
@@ -187,8 +190,8 @@ Studio 不应再通过全局 stream 列表按 id 回填、拼装或猜测第二�
 推荐用法：
 
 1. 在流股对比里用 `检查` 或当前流股选项从 `stream-liquid / stream-vapor` 跳到对应对象详情
-2. 在单元结果视图里用输入/输出流股的 `检查`，核对 `Flash Drum` inlet/outlet 和 step stream 是否还是同一份结果
-3. 在 `诊断目标` 里再跳一次 flash inlet 或 flash unit，确认 `结果检查器 -> 当前检查器` 没有分叉成第二套 consumer 语义
+2. 在 Module Results 里用输入/输出流股的 `检查`，核对 `Flash Drum` inlet/outlet 和 step stream 是否还是同一份结果
+3. 在 `诊断目标` 里再跳一次 flash inlet 或 flash unit，确认 `结果 -> 当前检查器 / Module Settings` 没有分叉成第二套 consumer 语义
 4. 在 command palette 或菜单中搜索 `result` / `snapshot` / stream label，确认 `Results` command 也定位到同一份当前快照结果
 
 这里要注意：
@@ -196,6 +199,7 @@ Studio 不应再通过全局 stream 列表按 id 回填、拼装或猜测第二�
 - `检查` 只是定位到当前已有 stream/unit 结果，不会重新求解
 - `诊断目标` 只汇总当前 `SolveSnapshot`、相关 step 和相关 diagnostic 已经存在的目标，不是 shell 私造的第三套导航模型
 - `Results` commands 也只派发既有 `inspector.focus_stream:*` / `inspector.focus_unit:*`，不会创建第二套结果缓存
+- Module Settings 只显示参数、端口、连接动作、诊断动作和帮助空状态；当前还没有正式模块帮助 command，因此不应出现临时 help action
 - `复制快照` / `导出文本` 只把当前同一份 `SolveSnapshot` 格式化为纯文本，覆盖流股摘要、Review 摘要、单元结果、求解步骤和诊断；它们不写项目文件、不进入 undo，也不是完整报表、模板系统或批量导出入口
 - 如果某个 section 没有 `诊断目标`，应先理解为“当前没有已物化目标”，而不是默认它被隐藏或漏显示
 
@@ -206,7 +210,7 @@ Studio 不应再通过全局 stream 列表按 id 回填、拼装或猜测第二�
 底部 `结果表` 当前分两段展示同一份 `SolveSnapshot`：
 
 - 上半段是流股表：按流股列出 `T / P / F / H / 相态`，点击流股会切到右侧 `结果` 对应流股。
-- 下半段是单元表：按每个单元的最新求解步骤列出状态、step 序号、消费流股和产出流股，点击单元会切到右侧 `结果` 的单元结果面。
+- 下半段是单元表：按每个单元的最新求解步骤列出状态、step 序号、消费流股和产出流股，点击单元会切到右侧 `结果` 的 Module Results 面。
 
 这张表只用于快速核对当前快照，不保存结果、不触发求解，也不是完整报表系统。小案例作者路径运行后，建议先在流股表确认关键 outlet，再在单元表确认 upstream / downstream 消费关系是否正确。
 
@@ -269,7 +273,7 @@ Studio 不应再通过全局 stream 列表按 id 回填、拼装或猜测第二�
 1. 全局 `stream` 结果
 2. upstream unit step 的输出流股
 3. downstream unit step 的输入流股
-4. 结果检查器与当前对象检查器的展示
+4. `结果` / Module Results 与当前对象 `检查器` / Module Settings 的展示
 
 如果 1 到 3 已经不一致，先查 solver / snapshot。  
 如果 1 到 3 一致、但 4 不一致，优先查 Studio consumer。
