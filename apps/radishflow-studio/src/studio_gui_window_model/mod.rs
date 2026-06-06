@@ -16,11 +16,11 @@ use crate::{
 use drop_preview::{build_drop_preview_overlay, changed_area_ids_for_preview};
 pub use studio_main::{
     StudioGuiWindowHomeCaseTileModel, StudioGuiWindowHomeCaseTileSource,
-    StudioGuiWindowHomeCaseTileStatus, StudioGuiWindowHomeModel,
-    StudioGuiWindowPropertyComponentModel, StudioGuiWindowPropertyMetricModel,
-    StudioGuiWindowPropertyPackageModel, StudioGuiWindowPropertyPageModel,
-    StudioGuiWindowStatusSummaryMetricModel, StudioGuiWindowStatusSummaryModel,
-    StudioGuiWindowThumbnailFlowModel,
+    StudioGuiWindowHomeCaseTileStatus, StudioGuiWindowHomeModel, StudioGuiWindowModuleResultsModel,
+    StudioGuiWindowModuleResultsState, StudioGuiWindowPropertyComponentModel,
+    StudioGuiWindowPropertyMetricModel, StudioGuiWindowPropertyPackageModel,
+    StudioGuiWindowPropertyPageModel, StudioGuiWindowStatusSummaryMetricModel,
+    StudioGuiWindowStatusSummaryModel, StudioGuiWindowThumbnailFlowModel,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -574,6 +574,7 @@ pub struct StudioGuiWindowModel {
     pub commands: StudioGuiWindowCommandAreaModel,
     pub home: StudioGuiWindowHomeModel,
     pub property_page: StudioGuiWindowPropertyPageModel,
+    pub module_results: StudioGuiWindowModuleResultsModel,
     pub canvas: StudioGuiWindowCanvasAreaModel,
     pub runtime: StudioGuiWindowRuntimeAreaModel,
     pub status_summary: StudioGuiWindowStatusSummaryModel,
@@ -616,6 +617,7 @@ impl StudioGuiWindowModel {
             commands: commands_from_registry(&snapshot.command_registry),
             home: StudioGuiWindowHomeModel::from_runtime(&runtime),
             property_page: StudioGuiWindowPropertyPageModel::from_runtime(&runtime),
+            module_results: StudioGuiWindowModuleResultsModel::from_runtime(&runtime),
             canvas: canvas_from_snapshot(snapshot),
             status_summary: StudioGuiWindowStatusSummaryModel::from_runtime(&runtime),
             runtime,

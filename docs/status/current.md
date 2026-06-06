@@ -32,7 +32,7 @@
 - **通用小流程建模 v1 阶段收口复核已通过：普通空白项目 `Feed -> Flash Drum`、`Feed -> Cooler -> Flash Drum`、`Feed -> Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 均已完成显式输入、运行、保存、重开、rerun 与结果审阅复核，未发现 blocker。**
 - **下一阶段已切到 Studio UI 专题：设计前置首轮已收敛，代码实现只从 presentation / window model 第一刀开始；不在现有 UI 上继续叠加零散补丁。**
 - **Studio UI 主设计稿已收敛到 `studio-client-main.pen`：当前稿覆盖高密度 Home、顶部导航下的独立物性页、流程图工作台、模块设置 / 模块结果和底部运行 / 状态分栏；重复的 `unit-module-panel.pen` 不再作为活跃设计稿维护。**
-- **Studio UI 实现第三刀已完成 focused 推进但仍不做 UI 大改：Home / Property / bottom status 已消费 `StudioGuiWindowModel` 派生 DTO，`runtime.rs` 已拆成 `runtime/mod.rs`、`runtime/results.rs` 与 `runtime/inspector.rs`，为后续 Inspector / Module Results presentation 细化留出边界。**
+- **Studio UI 实现第四刀已完成 focused 推进但仍不做 UI 大改：`StudioGuiWindowModel` 已新增 Module Results presentation DTO，当前选中单元的 selected unit result、consumed / produced stream chips、related solve steps 与 diagnostic actions 从当前 `SolveSnapshot` / command surface 派生；文档编辑后的 stale snapshot 不再驱动 Module Results 当前结果。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前开发策略
@@ -74,7 +74,7 @@ Studio UI 专题设计前置目标：
 - P0 / P1 评审时继续对照两张 `baseline/` 视觉基线，确保 Home / Workbench 的分区、信息密度、状态 chip 和主操作层级与项目视觉方向一致。
 - Studio 客户端本体优先覆盖 Home、Workbench、Canvas、Inspector、Result、Package / Auth 的职责关系，不提前扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
 - 模块设置 / 模块结果优先先在 `studio-client-main.pen` 中统一参数、端口、运行结果、诊断和帮助入口；若后续细节不足，再按窄口径创建 `module-settings-panel.pen`，不重复整套 Workbench。
-- 代码实现已允许从 presentation / window model 小切片推进，但仍不直接做大规模 egui 布局重排；Home 最近项目来源尚未上提到正式 snapshot，后续需要决定是否纳入同一 tile DTO。
+- 代码实现已允许从 presentation / window model 小切片推进，但仍不直接做大规模 egui 布局重排；Module Results DTO 已落到正式 window model，后续再决定 egui 右侧栏如何消费；Home 最近项目来源尚未上提到正式 snapshot，后续需要决定是否纳入同一 tile DTO。
 - 任何代码实现都必须继续遵守 presentation / command / state 边界；视觉优化不得绕过正式 UI 模型堆 shell 私有状态。
 
 ## 验证节奏

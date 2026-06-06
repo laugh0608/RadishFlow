@@ -83,6 +83,32 @@ pub struct StudioGuiWindowPropertyPageModel {
     pub future_sections: Vec<&'static str>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StudioGuiWindowModuleResultsState {
+    NoUnitSelected,
+    NoCurrentResult,
+    Stale,
+    NoUnitResult,
+    Current,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowModuleResultsModel {
+    pub title: &'static str,
+    pub state: StudioGuiWindowModuleResultsState,
+    pub state_label: &'static str,
+    pub detail: String,
+    pub selected_unit: Option<StudioGuiWindowInspectorTargetModel>,
+    pub snapshot_id: Option<String>,
+    pub stale_snapshot: Option<StudioGuiWindowStaleSolveSnapshotModel>,
+    pub selected_unit_result: Option<StudioGuiWindowUnitExecutionResultModel>,
+    pub consumed_stream_chips: Vec<StudioGuiWindowStreamResultReferenceModel>,
+    pub produced_stream_chips: Vec<StudioGuiWindowStreamResultReferenceModel>,
+    pub related_steps: Vec<StudioGuiWindowSolveStepModel>,
+    pub related_diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
+    pub diagnostic_actions: Vec<StudioGuiWindowDiagnosticTargetActionModel>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowStatusSummaryMetricModel {
     pub label: &'static str,
@@ -190,6 +216,112 @@ impl StudioGuiWindowPropertyPageModel {
     }
 }
 
+impl StudioGuiWindowModuleResultsModel {
+    pub fn from_runtime(runtime: &StudioGuiWindowRuntimeAreaModel) -> Self {
+        let Some(selected_unit) = active_unit_target(runtime) else {
+            return module_results_empty(
+                StudioGuiWindowModuleResultsState::NoUnitSelected,
+                "No unit is selected for module results.",
+            );
+        };
+
+        if let Some(stale_snapshot) = runtime.stale_solve_snapshot.as_ref() {
+            return StudioGuiWindowModuleResultsModel {
+                title: "Module Results",
+                state: StudioGuiWindowModuleResultsState::Stale,
+                state_label: module_results_state_label(StudioGuiWindowModuleResultsState::Stale),
+                detail: stale_snapshot.detail.clone(),
+                selected_unit: Some(selected_unit),
+                snapshot_id: None,
+                stale_snapshot: Some(stale_snapshot.clone()),
+                selected_unit_result: None,
+                consumed_stream_chips: Vec::new(),
+                produced_stream_chips: Vec::new(),
+                related_steps: Vec::new(),
+                related_diagnostics: Vec::new(),
+                diagnostic_actions: Vec::new(),
+            };
+        }
+
+        let Some(snapshot) = runtime.latest_solve_snapshot.as_ref() else {
+            return StudioGuiWindowModuleResultsModel {
+                title: "Module Results",
+                state: StudioGuiWindowModuleResultsState::NoCurrentResult,
+                state_label: module_results_state_label(
+                    StudioGuiWindowModuleResultsState::NoCurrentResult,
+                ),
+                detail: format!(
+                    "Run the current document before reviewing module results for {}.",
+                    selected_unit.target_id
+                ),
+                selected_unit: Some(selected_unit),
+                snapshot_id: None,
+                stale_snapshot: None,
+                selected_unit_result: None,
+                consumed_stream_chips: Vec::new(),
+                produced_stream_chips: Vec::new(),
+                related_steps: Vec::new(),
+                related_diagnostics: Vec::new(),
+                diagnostic_actions: Vec::new(),
+            };
+        };
+
+        let target =
+            rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(selected_unit.target_id.as_str()));
+        let selected_unit_result = latest_unit_result_for_target(snapshot, &target);
+        let related_steps = related_steps_for_target(snapshot, &target);
+        let related_diagnostics = related_diagnostics_for_target(snapshot, &target);
+        let diagnostic_actions = inspector_detail_diagnostic_actions(
+            &selected_unit,
+            selected_unit_result.as_ref(),
+            &related_steps,
+            &related_diagnostics,
+        );
+
+        let Some(selected_unit_result) = selected_unit_result else {
+            return StudioGuiWindowModuleResultsModel {
+                title: "Module Results",
+                state: StudioGuiWindowModuleResultsState::NoUnitResult,
+                state_label: module_results_state_label(
+                    StudioGuiWindowModuleResultsState::NoUnitResult,
+                ),
+                detail: format!(
+                    "Snapshot {} has no solve step for {}.",
+                    snapshot.snapshot_id, selected_unit.target_id
+                ),
+                selected_unit: Some(selected_unit),
+                snapshot_id: Some(snapshot.snapshot_id.clone()),
+                stale_snapshot: None,
+                selected_unit_result: None,
+                consumed_stream_chips: Vec::new(),
+                produced_stream_chips: Vec::new(),
+                related_steps,
+                related_diagnostics,
+                diagnostic_actions,
+            };
+        };
+
+        StudioGuiWindowModuleResultsModel {
+            title: "Module Results",
+            state: StudioGuiWindowModuleResultsState::Current,
+            state_label: module_results_state_label(StudioGuiWindowModuleResultsState::Current),
+            detail: format!(
+                "Snapshot {} step #{} for {}.",
+                snapshot.snapshot_id, selected_unit_result.step_index, selected_unit.target_id
+            ),
+            selected_unit: Some(selected_unit),
+            snapshot_id: Some(snapshot.snapshot_id.clone()),
+            stale_snapshot: None,
+            consumed_stream_chips: selected_unit_result.consumed_stream_results.clone(),
+            produced_stream_chips: selected_unit_result.produced_stream_results.clone(),
+            selected_unit_result: Some(selected_unit_result),
+            related_steps,
+            related_diagnostics,
+            diagnostic_actions,
+        }
+    }
+}
+
 impl StudioGuiWindowStatusSummaryModel {
     pub fn from_runtime(runtime: &StudioGuiWindowRuntimeAreaModel) -> Self {
         let document = &runtime.workspace_document;
@@ -286,6 +418,48 @@ impl StudioGuiWindowStatusSummaryModel {
             snapshot_consistency_label: snapshot_label,
             snapshot_consistency_detail: snapshot_detail,
         }
+    }
+}
+
+fn active_unit_target(
+    runtime: &StudioGuiWindowRuntimeAreaModel,
+) -> Option<StudioGuiWindowInspectorTargetModel> {
+    runtime
+        .active_inspector_detail
+        .as_ref()
+        .map(|detail| detail.target.clone())
+        .or_else(|| runtime.active_inspector_target.clone())
+        .filter(|target| target.kind_label == "Unit")
+}
+
+fn module_results_empty(
+    state: StudioGuiWindowModuleResultsState,
+    detail: &str,
+) -> StudioGuiWindowModuleResultsModel {
+    StudioGuiWindowModuleResultsModel {
+        title: "Module Results",
+        state,
+        state_label: module_results_state_label(state),
+        detail: detail.to_string(),
+        selected_unit: None,
+        snapshot_id: None,
+        stale_snapshot: None,
+        selected_unit_result: None,
+        consumed_stream_chips: Vec::new(),
+        produced_stream_chips: Vec::new(),
+        related_steps: Vec::new(),
+        related_diagnostics: Vec::new(),
+        diagnostic_actions: Vec::new(),
+    }
+}
+
+fn module_results_state_label(state: StudioGuiWindowModuleResultsState) -> &'static str {
+    match state {
+        StudioGuiWindowModuleResultsState::NoUnitSelected => "No unit selected",
+        StudioGuiWindowModuleResultsState::NoCurrentResult => "No current result",
+        StudioGuiWindowModuleResultsState::Stale => "Stale",
+        StudioGuiWindowModuleResultsState::NoUnitResult => "No unit result",
+        StudioGuiWindowModuleResultsState::Current => "Current",
     }
 }
 

@@ -2076,6 +2076,227 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
 }
 
 #[test]
+fn studio_gui_window_model_surfaces_current_module_results_for_active_unit() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected run dispatch");
+
+    let focus = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:heater-1".to_string(),
+        })
+        .expect("expected heater focus dispatch");
+    let window = focus.window;
+    let snapshot = window
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected current solve snapshot");
+    let module_results = &window.module_results;
+
+    assert_eq!(module_results.title, "Module Results");
+    assert_eq!(
+        module_results.state,
+        crate::StudioGuiWindowModuleResultsState::Current
+    );
+    assert_eq!(module_results.state_label, "Current");
+    assert_eq!(
+        module_results.selected_unit.as_ref().map(|unit| {
+            (
+                unit.kind_label,
+                unit.target_id.as_str(),
+                unit.action.command_id.as_str(),
+            )
+        }),
+        Some(("Unit", "heater-1", "inspector.focus_unit:heater-1"))
+    );
+    assert_eq!(
+        module_results.snapshot_id.as_deref(),
+        Some(snapshot.snapshot_id.as_str())
+    );
+    assert_eq!(module_results.stale_snapshot, None);
+
+    let unit_result = module_results
+        .selected_unit_result
+        .as_ref()
+        .expect("expected selected heater unit result");
+    assert_eq!(unit_result.unit_id, "heater-1");
+    assert_eq!(unit_result.status_label, "Converged");
+    assert_eq!(
+        module_results
+            .consumed_stream_chips
+            .iter()
+            .map(|stream| stream.stream_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["stream-feed"]
+    );
+    assert_eq!(
+        module_results
+            .produced_stream_chips
+            .iter()
+            .map(|stream| stream.stream_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["stream-heated"]
+    );
+    assert!(
+        module_results
+            .produced_stream_chips
+            .iter()
+            .any(|stream| stream.summary.contains("T ") && stream.summary.contains("H ")),
+        "expected module result stream chips to carry numeric solve summaries"
+    );
+    assert_eq!(
+        module_results
+            .related_steps
+            .iter()
+            .map(|step| step.unit_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["heater-1"]
+    );
+    assert!(module_results.related_diagnostics.iter().any(|diagnostic| {
+        diagnostic
+            .related_unit_ids
+            .iter()
+            .any(|unit_id| unit_id == "heater-1")
+            || diagnostic
+                .related_stream_ids
+                .iter()
+                .any(|stream_id| stream_id == "stream-heated")
+    }));
+    assert!(module_results.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Inspector target"
+            && action.action.command_id == "inspector.focus_unit:heater-1"
+    }));
+    assert!(module_results.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Latest result"
+            && action.action.command_id == "inspector.focus_stream:stream-heated"
+    }));
+    assert_eq!(
+        window
+            .runtime
+            .active_inspector_detail
+            .as_ref()
+            .and_then(|detail| detail.latest_unit_result.as_ref()),
+        module_results.selected_unit_result.as_ref()
+    );
+}
+
+#[test]
+fn studio_gui_window_model_marks_module_results_stale_after_unit_parameter_edit() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let run = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected run dispatch");
+    let solved_snapshot_id = run
+        .window
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected solved snapshot")
+        .snapshot_id
+        .clone();
+
+    let focus = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:heater-1".to_string(),
+        })
+        .expect("expected heater focus dispatch");
+    let temperature_field = focus
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "unit:heater-1:outlet_temperature_k")
+        })
+        .cloned()
+        .expect("expected heater outlet temperature field");
+    let update = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: temperature_field.draft_update_command_id,
+            raw_value: "340".to_string(),
+        })
+        .expect("expected heater temperature draft update");
+    let commit_command_id = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "unit:heater-1:outlet_temperature_k")
+        })
+        .and_then(|field| field.commit_command_id.clone())
+        .expect("expected heater temperature commit command");
+
+    let committed = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftCommitRequested {
+            command_id: commit_command_id,
+        })
+        .expect("expected heater temperature commit dispatch");
+    let window = committed.window;
+    let module_results = &window.module_results;
+
+    assert_eq!(window.runtime.latest_solve_snapshot, None);
+    assert_eq!(
+        window
+            .runtime
+            .stale_solve_snapshot
+            .as_ref()
+            .map(|snapshot| snapshot.snapshot_id.as_str()),
+        Some(solved_snapshot_id.as_str())
+    );
+    assert_eq!(
+        module_results.state,
+        crate::StudioGuiWindowModuleResultsState::Stale
+    );
+    assert_eq!(module_results.state_label, "Stale");
+    assert_eq!(
+        module_results
+            .selected_unit
+            .as_ref()
+            .map(|unit| unit.target_id.as_str()),
+        Some("heater-1")
+    );
+    assert_eq!(module_results.snapshot_id, None);
+    assert_eq!(
+        module_results
+            .stale_snapshot
+            .as_ref()
+            .map(|snapshot| snapshot.snapshot_id.as_str()),
+        Some(solved_snapshot_id.as_str())
+    );
+    assert!(module_results.selected_unit_result.is_none());
+    assert!(module_results.consumed_stream_chips.is_empty());
+    assert!(module_results.produced_stream_chips.is_empty());
+    assert!(module_results.related_steps.is_empty());
+    assert!(module_results.related_diagnostics.is_empty());
+    assert!(module_results.diagnostic_actions.is_empty());
+    assert!(
+        module_results.detail.contains("Run again"),
+        "expected stale module result detail to point users back to rerun"
+    );
+}
+
+#[test]
 fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_valve_pressure() {
     let config = synced_example_config("feed-valve-flash-binary-hydrocarbon.rfproj.json");
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
