@@ -51,6 +51,13 @@ impl ReadyAppState {
         window: &StudioGuiWindowModel,
     ) {
         ui.label(egui::RichText::new(self.locale.text(ShellText::Results)).strong());
+        if !matches!(
+            window.module_results.state,
+            radishflow_studio::StudioGuiWindowModuleResultsState::NoUnitSelected
+        ) {
+            self.render_module_results_summary(ui, &window.module_results);
+            ui.separator();
+        }
         if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
             ui.horizontal_wrapped(|ui| {
                 render_status_chip(
@@ -129,6 +136,81 @@ impl ReadyAppState {
         } else {
             ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
         }
+    }
+
+    pub(in crate::studio_gui_shell) fn render_module_results_summary(
+        &mut self,
+        ui: &mut egui::Ui,
+        module: &radishflow_studio::StudioGuiWindowModuleResultsModel,
+    ) {
+        if matches!(
+            module.state,
+            radishflow_studio::StudioGuiWindowModuleResultsState::NoUnitSelected
+        ) {
+            return;
+        }
+
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.set_width(ui.available_width());
+            ui.horizontal_wrapped(|ui| {
+                ui.label(
+                    egui::RichText::new(self.locale.runtime_label(module.title).as_ref()).strong(),
+                );
+                render_status_chip(
+                    ui,
+                    self.locale.runtime_label(module.state_label).as_ref(),
+                    module_results_state_color(module.state),
+                );
+                if let Some(unit) = module.selected_unit.as_ref() {
+                    ui.small(self.locale.runtime_label(unit.kind_label).as_ref());
+                    let _ = self.render_small_command_action(ui, &unit.action);
+                }
+            });
+
+            if let Some(stale) = module.stale_snapshot.as_ref() {
+                render_wrapped_small(
+                    ui,
+                    self.locale.stale_solve_snapshot_detail(
+                        &stale.snapshot_id,
+                        stale.snapshot_document_revision,
+                        stale.current_document_revision,
+                    ),
+                );
+                return;
+            }
+
+            render_wrapped_small(ui, &module.detail);
+            if let Some(unit) = module.selected_unit_result.as_ref() {
+                self.render_unit_execution_result_inspector(ui, unit);
+            }
+
+            if !module.related_steps.is_empty() {
+                ui.collapsing(self.locale.text(ShellText::RelatedSolveSteps), |ui| {
+                    for step in &module.related_steps {
+                        self.render_solve_step_inspector(ui, step);
+                    }
+                });
+            }
+
+            if !module.diagnostic_actions.is_empty() {
+                ui.collapsing(self.locale.text(ShellText::DiagnosticTargets), |ui| {
+                    self.render_diagnostic_target_actions(ui, &module.diagnostic_actions);
+                });
+            }
+
+            if !module.related_diagnostics.is_empty() {
+                ui.collapsing(self.locale.text(ShellText::RelatedDiagnostics), |ui| {
+                    for (index, diagnostic) in module.related_diagnostics.iter().enumerate() {
+                        self.render_diagnostic_summary(
+                            ui,
+                            diagnostic,
+                            format!("module-results:diagnostic:{index}"),
+                        );
+                        ui.add_space(4.0);
+                    }
+                });
+            }
+        });
     }
 
     fn render_solve_snapshot_transfer_actions(
@@ -1412,5 +1494,23 @@ impl ReadyAppState {
             }
         }
         std::borrow::Cow::Borrowed(summary)
+    }
+}
+
+fn module_results_state_color(
+    state: radishflow_studio::StudioGuiWindowModuleResultsState,
+) -> egui::Color32 {
+    match state {
+        radishflow_studio::StudioGuiWindowModuleResultsState::Current => {
+            egui::Color32::from_rgb(66, 118, 92)
+        }
+        radishflow_studio::StudioGuiWindowModuleResultsState::Stale
+        | radishflow_studio::StudioGuiWindowModuleResultsState::NoCurrentResult
+        | radishflow_studio::StudioGuiWindowModuleResultsState::NoUnitResult => {
+            egui::Color32::from_rgb(160, 120, 40)
+        }
+        radishflow_studio::StudioGuiWindowModuleResultsState::NoUnitSelected => {
+            egui::Color32::from_rgb(86, 96, 108)
+        }
     }
 }

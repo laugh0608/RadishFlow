@@ -174,6 +174,7 @@ impl StudioShellLocale {
         match label {
             "Active" => Cow::Borrowed("活动"),
             "Idle" => Cow::Borrowed("空闲"),
+            "Module Results" => Cow::Borrowed("模块结果"),
             "Status Summary" => Cow::Borrowed("状态汇总"),
             "Property" => Cow::Borrowed("物性"),
             "Package" => Cow::Borrowed("物性包"),
@@ -236,6 +237,9 @@ impl StudioShellLocale {
             "Ready" => Cow::Borrowed("就绪"),
             "Available" => Cow::Borrowed("可用"),
             "Current" => Cow::Borrowed("当前"),
+            "No unit selected" => Cow::Borrowed("未选择单元"),
+            "No current result" => Cow::Borrowed("无当前结果"),
+            "No unit result" => Cow::Borrowed("无单元结果"),
             "Blocked" => Cow::Borrowed("已阻断"),
             "accepted" => Cow::Borrowed("已接受"),
             "pending" => Cow::Borrowed("待处理"),

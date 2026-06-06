@@ -73,6 +73,15 @@ fn render_result_inspector_texts(
     render_runtime_area_texts(app, |app, ui| app.render_result_inspector(ui, &inspector))
 }
 
+fn render_runtime_results_tab_texts(
+    app: &mut ReadyAppState,
+    window: &radishflow_studio::StudioGuiWindowModel,
+) -> Vec<String> {
+    render_runtime_area_texts(app, |app, ui| {
+        app.render_runtime_results_tab(ui, window);
+    })
+}
+
 fn render_stream_result_inspector_texts(
     app: &mut ReadyAppState,
     scope_id: impl Into<String>,
@@ -1386,6 +1395,74 @@ fn runtime_panel_renders_unit_summary_and_context_for_non_flash_intermediate_uni
             &labels,
         );
     }
+}
+
+#[test]
+fn runtime_results_tab_consumes_current_module_results_dto_for_active_unit() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.dispatch_ui_command("inspector.focus_unit:heater-1");
+    let window = app.platform_host.snapshot().window_model();
+
+    assert_eq!(
+        window.module_results.state,
+        radishflow_studio::StudioGuiWindowModuleResultsState::Current
+    );
+    let texts = render_runtime_results_tab_texts(&mut app, &window);
+
+    assert!(
+        texts.iter().any(|text| text == "模块结果"),
+        "expected Results tab to render Module Results heading, rendered texts: {texts:?}"
+    );
+    assert!(
+        texts.iter().any(|text| text == "当前"),
+        "expected current module result state chip, rendered texts: {texts:?}"
+    );
+    assert!(
+        texts.iter().any(|text| text == "heater-1")
+            && texts.iter().any(|text| text == "stream-feed")
+            && texts.iter().any(|text| text == "stream-heated"),
+        "expected active unit module result to render consumed and produced stream chips, rendered texts: {texts:?}"
+    );
+    assert!(
+        texts.iter().any(|text| text.contains("345.00 K"))
+            && texts.iter().any(|text| text == "stream-feed")
+            && texts.iter().any(|text| text == "stream-heated"),
+        "expected current module result to render latest stream values and stream focus actions, rendered texts: {texts:?}"
+    );
+}
+
+#[test]
+fn runtime_results_tab_consumes_stale_module_results_without_old_unit_result() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.dispatch_ui_command("inspector.focus_unit:heater-1");
+    commit_unit_parameter(
+        &mut app,
+        "heater-1",
+        "unit:heater-1:outlet_temperature_k",
+        "340",
+    );
+    let window = app.platform_host.snapshot().window_model();
+
+    assert_eq!(
+        window.module_results.state,
+        radishflow_studio::StudioGuiWindowModuleResultsState::Stale
+    );
+    assert!(window.runtime.latest_solve_snapshot.is_none());
+    let texts = render_runtime_results_tab_texts(&mut app, &window);
+
+    assert!(
+        texts.iter().any(|text| text == "模块结果")
+            && texts.iter().any(|text| text == "已过期")
+            && texts.iter().any(|text| text.contains("请重新运行")),
+        "expected stale module result notice in Results tab, rendered texts: {texts:?}"
+    );
+    assert!(
+        !texts.iter().any(|text| text.contains("stream-heated"))
+            && !texts.iter().any(|text| text.contains("345.00 K")),
+        "stale module result must not render old unit stream results, rendered texts: {texts:?}"
+    );
 }
 
 #[test]
