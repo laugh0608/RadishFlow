@@ -1,6 +1,6 @@
 # RadishFlow MVP Roadmap
 
-更新时间：2026-06-02
+更新时间：2026-06-06
 
 ## 用途
 
@@ -10,7 +10,7 @@
 
 ## 当前结论
 
-截至 2026-06-02，M1-M5 都已越过 MVP 的基本完成线，MVP α 用户视角 smoke、首版 demo 前硬化期、MVP β 多组能力包和通用小流程建模 v1 都已阶段性收口：
+截至 2026-06-06，M1-M5 都已越过 MVP 的基本完成线，MVP α 用户视角 smoke、首版 demo 前硬化期、MVP β 多组能力包和通用小流程建模 v1 都已阶段性收口，Studio UI 专题已完成首轮设计前置并进入 presentation / window model 小切片实现：
 
 - Rust 内核和 Studio 可以跑通最小稳态流程。
 - `TP Flash`、`SolveSnapshot`、结果审阅和 `rf-ffi` JSON/error 基线已经形成可复验闭环。
@@ -20,7 +20,8 @@
 - MVP β 后续能力包已完成多组 focused 收口：结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0、失败修复闭环 v0。
 - MVP β 人工 smoke 与仓库级阶段基线验证已通过；通用小流程建模 v1 已完成普通空白项目主路径复核，而不是继续推进 tag、release notes、便携包或零散 UI 打磨。
 - 通用小流程建模 v1 已完成到第十六切片并通过阶段收口复核：运行按钮、`Resume`、F5 / Shift+F5、AppHost、StudioGuiDriver、StudioGuiHost command registry 等用户可触达运行入口已共用通用 `Flowsheet` readiness，普通空白项目不再自动匹配小案例 gate；`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 已覆盖显式输入、保存 / 重开 / rerun、结果审阅入口、关键结果合理性、单相 Flash 缺席语义、失败态定位、case-level review summary、编辑后旧结果失效语义，以及 Inspector 显示 outlet stream 默认值但缺显式 unit parameter 时的同值提交语义。
-- 阶段性约束已从“围绕 β 验收补覆盖”调整为“已通过阶段只修真实 blocker，下一组推进 Studio UI 专题设计前置”：指定小案例入口、MVP β Smoke A-D 和结果审阅覆盖面不再作为每日 gate。
+- 阶段性约束已从“围绕 β 验收补覆盖”调整为“已通过阶段只修真实 blocker，下一组推进 Studio UI 专题设计前置和窄口径实现切片”：指定小案例入口、MVP β Smoke A-D 和结果审阅覆盖面不再作为每日 gate。
+- Studio UI 专题当前只允许沿评审后的 `studio-client-main.pen` 与 brief 做窄口径 implementation slices：Home case tile、Property page、status summary、Module Results 和 Module Settings 已开始落到 `StudioGuiWindowModel` 派生 DTO 与既有 command surface；仍不做完整右侧栏重排、完整参数表、自由连线或完整报表。
 - 当前尚未达到正式 tag / release 节点标准，历史 `v26.5.1-dev` staging 材料不作为当前路线图事实源。
 
 当前不再把路线图作为每日推进清单。今天做什么、当前验证基线、下一阶段和暂不推进项，以 `docs/status/current.md` 为准；MVP α 验收清单保留为内部验收记录，不再作为当前日常推进主线。
@@ -93,7 +94,7 @@
 - 允许服务建模正确性的 UI 状态表达和轻量结果审阅材料改进，但当前不继续扩同类补丁；视觉精修、大改版、完整报表、模板、打印、批量导出和跨快照报表仍不进入当前阶段。
 - readiness 后续只能继续承担确定的建模输入缺失门禁；结构性连接、拓扑、非法旧项目或求解阶段参数失败继续由正式 Run Panel 诊断 / recovery 承担，不把 readiness 扩成第二套 solver。
 - CAPE-OPEN / PME 只修真实验证暴露的 blocker，不继续主动扩第三方宿主矩阵。
-- 下一组计划进入 Studio UI 专题设计前置：先按 `docs/architecture/studio-ui-topic-plan.md` 整理端点清单、信息架构、主工作流、状态模型、设计稿目录和 `.pen` 命名 / 保存规则，再按评审后的设计稿进入代码实现；不扩自由连线、任意端口选择器、完整拖拽布局、自动布线、完整参数表或完整结果报表。
+- 下一组已进入 Studio UI 专题：先按 `docs/architecture/studio-ui-topic-plan.md` 和 `docs/architecture/designs/studio-client-main-brief.md` 维护端点清单、信息架构、主工作流、状态模型和 `.pen` 保存规则，再按评审后的设计稿做 presentation / window model 小切片；不扩自由连线、任意端口选择器、完整拖拽布局、自动布线、完整参数表或完整结果报表。
 
 ## 远期产品方向
 
@@ -115,7 +116,7 @@ MVP β 功能推进不应把 UI 问题长期拆成零散按钮、临时面板或
 - 用设计稿先行替代边实现边调整：优先使用 `pencil` 工具产出 `.pen` 设计稿，经评审后再进入代码实现。
 - 设计稿应随项目保存和同步。原则上每个明确端点或界面域维护一个独立 `*.pen` 文件，例如客户端本体、单元模块、服务端 UI 管理页面、移动端视图等；最终拆分粒度和目录命名在专题启动时确定。
 - 专题启动时应读取 `docs/architecture/ui-inspiration-reference.md`，吸收 AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 等优秀产品在排版、留白、信息密度、状态表达和管理型页面组织上的设计方法，但不得复制其品牌、图标、具体配色或页面结构。
-- 代码实现应以评审后的设计稿和 `docs/architecture/studio-ui-design-guidelines.md` 为依据，并继续遵守既有 presentation / command / state 边界，不把视觉优化变成 shell 私有状态扩张。
+- 代码实现应以评审后的设计稿和 `docs/architecture/studio-ui-design-guidelines.md` 为依据，并继续遵守既有 presentation / command / state 边界，不把视觉优化变成 shell 私有状态扩张。当前已经进入的实现切片只服务于正式 DTO 和既有命令消费，不代表完整 Workbench 重排、完整参数表或完整报表进入范围。
 
 ## 拆分后的详细文档
 

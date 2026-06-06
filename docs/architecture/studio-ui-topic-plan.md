@@ -1,6 +1,6 @@
 # Studio UI 专题计划
 
-更新时间：2026-06-03
+更新时间：2026-06-06
 
 ## 用途
 
@@ -12,7 +12,7 @@
 
 ## 阶段目标
 
-Studio UI 专题不再处理零散按钮、文案、hover、局部 selector 或一次性 smoke 面板。当前阶段先完成设计前置：
+Studio UI 专题不再处理零散按钮、文案、hover、局部 selector 或一次性 smoke 面板。首轮设计前置已完成，当前代码实现仍按本计划的端点和状态来源约束做窄口径 presentation / window model 小切片：
 
 - 明确哪些端点进入首批设计稿，哪些端点只保留边界。
 - 明确每个端点的主任务、页面职责、状态来源和禁止提前实现的能力。
@@ -41,7 +41,7 @@ Studio UI 专题不再处理零散按钮、文案、hover、局部 selector 或�
 
 ### 本阶段重点
 
-P0 先行。P1 不再维护完整 Workbench 复制稿；只有当 `studio-client-main.pen` 中的模块设置 / 模块结果结构评审后仍不够细，再创建窄口径 `module-settings-panel.pen`。P2 只做边界和页面职责，不进入完整设计稿细化，除非 P0 / P1 已经评审通过。
+P0 先行。P1 不再维护完整 Workbench 复制稿；只有当 `studio-client-main.pen` 中的模块设置 / 模块结果结构评审后仍不够细，再创建窄口径 `module-settings-panel.pen`。当前右侧 Module Settings 第一刀实现已确认参数、端口和诊断有正式 active Inspector state / command 来源，帮助入口尚无正式 command，因此暂不创建 `module-settings-panel.pen`。P2 只做边界和页面职责，不进入完整设计稿细化，除非 P0 / P1 已经评审通过。
 
 当前不把端点拆到更细，例如单独的 Home 设计稿、Canvas 设计稿或 Result 设计稿。原因是 Studio 客户端本体必须先统一主工作流和区域职责，再决定是否拆分子稿。若后续 P0 设计稿过大，再按 Home / Property / Workbench / Result 等域拆分，并保留同一命名前缀。
 
