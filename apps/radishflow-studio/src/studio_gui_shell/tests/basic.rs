@@ -198,7 +198,7 @@ fn render_bottom_drawer_texts(app: &mut ReadyAppState) -> Vec<String> {
 
 fn render_home_dashboard_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
-    let window = snapshot.window_model();
+    let window = app.window_model_with_shell_home(&snapshot);
     let ctx = egui::Context::default();
     let output = ctx.run(
         egui::RawInput {
@@ -556,6 +556,106 @@ fn shell_starts_on_home_dashboard_with_start_environment_and_messages() {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
             "expected home dashboard to hide English `{hidden}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
+fn home_window_model_maps_recent_projects_to_case_tiles() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let snapshot = app.platform_host.snapshot();
+    let current_project = PathBuf::from(
+        snapshot
+            .runtime
+            .workspace_document
+            .project_path
+            .as_ref()
+            .expect("expected synced workspace project path"),
+    );
+    let missing_project = std::env::temp_dir().join(format!(
+        "radishflow-home-missing-recent-{}.rfproj.json",
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("expected current timestamp")
+            .as_nanos()
+    ));
+    app.project_open.recent_projects = vec![missing_project.clone(), current_project.clone()];
+
+    let window = app.window_model_with_shell_home(&snapshot);
+
+    assert_eq!(window.home.recent_case_tiles.len(), 2);
+    let missing_tile = window
+        .home
+        .recent_case_tiles
+        .iter()
+        .find(|tile| tile.path_text == missing_project.display().to_string())
+        .expect("expected missing recent tile");
+    assert_eq!(
+        missing_tile.source,
+        radishflow_studio::StudioGuiWindowHomeCaseTileSource::Recent
+    );
+    assert_eq!(
+        missing_tile.status,
+        radishflow_studio::StudioGuiWindowHomeCaseTileStatus::MissingFile
+    );
+    assert_eq!(missing_tile.status_label, "Missing file");
+
+    let current_tile = window
+        .home
+        .recent_case_tiles
+        .iter()
+        .find(|tile| tile.path_text == current_project.display().to_string())
+        .expect("expected current recent tile");
+    assert_eq!(
+        current_tile.status,
+        radishflow_studio::StudioGuiWindowHomeCaseTileStatus::Current
+    );
+    assert_eq!(
+        current_tile.title,
+        "Feed Heater Flash Binary Hydrocarbon Example"
+    );
+    assert_eq!(current_tile.package_summary, "Unselected");
+    assert_eq!(current_tile.component_summary, "Ethane, Methane");
+    assert!(
+        current_tile
+            .thumbnail
+            .nodes
+            .iter()
+            .any(|node| node == "Heater"),
+        "expected current recent tile thumbnail to come from stored flowsheet topology"
+    );
+}
+
+#[test]
+fn home_dashboard_renders_recent_case_tiles_from_window_model() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let current_project = PathBuf::from(
+        app.platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .project_path
+            .as_ref()
+            .expect("expected synced workspace project path"),
+    );
+    app.project_open.recent_projects = vec![current_project];
+
+    let texts = render_home_dashboard_texts(&mut app);
+
+    for expected in [
+        "Feed Heater",
+        "当前",
+        "feed-heater-flash-binary-hydrocarbon",
+        "Feed",
+        "Heater",
+        "Flash Drum",
+        "Ethane, Methane",
+        "未选择",
+    ] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected home dashboard recent tile text `{expected}`, rendered texts: {:?}",
             texts
         );
     }

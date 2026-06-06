@@ -586,7 +586,7 @@ impl ReadyAppState {
         self.drop_preview_overlay_anchor = None;
 
         let snapshot = self.platform_host.snapshot();
-        let window = snapshot.window_model();
+        let window = self.window_model_with_shell_home(&snapshot);
         let palette_keyboard_consumed = self.handle_command_palette_keyboard(ctx, &window.commands);
         if !toggle_shortcut_consumed && !palette_keyboard_consumed {
             self.dispatch_shortcuts(ctx);
@@ -624,7 +624,7 @@ impl ReadyAppState {
         ctx: &egui::Context,
         snapshot: &radishflow_studio::StudioGuiSnapshot,
     ) {
-        let window = snapshot.window_model();
+        let window = self.window_model_with_shell_home(snapshot);
         let mut hovered_drop_target = false;
         if self.screen == StudioShellScreen::Home {
             self.render_home_dashboard(ctx, &window);

@@ -16,11 +16,11 @@ use radishflow_studio::{
     StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
     StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
     StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
-    StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
-    StudioGuiWindowStackGroupLayout, StudioGuiWindowToolbarSectionModel, StudioRuntimeConfig,
-    StudioRuntimeEntitlementPreflight, StudioRuntimeTrigger, StudioRuntimeUntitledProject,
-    StudioWindowHostId, StudioWindowHostRole, load_persisted_canvas_viewport,
-    save_persisted_canvas_viewport,
+    StudioGuiWindowHomeCaseTileModel, StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation,
+    StudioGuiWindowModel, StudioGuiWindowStackGroupLayout, StudioGuiWindowToolbarSectionModel,
+    StudioRuntimeConfig, StudioRuntimeEntitlementPreflight, StudioRuntimeTrigger,
+    StudioRuntimeUntitledProject, StudioWindowHostId, StudioWindowHostRole,
+    load_persisted_canvas_viewport, save_persisted_canvas_viewport,
 };
 use rf_types::RfResult;
 use rf_ui::{
@@ -170,6 +170,7 @@ struct CommandPaletteState {
 struct ProjectOpenState {
     path_input: String,
     recent_projects: Vec<PathBuf>,
+    recent_case_tiles: Vec<StudioGuiWindowHomeCaseTileModel>,
     notice: Option<ProjectOpenNotice>,
     pending_confirmation: Option<ProjectOpenRequest>,
     pending_blank_project_confirmation: bool,
@@ -690,6 +691,7 @@ impl ProjectOpenState {
         let mut state = Self {
             path_input: path.display().to_string(),
             recent_projects: Vec::new(),
+            recent_case_tiles: Vec::new(),
             notice: None,
             pending_confirmation: None,
             pending_blank_project_confirmation: false,

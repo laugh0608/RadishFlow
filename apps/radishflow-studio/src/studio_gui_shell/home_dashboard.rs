@@ -1,4 +1,5 @@
-use std::path::Path;
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 
 use super::*;
 
@@ -74,6 +75,18 @@ enum HomeMessageTag {
 }
 
 impl ReadyAppState {
+    pub(super) fn window_model_with_shell_home(
+        &mut self,
+        snapshot: &radishflow_studio::StudioGuiSnapshot,
+    ) -> StudioGuiWindowModel {
+        self.project_open.sync_recent_case_tiles();
+        let mut window = snapshot.window_model();
+        window.home.recent_case_tiles = self.project_open.recent_case_tiles_for_current(
+            window.runtime.workspace_document.project_path.as_deref(),
+        );
+        window
+    }
+
     pub(super) fn render_home_dashboard(
         &mut self,
         ctx: &egui::Context,
@@ -238,7 +251,7 @@ impl ReadyAppState {
         ui.horizontal(|ui| {
             ui.heading(home_text(self.locale, HomeText::RecentCases));
         });
-        self.render_home_recent_cases(ui);
+        self.render_home_recent_cases(ui, window);
         ui.add_space(18.0);
         ui.horizontal(|ui| {
             ui.heading(home_text(self.locale, HomeText::ExampleCases));
@@ -249,8 +262,8 @@ impl ReadyAppState {
         self.render_home_example_cases(ui, window);
     }
 
-    fn render_home_recent_cases(&mut self, ui: &mut egui::Ui) {
-        if self.project_open.recent_projects.is_empty() {
+    fn render_home_recent_cases(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        if window.home.recent_case_tiles.is_empty() {
             ui.group(|ui| {
                 ui.set_width(ui.available_width());
                 ui.small(home_text(self.locale, HomeText::NoRecentCases));
@@ -258,22 +271,12 @@ impl ReadyAppState {
             return;
         }
 
-        for project_path in self
-            .project_open
-            .recent_projects
-            .clone()
-            .into_iter()
-            .take(5)
-        {
-            let status = recent_case_status(&project_path);
+        for tile in window.home.recent_case_tiles.iter().take(5) {
+            let project_path = PathBuf::from(&tile.path_text);
             let is_selected = self
                 .home_selected_recent_project
                 .as_ref()
                 .is_some_and(|selected| paths_match(selected, &project_path));
-            let case_name = project_path
-                .file_name()
-                .and_then(|name| name.to_str())
-                .unwrap_or("case");
             let fill = if is_selected {
                 egui::Color32::from_rgb(230, 239, 252)
             } else {
@@ -282,32 +285,34 @@ impl ReadyAppState {
             let frame_response = egui::Frame::group(ui.style()).fill(fill).show(ui, |ui| {
                 ui.set_width(ui.available_width());
                 ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new(truncate_middle(case_name, 34)).strong());
+                    ui.label(egui::RichText::new(truncate_middle(&tile.title, 34)).strong());
                     render_status_chip(
                         ui,
-                        recent_case_status_text(self.locale, status),
-                        recent_case_status_color(status),
+                        self.locale.runtime_label(tile.status_label).as_ref(),
+                        home_case_tile_status_color(tile.status),
                     );
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.small(home_text(self.locale, HomeText::LastOpenedMru));
                     });
                 });
+                render_wrapped_small(ui, &tile.detail);
+                render_home_thumbnail(ui, &tile.thumbnail);
                 render_muted_small(ui, truncate_middle(&parent_display(&project_path), 72));
                 ui.horizontal_wrapped(|ui| {
+                    ui.small(home_text(self.locale, HomeText::Components));
+                    ui.small(&tile.component_summary);
+                    ui.separator();
                     ui.small(home_text(self.locale, HomeText::PropertyPackage));
-                    ui.small("binary-hydrocarbon-lite-v1");
+                    ui.small(self.locale.runtime_label(&tile.package_summary).as_ref());
                 });
             });
             let row_response = ui
                 .interact(
                     frame_response.response.rect,
-                    ui.make_persistent_id((
-                        "home-recent-case-row",
-                        project_path.display().to_string(),
-                    )),
+                    ui.make_persistent_id(("home-recent-case-row", tile.source_id.clone())),
                     egui::Sense::click(),
                 )
-                .on_hover_text(project_path.display().to_string())
+                .on_hover_text(&tile.path_text)
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
             match home_case_row_action(row_response.clicked(), row_response.double_clicked()) {
                 HomeCaseRowAction::Open => self.open_recent_project(project_path.clone()),
@@ -407,14 +412,18 @@ impl ReadyAppState {
             .home_selected_recent_project
             .as_ref()
             .is_none_or(|selected| {
-                !self
-                    .project_open
-                    .recent_projects
+                !window
+                    .home
+                    .recent_case_tiles
                     .iter()
-                    .any(|project| paths_match(project, selected))
+                    .any(|tile| paths_match(Path::new(&tile.path_text), selected))
             })
         {
-            self.home_selected_recent_project = self.project_open.recent_projects.first().cloned();
+            self.home_selected_recent_project = window
+                .home
+                .recent_case_tiles
+                .first()
+                .map(|tile| PathBuf::from(&tile.path_text));
         }
 
         if self
@@ -698,38 +707,50 @@ impl ReadyAppState {
     }
 }
 
+impl ProjectOpenState {
+    fn sync_recent_case_tiles(&mut self) {
+        if self.recent_case_tile_paths_match_recent_projects() {
+            return;
+        }
+
+        self.recent_case_tiles = self
+            .recent_projects
+            .iter()
+            .map(|project_path| recent_case_tile_from_path(project_path))
+            .collect();
+    }
+
+    fn recent_case_tile_paths_match_recent_projects(&self) -> bool {
+        self.recent_case_tiles.len() == self.recent_projects.len()
+            && self
+                .recent_case_tiles
+                .iter()
+                .zip(&self.recent_projects)
+                .all(|(tile, project_path)| {
+                    tile.source == radishflow_studio::StudioGuiWindowHomeCaseTileSource::Recent
+                        && tile.path_text == project_path.display().to_string()
+                })
+    }
+
+    fn recent_case_tiles_for_current(
+        &self,
+        current_project_path: Option<&str>,
+    ) -> Vec<radishflow_studio::StudioGuiWindowHomeCaseTileModel> {
+        self.recent_case_tiles
+            .iter()
+            .cloned()
+            .map(|mut tile| {
+                let project_path = Path::new(&tile.path_text);
+                tile.status = recent_case_tile_status(project_path, current_project_path);
+                tile.status_label = home_case_tile_status_label(tile.status);
+                tile
+            })
+            .collect()
+    }
+}
+
 fn render_muted_small(ui: &mut egui::Ui, text: impl Into<String>) {
     ui.small(egui::RichText::new(text.into()).color(egui::Color32::from_rgb(92, 104, 117)));
-}
-
-fn recent_case_status(project_path: &Path) -> &'static str {
-    if project_path.exists() {
-        "Ready"
-    } else {
-        "Missing file"
-    }
-}
-
-fn recent_case_status_color(status: &str) -> egui::Color32 {
-    match status {
-        "Ready" => egui::Color32::from_rgb(52, 128, 89),
-        "Missing file" => egui::Color32::from_rgb(180, 70, 60),
-        _ => egui::Color32::from_rgb(120, 120, 120),
-    }
-}
-
-fn recent_case_status_text(locale: StudioShellLocale, status: &str) -> &'static str {
-    match status {
-        "Ready" => home_text(locale, HomeText::Ready),
-        "Missing file" => match locale {
-            StudioShellLocale::En => "Missing file",
-            StudioShellLocale::ZhCn => "文件缺失",
-        },
-        _ => match locale {
-            StudioShellLocale::En => "Unknown",
-            StudioShellLocale::ZhCn => "未知",
-        },
-    }
 }
 
 fn message_tag_color(tag: HomeMessageTag) -> egui::Color32 {
@@ -764,6 +785,189 @@ fn parent_display(project_path: &Path) -> String {
         .map(Path::display)
         .map(|display| display.to_string())
         .unwrap_or_else(|| "local".to_string())
+}
+
+fn recent_case_tile_from_path(
+    project_path: &Path,
+) -> radishflow_studio::StudioGuiWindowHomeCaseTileModel {
+    let project_file = project_path
+        .exists()
+        .then(|| rf_store::read_project_file(project_path).ok())
+        .flatten();
+    let title = project_file
+        .as_ref()
+        .and_then(|project| non_empty_trimmed(&project.document.metadata.title))
+        .unwrap_or_else(|| recent_case_title_from_path(project_path));
+    let detail = project_file
+        .as_ref()
+        .map(|project| project.document.flowsheet.name.clone())
+        .unwrap_or_else(|| parent_display(project_path));
+    let package_summary = project_file
+        .as_ref()
+        .and_then(|project| project.document.flowsheet.property_package_id())
+        .map(str::to_string)
+        .unwrap_or_else(|| "Unselected".to_string());
+    let component_summary = project_file
+        .as_ref()
+        .map(|project| component_summary_from_flowsheet(&project.document.flowsheet))
+        .unwrap_or_else(|| "Components unavailable".to_string());
+    let thumbnail = project_file
+        .as_ref()
+        .map(|project| thumbnail_from_flowsheet(&project.document.flowsheet))
+        .unwrap_or_else(|| radishflow_studio::StudioGuiWindowThumbnailFlowModel {
+            nodes: Vec::new(),
+            edges: Vec::new(),
+        });
+    let status = recent_case_tile_status(project_path, None);
+    let path_text = project_path.display().to_string();
+
+    radishflow_studio::StudioGuiWindowHomeCaseTileModel {
+        source: radishflow_studio::StudioGuiWindowHomeCaseTileSource::Recent,
+        source_id: path_text.clone(),
+        title,
+        detail,
+        path_text,
+        package_summary,
+        component_summary,
+        status,
+        status_label: home_case_tile_status_label(status),
+        thumbnail,
+    }
+}
+
+fn non_empty_trimmed(value: &str) -> Option<String> {
+    let trimmed = value.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_string())
+}
+
+fn recent_case_title_from_path(project_path: &Path) -> String {
+    project_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .map(str::to_string)
+        .unwrap_or_else(|| project_path.display().to_string())
+}
+
+fn component_summary_from_flowsheet(flowsheet: &rf_model::Flowsheet) -> String {
+    let component_names = flowsheet
+        .components
+        .values()
+        .filter_map(|component| non_empty_trimmed(&component.name))
+        .collect::<Vec<_>>();
+    if component_names.is_empty() {
+        return "No components".to_string();
+    }
+
+    let visible_count = component_names.len().min(3);
+    let mut summary = component_names
+        .iter()
+        .take(visible_count)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(", ");
+    let remaining_count = component_names.len().saturating_sub(visible_count);
+    if remaining_count > 0 {
+        summary.push_str(&format!(" +{remaining_count} more"));
+    }
+    summary
+}
+
+fn thumbnail_from_flowsheet(
+    flowsheet: &rf_model::Flowsheet,
+) -> radishflow_studio::StudioGuiWindowThumbnailFlowModel {
+    let units = flowsheet.units.values().collect::<Vec<_>>();
+    let nodes = units
+        .iter()
+        .map(|unit| unit_label_for_thumbnail(unit))
+        .collect::<Vec<_>>();
+    let mut stream_sources: BTreeMap<String, usize> = BTreeMap::new();
+    let mut stream_sinks: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+
+    for (unit_index, unit) in units.iter().enumerate() {
+        for port in &unit.ports {
+            if port.kind != rf_types::PortKind::Material {
+                continue;
+            }
+            let Some(stream_id) = port.stream_id.as_ref() else {
+                continue;
+            };
+            match port.direction {
+                rf_types::PortDirection::Outlet => {
+                    stream_sources.insert(stream_id.to_string(), unit_index);
+                }
+                rf_types::PortDirection::Inlet => {
+                    stream_sinks
+                        .entry(stream_id.to_string())
+                        .or_default()
+                        .push(unit_index);
+                }
+            }
+        }
+    }
+
+    let mut edges = Vec::new();
+    for (stream_id, source_index) in stream_sources {
+        let Some(sink_indices) = stream_sinks.get(&stream_id) else {
+            continue;
+        };
+        for sink_index in sink_indices {
+            let edge = (source_index, *sink_index);
+            if !edges.contains(&edge) {
+                edges.push(edge);
+            }
+        }
+    }
+
+    radishflow_studio::StudioGuiWindowThumbnailFlowModel { nodes, edges }
+}
+
+fn unit_label_for_thumbnail(unit: &rf_model::UnitNode) -> String {
+    non_empty_trimmed(&unit.name).unwrap_or_else(|| readable_unit_kind(&unit.kind))
+}
+
+fn readable_unit_kind(kind: &str) -> String {
+    let label = kind
+        .split('_')
+        .filter(|part| !part.is_empty())
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ");
+    if label.is_empty() {
+        "Unit".to_string()
+    } else {
+        label
+    }
+}
+
+fn recent_case_tile_status(
+    project_path: &Path,
+    current_project_path: Option<&str>,
+) -> radishflow_studio::StudioGuiWindowHomeCaseTileStatus {
+    if !project_path.exists() {
+        return radishflow_studio::StudioGuiWindowHomeCaseTileStatus::MissingFile;
+    }
+
+    if current_project_path.is_some_and(|current| paths_match(project_path, Path::new(current))) {
+        radishflow_studio::StudioGuiWindowHomeCaseTileStatus::Current
+    } else {
+        radishflow_studio::StudioGuiWindowHomeCaseTileStatus::Ready
+    }
+}
+
+fn home_case_tile_status_label(
+    status: radishflow_studio::StudioGuiWindowHomeCaseTileStatus,
+) -> &'static str {
+    match status {
+        radishflow_studio::StudioGuiWindowHomeCaseTileStatus::Ready => "Ready",
+        radishflow_studio::StudioGuiWindowHomeCaseTileStatus::Current => "Current",
+        radishflow_studio::StudioGuiWindowHomeCaseTileStatus::MissingFile => "Missing file",
+    }
 }
 
 pub(in crate::studio_gui_shell) fn home_case_row_action(
