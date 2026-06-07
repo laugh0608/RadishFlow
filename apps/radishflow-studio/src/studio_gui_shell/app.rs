@@ -604,6 +604,13 @@ impl ReadyAppState {
             &window,
             &mut hovered_drop_target,
         );
+        if self.screen == StudioShellScreen::Property {
+            self.render_bottom_status_bar(ctx, &window);
+            self.render_property_page(ctx, &window);
+            self.render_command_palette(ctx, &window.commands);
+            self.render_pending_close_window_dialog(ctx);
+            return;
+        }
         self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_right_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_bottom_status_bar(ctx, &window);
@@ -639,6 +646,13 @@ impl ReadyAppState {
             &window,
             &mut hovered_drop_target,
         );
+        if self.screen == StudioShellScreen::Property {
+            self.render_bottom_status_bar(ctx, &window);
+            self.render_property_page(ctx, &window);
+            self.render_command_palette(ctx, &window.commands);
+            self.render_pending_close_window_dialog(ctx);
+            return;
+        }
         self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_right_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_bottom_status_bar(ctx, &window);

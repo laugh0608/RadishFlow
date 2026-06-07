@@ -49,9 +49,22 @@ impl ReadyAppState {
             ui.separator();
             ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new(self.locale.text(ShellText::QuickActions)).strong());
-                if ui.button("Home").clicked() {
-                    self.screen = StudioShellScreen::Home;
-                }
+                ui.selectable_value(
+                    &mut self.screen,
+                    StudioShellScreen::Home,
+                    self.locale.text(ShellText::Home),
+                );
+                ui.selectable_value(
+                    &mut self.screen,
+                    StudioShellScreen::Property,
+                    self.locale.text(ShellText::Property),
+                );
+                ui.selectable_value(
+                    &mut self.screen,
+                    StudioShellScreen::Workbench,
+                    self.locale.text(ShellText::Flowsheet),
+                );
+                ui.separator();
                 ui.menu_button(self.locale.text(ShellText::OpenExample), |ui| {
                     if window.runtime.example_projects.is_empty() {
                         ui.small(self.locale.text(ShellText::NoRecentProjects));
@@ -1124,6 +1137,16 @@ impl ReadyAppState {
                 StudioGuiWindowDockRegion::CenterStage,
                 hovered_drop_target,
             );
+        });
+    }
+
+    pub(super) fn render_property_page(
+        &mut self,
+        ctx: &egui::Context,
+        window: &StudioGuiWindowModel,
+    ) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            self.render_property_workspace_page(ui, window);
         });
     }
 

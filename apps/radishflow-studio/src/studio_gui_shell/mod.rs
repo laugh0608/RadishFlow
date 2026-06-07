@@ -129,6 +129,7 @@ struct ReadyAppState {
 enum StudioShellScreen {
     #[default]
     Home,
+    Property,
     Workbench,
 }
 

@@ -78,6 +78,31 @@ fn render_alpha_workbench_texts(app: &mut ReadyAppState) -> Vec<String> {
     texts
 }
 
+fn render_property_page_texts(app: &mut ReadyAppState) -> Vec<String> {
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 860.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            app.render_property_page(ctx, &window);
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
 fn active_inspector_field_commit_command(app: &ReadyAppState, field_key: &str) -> String {
     app.platform_host
         .snapshot()
@@ -462,6 +487,45 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
             "expected alpha workbench to hide developer canvas detail `{hidden}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
+fn top_bar_exposes_home_property_and_flowsheet_navigation() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let texts = render_top_bar_texts(&mut app);
+
+    for expected in ["主页", "物性", "流程图"] {
+        assert!(
+            texts.iter().any(|text| text == expected),
+            "expected top bar navigation to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
+fn property_screen_renders_independent_property_page_from_window_model() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.screen = StudioShellScreen::Property;
+    let texts = render_property_page_texts(&mut app);
+
+    for expected in [
+        "物性",
+        "物性工作区",
+        "物性包",
+        "二元烃 Lite",
+        "项目组分",
+        "Methane",
+        "Ethane",
+        "摘要",
+    ] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected property page to render `{expected}`, rendered texts: {:?}",
             texts
         );
     }
@@ -904,8 +968,9 @@ fn blank_project_feed_outlet_run_requires_project_components_before_composition(
         window.runtime.latest_failure.is_none(),
         "missing project components should stop before solver failure"
     );
+    assert_eq!(app.screen, StudioShellScreen::Property);
     assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Project);
-    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Package);
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Inspector);
     let notice = app
         .project_open
         .notice
