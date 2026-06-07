@@ -39,6 +39,7 @@
 - **Studio UI 实现第十刀已完成 focused 推进：底部运行信息入口从 `消息 / 运行日志 / 诊断 / 结果表` 扩展为 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表`；`收敛` 消费 `window.status_summary` 与 current / stale / failure snapshot 状态，`建议` 消费 Run Panel notice 和 canvas suggestions；本轮未做完整底部左右分栏重排。**
 - **Studio UI 实现第十一刀已完成 focused 推进：顶部导航从旧 `快速操作` 横排按钮收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；打开 / 新建 / 保存 / 示例进入 `文件`，运行入口继续分发 `run_panel.run_manual`，结果入口只聚焦既有 `模块结果` 与 `结果表`，工具和设置分别承接命令面板 / 命令栏显示与语言选择；本轮未做完整 ribbon、完整上下文工具栏或新 help command。**
 - **Studio UI 实现第十二刀已完成 focused 推进：`流程图` screen 顶部导航下方新增窄口径上下文工具栏，`window.flowsheet_context_toolbar` 只从现有 command registry、Module Results、Run Panel / status summary 和 current / stale / missing snapshot 状态派生；Canvas / Run 只渲染已启用命令，Review 入口只路由到右侧 `模块结果` 与底部 `结果表`，未新增第二套状态源、help command、完整 ribbon、完整报表、自由连线或自动布线。**
+- **Studio UI 实现第十三刀已完成 focused 推进：`物性` screen 顶部导航下方新增上下文工具栏，`window.property_context_toolbar` 只从 `StudioGuiWindowPropertyPageModel` 的 package / component command id、selected / remove-enabled 状态和内置来源摘要派生；未新增第二套物性状态源、第三方物性包、完整组分数据库、完整 Thermodynamics PMC、完整参数表或物性分析入口。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前开发策略
@@ -80,7 +81,7 @@ Studio UI 专题设计前置目标：
 - P0 / P1 评审时继续对照两张 `baseline/` 视觉基线，确保 Home / Workbench 的分区、信息密度、状态 chip 和主操作层级与项目视觉方向一致。
 - Studio 客户端本体优先覆盖 Home、Workbench、Canvas、Inspector、Result、Package / Auth 的职责关系，不提前扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
 - 模块设置 / 模块结果优先先在 `studio-client-main.pen` 中统一参数、端口、运行结果、诊断和帮助入口；若后续细节不足，再按窄口径创建 `module-settings-panel.pen`，不重复整套 Workbench。
-- 代码实现已允许从 presentation / window model 小切片推进，但仍不直接做大规模 egui 布局重排；Module Results DTO 已落到正式 window model 并由右侧 `模块结果` tab 消费，stale snapshot 不渲染旧 unit result；Home 最近项目继续由 shell preferences / recent path 持有，但已映射为同一 case tile DTO 并由 Home Dashboard 消费且人工复核通过；右侧 `模块设置` tab 已消费参数、端口和诊断，帮助入口当前仅表达“无正式 help command”；独立物性页已接入顶部导航并消费既有 Property page DTO，`Package` 不再保留为右侧主入口；底部运行信息已补 `收敛 / 建议` 入口；顶部导航已按设计稿收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`，旧打开 / 保存 / 示例按钮不再作为 Workbench 主横排按钮常驻；`流程图` screen 的上下文工具栏已通过 `window.flowsheet_context_toolbar` 消费既有 canvas / run command 和结果 / 状态 DTO。是否把 recent projects 从 shell preferences 上提到正式 snapshot 暂不作为当前 blocker。
+- 代码实现已允许从 presentation / window model 小切片推进，但仍不直接做大规模 egui 布局重排；Module Results DTO 已落到正式 window model 并由右侧 `模块结果` tab 消费，stale snapshot 不渲染旧 unit result；Home 最近项目继续由 shell preferences / recent path 持有，但已映射为同一 case tile DTO 并由 Home Dashboard 消费且人工复核通过；右侧 `模块设置` tab 已消费参数、端口和诊断，帮助入口当前仅表达“无正式 help command”；独立物性页已接入顶部导航并消费既有 Property page DTO，`Package` 不再保留为右侧主入口；底部运行信息已补 `收敛 / 建议` 入口；顶部导航已按设计稿收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`，旧打开 / 保存 / 示例按钮不再作为 Workbench 主横排按钮常驻；`流程图` screen 的上下文工具栏已通过 `window.flowsheet_context_toolbar` 消费既有 canvas / run command 和结果 / 状态 DTO；`物性` screen 的上下文工具栏已通过 `window.property_context_toolbar` 消费既有 package / component command 和 property page 状态。是否把 recent projects 从 shell preferences 上提到正式 snapshot 暂不作为当前 blocker。
 - 任何代码实现都必须继续遵守 presentation / command / state 边界；视觉优化不得绕过正式 UI 模型堆 shell 私有状态。
 
 ## 验证节奏

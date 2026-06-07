@@ -57,9 +57,14 @@ impl ReadyAppState {
                 self.render_tools_top_menu(ui, windows, current_window_id, window);
                 self.render_settings_top_menu(ui);
             });
-            if self.screen == StudioShellScreen::Workbench {
+            let context_toolbar = match self.screen {
+                StudioShellScreen::Property => Some(&window.property_context_toolbar),
+                StudioShellScreen::Workbench => Some(&window.flowsheet_context_toolbar),
+                StudioShellScreen::Home => None,
+            };
+            if let Some(context_toolbar) = context_toolbar {
                 ui.separator();
-                self.render_flowsheet_context_toolbar(ui, window);
+                self.render_context_toolbar(ui, context_toolbar);
             }
             self.render_project_operation_strip(ui);
             if !window.commands.menu_tree.is_empty()
@@ -116,21 +121,16 @@ impl ReadyAppState {
         });
     }
 
-    fn render_flowsheet_context_toolbar(
+    fn render_context_toolbar(
         &mut self,
         ui: &mut egui::Ui,
-        window: &StudioGuiWindowModel,
+        toolbar: &radishflow_studio::StudioGuiWindowContextToolbarModel,
     ) {
         ui.horizontal_wrapped(|ui| {
             ui.small(
-                egui::RichText::new(
-                    self.locale
-                        .runtime_label(window.flowsheet_context_toolbar.title)
-                        .as_ref(),
-                )
-                .strong(),
+                egui::RichText::new(self.locale.runtime_label(toolbar.title).as_ref()).strong(),
             );
-            for section in &window.flowsheet_context_toolbar.sections {
+            for section in &toolbar.sections {
                 if section.items.is_empty() {
                     continue;
                 }
@@ -140,13 +140,13 @@ impl ReadyAppState {
                         .color(egui::Color32::from_rgb(92, 104, 117)),
                 );
                 for item in &section.items {
-                    self.render_flowsheet_context_toolbar_item(ui, item);
+                    self.render_context_toolbar_item(ui, item);
                 }
             }
         });
-        if !window.flowsheet_context_toolbar.status_items.is_empty() {
+        if !toolbar.status_items.is_empty() {
             ui.horizontal_wrapped(|ui| {
-                for status in &window.flowsheet_context_toolbar.status_items {
+                for status in &toolbar.status_items {
                     ui.small(format!(
                         "{}: {}",
                         self.locale.runtime_label(status.label),
@@ -155,14 +155,14 @@ impl ReadyAppState {
                     render_status_chip(
                         ui,
                         self.locale.runtime_label(&status.status_label).as_ref(),
-                        run_status_color(&status.status_label),
+                        context_toolbar_status_color(&status.status_label),
                     );
                 }
             });
         }
     }
 
-    fn render_flowsheet_context_toolbar_item(
+    fn render_context_toolbar_item(
         &mut self,
         ui: &mut egui::Ui,
         item: &radishflow_studio::StudioGuiWindowContextToolbarItemModel,
@@ -192,7 +192,7 @@ impl ReadyAppState {
             render_status_chip(
                 ui,
                 self.locale.runtime_label(status_label).as_ref(),
-                run_status_color(status_label),
+                context_toolbar_status_color(status_label),
             );
         }
     }
@@ -1872,6 +1872,14 @@ fn window_command_toolbar_item<'a>(
         .iter()
         .flat_map(|section| section.items.iter())
         .find(|item| item.command_id == command_id)
+}
+
+fn context_toolbar_status_color(status_label: &str) -> egui::Color32 {
+    match status_label {
+        "Selected" | "Available" | "Current" => egui::Color32::from_rgb(54, 128, 84),
+        "Unselected" | "SnapshotMissing" | "Stale" => egui::Color32::from_rgb(180, 120, 20),
+        _ => run_status_color(status_label),
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

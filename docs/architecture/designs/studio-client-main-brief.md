@@ -29,7 +29,7 @@
 | --- | --- | --- |
 | Home 示例 / 最近 tile | `StudioGuiWindowHomeModel` / `StudioGuiWindowHomeCaseTileModel` 已统一承载示例项目和最近项目 tile；示例项目从 `runtime.example_projects` 派生，最近项目仍由 shell preferences / `project_open` 持有并映射为同一 DTO；egui Home Dashboard 已消费统一 tile presentation | 最近项目尚未上提到 `StudioGuiSnapshot`；Home 仍未按设计稿重排为完整 tile gallery |
 | 顶部导航 / 流程图上下文 | Studio shell 顶部已从旧 `快速操作` 横排按钮收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；打开 / 新建 / 保存 / 示例归入 `文件`，`运行` 继续分发既有 `run_panel.run_manual` 并可聚焦底部运行信息，`结果` 只聚焦右侧 `模块结果` 与底部 `结果表`，`工具` 和 `设置` 分别承接命令面板 / 命令栏显示与语言选择；`流程图` screen 顶部导航下方已新增 `window.flowsheet_context_toolbar`，Canvas / Run 只消费已启用 command，Review 只消费 Module Results、结果表和 snapshot 状态 | 厚重 ribbon、完整多页上下文工具栏、单位集设置、偏好页和 help command 尚未进入范围 |
-| 独立物性页 | `StudioGuiWindowPropertyPageModel` 从 `workspace_document.property_package_choices`、`project_component_choices` 和已选 package / components 派生 package、component、metric 和 future section；Studio shell 已新增顶部 `主页 / 物性 / 流程图` 导航，独立 `物性` screen 消费同一 DTO；缺 package / 项目组分 readiness 聚焦该页面；命令仍走既有 package / component command id；右侧栏已移除 Package 主入口 | 完整上下文工具栏、物性页长期分析控件和更完整视觉重排尚未进入范围 |
+| 独立物性页 | `StudioGuiWindowPropertyPageModel` 从 `workspace_document.property_package_choices`、`project_component_choices` 和已选 package / components 派生 package、component、metric 和 future section；Studio shell 已新增顶部 `主页 / 物性 / 流程图` 导航，独立 `物性` screen 消费同一 DTO；缺 package / 项目组分 readiness 聚焦该页面；命令仍走既有 package / component command id；右侧栏已移除 Package 主入口；顶部导航下方已新增 `window.property_context_toolbar`，只渲染当前可用 package / component 命令和 package / component / source 状态 | 物性页长期分析控件、更完整视觉重排、完整组分数据库、第三方物性包加载、完整 Thermodynamics PMC 和完整参数表尚未进入范围 |
 | 底部运行信息 / 状态汇总 | `StudioGuiWindowStatusSummaryModel` 从 document saved/revision、run panel view、latest current-revision `SolveSnapshot`、stale snapshot 或 latest failure 派生；底部状态区域已消费该 DTO；底部抽屉入口已扩展为 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表`，其中 `收敛` 消费 status summary 与 snapshot 状态，`建议` 消费 Run Panel notice 和 canvas suggestions | 设计稿中的左右分栏底部结构尚未完整重排；完整收敛曲线和完整建议系统尚未进入范围 |
 | 右侧 Inspector / Module Settings | 右侧栏主入口已收敛为 `检查器 / 模块设置 / 模块结果`；`检查器` 继续消费 active inspector detail；`StudioGuiWindowModuleSettingsModel` 已从 active unit Inspector detail 派生参数字段、端口、连接动作、诊断动作和空帮助状态，并由右侧 `模块设置` tab 消费 | help command 还没有正式 command surface；完整视觉重排尚未进入范围 |
 | Module Results | `StudioGuiWindowModuleResultsModel` 已从 current-revision `SolveSnapshot` 派生 selected unit result、consumed / produced stream chips、related steps、diagnostics 和 diagnostic actions；右侧 `模块结果` tab 已消费该 DTO，stale snapshot 不渲染旧 unit result；旧 `Run` 不在右侧栏继续扩展，运行日志 / 消息 / 结果表继续由底部区域承接 | 尚未新增独立模块结果页或画布模块详情标签页；完整报表和跨快照结果仍不进入范围 |
@@ -51,12 +51,12 @@
 
 ## 顶部导航
 
-进入工作区后的顶部不再常驻 `打开项目`、`打开示例` 作为主按钮；这些命令属于 `文件` 或 Home。当前 egui shell 已完成窄导航栏入口收敛，并先从 `流程图` screen 做上下文工具栏第一刀；后续如继续扩到 `物性` 或 `运行` screen，仍必须按正式状态来源推进。顶部结构分两层：
+进入工作区后的顶部不再常驻 `打开项目`、`打开示例` 作为主按钮；这些命令属于 `文件` 或 Home。当前 egui shell 已完成窄导航栏入口收敛，并已从 `流程图` 和 `物性` screen 完成上下文工具栏第一刀；后续如继续扩到 `运行`，仍必须按正式状态来源推进。顶部结构分两层：
 
 | 层级 | 内容 | 说明 |
 | --- | --- | --- |
 | 窄导航栏 | `文件`、`主页`、`物性`、`流程图`、`运行`、`结果`、`工具`、`设置` | `物性` 前置；取消意义不清的 `设备`；语言、单位集、偏好进入 `设置` |
-| 上下文工具栏 | 随当前导航变化 | 当前 `流程图` 第一刀显示既有 Canvas / Run 可用命令、Module Results / 结果表入口和状态摘要；后续 `运行`、`物性` 若扩展，仍只能消费正式 command / presentation / state |
+| 上下文工具栏 | 随当前导航变化 | 当前 `流程图` 第一刀显示既有 Canvas / Run 可用命令、Module Results / 结果表入口和状态摘要；`物性` 第一刀显示既有 package / component 命令和 Property page 状态；后续 `运行` 若扩展，仍只能消费正式 command / presentation / state |
 
 项目名称放在最顶部窗口标题栏；保存状态仍使用右侧状态 chip，例如 `已保存`、`有未保存更改`、`旧结果`。
 

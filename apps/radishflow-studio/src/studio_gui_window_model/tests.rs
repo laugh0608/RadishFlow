@@ -76,11 +76,10 @@ fn find_status_summary_metric<'a>(
 }
 
 fn context_toolbar_section<'a>(
-    window: &'a crate::StudioGuiWindowModel,
+    toolbar: &'a crate::StudioGuiWindowContextToolbarModel,
     title: &str,
 ) -> &'a crate::StudioGuiWindowContextToolbarSectionModel {
-    window
-        .flowsheet_context_toolbar
+    toolbar
         .sections
         .iter()
         .find(|section| section.title == title)
@@ -5197,7 +5196,7 @@ fn studio_gui_window_model_builds_flowsheet_context_toolbar_from_available_comma
         vec!["Canvas", "Run", "Review"]
     );
 
-    let canvas_section = context_toolbar_section(&window, "Canvas");
+    let canvas_section = context_toolbar_section(&window.flowsheet_context_toolbar, "Canvas");
     let canvas_command_ids = canvas_section
         .items
         .iter()
@@ -5224,7 +5223,7 @@ fn studio_gui_window_model_builds_flowsheet_context_toolbar_from_available_comma
         "canvas context toolbar must not pull object/result navigation commands: {canvas_command_ids:?}"
     );
 
-    let run_section = context_toolbar_section(&window, "Run");
+    let run_section = context_toolbar_section(&window.flowsheet_context_toolbar, "Run");
     assert!(
         run_section.items.iter().all(|item| item.enabled
             && item.target == crate::StudioGuiWindowContextToolbarItemTarget::Command
@@ -5236,7 +5235,7 @@ fn studio_gui_window_model_builds_flowsheet_context_toolbar_from_available_comma
         run_section.items
     );
 
-    let review_section = context_toolbar_section(&window, "Review");
+    let review_section = context_toolbar_section(&window.flowsheet_context_toolbar, "Review");
     assert_eq!(
         review_section
             .items
@@ -5292,7 +5291,7 @@ fn studio_gui_window_model_keeps_context_result_entries_routed_to_existing_resul
         .expect("expected heater focus dispatch");
     let window = focus.window;
 
-    let review_section = context_toolbar_section(&window, "Review");
+    let review_section = context_toolbar_section(&window.flowsheet_context_toolbar, "Review");
     assert_eq!(
         review_section
             .items
@@ -5328,6 +5327,80 @@ fn studio_gui_window_model_keeps_context_result_entries_routed_to_existing_resul
             .filter_map(|item| item.command_id.as_deref())
             .all(|command_id| !command_id.starts_with("inspector.focus_")),
         "context toolbar result entries must not fan out latest snapshot result commands"
+    );
+}
+
+#[test]
+fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_commands() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+    let opened = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let window = opened.snapshot.window_model();
+
+    assert_eq!(window.property_context_toolbar.title, "Property Context");
+    assert_eq!(
+        window
+            .property_context_toolbar
+            .sections
+            .iter()
+            .map(|section| section.title)
+            .collect::<Vec<_>>(),
+        vec!["Package"]
+    );
+    let package_section = context_toolbar_section(&window.property_context_toolbar, "Package");
+    assert_eq!(
+        package_section
+            .items
+            .iter()
+            .map(|item| (
+                item.target,
+                item.command_id.as_deref(),
+                item.label.as_str(),
+                item.status_label.as_deref()
+            ))
+            .collect::<Vec<_>>(),
+        vec![(
+            crate::StudioGuiWindowContextToolbarItemTarget::Command,
+            Some("project.property_package.select:binary-hydrocarbon-lite-v1"),
+            "Binary Hydrocarbon Lite",
+            Some("Available")
+        )]
+    );
+    assert_eq!(
+        window
+            .property_context_toolbar
+            .status_items
+            .iter()
+            .map(|item| (item.label, item.value.as_str(), item.status_label.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            ("Package", "Unselected", "Unselected"),
+            ("Components", "2", "Selected"),
+            ("Source", "Built-in", "Available"),
+        ]
+    );
+
+    let selected = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "project.property_package.select:binary-hydrocarbon-lite-v1".to_string(),
+        })
+        .expect("expected property package selection dispatch");
+    let selected_window = selected.window;
+
+    assert!(
+        selected_window.property_context_toolbar.sections.is_empty(),
+        "selected package and referenced components should render as state, not duplicate toolbar commands"
+    );
+    assert_eq!(
+        selected_window.property_context_toolbar.status_items[0].value,
+        "binary-hydrocarbon-lite-v1"
+    );
+    assert_eq!(
+        selected_window.property_context_toolbar.status_items[0].status_label,
+        "Selected"
     );
 }
 

@@ -615,6 +615,7 @@ pub struct StudioGuiWindowModel {
     pub property_page: StudioGuiWindowPropertyPageModel,
     pub module_settings: StudioGuiWindowModuleSettingsModel,
     pub module_results: StudioGuiWindowModuleResultsModel,
+    pub property_context_toolbar: StudioGuiWindowContextToolbarModel,
     pub flowsheet_context_toolbar: StudioGuiWindowContextToolbarModel,
     pub canvas: StudioGuiWindowCanvasAreaModel,
     pub runtime: StudioGuiWindowRuntimeAreaModel,
@@ -660,7 +661,9 @@ impl StudioGuiWindowModel {
         let module_results = StudioGuiWindowModuleResultsModel::from_runtime(&runtime);
         let canvas = canvas_from_snapshot(snapshot);
         let status_summary = StudioGuiWindowStatusSummaryModel::from_runtime(&runtime);
-        let flowsheet_context_toolbar = StudioGuiWindowContextToolbarModel::from_sources(
+        let property_context_toolbar =
+            StudioGuiWindowContextToolbarModel::from_property_page(&property_page);
+        let flowsheet_context_toolbar = StudioGuiWindowContextToolbarModel::from_flowsheet_sources(
             &commands,
             &module_results,
             &runtime,
@@ -673,6 +676,7 @@ impl StudioGuiWindowModel {
             property_page,
             module_settings,
             module_results,
+            property_context_toolbar,
             flowsheet_context_toolbar,
             canvas,
             status_summary,
@@ -838,7 +842,7 @@ fn toolbar_sections_from_sections(
 }
 
 impl StudioGuiWindowContextToolbarModel {
-    fn from_sources(
+    fn from_flowsheet_sources(
         commands: &StudioGuiWindowCommandAreaModel,
         module_results: &StudioGuiWindowModuleResultsModel,
         runtime: &StudioGuiWindowRuntimeAreaModel,
@@ -887,6 +891,95 @@ impl StudioGuiWindowContextToolbarModel {
             status_items: context_status_items(status_summary),
         }
     }
+
+    fn from_property_page(property_page: &StudioGuiWindowPropertyPageModel) -> Self {
+        let package_items = property_page
+            .package_choices
+            .iter()
+            .filter(|choice| choice.enabled && !choice.selected)
+            .map(|choice| StudioGuiWindowContextToolbarItemModel {
+                target: StudioGuiWindowContextToolbarItemTarget::Command,
+                command_id: Some(choice.command_id.clone()),
+                enabled: choice.enabled,
+                label: choice.label.clone(),
+                detail: choice.detail.clone(),
+                status_label: Some("Available".to_string()),
+            })
+            .collect::<Vec<_>>();
+        let component_items = property_page
+            .component_choices
+            .iter()
+            .filter_map(property_component_context_toolbar_item)
+            .collect::<Vec<_>>();
+
+        let mut sections = Vec::new();
+        push_context_toolbar_section(&mut sections, "Package", package_items);
+        push_context_toolbar_section(&mut sections, "Components", component_items);
+
+        Self {
+            title: "Property Context",
+            sections,
+            status_items: property_context_status_items(property_page),
+        }
+    }
+}
+
+fn property_component_context_toolbar_item(
+    component: &StudioGuiWindowPropertyComponentModel,
+) -> Option<StudioGuiWindowContextToolbarItemModel> {
+    if component.selected {
+        return component
+            .remove_enabled
+            .then(|| StudioGuiWindowContextToolbarItemModel {
+                target: StudioGuiWindowContextToolbarItemTarget::Command,
+                command_id: Some(component.remove_command_id.clone()),
+                enabled: component.remove_enabled,
+                label: format!("Remove {}", component.name),
+                detail: component.remove_detail.clone(),
+                status_label: Some("Selected".to_string()),
+            });
+    }
+
+    Some(StudioGuiWindowContextToolbarItemModel {
+        target: StudioGuiWindowContextToolbarItemTarget::Command,
+        command_id: Some(component.select_command_id.clone()),
+        enabled: true,
+        label: format!("Select {}", component.name),
+        detail: component.component_id.clone(),
+        status_label: Some("Available".to_string()),
+    })
+}
+
+fn property_context_status_items(
+    property_page: &StudioGuiWindowPropertyPageModel,
+) -> Vec<StudioGuiWindowContextToolbarStatusModel> {
+    vec![
+        StudioGuiWindowContextToolbarStatusModel {
+            label: "Package",
+            value: property_page
+                .selected_package_id
+                .clone()
+                .unwrap_or_else(|| "Unselected".to_string()),
+            status_label: property_page.package_status_label.to_string(),
+            detail: "Property package selection stored in the flowsheet document.".to_string(),
+        },
+        StudioGuiWindowContextToolbarStatusModel {
+            label: "Components",
+            value: property_page.selected_component_count.to_string(),
+            status_label: if property_page.selected_component_count > 0 {
+                "Selected".to_string()
+            } else {
+                "Unselected".to_string()
+            },
+            detail: "Project component selection stored in the flowsheet document.".to_string(),
+        },
+        StudioGuiWindowContextToolbarStatusModel {
+            label: "Source",
+            value: "Built-in".to_string(),
+            status_label: "Available".to_string(),
+            detail: "MVP scope only exposes controlled built-in property assets.".to_string(),
+        },
+    ]
 }
 
 fn context_command_items(

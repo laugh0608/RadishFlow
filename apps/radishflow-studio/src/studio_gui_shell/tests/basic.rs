@@ -522,6 +522,46 @@ fn flowsheet_context_toolbar_renders_existing_canvas_run_result_state() {
 }
 
 #[test]
+fn property_context_toolbar_renders_existing_package_component_commands_and_state() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.create_blank_project();
+    app.screen = StudioShellScreen::Property;
+
+    let texts = render_top_bar_texts(&mut app);
+
+    for expected in [
+        "物性工具栏",
+        "物性包",
+        "二元烃 Lite",
+        "组分",
+        "选择 Methane",
+        "选择 Ethane",
+        "源: 内置",
+        "未选择",
+        "可用",
+    ] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected property context toolbar to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for hidden in [
+        "第三方物性包",
+        "完整组分数据库",
+        "Thermodynamics PMC",
+        "完整参数表",
+        "分析",
+    ] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden)),
+            "property context toolbar must not expose out-of-scope `{hidden}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
 fn shell_defaults_to_alpha_workbench_layout_regions() {
     let mut app = ready_app_state(&synced_workspace_config());
     assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Project);
