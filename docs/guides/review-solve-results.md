@@ -1,6 +1,6 @@
 # Review Solve Results
 
-更新时间：2026-06-06
+更新时间：2026-06-07
 
 ## 目的
 
@@ -12,7 +12,7 @@
 - `流股选择`、`流股对比`、`Module Results` 三种结果面该怎么配合看
 - `source stream`、非 flash 中间流股、flash outlet、unit step 输入/输出各自该怎么看
 - `检查` / `诊断目标` / `结果` commands 应该怎样帮助你核对同一份结果
-- 当前对象 `检查器` / Module Settings 和 `结果` / Module Results 的职责边界是什么
+- 当前对象 `检查器` / Module Settings 和右侧 `模块结果` / Module Results 的职责边界是什么
 - `H`、`phase_region`、`bubble_dew_window` 在结果区里分别代表什么
 - 当前快照复制 / 导出应该怎样理解
 - 从小案例作者路径运行后应该先核对哪些结果
@@ -35,14 +35,14 @@
 
 一次运行成功后，先按下面顺序看：
 
-1. 右侧 `结果` 区的当前快照摘要，以及选中单元的 Module Results 摘要
-2. 右侧 `结果` 区的流股结果视图和 comparison
+1. 顶部 `结果` screen 的当前快照状态，以及右侧 `模块结果` 的选中单元 Module Results 摘要
+2. 结果审阅区的流股结果视图和 comparison
 3. 底部 `结果表`、`关联求解步骤` / step 列表和诊断目标
 4. 当前对象 `检查器` / Module Settings 中的已提交参数、端口和关联诊断
 
 当前这些位置里的结果相关字段都应该只读消费同一份 `SolveSnapshot` DTO；如果某个结果字段只在其中一处出现，通常应先怀疑消费层回归，而不是先猜数值层分叉。Module Settings 中的参数字段和端口仍来自 active inspector / document command surface，不是结果快照字段。
 
-当前中文 UI 中，这四处通常对应右侧 `结果` tab、右侧 `检查器` tab、底部 `结果表 / 诊断`，以及命令入口中的结果定位项。英文术语在本文档中只用于指代内部结果组织方式，不表示默认界面必须显示英文。右侧 `检查器` 在选中单元时消费 Module Settings DTO，负责参数、端口、连接动作、诊断动作和帮助空状态；latest unit result 应在 `结果` tab 的 Module Results 中看，不应回流到 Module Settings。
+当前中文 UI 中，这四处通常对应顶部 `结果` screen、右侧 `模块结果` tab、右侧 `检查器 / 模块设置` tab、底部 `结果表 / 诊断`，以及命令入口中的结果定位项。英文术语在本文档中只用于指代内部结果组织方式，不表示默认界面必须显示英文。右侧 `检查器` 在选中单元时消费当前对象 Inspector；右侧 `模块设置` 消费 Module Settings DTO，负责参数、端口、连接动作、诊断动作和帮助空状态；latest unit result 应在右侧 `模块结果` 中看，不应回流到 Module Settings。
 
 ## 小案例作者路径的结果核对
 
@@ -54,7 +54,7 @@
 - `Flash Drum` Module Results：输入流股应是 mixer outlet，产出流股应包含 liquid / vapor
 - Flash 分割：liquid / vapor 两股 outlet 的总摩尔流量之和应等于 flash inlet
 - 相态 / 焓值：flowing outlet 应能看到 phase row 和 `H`；two-phase case 中 liquid / vapor outlet 的窗口分别落在 bubble / dew 边界
-- 右侧 `结果` 区的复制 / 导出文本应来自同一份最新 `SolveSnapshot`
+- 结果审阅区的复制 / 导出文本应来自同一份最新 `SolveSnapshot`
 
 从 `Heater-Flash` 作者路径运行后，先按下面链路核对：
 
@@ -91,7 +91,7 @@ official hydrocarbon demo 的稳定数值口径详见 `docs/guides/author-small-
 
 `selected unit` 也只是切换“看哪一个单元的结果面”。当前 Studio 会从同一份 latest current-revision `SolveSnapshot` 派生 `StudioGuiWindowModuleResultsModel`，不应该改变任何 stream result 本身的数值语义。
 
-右侧 `结果` 区的选择区应是紧凑可选项：流股、对比流股和单元以按钮 / chip 形式切换，不应为每个选项重复显示 `Inspect`。需要跳到对象详情时，使用当前选项、`检查` 动作、诊断目标或命令入口定位到同一份对象结果。
+结果审阅区的选择区应是紧凑可选项：流股、对比流股和单元以按钮 / chip 形式切换，不应为每个选项重复显示 `Inspect`。需要跳到对象详情时，使用当前选项、`检查` 动作、诊断目标或命令入口定位到同一份对象结果。
 
 ## 1. 先看 source stream
 
@@ -185,13 +185,13 @@ Module Results 当前还会把 selected unit result、consumed / produced stream
 - `检查`
 - `诊断目标`
 - command palette / menu / command list 里的 `Results` commands
-- 右侧 `结果` 区的当前快照轻量复制 / 导出
+- 结果审阅区的当前快照轻量复制 / 导出
 
 推荐用法：
 
 1. 在流股对比里用 `检查` 或当前流股选项从 `stream-liquid / stream-vapor` 跳到对应对象详情
 2. 在 Module Results 里用输入/输出流股的 `检查`，核对 `Flash Drum` inlet/outlet 和 step stream 是否还是同一份结果
-3. 在 `诊断目标` 里再跳一次 flash inlet 或 flash unit，确认 `结果 -> 当前检查器 / Module Settings` 没有分叉成第二套 consumer 语义
+3. 在 `诊断目标` 里再跳一次 flash inlet 或 flash unit，确认 `结果` 审阅入口、当前对象 `检查器` 和 Module Settings 没有分叉成第二套 consumer 语义
 4. 在 command palette 或菜单中搜索 `result` / `snapshot` / stream label，确认 `Results` command 也定位到同一份当前快照结果
 
 这里要注意：
@@ -209,14 +209,14 @@ Module Results 当前还会把 selected unit result、consumed / produced stream
 
 底部 `结果表` 当前分两段展示同一份 `SolveSnapshot`：
 
-- 上半段是流股表：按流股列出 `T / P / F / H / 相态`，点击流股会切到右侧 `结果` 对应流股。
-- 下半段是单元表：按每个单元的最新求解步骤列出状态、step 序号、消费流股和产出流股，点击单元会切到右侧 `结果` 的 Module Results 面。
+- 上半段是流股表：按流股列出 `T / P / F / H / 相态`，点击流股会切到结果审阅区对应流股。
+- 下半段是单元表：按每个单元的最新求解步骤列出状态、step 序号、消费流股和产出流股，点击单元会切到右侧 `模块结果` 的 Module Results 面。
 
 这张表只用于快速核对当前快照，不保存结果、不触发求解，也不是完整报表系统。小案例作者路径运行后，建议先在流股表确认关键 outlet，再在单元表确认 upstream / downstream 消费关系是否正确。
 
 ## 当前快照复制 / 导出
 
-右侧 `结果` 区当前提供 `复制快照` 与 `导出文本...`。它们只把当前最新 `SolveSnapshot` 格式化成轻量纯文本，内容覆盖：
+结果审阅区当前提供 `复制快照` 与 `导出文本...`。它们只把当前最新 `SolveSnapshot` 格式化成轻量纯文本，内容覆盖：
 
 - 流股摘要
 - Review 摘要：source / intermediate / terminal streams、latest unit results、diagnostics count
@@ -273,7 +273,7 @@ Module Results 当前还会把 selected unit result、consumed / produced stream
 1. 全局 `stream` 结果
 2. upstream unit step 的输出流股
 3. downstream unit step 的输入流股
-4. `结果` / Module Results 与当前对象 `检查器` / Module Settings 的展示
+4. 顶部 `结果` screen、右侧 `模块结果` / Module Results 与当前对象 `检查器` / Module Settings 的展示
 
 如果 1 到 3 已经不一致，先查 solver / snapshot。  
 如果 1 到 3 一致、但 4 不一致，优先查 Studio consumer。

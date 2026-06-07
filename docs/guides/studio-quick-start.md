@@ -1,10 +1,10 @@
 # Studio Quick Start
 
-更新时间：2026-06-06
+更新时间：2026-06-07
 
 ## 目的
 
-本文档面向第一次进入仓库、想直接体验 `RadishFlow Studio` 当前最小工作台闭环的读者。
+本文档面向第一次进入仓库、想直接体验 `RadishFlow Studio` 当前主工作台流程的读者。
 
 它回答的是：
 
@@ -17,32 +17,33 @@
 
 ## 当前能做什么
 
-截至 2026-06-06，Studio 当前已经具备以下主路径能力：
+截至 2026-06-07，Studio 当前已经具备以下主路径能力：
 
 - 启动后默认进入中文 Home Dashboard，可从 `开始 / 最近项目 / 示例项目 / 环境 / 消息` 分区判断从哪里开始
 - 新建未命名空白项目，并从受控内置列表显式选择 `binary-hydrocarbon-lite-v1` 与 `methane / ethane` 后进入最短建模路径
 - 打开已有 `*.rfproj.json` 项目
-- 通过首页 `新建项目`、`打开项目`、`打开示例项目` 或进入工作台后的顶部主路径切换项目
+- 通过首页 `新建项目`、`打开项目`、`打开示例项目` 或进入工作台后的 `文件` 菜单切换项目
 - 通过首页 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例` 从空白项目进入对应作者路径，并在左侧 `放置` 面板查看任务清单
 - 最近项目和示例项目使用统一 case tile 展示：tile 包含轻量流程缩影、路径 / 来源、物性包、组分摘要和 `Ready / Current / Missing file` 状态；单击选择，双击打开，文件缺失时只降级对应 tile 状态，不阻断首页
-- 进入项目后在顶部主路径直接使用 `Home / 打开示例 / 新建空白 / 打开项目... / 运行 / 保存 / 另存为... / 视图`
+- 进入项目后顶部导航收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；新建、打开、保存和另存为进入 `文件`，命令面板、Commands 面板和逻辑窗口进入 `工具`，语言进入 `设置`
 - 运行仓库内或便携 staging 内的 official hydrocarbon 正向示例 flowsheet
-- 在左侧 `项目 / 示例项目 / 放置`、中央 `Canvas`、右侧 `检查器 / 结果 / 运行 / 物性包` 和底部 `消息 / 运行日志 / 结果表 / 诊断` 中完成当前 MVP 建模与结果核对工作流
+- 在独立 `物性` 页维护当前受控物性包和项目组分；进入 `流程图` 后使用左侧 `项目 / 示例项目 / 放置`、中央 `Canvas`、右侧 `检查器 / 模块设置 / 模块结果` 和底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 完成当前 MVP 建模与结果核对工作流
+- `物性 / 流程图 / 运行 / 结果` screen 会在顶部导航下方显示上下文工具栏，只渲染已有 presentation / command / state 中可用的入口和状态
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
 - 选中单元时，右侧 `检查器` 的单元区域窄口径消费 `Module Settings` presentation：只显示正式 active inspector 来源的参数字段、端口、连接动作、诊断动作和帮助空状态
-- 选中单元并存在当前 revision 的最新结果时，右侧 `结果` 区窄口径消费 `Module Results` presentation：显示该单元 latest result、consumed / produced stream、关联步骤和诊断；若结果过期，不继续渲染旧单元结果
+- 选中单元并存在当前 revision 的最新结果时，右侧 `模块结果` 窄口径消费 `Module Results` presentation：显示该单元 latest result、consumed / produced stream、关联步骤和诊断；若结果过期，不继续渲染旧单元结果
 - 复制当前 `SolveSnapshot` 文本，或导出当前快照为轻量 `.txt`；导出文本包含 `Streams / Review / Units / Steps / Diagnostics`
 - 通过 `检查`、`诊断目标`、结果选择项和命令入口在流股、单元、步骤和当前检查器之间定位同一份结果
 - 在流股检查器中编辑流股基础字段与组成草稿，并显式提交、归一化或丢弃
 - 在单元检查器 / Module Settings 中编辑首批关键单元参数：`Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 和 `Flash Drum` 的 flash temperature / flash pressure
-- 顶部 `运行`、Run Panel `Resume`、`F5 / Shift+F5`、命令面板、AppHost / StudioGuiDriver / StudioGuiHost command registry 等正式入口共享同一层建模输入 readiness；建模输入缺失不会因入口不同绕过诊断
+- `流程图` / `运行` 上下文工具栏、Run Panel `Resume`、`F5 / Shift+F5`、命令面板、AppHost / StudioGuiDriver / StudioGuiHost command registry 等正式入口共享同一层建模输入 readiness；建模输入缺失不会因入口不同绕过诊断
 - 成功运行后若项目文档继续编辑，旧 `SolveSnapshot` 会标为过期；Result Inspector、底部结果表、Results commands、复制 / 导出和 `Review` 摘要只继续消费当前 revision 的最新快照
 - 选中物料流股后，可通过 Canvas / Inspector 的 `Disconnect stream` 解除端口绑定并保留流股规格，或通过 `Delete stream` 解除绑定后删除错误流股；单端流股还可在唯一且不会成环的候选存在时执行受控 `Reconnect stream`
 - 执行基础 `undo / redo`
-- 保存当前项目，或通过顶部 `另存为...` / 未命名项目首次 `保存` 到新路径
+- 保存当前项目，或通过顶部 `文件` 菜单中的 `另存为...` / 未命名项目首次 `保存` 到新路径
 - 保存并恢复 Canvas placement / viewport sidecar：`<project>.rfstudio-layout.json`；当前可拖动单元位置、平移 viewport，并用 `Fit to content` 重新居中
 - Studio shell 使用随应用打包的 `InterVariable` 与 `SourceHanSansSC` 字体资源显示中文 UI，不依赖操作系统中某个固定 CJK 字体名称
-- 默认隐藏低频命令大全；需要完整命令列表时可从顶部 `视图` 或命令面板入口展开
+- 默认隐藏低频命令大全；需要完整命令列表时可从顶部 `工具` 或命令面板入口展开
 
 当前最短可求解建模路径已经覆盖：
 
@@ -124,7 +125,7 @@ cargo run -p radishflow-studio
 - 一个 `Feed`
 - 一个 `Heater`
 - 一个 `Flash Drum`
-- 一条单入口、双产物流股的最小求解链路
+- 一条单入口、双产物流股的短链路求解流程
 
 详细操作步骤见：
 
@@ -155,29 +156,31 @@ cargo run -p radishflow-studio
 
 入口只决定左侧 `放置` 面板展示哪一条任务清单。清单状态从当前 canvas unit / stream / solve snapshot 推导，不会自动补单元、自动连线或修改项目文档。
 
-## 工作台主路径
+## 工作台顶部导航
 
-进入项目后，顶部第一行展示应用、当前项目和状态 chip；第二行提供当前主路径：
+进入项目后，顶部第一行展示应用、当前项目和状态 chip；第二行固定为八个主入口：
 
-- `Home`：返回启动首页
-- `打开示例`：打开仓库或便携 staging 内置正向示例
-- `新建空白`：新建未命名空白项目；不会立刻弹出保存对话框
-- `打开项目...`：从磁盘选择已有 `*.rfproj.json`
-- `运行`：对当前工作区执行一次手动运行；不可用时 hover 会说明原因
-- `保存`：保存当前项目
+- `文件`：`新建空白`、`打开示例`、`打开项目...`、`保存`、`另存为...`
+- `主页`：返回启动首页
+- `物性`：进入独立物性页，查看并选择当前受控内置物性包和项目组分
+- `流程图`：进入建模工作台，查看 Canvas、放置入口、检查器、模块设置、模块结果和底部运行信息
+- `运行`：进入运行 screen，查看运行控制、运行日志、收敛、suggestion 和诊断相关入口
+- `结果`：进入结果 screen，查看当前 / 过期 / 缺失 `SolveSnapshot` 状态、结果聚焦入口、右侧模块结果和底部结果表入口
+- `工具`：命令面板、Commands 面板显示 / 隐藏、逻辑窗口入口
+- `设置`：当前只放语言切换
 
-新建或打开项目后，左侧 `项目` 面板会显示当前 `物性包` 和 `项目组分`。MVP β 建模输入 v0 只提供受控内置 `binary-hydrocarbon-lite-v1` 物性包和 methane / ethane 组分目录；空白项目初始不预选，选择后分别写入 `Flowsheet.thermo.property_package_id` 与 `Flowsheet.components`，并决定 Stream Inspector 中 Feed composition 可添加的组分。右侧 `物性包` tab 仍保留同一组项目级输入入口和本地包摘要。
-- `另存为...`：把当前项目另存到新的 `*.rfproj.json` 路径；未命名空白项目首次 `保存` 也会进入这条选择器路径
-- `视图`：收纳低频视图入口、语言切换、命令面板和开发诊断入口
+当前 screen 是 `物性 / 流程图 / 运行 / 结果` 时，顶部导航下方会显示对应上下文工具栏。它们只消费已有 DTO、command registry、Run Panel state、Module Results、结果表状态和 shell layout state，不新增第二套项目、物性、运行、结果或诊断真相源。
 
-命令面板默认不占据第一视野。它不是功能移除，而是把低频和调试型入口从主工作流移开。
+新建或打开项目后，左侧 `项目` 面板会显示当前 `物性包` 和 `项目组分` 摘要；独立 `物性` 页提供同一组受控项目级输入入口和本地包摘要。MVP β 建模输入 v0 只提供受控内置 `binary-hydrocarbon-lite-v1` 物性包和 methane / ethane 组分目录；空白项目初始不预选，选择后分别写入 `Flowsheet.thermo.property_package_id` 与 `Flowsheet.components`，并决定 Stream Inspector 中 Feed composition 可添加的组分。
+
+命令面板默认不占据第一视野。它不是功能移除，而是把低频、调试型入口和窗口工具从主工作流移到 `工具`。
 
 ## 从空白项目开始
 
 如果不想先打开示例，可以直接走当前最小空白建模路径：
 
-1. 在首页点击 `新建项目`，或进入工作台后点击顶部 `新建空白`。
-2. 在左侧 `项目` 或右侧 `物性包` tab 中选择 `binary-hydrocarbon-lite-v1`，再选择 methane / ethane 项目组分。
+1. 在首页点击 `新建项目`，或进入工作台后从顶部 `文件` 菜单点击 `新建空白`。
+2. 在左侧 `项目` 或顶部 `物性` 页中选择 `binary-hydrocarbon-lite-v1`，再选择 methane / ethane 项目组分。
 3. 在左侧切到 `放置`，用 `放置进料`、`放置闪蒸罐` 或 `放置加热器 / 放置冷却器 / 放置阀门 / 放置混合器` 开始放置单元。
 4. 在 Canvas 中点击落点提交当前放置意图。
 5. 使用 Canvas 上的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` suggestion 补齐端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
@@ -185,7 +188,7 @@ cargo run -p radishflow-studio
 7. 在流股检查器中编辑 `T / P / F` 和组成草稿；字段提交、全部应用、组成归一化都是显式动作。
 8. 选中 `Feed / Heater / Cooler / Mixer / Valve / Flash Drum` 时，可在单元检查器 / Module Settings 中编辑已暴露的 source temperature、source pressure、outlet temperature、outlet pressure、flash temperature 或 flash pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。若字段当前显示的是 outlet stream 模板值或内置默认值，但对应 unit parameter 尚未显式提交，即使输入值与显示值相同，也应提交一次，让正式 `SetUnitParameter` 写入项目文档。字段来源与 readiness 关系见 `docs/reference/units-and-conventions.md`。
 9. 若流股错连或漏连，先选中该 material stream，再使用 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 或 `Delete stream` 这组受控恢复动作；`Reconnect stream` 只在单端唯一候选且不会形成 unit dependency cycle 时可用。
-10. 点击顶部 `运行`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐后，结果只从当前 revision 的最新 `SolveSnapshot` 展示到右侧 `结果`、选中单元的 Module Results、底部 `结果表`、Results commands 和轻量导出的 `Review` 摘要。正式物性包解析失败、结构性连接错误、拓扑错误和求解阶段参数失败继续由 Run Panel 诊断 / recovery 承载。
+10. 在 `流程图` 或 `运行` 上下文工具栏点击 `运行当前流程`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐后，结果只从当前 revision 的最新 `SolveSnapshot` 展示到顶部 `结果` screen、右侧 `模块结果`、底部 `结果表`、Results commands 和轻量导出的 `Review` 摘要。正式物性包解析失败、结构性连接错误、拓扑错误和求解阶段参数失败继续由 Run Panel 诊断 / recovery 承载。
 
 当前连接仍通过本地 suggestion 和正式 `DocumentCommand` 完成，不是自由拉线编辑器；单元参数编辑也仍限制在上述 MVP 已暴露字段，不等同于完整单元参数表。Module Settings 的帮助区目前只表达“暂无正式模块帮助命令”，不会临时伪造 help action。
 
@@ -233,16 +236,17 @@ Canvas 中的单元位置和 viewport offset 保存到项目同目录的 `<proje
 
 成功打开示例后，当前 Studio 应至少能让你扫读到以下信息：
 
-- 顶部主路径中的 Home、打开示例、新建空白、打开项目、运行、保存、另存为和视图入口
+- 顶部导航中的 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` 八个主入口
+- `物性 / 流程图 / 运行 / 结果` screen 下方对应的上下文工具栏；这些工具栏只显示当前已有可用命令和状态
 - 顶部当前项目标题、运行状态、pending 状态和未保存提示；完整路径优先进入摘要、tooltip 或详情区域
 - 左侧 `项目 / 示例项目 / 放置`，分别用于项目树扫读、示例入口和放置 MVP 内建单元
 - Canvas 上的单元、物流线和当前关注对象
-- 右侧 `检查器 / 结果 / 运行 / 物性包` tabs，其中 `检查器` 负责当前对象输入、单元参数、端口和关联诊断；当选中单元时它优先消费 Module Settings DTO，不渲染 latest-result 内容；`结果` 负责只读结果审阅和选中单元的 Module Results 摘要，`物性包` 负责本地包和同步状态摘要
-- 底部 `消息 / 运行日志 / 结果表 / 诊断` drawer，其中结果表只读消费当前 `SolveSnapshot`，默认消息区比结果 / 诊断页更紧凑
+- 右侧 `检查器 / 模块设置 / 模块结果` tabs，其中 `检查器` 负责当前对象输入、端口和关联诊断；`模块设置` 窄口径消费正式 Module Settings DTO，不渲染 latest-result 内容；`模块结果` 负责只读结果审阅和选中单元的 Module Results 摘要
+- 底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` drawer，其中结果表只读消费当前 `SolveSnapshot`，默认消息区比结果 / 诊断页更紧凑
 - `诊断目标` 中可直接定位的流股 / 单元结果目标
 - 当前快照导出中的 `Review` 摘要：按 source / intermediate / terminal streams 与 latest unit results 快速核对同一条结果链路
 
-如果运行成功，Studio 会自动把右侧切到 `结果`、底部切到 `结果表`。选中单元时，`结果` 区顶部会先展示当前单元的 Module Results 摘要，再展示同一份快照的流股 / 步骤 / 诊断结果。`Flash Drum` 相关结果当前应能进一步展示：
+如果运行成功，Studio 会把结果入口聚焦到顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表`。选中单元时，`模块结果` 会先展示当前单元的 Module Results 摘要，再展示同一份快照的流股 / 步骤 / 诊断结果。`Flash Drum` 相关结果当前应能进一步展示：
 
 - `phase_region`
 - `bubble_dew_window`
