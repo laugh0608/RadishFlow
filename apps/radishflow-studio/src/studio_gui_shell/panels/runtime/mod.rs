@@ -29,26 +29,6 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         window: &StudioGuiWindowModel,
     ) {
-        if matches!(
-            window.module_settings.state,
-            radishflow_studio::StudioGuiWindowModuleSettingsState::Ready
-                | radishflow_studio::StudioGuiWindowModuleSettingsState::UnitDetailUnavailable
-        ) {
-            ui.push_id(
-                format!(
-                    "runtime:module-settings:{}",
-                    window
-                        .module_settings
-                        .selected_unit
-                        .as_ref()
-                        .map(|unit| unit.command_id.as_str())
-                        .unwrap_or("none")
-                ),
-                |ui| self.render_module_settings_panel(ui, &window.module_settings),
-            );
-            return;
-        }
-
         if let Some(detail) = window.runtime.active_inspector_detail.as_ref() {
             ui.push_id(
                 format!("runtime:active-inspector:{}", detail.target.command_id),
@@ -66,97 +46,31 @@ impl ReadyAppState {
         }
     }
 
-    pub(in crate::studio_gui_shell) fn render_runtime_results_tab(
+    pub(in crate::studio_gui_shell) fn render_runtime_module_settings_tab(
         &mut self,
         ui: &mut egui::Ui,
         window: &StudioGuiWindowModel,
     ) {
-        ui.label(egui::RichText::new(self.locale.text(ShellText::Results)).strong());
-        if !matches!(
-            window.module_results.state,
-            radishflow_studio::StudioGuiWindowModuleResultsState::NoUnitSelected
-        ) {
-            self.render_module_results_summary(ui, &window.module_results);
-            ui.separator();
-        }
-        if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
-            ui.horizontal_wrapped(|ui| {
-                render_status_chip(
-                    ui,
-                    self.locale.runtime_label(snapshot.status_label).as_ref(),
-                    run_status_color(snapshot.status_label),
-                );
-                ui.small(self.locale.solve_snapshot_counts(
-                    snapshot.stream_count,
-                    snapshot.step_count,
-                    snapshot.diagnostic_count,
-                ));
-            });
-            ui.small(
-                self.locale
-                    .snapshot_identity(&snapshot.snapshot_id, snapshot.sequence),
-            );
-            render_wrapped_label(
-                ui,
-                self.locale.solve_snapshot_primary_summary(
-                    window.runtime.workspace_document.unit_count,
-                    snapshot.diagnostic_count,
-                    snapshot.stream_count,
-                ),
-            );
-            self.render_solve_snapshot_transfer_actions(ui, snapshot);
-            ui.separator();
-            if snapshot.streams.is_empty() {
-                ui.small(self.locale.text(ShellText::NoStreamResults));
-            } else {
-                let selected_stream_id = self
-                    .result_inspector
-                    .selected_stream_id_for_snapshot(snapshot);
-                let selected_unit_id = self
-                    .result_inspector
-                    .selected_unit_id_for_snapshot(snapshot);
-                let inspector = snapshot.result_inspector_with_unit(
-                    selected_stream_id.as_deref(),
-                    self.result_inspector.comparison_stream_id.as_deref(),
-                    selected_unit_id.as_deref(),
-                );
-                ui.push_id(
-                    format!("runtime:result-inspector:{}", snapshot.snapshot_id),
-                    |ui| self.render_result_inspector(ui, &inspector),
-                );
-            }
+        ui.push_id(
+            format!(
+                "runtime:module-settings:{}",
+                window
+                    .module_settings
+                    .selected_unit
+                    .as_ref()
+                    .map(|unit| unit.command_id.as_str())
+                    .unwrap_or("none")
+            ),
+            |ui| self.render_module_settings_panel(ui, &window.module_settings),
+        );
+    }
 
-            ui.separator();
-            ui.collapsing(self.locale.text(ShellText::SolveSteps), |ui| {
-                if snapshot.steps.is_empty() {
-                    ui.small(self.locale.text(ShellText::NoSteps));
-                } else {
-                    for step in &snapshot.steps {
-                        self.render_solve_step_inspector(ui, step);
-                    }
-                }
-            });
-            ui.collapsing(self.locale.text(ShellText::Diagnostics), |ui| {
-                if snapshot.diagnostics.is_empty() {
-                    ui.small(self.locale.text(ShellText::NoDiagnostics));
-                } else {
-                    for (index, diagnostic) in snapshot.diagnostics.iter().enumerate() {
-                        self.render_diagnostic_summary(
-                            ui,
-                            diagnostic,
-                            format!("runtime-results-tab:diagnostic:{index}"),
-                        );
-                        ui.add_space(6.0);
-                    }
-                }
-            });
-        } else if let Some(failure) = window.runtime.latest_failure.as_ref() {
-            self.render_latest_failure_summary(ui, failure);
-        } else if let Some(stale_snapshot) = window.runtime.stale_solve_snapshot.as_ref() {
-            self.render_stale_solve_snapshot_notice(ui, stale_snapshot);
-        } else {
-            ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
-        }
+    pub(in crate::studio_gui_shell) fn render_runtime_module_results_tab(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+    ) {
+        self.render_module_results_summary(ui, &window.module_results);
     }
 
     pub(in crate::studio_gui_shell) fn render_module_results_summary(
@@ -164,13 +78,6 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         module: &radishflow_studio::StudioGuiWindowModuleResultsModel,
     ) {
-        if matches!(
-            module.state,
-            radishflow_studio::StudioGuiWindowModuleResultsState::NoUnitSelected
-        ) {
-            return;
-        }
-
         egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.set_width(ui.available_width());
             ui.horizontal_wrapped(|ui| {
@@ -252,165 +159,6 @@ impl ReadyAppState {
             {
                 self.export_solve_snapshot_from_picker(snapshot);
             }
-        });
-    }
-
-    pub(in crate::studio_gui_shell) fn render_runtime_run_tab(
-        &mut self,
-        ui: &mut egui::Ui,
-        window: &StudioGuiWindowModel,
-    ) {
-        let run_panel = &window.runtime.run_panel;
-        let run_panel_view = run_panel.view();
-
-        ui.horizontal_wrapped(|ui| {
-            ui.label(egui::RichText::new(self.locale.text(ShellText::Run)).strong());
-            render_status_chip(
-                ui,
-                self.locale
-                    .runtime_label(run_panel_view.mode_label)
-                    .as_ref(),
-                egui::Color32::from_rgb(86, 118, 168),
-            );
-            render_status_chip(
-                ui,
-                self.locale
-                    .runtime_label(run_panel_view.status_label)
-                    .as_ref(),
-                run_status_color(run_panel_view.status_label),
-            );
-            if let Some(pending) = run_panel_view.pending_label {
-                render_status_chip(
-                    ui,
-                    self.locale.runtime_label(pending).as_ref(),
-                    egui::Color32::from_rgb(160, 120, 40),
-                );
-            }
-        });
-        ui.add_space(4.0);
-        ui.horizontal_wrapped(|ui| {
-            let primary = run_panel.primary_action();
-            let response = ui.add_enabled(
-                primary.enabled,
-                egui::Button::new(self.locale.runtime_label(primary.label).as_ref())
-                    .fill(egui::Color32::from_rgb(230, 239, 252)),
-            );
-            if response.on_hover_text(primary.detail).clicked() {
-                self.dispatch_run_panel_widget(run_panel.activate_primary());
-            }
-
-            for action in &run_panel_view.secondary_actions {
-                let response = ui.add_enabled(
-                    action.enabled,
-                    egui::Button::new(self.locale.runtime_label(action.label).as_ref()),
-                );
-                if response.on_hover_text(action.detail).clicked() {
-                    self.dispatch_run_panel_widget(run_panel.activate(action.id));
-                }
-            }
-        });
-        ui.add_space(6.0);
-        if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
-            render_wrapped_label(
-                ui,
-                self.locale.solve_snapshot_primary_summary(
-                    window.runtime.workspace_document.unit_count,
-                    snapshot.diagnostic_count,
-                    snapshot.stream_count,
-                ),
-            );
-        } else if let Some(summary) = run_panel_view.latest_snapshot_summary.as_ref() {
-            render_wrapped_label(ui, self.locale.runtime_label(summary).as_ref());
-        } else {
-            ui.small(self.locale.text(ShellText::NoSolveSnapshot));
-        }
-        if let Some(message) = run_panel_view.latest_log_message.as_ref() {
-            render_wrapped_small(
-                ui,
-                format!("{}: {message}", self.locale.text(ShellText::LatestLog)),
-            );
-        }
-        if let Some(notice) = run_panel_view.notice.as_ref() {
-            ui.add_space(6.0);
-            ui.colored_label(notice_color(notice.level), &notice.title);
-            render_wrapped_label(ui, &notice.message);
-            if let Some(recovery_action) = notice.recovery_action.as_ref() {
-                render_wrapped_small(ui, recovery_action.detail);
-                if ui.button(recovery_action.title).clicked() {
-                    match run_panel.activate_recovery_action() {
-                        RunPanelRecoveryWidgetEvent::Requested { .. } => {
-                            self.dispatch_ui_command("run_panel.recover_failure");
-                        }
-                        RunPanelRecoveryWidgetEvent::Missing => {}
-                    }
-                }
-            }
-        }
-
-        ui.separator();
-        let document = &window.runtime.workspace_document;
-        ui.label(egui::RichText::new(self.locale.text(ShellText::Workspace)).strong());
-        ui.horizontal_wrapped(|ui| {
-            render_wrapped_label(ui, &document.title);
-            render_status_chip(
-                ui,
-                &format!("rev {}", document.revision),
-                egui::Color32::from_rgb(86, 118, 168),
-            );
-            if document.has_unsaved_changes {
-                render_status_chip(
-                    ui,
-                    self.locale.text(ShellText::Unsaved),
-                    egui::Color32::from_rgb(160, 120, 40),
-                );
-            }
-        });
-        ui.small(self.locale.workspace_counts(
-            &document.flowsheet_name,
-            document.unit_count,
-            document.stream_count,
-            document.snapshot_history_count,
-        ));
-        if let Some(notice) = self.project_open.notice.as_ref() {
-            let color = match notice.level {
-                ProjectOpenNoticeLevel::Info => egui::Color32::from_rgb(66, 118, 92),
-                ProjectOpenNoticeLevel::Warning => egui::Color32::from_rgb(160, 120, 40),
-                ProjectOpenNoticeLevel::Error => egui::Color32::from_rgb(180, 40, 40),
-            };
-            ui.colored_label(color, &notice.title);
-            render_wrapped_small(ui, &notice.detail);
-        }
-        ui.collapsing(self.locale.text(ShellText::ProjectPath), |ui| {
-            ui.add(
-                egui::TextEdit::singleline(&mut self.project_open.path_input)
-                    .desired_width(f32::INFINITY),
-            );
-            ui.horizontal_wrapped(|ui| {
-                if ui
-                    .button(self.locale.text(ShellText::SaveProject))
-                    .clicked()
-                {
-                    self.save_project();
-                }
-                if ui
-                    .button(self.locale.text(ShellText::SaveProjectAs))
-                    .clicked()
-                {
-                    self.save_project_as_from_picker();
-                }
-                if ui
-                    .button(self.locale.text(ShellText::OpenProject))
-                    .clicked()
-                {
-                    self.open_project_from_input();
-                }
-                if ui
-                    .button(self.locale.text(ShellText::BrowseProject))
-                    .clicked()
-                {
-                    self.open_project_from_picker();
-                }
-            });
         });
     }
 

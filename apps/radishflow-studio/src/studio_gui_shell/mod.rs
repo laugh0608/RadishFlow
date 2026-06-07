@@ -226,9 +226,8 @@ enum StudioShellLeftSidebarTab {
 enum StudioShellRightSidebarTab {
     #[default]
     Inspector,
-    Results,
-    Run,
-    Package,
+    ModuleSettings,
+    ModuleResults,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

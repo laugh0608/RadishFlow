@@ -28,10 +28,10 @@
 | 设计区域 | 当前实现映射 | 仍未完成 |
 | --- | --- | --- |
 | Home 示例 / 最近 tile | `StudioGuiWindowHomeModel` / `StudioGuiWindowHomeCaseTileModel` 已统一承载示例项目和最近项目 tile；示例项目从 `runtime.example_projects` 派生，最近项目仍由 shell preferences / `project_open` 持有并映射为同一 DTO；egui Home Dashboard 已消费统一 tile presentation | 最近项目尚未上提到 `StudioGuiSnapshot`；Home 仍未按设计稿重排为完整 tile gallery |
-| 独立物性页 | `StudioGuiWindowPropertyPageModel` 从 `workspace_document.property_package_choices`、`project_component_choices` 和已选 package / components 派生 package、component、metric 和 future section；Studio shell 已新增顶部 `主页 / 物性 / 流程图` 导航，独立 `物性` screen 消费同一 DTO；缺 package / 项目组分 readiness 聚焦该页面；命令仍走既有 package / component command id | 右侧 Package tab 暂留兼容入口；完整上下文工具栏、物性页长期分析控件和更完整视觉重排尚未进入范围 |
+| 独立物性页 | `StudioGuiWindowPropertyPageModel` 从 `workspace_document.property_package_choices`、`project_component_choices` 和已选 package / components 派生 package、component、metric 和 future section；Studio shell 已新增顶部 `主页 / 物性 / 流程图` 导航，独立 `物性` screen 消费同一 DTO；缺 package / 项目组分 readiness 聚焦该页面；命令仍走既有 package / component command id；右侧栏已移除 Package 主入口 | 完整上下文工具栏、物性页长期分析控件和更完整视觉重排尚未进入范围 |
 | 底部状态汇总 | `StudioGuiWindowStatusSummaryModel` 从 document saved/revision、run panel view、latest current-revision `SolveSnapshot`、stale snapshot 或 latest failure 派生；底部状态区域已消费该 DTO | 设计稿中的左右分栏底部结构尚未完整重排 |
-| 右侧 Inspector / Module Settings | `StudioGuiWindowModuleSettingsModel` 已从 active unit Inspector detail 派生参数字段、端口、连接动作、诊断动作和空帮助状态；右侧 Inspector tab 对 active unit 窄口径消费该 DTO，不渲染 Module Results 的 latest-result 内容 | 尚未重排成设计稿中的完整 `检查器 / 模块设置 / 模块结果` 右侧 tabs；help command 还没有正式 command surface |
-| Module Results | `StudioGuiWindowModuleResultsModel` 已从 current-revision `SolveSnapshot` 派生 selected unit result、consumed / produced stream chips、related steps、diagnostics 和 diagnostic actions；egui Results tab 已消费该 DTO，stale snapshot 不渲染旧 unit result | 尚未新增独立模块结果页或画布模块详情标签页；完整报表和跨快照结果仍不进入范围 |
+| 右侧 Inspector / Module Settings | 右侧栏主入口已收敛为 `检查器 / 模块设置 / 模块结果`；`检查器` 继续消费 active inspector detail；`StudioGuiWindowModuleSettingsModel` 已从 active unit Inspector detail 派生参数字段、端口、连接动作、诊断动作和空帮助状态，并由右侧 `模块设置` tab 消费 | help command 还没有正式 command surface；完整视觉重排尚未进入范围 |
+| Module Results | `StudioGuiWindowModuleResultsModel` 已从 current-revision `SolveSnapshot` 派生 selected unit result、consumed / produced stream chips、related steps、diagnostics 和 diagnostic actions；右侧 `模块结果` tab 已消费该 DTO，stale snapshot 不渲染旧 unit result；旧 `Run` 不在右侧栏继续扩展，运行日志 / 消息 / 结果表继续由底部区域承接 | 尚未新增独立模块结果页或画布模块详情标签页；完整报表和跨快照结果仍不进入范围 |
 
 这些 DTO 只服务展示和命令绑定，不是第二套项目、物性、运行、结果或诊断真相源。后续实现必须继续先确认状态来源，再补 presentation 字段和 focused 回归，最后才调整 egui 布局。若没有正式 command surface，例如当前模块帮助入口，就只能在 DTO 中显式表达为空状态，不能临时伪造按钮。
 

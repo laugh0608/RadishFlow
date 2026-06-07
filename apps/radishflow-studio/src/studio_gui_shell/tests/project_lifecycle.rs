@@ -55,7 +55,10 @@ fn open_example_project_rebuilds_runtime_for_selected_sample() {
         rf_ui::RunStatus::Converged
     );
     assert!(solved_window.runtime.latest_solve_snapshot.is_some());
-    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Results);
+    assert_eq!(
+        app.right_sidebar_tab,
+        StudioShellRightSidebarTab::ModuleResults
+    );
     assert_eq!(
         app.bottom_drawer_tab,
         StudioShellBottomDrawerTab::ResultsTable

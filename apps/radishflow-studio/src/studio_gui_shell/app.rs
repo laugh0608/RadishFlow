@@ -734,13 +734,13 @@ impl ReadyAppState {
         }
 
         if window.runtime.latest_failure.is_some() {
-            self.right_sidebar_tab = StudioShellRightSidebarTab::Run;
+            self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
             self.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
         } else if window.runtime.latest_solve_snapshot.is_some() {
-            self.right_sidebar_tab = StudioShellRightSidebarTab::Results;
+            self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
             self.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
         } else {
-            self.right_sidebar_tab = StudioShellRightSidebarTab::Run;
+            self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
             self.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
         }
     }

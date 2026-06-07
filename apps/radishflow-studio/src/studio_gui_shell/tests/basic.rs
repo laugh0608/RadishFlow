@@ -78,6 +78,32 @@ fn render_alpha_workbench_texts(app: &mut ReadyAppState) -> Vec<String> {
     texts
 }
 
+fn render_right_sidebar_texts(app: &mut ReadyAppState) -> Vec<String> {
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 860.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            let mut hovered_drop_target = false;
+            app.render_right_sidebar(ctx, &window, &mut hovered_drop_target);
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
 fn render_property_page_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
     let window = snapshot.window_model();
@@ -447,6 +473,8 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
         "放置",
         "物性包",
         "检查器",
+        "模块设置",
+        "模块结果",
         "结果",
         "运行",
         "消息",
@@ -501,6 +529,28 @@ fn top_bar_exposes_home_property_and_flowsheet_navigation() {
         assert!(
             texts.iter().any(|text| text == expected),
             "expected top bar navigation to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
+fn right_sidebar_main_tabs_align_with_module_workbench_roles() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    let texts = render_right_sidebar_texts(&mut app);
+
+    for expected in ["检查器", "模块设置", "模块结果"] {
+        assert!(
+            texts.iter().any(|text| text == expected),
+            "expected right sidebar tab `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for retired in ["运行", "物性包"] {
+        assert!(
+            !texts.iter().any(|text| text == retired),
+            "expected retired right sidebar tab `{retired}` to be absent, rendered texts: {:?}",
             texts
         );
     }
@@ -1315,7 +1365,7 @@ fn blank_project_feed_port_exposes_stream_inspector_action() {
     app.dispatch_ui_command("canvas.begin_place_unit.feed");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
     accept_canvas_suggestion_by_id(&mut app, "local.feed.create_outlet.feed-1");
-    app.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+    app.right_sidebar_tab = StudioShellRightSidebarTab::ModuleSettings;
     app.dispatch_ui_command("inspector.focus_unit:feed-1");
 
     let texts = render_alpha_workbench_texts(&mut app);
@@ -1702,7 +1752,7 @@ fn bottom_results_table_uses_localized_compact_phase_column() {
 fn runtime_result_summary_is_localized_in_workbench() {
     let mut app = ready_app_state(&synced_workspace_config());
     app.dispatch_ui_command("run_panel.run_manual");
-    app.right_sidebar_tab = StudioShellRightSidebarTab::Results;
+    app.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
     app.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
 
     let texts = render_alpha_workbench_texts(&mut app);

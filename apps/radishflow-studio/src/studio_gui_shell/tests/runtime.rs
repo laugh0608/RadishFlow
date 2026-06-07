@@ -73,12 +73,12 @@ fn render_result_inspector_texts(
     render_runtime_area_texts(app, |app, ui| app.render_result_inspector(ui, &inspector))
 }
 
-fn render_runtime_results_tab_texts(
+fn render_runtime_module_results_tab_texts(
     app: &mut ReadyAppState,
     window: &radishflow_studio::StudioGuiWindowModel,
 ) -> Vec<String> {
     render_runtime_area_texts(app, |app, ui| {
-        app.render_runtime_results_tab(ui, window);
+        app.render_runtime_module_results_tab(ui, window);
     })
 }
 
@@ -88,6 +88,15 @@ fn render_runtime_inspector_tab_texts(
 ) -> Vec<String> {
     render_runtime_area_texts(app, |app, ui| {
         app.render_runtime_inspector_tab(ui, window);
+    })
+}
+
+fn render_runtime_module_settings_tab_texts(
+    app: &mut ReadyAppState,
+    window: &radishflow_studio::StudioGuiWindowModel,
+) -> Vec<String> {
+    render_runtime_area_texts(app, |app, ui| {
+        app.render_runtime_module_settings_tab(ui, window);
     })
 }
 
@@ -1407,7 +1416,7 @@ fn runtime_panel_renders_unit_summary_and_context_for_non_flash_intermediate_uni
 }
 
 #[test]
-fn runtime_results_tab_consumes_current_module_results_dto_for_active_unit() {
+fn runtime_module_results_tab_consumes_current_module_results_dto_for_active_unit() {
     let mut app = ready_app_state(&synced_workspace_config());
     app.dispatch_ui_command("run_panel.run_manual");
     app.dispatch_ui_command("inspector.focus_unit:heater-1");
@@ -1417,11 +1426,11 @@ fn runtime_results_tab_consumes_current_module_results_dto_for_active_unit() {
         window.module_results.state,
         radishflow_studio::StudioGuiWindowModuleResultsState::Current
     );
-    let texts = render_runtime_results_tab_texts(&mut app, &window);
+    let texts = render_runtime_module_results_tab_texts(&mut app, &window);
 
     assert!(
         texts.iter().any(|text| text == "模块结果"),
-        "expected Results tab to render Module Results heading, rendered texts: {texts:?}"
+        "expected Module Results tab to render heading, rendered texts: {texts:?}"
     );
     assert!(
         texts.iter().any(|text| text == "当前"),
@@ -1442,7 +1451,7 @@ fn runtime_results_tab_consumes_current_module_results_dto_for_active_unit() {
 }
 
 #[test]
-fn runtime_results_tab_consumes_stale_module_results_without_old_unit_result() {
+fn runtime_module_results_tab_consumes_stale_module_results_without_old_unit_result() {
     let mut app = ready_app_state(&synced_workspace_config());
     app.dispatch_ui_command("run_panel.run_manual");
     app.dispatch_ui_command("inspector.focus_unit:heater-1");
@@ -1459,13 +1468,13 @@ fn runtime_results_tab_consumes_stale_module_results_without_old_unit_result() {
         radishflow_studio::StudioGuiWindowModuleResultsState::Stale
     );
     assert!(window.runtime.latest_solve_snapshot.is_none());
-    let texts = render_runtime_results_tab_texts(&mut app, &window);
+    let texts = render_runtime_module_results_tab_texts(&mut app, &window);
 
     assert!(
         texts.iter().any(|text| text == "模块结果")
             && texts.iter().any(|text| text == "已过期")
             && texts.iter().any(|text| text.contains("请重新运行")),
-        "expected stale module result notice in Results tab, rendered texts: {texts:?}"
+        "expected stale module result notice in Module Results tab, rendered texts: {texts:?}"
     );
     assert!(
         !texts.iter().any(|text| text.contains("stream-heated"))
@@ -1475,7 +1484,7 @@ fn runtime_results_tab_consumes_stale_module_results_without_old_unit_result() {
 }
 
 #[test]
-fn runtime_inspector_tab_consumes_module_settings_dto_for_active_unit() {
+fn runtime_module_settings_tab_consumes_module_settings_dto_for_active_unit() {
     let mut app = ready_app_state(&synced_workspace_config());
     app.dispatch_ui_command("run_panel.run_manual");
     app.dispatch_ui_command("inspector.focus_unit:heater-1");
@@ -1485,13 +1494,13 @@ fn runtime_inspector_tab_consumes_module_settings_dto_for_active_unit() {
         window.module_settings.state,
         radishflow_studio::StudioGuiWindowModuleSettingsState::Ready
     );
-    let texts = render_runtime_inspector_tab_texts(&mut app, &window);
+    let texts = render_runtime_module_settings_tab_texts(&mut app, &window);
 
     assert!(
         texts.iter().any(|text| text == "模块设置")
             && texts.iter().any(|text| text == "就绪")
             && texts.iter().any(|text| text == "heater-1"),
-        "expected Inspector tab to render Module Settings heading and active unit, rendered texts: {texts:?}"
+        "expected Module Settings tab to render heading and active unit, rendered texts: {texts:?}"
     );
     assert!(
         texts
@@ -1516,6 +1525,28 @@ fn runtime_inspector_tab_consumes_module_settings_dto_for_active_unit() {
             .iter()
             .any(|text| text == app.locale.text(ShellText::InspectorLatestResult)),
         "Module Settings must not render Module Results latest-result content, rendered texts: {texts:?}"
+    );
+}
+
+#[test]
+fn runtime_inspector_tab_keeps_active_inspector_detail_separate_from_module_settings() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.dispatch_ui_command("inspector.focus_unit:heater-1");
+    let window = app.platform_host.snapshot().window_model();
+
+    let texts = render_runtime_inspector_tab_texts(&mut app, &window);
+
+    assert!(
+        texts
+            .iter()
+            .any(|text| text == app.locale.text(ShellText::ActiveInspectorTarget))
+            && texts.iter().any(|text| text == "heater-1"),
+        "expected Inspector tab to render active inspector detail, rendered texts: {texts:?}"
+    );
+    assert!(
+        !texts.iter().any(|text| text == "模块设置"),
+        "Inspector tab must not render Module Settings heading, rendered texts: {texts:?}"
     );
 }
 

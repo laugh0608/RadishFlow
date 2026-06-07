@@ -758,18 +758,13 @@ impl ReadyAppState {
             );
             ui.selectable_value(
                 &mut self.right_sidebar_tab,
-                StudioShellRightSidebarTab::Results,
-                self.locale.text(ShellText::Results),
+                StudioShellRightSidebarTab::ModuleSettings,
+                self.locale.runtime_label("Module Settings").as_ref(),
             );
             ui.selectable_value(
                 &mut self.right_sidebar_tab,
-                StudioShellRightSidebarTab::Run,
-                self.locale.text(ShellText::Run),
-            );
-            ui.selectable_value(
-                &mut self.right_sidebar_tab,
-                StudioShellRightSidebarTab::Package,
-                self.locale.text(ShellText::PropertyPackage),
+                StudioShellRightSidebarTab::ModuleResults,
+                self.locale.runtime_label("Module Results").as_ref(),
             );
         });
         ui.separator();
@@ -783,9 +778,12 @@ impl ReadyAppState {
                 StudioShellRightSidebarTab::Inspector => {
                     self.render_runtime_inspector_tab(ui, window)
                 }
-                StudioShellRightSidebarTab::Results => self.render_runtime_results_tab(ui, window),
-                StudioShellRightSidebarTab::Run => self.render_runtime_run_tab(ui, window),
-                StudioShellRightSidebarTab::Package => self.render_runtime_package_tab(ui, window),
+                StudioShellRightSidebarTab::ModuleSettings => {
+                    self.render_runtime_module_settings_tab(ui, window)
+                }
+                StudioShellRightSidebarTab::ModuleResults => {
+                    self.render_runtime_module_results_tab(ui, window)
+                }
             });
     }
 
@@ -1025,7 +1023,7 @@ impl ReadyAppState {
                     if response.clicked() {
                         self.result_inspector
                             .select_stream(&snapshot.snapshot_id, stream.stream_id.clone());
-                        self.right_sidebar_tab = StudioShellRightSidebarTab::Results;
+                        self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
                     }
                     ui.label(format!("{:.2}", stream.temperature_k));
                     ui.label(format!("{:.0}", stream.pressure_pa));
@@ -1068,7 +1066,7 @@ impl ReadyAppState {
                     if unit_response.clicked() {
                         self.result_inspector
                             .select_unit(&snapshot.snapshot_id, step.unit_id.clone());
-                        self.right_sidebar_tab = StudioShellRightSidebarTab::Results;
+                        self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
                     }
                     ui.label(
                         self.locale

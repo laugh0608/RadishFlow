@@ -41,9 +41,9 @@ Studio UI 专题不再处理零散按钮、文案、hover、局部 selector 或�
 
 ### 本阶段重点
 
-P0 先行。P1 不再维护完整 Workbench 复制稿；只有当 `studio-client-main.pen` 中的模块设置 / 模块结果结构评审后仍不够细，再创建窄口径 `module-settings-panel.pen`。当前右侧 Module Settings 第一刀实现已确认参数、端口和诊断有正式 active Inspector state / command 来源，帮助入口尚无正式 command，因此暂不创建 `module-settings-panel.pen`。P2 只做边界和页面职责，不进入完整设计稿细化，除非 P0 / P1 已经评审通过。
+P0 先行。P1 不再维护完整 Workbench 复制稿；只有当 `studio-client-main.pen` 中的模块设置 / 模块结果结构评审后仍不够细，再创建窄口径 `module-settings-panel.pen`。当前右侧栏第一轮实现已收敛为 `检查器 / 模块设置 / 模块结果`：模块设置的参数、端口和诊断来自正式 active Inspector state / command 来源，模块结果来自 `window.module_results`，帮助入口尚无正式 command，因此暂不创建 `module-settings-panel.pen`。P2 只做边界和页面职责，不进入完整设计稿细化，除非 P0 / P1 已经评审通过。
 
-当前不把端点拆到更细，例如单独的 Home 设计稿、Canvas 设计稿或 Result 设计稿。原因是 Studio 客户端本体必须先统一主工作流和区域职责，再决定是否拆分子稿。若后续 P0 设计稿过大，再按 Home / Property / Workbench / Result 等域拆分，并保留同一命名前缀。独立物性页当前已完成顶部导航下的第一刀实现，继续消费正式 Property page DTO；右侧 Package tab 暂留兼容入口，不作为后续主入口。
+当前不把端点拆到更细，例如单独的 Home 设计稿、Canvas 设计稿或 Result 设计稿。原因是 Studio 客户端本体必须先统一主工作流和区域职责，再决定是否拆分子稿。若后续 P0 设计稿过大，再按 Home / Property / Workbench / Result 等域拆分，并保留同一命名前缀。独立物性页当前已完成顶部导航下的第一刀实现，继续消费正式 Property page DTO；`Package` 已不再作为右侧栏主入口，物性主路径由独立 `物性` screen 承担。
 
 ## 暂不纳入项
 
