@@ -342,6 +342,9 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     assert_eq!(locale.text(ShellText::ResultInspector), "结果检查器");
     assert_eq!(locale.text(ShellText::StreamComparison), "流股对比");
     assert_eq!(locale.text(ShellText::Delta), "差值");
+    assert_eq!(locale.text(ShellText::File), "文件");
+    assert_eq!(locale.text(ShellText::Tools), "工具");
+    assert_eq!(locale.text(ShellText::Settings), "设置");
     assert_eq!(locale.text(ShellText::ViewOptions), "视图");
     assert_eq!(locale.text(ShellText::DiagnosticTargets), "诊断目标");
     assert_eq!(
@@ -425,19 +428,19 @@ fn native_options_use_metal_only_on_macos_to_avoid_opengl_loader_noise() {
 }
 
 #[test]
-fn top_bar_keeps_alpha_primary_path_visible_and_hides_low_frequency_controls() {
+fn top_bar_aligns_primary_navigation_and_command_buckets() {
     let mut app = ready_app_state(&synced_workspace_config());
     let texts = render_top_bar_texts(&mut app);
 
     for expected in [
-        "快速操作",
-        "打开示例",
-        "新建空白",
-        "打开项目...",
+        "文件",
+        "主页",
+        "物性",
+        "流程图",
         "运行",
-        "保存",
-        "另存为...",
-        "视图",
+        "结果",
+        "工具",
+        "设置",
     ] {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
@@ -446,6 +449,13 @@ fn top_bar_keeps_alpha_primary_path_visible_and_hides_low_frequency_controls() {
         );
     }
     for hidden in [
+        "快速操作",
+        "打开示例",
+        "新建空白",
+        "打开项目...",
+        "保存",
+        "另存为...",
+        "视图",
         "新建逻辑窗口",
         "English",
         "命令面板 (Ctrl+K)",
