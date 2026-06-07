@@ -557,6 +557,28 @@ fn right_sidebar_main_tabs_align_with_module_workbench_roles() {
 }
 
 #[test]
+fn bottom_drawer_tabs_align_with_run_information_roles() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    let texts = render_bottom_drawer_texts(&mut app);
+
+    for expected in ["消息", "运行日志", "收敛", "建议", "诊断", "结果表"] {
+        assert!(
+            texts.iter().any(|text| text == expected),
+            "expected bottom drawer tab `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for right_sidebar_only in ["检查器", "模块设置", "模块结果"] {
+        assert!(
+            !texts.iter().any(|text| text == right_sidebar_only),
+            "bottom drawer must not render right sidebar tab `{right_sidebar_only}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
 fn property_screen_renders_independent_property_page_from_window_model() {
     let mut app = ready_app_state(&synced_workspace_config());
 
@@ -1746,6 +1768,57 @@ fn bottom_results_table_uses_localized_compact_phase_column() {
             texts
         );
     }
+}
+
+#[test]
+fn bottom_convergence_tab_consumes_status_summary_and_current_snapshot() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.bottom_drawer_tab = StudioShellBottomDrawerTab::Convergence;
+
+    let texts = render_bottom_drawer_texts(&mut app);
+
+    for expected in ["收敛", "运行", "步骤", "诊断", "当前", "已收敛"] {
+        assert!(
+            texts.iter().any(|text| text == expected),
+            "expected convergence tab to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    assert!(
+        texts.iter().any(|text| text.contains("已求解")),
+        "expected convergence tab to render current solve summary, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        texts.iter().any(|text| text.contains("快照")),
+        "expected convergence tab to render current snapshot identity, rendered texts: {:?}",
+        texts
+    );
+}
+
+#[test]
+fn bottom_suggestions_tab_consumes_canvas_suggestions() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.create_blank_project();
+    app.dispatch_ui_command("canvas.begin_place_unit.feed");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
+    app.bottom_drawer_tab = StudioShellBottomDrawerTab::Suggestions;
+
+    let window = app.platform_host.snapshot().window_model();
+    assert!(
+        window.canvas.suggestion_count > 0,
+        "expected feed placement to produce canvas suggestions before rendering"
+    );
+    let texts = render_bottom_drawer_texts(&mut app);
+
+    assert!(
+        texts.iter().any(|text| text == "建议")
+            && texts.iter().any(|text| text == "已聚焦")
+            && texts.iter().any(|text| text == "创建流股"),
+        "expected suggestions tab to render focused canvas suggestion action, rendered texts: {:?}",
+        texts
+    );
 }
 
 #[test]

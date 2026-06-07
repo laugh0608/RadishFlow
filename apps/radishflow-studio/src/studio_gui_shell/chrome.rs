@@ -895,13 +895,23 @@ impl ReadyAppState {
             );
             ui.selectable_value(
                 &mut self.bottom_drawer_tab,
-                StudioShellBottomDrawerTab::ResultsTable,
-                self.locale.text(ShellText::ResultsTable),
+                StudioShellBottomDrawerTab::Convergence,
+                self.locale.runtime_label("Convergence").as_ref(),
+            );
+            ui.selectable_value(
+                &mut self.bottom_drawer_tab,
+                StudioShellBottomDrawerTab::Suggestions,
+                self.locale.text(ShellText::Suggestions),
             );
             ui.selectable_value(
                 &mut self.bottom_drawer_tab,
                 StudioShellBottomDrawerTab::Diagnostics,
                 self.locale.text(ShellText::Diagnostics),
+            );
+            ui.selectable_value(
+                &mut self.bottom_drawer_tab,
+                StudioShellBottomDrawerTab::ResultsTable,
+                self.locale.text(ShellText::ResultsTable),
             );
         });
         ui.separator();
@@ -914,11 +924,17 @@ impl ReadyAppState {
             .show(ui, |ui| match self.bottom_drawer_tab {
                 StudioShellBottomDrawerTab::Messages => self.render_bottom_messages(ui, window),
                 StudioShellBottomDrawerTab::RunLog => self.render_bottom_run_log(ui, window),
-                StudioShellBottomDrawerTab::ResultsTable => {
-                    self.render_bottom_results_table(ui, window)
+                StudioShellBottomDrawerTab::Convergence => {
+                    self.render_bottom_convergence(ui, window)
+                }
+                StudioShellBottomDrawerTab::Suggestions => {
+                    self.render_bottom_suggestions(ui, window)
                 }
                 StudioShellBottomDrawerTab::Diagnostics => {
                     self.render_bottom_diagnostics(ui, window)
+                }
+                StudioShellBottomDrawerTab::ResultsTable => {
+                    self.render_bottom_results_table(ui, window)
                 }
             });
     }
@@ -984,6 +1000,171 @@ impl ReadyAppState {
                 ui,
                 format!("[{}] {}", log_level_label(entry.level), entry.message),
             );
+        }
+    }
+
+    fn render_bottom_convergence(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        ui.horizontal_wrapped(|ui| {
+            ui.label(
+                egui::RichText::new(self.locale.runtime_label("Convergence").as_ref()).strong(),
+            );
+            render_status_chip(
+                ui,
+                self.locale
+                    .runtime_label(window.status_summary.snapshot_consistency_label)
+                    .as_ref(),
+                run_status_color(window.status_summary.snapshot_consistency_label),
+            );
+        });
+        ui.add_space(4.0);
+        egui::Grid::new("bottom-convergence-summary")
+            .num_columns(3)
+            .spacing([8.0, 3.0])
+            .striped(true)
+            .show(ui, |ui| {
+                for metric in &window.status_summary.metrics {
+                    if !matches!(
+                        metric.label,
+                        "Run" | "Convergence" | "Steps" | "Diagnostics"
+                    ) {
+                        continue;
+                    }
+                    ui.small(
+                        egui::RichText::new(self.locale.runtime_label(metric.label).as_ref())
+                            .strong(),
+                    );
+                    render_status_chip(
+                        ui,
+                        self.locale.runtime_label(&metric.status_label).as_ref(),
+                        run_status_color(&metric.status_label),
+                    );
+                    render_wrapped_small(ui, self.locale.runtime_label(&metric.value).as_ref());
+                    ui.end_row();
+                }
+            });
+
+        ui.add_space(6.0);
+        if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
+            render_wrapped_label(
+                ui,
+                self.locale.solve_snapshot_primary_summary(
+                    window.runtime.workspace_document.unit_count,
+                    snapshot.diagnostic_count,
+                    snapshot.stream_count,
+                ),
+            );
+            render_wrapped_small(
+                ui,
+                self.locale
+                    .snapshot_identity(&snapshot.snapshot_id, snapshot.sequence),
+            );
+            ui.small(self.locale.solve_snapshot_counts(
+                snapshot.stream_count,
+                snapshot.step_count,
+                snapshot.diagnostic_count,
+            ));
+            return;
+        }
+        if let Some(failure) = window.runtime.latest_failure.as_ref() {
+            self.render_latest_failure_summary(ui, failure);
+            return;
+        }
+        if let Some(stale_snapshot) = window.runtime.stale_solve_snapshot.as_ref() {
+            self.render_stale_solve_snapshot_notice(ui, stale_snapshot);
+            return;
+        }
+        if let Some(summary) = window
+            .runtime
+            .run_panel
+            .view()
+            .latest_snapshot_summary
+            .as_ref()
+        {
+            render_wrapped_label(ui, self.locale.runtime_label(summary).as_ref());
+        } else {
+            ui.small(self.locale.text(ShellText::NoSolveSnapshot));
+        }
+    }
+
+    fn render_bottom_suggestions(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        let canvas_view = window.canvas.widget.view();
+        let run_panel_view = window.runtime.run_panel.view();
+        ui.horizontal_wrapped(|ui| {
+            ui.label(egui::RichText::new(self.locale.text(ShellText::Suggestions)).strong());
+            render_status_chip(
+                ui,
+                &canvas_view.suggestion_count.to_string(),
+                egui::Color32::from_rgb(86, 118, 168),
+            );
+        });
+
+        let mut rendered_any = false;
+        if let Some(notice) = run_panel_view.notice.as_ref() {
+            rendered_any = true;
+            ui.add_space(4.0);
+            ui.colored_label(notice_color(notice.level), &notice.title);
+            render_wrapped_label(ui, &notice.message);
+            if let Some(recovery_action) = notice.recovery_action.as_ref() {
+                render_wrapped_small(ui, recovery_action.detail);
+                if ui.button(recovery_action.title).clicked() {
+                    match window.runtime.run_panel.activate_recovery_action() {
+                        RunPanelRecoveryWidgetEvent::Requested { .. } => {
+                            self.dispatch_ui_command("run_panel.recover_failure");
+                        }
+                        RunPanelRecoveryWidgetEvent::Missing => {}
+                    }
+                }
+            }
+        }
+
+        for suggestion in canvas_view.suggestions.iter().take(6) {
+            rendered_any = true;
+            ui.add_space(6.0);
+            ui.horizontal_wrapped(|ui| {
+                render_status_chip(
+                    ui,
+                    self.locale.runtime_label(suggestion.status_label).as_ref(),
+                    egui::Color32::from_rgb(86, 118, 168),
+                );
+                ui.small(format!("{:.0}%", suggestion.confidence * 100.0));
+                if suggestion.is_focused {
+                    render_status_chip(
+                        ui,
+                        self.locale.runtime_label("Focused").as_ref(),
+                        egui::Color32::from_rgb(66, 118, 92),
+                    );
+                }
+            });
+            render_wrapped_small(ui, &suggestion.reason);
+            if ui
+                .add_enabled(
+                    suggestion.explicit_accept_enabled,
+                    egui::Button::new(self.locale.runtime_label(suggestion.action_label).as_ref()),
+                )
+                .on_hover_text(&suggestion.id)
+                .clicked()
+            {
+                match window.canvas.widget.activate_suggestion(&suggestion.id) {
+                    radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionRequested {
+                        event,
+                        ..
+                    } => self.dispatch_event(event),
+                    radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionDisabled {
+                        ..
+                    }
+                    | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionMissing { .. }
+                    | radishflow_studio::StudioGuiCanvasWidgetEvent::Requested { .. }
+                    | radishflow_studio::StudioGuiCanvasWidgetEvent::Disabled { .. }
+                    | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing { .. } => {}
+                }
+            }
+        }
+
+        if !rendered_any {
+            ui.small(match self.locale {
+                StudioShellLocale::En => "No current suggestions.",
+                StudioShellLocale::ZhCn => "暂无建议。",
+            });
         }
     }
 
@@ -1483,7 +1664,10 @@ fn workbench_bottom_drawer_height(
             }
         }
         StudioShellBottomDrawerTab::RunLog => 156.0,
-        StudioShellBottomDrawerTab::ResultsTable | StudioShellBottomDrawerTab::Diagnostics => 190.0,
+        StudioShellBottomDrawerTab::Convergence
+        | StudioShellBottomDrawerTab::Suggestions
+        | StudioShellBottomDrawerTab::Diagnostics
+        | StudioShellBottomDrawerTab::ResultsTable => 190.0,
     }
 }
 

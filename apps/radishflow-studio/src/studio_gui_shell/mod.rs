@@ -235,8 +235,10 @@ enum StudioShellBottomDrawerTab {
     #[default]
     Messages,
     RunLog,
-    ResultsTable,
+    Convergence,
+    Suggestions,
     Diagnostics,
+    ResultsTable,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
