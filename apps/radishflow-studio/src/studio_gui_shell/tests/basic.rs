@@ -562,6 +562,46 @@ fn property_context_toolbar_renders_existing_package_component_commands_and_stat
 }
 
 #[test]
+fn run_context_toolbar_renders_existing_run_commands_and_state() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.screen = StudioShellScreen::Run;
+
+    let texts = render_top_bar_texts(&mut app);
+
+    for expected in [
+        "运行工具栏",
+        "控制",
+        "运行当前流程",
+        "监控",
+        "运行日志",
+        "收敛",
+        "建议",
+        "诊断",
+        "模式",
+        "快照",
+    ] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected run context toolbar to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for hidden in [
+        "完整运行控制台",
+        "完整日志系统",
+        "完整报表",
+        "批量运行",
+        "自动调度",
+    ] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden)),
+            "run context toolbar must not expose out-of-scope `{hidden}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
 fn shell_defaults_to_alpha_workbench_layout_regions() {
     let mut app = ready_app_state(&synced_workspace_config());
     assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Project);
@@ -627,7 +667,7 @@ fn top_bar_exposes_home_property_and_flowsheet_navigation() {
     let mut app = ready_app_state(&synced_workspace_config());
     let texts = render_top_bar_texts(&mut app);
 
-    for expected in ["主页", "物性", "流程图"] {
+    for expected in ["主页", "物性", "流程图", "运行"] {
         assert!(
             texts.iter().any(|text| text == expected),
             "expected top bar navigation to render `{expected}`, rendered texts: {:?}",

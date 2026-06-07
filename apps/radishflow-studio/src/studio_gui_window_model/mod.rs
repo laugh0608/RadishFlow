@@ -90,6 +90,10 @@ pub struct StudioGuiWindowContextToolbarSectionModel {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioGuiWindowContextToolbarItemTarget {
     Command,
+    RunLog,
+    Convergence,
+    Suggestions,
+    Diagnostics,
     ModuleResults,
     ResultsTable,
 }
@@ -617,6 +621,7 @@ pub struct StudioGuiWindowModel {
     pub module_results: StudioGuiWindowModuleResultsModel,
     pub property_context_toolbar: StudioGuiWindowContextToolbarModel,
     pub flowsheet_context_toolbar: StudioGuiWindowContextToolbarModel,
+    pub run_context_toolbar: StudioGuiWindowContextToolbarModel,
     pub canvas: StudioGuiWindowCanvasAreaModel,
     pub runtime: StudioGuiWindowRuntimeAreaModel,
     pub status_summary: StudioGuiWindowStatusSummaryModel,
@@ -669,6 +674,12 @@ impl StudioGuiWindowModel {
             &runtime,
             &status_summary,
         );
+        let run_context_toolbar = StudioGuiWindowContextToolbarModel::from_run_sources(
+            &commands,
+            &runtime,
+            &canvas,
+            &status_summary,
+        );
         let mut window = Self {
             header: header_from_snapshot(snapshot),
             commands,
@@ -678,6 +689,7 @@ impl StudioGuiWindowModel {
             module_results,
             property_context_toolbar,
             flowsheet_context_toolbar,
+            run_context_toolbar,
             canvas,
             status_summary,
             runtime,
@@ -922,6 +934,40 @@ impl StudioGuiWindowContextToolbarModel {
             status_items: property_context_status_items(property_page),
         }
     }
+
+    fn from_run_sources(
+        commands: &StudioGuiWindowCommandAreaModel,
+        runtime: &StudioGuiWindowRuntimeAreaModel,
+        canvas: &StudioGuiWindowCanvasAreaModel,
+        status_summary: &StudioGuiWindowStatusSummaryModel,
+    ) -> Self {
+        let control_items =
+            context_command_items(commands, StudioGuiCommandGroup::RunPanel, |entry| {
+                matches!(
+                    entry.command_id.as_str(),
+                    "run_panel.run_manual"
+                        | "run_panel.resume_workspace"
+                        | "run_panel.set_hold"
+                        | "run_panel.set_active"
+                )
+            });
+        let recovery_items =
+            context_command_items(commands, StudioGuiCommandGroup::Recovery, |entry| {
+                entry.command_id == "run_panel.recover_failure"
+            });
+        let monitor_items = run_context_monitor_items(runtime, canvas, status_summary);
+
+        let mut sections = Vec::new();
+        push_context_toolbar_section(&mut sections, "Control", control_items);
+        push_context_toolbar_section(&mut sections, "Recovery", recovery_items);
+        push_context_toolbar_section(&mut sections, "Monitor", monitor_items);
+
+        Self {
+            title: "Run Context",
+            sections,
+            status_items: run_context_status_items(runtime, status_summary),
+        }
+    }
 }
 
 fn property_component_context_toolbar_item(
@@ -980,6 +1026,124 @@ fn property_context_status_items(
             detail: "MVP scope only exposes controlled built-in property assets.".to_string(),
         },
     ]
+}
+
+fn run_context_monitor_items(
+    runtime: &StudioGuiWindowRuntimeAreaModel,
+    canvas: &StudioGuiWindowCanvasAreaModel,
+    status_summary: &StudioGuiWindowStatusSummaryModel,
+) -> Vec<StudioGuiWindowContextToolbarItemModel> {
+    let convergence = status_summary_metric(status_summary, "Convergence");
+    let diagnostics = status_summary_metric(status_summary, "Diagnostics");
+    vec![
+        StudioGuiWindowContextToolbarItemModel {
+            target: StudioGuiWindowContextToolbarItemTarget::RunLog,
+            command_id: None,
+            enabled: true,
+            label: "Run Log".to_string(),
+            detail: runtime
+                .run_panel
+                .view()
+                .latest_log_message
+                .clone()
+                .unwrap_or_else(|| "Open the bottom run log.".to_string()),
+            status_label: Some(if runtime.latest_log_entry.is_some() {
+                "Available".to_string()
+            } else {
+                "None".to_string()
+            }),
+        },
+        StudioGuiWindowContextToolbarItemModel {
+            target: StudioGuiWindowContextToolbarItemTarget::Convergence,
+            command_id: None,
+            enabled: true,
+            label: "Convergence".to_string(),
+            detail: convergence
+                .map(|metric| metric.detail.clone())
+                .unwrap_or_else(|| "Open the bottom convergence summary.".to_string()),
+            status_label: convergence.map(|metric| metric.status_label.clone()),
+        },
+        StudioGuiWindowContextToolbarItemModel {
+            target: StudioGuiWindowContextToolbarItemTarget::Suggestions,
+            command_id: None,
+            enabled: true,
+            label: "Suggestions".to_string(),
+            detail: format!(
+                "{} canvas suggestion(s) are available from the current canvas presentation.",
+                canvas.suggestion_count
+            ),
+            status_label: Some(if canvas.suggestion_count > 0 {
+                "Available".to_string()
+            } else {
+                "None".to_string()
+            }),
+        },
+        StudioGuiWindowContextToolbarItemModel {
+            target: StudioGuiWindowContextToolbarItemTarget::Diagnostics,
+            command_id: None,
+            enabled: true,
+            label: "Diagnostics".to_string(),
+            detail: diagnostics
+                .map(|metric| metric.detail.clone())
+                .unwrap_or_else(|| "Open the bottom diagnostics view.".to_string()),
+            status_label: diagnostics.map(|metric| metric.status_label.clone()),
+        },
+    ]
+}
+
+fn run_context_status_items(
+    runtime: &StudioGuiWindowRuntimeAreaModel,
+    status_summary: &StudioGuiWindowStatusSummaryModel,
+) -> Vec<StudioGuiWindowContextToolbarStatusModel> {
+    let run_panel_view = runtime.run_panel.view();
+    let mut items = vec![StudioGuiWindowContextToolbarStatusModel {
+        label: "Mode",
+        value: run_panel_view.mode_label.to_string(),
+        status_label: run_panel_view.mode_label.to_string(),
+        detail: "Simulation mode from the formal Run Panel state.".to_string(),
+    }];
+    items.extend(
+        status_summary
+            .metrics
+            .iter()
+            .filter(|metric| {
+                matches!(
+                    metric.label,
+                    "Run" | "Convergence" | "Steps" | "Diagnostics"
+                )
+            })
+            .map(|metric| StudioGuiWindowContextToolbarStatusModel {
+                label: metric.label,
+                value: metric.value.clone(),
+                status_label: metric.status_label.clone(),
+                detail: metric.detail.clone(),
+            }),
+    );
+    if let Some(pending) = run_panel_view.pending_label {
+        items.push(StudioGuiWindowContextToolbarStatusModel {
+            label: "Pending",
+            value: pending.to_string(),
+            status_label: pending.to_string(),
+            detail: "Pending reason from the formal Run Panel state.".to_string(),
+        });
+    }
+    items.push(StudioGuiWindowContextToolbarStatusModel {
+        label: "Snapshot",
+        value: status_summary.snapshot_consistency_label.to_string(),
+        status_label: status_summary.snapshot_consistency_label.to_string(),
+        detail: status_summary.snapshot_consistency_detail.clone(),
+    });
+    items
+}
+
+fn status_summary_metric<'a>(
+    status_summary: &'a StudioGuiWindowStatusSummaryModel,
+    label: &str,
+) -> Option<&'a StudioGuiWindowStatusSummaryMetricModel> {
+    status_summary
+        .metrics
+        .iter()
+        .find(|metric| metric.label == label)
 }
 
 fn context_command_items(

@@ -52,7 +52,6 @@ impl ReadyAppState {
                 ui.separator();
                 self.render_top_screen_navigation(ui);
                 ui.separator();
-                self.render_run_top_menu(ui, window);
                 self.render_results_top_menu(ui);
                 self.render_tools_top_menu(ui, windows, current_window_id, window);
                 self.render_settings_top_menu(ui);
@@ -60,6 +59,7 @@ impl ReadyAppState {
             let context_toolbar = match self.screen {
                 StudioShellScreen::Property => Some(&window.property_context_toolbar),
                 StudioShellScreen::Workbench => Some(&window.flowsheet_context_toolbar),
+                StudioShellScreen::Run => Some(&window.run_context_toolbar),
                 StudioShellScreen::Home => None,
             };
             if let Some(context_toolbar) = context_toolbar {
@@ -179,6 +179,18 @@ impl ReadyAppState {
                         self.dispatch_ui_command(command_id);
                     }
                 }
+                StudioGuiWindowContextToolbarItemTarget::RunLog => {
+                    self.focus_run_bottom_drawer_tab(StudioShellBottomDrawerTab::RunLog);
+                }
+                StudioGuiWindowContextToolbarItemTarget::Convergence => {
+                    self.focus_run_bottom_drawer_tab(StudioShellBottomDrawerTab::Convergence);
+                }
+                StudioGuiWindowContextToolbarItemTarget::Suggestions => {
+                    self.focus_run_bottom_drawer_tab(StudioShellBottomDrawerTab::Suggestions);
+                }
+                StudioGuiWindowContextToolbarItemTarget::Diagnostics => {
+                    self.focus_run_bottom_drawer_tab(StudioShellBottomDrawerTab::Diagnostics);
+                }
                 StudioGuiWindowContextToolbarItemTarget::ModuleResults => {
                     self.screen = StudioShellScreen::Workbench;
                     self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
@@ -276,55 +288,11 @@ impl ReadyAppState {
             StudioShellScreen::Workbench,
             self.locale.text(ShellText::Flowsheet),
         );
-    }
-
-    fn render_run_top_menu(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
-        ui.menu_button(self.locale.text(ShellText::Run), |ui| {
-            let run_command = window_command_toolbar_item(&window.commands, "run_panel.run_manual");
-            let run_enabled = run_command.map(|command| command.enabled).unwrap_or(false);
-            let run_hover = run_command
-                .map(|command| command.hover_text.as_str())
-                .unwrap_or("Run command is not available in the current workspace.");
-            if ui
-                .add_enabled(
-                    run_enabled,
-                    egui::Button::new(self.locale.text(ShellText::RunCurrentWorkspace))
-                        .fill(egui::Color32::from_rgb(230, 239, 252)),
-                )
-                .on_hover_text(run_hover)
-                .clicked()
-            {
-                self.screen = StudioShellScreen::Workbench;
-                self.dispatch_ui_command("run_panel.run_manual");
-                ui.close_menu();
-            }
-            ui.separator();
-            if ui.button(self.locale.text(ShellText::RuntimeLog)).clicked() {
-                self.focus_bottom_drawer_tab(StudioShellBottomDrawerTab::RunLog);
-                ui.close_menu();
-            }
-            if ui
-                .button(self.locale.runtime_label("Convergence").as_ref())
-                .clicked()
-            {
-                self.focus_bottom_drawer_tab(StudioShellBottomDrawerTab::Convergence);
-                ui.close_menu();
-            }
-            if ui
-                .button(self.locale.text(ShellText::Suggestions))
-                .clicked()
-            {
-                self.focus_bottom_drawer_tab(StudioShellBottomDrawerTab::Suggestions);
-                ui.close_menu();
-            }
-            if ui
-                .button(self.locale.text(ShellText::Diagnostics))
-                .clicked()
-            {
-                self.focus_bottom_drawer_tab(StudioShellBottomDrawerTab::Diagnostics);
-                ui.close_menu();
-            }
-        });
+        ui.selectable_value(
+            &mut self.screen,
+            StudioShellScreen::Run,
+            self.locale.text(ShellText::Run),
+        );
     }
 
     fn render_results_top_menu(&mut self, ui: &mut egui::Ui) {
@@ -425,6 +393,11 @@ impl ReadyAppState {
 
     fn focus_bottom_drawer_tab(&mut self, tab: StudioShellBottomDrawerTab) {
         self.screen = StudioShellScreen::Workbench;
+        self.bottom_drawer_tab = tab;
+    }
+
+    fn focus_run_bottom_drawer_tab(&mut self, tab: StudioShellBottomDrawerTab) {
+        self.screen = StudioShellScreen::Run;
         self.bottom_drawer_tab = tab;
     }
 
@@ -1861,17 +1834,6 @@ fn workbench_bottom_drawer_height(
         | StudioShellBottomDrawerTab::Diagnostics
         | StudioShellBottomDrawerTab::ResultsTable => 190.0,
     }
-}
-
-fn window_command_toolbar_item<'a>(
-    commands: &'a radishflow_studio::StudioGuiWindowCommandAreaModel,
-    command_id: &str,
-) -> Option<&'a radishflow_studio::StudioGuiWindowToolbarItemModel> {
-    commands
-        .toolbar_sections
-        .iter()
-        .flat_map(|section| section.items.iter())
-        .find(|item| item.command_id == command_id)
 }
 
 fn context_toolbar_status_color(status_label: &str) -> egui::Color32 {

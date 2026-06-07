@@ -5405,6 +5405,119 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
 }
 
 #[test]
+fn studio_gui_window_model_builds_run_context_toolbar_from_run_panel_state() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let solved = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected run dispatch");
+    let window = solved.window;
+
+    assert_eq!(window.run_context_toolbar.title, "Run Context");
+    assert_eq!(
+        window
+            .run_context_toolbar
+            .sections
+            .iter()
+            .map(|section| section.title)
+            .collect::<Vec<_>>(),
+        vec!["Control", "Monitor"]
+    );
+
+    let control_section = context_toolbar_section(&window.run_context_toolbar, "Control");
+    let control_command_ids = control_section
+        .items
+        .iter()
+        .map(|item| {
+            assert_eq!(
+                item.target,
+                crate::StudioGuiWindowContextToolbarItemTarget::Command
+            );
+            assert!(
+                item.enabled,
+                "run context toolbar must hide disabled commands"
+            );
+            item.command_id
+                .as_deref()
+                .expect("run toolbar control item must target a registered command")
+        })
+        .collect::<Vec<_>>();
+    assert!(control_command_ids.contains(&"run_panel.run_manual"));
+    assert!(
+        control_command_ids.iter().all(|command_id| matches!(
+            *command_id,
+            "run_panel.run_manual"
+                | "run_panel.resume_workspace"
+                | "run_panel.set_hold"
+                | "run_panel.set_active"
+        )),
+        "run context toolbar control section must only expose formal Run Panel commands: {control_command_ids:?}"
+    );
+    assert!(
+        window
+            .run_context_toolbar
+            .sections
+            .iter()
+            .flat_map(|section| section.items.iter())
+            .filter_map(|item| item.command_id.as_deref())
+            .all(|command_id| command_id != "run_panel.recover_failure"),
+        "disabled recovery command must not render in run context toolbar"
+    );
+
+    let monitor_section = context_toolbar_section(&window.run_context_toolbar, "Monitor");
+    assert_eq!(
+        monitor_section
+            .items
+            .iter()
+            .map(|item| (item.target, item.command_id.as_deref(), item.label.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::RunLog,
+                None,
+                "Run Log"
+            ),
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::Convergence,
+                None,
+                "Convergence"
+            ),
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::Suggestions,
+                None,
+                "Suggestions"
+            ),
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::Diagnostics,
+                None,
+                "Diagnostics"
+            ),
+        ]
+    );
+    assert_eq!(
+        window
+            .run_context_toolbar
+            .status_items
+            .iter()
+            .map(|item| (item.label, item.value.as_str(), item.status_label.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            ("Mode", "Hold", "Hold"),
+            ("Run", "Converged", "Converged"),
+            ("Convergence", "Converged", "Converged"),
+            ("Steps", "3", "Sequential steps"),
+            ("Diagnostics", "4", "Diagnostics"),
+            ("Snapshot", "Current", "Current"),
+        ]
+    );
+}
+
+#[test]
 fn studio_gui_window_command_area_surfaces_command_list_sections_through_shared_model() {
     let (config, project_path) = flash_drum_local_rules_config();
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
