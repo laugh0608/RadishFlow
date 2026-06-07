@@ -48,6 +48,60 @@ fn render_top_bar_texts(app: &mut ReadyAppState) -> Vec<String> {
     texts
 }
 
+fn render_tools_menu_content_texts(app: &mut ReadyAppState) -> Vec<String> {
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    let windows = snapshot.app_host_state.windows.clone();
+    let current_window_id = window.layout_state.scope.window_id;
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(640.0, 360.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                app.render_tools_top_menu_content(ui, &windows, current_window_id, &window);
+            });
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
+fn render_settings_menu_content_texts(app: &mut ReadyAppState) -> Vec<String> {
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(640.0, 240.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                app.render_settings_top_menu_content(ui);
+            });
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
 fn render_alpha_workbench_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
     let window = snapshot.window_model();
@@ -346,6 +400,8 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     assert_eq!(locale.text(ShellText::Tools), "工具");
     assert_eq!(locale.text(ShellText::Settings), "设置");
     assert_eq!(locale.text(ShellText::ViewOptions), "视图");
+    assert_eq!(locale.text(ShellText::Commands), "命令");
+    assert_eq!(locale.text(ShellText::Language), "语言");
     assert_eq!(locale.text(ShellText::DiagnosticTargets), "诊断目标");
     assert_eq!(
         locale.text(ShellText::StaleStreamSelection),
@@ -653,6 +709,91 @@ fn result_context_toolbar_renders_existing_result_commands_and_state() {
             texts
         );
     }
+}
+
+#[test]
+fn tools_menu_content_uses_existing_command_and_window_state() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let texts = render_tools_menu_content_texts(&mut app);
+
+    for expected in [
+        "命令",
+        "命令面板 (Ctrl+K)",
+        "显示命令",
+        "逻辑窗口",
+        "新建逻辑窗口",
+    ] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected tools menu content to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for hidden in [
+        "帮助",
+        "插件",
+        "扩展",
+        "单位集",
+        "偏好",
+        "主题",
+        "发布",
+        "完整报表",
+        "完整参数表",
+    ] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden)),
+            "tools menu content must not expose out-of-scope `{hidden}`, rendered texts: {:?}",
+            texts
+        );
+    }
+
+    app.command_palette.open();
+    let open_palette_texts = render_tools_menu_content_texts(&mut app);
+    assert!(
+        open_palette_texts
+            .iter()
+            .any(|text| text.contains("隐藏命令面板")),
+        "expected tools menu content to reflect command palette shell state, rendered texts: {:?}",
+        open_palette_texts
+    );
+}
+
+#[test]
+fn settings_menu_content_uses_existing_language_state() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let texts = render_settings_menu_content_texts(&mut app);
+
+    for expected in ["语言", "中文", "English"] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected settings menu content to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for hidden in [
+        "单位集",
+        "偏好",
+        "插件",
+        "主题",
+        "账号",
+        "授权",
+        "服务器",
+        "完整设置",
+    ] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden)),
+            "settings menu content must not expose out-of-scope `{hidden}`, rendered texts: {:?}",
+            texts
+        );
+    }
+
+    app.locale = StudioShellLocale::En;
+    let english_texts = render_settings_menu_content_texts(&mut app);
+    assert!(
+        english_texts.iter().any(|text| text.contains("Language")),
+        "expected settings menu content to reflect current locale, rendered texts: {:?}",
+        english_texts
+    );
 }
 
 #[test]

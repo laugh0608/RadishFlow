@@ -314,71 +314,86 @@ impl ReadyAppState {
         window: &StudioGuiWindowModel,
     ) {
         ui.menu_button(self.locale.text(ShellText::Tools), |ui| {
-            let palette_label = if self.command_palette.open {
-                self.locale.text(ShellText::HideCommandPalette)
-            } else {
-                self.locale.text(ShellText::CommandPalette)
-            };
-            if ui.button(palette_label).clicked() {
-                self.command_palette.toggle();
-                ui.close_menu();
-            }
-
-            let commands_visible = window
-                .layout_state
-                .panel(StudioGuiWindowAreaId::Commands)
-                .map(|panel| panel.visible)
-                .unwrap_or(false);
-            let commands_label = if commands_visible {
-                self.locale.text(ShellText::HideCommands)
-            } else {
-                self.locale.text(ShellText::ShowCommands)
-            };
-            if ui.button(commands_label).clicked() {
-                self.dispatch_layout_mutation(
-                    current_window_id,
-                    StudioGuiWindowLayoutMutation::SetPanelVisibility {
-                        area_id: StudioGuiWindowAreaId::Commands,
-                        visible: !commands_visible,
-                    },
-                );
-                ui.close_menu();
-            }
-
-            ui.separator();
-            if ui
-                .button(self.locale.text(ShellText::NewLogicalWindow))
-                .clicked()
-            {
-                self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
-                ui.close_menu();
-            }
-            if windows.len() > 1 {
-                ui.separator();
-                ui.label(egui::RichText::new(self.locale.text(ShellText::LogicalWindows)).strong());
-                self.render_logical_window_chips(ui, windows);
-            }
+            self.render_tools_top_menu_content(ui, windows, current_window_id, window);
         });
     }
 
     fn render_settings_top_menu(&mut self, ui: &mut egui::Ui) {
         ui.menu_button(self.locale.text(ShellText::Settings), |ui| {
-            let english = self.locale.text(ShellText::English);
-            let chinese = self.locale.text(ShellText::Chinese);
-            ui.horizontal_wrapped(|ui| {
-                if ui
-                    .selectable_value(&mut self.locale, StudioShellLocale::ZhCn, chinese)
-                    .clicked()
-                {
-                    ui.close_menu();
-                }
-                if ui
-                    .selectable_value(&mut self.locale, StudioShellLocale::En, english)
-                    .clicked()
-                {
-                    ui.close_menu();
-                }
-            });
+            self.render_settings_top_menu_content(ui);
+        });
+    }
+
+    pub(super) fn render_tools_top_menu_content(
+        &mut self,
+        ui: &mut egui::Ui,
+        windows: &[StudioAppHostWindowState],
+        current_window_id: Option<StudioWindowHostId>,
+        window: &StudioGuiWindowModel,
+    ) {
+        ui.label(egui::RichText::new(self.locale.text(ShellText::Commands)).strong());
+        let palette_label = if self.command_palette.open {
+            self.locale.text(ShellText::HideCommandPalette)
+        } else {
+            self.locale.text(ShellText::CommandPalette)
+        };
+        if ui.button(palette_label).clicked() {
+            self.command_palette.toggle();
+            ui.close_menu();
+        }
+
+        let commands_visible = window
+            .layout_state
+            .panel(StudioGuiWindowAreaId::Commands)
+            .map(|panel| panel.visible)
+            .unwrap_or(false);
+        let commands_label = if commands_visible {
+            self.locale.text(ShellText::HideCommands)
+        } else {
+            self.locale.text(ShellText::ShowCommands)
+        };
+        if ui.button(commands_label).clicked() {
+            self.dispatch_layout_mutation(
+                current_window_id,
+                StudioGuiWindowLayoutMutation::SetPanelVisibility {
+                    area_id: StudioGuiWindowAreaId::Commands,
+                    visible: !commands_visible,
+                },
+            );
+            ui.close_menu();
+        }
+
+        ui.separator();
+        ui.label(egui::RichText::new(self.locale.text(ShellText::LogicalWindows)).strong());
+        if ui
+            .button(self.locale.text(ShellText::NewLogicalWindow))
+            .clicked()
+        {
+            self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+            ui.close_menu();
+        }
+        if windows.len() > 1 {
+            self.render_logical_window_chips(ui, windows);
+        }
+    }
+
+    pub(super) fn render_settings_top_menu_content(&mut self, ui: &mut egui::Ui) {
+        ui.label(egui::RichText::new(self.locale.text(ShellText::Language)).strong());
+        let english = self.locale.text(ShellText::English);
+        let chinese = self.locale.text(ShellText::Chinese);
+        ui.horizontal_wrapped(|ui| {
+            if ui
+                .selectable_value(&mut self.locale, StudioShellLocale::ZhCn, chinese)
+                .clicked()
+            {
+                ui.close_menu();
+            }
+            if ui
+                .selectable_value(&mut self.locale, StudioShellLocale::En, english)
+                .clicked()
+            {
+                ui.close_menu();
+            }
         });
     }
 
