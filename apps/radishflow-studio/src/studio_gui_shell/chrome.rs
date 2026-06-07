@@ -52,7 +52,6 @@ impl ReadyAppState {
                 ui.separator();
                 self.render_top_screen_navigation(ui);
                 ui.separator();
-                self.render_results_top_menu(ui);
                 self.render_tools_top_menu(ui, windows, current_window_id, window);
                 self.render_settings_top_menu(ui);
             });
@@ -60,6 +59,7 @@ impl ReadyAppState {
                 StudioShellScreen::Property => Some(&window.property_context_toolbar),
                 StudioShellScreen::Workbench => Some(&window.flowsheet_context_toolbar),
                 StudioShellScreen::Run => Some(&window.run_context_toolbar),
+                StudioShellScreen::Results => Some(&window.result_context_toolbar),
                 StudioShellScreen::Home => None,
             };
             if let Some(context_toolbar) = context_toolbar {
@@ -192,11 +192,17 @@ impl ReadyAppState {
                     self.focus_run_bottom_drawer_tab(StudioShellBottomDrawerTab::Diagnostics);
                 }
                 StudioGuiWindowContextToolbarItemTarget::ModuleResults => {
-                    self.screen = StudioShellScreen::Workbench;
+                    if self.screen != StudioShellScreen::Results {
+                        self.screen = StudioShellScreen::Workbench;
+                    }
                     self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
                 }
                 StudioGuiWindowContextToolbarItemTarget::ResultsTable => {
-                    self.focus_bottom_drawer_tab(StudioShellBottomDrawerTab::ResultsTable);
+                    if self.screen == StudioShellScreen::Results {
+                        self.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
+                    } else {
+                        self.focus_bottom_drawer_tab(StudioShellBottomDrawerTab::ResultsTable);
+                    }
                 }
             }
         }
@@ -293,26 +299,11 @@ impl ReadyAppState {
             StudioShellScreen::Run,
             self.locale.text(ShellText::Run),
         );
-    }
-
-    fn render_results_top_menu(&mut self, ui: &mut egui::Ui) {
-        ui.menu_button(self.locale.text(ShellText::Results), |ui| {
-            if ui
-                .button(self.locale.runtime_label("Module Results").as_ref())
-                .clicked()
-            {
-                self.screen = StudioShellScreen::Workbench;
-                self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
-                ui.close_menu();
-            }
-            if ui
-                .button(self.locale.text(ShellText::ResultsTable))
-                .clicked()
-            {
-                self.focus_bottom_drawer_tab(StudioShellBottomDrawerTab::ResultsTable);
-                ui.close_menu();
-            }
-        });
+        ui.selectable_value(
+            &mut self.screen,
+            StudioShellScreen::Results,
+            self.locale.text(ShellText::Results),
+        );
     }
 
     fn render_tools_top_menu(

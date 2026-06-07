@@ -5518,6 +5518,125 @@ fn studio_gui_window_model_builds_run_context_toolbar_from_run_panel_state() {
 }
 
 #[test]
+fn studio_gui_window_model_builds_result_context_toolbar_from_current_snapshot() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected run dispatch");
+    let focused = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:heater-1".to_string(),
+        })
+        .expect("expected heater focus dispatch");
+    let window = focused.window;
+
+    assert_eq!(window.result_context_toolbar.title, "Result Context");
+    assert_eq!(
+        window
+            .result_context_toolbar
+            .sections
+            .iter()
+            .map(|section| section.title)
+            .collect::<Vec<_>>(),
+        vec!["Review", "Focus"]
+    );
+
+    let review_section = context_toolbar_section(&window.result_context_toolbar, "Review");
+    assert_eq!(
+        review_section
+            .items
+            .iter()
+            .map(|item| (
+                item.target,
+                item.command_id.as_deref(),
+                item.label.as_str(),
+                item.status_label.as_deref()
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::ModuleResults,
+                None,
+                "Module Results",
+                Some("Current")
+            ),
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::ResultsTable,
+                None,
+                "Results Table",
+                Some("Current")
+            ),
+        ]
+    );
+
+    let focus_section = context_toolbar_section(&window.result_context_toolbar, "Focus");
+    let focus_command_ids = focus_section
+        .items
+        .iter()
+        .map(|item| {
+            assert_eq!(
+                item.target,
+                crate::StudioGuiWindowContextToolbarItemTarget::Command
+            );
+            assert!(item.enabled);
+            assert_eq!(item.status_label.as_deref(), Some("Current"));
+            item.command_id
+                .as_deref()
+                .expect("result focus item must target a registered command")
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        focus_command_ids,
+        vec![
+            "inspector.focus_stream:stream-feed",
+            "inspector.focus_stream:stream-heated",
+            "inspector.focus_stream:stream-liquid",
+            "inspector.focus_stream:stream-vapor",
+        ]
+    );
+    assert!(
+        focus_section.items.len() <= 4,
+        "result context toolbar should expose a compact result command set"
+    );
+    assert!(
+        window
+            .result_context_toolbar
+            .sections
+            .iter()
+            .flat_map(|section| section.items.iter())
+            .filter_map(|item| item.command_id.as_deref())
+            .all(|command_id| {
+                command_id.starts_with("inspector.focus_")
+                    && !command_id.starts_with("run_panel.")
+                    && !command_id.starts_with("canvas.")
+            }),
+        "result context toolbar must only render existing result focus commands: {:?}",
+        window.result_context_toolbar.sections
+    );
+
+    assert_eq!(
+        window
+            .result_context_toolbar
+            .status_items
+            .iter()
+            .map(|item| (item.label, item.value.as_str(), item.status_label.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            ("Snapshot", "Current", "Current"),
+            ("Streams", "4", "Current"),
+            ("Units", "3", "Current"),
+            ("Diagnostics", "4", "Diagnostics"),
+        ]
+    );
+}
+
+#[test]
 fn studio_gui_window_command_area_surfaces_command_list_sections_through_shared_model() {
     let (config, project_path) = flash_drum_local_rules_config();
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");

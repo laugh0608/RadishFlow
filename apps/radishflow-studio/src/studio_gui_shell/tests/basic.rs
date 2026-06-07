@@ -390,6 +390,11 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     assert_eq!(locale.runtime_label("Saved").as_ref(), "已保存");
     assert_eq!(locale.runtime_label("Unselected").as_ref(), "未选择");
     assert_eq!(locale.runtime_label("SnapshotMissing").as_ref(), "缺少快照");
+    assert_eq!(
+        locale.runtime_label("Result Context").as_ref(),
+        "结果工具栏"
+    );
+    assert_eq!(locale.runtime_label("Focus").as_ref(), "聚焦");
     assert_eq!(locale.runtime_label("Place Feed").as_ref(), "放置进料");
     assert_eq!(
         StudioShellLocale::En.runtime_label("Converged").as_ref(),
@@ -596,6 +601,55 @@ fn run_context_toolbar_renders_existing_run_commands_and_state() {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
             "run context toolbar must not expose out-of-scope `{hidden}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
+fn result_context_toolbar_renders_existing_result_commands_and_state() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.screen = StudioShellScreen::Results;
+
+    let texts = render_top_bar_texts(&mut app);
+
+    for expected in [
+        "结果工具栏",
+        "审阅",
+        "模块结果",
+        "结果表",
+        "聚焦",
+        "Feed",
+        "Heated Outlet",
+        "Liquid Outlet",
+        "Vapor Outlet",
+        "快照",
+        "流股",
+        "单元",
+        "诊断",
+        "当前",
+    ] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected result context toolbar to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for hidden in [
+        "完整报表",
+        "跨快照报表",
+        "报表模板",
+        "打印",
+        "批量导出",
+        "第三方报表",
+        "自动布线",
+        "自由连线",
+        "完整参数表",
+    ] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden)),
+            "result context toolbar must not expose out-of-scope `{hidden}`, rendered texts: {:?}",
             texts
         );
     }

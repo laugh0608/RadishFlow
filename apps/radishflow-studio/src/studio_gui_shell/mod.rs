@@ -133,6 +133,7 @@ enum StudioShellScreen {
     Property,
     Workbench,
     Run,
+    Results,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -622,6 +622,7 @@ pub struct StudioGuiWindowModel {
     pub property_context_toolbar: StudioGuiWindowContextToolbarModel,
     pub flowsheet_context_toolbar: StudioGuiWindowContextToolbarModel,
     pub run_context_toolbar: StudioGuiWindowContextToolbarModel,
+    pub result_context_toolbar: StudioGuiWindowContextToolbarModel,
     pub canvas: StudioGuiWindowCanvasAreaModel,
     pub runtime: StudioGuiWindowRuntimeAreaModel,
     pub status_summary: StudioGuiWindowStatusSummaryModel,
@@ -680,6 +681,12 @@ impl StudioGuiWindowModel {
             &canvas,
             &status_summary,
         );
+        let result_context_toolbar = StudioGuiWindowContextToolbarModel::from_result_sources(
+            &commands,
+            &module_results,
+            &runtime,
+            &status_summary,
+        );
         let mut window = Self {
             header: header_from_snapshot(snapshot),
             commands,
@@ -690,6 +697,7 @@ impl StudioGuiWindowModel {
             property_context_toolbar,
             flowsheet_context_toolbar,
             run_context_toolbar,
+            result_context_toolbar,
             canvas,
             status_summary,
             runtime,
@@ -968,6 +976,26 @@ impl StudioGuiWindowContextToolbarModel {
             status_items: run_context_status_items(runtime, status_summary),
         }
     }
+
+    fn from_result_sources(
+        commands: &StudioGuiWindowCommandAreaModel,
+        module_results: &StudioGuiWindowModuleResultsModel,
+        runtime: &StudioGuiWindowRuntimeAreaModel,
+        status_summary: &StudioGuiWindowStatusSummaryModel,
+    ) -> Self {
+        let review_items = result_context_review_items(module_results, runtime);
+        let focus_items = result_context_focus_items(commands);
+
+        let mut sections = Vec::new();
+        push_context_toolbar_section(&mut sections, "Review", review_items);
+        push_context_toolbar_section(&mut sections, "Focus", focus_items);
+
+        Self {
+            title: "Result Context",
+            sections,
+            status_items: result_context_status_items(runtime, status_summary),
+        }
+    }
 }
 
 fn property_component_context_toolbar_item(
@@ -1133,6 +1161,103 @@ fn run_context_status_items(
         status_label: status_summary.snapshot_consistency_label.to_string(),
         detail: status_summary.snapshot_consistency_detail.clone(),
     });
+    items
+}
+
+fn result_context_review_items(
+    module_results: &StudioGuiWindowModuleResultsModel,
+    runtime: &StudioGuiWindowRuntimeAreaModel,
+) -> Vec<StudioGuiWindowContextToolbarItemModel> {
+    vec![
+        StudioGuiWindowContextToolbarItemModel {
+            target: StudioGuiWindowContextToolbarItemTarget::ModuleResults,
+            command_id: None,
+            enabled: true,
+            label: "Module Results".to_string(),
+            detail: module_results.detail.clone(),
+            status_label: Some(module_results.state_label.to_string()),
+        },
+        StudioGuiWindowContextToolbarItemModel {
+            target: StudioGuiWindowContextToolbarItemTarget::ResultsTable,
+            command_id: None,
+            enabled: true,
+            label: "Results Table".to_string(),
+            detail: results_table_context_detail(runtime),
+            status_label: Some(results_table_context_status_label(runtime).to_string()),
+        },
+    ]
+}
+
+fn result_context_focus_items(
+    commands: &StudioGuiWindowCommandAreaModel,
+) -> Vec<StudioGuiWindowContextToolbarItemModel> {
+    commands
+        .sections
+        .iter()
+        .filter(|section| section.group == StudioGuiCommandGroup::Result)
+        .flat_map(|section| section.commands.iter())
+        .filter(|entry| entry.enabled)
+        .take(4)
+        .map(|entry| {
+            let presentation = entry.presentation();
+            StudioGuiWindowContextToolbarItemModel {
+                target: StudioGuiWindowContextToolbarItemTarget::Command,
+                command_id: Some(entry.command_id.clone()),
+                enabled: entry.enabled,
+                label: presentation.label,
+                detail: presentation.hover_text,
+                status_label: Some("Current".to_string()),
+            }
+        })
+        .collect()
+}
+
+fn result_context_status_items(
+    runtime: &StudioGuiWindowRuntimeAreaModel,
+    status_summary: &StudioGuiWindowStatusSummaryModel,
+) -> Vec<StudioGuiWindowContextToolbarStatusModel> {
+    let mut items = vec![StudioGuiWindowContextToolbarStatusModel {
+        label: "Snapshot",
+        value: status_summary.snapshot_consistency_label.to_string(),
+        status_label: status_summary.snapshot_consistency_label.to_string(),
+        detail: status_summary.snapshot_consistency_detail.clone(),
+    }];
+    if let Some(snapshot) = runtime.latest_solve_snapshot.as_ref() {
+        items.extend([
+            StudioGuiWindowContextToolbarStatusModel {
+                label: "Streams",
+                value: snapshot.stream_count.to_string(),
+                status_label: "Current".to_string(),
+                detail: "Stream results from the current SolveSnapshot.".to_string(),
+            },
+            StudioGuiWindowContextToolbarStatusModel {
+                label: "Units",
+                value: snapshot.review_summary.unit_results.len().to_string(),
+                status_label: "Current".to_string(),
+                detail: "Unit results from the current SolveSnapshot review summary.".to_string(),
+            },
+            StudioGuiWindowContextToolbarStatusModel {
+                label: "Diagnostics",
+                value: snapshot.diagnostic_count.to_string(),
+                status_label: "Diagnostics".to_string(),
+                detail: "Diagnostics from the current SolveSnapshot.".to_string(),
+            },
+        ]);
+    } else if let Some(stale) = runtime.stale_solve_snapshot.as_ref() {
+        items.push(StudioGuiWindowContextToolbarStatusModel {
+            label: "Stale Snapshot",
+            value: stale.snapshot_id.clone(),
+            status_label: "Stale".to_string(),
+            detail: stale.detail.clone(),
+        });
+    } else {
+        items.push(StudioGuiWindowContextToolbarStatusModel {
+            label: "Streams",
+            value: "N/A".to_string(),
+            status_label: "SnapshotMissing".to_string(),
+            detail: "No current SolveSnapshot is available for result review.".to_string(),
+        });
+    }
     items
 }
 
