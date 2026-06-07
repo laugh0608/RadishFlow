@@ -432,7 +432,7 @@ fn top_bar_aligns_primary_navigation_and_command_buckets() {
     let mut app = ready_app_state(&synced_workspace_config());
     let texts = render_top_bar_texts(&mut app);
 
-    for expected in [
+    let primary_entries = [
         "文件",
         "主页",
         "物性",
@@ -441,13 +441,32 @@ fn top_bar_aligns_primary_navigation_and_command_buckets() {
         "结果",
         "工具",
         "设置",
-    ] {
+    ];
+    for expected in primary_entries {
+        assert_eq!(
+            texts
+                .iter()
+                .filter(|text| text.as_str() == expected)
+                .count(),
+            1,
+            "expected top bar primary navigation to render `{expected}` exactly once, rendered texts: {:?}",
+            texts
+        );
         assert!(
             texts.iter().any(|text| text.contains(expected)),
             "expected top bar to render `{expected}`, rendered texts: {:?}",
             texts
         );
     }
+    assert_eq!(
+        primary_entries
+            .iter()
+            .map(|entry| texts.iter().filter(|text| text.as_str() == *entry).count())
+            .sum::<usize>(),
+        8,
+        "expected top bar to expose exactly eight primary navigation entries, rendered texts: {:?}",
+        texts
+    );
     for hidden in [
         "快速操作",
         "打开示例",
@@ -464,6 +483,39 @@ fn top_bar_aligns_primary_navigation_and_command_buckets() {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
             "expected top bar to hide `{hidden}` behind the view menu, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
+fn flowsheet_context_toolbar_renders_existing_canvas_run_result_state() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.screen = StudioShellScreen::Workbench;
+    let texts = render_top_bar_texts(&mut app);
+
+    for expected in [
+        "流程图工具栏",
+        "画布",
+        "放置进料",
+        "放置闪蒸罐",
+        "运行当前流程",
+        "审阅",
+        "模块结果",
+        "结果表",
+        "快照",
+        "缺少快照",
+    ] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected flowsheet context toolbar to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for hidden in ["帮助", "完整报表", "自动布线", "自由连线", "完整参数表"] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden)),
+            "flowsheet context toolbar must not expose out-of-scope `{hidden}`, rendered texts: {:?}",
             texts
         );
     }

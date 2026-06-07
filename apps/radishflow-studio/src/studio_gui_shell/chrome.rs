@@ -57,6 +57,10 @@ impl ReadyAppState {
                 self.render_tools_top_menu(ui, windows, current_window_id, window);
                 self.render_settings_top_menu(ui);
             });
+            if self.screen == StudioShellScreen::Workbench {
+                ui.separator();
+                self.render_flowsheet_context_toolbar(ui, window);
+            }
             self.render_project_operation_strip(ui);
             if !window.commands.menu_tree.is_empty()
                 && window
@@ -110,6 +114,87 @@ impl ReadyAppState {
                 ui.colored_label(egui::Color32::from_rgb(180, 40, 40), error);
             }
         });
+    }
+
+    fn render_flowsheet_context_toolbar(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+    ) {
+        ui.horizontal_wrapped(|ui| {
+            ui.small(
+                egui::RichText::new(
+                    self.locale
+                        .runtime_label(window.flowsheet_context_toolbar.title)
+                        .as_ref(),
+                )
+                .strong(),
+            );
+            for section in &window.flowsheet_context_toolbar.sections {
+                if section.items.is_empty() {
+                    continue;
+                }
+                ui.separator();
+                ui.small(
+                    egui::RichText::new(self.locale.runtime_label(section.title).as_ref())
+                        .color(egui::Color32::from_rgb(92, 104, 117)),
+                );
+                for item in &section.items {
+                    self.render_flowsheet_context_toolbar_item(ui, item);
+                }
+            }
+        });
+        if !window.flowsheet_context_toolbar.status_items.is_empty() {
+            ui.horizontal_wrapped(|ui| {
+                for status in &window.flowsheet_context_toolbar.status_items {
+                    ui.small(format!(
+                        "{}: {}",
+                        self.locale.runtime_label(status.label),
+                        self.locale.runtime_label(&status.value)
+                    ));
+                    render_status_chip(
+                        ui,
+                        self.locale.runtime_label(&status.status_label).as_ref(),
+                        run_status_color(&status.status_label),
+                    );
+                }
+            });
+        }
+    }
+
+    fn render_flowsheet_context_toolbar_item(
+        &mut self,
+        ui: &mut egui::Ui,
+        item: &radishflow_studio::StudioGuiWindowContextToolbarItemModel,
+    ) {
+        let label = self.locale.runtime_label(&item.label);
+        let detail = self.locale.runtime_label(&item.detail);
+        let response = ui
+            .add_enabled(item.enabled, egui::Button::new(label.as_ref()))
+            .on_hover_text(detail.as_ref());
+        if response.clicked() {
+            match item.target {
+                StudioGuiWindowContextToolbarItemTarget::Command => {
+                    if let Some(command_id) = item.command_id.as_deref() {
+                        self.dispatch_ui_command(command_id);
+                    }
+                }
+                StudioGuiWindowContextToolbarItemTarget::ModuleResults => {
+                    self.screen = StudioShellScreen::Workbench;
+                    self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
+                }
+                StudioGuiWindowContextToolbarItemTarget::ResultsTable => {
+                    self.focus_bottom_drawer_tab(StudioShellBottomDrawerTab::ResultsTable);
+                }
+            }
+        }
+        if let Some(status_label) = item.status_label.as_deref() {
+            render_status_chip(
+                ui,
+                self.locale.runtime_label(status_label).as_ref(),
+                run_status_color(status_label),
+            );
+        }
     }
 
     fn render_file_top_menu(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {

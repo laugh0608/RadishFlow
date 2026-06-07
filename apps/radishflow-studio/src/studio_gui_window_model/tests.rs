@@ -75,6 +75,18 @@ fn find_status_summary_metric<'a>(
         .unwrap_or_else(|| panic!("expected status summary metric `{label}`"))
 }
 
+fn context_toolbar_section<'a>(
+    window: &'a crate::StudioGuiWindowModel,
+    title: &str,
+) -> &'a crate::StudioGuiWindowContextToolbarSectionModel {
+    window
+        .flowsheet_context_toolbar
+        .sections
+        .iter()
+        .find(|section| section.title == title)
+        .unwrap_or_else(|| panic!("expected context toolbar section `{title}`"))
+}
+
 #[test]
 fn solve_snapshot_light_text_export_uses_current_snapshot_results() {
     let snapshot = solve_binary_hydrocarbon_lite_snapshot(include_str!(
@@ -5162,6 +5174,161 @@ fn studio_gui_window_command_area_surfaces_toolbar_sections_through_shared_model
     );
 
     let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn studio_gui_window_model_builds_flowsheet_context_toolbar_from_available_commands_and_state() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let window = dispatch.snapshot.window_model();
+
+    assert_eq!(window.flowsheet_context_toolbar.title, "Flowsheet Context");
+    assert_eq!(
+        window
+            .flowsheet_context_toolbar
+            .sections
+            .iter()
+            .map(|section| section.title)
+            .collect::<Vec<_>>(),
+        vec!["Canvas", "Run", "Review"]
+    );
+
+    let canvas_section = context_toolbar_section(&window, "Canvas");
+    let canvas_command_ids = canvas_section
+        .items
+        .iter()
+        .map(|item| {
+            assert_eq!(
+                item.target,
+                crate::StudioGuiWindowContextToolbarItemTarget::Command
+            );
+            assert!(
+                item.enabled,
+                "context toolbar must hide disabled canvas commands"
+            );
+            item.command_id
+                .as_deref()
+                .expect("canvas toolbar items must target registered commands")
+        })
+        .collect::<Vec<_>>();
+    assert!(canvas_command_ids.contains(&"canvas.begin_place_unit.feed"));
+    assert!(canvas_command_ids.contains(&"canvas.begin_place_unit.flash_drum"));
+    assert!(
+        canvas_command_ids
+            .iter()
+            .all(|command_id| command_id.starts_with("canvas.")),
+        "canvas context toolbar must not pull object/result navigation commands: {canvas_command_ids:?}"
+    );
+
+    let run_section = context_toolbar_section(&window, "Run");
+    assert!(
+        run_section.items.iter().all(|item| item.enabled
+            && item.target == crate::StudioGuiWindowContextToolbarItemTarget::Command
+            && item
+                .command_id
+                .as_deref()
+                .is_some_and(|command_id| command_id.starts_with("run_panel."))),
+        "run context toolbar must only render enabled Run Panel commands: {:?}",
+        run_section.items
+    );
+
+    let review_section = context_toolbar_section(&window, "Review");
+    assert_eq!(
+        review_section
+            .items
+            .iter()
+            .map(|item| (
+                item.target,
+                item.command_id.as_deref(),
+                item.status_label.as_deref()
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::ModuleResults,
+                None,
+                Some("No unit selected")
+            ),
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::ResultsTable,
+                None,
+                Some("SnapshotMissing")
+            ),
+        ]
+    );
+    assert_eq!(
+        window
+            .flowsheet_context_toolbar
+            .status_items
+            .iter()
+            .map(|item| item.label)
+            .collect::<Vec<_>>(),
+        vec!["Run", "Convergence", "Diagnostics", "Snapshot"]
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn studio_gui_window_model_keeps_context_result_entries_routed_to_existing_result_surfaces() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected run dispatch");
+    let focus = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:heater-1".to_string(),
+        })
+        .expect("expected heater focus dispatch");
+    let window = focus.window;
+
+    let review_section = context_toolbar_section(&window, "Review");
+    assert_eq!(
+        review_section
+            .items
+            .iter()
+            .map(|item| (
+                item.target,
+                item.command_id.as_deref(),
+                item.label.as_str(),
+                item.status_label.as_deref()
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::ModuleResults,
+                None,
+                "Module Results",
+                Some("Current")
+            ),
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::ResultsTable,
+                None,
+                "Results Table",
+                Some("Current")
+            ),
+        ]
+    );
+    assert!(
+        window
+            .flowsheet_context_toolbar
+            .sections
+            .iter()
+            .flat_map(|section| section.items.iter())
+            .filter_map(|item| item.command_id.as_deref())
+            .all(|command_id| !command_id.starts_with("inspector.focus_")),
+        "context toolbar result entries must not fan out latest snapshot result commands"
+    );
 }
 
 #[test]
