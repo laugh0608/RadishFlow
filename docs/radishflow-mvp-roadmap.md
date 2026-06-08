@@ -10,7 +10,7 @@
 
 ## 当前结论
 
-截至 2026-06-07，M1-M5 都已越过 MVP 的基本完成线，MVP α 用户视角 smoke、首版 demo 前硬化期、MVP β 多组能力包和通用小流程建模 v1 都已阶段性收口，Studio UI 专题已完成首轮设计前置并进入 presentation / window model 小切片实现：
+截至 2026-06-08，M1-M5 都已越过 MVP 的基本完成线，MVP α 用户视角 smoke、首版 demo 前硬化期、MVP β 多组能力包和通用小流程建模 v1 都已阶段性收口，Studio UI 专题已完成首轮设计前置并进入 presentation / window model 小切片实现：
 
 - Rust 内核和 Studio 可以跑通最小稳态流程。
 - `TP Flash`、`SolveSnapshot`、结果审阅和 `rf-ffi` JSON/error 基线已经形成可复验闭环。
@@ -21,7 +21,7 @@
 - MVP β 人工 smoke 与仓库级阶段基线验证已通过；通用小流程建模 v1 已完成普通空白项目主路径复核，而不是继续推进 tag、release notes、便携包或零散 UI 打磨。
 - 通用小流程建模 v1 已完成到第十六切片并通过阶段收口复核：运行按钮、`Resume`、F5 / Shift+F5、AppHost、StudioGuiDriver、StudioGuiHost command registry 等用户可触达运行入口已共用通用 `Flowsheet` readiness，普通空白项目不再自动匹配小案例 gate；`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 已覆盖显式输入、保存 / 重开 / rerun、结果审阅入口、关键结果合理性、单相 Flash 缺席语义、失败态定位、case-level review summary、编辑后旧结果失效语义，以及 Inspector 显示 outlet stream 默认值但缺显式 unit parameter 时的同值提交语义。
 - 阶段性约束已从“围绕 β 验收补覆盖”调整为“已通过阶段只修真实 blocker，下一组推进 Studio UI 专题设计前置和窄口径实现切片”：指定小案例入口、MVP β Smoke A-D 和结果审阅覆盖面不再作为每日 gate。
-- Studio UI 专题当前只允许沿评审后的 `studio-client-main.pen` 与 brief 做窄口径 implementation slices：Home case tile、Property page、status summary、Module Results、Module Settings、右侧栏职责、左侧 `模块 / 项目` 职责、`模块` 面板分类 / 筛选、`项目` 面板分区、中央 Canvas 主舞台 / 对象扫读职责、底部运行信息与状态汇总分栏、顶部导航入口、流程图 / 物性 / 运行 / 结果上下文工具栏，以及 `工具 / 设置` 菜单职责已按既有 DTO / command surface / shell state 分步收敛；仍不做完整 ribbon、完整左 / 右侧栏重排、完整参数表、自由连线、完整偏好页或完整报表。
+- Studio UI 专题当前只允许沿评审后的 `studio-client-main.pen` 与 brief 做窄口径 implementation slices：Home case tile、Property page、status summary、Module Results、Module Settings、右侧栏职责、左侧 `模块 / 项目` 职责、`模块` 面板分类 / 筛选、`项目` 面板分区、中央 Canvas 主舞台 / 对象扫读职责、底部运行信息与状态汇总分栏、顶部导航入口、流程图 / 物性 / 运行 / 结果上下文工具栏、物性页到流程图建模的主路径 readiness，以及 `工具 / 设置` 菜单职责已按既有 DTO / command surface / shell state 分步收敛；仍不做完整 ribbon、完整左 / 右侧栏重排、完整参数表、自由连线、完整偏好页或完整报表。
 - 当前尚未达到正式 tag / release 节点标准，历史 `v26.5.1-dev` staging 材料不作为当前路线图事实源。
 
 当前不再把路线图作为每日推进清单。今天做什么、当前验证基线、下一阶段和暂不推进项，以 `docs/status/current.md` 为准；MVP α 验收清单保留为内部验收记录，不再作为当前日常推进主线。
@@ -86,7 +86,7 @@
 - 已通过的 `Mixer-Flash` 与 `Heater-Flash` 作者入口只修真实 blocker，不继续补同构入口、hover、按钮文案或 selector 小细节。
 - 建模输入能力已完成 v0 收口：项目组分选择、内置物性方法 / package 选择、Feed composition 输入和单元参数输入已形成可保存 / 重开 / 运行的受控工作流。
 - 组分输入 v0 只覆盖内置小型组分目录，不做完整组分数据库；物性方法 v0 只覆盖内置方法 / package，不加载第三方 Property Package。
-- 当前 Studio 已把内置 `binary-hydrocarbon-lite-v1` 物性包选择和 methane / ethane 项目组分选择暴露在左侧 `项目` 面板和右侧 `物性包` 页；空白项目初始不预选，用户显式选择后才写入项目。这只是受控输入能力，不代表完整组分数据库或物性包浏览器。
+- 当前 Studio 已把内置 `binary-hydrocarbon-lite-v1` 物性包选择和 methane / ethane 项目组分选择暴露在独立 `物性` 页，并在左侧 `项目` 面板提供项目输入扫读；空白项目初始不预选，用户显式选择后才写入项目。这只是受控输入能力，不代表完整组分数据库或物性包浏览器。
 - demo case 作为验收方式：`Heater-Flash` 与 `Mixer-Flash` 已覆盖 official demo case 输入和结果核对；`Cooler-Flash` 与 `Valve-Flash` 已用内部 focused test 覆盖空白项目建模闭环，但不新增 Home 作者入口或用户 guide。
 - 失败修复闭环已完成 focused 收口；人工 smoke 只覆盖代表性恢复路径，不把 focused tests 已覆盖的所有恢复生命周期全部手工重跑。
 - 通用小流程建模 v1 已完成阶段收口：普通空白项目必须按真实 `Flowsheet` readiness 运行，不再按某个作者案例阻断；用户已能在受控范围内自行组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，显式补齐 Feed source stream 和必要单元参数后保存 / 重开 / rerun，并通过右侧 Result Inspector、底部结果表、Results commands、轻量导出和 case-level review summary 审阅当前 revision 的同一份 `SolveSnapshot`。文档编辑后旧结果只用于 stale notice，不继续驱动结果审阅或导出入口；Unit Inspector 中由 outlet stream 模板派生的显示值不等于已提交单元参数，用户提交同一显示值时仍应写入正式 `UnitOperationParameters`。

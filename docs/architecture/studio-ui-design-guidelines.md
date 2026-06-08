@@ -218,7 +218,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 
 动作契约：
 
-- `New Project` / `新建项目` 创建 MVP 默认空白项目，进入工作台；该动作不依赖登录或服务端。
+- `New Project` / `新建项目` 创建 MVP 默认空白项目，先进入独立 `物性` 页；该动作不依赖登录或服务端。
 - 小案例作者入口创建 MVP 默认空白项目，进入工作台并切到左侧 `模块`；当前支持 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条作者清单。清单状态必须从当前 canvas unit / stream / solve snapshot 推导，不反向修改项目语义。
 - `Open Project` / `打开项目` 使用系统文件选择器打开用户项目，进入工作台；打开成功后更新 MRU。
 - `Open Example Project` / `打开示例项目` 从 Example Cases 选择或打开示例文件夹，成功后进入工作台并更新 MRU 来源。
@@ -237,7 +237,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 
 进入工作台的规则：
 
-- 当前代码打开项目或示例后进入常规工作台：顶部 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` 主导航、当前 screen 下的上下文工具栏、左侧示例 / 项目 / 放置、中央 Flowsheet Canvas、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表`。
+- 当前代码打开项目或示例后进入常规工作台；普通空白项目先进入 `物性` 页，选齐 package 和项目组分后再进入 `流程图` 建模。工作区内保持顶部 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` 主导航、当前 screen 下的上下文工具栏、左侧 `模块 / 项目`、中央 Flowsheet Canvas、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表`。
 - 文件 / 示例入口进入 `文件` 或 Home，运行控制进入 `流程图` / `运行` 上下文工具栏，物性进入独立 `物性` 页面，结果审阅进入顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表`。
 - 工作台内仍可通过顶部或左侧返回 Home Dashboard，但 Home Dashboard 不直接承载流程图编辑。
 - 若启动时发现最近项目，可以先进入 Home Dashboard 并突出 `最近项目` 列表的首项，不要静默跳过首页，也不要在左侧重复生成继续入口按钮。
@@ -248,7 +248,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 
 - 应用和项目身份：项目名、脏状态、运行模式、当前单位集。
 - 顶部主导航：`文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`。
-- 上下文工具栏：`物性 / 流程图 / 运行 / 结果` screen 分别消费已有 property page、command registry、Run Panel state、Module Results、结果表状态和 `SolveSnapshot` 状态。
+- 上下文工具栏：`物性 / 流程图 / 运行 / 结果` screen 分别消费已有 property page、进入建模 readiness、command registry、Run Panel state、Module Results、结果表状态和 `SolveSnapshot` 状态。
 - 全局菜单：项目生命周期命令进入 `文件`；命令面板、Commands 面板和逻辑窗口进入 `工具`；语言进入 `设置`。
 - 全局状态：运行状态、pending work、授权 / 物性包摘要、最近错误入口。
 
@@ -321,7 +321,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 
 - 右侧默认只展示和当前选择或当前任务相关的信息。
 - 当前代码以 `检查器 / 模块设置 / 模块结果` tab 组织右侧栏；`运行` 和 `物性包` 不再作为右侧常驻 tab。
-- `物性` 页承载本地 package 摘要、内置 package 选择和同一套项目组分选择入口；用户刚进入 Workbench 时仍应能先从左侧项目树发现项目组分状态。
+- `物性` 页承载本地 package 摘要、内置 package 选择、同一套项目组分选择入口和进入流程图建模的 readiness；用户进入 Workbench 后仍应能先从左侧项目树发现项目组分状态。
 - 属性字段采用 label + input + unit + validation 的行结构；单位必须紧贴数值，不藏在说明文字里。
 - 从左侧 `项目` 对象树、Canvas 画布实体或结果定位动作选择 stream / unit 后，应自然切换到对应检查器；stream 优先暴露 `T / P / F`、组成草稿和提交/归一化动作，unit 的可编辑参数进入 `模块设置`，latest unit result 进入 `模块结果`。
 - Unit Inspector 当前只把 `Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 与 `Flash Drum` 的 flash temperature / pressure 作为可编辑参数行；字段必须显示 SI 单位和约束提示，提交走正式文档命令并同步对应 outlet stream 模板。若字段值来自 outlet stream 模板 / fallback 而 unit parameter 尚未显式存在，同值提交仍应写入正式 `SetUnitParameter`。其余单元信息仍以端口、关联步骤、关联诊断和最新只读结果为主，不提前设计完整单元参数表。
