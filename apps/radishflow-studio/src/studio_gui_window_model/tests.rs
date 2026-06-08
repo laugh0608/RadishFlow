@@ -5369,7 +5369,7 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
             .iter()
             .map(|section| section.title)
             .collect::<Vec<_>>(),
-        vec!["Package"]
+        vec!["Package", "Modeling"]
     );
     let package_section = context_toolbar_section(&window.property_context_toolbar, "Package");
     assert_eq!(
@@ -5390,6 +5390,27 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
             Some("Available")
         )]
     );
+    let modeling_section = context_toolbar_section(&window.property_context_toolbar, "Modeling");
+    assert_eq!(
+        modeling_section
+            .items
+            .iter()
+            .map(|item| (
+                item.target,
+                item.command_id.as_deref(),
+                item.enabled,
+                item.label.as_str(),
+                item.status_label.as_deref()
+            ))
+            .collect::<Vec<_>>(),
+        vec![(
+            crate::StudioGuiWindowContextToolbarItemTarget::FlowsheetModeling,
+            None,
+            false,
+            "Enter Flowsheet Modeling",
+            Some("Incomplete")
+        )]
+    );
     assert_eq!(
         window
             .property_context_toolbar
@@ -5400,6 +5421,7 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
         vec![
             ("Package", "Unselected", "Unselected"),
             ("Components", "2", "Selected"),
+            ("Modeling", "Property", "Incomplete"),
             ("Source", "Built-in", "Available"),
         ]
     );
@@ -5411,9 +5433,37 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
         .expect("expected property package selection dispatch");
     let selected_window = selected.window;
 
-    assert!(
-        selected_window.property_context_toolbar.sections.is_empty(),
-        "selected package and referenced components should render as state, not duplicate toolbar commands"
+    assert_eq!(
+        selected_window
+            .property_context_toolbar
+            .sections
+            .iter()
+            .map(|section| section.title)
+            .collect::<Vec<_>>(),
+        vec!["Modeling"]
+    );
+    let selected_modeling_section =
+        context_toolbar_section(&selected_window.property_context_toolbar, "Modeling");
+    assert_eq!(
+        selected_modeling_section
+            .items
+            .iter()
+            .map(|item| (
+                item.target,
+                item.command_id.as_deref(),
+                item.enabled,
+                item.label.as_str(),
+                item.status_label.as_deref()
+            ))
+            .collect::<Vec<_>>(),
+        vec![(
+            crate::StudioGuiWindowContextToolbarItemTarget::FlowsheetModeling,
+            None,
+            true,
+            "Enter Flowsheet Modeling",
+            Some("Ready")
+        )],
+        "selected package and referenced components should render as state, while the modeling entry remains available"
     );
     assert_eq!(
         selected_window.property_context_toolbar.status_items[0].value,
@@ -5422,6 +5472,14 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
     assert_eq!(
         selected_window.property_context_toolbar.status_items[0].status_label,
         "Selected"
+    );
+    assert_eq!(
+        selected_window.property_context_toolbar.status_items[2].value,
+        "Flowsheet"
+    );
+    assert_eq!(
+        selected_window.property_context_toolbar.status_items[2].status_label,
+        "Ready"
     );
 }
 

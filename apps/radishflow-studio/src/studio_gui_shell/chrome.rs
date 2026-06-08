@@ -2083,19 +2083,10 @@ impl ReadyAppState {
 
 fn workbench_bottom_drawer_height(
     tab: StudioShellBottomDrawerTab,
-    window: &StudioGuiWindowModel,
+    _window: &StudioGuiWindowModel,
 ) -> f32 {
     match tab {
-        StudioShellBottomDrawerTab::Messages => {
-            if window.runtime.latest_failure.is_some()
-                || window.runtime.latest_solve_snapshot.is_some()
-                || window.runtime.run_panel.view().latest_log_message.is_some()
-            {
-                156.0
-            } else {
-                156.0
-            }
-        }
+        StudioShellBottomDrawerTab::Messages => 156.0,
         StudioShellBottomDrawerTab::RunLog => 170.0,
         StudioShellBottomDrawerTab::Convergence => 230.0,
         StudioShellBottomDrawerTab::ResultsTable => 250.0,
