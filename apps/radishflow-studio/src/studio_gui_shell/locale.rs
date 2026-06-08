@@ -184,8 +184,10 @@ impl StudioShellLocale {
             "Results Table" => Cow::Borrowed("结果表"),
             "Status Summary" => Cow::Borrowed("状态汇总"),
             "Property" => Cow::Borrowed("物性"),
+            "Flowsheet" => Cow::Borrowed("流程图"),
             "Package" => Cow::Borrowed("物性包"),
             "Components" => Cow::Borrowed("组分"),
+            "Modeling" => Cow::Borrowed("建模"),
             "Control" => Cow::Borrowed("控制"),
             "Recovery" => Cow::Borrowed("恢复"),
             "Monitor" => Cow::Borrowed("监控"),
@@ -206,6 +208,8 @@ impl StudioShellLocale {
             "Modified" => Cow::Borrowed("已修改"),
             "Unselected" => Cow::Borrowed("未选择"),
             "Selected" => Cow::Borrowed("已选择"),
+            "Ready" => Cow::Borrowed("就绪"),
+            "Incomplete" => Cow::Borrowed("未完成"),
             "Parameters" => Cow::Borrowed("参数"),
             "Analysis" => Cow::Borrowed("分析"),
             "Sources" => Cow::Borrowed("来源"),
@@ -256,7 +260,6 @@ impl StudioShellLocale {
             "Source" => Cow::Borrowed("源"),
             "Target" => Cow::Borrowed("目标"),
             "Help" => Cow::Borrowed("帮助"),
-            "Ready" => Cow::Borrowed("就绪"),
             "Available" => Cow::Borrowed("可用"),
             "Current" => Cow::Borrowed("当前"),
             "Built-in" => Cow::Borrowed("内置"),
@@ -299,6 +302,7 @@ impl StudioShellLocale {
             "Place Valve" => Cow::Borrowed("放置阀门"),
             "Place Mixer" => Cow::Borrowed("放置混合器"),
             "Run workspace" => Cow::Borrowed("运行当前流程"),
+            "Enter Flowsheet Modeling" => Cow::Borrowed("进入流程图建模"),
             "Resume workspace" => Cow::Borrowed("恢复运行"),
             "Hold workspace" => Cow::Borrowed("暂停运行"),
             "Activate workspace" => Cow::Borrowed("激活运行"),
@@ -324,6 +328,12 @@ impl StudioShellLocale {
             "Delete stream" => Cow::Borrowed("删除流股"),
             "Click empty canvas to move selected unit here" => {
                 Cow::Borrowed("点击画布空白处将选中单元移动到此处")
+            }
+            "Property package and project components are selected; continue to flowsheet modeling." => {
+                Cow::Borrowed("物性包和项目组分已选择，可以进入流程图建模。")
+            }
+            "Select a property package and at least one project component before entering flowsheet modeling." => {
+                Cow::Borrowed("先选择物性包和至少一个项目组分，再进入流程图建模。")
             }
             "Temperature" => Cow::Borrowed("温度"),
             "Pressure" => Cow::Borrowed("压力"),

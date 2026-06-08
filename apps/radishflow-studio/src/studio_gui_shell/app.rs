@@ -41,6 +41,23 @@ impl ReadyAppState {
         self.request_blank_project(None);
     }
 
+    pub(super) fn enter_flowsheet_modeling_from_property(&mut self) {
+        let unit_count = self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .unit_count;
+        self.screen = StudioShellScreen::Workbench;
+        self.left_sidebar_tab = if unit_count == 0 {
+            StudioShellLeftSidebarTab::Palette
+        } else {
+            StudioShellLeftSidebarTab::Project
+        };
+        self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+        self.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
+    }
+
     pub(super) fn start_mixer_flash_authoring_case(&mut self) {
         self.request_blank_project(Some(AuthoringCaseKind::MixerFlash));
     }

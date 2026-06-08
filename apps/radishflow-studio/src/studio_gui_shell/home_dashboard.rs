@@ -516,20 +516,23 @@ impl ReadyAppState {
     }
 
     fn open_current_workspace_from_home(&mut self) {
-        self.screen = self.current_workspace_home_entry_screen();
+        match self.current_workspace_home_entry_screen() {
+            StudioShellScreen::Workbench => self.enter_flowsheet_modeling_from_property(),
+            screen => self.screen = screen,
+        }
     }
 
     fn current_workspace_home_entry_screen(&self) -> StudioShellScreen {
-        let document = &self.platform_host.snapshot().runtime.workspace_document;
-        if document.property_package_id.is_none()
-            || !document
-                .project_component_choices
-                .iter()
-                .any(|component| component.selected)
-        {
-            StudioShellScreen::Property
-        } else {
+        let flowsheet_modeling_enabled = self
+            .platform_host
+            .snapshot()
+            .window_model()
+            .property_page
+            .flowsheet_modeling_enabled;
+        if flowsheet_modeling_enabled {
             StudioShellScreen::Workbench
+        } else {
+            StudioShellScreen::Property
         }
     }
 

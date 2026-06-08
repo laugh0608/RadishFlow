@@ -50,7 +50,7 @@ impl ReadyAppState {
             ui.horizontal_wrapped(|ui| {
                 self.render_file_top_menu(ui, window);
                 ui.separator();
-                self.render_top_screen_navigation(ui);
+                self.render_top_screen_navigation(ui, window);
                 ui.separator();
                 self.render_tools_top_menu(ui, windows, current_window_id, window);
                 self.render_settings_top_menu(ui);
@@ -179,6 +179,9 @@ impl ReadyAppState {
                         self.dispatch_ui_command(command_id);
                     }
                 }
+                StudioGuiWindowContextToolbarItemTarget::FlowsheetModeling => {
+                    self.enter_flowsheet_modeling_from_property();
+                }
                 StudioGuiWindowContextToolbarItemTarget::RunLog => {
                     self.focus_run_bottom_drawer_tab(StudioShellBottomDrawerTab::RunLog);
                 }
@@ -278,7 +281,7 @@ impl ReadyAppState {
         }
     }
 
-    fn render_top_screen_navigation(&mut self, ui: &mut egui::Ui) {
+    fn render_top_screen_navigation(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         ui.selectable_value(
             &mut self.screen,
             StudioShellScreen::Home,
@@ -289,11 +292,22 @@ impl ReadyAppState {
             StudioShellScreen::Property,
             self.locale.text(ShellText::Property),
         );
-        ui.selectable_value(
-            &mut self.screen,
-            StudioShellScreen::Workbench,
-            self.locale.text(ShellText::Flowsheet),
-        );
+        let flowsheet_response = ui
+            .add_enabled(
+                window.property_page.flowsheet_modeling_enabled,
+                egui::SelectableLabel::new(
+                    self.screen == StudioShellScreen::Workbench,
+                    self.locale.text(ShellText::Flowsheet),
+                ),
+            )
+            .on_hover_text(
+                self.locale
+                    .runtime_label(&window.property_page.flowsheet_modeling_detail)
+                    .as_ref(),
+            );
+        if flowsheet_response.clicked() {
+            self.enter_flowsheet_modeling_from_property();
+        }
         ui.selectable_value(
             &mut self.screen,
             StudioShellScreen::Run,
@@ -2185,8 +2199,10 @@ fn module_palette_option_matches(
 
 fn context_toolbar_status_color(status_label: &str) -> egui::Color32 {
     match status_label {
-        "Selected" | "Available" | "Current" => egui::Color32::from_rgb(54, 128, 84),
-        "Unselected" | "SnapshotMissing" | "Stale" => egui::Color32::from_rgb(180, 120, 20),
+        "Selected" | "Available" | "Current" | "Ready" => egui::Color32::from_rgb(54, 128, 84),
+        "Unselected" | "SnapshotMissing" | "Stale" | "Incomplete" => {
+            egui::Color32::from_rgb(180, 120, 20)
+        }
         _ => run_status_color(status_label),
     }
 }

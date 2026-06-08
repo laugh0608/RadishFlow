@@ -241,6 +241,40 @@ impl ReadyAppState {
                 });
                 render_wrapped_small(ui, &metric.detail);
             }
+            ui.separator();
+            ui.horizontal_wrapped(|ui| {
+                render_status_chip(
+                    ui,
+                    self.locale
+                        .runtime_label(property_page.flowsheet_modeling_status_label)
+                        .as_ref(),
+                    property_modeling_status_color(property_page.flowsheet_modeling_status_label),
+                );
+                if ui
+                    .add_enabled(
+                        property_page.flowsheet_modeling_enabled,
+                        egui::Button::new(
+                            self.locale
+                                .runtime_label("Enter Flowsheet Modeling")
+                                .as_ref(),
+                        ),
+                    )
+                    .on_hover_text(
+                        self.locale
+                            .runtime_label(&property_page.flowsheet_modeling_detail)
+                            .as_ref(),
+                    )
+                    .clicked()
+                {
+                    self.enter_flowsheet_modeling_from_property();
+                }
+            });
+            render_wrapped_small(
+                ui,
+                self.locale
+                    .runtime_label(&property_page.flowsheet_modeling_detail)
+                    .as_ref(),
+            );
         });
 
         if let Some(entitlement_host) = window.runtime.entitlement_host.as_ref() {
@@ -285,5 +319,13 @@ fn property_package_choice_label(
             "binary-hydrocarbon-lite-v1" => "二元烃 Lite".to_string(),
             _ => choice.label.clone(),
         },
+    }
+}
+
+fn property_modeling_status_color(status_label: &str) -> egui::Color32 {
+    match status_label {
+        "Ready" => egui::Color32::from_rgb(54, 128, 84),
+        "Incomplete" => egui::Color32::from_rgb(180, 120, 20),
+        _ => run_status_color(status_label),
     }
 }

@@ -783,8 +783,11 @@ fn property_context_toolbar_renders_existing_package_component_commands_and_stat
         "组分",
         "选择 Methane",
         "选择 Ethane",
+        "建模",
+        "进入流程图建模",
         "源: 内置",
         "未选择",
+        "未完成",
         "可用",
     ] {
         assert!(
@@ -806,6 +809,66 @@ fn property_context_toolbar_renders_existing_package_component_commands_and_stat
             texts
         );
     }
+}
+
+#[test]
+fn property_main_path_readiness_tracks_property_package_and_components() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.create_blank_project();
+
+    let initial_window = app.platform_host.snapshot().window_model();
+    assert!(!initial_window.property_page.flowsheet_modeling_enabled);
+    assert_eq!(
+        initial_window.property_page.flowsheet_modeling_status_label,
+        "Incomplete"
+    );
+    let initial_modeling_item = initial_window
+        .property_context_toolbar
+        .sections
+        .iter()
+        .find(|section| section.title == "Modeling")
+        .and_then(|section| section.items.first())
+        .expect("expected property modeling toolbar item");
+    assert_eq!(
+        initial_modeling_item.target,
+        radishflow_studio::StudioGuiWindowContextToolbarItemTarget::FlowsheetModeling
+    );
+    assert!(!initial_modeling_item.enabled);
+    let initial_status = initial_window
+        .property_context_toolbar
+        .status_items
+        .iter()
+        .find(|status| status.label == "Modeling")
+        .expect("expected property modeling status");
+    assert_eq!(initial_status.value, "Property");
+    assert_eq!(initial_status.status_label, "Incomplete");
+
+    select_builtin_binary_hydrocarbon_basis(&mut app);
+
+    let ready_window = app.platform_host.snapshot().window_model();
+    assert!(ready_window.property_page.flowsheet_modeling_enabled);
+    assert_eq!(
+        ready_window.property_page.flowsheet_modeling_status_label,
+        "Ready"
+    );
+    let ready_modeling_item = ready_window
+        .property_context_toolbar
+        .sections
+        .iter()
+        .find(|section| section.title == "Modeling")
+        .and_then(|section| section.items.first())
+        .expect("expected ready property modeling toolbar item");
+    assert!(ready_modeling_item.enabled);
+    assert_eq!(ready_modeling_item.label, "Enter Flowsheet Modeling");
+    assert_eq!(ready_modeling_item.status_label.as_deref(), Some("Ready"));
+    let ready_status = ready_window
+        .property_context_toolbar
+        .status_items
+        .iter()
+        .find(|status| status.label == "Modeling")
+        .expect("expected ready property modeling status");
+    assert_eq!(ready_status.value, "Flowsheet");
+    assert_eq!(ready_status.status_label, "Ready");
 }
 
 #[test]
@@ -1640,6 +1703,8 @@ fn property_screen_renders_independent_property_page_from_window_model() {
         "Methane",
         "Ethane",
         "摘要",
+        "进入流程图建模",
+        "未完成",
     ] {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
@@ -1647,6 +1712,38 @@ fn property_screen_renders_independent_property_page_from_window_model() {
             texts
         );
     }
+}
+
+#[test]
+fn property_page_main_path_enters_flowsheet_modeling_after_basis_selection() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.create_blank_project();
+    app.screen = StudioShellScreen::Property;
+
+    let initial_texts = render_property_page_texts(&mut app);
+    assert!(
+        initial_texts.iter().any(|text| text.contains("未完成")),
+        "expected incomplete property page before package/components, rendered texts: {:?}",
+        initial_texts
+    );
+
+    select_builtin_binary_hydrocarbon_basis(&mut app);
+
+    let ready_texts = render_property_page_texts(&mut app);
+    for expected in ["进入流程图建模", "就绪", "物性包和项目组分已选择"] {
+        assert!(
+            ready_texts.iter().any(|text| text.contains(expected)),
+            "expected ready property page text `{expected}`, rendered texts: {:?}",
+            ready_texts
+        );
+    }
+
+    app.enter_flowsheet_modeling_from_property();
+
+    assert_eq!(app.screen, StudioShellScreen::Workbench);
+    assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Palette);
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Inspector);
+    assert_eq!(app.bottom_drawer_tab, StudioShellBottomDrawerTab::Messages);
 }
 
 #[test]
@@ -2679,6 +2776,28 @@ fn home_open_project_returns_to_current_workspace_when_current_tile_is_selected(
     assert!(
         app.project_open.recent_projects.is_empty(),
         "returning to the current unsaved workspace must not persist a fake recent path"
+    );
+}
+
+#[test]
+fn home_current_workspace_tile_returns_to_flowsheet_after_property_main_path_ready() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.create_blank_project();
+    select_builtin_binary_hydrocarbon_basis(&mut app);
+    app.screen = StudioShellScreen::Home;
+    let _ = render_home_dashboard_texts(&mut app);
+
+    assert!(app.home_selected_current_workspace);
+    assert_eq!(app.home_selected_recent_project, None);
+
+    app.open_selected_recent_project_or_picker();
+
+    assert_eq!(app.screen, StudioShellScreen::Workbench);
+    assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Palette);
+    assert!(
+        app.project_open.recent_projects.is_empty(),
+        "returning to a ready unsaved workspace must still avoid fake recent paths"
     );
 }
 

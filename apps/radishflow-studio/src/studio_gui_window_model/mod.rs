@@ -90,6 +90,7 @@ pub struct StudioGuiWindowContextToolbarSectionModel {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioGuiWindowContextToolbarItemTarget {
     Command,
+    FlowsheetModeling,
     RunLog,
     Convergence,
     Suggestions,
@@ -938,10 +939,19 @@ impl StudioGuiWindowContextToolbarModel {
             .iter()
             .filter_map(property_component_context_toolbar_item)
             .collect::<Vec<_>>();
+        let modeling_items = vec![StudioGuiWindowContextToolbarItemModel {
+            target: StudioGuiWindowContextToolbarItemTarget::FlowsheetModeling,
+            command_id: None,
+            enabled: property_page.flowsheet_modeling_enabled,
+            label: "Enter Flowsheet Modeling".to_string(),
+            detail: property_page.flowsheet_modeling_detail.clone(),
+            status_label: Some(property_page.flowsheet_modeling_status_label.to_string()),
+        }];
 
         let mut sections = Vec::new();
         push_context_toolbar_section(&mut sections, "Package", package_items);
         push_context_toolbar_section(&mut sections, "Components", component_items);
+        push_context_toolbar_section(&mut sections, "Modeling", modeling_items);
 
         Self {
             title: "Property Context",
@@ -1053,6 +1063,16 @@ fn property_context_status_items(
                 "Unselected".to_string()
             },
             detail: "Project component selection stored in the flowsheet document.".to_string(),
+        },
+        StudioGuiWindowContextToolbarStatusModel {
+            label: "Modeling",
+            value: if property_page.flowsheet_modeling_enabled {
+                "Flowsheet".to_string()
+            } else {
+                "Property".to_string()
+            },
+            status_label: property_page.flowsheet_modeling_status_label.to_string(),
+            detail: property_page.flowsheet_modeling_detail.clone(),
         },
         StudioGuiWindowContextToolbarStatusModel {
             label: "Source",

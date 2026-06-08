@@ -78,6 +78,9 @@ pub struct StudioGuiWindowPropertyPageModel {
     pub selected_package_id: Option<String>,
     pub package_status_label: &'static str,
     pub selected_component_count: usize,
+    pub flowsheet_modeling_enabled: bool,
+    pub flowsheet_modeling_status_label: &'static str,
+    pub flowsheet_modeling_detail: String,
     pub package_choices: Vec<StudioGuiWindowPropertyPackageModel>,
     pub component_choices: Vec<StudioGuiWindowPropertyComponentModel>,
     pub metrics: Vec<StudioGuiWindowPropertyMetricModel>,
@@ -183,6 +186,7 @@ impl StudioGuiWindowPropertyPageModel {
             .find(|choice| choice.selected)
             .map(|choice| choice.component_summary.clone())
             .unwrap_or_else(|| "Unselected".to_string());
+        let flowsheet_modeling_enabled = selected_package.is_some() && selected_component_count > 0;
 
         Self {
             title: "Property",
@@ -193,6 +197,19 @@ impl StudioGuiWindowPropertyPageModel {
                 "Unselected"
             },
             selected_component_count,
+            flowsheet_modeling_enabled,
+            flowsheet_modeling_status_label: if flowsheet_modeling_enabled {
+                "Ready"
+            } else {
+                "Incomplete"
+            },
+            flowsheet_modeling_detail: if flowsheet_modeling_enabled {
+                "Property package and project components are selected; continue to flowsheet modeling."
+                    .to_string()
+            } else {
+                "Select a property package and at least one project component before entering flowsheet modeling."
+                    .to_string()
+            },
             package_choices: document
                 .property_package_choices
                 .iter()
