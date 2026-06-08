@@ -1148,6 +1148,56 @@ fn right_sidebar_main_tabs_align_with_module_workbench_roles() {
 }
 
 #[test]
+fn right_sidebar_tabs_share_canvas_selection_context_for_active_unit() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.dispatch_ui_command("inspector.focus_unit:heater-1");
+
+    for tab in [
+        StudioShellRightSidebarTab::Inspector,
+        StudioShellRightSidebarTab::ModuleSettings,
+        StudioShellRightSidebarTab::ModuleResults,
+    ] {
+        app.right_sidebar_tab = tab;
+        let texts = render_right_sidebar_texts(&mut app);
+
+        assert!(
+            texts.iter().any(|text| text == "画布选择")
+                && texts.iter().any(|text| text == "单元")
+                && texts.iter().any(|text| text == "heater-1")
+                && texts.iter().any(|text| text.contains("都跟随这个已选单元")),
+            "expected right sidebar tab `{tab:?}` to share the active canvas unit selection context, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
+fn module_tabs_keep_unit_only_content_when_canvas_selection_is_stream() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.dispatch_ui_command("inspector.focus_stream:stream-feed");
+
+    for tab in [
+        StudioShellRightSidebarTab::ModuleSettings,
+        StudioShellRightSidebarTab::ModuleResults,
+    ] {
+        app.right_sidebar_tab = tab;
+        let texts = render_right_sidebar_texts(&mut app);
+
+        assert!(
+            texts.iter().any(|text| text == "画布选择")
+                && texts.iter().any(|text| text == "流股")
+                && texts.iter().any(|text| text == "stream-feed")
+                && texts.iter().any(|text| text == "未选择单元")
+                && texts.iter().any(|text| text.contains("等待单元选择")),
+            "expected right sidebar tab `{tab:?}` to keep module content unit-only while exposing the stream canvas selection, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
 fn bottom_drawer_tabs_align_with_run_information_roles() {
     let mut app = ready_app_state(&synced_workspace_config());
 

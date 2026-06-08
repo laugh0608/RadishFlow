@@ -1104,15 +1104,18 @@ impl ReadyAppState {
                 window.layout_state.scope.layout_key
             ))
             .auto_shrink([false, false])
-            .show(ui, |ui| match self.right_sidebar_tab {
-                StudioShellRightSidebarTab::Inspector => {
-                    self.render_runtime_inspector_tab(ui, window)
-                }
-                StudioShellRightSidebarTab::ModuleSettings => {
-                    self.render_runtime_module_settings_tab(ui, window)
-                }
-                StudioShellRightSidebarTab::ModuleResults => {
-                    self.render_runtime_module_results_tab(ui, window)
+            .show(ui, |ui| {
+                self.render_right_sidebar_selection_context(ui, window);
+                match self.right_sidebar_tab {
+                    StudioShellRightSidebarTab::Inspector => {
+                        self.render_runtime_inspector_tab(ui, window)
+                    }
+                    StudioShellRightSidebarTab::ModuleSettings => {
+                        self.render_runtime_module_settings_tab(ui, window)
+                    }
+                    StudioShellRightSidebarTab::ModuleResults => {
+                        self.render_runtime_module_results_tab(ui, window)
+                    }
                 }
             });
     }

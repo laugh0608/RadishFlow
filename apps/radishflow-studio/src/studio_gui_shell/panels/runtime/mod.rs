@@ -73,6 +73,70 @@ impl ReadyAppState {
         self.render_module_results_summary(ui, &window.module_results);
     }
 
+    pub(in crate::studio_gui_shell) fn render_right_sidebar_selection_context(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+    ) {
+        let selection = window.canvas.widget.view().current_selection.as_ref();
+        ui.horizontal_wrapped(|ui| {
+            ui.small(egui::RichText::new(right_sidebar_selection_title(self.locale)).strong());
+            match selection {
+                Some(selection) => {
+                    render_status_chip(
+                        ui,
+                        self.locale.runtime_label(selection.kind_label).as_ref(),
+                        right_sidebar_selection_color(selection.kind_label),
+                    );
+                    ui.small(&selection.target_id);
+                    if ui
+                        .small_button(self.locale.text(ShellText::InspectObject))
+                        .on_hover_text(right_sidebar_selection_hover_text(
+                            self.locale,
+                            selection.kind_label,
+                            &selection.target_id,
+                        ))
+                        .clicked()
+                    {
+                        self.dispatch_ui_command(&selection.command_id);
+                    }
+                }
+                None => {
+                    render_status_chip(
+                        ui,
+                        self.locale.text(ShellText::NoneValue),
+                        egui::Color32::from_rgb(130, 136, 148),
+                    );
+                }
+            }
+        });
+
+        match selection {
+            Some(selection) => {
+                render_wrapped_small(ui, &selection.summary);
+                if let (Some(source), Some(detail)) = (
+                    selection.layout_source_label,
+                    selection.layout_detail.as_ref(),
+                ) {
+                    ui.horizontal_wrapped(|ui| {
+                        render_status_chip(
+                            ui,
+                            self.locale.runtime_label(source).as_ref(),
+                            egui::Color32::from_rgb(86, 96, 108),
+                        );
+                        render_wrapped_small(ui, detail);
+                    });
+                }
+                render_wrapped_small(
+                    ui,
+                    right_sidebar_selection_coordination_detail(self.locale, selection.kind_label),
+                );
+            }
+            None => render_wrapped_small(ui, right_sidebar_selection_empty_detail(self.locale)),
+        }
+        ui.separator();
+    }
+
     pub(in crate::studio_gui_shell) fn render_module_results_summary(
         &mut self,
         ui: &mut egui::Ui,
@@ -1068,5 +1132,66 @@ fn module_results_state_color(
         radishflow_studio::StudioGuiWindowModuleResultsState::NoUnitSelected => {
             egui::Color32::from_rgb(86, 96, 108)
         }
+    }
+}
+
+fn right_sidebar_selection_title(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => "Canvas selection",
+        StudioShellLocale::ZhCn => "画布选择",
+    }
+}
+
+fn right_sidebar_selection_hover_text(
+    locale: StudioShellLocale,
+    kind_label: &str,
+    target_id: &str,
+) -> String {
+    match locale {
+        StudioShellLocale::En => {
+            format!("Open the active {kind_label} inspector for `{target_id}`.")
+        }
+        StudioShellLocale::ZhCn => {
+            format!("打开 `{target_id}` 的当前检查器。")
+        }
+    }
+}
+
+fn right_sidebar_selection_coordination_detail(
+    locale: StudioShellLocale,
+    kind_label: &str,
+) -> &'static str {
+    match (locale, kind_label) {
+        (StudioShellLocale::En, "Unit") => {
+            "Inspector, Module Settings, and Module Results follow this selected unit."
+        }
+        (StudioShellLocale::ZhCn, "Unit") => "检查器、模块设置和模块结果都跟随这个已选单元。",
+        (StudioShellLocale::En, "Stream") => {
+            "Inspector follows this stream; Module Settings and Module Results wait for a unit selection."
+        }
+        (StudioShellLocale::ZhCn, "Stream") => {
+            "检查器跟随这股流股；模块设置和模块结果等待单元选择。"
+        }
+        (StudioShellLocale::En, _) => {
+            "Inspector follows the active canvas target; module panes only enable for unit targets."
+        }
+        (StudioShellLocale::ZhCn, _) => "检查器跟随当前画布目标；模块面板只在选择单元时启用。",
+    }
+}
+
+fn right_sidebar_selection_empty_detail(locale: StudioShellLocale) -> &'static str {
+    match locale {
+        StudioShellLocale::En => {
+            "Select a stream or unit from the Project panel or Canvas to populate the right rail."
+        }
+        StudioShellLocale::ZhCn => "从左侧项目树或画布选择流股/单元后，右侧栏会跟随更新。",
+    }
+}
+
+fn right_sidebar_selection_color(kind_label: &str) -> egui::Color32 {
+    match kind_label {
+        "Unit" => egui::Color32::from_rgb(86, 118, 168),
+        "Stream" => egui::Color32::from_rgb(52, 128, 89),
+        _ => egui::Color32::from_rgb(86, 96, 108),
     }
 }
