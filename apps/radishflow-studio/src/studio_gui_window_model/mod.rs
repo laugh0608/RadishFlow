@@ -870,7 +870,14 @@ impl StudioGuiWindowContextToolbarModel {
     ) -> Self {
         let canvas_items =
             context_command_items(commands, StudioGuiCommandGroup::Canvas, |entry| {
-                entry.command_id.starts_with("canvas.")
+                matches!(
+                    entry.command_id.as_str(),
+                    "canvas.accept_focused"
+                        | "canvas.reject_focused"
+                        | "canvas.focus_next"
+                        | "canvas.focus_previous"
+                        | "canvas.cancel_pending_edit"
+                )
             });
         let run_items = context_command_items(commands, StudioGuiCommandGroup::RunPanel, |entry| {
             matches!(

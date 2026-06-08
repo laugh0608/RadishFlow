@@ -5214,14 +5214,35 @@ fn studio_gui_window_model_builds_flowsheet_context_toolbar_from_available_comma
                 .expect("canvas toolbar items must target registered commands")
         })
         .collect::<Vec<_>>();
-    assert!(canvas_command_ids.contains(&"canvas.begin_place_unit.feed"));
-    assert!(canvas_command_ids.contains(&"canvas.begin_place_unit.flash_drum"));
+    assert!(
+        !canvas_command_ids.is_empty(),
+        "canvas context toolbar should keep available canvas suggestion commands"
+    );
+    assert!(canvas_command_ids.contains(&"canvas.accept_focused"));
+    let allowed_canvas_command_ids = [
+        "canvas.accept_focused",
+        "canvas.reject_focused",
+        "canvas.focus_next",
+        "canvas.focus_previous",
+        "canvas.cancel_pending_edit",
+    ];
     assert!(
         canvas_command_ids
             .iter()
-            .all(|command_id| command_id.starts_with("canvas.")),
-        "canvas context toolbar must not pull object/result navigation commands: {canvas_command_ids:?}"
+            .all(|command_id| allowed_canvas_command_ids.contains(command_id)),
+        "canvas context toolbar must only render existing suggestion or pending-edit commands: {canvas_command_ids:?}"
     );
+    for excluded_command_id in [
+        "canvas.begin_place_unit.feed",
+        "canvas.begin_place_unit.flash_drum",
+        "canvas.move_selected_unit.left",
+        "canvas.move_selected_unit.right",
+    ] {
+        assert!(
+            !canvas_command_ids.contains(&excluded_command_id),
+            "flowsheet context toolbar must not repeat placement or selected-object canvas commands: {canvas_command_ids:?}"
+        );
+    }
 
     let run_section = context_toolbar_section(&window.flowsheet_context_toolbar, "Run");
     assert!(

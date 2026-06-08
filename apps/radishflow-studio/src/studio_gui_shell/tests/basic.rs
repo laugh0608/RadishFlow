@@ -132,6 +132,44 @@ fn render_alpha_workbench_texts(app: &mut ReadyAppState) -> Vec<String> {
     texts
 }
 
+#[derive(Debug, Clone)]
+struct RenderedText {
+    text: String,
+    pos: egui::Pos2,
+}
+
+fn render_workbench_positioned_texts(app: &mut ReadyAppState) -> Vec<RenderedText> {
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    let windows = snapshot.app_host_state.windows.clone();
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 860.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            let mut hovered_drop_target = false;
+            app.render_top_bar(ctx, &windows, &window, &mut hovered_drop_target);
+            app.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
+            app.render_right_sidebar(ctx, &window, &mut hovered_drop_target);
+            app.render_bottom_status_bar(ctx, &window);
+            app.render_bottom_drawer(ctx, &window);
+            app.render_center_stage(ctx, &window, &mut hovered_drop_target);
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_positioned_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
 fn render_center_stage_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
     let window = snapshot.window_model();
@@ -442,6 +480,41 @@ fn collect_shape_texts(shape: &egui::epaint::Shape, texts: &mut Vec<String>) {
     }
 }
 
+fn collect_positioned_shape_texts(shape: &egui::epaint::Shape, texts: &mut Vec<RenderedText>) {
+    match shape {
+        egui::epaint::Shape::Text(text) => texts.push(RenderedText {
+            text: text.galley.job.text.clone(),
+            pos: text.pos,
+        }),
+        egui::epaint::Shape::Vec(shapes) => {
+            for shape in shapes {
+                collect_positioned_shape_texts(shape, texts);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn first_text_position(
+    texts: &[RenderedText],
+    label: &str,
+    predicate: impl Fn(&str) -> bool,
+) -> egui::Pos2 {
+    first_text_position_where(texts, label, |item| predicate(&item.text))
+}
+
+fn first_text_position_where(
+    texts: &[RenderedText],
+    label: &str,
+    predicate: impl Fn(&RenderedText) -> bool,
+) -> egui::Pos2 {
+    texts
+        .iter()
+        .find(|item| predicate(item))
+        .map(|item| item.pos)
+        .unwrap_or_else(|| panic!("expected rendered text `{label}`, rendered texts: {texts:?}"))
+}
+
 #[test]
 fn insert_neighbors_from_area_ids_returns_previous_and_next_for_middle_target() {
     let area_ids = [
@@ -663,9 +736,6 @@ fn flowsheet_context_toolbar_renders_existing_canvas_run_result_state() {
 
     for expected in [
         "流程图工具栏",
-        "画布",
-        "放置进料",
-        "放置闪蒸罐",
         "运行当前流程",
         "审阅",
         "模块结果",
@@ -679,7 +749,17 @@ fn flowsheet_context_toolbar_renders_existing_canvas_run_result_state() {
             texts
         );
     }
-    for hidden in ["帮助", "完整报表", "自动布线", "自由连线", "完整参数表"] {
+    for hidden in [
+        "放置进料",
+        "放置闪蒸罐",
+        "左移",
+        "右移",
+        "帮助",
+        "完整报表",
+        "自动布线",
+        "自由连线",
+        "完整参数表",
+    ] {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
             "flowsheet context toolbar must not expose out-of-scope `{hidden}`, rendered texts: {:?}",
@@ -962,6 +1042,71 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
             !texts.iter().any(|text| text.contains(hidden)),
             "expected alpha workbench to hide developer canvas detail `{hidden}`, rendered texts: {:?}",
             texts
+        );
+    }
+}
+
+#[test]
+fn workbench_real_viewport_places_major_roles_in_expected_regions() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.screen = StudioShellScreen::Workbench;
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.dispatch_ui_command("inspector.focus_unit:heater-1");
+
+    let texts = render_workbench_positioned_texts(&mut app);
+
+    let module_tab = first_text_position(&texts, "模块", |text| text == "模块");
+    let object_tree = first_text_position(&texts, "对象树", |text| text == "对象树");
+    assert!(
+        module_tab.x < 300.0 && object_tree.x < 300.0,
+        "expected left sidebar texts to stay in left region, module={module_tab:?}, object_tree={object_tree:?}, texts={texts:?}"
+    );
+
+    let canvas_tools = first_text_position(&texts, "画布工具", |text| text == "画布工具");
+    let canvas_status = first_text_position(&texts, "画布状态", |text| text == "画布状态");
+    let canvas_actions = first_text_position(&texts, "画布操作", |text| text == "画布操作");
+    for (label, pos) in [
+        ("画布工具", canvas_tools),
+        ("画布状态", canvas_status),
+        ("画布操作", canvas_actions),
+    ] {
+        assert!(
+            (280.0..900.0).contains(&pos.x) && pos.y < 560.0,
+            "expected center canvas text `{label}` to stay in center first viewport, pos={pos:?}, texts={texts:?}"
+        );
+    }
+
+    let right_selection = first_text_position(&texts, "画布选择", |text| text == "画布选择");
+    let module_settings = first_text_position(&texts, "模块设置", |text| text == "模块设置");
+    assert!(
+        right_selection.x > 900.0 && module_settings.x > 900.0 && right_selection.y < 560.0,
+        "expected right sidebar texts to stay in right region, selection={right_selection:?}, settings={module_settings:?}, texts={texts:?}"
+    );
+
+    let status_summary = first_text_position(&texts, "状态汇总", |text| text == "状态汇总");
+    let bottom_results = first_text_position_where(&texts, "底部结果表", |item| {
+        item.text == "结果表" && item.pos.y > 560.0
+    });
+    assert!(
+        status_summary.y > 560.0 && bottom_results.y > 560.0,
+        "expected bottom workbench texts to stay below center viewport, status={status_summary:?}, results={bottom_results:?}, texts={texts:?}"
+    );
+
+    let thin_status_selection = first_text_position(&texts, "单元已选择: heater-1", |text| {
+        text == "单元已选择: heater-1"
+    });
+    assert!(
+        thin_status_selection.y > 820.0,
+        "expected thin status bar to stay at bottom edge, selection={thin_status_selection:?}, texts={texts:?}"
+    );
+
+    for top_toolbar_duplicate in ["放置进料", "放置闪蒸罐", "左移", "右移", "上移", "下移"]
+    {
+        assert!(
+            !texts
+                .iter()
+                .any(|item| item.text == top_toolbar_duplicate && item.pos.y < 120.0),
+            "top flowsheet toolbar must not repeat `{top_toolbar_duplicate}`, rendered texts: {texts:?}"
         );
     }
 }
