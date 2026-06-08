@@ -109,8 +109,8 @@
 
 截至 2026-05-17，Studio 画布已经具备以下最小闭环：
 
-- 左侧 `放置` 入口可创建 `进料 / 混合器 / 加热器 / 冷却器 / 阀门 / 闪蒸罐` MVP 单元；项目对象名和示例文件仍可保留 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` 等领域英文名。
-- Home 小案例作者入口可创建空白项目并切到左侧 `放置` 面板；当前支持 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条任务清单。作者入口只影响 shell-local 当前清单选择，不创建单元、不连接流股、不写 `FlowsheetDocument`、不进入 `CommandHistory`。
+- 左侧 `模块` 入口可创建 `进料 / 混合器 / 加热器 / 冷却器 / 阀门 / 闪蒸罐` MVP 单元；项目对象名和示例文件仍可保留 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` 等领域英文名。
+- Home 小案例作者入口可创建空白项目并切到左侧 `模块` 面板；当前支持 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条任务清单。作者入口只影响 shell-local 当前清单选择，不创建单元、不连接流股、不写 `FlowsheetDocument`、不进入 `CommandHistory`。
 - 当前最短可求解路径覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`。
 - 作者任务清单状态必须从当前 canvas presentation、项目输入和最新 `SolveSnapshot` 推导：unit kind、material stream source / sink 端点、项目级物性包 / 组分、Feed composition、必要单元参数和运行结果。清单不是真相源，不得反向修正文档、替代 suggestion acceptance 或充当手动运行 gate。
 - 普通空白项目的建模输入 gate 属于 App 层通用 `Flowsheet` readiness：它只按项目组分、Feed source stream T/P/F/z、composition 引用 / 归一和必要单元参数判断，并聚焦到 package / stream / unit。缺 material port 绑定、坏 stream reference、重复 source / sink、orphan stream、cycle 等结构性连接 / 拓扑问题继续进入正式 Run Panel 诊断 / recovery。画布 suggestion 只帮助创建拓扑和 outlet stream，不代表输入已经完整。

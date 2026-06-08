@@ -23,11 +23,11 @@
 - 新建未命名空白项目，并从受控内置列表显式选择 `binary-hydrocarbon-lite-v1` 与 `methane / ethane` 后进入最短建模路径
 - 打开已有 `*.rfproj.json` 项目
 - 通过首页 `新建项目`、`打开项目`、`打开示例项目` 或进入工作台后的 `文件` 菜单切换项目
-- 通过首页 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例` 从空白项目进入对应作者路径，并在左侧 `放置` 面板查看任务清单
+- 通过首页 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例` 从空白项目进入对应作者路径，并在左侧 `模块` 面板查看任务清单
 - 最近项目和示例项目使用统一 case tile 展示：tile 包含轻量流程缩影、路径 / 来源、物性包、组分摘要和 `Ready / Current / Missing file` 状态；单击选择，双击打开，文件缺失时只降级对应 tile 状态，不阻断首页
 - 进入项目后顶部导航收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；新建、打开、保存和另存为进入 `文件`，命令面板、Commands 面板和逻辑窗口进入 `工具`，语言进入 `设置`
 - 运行仓库内或便携 staging 内的 official hydrocarbon 正向示例 flowsheet
-- 在独立 `物性` 页维护当前受控物性包和项目组分；进入 `流程图` 后使用左侧 `项目 / 示例项目 / 放置`、中央 `Canvas`、右侧 `检查器 / 模块设置 / 模块结果` 和底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 完成当前 MVP 建模与结果核对工作流
+- 在独立 `物性` 页维护当前受控物性包和项目组分；进入 `流程图` 后使用左侧 `模块 / 项目`、中央 `Canvas`、右侧 `检查器 / 模块设置 / 模块结果` 和底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 完成当前 MVP 建模与结果核对工作流
 - `物性 / 流程图 / 运行 / 结果` screen 会在顶部导航下方显示上下文工具栏，只渲染已有 presentation / command / state 中可用的入口和状态
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
 - 选中单元时，右侧 `检查器` 的单元区域窄口径消费 `Module Settings` presentation：只显示正式 active inspector 来源的参数字段、端口、连接动作、诊断动作和帮助空状态
@@ -154,7 +154,7 @@ cargo run -p radishflow-studio
 - `Mixer-Flash`：`Feed + Feed -> Mixer -> Flash Drum`
 - `Heater-Flash`：`Feed -> Heater -> Flash Drum`
 
-入口只决定左侧 `放置` 面板展示哪一条任务清单。清单状态从当前 canvas unit / stream / solve snapshot 推导，不会自动补单元、自动连线或修改项目文档。
+入口只决定左侧 `模块` 面板展示哪一条任务清单。清单状态从当前 canvas unit / stream / solve snapshot 推导，不会自动补单元、自动连线或修改项目文档。
 
 ## 工作台顶部导航
 
@@ -181,7 +181,7 @@ cargo run -p radishflow-studio
 
 1. 在首页点击 `新建项目`，或进入工作台后从顶部 `文件` 菜单点击 `新建空白`。
 2. 在左侧 `项目` 或顶部 `物性` 页中选择 `binary-hydrocarbon-lite-v1`，再选择 methane / ethane 项目组分。
-3. 在左侧切到 `放置`，用 `放置进料`、`放置闪蒸罐` 或 `放置加热器 / 放置冷却器 / 放置阀门 / 放置混合器` 开始放置单元。
+3. 在左侧切到 `模块`，用 `放置进料`、`放置闪蒸罐` 或 `放置加热器 / 放置冷却器 / 放置阀门 / 放置混合器` 开始放置单元。
 4. 在 Canvas 中点击落点提交当前放置意图。
 5. 使用 Canvas 上的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` suggestion 补齐端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
 6. 在左侧 `项目` 或 Canvas 对象列表中选择 stream / unit，右侧 `检查器` 会切到对应对象。
@@ -239,7 +239,7 @@ Canvas 中的单元位置和 viewport offset 保存到项目同目录的 `<proje
 - 顶部导航中的 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` 八个主入口
 - `物性 / 流程图 / 运行 / 结果` screen 下方对应的上下文工具栏；这些工具栏只显示当前已有可用命令和状态
 - 顶部当前项目标题、运行状态、pending 状态和未保存提示；完整路径优先进入摘要、tooltip 或详情区域
-- 左侧 `项目 / 示例项目 / 放置`，分别用于项目树扫读、示例入口和放置 MVP 内建单元
+- 左侧 `模块 / 项目`，分别用于放置 MVP 内建单元、查看作者任务清单，以及扫读项目树 / 项目输入 / 可展开示例入口
 - Canvas 上的单元、物流线和当前关注对象
 - 右侧 `检查器 / 模块设置 / 模块结果` tabs，其中 `检查器` 负责当前对象输入、端口和关联诊断；`模块设置` 窄口径消费正式 Module Settings DTO，不渲染 latest-result 内容；`模块结果` 负责只读结果审阅和选中单元的 Module Results 摘要
 - 底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` drawer，其中结果表只读消费当前 `SolveSnapshot`，默认消息区比结果 / 诊断页更紧凑

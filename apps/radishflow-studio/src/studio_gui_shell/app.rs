@@ -1722,13 +1722,13 @@ fn blank_project_created_notice_detail(
 ) -> &'static str {
     match (locale, authoring_case) {
         (StudioShellLocale::En, Some(_)) => {
-            "Created an untitled blank project and opened the placement checklist."
+            "Created an untitled blank project and opened the modules checklist."
         }
         (StudioShellLocale::En, None) => {
             "Created an untitled blank project. Use Save to choose a .rfproj.json path."
         }
         (StudioShellLocale::ZhCn, Some(_)) => {
-            "已新建未命名空白项目，并打开放置面板中的小案例任务清单。"
+            "已新建未命名空白项目，并打开模块面板中的小案例任务清单。"
         }
         (StudioShellLocale::ZhCn, None) => {
             "Created an untitled blank project. Use Save to choose a .rfproj.json path."

@@ -19,10 +19,10 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 
 1. 若当前工作区有未保存更改，先进入继续 / 取消确认。
 2. 创建一个未命名空白项目。
-3. 进入 Workbench 并切到左侧 `放置` 面板。
-4. 在 `放置` 面板显示对应小案例任务清单。
+3. 进入 Workbench 并切到左侧 `模块` 面板。
+4. 在 `模块` 面板显示对应小案例任务清单。
 
-它不会自动生成 flowsheet，不会替用户放置单元，不会写 `FlowsheetDocument`，也不会进入 undo。后续仍需要用户按现有 `放置 -> suggestion -> 流股输入 -> 单元参数 -> 运行 -> 保存 -> 结果审阅` 工作流完成案例。
+它不会自动生成 flowsheet，不会替用户放置单元，不会写 `FlowsheetDocument`，也不会进入 undo。后续仍需要用户按现有 `模块 -> 放置单元 -> suggestion -> 流股输入 -> 单元参数 -> 运行 -> 保存 -> 结果审阅` 工作流完成案例。
 
 ## 任务清单如何理解
 
@@ -88,7 +88,7 @@ Flash Drum -> liquid / vapor
 
 1. 在 Home 点击 `创建 Mixer-Flash 小案例`。
 2. 在左侧 `项目` 或顶部 `物性` 页中选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane。
-3. 在 `放置` 面板依次放置两个 `Feed`、一个 `Mixer`、一个 `Flash Drum`。
+3. 在 `模块` 面板依次放置两个 `Feed`、一个 `Mixer`、一个 `Flash Drum`。
 4. 为两个 `Feed` 分别接受 `Create stream` suggestion，创建出口流股。
 5. 为 `Mixer` 接受两个 `Connect stream` suggestion，把两个 Feed outlet 接到 `inlet_a / inlet_b`。
 6. 接受 `Mixer` 的 `Create stream` suggestion，创建 mixer outlet。
@@ -148,7 +148,7 @@ Flash Drum -> liquid / vapor
 
 1. 在 Home 点击 `创建 Heater-Flash 小案例`。
 2. 在左侧 `项目` 或顶部 `物性` 页中选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane。
-3. 在 `放置` 面板依次放置一个 `Feed`、一个 `Heater`、一个 `Flash Drum`。
+3. 在 `模块` 面板依次放置一个 `Feed`、一个 `Heater`、一个 `Flash Drum`。
 4. 为 `Feed` 接受 `Create stream` suggestion，创建出口流股。
 5. 为 `Heater` 接受 `Connect stream` suggestion，把 Feed outlet 接到 heater inlet。
 6. 接受 `Heater` 的 `Create stream` suggestion，创建 heater outlet。

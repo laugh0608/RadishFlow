@@ -164,7 +164,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 1. 在首页点击 `新建项目`，或进入工作台后点击顶部 `新建空白`，进入未命名空白项目。
 2. 左侧 `项目` 面板会显示当前物性包和 `项目组分`。空白项目不会预选求解输入；先选择内置 `binary-hydrocarbon-lite-v1` package，再选择 methane / ethane。它们会写入 `Flowsheet.thermo.property_package_id` 和 `Flowsheet.components`，并决定后续 Stream Inspector 中可添加的组成条目。
-3. 左侧切到 `放置`，放置 `进料` 和 `闪蒸罐`；需要中间设备时可加 `加热器 / 冷却器 / 阀门`，需要双入口时可加第二个 `进料` 和 `混合器`。按钮文案当前是 `放置进料`、`放置闪蒸罐` 等，项目对象名仍可显示为 `Feed`、`Flash Drum` 等领域名。
+3. 左侧切到 `模块`，放置 `进料` 和 `闪蒸罐`；需要中间设备时可加 `加热器 / 冷却器 / 阀门`，需要双入口时可加第二个 `进料` 和 `混合器`。按钮文案当前是 `放置进料`、`放置闪蒸罐` 等，项目对象名仍可显示为 `Feed`、`Flash Drum` 等领域名。
 4. 每次放置单元后，在 Canvas 中点击落点提交；这只提交当前放置意图，不是完整拖拽布局编辑器。
 5. 使用 Canvas suggestion 中的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` 动作补齐 `source -> sink` 端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
 6. 从左侧 `项目` 或 Canvas 对象列表选择 stream / unit，右侧 `检查器` 会显示当前对象。
@@ -189,7 +189,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 建议步骤：
 
-1. 在首页点击 `创建 Mixer-Flash 小案例`，或手动新建空白项目后切到左侧 `放置`。该入口只负责打开作者任务清单，不会自动生成 flowsheet。
+1. 在首页点击 `创建 Mixer-Flash 小案例`，或手动新建空白项目后切到左侧 `模块`。该入口只负责打开作者任务清单，不会自动生成 flowsheet。
 2. 放置两个 `Feed`、一个 `Mixer` 和一个 `Flash Drum`。
 3. 依次接受本地 suggestion，形成：
    - `Feed 1 -> Mixer.inlet_a`
@@ -205,7 +205,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 6. 保存项目，关闭或重新打开该项目，再次运行。
 7. 在结果审阅区复制当前 `SolveSnapshot`，或导出为轻量 `.txt`；文本中的 `Review` section 可快速核对 source / intermediate / terminal streams 与 latest unit results。
 
-这条路径的目标不是新增项目向导，而是验证用户能按现有 `放置 -> suggestion -> 单元参数 -> 运行 -> 保存重开 -> 结果导出` 工作流复现一个小案例。连接仍通过正式 suggestion 和 `DocumentCommand` 完成；参数仍只覆盖当前已暴露的 MVP 高频字段；导出只消费当前结果 DTO，不写项目、不进入 undo，也不是完整报表系统。
+这条路径的目标不是新增项目向导，而是验证用户能按现有 `模块 -> 放置单元 -> suggestion -> 单元参数 -> 运行 -> 保存重开 -> 结果导出` 工作流复现一个小案例。连接仍通过正式 suggestion 和 `DocumentCommand` 完成；参数仍只覆盖当前已暴露的 MVP 高频字段；导出只消费当前结果 DTO，不写项目、不进入 undo，也不是完整报表系统。
 
 如果选择 `创建 Heater-Flash 小案例`，操作顺序相同，但目标链路改为 `Feed -> Heater -> Flash Drum`。清单会要求放置一个 `Feed`、创建 Feed outlet、放置并连接 `Heater`、创建 Heater outlet、连接到 `Flash Drum`、创建 liquid / vapor outlet，然后运行并检查结果。该路径的详细核对点见 `docs/guides/author-small-cases.md`。
 

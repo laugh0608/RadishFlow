@@ -1250,7 +1250,7 @@ fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {
             HomeText::Start => "开始",
             HomeText::NewBlankCase => "新建项目",
             HomeText::AuthorMixerFlashCase => "创建 Mixer-Flash 小案例",
-            HomeText::AuthorMixerFlashDetail => "从空白项目开始，并打开放置任务清单。",
+            HomeText::AuthorMixerFlashDetail => "从空白项目开始，并打开模块任务清单。",
             HomeText::AuthorHeaterFlashCase => "创建 Heater-Flash 小案例",
             HomeText::AuthorHeaterFlashDetail => "单 Feed 加热后进入 Flash Drum 的作者路径。",
             HomeText::OpenCase => "打开项目",

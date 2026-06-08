@@ -113,7 +113,7 @@ UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baselin
 - 建模对象、连接建议、运行、结果和错误分别属于哪个区域。
 - 人工 smoke 时应该按什么路径操作和观察结果。
 
-2026-05-16 已完成 Home Dashboard 与 Workbench 第一轮真实 UI 收口。2026-05-17 已继续完成 Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、Home 打开路径、Canvas 可读性、运行后结果视图和 Workbench 高频残余文案收口。2026-05-25 已进入 MVP β 小案例作者体验：Home 可从空白项目进入 `Mixer-Flash` 或 `Heater-Flash` 作者路径，Workbench `放置` 面板显示只读任务清单。后续不再回到“先讨论首页分区”或继续扩画布建模能力的阶段；下一轮应优先做可复现作者路径和真实窗口 smoke，只修阻碍主路径的问题。
+2026-05-16 已完成 Home Dashboard 与 Workbench 第一轮真实 UI 收口。2026-05-17 已继续完成 Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、Home 打开路径、Canvas 可读性、运行后结果视图和 Workbench 高频残余文案收口。2026-05-25 已进入 MVP β 小案例作者体验：Home 可从空白项目进入 `Mixer-Flash` 或 `Heater-Flash` 作者路径，Workbench `模块` 面板显示只读任务清单。后续不再回到“先讨论首页分区”或继续扩画布建模能力的阶段；下一轮应优先做可复现作者路径和真实窗口 smoke，只修阻碍主路径的问题。
 
 2026-05-17 日终截图复核后保留的两项 UI blocker 已在 2026-05-18 收口：
 
@@ -144,7 +144,7 @@ UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baselin
 
 ## 信息架构
 
-Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目标”。当前代码已以 Home Dashboard、八入口顶部导航、四类上下文工具栏、左侧 `项目 / 示例项目 / 放置`、独立 `物性` 页、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 和状态汇总为基础；主设计稿目标仍以 `studio-client-main.pen` 为准，继续统一 Home、独立物性页、Flowsheet 工作台和模块设置 / 结果四个主 frame。
+Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目标”。当前代码已以 Home Dashboard、八入口顶部导航、四类上下文工具栏、左侧 `模块 / 项目`、独立 `物性` 页、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 和状态汇总为基础；主设计稿目标仍以 `studio-client-main.pen` 为准，继续统一 Home、独立物性页、Flowsheet 工作台和模块设置 / 结果四个主 frame。
 
 主设计稿的 Workbench 建议分为七个稳定区域：
 
@@ -219,7 +219,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 动作契约：
 
 - `New Project` / `新建项目` 创建 MVP 默认空白项目，进入工作台；该动作不依赖登录或服务端。
-- 小案例作者入口创建 MVP 默认空白项目，进入工作台并切到左侧 `放置`；当前支持 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条作者清单。清单状态必须从当前 canvas unit / stream / solve snapshot 推导，不反向修改项目语义。
+- 小案例作者入口创建 MVP 默认空白项目，进入工作台并切到左侧 `模块`；当前支持 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条作者清单。清单状态必须从当前 canvas unit / stream / solve snapshot 推导，不反向修改项目语义。
 - `Open Project` / `打开项目` 使用系统文件选择器打开用户项目，进入工作台；打开成功后更新 MRU。
 - `Open Example Project` / `打开示例项目` 从 Example Cases 选择或打开示例文件夹，成功后进入工作台并更新 MRU 来源。
 - `Recent Cases` 和 `Example Cases` 的行点击只改变选择态，整行双击触发打开；文件缺失时不静默失败，应把该项目行标为 `Missing file` 并产生 `Messages` 行。

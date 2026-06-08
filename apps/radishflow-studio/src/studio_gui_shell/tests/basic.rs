@@ -158,6 +158,32 @@ fn render_right_sidebar_texts(app: &mut ReadyAppState) -> Vec<String> {
     texts
 }
 
+fn render_left_sidebar_texts(app: &mut ReadyAppState) -> Vec<String> {
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(360.0, 860.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            let mut hovered_drop_target = false;
+            app.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
 fn render_property_page_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
     let window = snapshot.window_model();
@@ -458,7 +484,7 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     assert_eq!(locale.text(ShellText::InspectorConsumedStreams), "消费流股");
     assert_eq!(locale.text(ShellText::InspectorProducedStreams), "产出流股");
     assert_eq!(locale.text(ShellText::Project), "项目");
-    assert_eq!(locale.text(ShellText::Palette), "放置");
+    assert_eq!(locale.text(ShellText::Palette), "模块");
     assert_eq!(locale.text(ShellText::ResultsTable), "结果表");
     assert_eq!(locale.text(ShellText::UnitsSi), "单位: SI");
     assert_eq!(
@@ -833,8 +859,8 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
     let texts = render_alpha_workbench_texts(&mut app);
     for expected in [
         "项目",
+        "模块",
         "示例项目",
-        "放置",
         "物性包",
         "检查器",
         "模块设置",
@@ -879,6 +905,28 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
             "expected alpha workbench to hide developer canvas detail `{hidden}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
+fn left_sidebar_top_tabs_align_with_module_project_roles() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    let texts = render_left_sidebar_texts(&mut app);
+
+    for expected in ["模块", "项目", "示例项目", "物性包", "项目组分"] {
+        assert!(
+            texts.iter().any(|text| text == expected),
+            "expected left sidebar to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for retired in ["放置", "运行", "检查器", "模块设置", "模块结果"] {
+        assert!(
+            !texts.iter().any(|text| text == retired),
+            "left sidebar top roles must not expose `{retired}`, rendered texts: {:?}",
             texts
         );
     }

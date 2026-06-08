@@ -66,12 +66,12 @@
 Studio 首页、工作台分区、运行后结果视图和 Home 项目切换确认流程已落地。shell UI 边界按以下稳定入口治理：
 
 - Home Dashboard：应用启动后的默认首页，只承载 Start actions、Recent Cases、Example Cases、Environment 和 Messages；不读取 `SolveSnapshot`，不直接承载流程图编辑。
-- Home 项目入口：左侧 Start actions 保留 `新建项目`、小案例作者入口、`打开项目`、`打开示例项目`；最近项目和示例项目统一由 `StudioGuiWindowHomeCaseTileModel` 承载流程缩影、路径 / 来源、物性包、组分、状态与双击打开。小案例作者入口只创建空白项目并切到 `放置`，清单只读 canvas，不生成 flowsheet、不写项目、不进 undo。
+- Home 项目入口：左侧 Start actions 保留 `新建项目`、小案例作者入口、`打开项目`、`打开示例项目`；最近项目和示例项目统一由 `StudioGuiWindowHomeCaseTileModel` 承载流程缩影、路径 / 来源、物性包、组分、状态与双击打开。小案例作者入口只创建空白项目并切到 `模块`，清单只读 canvas，不生成 flowsheet、不写项目、不进 undo。
 - 未保存确认：新建、打开或 case tile 双击时，若有未保存变更，必须先进入继续 / 取消确认。
 - 顶部导航：进入 case 后第一层只保留 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` 八个主入口、当前项目摘要和必要状态，不把调试计数和菜单全集置于第一视野。
 - 操作入口：新建空白、打开示例、打开项目、保存和另存为进入 `文件`；`主页 / 物性 / 流程图 / 运行 / 结果` 是主 screen；命令面板、Commands 面板显示 / 隐藏和逻辑窗口进入 `工具`；`设置` 当前只承载语言切换。
 - 上下文工具栏：`物性 / 流程图 / 运行 / 结果` screen 下方分别消费 `window.property_context_toolbar`、`window.flowsheet_context_toolbar`、`window.run_context_toolbar` 和 `window.result_context_toolbar`。这些 DTO 只从已有 property page、command registry、Run Panel state、Module Results、结果表状态、Canvas suggestion / layout state 和 `SolveSnapshot` 状态派生，不新增第二套项目、物性、运行、结果或诊断真相源。
-- 工作台分区：左侧 `项目 / 示例项目 / 放置` 负责项目对象、项目级输入摘要、示例入口与 MVP 放置入口；其中 `项目` 面板可直接暴露受控物性包和项目组分选择，空白项目不隐式预选求解输入。`物性` 是独立 screen，不再作为右侧 tab；右侧为 `检查器 / 模块设置 / 模块结果` tabs，`模块设置` 消费 `StudioGuiWindowModuleSettingsModel`，`模块结果` 消费 `StudioGuiWindowModuleResultsModel`。底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 承接可行动消息、运行日志、收敛摘要、suggestion、诊断和表格结果。
+- 工作台分区：左侧收敛为 `模块 / 项目`，其中 `模块` 负责 MVP 放置入口和作者任务清单，`项目` 负责项目对象、项目级输入摘要和可展开示例入口；`项目` 面板可直接暴露受控物性包和项目组分选择，空白项目不隐式预选求解输入。`物性` 是独立 screen，不再作为右侧 tab；右侧为 `检查器 / 模块设置 / 模块结果` tabs，`模块设置` 消费 `StudioGuiWindowModuleSettingsModel`，`模块结果` 消费 `StudioGuiWindowModuleResultsModel`。底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 承接可行动消息、运行日志、收敛摘要、suggestion、诊断和表格结果。
 - 结果反馈：成功后 shell 可聚焦顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表`，失败后聚焦顶部 `运行` screen、底部运行日志或诊断。结果面只读消费当前 revision 的最新 `SolveSnapshot`；文档编辑导致结果过期时只显示 stale notice，不继续用旧快照驱动 Result Inspector、结果表、Results commands 或复制 / 导出。`复制快照` / `导出文本` 格式化快照的 `Streams / Review / Units / Steps / Diagnostics`，不写项目 / undo，不扩报表 / 批量导出
 - 日志与审计：开发态 stderr 与 GUI activity 可继续服务 smoke，但正式 UI 只展示用户能采取行动的摘要，不把平台 timer 或 host internals 混入主路径
 - 关闭行为：干净最后窗口应自然结束进程；shell 可在清理逻辑窗口后停止当帧渲染，但不能拦截原生关闭请求。脏工作区必须先取消本次 close，请用户选择保存并关闭、舍弃并关闭或取消关闭；保存失败、另存为取消或覆盖确认未完成时保持打开。
