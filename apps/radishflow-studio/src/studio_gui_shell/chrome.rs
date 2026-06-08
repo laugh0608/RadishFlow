@@ -592,6 +592,71 @@ impl ReadyAppState {
         render_wrapped_small(ui, &document.title);
         ui.add_space(8.0);
 
+        self.render_project_section_header(
+            ui,
+            match self.locale {
+                StudioShellLocale::En => "Project inputs",
+                StudioShellLocale::ZhCn => "项目输入",
+            },
+            match self.locale {
+                StudioShellLocale::En => "Readiness inputs come from the current project document.",
+                StudioShellLocale::ZhCn => "建模输入摘要来自当前项目文档。",
+            },
+        );
+        self.render_project_inputs_section(ui, document);
+        ui.add_space(8.0);
+
+        self.render_project_section_header(
+            ui,
+            match self.locale {
+                StudioShellLocale::En => "Example entry",
+                StudioShellLocale::ZhCn => "示例入口",
+            },
+            match self.locale {
+                StudioShellLocale::En => {
+                    "Bundled examples stay discoverable without becoming project state."
+                }
+                StudioShellLocale::ZhCn => "内置示例保持可发现，但不成为项目状态。",
+            },
+        );
+        self.render_project_examples_section(ui, window);
+        ui.add_space(8.0);
+
+        self.render_project_section_header(
+            ui,
+            match self.locale {
+                StudioShellLocale::En => "Object tree",
+                StudioShellLocale::ZhCn => "对象树",
+            },
+            match self.locale {
+                StudioShellLocale::En => {
+                    "Select a stream or unit to focus the canvas and inspector."
+                }
+                StudioShellLocale::ZhCn => "选择流股或单元会聚焦画布和右侧检查器。",
+            },
+        );
+        self.render_project_objects_section(ui, window, document);
+        ui.add_space(8.0);
+
+        self.render_project_section_header(
+            ui,
+            match self.locale {
+                StudioShellLocale::En => "Review status",
+                StudioShellLocale::ZhCn => "审阅状态",
+            },
+            match self.locale {
+                StudioShellLocale::En => "Results and diagnostics read the current run state.",
+                StudioShellLocale::ZhCn => "结果和诊断只读消费当前运行状态。",
+            },
+        );
+        self.render_project_review_section(ui, window);
+    }
+
+    fn render_project_inputs_section(
+        &mut self,
+        ui: &mut egui::Ui,
+        document: &radishflow_studio::StudioGuiWorkspaceDocumentSnapshot,
+    ) {
         self.render_project_tree_row(
             ui,
             self.locale.text(ShellText::PropertyPackage),
@@ -603,10 +668,14 @@ impl ReadyAppState {
         );
         ui.add_space(6.0);
         self.render_project_components(ui, document);
-        ui.add_space(6.0);
-        self.render_project_examples_section(ui, window);
-        ui.add_space(6.0);
+    }
 
+    fn render_project_objects_section(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+        document: &radishflow_studio::StudioGuiWorkspaceDocumentSnapshot,
+    ) {
         self.render_project_tree_row(
             ui,
             self.locale.text(ShellText::Streams),
@@ -643,8 +712,9 @@ impl ReadyAppState {
         {
             self.render_project_object_button(ui, item);
         }
-        ui.add_space(6.0);
+    }
 
+    fn render_project_review_section(&self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         self.render_project_tree_row(
             ui,
             self.locale.text(ShellText::Results),
@@ -679,6 +749,13 @@ impl ReadyAppState {
                     .unwrap_or(0),
             ),
         );
+    }
+
+    fn render_project_section_header(&self, ui: &mut egui::Ui, title: &str, detail: &str) {
+        ui.separator();
+        ui.label(egui::RichText::new(title).strong());
+        render_wrapped_small(ui, detail);
+        ui.add_space(4.0);
     }
 
     fn render_project_examples_section(

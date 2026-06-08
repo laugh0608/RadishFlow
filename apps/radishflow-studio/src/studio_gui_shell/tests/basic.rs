@@ -934,6 +934,50 @@ fn left_sidebar_top_tabs_align_with_module_project_roles() {
 }
 
 #[test]
+fn project_sidebar_separates_inputs_objects_examples_and_review_roles() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.left_sidebar_tab = StudioShellLeftSidebarTab::Project;
+
+    let texts = render_left_sidebar_texts(&mut app);
+
+    for expected in [
+        "项目输入",
+        "示例入口",
+        "对象树",
+        "审阅状态",
+        "物性包",
+        "项目组分",
+        "示例项目",
+        "流股",
+        "单元",
+        "结果",
+        "诊断",
+    ] {
+        assert!(
+            texts.iter().any(|text| text == expected),
+            "expected project sidebar to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+
+    for hidden in [
+        "放置单元",
+        "流股源",
+        "完整项目浏览器",
+        "模块库",
+        "自由连线",
+        "自动布线",
+        "完整报表",
+    ] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden)),
+            "project sidebar must not expose out-of-scope `{hidden}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
 fn module_sidebar_groups_supported_palette_by_modeling_roles() {
     let mut app = ready_app_state(&synced_workspace_config());
     app.left_sidebar_tab = StudioShellLeftSidebarTab::Palette;

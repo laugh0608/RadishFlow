@@ -29,7 +29,7 @@
 | --- | --- | --- |
 | Home 示例 / 最近 tile | `StudioGuiWindowHomeModel` / `StudioGuiWindowHomeCaseTileModel` 已统一承载示例项目和最近项目 tile；示例项目从 `runtime.example_projects` 派生，最近项目仍由 shell preferences / `project_open` 持有并映射为同一 DTO；egui Home Dashboard 已消费统一 tile presentation | 最近项目尚未上提到 `StudioGuiSnapshot`；Home 仍未按设计稿重排为完整 tile gallery |
 | 顶部导航 / 流程图 / 运行 / 结果上下文 / 工具设置菜单 | Studio shell 顶部已从旧 `快速操作` 横排按钮收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；打开 / 新建 / 保存 / 示例归入 `文件`；`流程图` screen 顶部导航下方已新增 `window.flowsheet_context_toolbar`，Canvas / Run 只消费已启用 command，Review 只消费 Module Results、结果表和 snapshot 状态；`运行` 已从下拉菜单收敛为 screen，`window.run_context_toolbar` 只消费 Run Panel command / state、status summary、canvas suggestion count 和运行日志；`结果` 已从下拉菜单收敛为 screen，`window.result_context_toolbar` 只消费 Module Results、底部结果表、当前 / stale / missing `SolveSnapshot` 状态和已启用 Result focus command；`工具 / 设置` 菜单内容已拆成可测试分组，分别消费 command palette shell state、Commands panel layout visibility、AppHost logical windows 和当前 shell locale | 厚重 ribbon、完整多页上下文工具栏、单位集设置、偏好页、help command、插件管理、账号 / 授权 / 服务器设置、完整运行控制台、完整日志系统、批量运行、完整报表、跨快照报表、模板、打印和批量导出尚未进入范围 |
-| 左侧模块 / 项目 | Studio shell 左侧顶层入口已从 `项目 / 示例项目 / 放置` 收敛为 `模块 / 项目`；`模块` 继续消费既有 Canvas place-unit palette、authoring checklist 和 suggestion action，并已按 `流股源 / 调节单元 / 汇合与分离` 分类现有受控单元，支持本地筛选；`项目` 继续消费项目对象树、项目物性包 / 组分扫读，并把示例项目保留为可展开入口 | 完整模块库、自由连线、自动布线和完整拖拽布局尚未进入范围 |
+| 左侧模块 / 项目 | Studio shell 左侧顶层入口已从 `项目 / 示例项目 / 放置` 收敛为 `模块 / 项目`；`模块` 继续消费既有 Canvas place-unit palette、authoring checklist 和 suggestion action，并已按 `流股源 / 调节单元 / 汇合与分离` 分类现有受控单元，支持本地筛选；`项目` 已整理为 `项目输入 / 示例入口 / 对象树 / 审阅状态`，继续消费项目对象树、项目物性包 / 组分扫读、示例入口和当前 run / snapshot 状态 | 完整模块库、完整项目浏览器、自由连线、自动布线和完整拖拽布局尚未进入范围 |
 | 独立物性页 | `StudioGuiWindowPropertyPageModel` 从 `workspace_document.property_package_choices`、`project_component_choices` 和已选 package / components 派生 package、component、metric 和 future section；Studio shell 已新增顶部 `主页 / 物性 / 流程图` 导航，独立 `物性` screen 消费同一 DTO；缺 package / 项目组分 readiness 聚焦该页面；命令仍走既有 package / component command id；右侧栏已移除 Package 主入口；顶部导航下方已新增 `window.property_context_toolbar`，只渲染当前可用 package / component 命令和 package / component / source 状态 | 物性页长期分析控件、更完整视觉重排、完整组分数据库、第三方物性包加载、完整 Thermodynamics PMC 和完整参数表尚未进入范围 |
 | 底部运行信息 / 状态汇总 | `StudioGuiWindowStatusSummaryModel` 从 document saved/revision、run panel view、latest current-revision `SolveSnapshot`、stale snapshot 或 latest failure 派生；底部抽屉已收敛为左侧 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 与右侧 `状态汇总` 分栏，其中 `收敛` 消费 status summary 与 snapshot 状态，`建议` 消费 Run Panel notice 和 canvas suggestions，右侧状态汇总只消费同一 DTO 的 case、run、convergence、steps、diagnostics 和 snapshot 一致性 | 完整收敛曲线、完整建议系统、完整报表和跨快照报表尚未进入范围 |
 | 右侧 Inspector / Module Settings | 右侧栏主入口已收敛为 `检查器 / 模块设置 / 模块结果`；`检查器` 继续消费 active inspector detail；`StudioGuiWindowModuleSettingsModel` 已从 active unit Inspector detail 派生参数字段、端口、连接动作、诊断动作和空帮助状态，并由右侧 `模块设置` tab 消费 | help command 还没有正式 command surface；完整视觉重排尚未进入范围 |
@@ -44,7 +44,7 @@
 - Home 信息密度、风格和工作台保持一致，不再像低密度欢迎页。
 - 物性作为流程模拟核心能力，成为顶部导航下的独立页面，而不是塞进左侧栏或右侧栏。
 - 工作台顶部采用窄导航栏 + 上下文工具栏，学习成熟流程模拟软件的信息分层，但不直接照抄厚重 ribbon。
-- 左侧栏稳定为 `模块 / 项目`：模块页中物料流在上方，单元操作按分类折叠；项目页负责当前项目对象导航。
+- 左侧栏稳定为 `模块 / 项目`：模块页中物料流在上方，单元操作按分类折叠；项目页负责项目输入、示例入口、对象树和审阅状态。
 - 中央画布采用类似 IDE 的可切换标签页，并在画布左上角放置浮动工具条。
 - 右侧栏稳定为 `检查器 / 模块设置 / 模块结果`，不保留独立 `运行` 或 `物性` tab。
 - 底部拆成左右两栏：左侧为运行日志、收敛、建议、诊断等 tabs；右侧为当前案例状态汇总。
