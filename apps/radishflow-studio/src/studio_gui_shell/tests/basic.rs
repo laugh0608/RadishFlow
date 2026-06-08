@@ -544,6 +544,7 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     );
     assert_eq!(locale.runtime_label("Unit").as_ref(), "单元");
     assert_eq!(locale.runtime_label("Stream").as_ref(), "流股");
+    assert_eq!(locale.runtime_label("Canvas tools").as_ref(), "画布工具");
     assert_eq!(locale.runtime_label("Idle").as_ref(), "空闲");
     assert_eq!(locale.runtime_label("Status Summary").as_ref(), "状态汇总");
     assert_eq!(locale.runtime_label("Case").as_ref(), "案例");
@@ -1001,6 +1002,45 @@ fn canvas_stage_keeps_object_tree_in_project_sidebar() {
         "expected project sidebar to keep object tree ownership, rendered texts: {:?}",
         left_texts
     );
+}
+
+#[test]
+fn canvas_toolbar_keeps_place_palette_in_left_module_sidebar() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    let center_texts = render_center_stage_texts(&mut app);
+    for expected in ["画布工具", "视图", "适应内容", "画布状态"] {
+        assert!(
+            center_texts.iter().any(|text| text == expected),
+            "expected center canvas toolbar to render `{expected}`, rendered texts: {:?}",
+            center_texts
+        );
+    }
+    for palette_label in [
+        "放置",
+        "放置进料",
+        "放置加热器",
+        "放置冷却器",
+        "放置阀门",
+        "放置混合器",
+        "放置闪蒸罐",
+    ] {
+        assert!(
+            !center_texts.iter().any(|text| text == palette_label),
+            "center canvas toolbar must not duplicate module palette label `{palette_label}`, rendered texts: {:?}",
+            center_texts
+        );
+    }
+
+    app.left_sidebar_tab = StudioShellLeftSidebarTab::Palette;
+    let left_texts = render_left_sidebar_texts(&mut app);
+    for palette_label in ["放置进料", "放置加热器", "放置闪蒸罐"] {
+        assert!(
+            left_texts.iter().any(|text| text == palette_label),
+            "expected left module sidebar to retain palette label `{palette_label}`, rendered texts: {:?}",
+            left_texts
+        );
+    }
 }
 
 #[test]

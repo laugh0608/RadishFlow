@@ -25,14 +25,21 @@ impl ReadyAppState {
         widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
     ) {
         ui.horizontal_wrapped(|ui| {
-            ui.small(egui::RichText::new(self.locale.runtime_label("Canvas").as_ref()).strong());
+            ui.small(
+                egui::RichText::new(self.locale.runtime_label("Canvas tools").as_ref()).strong(),
+            );
             ui.separator();
-            self.render_canvas_toolbar_group(ui, widget, "Place", |action| {
-                matches!(
-                    action.id,
-                    radishflow_studio::StudioGuiCanvasActionId::BeginPlaceUnit(_)
-                )
-            });
+            ui.small(
+                egui::RichText::new(self.locale.text(ShellText::ViewOptions))
+                    .color(egui::Color32::from_rgb(92, 104, 117)),
+            );
+            if ui
+                .small_button(self.locale.text(ShellText::FitToContent))
+                .on_hover_text(self.locale.text(ShellText::FitToContentDetail))
+                .clicked()
+            {
+                self.request_canvas_viewport_fit_to_content();
+            }
             if !widget.view().suggestions.is_empty() {
                 ui.separator();
                 self.render_canvas_toolbar_group(ui, widget, "Suggestion", |action| {
@@ -153,13 +160,6 @@ impl ReadyAppState {
                 self.locale.runtime_label(viewport.layout_label).as_ref(),
                 egui::Color32::from_rgb(86, 96, 108),
             );
-            if ui
-                .small_button(self.locale.text(ShellText::FitToContent))
-                .on_hover_text(self.locale.text(ShellText::FitToContentDetail))
-                .clicked()
-            {
-                self.request_canvas_viewport_fit_to_content();
-            }
         });
         if let Some(result) = self.canvas_command_result.as_ref() {
             ui.colored_label(notice_color(result.level), &result.title);

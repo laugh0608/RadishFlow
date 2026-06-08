@@ -273,6 +273,7 @@ impl StudioShellLocale {
             "Manual" => Cow::Borrowed("手动"),
             "transient_grid" => Cow::Borrowed("临时网格"),
             "Canvas" => Cow::Borrowed("画布"),
+            "Canvas tools" => Cow::Borrowed("画布工具"),
             "Canvas status" => Cow::Borrowed("画布状态"),
             "Canvas actions" => Cow::Borrowed("画布操作"),
             "Canvas legend" => Cow::Borrowed("画布图例"),
