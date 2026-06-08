@@ -1,10 +1,10 @@
 # Studio UI Design Guidelines
 
-更新时间：2026-06-01
+更新时间：2026-06-08
 
 ## 用途
 
-用途：为 RadishFlow Studio 的首屏、画布、示例管理、面板、按钮、文字和结果审阅建立一致的 UI 设计规范，作为下一轮 Studio 工作台重排与实现拆分依据。
+用途：为 RadishFlow Studio 的首屏、画布、示例管理、面板、按钮、文字和结果审阅建立一致的 UI 设计规范，作为 Studio 工作台重排与实现拆分依据。
 读者：负责 Studio shell、Canvas、检查器、Runtime、Result 面板的开发者和设计协作者。
 不包含：完整视觉稿、图标资产、主题系统、视觉 token 细则、自由连线编辑器、完整报表系统、商业化多文档工作台或求解 / 物性模型设计。
 
@@ -24,16 +24,16 @@ RadishFlow Studio 继续走轻量、清晰、工程化的浅色桌面应用风�
 
 ## 参考图启发
 
-UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使用从本文档出发的相对路径，便于在 Markdown 预览中直接打开。2026-05-23 新增的优秀产品灵感参考已单独整理到 `docs/architecture/ui-inspiration-reference.md`，用于后续 UI 专题评审，不作为当前实现可直接照抄的视觉稿。
+UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baseline/` 只放当前 RadishFlow 自身的视觉基线图；同级目录下其他图片均为参考素材或历史对照，不作为实现优先基线。下表使用从本文档出发的相对路径，便于在 Markdown 预览中直接打开。2026-05-23 新增的优秀产品灵感参考已单独整理到 `docs/architecture/ui-inspiration-reference.md`，用于后续 UI 专题评审，不作为当前实现可直接照抄的视觉稿。
 
 | 素材 | 路径 | 用途 |
 | --- | --- | --- |
 | Studio 视觉系统规范 | [studio-visual-system.md](studio-visual-system.md) | RadishFlow Studio 的视觉定位、token、色彩角色、控件状态和视觉验收口径 |
 | 外部优秀产品灵感参考 | [ui-inspiration-reference.md](ui-inspiration-reference.md) | AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 截图的设计语言提炼，用于后续 UI 专题的视觉、排版和信息密度参考 |
 | 当前 RadishFlow UI | [radishflow-current-workbench-20260516.png](assets/studio-ui/radishflow-current-workbench-20260516.png) | 2026-05-16 当前真实 Studio 截图，用于识别首页 / 工作台重排前的混乱分区和测试痛点 |
-| RadishFlow 工作台概念稿 | [radishflow-workbench-concept.png](assets/studio-ui/radishflow-workbench-concept.png) | 进入项目后的工作台概念稿，状态、SI 单位、单文档标题和结果区关系更符合当前规范 |
+| RadishFlow 工作台视觉基线 | [radishflow-workbench-concept.png](assets/studio-ui/baseline/radishflow-workbench-concept.png) | 进入项目后的工作台基线图，状态、SI 单位、单文档标题和结果区关系更符合当前规范 |
 | RadishFlow Home 概念稿 | [radishflow-home-dashboard-concept.png](assets/studio-ui/radishflow-home-dashboard-concept.png) | 启动首页 / 示例页概念稿，展示 Start actions、Recent Cases、Example Cases、Environment 和 Messages 分区 |
-| RadishFlow Home 概念稿 v2 | [radishflow-home-dashboard-concept-v2-20260516.png](assets/studio-ui/radishflow-home-dashboard-concept-v2-20260516.png) | 当前 Home Dashboard 视觉基线，收窄 Environment 字段，突出 Continue Last Case / 示例入口和可行动 Messages |
+| RadishFlow Home 视觉基线 | [radishflow-home-dashboard-concept-v2-20260516.png](assets/studio-ui/baseline/radishflow-home-dashboard-concept-v2-20260516.png) | 当前 Home Dashboard 视觉基线，收窄 Environment 字段，突出 Continue Last Case / 示例入口和可行动 Messages |
 | 外部参考：深色工程工作台 | [reference-dark-engineering-workbench.png](assets/studio-ui/reference-dark-engineering-workbench.png) | 深色工程工作台分区、运行状态和底部结果区参考 |
 | 外部参考：浅色 ribbon 项目状态 | [reference-light-ribbon-project-status.png](assets/studio-ui/reference-light-ribbon-project-status.png) | 浅色 ribbon / 左侧模型树 / 右侧状态面板参考 |
 | 外部参考：浅色 flowsheet 工作台 | [reference-light-flowsheet-workbench.png](assets/studio-ui/reference-light-flowsheet-workbench.png) | 接近 RadishFlow 方向的浅色流程模拟工作台参考 |
@@ -46,11 +46,11 @@ UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使
 
 ### 当前 RadishFlow
 
-当前 UI 的优势是浅色、克制、状态 chip 清晰，顶部快速操作已经能表达打开示例、打开项目、运行、保存和命令面板这些主路径。问题集中在排版和分区：按钮像连续灰色标签，画布工具、suggestion、对象列表、运行面板、授权和调试信息混杂，导致用户很难判断“现在该看哪里、下一步点哪里、结果在哪里”。
+当前 UI 的优势是浅色、克制、状态 chip 清晰，顶部导航已先收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`，打开 / 新建 / 保存 / 示例、运行、结果和命令面板不再作为同一排快速按钮平铺。问题仍集中在整体排版和分区：画布工具、suggestion、左侧对象扫读、运行面板、授权和调试信息还需要继续向成熟建模工作台结构收敛，避免用户难以判断“现在该看哪里、下一步点哪里、结果在哪里”。
 
 后续应保留当前风格基调，但把功能分区从“开发态信息平铺”重排为“建模工作台”。
 
-`radishflow-current-workbench-20260516.png` 是当前真实 UI 备份，用于对照识别首屏信息过载、按钮堆叠、Canvas header 混乱、结果 / 诊断入口分散等问题。`radishflow-workbench-concept.png` 当前可作为下一轮真实 UI 重排的视觉基线：保留轻量浅色桌面应用气质、单文档项目标题、顶部主路径命令、中央 flowsheet canvas、左侧 Project / Palette、右侧检查器 tabs、底部 Results Table / Messages 区和 SI 单位展示。后续实现时仍需把它转译为现有 `egui` 组件和 `SolveSnapshot` / window model 边界，不直接把图中所有视觉细节视为代码契约。
+`radishflow-current-workbench-20260516.png` 是当前真实 UI 备份，用于对照识别首屏信息过载、按钮堆叠、Canvas header 混乱、结果 / 诊断入口分散等问题。`baseline/radishflow-workbench-concept.png` 当前作为真实 UI 重排的视觉基线：保留轻量浅色桌面应用气质、单文档项目标题、顶部主导航与上下文工具栏、中央 flowsheet canvas、左侧 Project / Palette、右侧检查器 tabs、底部 Results Table / Messages 区和 SI 单位展示。后续实现时仍需把它转译为现有 `egui` 组件和 `SolveSnapshot` / window model 边界，不直接把图中所有视觉细节视为代码契约。
 
 ### Aspen / HYSYS 类界面
 
@@ -113,7 +113,7 @@ UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使
 - 建模对象、连接建议、运行、结果和错误分别属于哪个区域。
 - 人工 smoke 时应该按什么路径操作和观察结果。
 
-2026-05-16 已完成 Home Dashboard 与 Workbench 第一轮真实 UI 收口。2026-05-17 已继续完成 Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、Home 打开路径、Canvas 可读性、运行后结果视图和 Workbench 高频残余文案收口。2026-05-25 已进入 MVP β 小案例作者体验：Home 可从空白项目进入 `Mixer-Flash` 或 `Heater-Flash` 作者路径，Workbench `放置` 面板显示只读任务清单。后续不再回到“先讨论首页分区”或继续扩画布建模能力的阶段；下一轮应优先做可复现作者路径和真实窗口 smoke，只修阻碍主路径的问题。
+2026-05-16 已完成 Home Dashboard 与 Workbench 第一轮真实 UI 收口。2026-05-17 已继续完成 Canvas viewport 初始居中 / fit-to-content、首页高频中文文案、Home 打开路径、Canvas 可读性、运行后结果视图和 Workbench 高频残余文案收口。2026-05-25 已进入 MVP β 小案例作者体验：Home 可从空白项目进入 `Mixer-Flash` 或 `Heater-Flash` 作者路径，Workbench `模块` 面板显示只读任务清单。后续不再回到“先讨论首页分区”或继续扩画布建模能力的阶段；下一轮应优先做可复现作者路径和真实窗口 smoke，只修阻碍主路径的问题。
 
 2026-05-17 日终截图复核后保留的两项 UI blocker 已在 2026-05-18 收口：
 
@@ -124,27 +124,39 @@ UI 参考素材当前保存在 `docs/architecture/assets/studio-ui/`。下表使
 
 ## 后续 UI 专题与设计稿资产
 
-当前文档记录的是 MVP α 阶段已经形成的 Studio UI 规范和真实 UI 收口经验，不等同于完整产品 UI 设计系统。长期视觉系统、token、色彩角色、控件状态和视觉验收口径见 `studio-visual-system.md`。后续应在路线图中单独安排 UI 专题阶段，集中处理各端页面和单元模块 UI 缺乏统一设计的问题，而不是继续在功能开发中分散修补。
+当前文档记录的是 MVP α / β 阶段已经形成的 Studio UI 规范、真实 UI 收口经验和下一轮主设计稿约束，不等同于完整产品 UI 设计系统。长期视觉系统、token、色彩角色、控件状态和视觉验收口径见 `studio-visual-system.md`。Studio UI 专题阶段的端点边界、主工作流、状态模型和 `.pen` 设计稿规则见 `studio-ui-topic-plan.md`；当前唯一活跃 Studio 主设计稿见 `docs/architecture/designs/studio-client-main.pen`，文字 brief 见 `docs/architecture/designs/studio-client-main-brief.md`。本文继续承担设计规范职责，不承载阶段推进流水。
 
-专题启动前应先冻结端点清单、设计稿目录和命名规则。候选端点包括但不限于：
+当前已冻结的 P0 设计稿口径：
 
-- Studio 客户端本体：Home、Workbench、Canvas、Inspector、Result、Package / Auth 等主工作流。
-- 单元模块 UI：不同单元的参数、端口、运行结果、诊断、帮助和空状态。
-- 服务端 / 控制面 UI 管理页面：身份、授权、物性资产、版本、租约和分发状态。
-- 移动端或只读视图：项目浏览、运行状态、结果审阅和诊断摘要。
+- `studio-client-main.pen` 是当前唯一活跃 Studio 主设计稿，包含 `Home - Ready`、`Property - Components and Methods`、`Flowsheet - Modeling`、`Module - Settings and Results` 四个 frame。
+- `Property - Components and Methods` 是顶部导航下的独立物性页，不是左侧或右侧栏 tab。
+- `unit-module-panel.pen` 不再作为完整 Workbench 复制稿维护；若模块设置 / 结果细节不足，再创建窄口径 `module-settings-panel.pen`。
+- 服务端 / 控制面 UI 和移动端 / 只读视图仍是 P2 边界，不进入当前主稿细化。
 
 设计流程应采用设计稿先行：
 
 - 优先使用 `pencil` 工具绘制 `.pen` 设计稿，再根据评审后的设计稿开发。
 - 设计稿必须随仓库保存和同步，不能只留在个人本地或聊天记录里。
 - 专题启动时应同时读取 `docs/architecture/ui-inspiration-reference.md`，明确每个设计稿借鉴了哪些设计原则，以及哪些视觉元素不得照抄。
-- 原则上每个明确端点或界面域维护一个独立 `*.pen` 文件，避免把客户端、单元模块、服务端管理和移动端视图混在同一个设计稿里。
-- `.pen` 文件的最终目录和命名在专题启动时确定；在此之前不预先创建空设计稿或锁死拆分粒度。
+- 原则上每个明确端点或界面域维护一个独立 `*.pen` 文件，避免把客户端、服务端管理和移动端视图混在同一个设计稿里；但模块设置这类 Workbench 内部结构应先在主稿中统一，不为每个单元复制整套 Workbench。
+- `.pen` 文件目录固定为 `docs/architecture/designs/`；`.pen` 文件只通过 Pencil MCP 读取、生成、验证和导出。
 - 每次按设计稿实现 UI 时，应同步记录该实现对应的 `.pen` 文件、评审状态和偏离设计稿的原因。
 
 ## 信息架构
 
-Studio 默认工作台建议分为六个稳定区域。
+Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目标”。当前代码已以 Home Dashboard、八入口顶部导航、四类上下文工具栏、左侧 `模块 / 项目`、`模块` 面板分类 / 筛选、`项目` 面板分区、中央 Canvas `画布状态` 概览与建模主舞台、独立 `物性` 页、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 和状态汇总为基础；主设计稿目标仍以 `studio-client-main.pen` 为准，继续统一 Home、独立物性页、Flowsheet 工作台和模块设置 / 结果四个主 frame。
+
+主设计稿的 Workbench 建议分为七个稳定区域：
+
+| 区域 | 设计目标 |
+| --- | --- |
+| Window Title | 项目名称、窗口标题和平台窗口控制；不重复展示保存状态 |
+| Top Navigation | `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` |
+| Context Toolbar | 随当前导航显示保存、检查、运行、画布、结果或物性相关动作 |
+| Left Rail | `模块 / 项目`；模块页放流股和按分类折叠的单元操作，项目页放当前对象树 |
+| Canvas Stage | 类 IDE 的 flowsheet 标签页、画布状态概览、流程图画布和左上角浮动画布工具条 |
+| Right Rail | `检查器 / 模块设置 / 模块结果`；不再放独立 `运行` 或 `物性` tab |
+| Bottom Area | 左侧运行信息 tabs，右侧当前案例状态汇总 |
 
 ### Home Dashboard / Start Page
 
@@ -158,12 +170,12 @@ Studio 默认工作台建议分为六个稳定区域。
 
 - Home Dashboard 不是营销欢迎页，也不是完整控制台；它是工程软件启动面板。
 - Home Dashboard 默认使用中文界面；工程术语、包名、版本、路径和文件扩展名保留原文，用户动作、状态、消息和环境字段使用中文。
-- 页面应保留 `radishflow-workbench-concept.png` 的轻量浅色风格、克制蓝色主强调、状态 chip 和清晰分区，但不显示流程图画布。
-- `radishflow-home-dashboard-concept-v2-20260516.png` 当前作为启动首页视觉基线：它比早期概念稿更接近当前信息架构，Start actions、Recent Cases、Example Cases、Environment 和 Messages 的职责边界更清楚。
+- 页面应保留 `baseline/radishflow-workbench-concept.png` 的轻量浅色风格、克制蓝色主强调、状态 chip 和清晰分区，但不显示流程图画布。
+- `baseline/radishflow-home-dashboard-concept-v2-20260516.png` 当前作为启动首页视觉基线：它比早期概念稿更接近当前信息架构，Start actions、Recent Cases、Example Cases、Environment 和 Messages 的职责边界更清楚。
 - `radishflow-home-dashboard-concept.png` 保留为早期概念稿参考：它的信息架构方向正确，但字段和示例数据偏概念演示，不作为后续实现的优先基线。
-- Start actions 只保留当前主路径：`新建项目`、当前小案例作者入口、`打开项目`、`打开示例项目`；登录放在顶部 App Bar，不把完整命令面板或调试入口放进第一视野。最近项目的继续入口由 `最近项目` 列表行承载，不再作为左侧重复按钮常驻。
+- Start actions 只保留当前主路径：`新建项目`、当前小案例作者入口、`打开项目`、`打开示例项目`；登录放在顶部 App Bar，不把完整命令面板或调试入口放进第一视野。最近项目的继续入口由 `最近项目` tile 承载，不再作为左侧重复按钮常驻。当前评审结论是 Home 信息密度和工作台一致性仍不足，后续应优先对照 Home v2 基线做 focused 修正，而不是继续堆低密度欢迎文案。
 - 小案例作者入口只负责创建空白项目并打开对应任务清单，不自动生成 flowsheet，不写 `FlowsheetDocument`，不进入 undo，也不替代 placement / suggestion / parameter / run / save / export 工作流。
-- 最近项目和示例项目必须可扫读：名称、路径或来源、最后打开时间、流程摘要、组分 / 物性包摘要、状态标签；整行应可选择，双击整行可打开。
+- 最近项目和示例项目必须可扫读：优先使用流程缩影 tile gallery，而不是纯文本列表或通用文件图标。每个 tile 包含浅色 flowsheet thumbnail、名称、路径或来源、最后打开时间、流程摘要、组分 / 物性包摘要和状态标签；单击选择，双击打开。
 - 客户端 / 服务端 / 设备信息默认以状态卡或紧凑 section 呈现；详细路径、backend、cache 细节和诊断信息进入展开项。
 - 登录入口应优先是 `登录` 按钮，而不是内嵌账号密码表单；桌面登录继续遵守 OIDC Authorization Code + PKCE + 系统浏览器 + loopback redirect 的边界。
 - 未登录、服务端不可用、物性包缓存缺失、示例目录缺失等问题应显示为可行动状态，不使用开发态错误文本。
@@ -182,8 +194,8 @@ Studio 默认工作台建议分为六个稳定区域。
 | --- | --- | --- |
 | Top App Bar | 应用名、`development build` 或当前人工确认的版本标识、`Local ready`、`Server offline`、`Signed out`、单位集、登录 / 设置 / 帮助入口 | 完整 build commit、完整控制面 URL、语言高级设置、开发诊断 |
 | Start Actions | `新建项目`、`创建 Mixer-Flash 小案例`、`创建 Heater-Flash 小案例`、`打开项目`、`打开示例项目`；无最近项目时 `打开示例项目` 或小案例作者入口为优先入口 | 命令面板、最近工作区完整列表、保存 / 另存为、运行按钮 |
-| Recent Cases | 项目名称、路径或来源、最后打开时间、物性包、状态；选中态和双击打开行为 | 流股数、单元数、诊断数、最新求解摘要、完整路径展开 |
-| Example Cases | 示例类型、短流程图摘要、组件摘要、物性包、状态；选中态和双击打开行为 | 长说明、教程步骤、完整 flowsheet 预览、PME 操作说明 |
+| Recent Cases | 浅色流程缩影、项目名称、路径或来源、最后打开时间、物性包、状态；选中态和双击打开行为 | 流股数、单元数、诊断数、最新求解摘要、完整路径展开 |
+| Example Cases | 浅色流程缩影、示例类型、短流程图摘要、组件摘要、物性包、状态；选中态和双击打开行为 | 长说明、教程步骤、完整 flowsheet 预览、PME 操作说明 |
 | Environment | `Client`、`Server`、`Device` 三组健康摘要；只显示影响“能否开始”的状态 | cache 根目录、examples 绝对路径、backend 细节、原始错误文本、设备资源曲线 |
 | Messages | 最近 3-5 条可行动消息、严重度、领域标签、短动作入口 | 原始日志、GUI activity、platform timer、host internals、完整 trace |
 
@@ -206,8 +218,8 @@ Studio 默认工作台建议分为六个稳定区域。
 
 动作契约：
 
-- `New Project` / `新建项目` 创建 MVP 默认空白项目，进入工作台；该动作不依赖登录或服务端。
-- 小案例作者入口创建 MVP 默认空白项目，进入工作台并切到左侧 `放置`；当前支持 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条作者清单。清单状态必须从当前 canvas unit / stream / solve snapshot 推导，不反向修改项目语义。
+- `New Project` / `新建项目` 创建 MVP 默认空白项目，先进入独立 `物性` 页；该动作不依赖登录或服务端。
+- 小案例作者入口创建 MVP 默认空白项目，进入工作台并切到左侧 `模块`；当前支持 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条作者清单。清单状态必须从当前 canvas unit / stream / solve snapshot 推导，不反向修改项目语义。
 - `Open Project` / `打开项目` 使用系统文件选择器打开用户项目，进入工作台；打开成功后更新 MRU。
 - `Open Example Project` / `打开示例项目` 从 Example Cases 选择或打开示例文件夹，成功后进入工作台并更新 MRU 来源。
 - `Recent Cases` 和 `Example Cases` 的行点击只改变选择态，整行双击触发打开；文件缺失时不静默失败，应把该项目行标为 `Missing file` 并产生 `Messages` 行。
@@ -225,28 +237,37 @@ Studio 默认工作台建议分为六个稳定区域。
 
 进入工作台的规则：
 
-- 打开项目或示例后进入常规工作台：顶部主路径、左侧示例 / 项目 / 放置、中央 Flowsheet Canvas、右侧检查器 / 运行 / 结果 / 物性包、底部消息 / 运行日志 / 结果表 / 诊断。
+- 当前代码打开项目或示例后进入常规工作台；普通空白项目先进入 `物性` 页，选齐 package 和项目组分后再进入 `流程图` 建模。工作区内保持顶部 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` 主导航、当前 screen 下的上下文工具栏、左侧 `模块 / 项目`、中央 Flowsheet Canvas、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表`。
+- 文件 / 示例入口进入 `文件` 或 Home，运行控制进入 `流程图` / `运行` 上下文工具栏，物性进入独立 `物性` 页面，结果审阅进入顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表`。
 - 工作台内仍可通过顶部或左侧返回 Home Dashboard，但 Home Dashboard 不直接承载流程图编辑。
 - 若启动时发现最近项目，可以先进入 Home Dashboard 并突出 `最近项目` 列表的首项，不要静默跳过首页，也不要在左侧重复生成继续入口按钮。
 
 ### 顶部 App Bar
 
-职责：
+当前已实现职责：
 
 - 应用和项目身份：项目名、脏状态、运行模式、当前单位集。
-- 全局主路径：新建空白、打开示例、打开项目、运行、保存、另存为、命令面板。
+- 顶部主导航：`文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`。
+- 上下文工具栏：`物性 / 流程图 / 运行 / 结果` screen 分别消费已有 property page、进入建模 readiness、command registry、Run Panel state、Module Results、结果表状态和 `SolveSnapshot` 状态。
+- 全局菜单：项目生命周期命令进入 `文件`；命令面板、Commands 面板和逻辑窗口进入 `工具`；语言进入 `设置`。
 - 全局状态：运行状态、pending work、授权 / 物性包摘要、最近错误入口。
 
 规则：
 
 - 顶部默认不显示完整项目路径；路径放入项目详情或 tooltip。
 - 运行按钮必须在顶部保持可见，禁用时给出短原因。
-- 低频视图切换、语言切换、逻辑窗口、调试窗口进入菜单或命令面板。
+- 低频视图切换、逻辑窗口和调试窗口进入 `工具` 或命令面板；语言切换进入 `设置`。
 - 状态 chip 数量控制在 3-5 个，避免把每个内部计数都做成 chip。
+
+后续细化目标：
+
+- 继续收紧上下文工具栏密度，不把 `打开项目`、`打开示例` 常驻为工作区第一按钮。
+- 项目名称放在窗口标题或项目摘要中；保存状态使用右侧状态 chip，不在标题处重复加 `*` 或长状态说明。
+- `设备` 不作为一级导航；模块放置和模块设置分别归入左侧 `模块` 与右侧 `模块设置`。
 
 ### 左侧 Navigator / Examples / Palette
 
-职责：
+当前已实现职责：
 
 - 示例管理：内置示例列表、最近项目、打开示例入口和示例说明摘要。
 - 当前项目树：Project components、Property Package、Streams、Units、Results、Diagnostics。
@@ -260,7 +281,13 @@ Studio 默认工作台建议分为六个稳定区域。
 - suggestion 是辅助建模入口，不和对象库按钮混排成一列命令。
 - 示例、项目树与对象库可以用 tab 或分段控件切换，避免同时展开造成拥挤。
 - 打开示例不应只依赖顶部按钮；左侧必须有稳定、可扫读的示例管理入口。
-- 项目级输入不应只藏在右侧 tab。当前左侧 `项目` 面板必须能扫读受控项目组分和当前物性包，且组分选择 / 移除入口应直接作用于 `Flowsheet.components`，不引入 shell 私有组分状态。
+- 项目级输入不应只藏在单一面板。当前左侧 `项目` 面板必须能扫读受控项目组分和当前物性包，独立 `物性` 页提供正式编辑入口，且组分选择 / 移除入口应直接作用于 `Flowsheet.components`，不引入 shell 私有组分状态。
+
+后续细化目标：
+
+- 左侧栏收敛为 `模块 / 项目` 两个 tab。
+- `模块` 替代旧 `放置` 命名，顶部提供筛选；当前受控单元已按 `流股源 / 调节单元 / 汇合与分离` 分类，后续仍可继续细化 palette item 和 category card 视觉。
+- `项目` 只负责当前项目输入摘要、示例入口、对象树、结果对象和诊断对象导航；物性主配置移到独立 `物性` 页面。
 
 ### 中央 Flowsheet Canvas
 
@@ -283,24 +310,34 @@ Studio 默认工作台建议分为六个稳定区域。
 
 ### 右侧检查器
 
-职责：
+当前已实现职责：
 
 - 当前选择对象的属性编辑。
-- 运行上下文摘要。
-- 最新结果详情。
-- 授权 / 物性包的可操作状态。
+- 当前单元的 Module Settings。
+- 当前单元的 Module Results。
+- 当前对象、端口、诊断和结果定位动作。
 
 规则：
 
 - 右侧默认只展示和当前选择或当前任务相关的信息。
-- 建议以 `检查器 / 运行 / 结果 / 物性包` tab 或等价分段组织；授权 / entitlement 在当前 demo 主路径中低频，默认不应压过物性包和结果审阅。
-- `物性包` tab 可继续承载本地 package 摘要、内置 package 选择和同一套项目组分选择入口，但它不是唯一入口；用户刚进入 Workbench 时应能先从左侧项目树发现项目组分状态。
+- 当前代码以 `检查器 / 模块设置 / 模块结果` tab 组织右侧栏；`运行` 和 `物性包` 不再作为右侧常驻 tab。
+- `物性` 页承载本地 package 摘要、内置 package 选择、同一套项目组分选择入口和进入流程图建模的 readiness；用户进入 Workbench 后仍应能先从左侧项目树发现项目组分状态。
 - 属性字段采用 label + input + unit + validation 的行结构；单位必须紧贴数值，不藏在说明文字里。
-- 从左侧 Project、Canvas 对象列表或结果定位动作选择 stream / unit 后，应自然切换到对应检查器；stream 优先暴露 `T / P / F`、组成草稿和提交/归一化动作，unit 优先暴露已进入 MVP 的关键参数、端口、关联步骤、关联诊断和最新只读结果。
+- 从左侧 `项目` 对象树、Canvas 画布实体或结果定位动作选择 stream / unit 后，应自然切换到对应检查器；stream 优先暴露 `T / P / F`、组成草稿和提交/归一化动作，unit 的可编辑参数进入 `模块设置`，latest unit result 进入 `模块结果`。
 - Unit Inspector 当前只把 `Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 与 `Flash Drum` 的 flash temperature / pressure 作为可编辑参数行；字段必须显示 SI 单位和约束提示，提交走正式文档命令并同步对应 outlet stream 模板。若字段值来自 outlet stream 模板 / fallback 而 unit parameter 尚未显式存在，同值提交仍应写入正式 `SetUnitParameter`。其余单元信息仍以端口、关联步骤、关联诊断和最新只读结果为主，不提前设计完整单元参数表。
 - 结果检查器中面向用户的组成、相态和摘要行应优先使用本地化结构化短句；`z: ...`、`phases: ...` 这类原始调试文本只应进入 hover、日志或开发诊断，不应作为默认结果正文。
+- 模块结果、环境摘要和状态摘要应使用状态 chip、metric card、stream chip 和短说明组合；避免把 `状态 / Duty / Outlet T / Diagnostics` 或 `客户端 / 服务端 / 缓存` 做成松散的两列文字直排。
 - 草稿态、未归一组成、运行阻断和只读结果要有稳定视觉语义。
 - Runtime 中的开发态活动、平台 timer、GUI activity、原始项目路径编辑默认折叠。
+
+后续细化目标：
+
+- 继续细化 `检查器 / 模块设置 / 模块结果` 的密度、空状态、诊断目标和跨入口定位反馈。
+- 运行主按钮、Hold / Resume、检查输入和清理诊断保留在顶部 `运行` 上下文工具栏，详细日志进入底部运行信息区。
+- 项目物性、组分、方法、交互参数、来源和分析保留在独立 `物性` 页面。
+- 左侧模块库不做松散文本列表；物料流、能量流、信号流使用 palette item，单元操作分类使用 category card，选中态、计数和简短描述保持稳定位置。
+- 右侧检查器不做松散 label/value 文本堆叠；当前对象用 summary card，关键字段用 metric card，端口用 connection card，状态用 chip。
+- Home、Property、Flowsheet、Module / Results 四个主 frame 必须共享同一套浅色 shell 和卡片密度；Property 页面也应使用导航卡、组分卡、metric card 和 summary card，不保留旧式大表格 / 长段落正文作为主视觉。
 
 ### 底部 Workbench Drawer
 
@@ -317,6 +354,20 @@ Studio 默认工作台建议分为六个稳定区域。
 - Messages 放用户可行动摘要，Run Log 放较原始的运行过程。
 - 结果表格按 stream-centric / unit-centric 组织，保持和当前 `SolveSnapshot` 语义一致；当前快照复制 / 导出可包含 `Streams / Review / Units / Steps / Diagnostics` 轻量文本区，但不应设计成完整报表、模板或批量导出系统。若文档已编辑且结果过期，结果表应显示重新运行提示，而不是继续展示旧表格。
 - 底部面板不应默认展示整屏原始日志；原始日志作为展开详情或复制入口。
+
+后续细化目标：
+
+- 底部继续从单一 drawer 向运行信息区 + 状态汇总的清晰分栏细化。
+- 运行信息 tabs 保持 `消息`、`运行日志`、`收敛`、`建议`、`诊断`、`结果表` 的职责边界。
+- 右侧：`状态汇总`，显示当前案例状态、最新运行、收敛 / 迭代信息、诊断数和 snapshot / revision 一致性；没有真实迭代次数时显示 `N/A` 或 `Sequential steps`，不得伪造收敛数据。
+
+### 画布浮动工具条
+
+规则：
+
+- 浮动工具条必须服从浅色工作台基调，默认使用白色或极浅灰底、浅描边和深灰图标。
+- 当前工具使用浅蓝选中底和蓝色图标即可，不使用黑色高对比胶囊形工具条。
+- 工具条只放高频画布工具：选择、框选、平移、放大、缩小、适应流程、网格；低频命令进入顶部上下文工具栏或菜单。
 
 ### 底部 Status Bar
 
@@ -344,7 +395,7 @@ Studio 默认工作台建议分为六个稳定区域。
 - View：缩放、适配视图、面板显示、语言。
 - Tools：命令面板、开发诊断、导出调试信息。
 
-MVP α 默认只把 Project / Run / Results 的核心动作摆到第一视野，Build 和 Tools 逐步进入画布工具条、侧栏或命令面板。
+当前默认只把 Project / Run / Results 的核心动作摆到第一视野，Build 和 Tools 进入画布工具条、侧栏、上下文工具栏或命令面板。
 
 ### 文案
 
@@ -432,7 +483,7 @@ RadishFlow 默认浅色中性底，搭配少量语义色。
 后续实现应按以下顺序拆分，避免一次性重写 UI：
 
 1. 已落地：首屏 Home Dashboard 分区、顶部 App Bar、Start actions、Recent / Example / Environment / Messages。
-2. 已落地：Workbench 顶部 command bar 主路径、左侧 Project / 示例入口、右侧检查器 / 结果 / 运行 / 物性包、底部消息 / 运行日志 / 结果表 / 诊断 drawer。
+2. 已落地：Workbench 顶部八入口主导航、`物性 / 流程图 / 运行 / 结果` 上下文工具栏、左侧 Project / 示例入口、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` drawer。
 3. 已落地：Canvas header / toolbar 第一轮压缩，Place / suggestion / selection / legend 不再以开发态长文本平铺。
 4. 已落地：Canvas viewport 初始 fit-to-content / center，让打开示例后的流程自然处于可视区域中央；该行为只属于 shell-local 呈现，不写项目、不进历史、不做视口持久化。
 5. 已落地：补齐首页高频中文文案和打开项目消息，避免 `打开 Case`、`Project opened` 等残留混入中文界面。
@@ -445,7 +496,7 @@ RadishFlow 默认浅色中性底，搭配少量语义色。
 
 - 启动后 5 秒内能否看懂如何打开示例、新建空白、运行、查看结果、保存 / 另存为？
 - 画布是否仍是首屏最大区域？
-- 顶部是否只保留全局身份、主路径命令和关键状态？
+- 顶部是否只保留全局身份、八个主导航入口、当前 screen 上下文工具栏和关键状态？
 - 左侧是否只承担项目导航或对象库，而不是命令垃圾桶？
 - 右侧是否只展示当前选择、运行或结果的相关信息？
 - 原始日志和开发态活动是否没有压过用户主路径？

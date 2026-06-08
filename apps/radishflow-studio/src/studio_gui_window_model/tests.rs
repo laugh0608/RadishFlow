@@ -63,6 +63,29 @@ fn find_window_snapshot_stream<'a>(
         .expect("expected window snapshot stream")
 }
 
+fn find_status_summary_metric<'a>(
+    window: &'a crate::StudioGuiWindowModel,
+    label: &str,
+) -> &'a crate::StudioGuiWindowStatusSummaryMetricModel {
+    window
+        .status_summary
+        .metrics
+        .iter()
+        .find(|metric| metric.label == label)
+        .unwrap_or_else(|| panic!("expected status summary metric `{label}`"))
+}
+
+fn context_toolbar_section<'a>(
+    toolbar: &'a crate::StudioGuiWindowContextToolbarModel,
+    title: &str,
+) -> &'a crate::StudioGuiWindowContextToolbarSectionModel {
+    toolbar
+        .sections
+        .iter()
+        .find(|section| section.title == title)
+        .unwrap_or_else(|| panic!("expected context toolbar section `{title}`"))
+}
+
 #[test]
 fn solve_snapshot_light_text_export_uses_current_snapshot_results() {
     let snapshot = solve_binary_hydrocarbon_lite_snapshot(include_str!(
@@ -1200,6 +1223,48 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
         "expected canvas command section when suggestions exist"
     );
 
+    assert_eq!(window.home.title, "Home");
+    assert!(window.home.recent_case_tiles.is_empty());
+    assert_eq!(window.home.example_case_tiles.len(), 4);
+    let mixer_tile = window
+        .home
+        .example_case_tiles
+        .iter()
+        .find(|tile| tile.source_id == "feed-mixer-flash")
+        .expect("expected mixer flash example tile");
+    assert_eq!(
+        mixer_tile.source,
+        crate::StudioGuiWindowHomeCaseTileSource::Example
+    );
+    assert_eq!(
+        mixer_tile.status,
+        crate::StudioGuiWindowHomeCaseTileStatus::Ready
+    );
+    assert_eq!(mixer_tile.package_summary, "binary-hydrocarbon-lite-v1");
+    assert_eq!(
+        mixer_tile
+            .thumbnail
+            .nodes
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>(),
+        vec!["Feed", "Feed", "Mixer", "Flash"]
+    );
+    assert_eq!(mixer_tile.thumbnail.edges, [(0, 2), (1, 2), (2, 3)]);
+
+    assert_eq!(window.property_page.title, "Property");
+    assert_eq!(window.property_page.selected_package_id.as_deref(), None);
+    assert_eq!(window.property_page.package_status_label, "Unselected");
+    assert_eq!(window.property_page.package_choices.len(), 1);
+    assert_eq!(
+        window.property_page.package_choices[0].command_id,
+        "project.property_package.select:binary-hydrocarbon-lite-v1"
+    );
+    assert!(
+        window.property_page.future_sections.contains(&"Analysis"),
+        "property page should expose future analysis space without implementing it"
+    );
+
     assert_eq!(window.canvas.title, "Canvas");
     assert_eq!(window.canvas.suggestion_count, 1);
     assert_eq!(window.canvas.enabled_action_count, 8);
@@ -1238,6 +1303,16 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
     assert_eq!(
         window.runtime.latest_log_entry,
         window.runtime.log_entries.last().cloned()
+    );
+    assert_eq!(window.status_summary.title, "Status Summary");
+    assert_eq!(find_status_summary_metric(&window, "Case").value, "Saved");
+    assert_eq!(find_status_summary_metric(&window, "Steps").value, "N/A");
+    assert_eq!(window.status_summary.snapshot_consistency_label, "None");
+    assert!(
+        window
+            .status_summary
+            .snapshot_consistency_detail
+            .contains("no solve snapshot is current")
     );
     assert_eq!(
         window.layout_state.scope.kind,
@@ -1278,11 +1353,28 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
     assert_eq!(window.runtime.workspace_document.revision, 0);
     assert_eq!(window.runtime.workspace_document.unit_count, 3);
     assert_eq!(window.runtime.workspace_document.snapshot_history_count, 1);
+    assert_eq!(window.property_page.selected_package_id.as_deref(), None);
+    assert_eq!(window.property_page.package_status_label, "Unselected");
+    assert_eq!(window.property_page.selected_component_count, 2);
 
     let snapshot = window
         .runtime
         .latest_solve_snapshot
+        .as_ref()
         .expect("expected latest solve snapshot");
+    assert_eq!(window.status_summary.snapshot_consistency_label, "Current");
+    assert_eq!(
+        find_status_summary_metric(&window, "Steps").value,
+        snapshot.step_count.to_string()
+    );
+    assert_eq!(
+        find_status_summary_metric(&window, "Diagnostics").value,
+        snapshot.diagnostic_count.to_string()
+    );
+    assert_eq!(
+        find_status_summary_metric(&window, "Convergence").value,
+        snapshot.status_label
+    );
     assert_eq!(snapshot.status_label, "Converged");
     assert_eq!(snapshot.stream_count, 4);
     assert_eq!(snapshot.step_count, 3);
@@ -1995,6 +2087,332 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
 }
 
 #[test]
+fn studio_gui_window_model_surfaces_current_module_results_for_active_unit() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected run dispatch");
+
+    let focus = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:heater-1".to_string(),
+        })
+        .expect("expected heater focus dispatch");
+    let window = focus.window;
+    let snapshot = window
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected current solve snapshot");
+    let module_results = &window.module_results;
+
+    assert_eq!(module_results.title, "Module Results");
+    assert_eq!(
+        module_results.state,
+        crate::StudioGuiWindowModuleResultsState::Current
+    );
+    assert_eq!(module_results.state_label, "Current");
+    assert_eq!(
+        module_results.selected_unit.as_ref().map(|unit| {
+            (
+                unit.kind_label,
+                unit.target_id.as_str(),
+                unit.action.command_id.as_str(),
+            )
+        }),
+        Some(("Unit", "heater-1", "inspector.focus_unit:heater-1"))
+    );
+    assert_eq!(
+        module_results.snapshot_id.as_deref(),
+        Some(snapshot.snapshot_id.as_str())
+    );
+    assert_eq!(module_results.stale_snapshot, None);
+
+    let unit_result = module_results
+        .selected_unit_result
+        .as_ref()
+        .expect("expected selected heater unit result");
+    assert_eq!(unit_result.unit_id, "heater-1");
+    assert_eq!(unit_result.status_label, "Converged");
+    assert_eq!(
+        module_results
+            .consumed_stream_chips
+            .iter()
+            .map(|stream| stream.stream_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["stream-feed"]
+    );
+    assert_eq!(
+        module_results
+            .produced_stream_chips
+            .iter()
+            .map(|stream| stream.stream_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["stream-heated"]
+    );
+    assert!(
+        module_results
+            .produced_stream_chips
+            .iter()
+            .any(|stream| stream.summary.contains("T ") && stream.summary.contains("H ")),
+        "expected module result stream chips to carry numeric solve summaries"
+    );
+    assert_eq!(
+        module_results
+            .related_steps
+            .iter()
+            .map(|step| step.unit_id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["heater-1"]
+    );
+    assert!(module_results.related_diagnostics.iter().any(|diagnostic| {
+        diagnostic
+            .related_unit_ids
+            .iter()
+            .any(|unit_id| unit_id == "heater-1")
+            || diagnostic
+                .related_stream_ids
+                .iter()
+                .any(|stream_id| stream_id == "stream-heated")
+    }));
+    assert!(module_results.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Inspector target"
+            && action.action.command_id == "inspector.focus_unit:heater-1"
+    }));
+    assert!(module_results.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Latest result"
+            && action.action.command_id == "inspector.focus_stream:stream-heated"
+    }));
+    assert_eq!(
+        window
+            .runtime
+            .active_inspector_detail
+            .as_ref()
+            .and_then(|detail| detail.latest_unit_result.as_ref()),
+        module_results.selected_unit_result.as_ref()
+    );
+}
+
+#[test]
+fn studio_gui_window_model_surfaces_module_settings_for_active_unit() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected run dispatch");
+
+    let focus = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:heater-1".to_string(),
+        })
+        .expect("expected heater focus dispatch");
+    let window = focus.window;
+    let active_detail = window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .expect("expected active unit inspector detail");
+    let settings = &window.module_settings;
+
+    assert_eq!(settings.title, "Module Settings");
+    assert_eq!(
+        settings.state,
+        crate::StudioGuiWindowModuleSettingsState::Ready
+    );
+    assert_eq!(settings.state_label, "Ready");
+    assert_eq!(
+        settings
+            .selected_unit
+            .as_ref()
+            .map(|unit| (unit.kind_label, unit.target_id.as_str())),
+        Some(("Unit", "heater-1"))
+    );
+    assert_eq!(settings.summary_rows, active_detail.summary_rows);
+    assert_eq!(settings.parameter_fields, active_detail.property_fields);
+    assert_eq!(settings.parameter_notices, active_detail.property_notices);
+    assert_eq!(
+        settings.parameter_batch_commit_command_id,
+        active_detail.property_batch_commit_command_id
+    );
+    assert_eq!(
+        settings.parameter_batch_discard_command_id,
+        active_detail.property_batch_discard_command_id
+    );
+    assert_eq!(
+        settings.connection_actions,
+        active_detail.connection_actions
+    );
+    assert_eq!(settings.ports, active_detail.unit_ports);
+    assert_eq!(
+        settings.related_diagnostics,
+        active_detail.related_diagnostics
+    );
+    assert_eq!(
+        settings.diagnostic_actions,
+        active_detail.diagnostic_actions
+    );
+
+    assert!(settings.parameter_fields.iter().any(|field| {
+        field.key == "unit:heater-1:outlet_temperature_k"
+            && field.draft_update_command_id
+                == "inspector.update_stream_draft:unit:heater-1:outlet_temperature_k"
+    }));
+    assert!(settings.ports.iter().any(|port| {
+        port.name == "inlet"
+            && port.stream_id.as_deref() == Some("stream-feed")
+            && port
+                .stream_action
+                .as_ref()
+                .is_some_and(|action| action.command_id == "inspector.focus_stream:stream-feed")
+    }));
+    assert!(settings.ports.iter().any(|port| {
+        port.name == "outlet"
+            && port.stream_id.as_deref() == Some("stream-heated")
+            && port
+                .stream_action
+                .as_ref()
+                .is_some_and(|action| action.command_id == "inspector.focus_stream:stream-heated")
+    }));
+    assert!(settings.related_diagnostics.iter().any(|diagnostic| {
+        diagnostic.code == "solver.unit_executed"
+            && diagnostic
+                .related_unit_ids
+                .iter()
+                .any(|unit_id| unit_id == "heater-1")
+    }));
+    assert!(settings.diagnostic_actions.iter().any(|action| {
+        action.source_label == "Inspector target"
+            && action.action.command_id == "inspector.focus_unit:heater-1"
+    }));
+    assert!(settings.help_actions.is_empty());
+    assert!(
+        settings
+            .help_detail
+            .contains("No formal module help command is registered for heater-1"),
+        "module settings must expose the current absence of a formal help command"
+    );
+}
+
+#[test]
+fn studio_gui_window_model_marks_module_results_stale_after_unit_parameter_edit() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let run = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected run dispatch");
+    let solved_snapshot_id = run
+        .window
+        .runtime
+        .latest_solve_snapshot
+        .as_ref()
+        .expect("expected solved snapshot")
+        .snapshot_id
+        .clone();
+
+    let focus = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:heater-1".to_string(),
+        })
+        .expect("expected heater focus dispatch");
+    let temperature_field = focus
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "unit:heater-1:outlet_temperature_k")
+        })
+        .cloned()
+        .expect("expected heater outlet temperature field");
+    let update = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftUpdateRequested {
+            command_id: temperature_field.draft_update_command_id,
+            raw_value: "340".to_string(),
+        })
+        .expect("expected heater temperature draft update");
+    let commit_command_id = update
+        .window
+        .runtime
+        .active_inspector_detail
+        .as_ref()
+        .and_then(|detail| {
+            detail
+                .property_fields
+                .iter()
+                .find(|field| field.key == "unit:heater-1:outlet_temperature_k")
+        })
+        .and_then(|field| field.commit_command_id.clone())
+        .expect("expected heater temperature commit command");
+
+    let committed = driver
+        .dispatch_event(StudioGuiEvent::InspectorFieldDraftCommitRequested {
+            command_id: commit_command_id,
+        })
+        .expect("expected heater temperature commit dispatch");
+    let window = committed.window;
+    let module_results = &window.module_results;
+
+    assert_eq!(window.runtime.latest_solve_snapshot, None);
+    assert_eq!(
+        window
+            .runtime
+            .stale_solve_snapshot
+            .as_ref()
+            .map(|snapshot| snapshot.snapshot_id.as_str()),
+        Some(solved_snapshot_id.as_str())
+    );
+    assert_eq!(
+        module_results.state,
+        crate::StudioGuiWindowModuleResultsState::Stale
+    );
+    assert_eq!(module_results.state_label, "Stale");
+    assert_eq!(
+        module_results
+            .selected_unit
+            .as_ref()
+            .map(|unit| unit.target_id.as_str()),
+        Some("heater-1")
+    );
+    assert_eq!(module_results.snapshot_id, None);
+    assert_eq!(
+        module_results
+            .stale_snapshot
+            .as_ref()
+            .map(|snapshot| snapshot.snapshot_id.as_str()),
+        Some(solved_snapshot_id.as_str())
+    );
+    assert!(module_results.selected_unit_result.is_none());
+    assert!(module_results.consumed_stream_chips.is_empty());
+    assert!(module_results.produced_stream_chips.is_empty());
+    assert!(module_results.related_steps.is_empty());
+    assert!(module_results.related_diagnostics.is_empty());
+    assert!(module_results.diagnostic_actions.is_empty());
+    assert!(
+        module_results.detail.contains("Run again"),
+        "expected stale module result detail to point users back to rerun"
+    );
+}
+
+#[test]
 fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_valve_pressure() {
     let config = synced_example_config("feed-valve-flash-binary-hydrocarbon.rfproj.json");
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
@@ -2243,10 +2661,15 @@ fn studio_gui_window_model_surfaces_feed_source_parameters() {
 
     assert_eq!(temperature_field.label, "Source temperature (K)");
     assert_eq!(temperature_field.value_kind_label, "Number");
-    assert_eq!(temperature_field.status_label, "Synced");
+    assert_eq!(temperature_field.status_label, "Draft");
+    assert!(temperature_field.is_dirty);
     assert_eq!(
         temperature_field.draft_update_command_id,
         "inspector.update_stream_draft:unit:feed-1:outlet_temperature_k"
+    );
+    assert_eq!(
+        temperature_field.commit_command_id.as_deref(),
+        Some("inspector.commit_stream_draft:unit:feed-1:outlet_temperature_k")
     );
     assert!(temperature_field.constraint_text.as_deref().is_some_and(
         |text| text.contains("Unit K")
@@ -2256,10 +2679,15 @@ fn studio_gui_window_model_surfaces_feed_source_parameters() {
 
     assert_eq!(pressure_field.label, "Source pressure (Pa)");
     assert_eq!(pressure_field.value_kind_label, "Number");
-    assert_eq!(pressure_field.status_label, "Synced");
+    assert_eq!(pressure_field.status_label, "Draft");
+    assert!(pressure_field.is_dirty);
     assert_eq!(
         pressure_field.draft_update_command_id,
         "inspector.update_stream_draft:unit:feed-1:outlet_pressure_pa"
+    );
+    assert_eq!(
+        pressure_field.commit_command_id.as_deref(),
+        Some("inspector.commit_stream_draft:unit:feed-1:outlet_pressure_pa")
     );
     assert!(
         pressure_field
@@ -4745,6 +5173,546 @@ fn studio_gui_window_command_area_surfaces_toolbar_sections_through_shared_model
     );
 
     let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn studio_gui_window_model_builds_flowsheet_context_toolbar_from_available_commands_and_state() {
+    let (config, project_path) = flash_drum_local_rules_config();
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+    let dispatch = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let window = dispatch.snapshot.window_model();
+
+    assert_eq!(window.flowsheet_context_toolbar.title, "Flowsheet Context");
+    assert_eq!(
+        window
+            .flowsheet_context_toolbar
+            .sections
+            .iter()
+            .map(|section| section.title)
+            .collect::<Vec<_>>(),
+        vec!["Canvas", "Run", "Review"]
+    );
+
+    let canvas_section = context_toolbar_section(&window.flowsheet_context_toolbar, "Canvas");
+    let canvas_command_ids = canvas_section
+        .items
+        .iter()
+        .map(|item| {
+            assert_eq!(
+                item.target,
+                crate::StudioGuiWindowContextToolbarItemTarget::Command
+            );
+            assert!(
+                item.enabled,
+                "context toolbar must hide disabled canvas commands"
+            );
+            item.command_id
+                .as_deref()
+                .expect("canvas toolbar items must target registered commands")
+        })
+        .collect::<Vec<_>>();
+    assert!(
+        !canvas_command_ids.is_empty(),
+        "canvas context toolbar should keep available canvas suggestion commands"
+    );
+    assert!(canvas_command_ids.contains(&"canvas.accept_focused"));
+    let allowed_canvas_command_ids = [
+        "canvas.accept_focused",
+        "canvas.reject_focused",
+        "canvas.focus_next",
+        "canvas.focus_previous",
+        "canvas.cancel_pending_edit",
+    ];
+    assert!(
+        canvas_command_ids
+            .iter()
+            .all(|command_id| allowed_canvas_command_ids.contains(command_id)),
+        "canvas context toolbar must only render existing suggestion or pending-edit commands: {canvas_command_ids:?}"
+    );
+    for excluded_command_id in [
+        "canvas.begin_place_unit.feed",
+        "canvas.begin_place_unit.flash_drum",
+        "canvas.move_selected_unit.left",
+        "canvas.move_selected_unit.right",
+    ] {
+        assert!(
+            !canvas_command_ids.contains(&excluded_command_id),
+            "flowsheet context toolbar must not repeat placement or selected-object canvas commands: {canvas_command_ids:?}"
+        );
+    }
+
+    let run_section = context_toolbar_section(&window.flowsheet_context_toolbar, "Run");
+    assert!(
+        run_section.items.iter().all(|item| item.enabled
+            && item.target == crate::StudioGuiWindowContextToolbarItemTarget::Command
+            && item
+                .command_id
+                .as_deref()
+                .is_some_and(|command_id| command_id.starts_with("run_panel."))),
+        "run context toolbar must only render enabled Run Panel commands: {:?}",
+        run_section.items
+    );
+
+    let review_section = context_toolbar_section(&window.flowsheet_context_toolbar, "Review");
+    assert_eq!(
+        review_section
+            .items
+            .iter()
+            .map(|item| (
+                item.target,
+                item.command_id.as_deref(),
+                item.status_label.as_deref()
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::ModuleResults,
+                None,
+                Some("No unit selected")
+            ),
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::ResultsTable,
+                None,
+                Some("SnapshotMissing")
+            ),
+        ]
+    );
+    assert_eq!(
+        window
+            .flowsheet_context_toolbar
+            .status_items
+            .iter()
+            .map(|item| item.label)
+            .collect::<Vec<_>>(),
+        vec!["Run", "Convergence", "Diagnostics", "Snapshot"]
+    );
+
+    let _ = fs::remove_file(project_path);
+}
+
+#[test]
+fn studio_gui_window_model_keeps_context_result_entries_routed_to_existing_result_surfaces() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected run dispatch");
+    let focus = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:heater-1".to_string(),
+        })
+        .expect("expected heater focus dispatch");
+    let window = focus.window;
+
+    let review_section = context_toolbar_section(&window.flowsheet_context_toolbar, "Review");
+    assert_eq!(
+        review_section
+            .items
+            .iter()
+            .map(|item| (
+                item.target,
+                item.command_id.as_deref(),
+                item.label.as_str(),
+                item.status_label.as_deref()
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::ModuleResults,
+                None,
+                "Module Results",
+                Some("Current")
+            ),
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::ResultsTable,
+                None,
+                "Results Table",
+                Some("Current")
+            ),
+        ]
+    );
+    assert!(
+        window
+            .flowsheet_context_toolbar
+            .sections
+            .iter()
+            .flat_map(|section| section.items.iter())
+            .filter_map(|item| item.command_id.as_deref())
+            .all(|command_id| !command_id.starts_with("inspector.focus_")),
+        "context toolbar result entries must not fan out latest snapshot result commands"
+    );
+}
+
+#[test]
+fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_commands() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+
+    let opened = driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let window = opened.snapshot.window_model();
+
+    assert_eq!(window.property_context_toolbar.title, "Property Context");
+    assert_eq!(
+        window
+            .property_context_toolbar
+            .sections
+            .iter()
+            .map(|section| section.title)
+            .collect::<Vec<_>>(),
+        vec!["Package", "Modeling"]
+    );
+    let package_section = context_toolbar_section(&window.property_context_toolbar, "Package");
+    assert_eq!(
+        package_section
+            .items
+            .iter()
+            .map(|item| (
+                item.target,
+                item.command_id.as_deref(),
+                item.label.as_str(),
+                item.status_label.as_deref()
+            ))
+            .collect::<Vec<_>>(),
+        vec![(
+            crate::StudioGuiWindowContextToolbarItemTarget::Command,
+            Some("project.property_package.select:binary-hydrocarbon-lite-v1"),
+            "Binary Hydrocarbon Lite",
+            Some("Available")
+        )]
+    );
+    let modeling_section = context_toolbar_section(&window.property_context_toolbar, "Modeling");
+    assert_eq!(
+        modeling_section
+            .items
+            .iter()
+            .map(|item| (
+                item.target,
+                item.command_id.as_deref(),
+                item.enabled,
+                item.label.as_str(),
+                item.status_label.as_deref()
+            ))
+            .collect::<Vec<_>>(),
+        vec![(
+            crate::StudioGuiWindowContextToolbarItemTarget::FlowsheetModeling,
+            None,
+            false,
+            "Enter Flowsheet Modeling",
+            Some("Incomplete")
+        )]
+    );
+    assert_eq!(
+        window
+            .property_context_toolbar
+            .status_items
+            .iter()
+            .map(|item| (item.label, item.value.as_str(), item.status_label.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            ("Package", "Unselected", "Unselected"),
+            ("Components", "2", "Selected"),
+            ("Modeling", "Property", "Incomplete"),
+            ("Source", "Built-in", "Available"),
+        ]
+    );
+
+    let selected = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "project.property_package.select:binary-hydrocarbon-lite-v1".to_string(),
+        })
+        .expect("expected property package selection dispatch");
+    let selected_window = selected.window;
+
+    assert_eq!(
+        selected_window
+            .property_context_toolbar
+            .sections
+            .iter()
+            .map(|section| section.title)
+            .collect::<Vec<_>>(),
+        vec!["Modeling"]
+    );
+    let selected_modeling_section =
+        context_toolbar_section(&selected_window.property_context_toolbar, "Modeling");
+    assert_eq!(
+        selected_modeling_section
+            .items
+            .iter()
+            .map(|item| (
+                item.target,
+                item.command_id.as_deref(),
+                item.enabled,
+                item.label.as_str(),
+                item.status_label.as_deref()
+            ))
+            .collect::<Vec<_>>(),
+        vec![(
+            crate::StudioGuiWindowContextToolbarItemTarget::FlowsheetModeling,
+            None,
+            true,
+            "Enter Flowsheet Modeling",
+            Some("Ready")
+        )],
+        "selected package and referenced components should render as state, while the modeling entry remains available"
+    );
+    assert_eq!(
+        selected_window.property_context_toolbar.status_items[0].value,
+        "binary-hydrocarbon-lite-v1"
+    );
+    assert_eq!(
+        selected_window.property_context_toolbar.status_items[0].status_label,
+        "Selected"
+    );
+    assert_eq!(
+        selected_window.property_context_toolbar.status_items[2].value,
+        "Flowsheet"
+    );
+    assert_eq!(
+        selected_window.property_context_toolbar.status_items[2].status_label,
+        "Ready"
+    );
+}
+
+#[test]
+fn studio_gui_window_model_builds_run_context_toolbar_from_run_panel_state() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    let solved = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected run dispatch");
+    let window = solved.window;
+
+    assert_eq!(window.run_context_toolbar.title, "Run Context");
+    assert_eq!(
+        window
+            .run_context_toolbar
+            .sections
+            .iter()
+            .map(|section| section.title)
+            .collect::<Vec<_>>(),
+        vec!["Control", "Monitor"]
+    );
+
+    let control_section = context_toolbar_section(&window.run_context_toolbar, "Control");
+    let control_command_ids = control_section
+        .items
+        .iter()
+        .map(|item| {
+            assert_eq!(
+                item.target,
+                crate::StudioGuiWindowContextToolbarItemTarget::Command
+            );
+            assert!(
+                item.enabled,
+                "run context toolbar must hide disabled commands"
+            );
+            item.command_id
+                .as_deref()
+                .expect("run toolbar control item must target a registered command")
+        })
+        .collect::<Vec<_>>();
+    assert!(control_command_ids.contains(&"run_panel.run_manual"));
+    assert!(
+        control_command_ids.iter().all(|command_id| matches!(
+            *command_id,
+            "run_panel.run_manual"
+                | "run_panel.resume_workspace"
+                | "run_panel.set_hold"
+                | "run_panel.set_active"
+        )),
+        "run context toolbar control section must only expose formal Run Panel commands: {control_command_ids:?}"
+    );
+    assert!(
+        window
+            .run_context_toolbar
+            .sections
+            .iter()
+            .flat_map(|section| section.items.iter())
+            .filter_map(|item| item.command_id.as_deref())
+            .all(|command_id| command_id != "run_panel.recover_failure"),
+        "disabled recovery command must not render in run context toolbar"
+    );
+
+    let monitor_section = context_toolbar_section(&window.run_context_toolbar, "Monitor");
+    assert_eq!(
+        monitor_section
+            .items
+            .iter()
+            .map(|item| (item.target, item.command_id.as_deref(), item.label.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::RunLog,
+                None,
+                "Run Log"
+            ),
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::Convergence,
+                None,
+                "Convergence"
+            ),
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::Suggestions,
+                None,
+                "Suggestions"
+            ),
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::Diagnostics,
+                None,
+                "Diagnostics"
+            ),
+        ]
+    );
+    assert_eq!(
+        window
+            .run_context_toolbar
+            .status_items
+            .iter()
+            .map(|item| (item.label, item.value.as_str(), item.status_label.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            ("Mode", "Hold", "Hold"),
+            ("Run", "Converged", "Converged"),
+            ("Convergence", "Converged", "Converged"),
+            ("Steps", "3", "Sequential steps"),
+            ("Diagnostics", "4", "Diagnostics"),
+            ("Snapshot", "Current", "Current"),
+        ]
+    );
+}
+
+#[test]
+fn studio_gui_window_model_builds_result_context_toolbar_from_current_snapshot() {
+    let config = synced_example_config("feed-heater-flash-binary-hydrocarbon.rfproj.json");
+    let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .expect("expected open dispatch");
+    driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".to_string(),
+        })
+        .expect("expected run dispatch");
+    let focused = driver
+        .dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "inspector.focus_unit:heater-1".to_string(),
+        })
+        .expect("expected heater focus dispatch");
+    let window = focused.window;
+
+    assert_eq!(window.result_context_toolbar.title, "Result Context");
+    assert_eq!(
+        window
+            .result_context_toolbar
+            .sections
+            .iter()
+            .map(|section| section.title)
+            .collect::<Vec<_>>(),
+        vec!["Review", "Focus"]
+    );
+
+    let review_section = context_toolbar_section(&window.result_context_toolbar, "Review");
+    assert_eq!(
+        review_section
+            .items
+            .iter()
+            .map(|item| (
+                item.target,
+                item.command_id.as_deref(),
+                item.label.as_str(),
+                item.status_label.as_deref()
+            ))
+            .collect::<Vec<_>>(),
+        vec![
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::ModuleResults,
+                None,
+                "Module Results",
+                Some("Current")
+            ),
+            (
+                crate::StudioGuiWindowContextToolbarItemTarget::ResultsTable,
+                None,
+                "Results Table",
+                Some("Current")
+            ),
+        ]
+    );
+
+    let focus_section = context_toolbar_section(&window.result_context_toolbar, "Focus");
+    let focus_command_ids = focus_section
+        .items
+        .iter()
+        .map(|item| {
+            assert_eq!(
+                item.target,
+                crate::StudioGuiWindowContextToolbarItemTarget::Command
+            );
+            assert!(item.enabled);
+            assert_eq!(item.status_label.as_deref(), Some("Current"));
+            item.command_id
+                .as_deref()
+                .expect("result focus item must target a registered command")
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        focus_command_ids,
+        vec![
+            "inspector.focus_stream:stream-feed",
+            "inspector.focus_stream:stream-heated",
+            "inspector.focus_stream:stream-liquid",
+            "inspector.focus_stream:stream-vapor",
+        ]
+    );
+    assert!(
+        focus_section.items.len() <= 4,
+        "result context toolbar should expose a compact result command set"
+    );
+    assert!(
+        window
+            .result_context_toolbar
+            .sections
+            .iter()
+            .flat_map(|section| section.items.iter())
+            .filter_map(|item| item.command_id.as_deref())
+            .all(|command_id| {
+                command_id.starts_with("inspector.focus_")
+                    && !command_id.starts_with("run_panel.")
+                    && !command_id.starts_with("canvas.")
+            }),
+        "result context toolbar must only render existing result focus commands: {:?}",
+        window.result_context_toolbar.sections
+    );
+
+    assert_eq!(
+        window
+            .result_context_toolbar
+            .status_items
+            .iter()
+            .map(|item| (item.label, item.value.as_str(), item.status_label.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            ("Snapshot", "Current", "Current"),
+            ("Streams", "4", "Current"),
+            ("Units", "3", "Current"),
+            ("Diagnostics", "4", "Diagnostics"),
+        ]
+    );
 }
 
 #[test]

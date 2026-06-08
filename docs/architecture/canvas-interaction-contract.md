@@ -1,6 +1,6 @@
 # Canvas Interaction Contract
 
-更新时间：2026-06-01
+更新时间：2026-06-08
 
 ## 文档目的
 
@@ -107,16 +107,18 @@
 
 ### 当前 MVP α 已落地边界
 
-截至 2026-05-17，Studio 画布已经具备以下最小闭环：
+截至 2026-06-08，Studio 画布已经具备以下受控画布能力：
 
-- 左侧 `放置` 入口可创建 `进料 / 混合器 / 加热器 / 冷却器 / 阀门 / 闪蒸罐` MVP 单元；项目对象名和示例文件仍可保留 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` 等领域英文名。
-- Home 小案例作者入口可创建空白项目并切到左侧 `放置` 面板；当前支持 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条任务清单。作者入口只影响 shell-local 当前清单选择，不创建单元、不连接流股、不写 `FlowsheetDocument`、不进入 `CommandHistory`。
+- 左侧 `模块` 入口可创建 `进料 / 混合器 / 加热器 / 冷却器 / 阀门 / 闪蒸罐` MVP 单元；项目对象名和示例文件仍可保留 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` 等领域英文名。
+- Home 小案例作者入口可创建空白项目并切到左侧 `模块` 面板；当前支持 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条任务清单。作者入口只影响 shell-local 当前清单选择，不创建单元、不连接流股、不写 `FlowsheetDocument`、不进入 `CommandHistory`。
+- 普通 `新建项目` 不直接进入 Canvas 建模，而是先进入独立 `物性` 页；package 和项目组分选齐后，`StudioGuiWindowPropertyPageModel` 的 `flowsheet_modeling_enabled` 允许顶部 `流程图` 导航或 `物性` 上下文工具栏进入建模。Canvas 不复制这层 readiness，也不承担项目级物性状态编辑。
 - 当前最短可求解路径覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`。
 - 作者任务清单状态必须从当前 canvas presentation、项目输入和最新 `SolveSnapshot` 推导：unit kind、material stream source / sink 端点、项目级物性包 / 组分、Feed composition、必要单元参数和运行结果。清单不是真相源，不得反向修正文档、替代 suggestion acceptance 或充当手动运行 gate。
-- 普通空白项目的建模输入 gate 属于 App 层通用 `Flowsheet` readiness：它只按项目组分、Feed source stream T/P/F/z、composition 引用 / 归一和必要单元参数判断，并聚焦到 package / stream / unit。缺 material port 绑定、坏 stream reference、重复 source / sink、orphan stream、cycle 等结构性连接 / 拓扑问题继续进入正式 Run Panel 诊断 / recovery。画布 suggestion 只帮助创建拓扑和 outlet stream，不代表输入已经完整。
+- 进入 Canvas 后的运行前建模输入 gate 属于 App 层通用 `Flowsheet` readiness：它只按项目组分、Feed source stream T/P/F/z、composition 引用 / 归一和必要单元参数判断，并聚焦到 stream / unit。缺 property package、缓存缺失或多包歧义继续进入正式 run package resolution；缺 material port 绑定、坏 stream reference、重复 source / sink、orphan stream、cycle 等结构性连接 / 拓扑问题继续进入正式 Run Panel 诊断 / recovery。画布 suggestion 只帮助创建拓扑和 outlet stream，不代表输入已经完整。
 - 本地 suggestion 可补齐标准材料端口连接和必要 outlet stream；显示动词按接受载荷区分为 `连接流股` / `Connect stream` 与 `创建流股` / `Create stream`，不再使用泛化 `Apply` 或单一 `连接`。
 - suggestion 接受仍转换为正式 `DocumentCommand::ConnectPorts` 或等价文档命令后写回；接受 / 拒绝本身不进入 `CommandHistory`。
 - Canvas 对象选择会驱动右侧 `检查器` / 结果定位，但不缓存第二份求解结果。
+- Studio shell 中央 Canvas 只承担建模主舞台职责，显示 `画布状态` 概览、工具条、选择、视口、图例、画布实体和受控建议；项目对象树和对象过滤导航由左侧 `项目` 面板承担，中央 Canvas 不渲染第二份对象树。
 - Canvas placement sidecar 使用 `<project>.rfstudio-layout.json` 保存 shell / layout 状态；项目文件 `*.rfproj.json` 仍是流程语义真相源。
 - 打开示例或项目后，若 sidecar 尚未保存 viewport offset，Canvas viewport 会按当前单元 / 流股 bounds 做 shell-local 初始 fit-to-content / center；该行为不写项目、不进历史、不代表自动布线。
 - 若缺少 sidecar placement，presentation 可按物料流依赖顺序给未定位单元生成可解释的 transient grid slot；加载 sidecar 时应过滤当前项目已不存在的 unit id。
@@ -126,7 +128,7 @@
 - 选中物料流股后，Canvas / Inspector 可暴露受控恢复动作：`Disconnect stream` 仅在流股仍有材料端口绑定时解除全部绑定并保留流股规格，`Disconnect source` / `Disconnect sink` 仅解除唯一 source 或 sink 端点绑定，`Delete stream` 先解除材料端口绑定再删除该流股；这些动作都通过正式 `DocumentCommand` 写回并进入 undo history。
 - 选中单端 material stream 时，Canvas 可启用窄口径 `Reconnect stream`：source-only 流股只允许接到唯一未绑定且不会形成 unit dependency cycle 的 material inlet；sink-only 流股只允许接到唯一未绑定且不会形成 unit dependency cycle 的 material outlet。该动作只补齐当前流股唯一缺失端点，写回为正式 `DocumentCommand::ConnectPorts` 并进入 undo history；不可用时 Canvas、Inspector 和 shell 应复用同一套原因说明，例如已双端连接、缺 source / sink、没有可用端点、候选不唯一或唯一候选会形成 cycle。
 - 上述恢复 / 重连动作只覆盖当前 MVP 物料流股和现有最短建模路径，用于修正错连、漏连或误建流股；它不是自由连线编辑器，不提供任意端口选择、任意端口重连、自动布线、批量重排或完整拖拽布局编辑。
-- 非空画布不应常驻空状态提示或开发态计数摘要；画布 header 只保留用户理解当前状态所需的短标签、legend 和可行动工具。
+- 非空画布不应常驻空状态提示、开发态计数摘要或对象树副本；画布 header 只保留用户理解当前状态所需的短标签、legend 和可行动工具。
 
 ## 视图模式契约
 

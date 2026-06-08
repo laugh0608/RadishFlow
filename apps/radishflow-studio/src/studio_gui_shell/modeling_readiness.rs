@@ -80,18 +80,21 @@ impl ReadyAppState {
     fn focus_modeling_readiness_blocker(&mut self, focus_target: &ModelingFocusTarget) {
         match focus_target {
             ModelingFocusTarget::Package => {
+                self.screen = StudioShellScreen::Property;
                 self.left_sidebar_tab = StudioShellLeftSidebarTab::Project;
-                self.right_sidebar_tab = StudioShellRightSidebarTab::Package;
             }
             ModelingFocusTarget::Palette => {
+                self.screen = StudioShellScreen::Workbench;
                 self.left_sidebar_tab = StudioShellLeftSidebarTab::Palette;
                 self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
             }
             ModelingFocusTarget::Stream(stream_id) => {
+                self.screen = StudioShellScreen::Workbench;
                 self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
                 self.dispatch_ui_command(format!("inspector.focus_stream:{stream_id}"));
             }
             ModelingFocusTarget::Unit(unit_id) => {
+                self.screen = StudioShellScreen::Workbench;
                 self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
                 self.dispatch_ui_command(format!("inspector.focus_unit:{unit_id}"));
             }

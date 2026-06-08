@@ -127,10 +127,26 @@ impl AppState {
         }
 
         let key = unit_inspector_draft_key(unit_id, &field);
-        let Some(draft_value) = self.workspace.drafts.fields.get(&key) else {
-            return Ok(None);
+        let command_value = if let Some(draft_value) = self.workspace.drafts.fields.get(&key) {
+            unit_command_value_from_draft(&field, draft_value)?
+        } else {
+            let flowsheet = &self.workspace.document.flowsheet;
+            let unit = flowsheet
+                .units
+                .get(unit_id)
+                .ok_or_else(|| RfError::missing_entity("unit", unit_id))?;
+            if unit_inspector_parameter_is_explicit(unit, &field) {
+                return Ok(None);
+            }
+            let Some(value) = unit_inspector_parameter_value(flowsheet, unit_id, &field) else {
+                return Ok(None);
+            };
+            if !is_valid_unit_parameter_value_for_unit(flowsheet, unit, &field, value) {
+                return Ok(None);
+            }
+            Some(CommandValue::Number(value))
         };
-        let Some(command_value) = unit_command_value_from_draft(&field, draft_value)? else {
+        let Some(command_value) = command_value else {
             return Ok(None);
         };
 
@@ -216,7 +232,10 @@ pub fn unit_inspector_parameter_value(
     }
 }
 
-fn unit_inspector_parameter_is_explicit(unit: &UnitNode, field: &UnitInspectorDraftField) -> bool {
+pub fn unit_inspector_parameter_is_explicit(
+    unit: &UnitNode,
+    field: &UnitInspectorDraftField,
+) -> bool {
     match field {
         UnitInspectorDraftField::OutletTemperatureK => {
             unit.parameters.outlet_temperature_k.is_some()

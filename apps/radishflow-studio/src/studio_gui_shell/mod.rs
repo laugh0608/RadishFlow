@@ -15,7 +15,8 @@ use radishflow_studio::{
     StudioGuiPlatformNativeTimerId, StudioGuiPlatformTimerCommand, StudioGuiPlatformTimerExecutor,
     StudioGuiPlatformTimerExecutorResponse, StudioGuiPlatformTimerFollowUpCommand,
     StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiWindowAreaId,
-    StudioGuiWindowDockPlacement, StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery,
+    StudioGuiWindowContextToolbarItemTarget, StudioGuiWindowDockPlacement,
+    StudioGuiWindowDockRegion, StudioGuiWindowDropTargetQuery, StudioGuiWindowHomeCaseTileModel,
     StudioGuiWindowLayoutModel, StudioGuiWindowLayoutMutation, StudioGuiWindowModel,
     StudioGuiWindowStackGroupLayout, StudioGuiWindowToolbarSectionModel, StudioRuntimeConfig,
     StudioRuntimeEntitlementPreflight, StudioRuntimeTrigger, StudioRuntimeUntitledProject,
@@ -64,13 +65,26 @@ pub fn run() -> eframe::Result<()> {
 }
 
 fn studio_native_options() -> eframe::NativeOptions {
-    eframe::NativeOptions {
+    let mut options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size(STUDIO_INITIAL_WINDOW_SIZE)
             .with_min_inner_size(STUDIO_MIN_WINDOW_SIZE),
         ..Default::default()
+    };
+    configure_studio_wgpu_backend(&mut options);
+    options
+}
+
+#[cfg(target_os = "macos")]
+fn configure_studio_wgpu_backend(options: &mut eframe::NativeOptions) {
+    options.renderer = eframe::Renderer::Wgpu;
+    if let eframe::egui_wgpu::WgpuSetup::CreateNew(setup) = &mut options.wgpu_options.wgpu_setup {
+        setup.instance_descriptor.backends = eframe::wgpu::Backends::METAL;
     }
 }
+
+#[cfg(not(target_os = "macos"))]
+fn configure_studio_wgpu_backend(_options: &mut eframe::NativeOptions) {}
 
 struct RadishFlowStudioApp {
     state: AppState,
@@ -87,6 +101,7 @@ struct ReadyAppState {
     platform_timer_executor: EguiPlatformTimerExecutor,
     command_palette: CommandPaletteState,
     project_open: ProjectOpenState,
+    home_selected_current_workspace: bool,
     home_selected_recent_project: Option<PathBuf>,
     home_selected_example_project: Option<PathBuf>,
     active_authoring_case: Option<AuthoringCaseKind>,
@@ -95,7 +110,7 @@ struct ReadyAppState {
     left_sidebar_tab: StudioShellLeftSidebarTab,
     right_sidebar_tab: StudioShellRightSidebarTab,
     bottom_drawer_tab: StudioShellBottomDrawerTab,
-    canvas_object_filter: CanvasObjectListFilter,
+    module_palette_filter: String,
     canvas_viewport_navigation: CanvasViewportNavigationState,
     canvas_initial_viewport_fit: CanvasInitialViewportFitState,
     canvas_viewport_fit_to_content_requested: bool,
@@ -116,7 +131,10 @@ struct ReadyAppState {
 enum StudioShellScreen {
     #[default]
     Home,
+    Property,
     Workbench,
+    Run,
+    Results,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -157,6 +175,7 @@ struct CommandPaletteState {
 struct ProjectOpenState {
     path_input: String,
     recent_projects: Vec<PathBuf>,
+    recent_case_tiles: Vec<StudioGuiWindowHomeCaseTileModel>,
     notice: Option<ProjectOpenNotice>,
     pending_confirmation: Option<ProjectOpenRequest>,
     pending_blank_project_confirmation: bool,
@@ -203,7 +222,6 @@ struct ResultInspectorState {
 enum StudioShellLeftSidebarTab {
     #[default]
     Project,
-    Examples,
     Palette,
 }
 
@@ -211,9 +229,8 @@ enum StudioShellLeftSidebarTab {
 enum StudioShellRightSidebarTab {
     #[default]
     Inspector,
-    Results,
-    Run,
-    Package,
+    ModuleSettings,
+    ModuleResults,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -221,8 +238,10 @@ enum StudioShellBottomDrawerTab {
     #[default]
     Messages,
     RunLog,
-    ResultsTable,
+    Convergence,
+    Suggestions,
     Diagnostics,
+    ResultsTable,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -274,6 +293,7 @@ struct CanvasViewportAnchorNavigation {
     pending_scroll: bool,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 enum CanvasObjectListFilter {
     #[default]
@@ -393,6 +413,7 @@ impl ReadyAppState {
                 &config.project_path,
                 recent_projects,
             ),
+            home_selected_current_workspace: false,
             home_selected_recent_project: None,
             home_selected_example_project: None,
             active_authoring_case: None,
@@ -401,7 +422,7 @@ impl ReadyAppState {
             left_sidebar_tab: StudioShellLeftSidebarTab::default(),
             right_sidebar_tab: StudioShellRightSidebarTab::default(),
             bottom_drawer_tab: StudioShellBottomDrawerTab::default(),
-            canvas_object_filter: CanvasObjectListFilter::default(),
+            module_palette_filter: String::new(),
             canvas_viewport_navigation: CanvasViewportNavigationState::default(),
             canvas_initial_viewport_fit: canvas_initial_viewport_fit_from_config(config),
             canvas_viewport_fit_to_content_requested: false,
@@ -608,6 +629,7 @@ impl CanvasViewportNavigationState {
     }
 }
 
+#[cfg(test)]
 impl CanvasObjectListFilter {
     fn from_filter_id(filter_id: &str) -> Option<Self> {
         match filter_id {
@@ -677,6 +699,7 @@ impl ProjectOpenState {
         let mut state = Self {
             path_input: path.display().to_string(),
             recent_projects: Vec::new(),
+            recent_case_tiles: Vec::new(),
             notice: None,
             pending_confirmation: None,
             pending_blank_project_confirmation: false,

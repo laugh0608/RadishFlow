@@ -74,7 +74,7 @@ pub use state::{
     UnitInspectorDraftUpdateResult, UserPreferences, WorkspaceState, latest_snapshot,
     latest_snapshot_id, stale_snapshot, stream_inspector_draft_key,
     stream_inspector_draft_key_parts, unit_inspector_draft_key, unit_inspector_draft_key_parts,
-    unit_inspector_parameter_value,
+    unit_inspector_parameter_is_explicit, unit_inspector_parameter_value,
 };
 
 #[cfg(test)]

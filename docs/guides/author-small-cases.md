@@ -1,6 +1,6 @@
 # Author Small Cases
 
-更新时间：2026-06-01
+更新时间：2026-06-08
 
 ## 用途
 
@@ -19,10 +19,10 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 
 1. 若当前工作区有未保存更改，先进入继续 / 取消确认。
 2. 创建一个未命名空白项目。
-3. 进入 Workbench 并切到左侧 `放置` 面板。
-4. 在 `放置` 面板显示对应小案例任务清单。
+3. 进入 Workbench 并切到左侧 `模块` 面板。
+4. 在 `模块` 面板显示对应小案例任务清单。
 
-它不会自动生成 flowsheet，不会替用户放置单元，不会写 `FlowsheetDocument`，也不会进入 undo。后续仍需要用户按现有 `放置 -> suggestion -> 流股输入 -> 单元参数 -> 运行 -> 保存 -> 结果审阅` 工作流完成案例。
+它不会自动生成 flowsheet，不会替用户放置单元，不会写 `FlowsheetDocument`，也不会进入 undo。后续仍需要用户按现有 `模块 -> 放置单元 -> suggestion -> 流股输入 -> 单元参数 -> 运行 -> 保存 -> 结果审阅` 工作流完成案例。
 
 ## 任务清单如何理解
 
@@ -43,11 +43,13 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 
 空白项目不会预写默认物性包或默认组分。开始放置单元前，先完成项目级输入选择：
 
-- 左侧 `项目` 面板直接显示当前物性包和 `项目组分`；未选择时会显示可选的内置项。
-- 右侧 `物性包` tab 也提供同一受控组分选择入口和内置 package 选择入口。
+- 顶部 `物性` 页提供正式的受控组分选择入口、内置 package 选择入口和 `进入流程图建模` readiness。
+- 左侧 `项目` 面板显示当前物性包和 `项目组分` 摘要，供建模时扫读；项目级输入编辑仍以独立 `物性` 页和同一 command surface 为准。
 - 选择 `binary-hydrocarbon-lite-v1` 会写入 `Flowsheet.thermo.property_package_id`。
 - 选择 methane / ethane 会写入 `Flowsheet.components`；Stream Inspector 中的 composition 添加动作只从这份项目组分列表派生。
 - Feed composition 的数值修改仍在选中对应 stream 后，通过右侧 `检查器` 的字段草稿、`Normalize composition` 和提交命令完成。
+
+小案例作者入口会直接进入 Workbench 并打开左侧 `模块` 清单；如果尚未选 package / 项目组分，先从顶部 `物性` 返回独立物性页完成选择，再通过 `进入流程图建模` 或顶部 `流程图` 回到建模工作台。
 
 ## β 第二刀验收口径
 
@@ -87,8 +89,8 @@ Flash Drum -> liquid / vapor
 建议步骤：
 
 1. 在 Home 点击 `创建 Mixer-Flash 小案例`。
-2. 在左侧 `项目` 或右侧 `物性包` tab 中选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane。
-3. 在 `放置` 面板依次放置两个 `Feed`、一个 `Mixer`、一个 `Flash Drum`。
+2. 打开顶部 `物性` 页，选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane；`进入流程图建模` 可用后返回 `流程图`。
+3. 在左侧 `模块` 面板依次放置两个 `Feed`、一个 `Mixer`、一个 `Flash Drum`。
 4. 为两个 `Feed` 分别接受 `Create stream` suggestion，创建出口流股。
 5. 为 `Mixer` 接受两个 `Connect stream` suggestion，把两个 Feed outlet 接到 `inlet_a / inlet_b`。
 6. 接受 `Mixer` 的 `Create stream` suggestion，创建 mixer outlet。
@@ -107,12 +109,12 @@ Flash Drum -> liquid / vapor
 | Mixer | outlet pressure | `90000 Pa` |
 | Flash Drum | flash temperature / pressure | `300 K` / `85000 Pa` |
 
-如果单元检查器里已经显示 outlet stream 模板值，但对应 unit parameter 还没有显式写入项目，仍需要提交一次该字段；即使输入值和当前显示值相同，提交也会写入正式单元参数。
+如果单元检查器里已经显示 outlet stream 模板值或内置默认值，但对应 unit parameter 还没有显式写入项目，仍需要提交一次该字段；即使输入值和当前显示值相同，提交也会写入正式单元参数。字段来源与 readiness 关系见 `docs/reference/units-and-conventions.md`。
 
-10. 点击顶部 `运行`。
-11. 在右侧 `结果` 和底部 `结果表` 检查收敛结果；底部表应同时显示流股结果和单元最新步骤。
+10. 在 `流程图` 或 `运行` 上下文工具栏点击 `运行当前流程`。
+11. 在顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表` 检查收敛结果；底部表应同时显示流股结果和单元最新步骤。
 12. 保存项目，重开后再次运行，确认结果仍可复现。
-13. 需要交付文本结果时，在右侧 `结果` 区复制当前 `SolveSnapshot` 或导出 `.txt`；先看 `Review` section，再看 `Streams / Units / Steps` 明细。
+13. 需要交付文本结果时，在结果审阅区复制当前 `SolveSnapshot` 或导出 `.txt`；先看 `Review` section，再看 `Streams / Units / Steps` 明细。
 
 当前可用的最小核对点：
 
@@ -147,8 +149,8 @@ Flash Drum -> liquid / vapor
 建议步骤：
 
 1. 在 Home 点击 `创建 Heater-Flash 小案例`。
-2. 在左侧 `项目` 或右侧 `物性包` tab 中选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane。
-3. 在 `放置` 面板依次放置一个 `Feed`、一个 `Heater`、一个 `Flash Drum`。
+2. 打开顶部 `物性` 页，选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane；`进入流程图建模` 可用后返回 `流程图`。
+3. 在左侧 `模块` 面板依次放置一个 `Feed`、一个 `Heater`、一个 `Flash Drum`。
 4. 为 `Feed` 接受 `Create stream` suggestion，创建出口流股。
 5. 为 `Heater` 接受 `Connect stream` suggestion，把 Feed outlet 接到 heater inlet。
 6. 接受 `Heater` 的 `Create stream` suggestion，创建 heater outlet。
@@ -165,10 +167,10 @@ Flash Drum -> liquid / vapor
 | Heater | outlet temperature / pressure | `358.5 K` / `90000 Pa` |
 | Flash Drum | flash temperature / pressure | `300 K` / `85000 Pa` |
 
-如果单元检查器里已经显示 heater outlet stream 模板值，但对应 unit parameter 还没有显式写入项目，仍需要提交一次 `Heater` 的 outlet temperature / pressure；同值提交也会写入正式单元参数。
+如果单元检查器里已经显示 heater outlet stream 模板值或内置默认值，但对应 unit parameter 还没有显式写入项目，仍需要提交一次 `Heater` 的 outlet temperature / pressure；同值提交也会写入正式单元参数。字段来源与 readiness 关系见 `docs/reference/units-and-conventions.md`。
 
-10. 点击顶部 `运行`。
-11. 在右侧 `结果` 中先看 heater outlet，再看 flash liquid / vapor outlet；底部 `结果表` 可同时核对 Heater 与 Flash Drum 的消费 / 产出流股。
+10. 在 `流程图` 或 `运行` 上下文工具栏点击 `运行当前流程`。
+11. 在顶部 `结果` screen 或右侧 `模块结果` 中先看 heater outlet，再看 flash liquid / vapor outlet；底部 `结果表` 可同时核对 Heater 与 Flash Drum 的消费 / 产出流股。
 12. 保存项目，重开后再次运行。
 
 当前可用的最小核对点：

@@ -41,6 +41,23 @@ impl ReadyAppState {
         self.request_blank_project(None);
     }
 
+    pub(super) fn enter_flowsheet_modeling_from_property(&mut self) {
+        let unit_count = self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .unit_count;
+        self.screen = StudioShellScreen::Workbench;
+        self.left_sidebar_tab = if unit_count == 0 {
+            StudioShellLeftSidebarTab::Palette
+        } else {
+            StudioShellLeftSidebarTab::Project
+        };
+        self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+        self.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
+    }
+
     pub(super) fn start_mixer_flash_authoring_case(&mut self) {
         self.request_blank_project(Some(AuthoringCaseKind::MixerFlash));
     }
@@ -129,7 +146,11 @@ impl ReadyAppState {
                     detail: blank_project_created_notice_detail(self.locale, authoring_case)
                         .to_string(),
                 });
-                self.screen = StudioShellScreen::Workbench;
+                self.screen = if authoring_case.is_some() {
+                    StudioShellScreen::Workbench
+                } else {
+                    StudioShellScreen::Property
+                };
                 self.active_authoring_case = authoring_case;
                 if authoring_case.is_some() {
                     self.left_sidebar_tab = StudioShellLeftSidebarTab::Palette;
@@ -586,7 +607,7 @@ impl ReadyAppState {
         self.drop_preview_overlay_anchor = None;
 
         let snapshot = self.platform_host.snapshot();
-        let window = snapshot.window_model();
+        let window = self.window_model_with_shell_home(&snapshot);
         let palette_keyboard_consumed = self.handle_command_palette_keyboard(ctx, &window.commands);
         if !toggle_shortcut_consumed && !palette_keyboard_consumed {
             self.dispatch_shortcuts(ctx);
@@ -604,6 +625,13 @@ impl ReadyAppState {
             &window,
             &mut hovered_drop_target,
         );
+        if self.screen == StudioShellScreen::Property {
+            self.render_bottom_status_bar(ctx, &window);
+            self.render_property_page(ctx, &window);
+            self.render_command_palette(ctx, &window.commands);
+            self.render_pending_close_window_dialog(ctx);
+            return;
+        }
         self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_right_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_bottom_status_bar(ctx, &window);
@@ -624,7 +652,7 @@ impl ReadyAppState {
         ctx: &egui::Context,
         snapshot: &radishflow_studio::StudioGuiSnapshot,
     ) {
-        let window = snapshot.window_model();
+        let window = self.window_model_with_shell_home(snapshot);
         let mut hovered_drop_target = false;
         if self.screen == StudioShellScreen::Home {
             self.render_home_dashboard(ctx, &window);
@@ -639,6 +667,13 @@ impl ReadyAppState {
             &window,
             &mut hovered_drop_target,
         );
+        if self.screen == StudioShellScreen::Property {
+            self.render_bottom_status_bar(ctx, &window);
+            self.render_property_page(ctx, &window);
+            self.render_command_palette(ctx, &window.commands);
+            self.render_pending_close_window_dialog(ctx);
+            return;
+        }
         self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_right_sidebar(ctx, &window, &mut hovered_drop_target);
         self.render_bottom_status_bar(ctx, &window);
@@ -720,13 +755,13 @@ impl ReadyAppState {
         }
 
         if window.runtime.latest_failure.is_some() {
-            self.right_sidebar_tab = StudioShellRightSidebarTab::Run;
+            self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
             self.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
         } else if window.runtime.latest_solve_snapshot.is_some() {
-            self.right_sidebar_tab = StudioShellRightSidebarTab::Results;
+            self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
             self.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
         } else {
-            self.right_sidebar_tab = StudioShellRightSidebarTab::Run;
+            self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
             self.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
         }
     }
@@ -1708,13 +1743,13 @@ fn blank_project_created_notice_detail(
 ) -> &'static str {
     match (locale, authoring_case) {
         (StudioShellLocale::En, Some(_)) => {
-            "Created an untitled blank project and opened the placement checklist."
+            "Created an untitled blank project and opened the modules checklist."
         }
         (StudioShellLocale::En, None) => {
             "Created an untitled blank project. Use Save to choose a .rfproj.json path."
         }
         (StudioShellLocale::ZhCn, Some(_)) => {
-            "已新建未命名空白项目，并打开放置面板中的小案例任务清单。"
+            "已新建未命名空白项目，并打开模块面板中的小案例任务清单。"
         }
         (StudioShellLocale::ZhCn, None) => {
             "Created an untitled blank project. Use Save to choose a .rfproj.json path."

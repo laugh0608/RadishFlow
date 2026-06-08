@@ -7,7 +7,7 @@ use std::time::SystemTime;
 pub use unit_inspector::{
     UnitInspectorDraftCommitResult, UnitInspectorDraftDiscardResult, UnitInspectorDraftField,
     UnitInspectorDraftUpdateResult, unit_inspector_draft_key, unit_inspector_draft_key_parts,
-    unit_inspector_parameter_value,
+    unit_inspector_parameter_is_explicit, unit_inspector_parameter_value,
 };
 
 use rf_model::{Component, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
