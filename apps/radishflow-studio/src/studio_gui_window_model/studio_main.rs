@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioGuiWindowHomeCaseTileSource {
+    Current,
     Recent,
     Example,
 }

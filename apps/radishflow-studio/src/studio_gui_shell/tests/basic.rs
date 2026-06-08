@@ -1844,6 +1844,47 @@ fn home_dashboard_renders_recent_case_tiles_from_window_model() {
 }
 
 #[test]
+fn home_dashboard_exposes_unsaved_current_project_return_tile() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.create_blank_project();
+    app.screen = StudioShellScreen::Home;
+
+    let snapshot = app.platform_host.snapshot();
+    let window = app.window_model_with_shell_home(&snapshot);
+    assert!(
+        app.project_open.recent_projects.is_empty(),
+        "unsaved blank projects must not be persisted as recent paths"
+    );
+    let current_tile = window
+        .home
+        .recent_case_tiles
+        .first()
+        .expect("expected current workspace tile");
+    assert_eq!(
+        current_tile.source,
+        radishflow_studio::StudioGuiWindowHomeCaseTileSource::Current
+    );
+    assert_eq!(
+        current_tile.status,
+        radishflow_studio::StudioGuiWindowHomeCaseTileStatus::Current
+    );
+    assert_eq!(current_tile.title, "Blank Project");
+    assert_eq!(current_tile.path_text, "Current workspace");
+    assert_eq!(current_tile.package_summary, "Unselected");
+    assert_eq!(current_tile.component_summary, "No components");
+
+    let texts = render_home_dashboard_texts(&mut app);
+    for expected in ["Blank Project", "当前", "当前工作区", "未选择"] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected home dashboard current workspace text `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
 fn home_mixer_flash_authoring_entry_creates_blank_project_and_opens_palette() {
     let mut app = ready_app_state(&synced_workspace_config());
 
@@ -2610,6 +2651,62 @@ fn home_open_project_uses_selected_recent_project() {
 
     let _ = fs::remove_file(first_project);
     let _ = fs::remove_file(second_project);
+}
+
+#[test]
+fn home_open_project_returns_to_current_workspace_when_current_tile_is_selected() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    app.create_blank_project();
+    app.screen = StudioShellScreen::Home;
+    let _ = render_home_dashboard_texts(&mut app);
+
+    assert!(app.home_selected_current_workspace);
+    assert_eq!(app.home_selected_recent_project, None);
+
+    app.open_selected_recent_project_or_picker();
+
+    assert_eq!(app.screen, StudioShellScreen::Property);
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .title,
+        "Blank Project"
+    );
+    assert!(
+        app.project_open.recent_projects.is_empty(),
+        "returning to the current unsaved workspace must not persist a fake recent path"
+    );
+}
+
+#[test]
+fn home_open_project_returns_to_current_workspace_when_selected_recent_is_current() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    let current_project = PathBuf::from(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .workspace_document
+            .project_path
+            .as_ref()
+            .expect("expected current project path"),
+    );
+    app.project_open.recent_projects = vec![current_project.clone()];
+    app.home_selected_recent_project = Some(current_project.clone());
+    app.screen = StudioShellScreen::Home;
+
+    app.open_selected_recent_project_or_picker();
+
+    assert_eq!(app.screen, StudioShellScreen::Property);
+    assert_eq!(
+        app.home_selected_recent_project.as_deref(),
+        Some(current_project.as_path())
+    );
+    assert_eq!(app.project_open.pending_confirmation, None);
 }
 
 #[test]

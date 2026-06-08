@@ -129,7 +129,11 @@ impl ReadyAppState {
                     detail: blank_project_created_notice_detail(self.locale, authoring_case)
                         .to_string(),
                 });
-                self.screen = StudioShellScreen::Workbench;
+                self.screen = if authoring_case.is_some() {
+                    StudioShellScreen::Workbench
+                } else {
+                    StudioShellScreen::Property
+                };
                 self.active_authoring_case = authoring_case;
                 if authoring_case.is_some() {
                     self.left_sidebar_tab = StudioShellLeftSidebarTab::Palette;

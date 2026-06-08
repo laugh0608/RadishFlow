@@ -895,6 +895,7 @@ fn create_blank_project_opens_untitled_blank_workspace_without_picker() {
     app.create_blank_project();
 
     let window = app.platform_host.snapshot().window_model();
+    assert_eq!(app.screen, StudioShellScreen::Property);
     assert_eq!(window.runtime.workspace_document.title, "Blank Project");
     assert_eq!(window.runtime.workspace_document.project_path, None);
     assert!(

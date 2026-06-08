@@ -36,6 +36,7 @@ enum HomeText {
     ChooseExampleTitle,
     ChooseExampleDetail,
     LastOpenedMru,
+    CurrentWorkspace,
     PropertyPackage,
     Components,
     Environment,
@@ -81,9 +82,9 @@ impl ReadyAppState {
     ) -> StudioGuiWindowModel {
         self.project_open.sync_recent_case_tiles();
         let mut window = snapshot.window_model();
-        window.home.recent_case_tiles = self.project_open.recent_case_tiles_for_current(
-            window.runtime.workspace_document.project_path.as_deref(),
-        );
+        window.home.recent_case_tiles = self
+            .project_open
+            .recent_case_tiles_for_current(&window.runtime.workspace_document);
         window
     }
 
@@ -272,11 +273,29 @@ impl ReadyAppState {
         }
 
         for tile in window.home.recent_case_tiles.iter().take(5) {
-            let project_path = PathBuf::from(&tile.path_text);
-            let is_selected = self
-                .home_selected_recent_project
-                .as_ref()
-                .is_some_and(|selected| paths_match(selected, &project_path));
+            let current_workspace_tile = home_tile_targets_current_workspace(tile, window);
+            let project_path = if tile.source
+                == radishflow_studio::StudioGuiWindowHomeCaseTileSource::Current
+                && window.runtime.workspace_document.project_path.is_none()
+            {
+                None
+            } else {
+                Some(PathBuf::from(&tile.path_text))
+            };
+            let is_selected = if current_workspace_tile {
+                self.home_selected_current_workspace
+                    || self
+                        .home_selected_recent_project
+                        .as_ref()
+                        .is_some_and(|selected| paths_match(selected, Path::new(&tile.path_text)))
+            } else {
+                !self.home_selected_current_workspace
+                    && self
+                        .home_selected_recent_project
+                        .as_ref()
+                        .zip(project_path.as_ref())
+                        .is_some_and(|(selected, project_path)| paths_match(selected, project_path))
+            };
             let fill = if is_selected {
                 egui::Color32::from_rgb(230, 239, 252)
             } else {
@@ -297,7 +316,20 @@ impl ReadyAppState {
                 });
                 render_wrapped_small(ui, &tile.detail);
                 render_home_thumbnail(ui, &tile.thumbnail);
-                render_muted_small(ui, truncate_middle(&parent_display(&project_path), 72));
+                let location = if tile.source
+                    == radishflow_studio::StudioGuiWindowHomeCaseTileSource::Current
+                    && window.runtime.workspace_document.project_path.is_none()
+                {
+                    home_text(self.locale, HomeText::CurrentWorkspace).to_string()
+                } else {
+                    project_path
+                        .as_deref()
+                        .map(parent_display)
+                        .unwrap_or_else(|| {
+                            home_text(self.locale, HomeText::CurrentWorkspace).to_string()
+                        })
+                };
+                render_muted_small(ui, truncate_middle(&location, 72));
                 ui.horizontal_wrapped(|ui| {
                     ui.small(home_text(self.locale, HomeText::Components));
                     ui.small(&tile.component_summary);
@@ -315,9 +347,16 @@ impl ReadyAppState {
                 .on_hover_text(&tile.path_text)
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
             match home_case_row_action(row_response.clicked(), row_response.double_clicked()) {
-                HomeCaseRowAction::Open => self.open_recent_project(project_path.clone()),
+                HomeCaseRowAction::Open => {
+                    if current_workspace_tile {
+                        self.open_current_workspace_from_home();
+                    } else if let Some(project_path) = project_path.clone() {
+                        self.open_recent_project(project_path);
+                    }
+                }
                 HomeCaseRowAction::Select => {
-                    self.home_selected_recent_project = Some(project_path.clone());
+                    self.home_selected_current_workspace = current_workspace_tile;
+                    self.home_selected_recent_project = project_path.clone();
                 }
                 HomeCaseRowAction::None => {}
             }
@@ -408,22 +447,35 @@ impl ReadyAppState {
     }
 
     fn reconcile_home_case_selection(&mut self, window: &StudioGuiWindowModel) {
-        if self
+        let has_current_workspace_tile = window
+            .home
+            .recent_case_tiles
+            .iter()
+            .any(|tile| home_tile_targets_current_workspace(tile, window));
+        let selected_recent_project_is_valid = self
             .home_selected_recent_project
             .as_ref()
-            .is_none_or(|selected| {
-                !window
+            .is_some_and(|selected| {
+                window.home.recent_case_tiles.iter().any(|tile| {
+                    !home_tile_targets_current_workspace(tile, window)
+                        && paths_match(Path::new(&tile.path_text), selected)
+                })
+            });
+        if self.home_selected_current_workspace && !has_current_workspace_tile {
+            self.home_selected_current_workspace = false;
+        }
+        if !self.home_selected_current_workspace && !selected_recent_project_is_valid {
+            if has_current_workspace_tile {
+                self.home_selected_current_workspace = true;
+                self.home_selected_recent_project = None;
+            } else {
+                self.home_selected_recent_project = window
                     .home
                     .recent_case_tiles
                     .iter()
-                    .any(|tile| paths_match(Path::new(&tile.path_text), selected))
-            })
-        {
-            self.home_selected_recent_project = window
-                .home
-                .recent_case_tiles
-                .first()
-                .map(|tile| PathBuf::from(&tile.path_text));
+                    .find(|tile| !home_tile_targets_current_workspace(tile, window))
+                    .map(|tile| PathBuf::from(&tile.path_text));
+            }
         }
 
         if self
@@ -450,11 +502,56 @@ impl ReadyAppState {
     }
 
     pub(in crate::studio_gui_shell) fn open_selected_recent_project_or_picker(&mut self) {
-        if let Some(project_path) = self.home_selected_recent_project.clone() {
-            self.open_recent_project(project_path);
+        if self.home_selected_current_workspace && self.home_current_workspace_is_available() {
+            self.open_current_workspace_from_home();
+        } else if let Some(project_path) = self.home_selected_recent_project.clone() {
+            if self.selected_recent_project_is_current_workspace(&project_path) {
+                self.open_current_workspace_from_home();
+            } else {
+                self.open_recent_project(project_path);
+            }
         } else {
             self.open_project_from_picker();
         }
+    }
+
+    fn open_current_workspace_from_home(&mut self) {
+        self.screen = self.current_workspace_home_entry_screen();
+    }
+
+    fn current_workspace_home_entry_screen(&self) -> StudioShellScreen {
+        let document = &self.platform_host.snapshot().runtime.workspace_document;
+        if document.property_package_id.is_none()
+            || !document
+                .project_component_choices
+                .iter()
+                .any(|component| component.selected)
+        {
+            StudioShellScreen::Property
+        } else {
+            StudioShellScreen::Workbench
+        }
+    }
+
+    fn selected_recent_project_is_current_workspace(&self, project_path: &Path) -> bool {
+        self.platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .project_path
+            .as_deref()
+            .is_some_and(|current| paths_match(project_path, Path::new(current)))
+    }
+
+    fn home_current_workspace_is_available(&self) -> bool {
+        !self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .title
+            .trim()
+            .is_empty()
     }
 
     pub(in crate::studio_gui_shell) fn open_selected_example_project(
@@ -734,9 +831,11 @@ impl ProjectOpenState {
 
     fn recent_case_tiles_for_current(
         &self,
-        current_project_path: Option<&str>,
+        document: &radishflow_studio::StudioGuiWorkspaceDocumentSnapshot,
     ) -> Vec<radishflow_studio::StudioGuiWindowHomeCaseTileModel> {
-        self.recent_case_tiles
+        let current_project_path = document.project_path.as_deref();
+        let mut tiles = self
+            .recent_case_tiles
             .iter()
             .cloned()
             .map(|mut tile| {
@@ -745,7 +844,13 @@ impl ProjectOpenState {
                 tile.status_label = home_case_tile_status_label(tile.status);
                 tile
             })
-            .collect()
+            .collect::<Vec<_>>();
+        if !tiles.iter().any(|tile| {
+            tile.status == radishflow_studio::StudioGuiWindowHomeCaseTileStatus::Current
+        }) {
+            tiles.insert(0, current_workspace_case_tile(document));
+        }
+        tiles
     }
 }
 
@@ -835,6 +940,39 @@ fn recent_case_tile_from_path(
     }
 }
 
+fn current_workspace_case_tile(
+    document: &radishflow_studio::StudioGuiWorkspaceDocumentSnapshot,
+) -> radishflow_studio::StudioGuiWindowHomeCaseTileModel {
+    let path_text = document
+        .project_path
+        .clone()
+        .unwrap_or_else(|| "Current workspace".to_string());
+    let package_summary = document
+        .property_package_choices
+        .iter()
+        .find(|choice| choice.selected)
+        .map(|choice| choice.label.clone())
+        .or_else(|| document.property_package_id.clone())
+        .unwrap_or_else(|| "Unselected".to_string());
+    let component_summary =
+        component_summary_from_component_choices(&document.project_component_choices);
+
+    radishflow_studio::StudioGuiWindowHomeCaseTileModel {
+        source: radishflow_studio::StudioGuiWindowHomeCaseTileSource::Current,
+        source_id: "current-workspace".to_string(),
+        title: document.title.clone(),
+        detail: document.flowsheet_name.clone(),
+        path_text,
+        package_summary,
+        component_summary,
+        status: radishflow_studio::StudioGuiWindowHomeCaseTileStatus::Current,
+        status_label: home_case_tile_status_label(
+            radishflow_studio::StudioGuiWindowHomeCaseTileStatus::Current,
+        ),
+        thumbnail: current_workspace_thumbnail(document),
+    }
+}
+
 fn non_empty_trimmed(value: &str) -> Option<String> {
     let trimmed = value.trim();
     (!trimmed.is_empty()).then(|| trimmed.to_string())
@@ -870,6 +1008,50 @@ fn component_summary_from_flowsheet(flowsheet: &rf_model::Flowsheet) -> String {
         summary.push_str(&format!(" +{remaining_count} more"));
     }
     summary
+}
+
+fn component_summary_from_component_choices(
+    choices: &[radishflow_studio::StudioGuiProjectComponentChoiceSnapshot],
+) -> String {
+    let component_names = choices
+        .iter()
+        .filter(|component| component.selected)
+        .filter_map(|component| non_empty_trimmed(&component.name))
+        .collect::<Vec<_>>();
+    if component_names.is_empty() {
+        "No components".to_string()
+    } else {
+        summarize_visible_names(&component_names)
+    }
+}
+
+fn summarize_visible_names(names: &[String]) -> String {
+    let visible_count = names.len().min(3);
+    let mut summary = names
+        .iter()
+        .take(visible_count)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(", ");
+    let remaining_count = names.len().saturating_sub(visible_count);
+    if remaining_count > 0 {
+        summary.push_str(&format!(" +{remaining_count} more"));
+    }
+    summary
+}
+
+fn current_workspace_thumbnail(
+    document: &radishflow_studio::StudioGuiWorkspaceDocumentSnapshot,
+) -> radishflow_studio::StudioGuiWindowThumbnailFlowModel {
+    let nodes = if document.unit_count > 0 {
+        vec![format!("{} units", document.unit_count)]
+    } else {
+        Vec::new()
+    };
+    radishflow_studio::StudioGuiWindowThumbnailFlowModel {
+        nodes,
+        edges: Vec::new(),
+    }
 }
 
 fn thumbnail_from_flowsheet(
@@ -958,6 +1140,23 @@ fn recent_case_tile_status(
     } else {
         radishflow_studio::StudioGuiWindowHomeCaseTileStatus::Ready
     }
+}
+
+fn home_tile_targets_current_workspace(
+    tile: &radishflow_studio::StudioGuiWindowHomeCaseTileModel,
+    window: &StudioGuiWindowModel,
+) -> bool {
+    if tile.source == radishflow_studio::StudioGuiWindowHomeCaseTileSource::Current {
+        return true;
+    }
+
+    tile.status == radishflow_studio::StudioGuiWindowHomeCaseTileStatus::Current
+        && window
+            .runtime
+            .workspace_document
+            .project_path
+            .as_deref()
+            .is_some_and(|current| paths_match(Path::new(&tile.path_text), Path::new(current)))
 }
 
 fn home_case_tile_status_label(
@@ -1208,6 +1407,7 @@ fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {
                 "Use the Example Cases section to open a bundled case."
             }
             HomeText::LastOpenedMru => "Last opened: MRU",
+            HomeText::CurrentWorkspace => "Current workspace",
             HomeText::PropertyPackage => "Property Package:",
             HomeText::Components => "Components:",
             HomeText::Environment => "Environment",
@@ -1261,6 +1461,7 @@ fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {
             HomeText::ChooseExampleTitle => "请选择示例",
             HomeText::ChooseExampleDetail => "从示例项目区域打开一个内置示例。",
             HomeText::LastOpenedMru => "上次打开",
+            HomeText::CurrentWorkspace => "当前工作区",
             HomeText::PropertyPackage => "物性包:",
             HomeText::Components => "组分:",
             HomeText::Environment => "环境",
