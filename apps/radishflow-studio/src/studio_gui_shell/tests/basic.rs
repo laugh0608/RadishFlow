@@ -943,7 +943,7 @@ fn canvas_stage_keeps_object_tree_in_project_sidebar() {
     let mut app = ready_app_state(&synced_workspace_config());
 
     let center_texts = render_center_stage_texts(&mut app);
-    for expected in ["画布", "画布状态", "选择", "视口", "物料线"] {
+    for expected in ["画布", "画布状态", "适应内容", "物料线"] {
         assert!(
             center_texts.iter().any(|text| text.contains(expected)),
             "expected center stage to render `{expected}`, rendered texts: {:?}",
@@ -958,6 +958,8 @@ fn canvas_stage_keeps_object_tree_in_project_sidebar() {
         "完整项目浏览器",
         "自由连线",
         "自动布线",
+        "选择",
+        "视口",
     ] {
         assert!(
             !center_texts.iter().any(|text| text.contains(hidden)),
@@ -971,6 +973,44 @@ fn canvas_stage_keeps_object_tree_in_project_sidebar() {
         left_texts.iter().any(|text| text == "对象树"),
         "expected project sidebar to keep object tree ownership, rendered texts: {:?}",
         left_texts
+    );
+}
+
+#[test]
+fn canvas_stage_keeps_selection_detail_in_right_sidebar() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("inspector.focus_unit:heater-1");
+
+    let center_texts = render_center_stage_texts(&mut app);
+    assert!(
+        center_texts.iter().any(|text| text == "画布操作")
+            && center_texts.iter().any(|text| text == "单元")
+            && center_texts.iter().any(|text| text == "heater-1")
+            && center_texts.iter().any(|text| text == "聚焦"),
+        "expected canvas stage to keep selected object actions available, rendered texts: {:?}",
+        center_texts
+    );
+    for hidden in [
+        "Edit",
+        "Heater (heater) ports 2/2",
+        "layout sidecar position",
+    ] {
+        assert!(
+            !center_texts.iter().any(|text| text.contains(hidden)),
+            "canvas stage must not render right-sidebar selection detail `{hidden}`, rendered texts: {:?}",
+            center_texts
+        );
+    }
+
+    let right_texts = render_right_sidebar_texts(&mut app);
+    assert!(
+        right_texts.iter().any(|text| text == "画布选择")
+            && right_texts.iter().any(|text| text == "heater-1")
+            && right_texts
+                .iter()
+                .any(|text| text.contains("都跟随这个已选单元")),
+        "expected right sidebar to keep selected object context detail, rendered texts: {:?}",
+        right_texts
     );
 }
 

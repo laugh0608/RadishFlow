@@ -11,8 +11,7 @@ impl ReadyAppState {
         self.render_canvas_toolbar(ui, widget);
         ui.add_space(4.0);
         self.render_canvas_stage_summary(ui, widget);
-        self.render_canvas_selection_summary(ui, widget);
-        self.render_canvas_viewport_summary(ui, widget);
+        self.render_canvas_object_action_strip(ui, widget);
         self.render_canvas_legend(ui, widget);
         ui.separator();
         self.render_canvas_drop_surface(ui, widget);
@@ -44,35 +43,6 @@ impl ReadyAppState {
                             | radishflow_studio::StudioGuiCanvasActionId::FocusNext
                             | radishflow_studio::StudioGuiCanvasActionId::FocusPrevious
                     )
-                });
-            }
-            let has_edit_actions = widget.actions.iter().any(|action| {
-                action.enabled
-                    && matches!(
-                            action.id,
-                            radishflow_studio::StudioGuiCanvasActionId::CancelPendingEdit
-                                | radishflow_studio::StudioGuiCanvasActionId::MoveSelectedUnit(_)
-                                | radishflow_studio::StudioGuiCanvasActionId::DisconnectSelectedStream
-                                | radishflow_studio::StudioGuiCanvasActionId::DisconnectSelectedStreamSource
-                                | radishflow_studio::StudioGuiCanvasActionId::DisconnectSelectedStreamSink
-                                | radishflow_studio::StudioGuiCanvasActionId::ReconnectSelectedStream
-                                | radishflow_studio::StudioGuiCanvasActionId::DeleteSelectedStream
-                        )
-            });
-            if has_edit_actions {
-                ui.separator();
-                self.render_canvas_toolbar_group(ui, widget, "Edit", |action| {
-                    action.enabled
-                        && matches!(
-                            action.id,
-                            radishflow_studio::StudioGuiCanvasActionId::CancelPendingEdit
-                                | radishflow_studio::StudioGuiCanvasActionId::MoveSelectedUnit(_)
-                                | radishflow_studio::StudioGuiCanvasActionId::DisconnectSelectedStream
-                                | radishflow_studio::StudioGuiCanvasActionId::DisconnectSelectedStreamSource
-                                | radishflow_studio::StudioGuiCanvasActionId::DisconnectSelectedStreamSink
-                                | radishflow_studio::StudioGuiCanvasActionId::ReconnectSelectedStream
-                                | radishflow_studio::StudioGuiCanvasActionId::DeleteSelectedStream
-                        )
                 });
             }
         });
@@ -127,12 +97,13 @@ impl ReadyAppState {
     }
 
     fn render_canvas_stage_summary(
-        &self,
+        &mut self,
         ui: &mut egui::Ui,
         widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
     ) {
         let view = widget.view();
         let object_list = &view.object_list;
+        let viewport = &view.viewport;
         ui.horizontal_wrapped(|ui| {
             ui.small(
                 egui::RichText::new(self.locale.runtime_label("Canvas status").as_ref()).strong(),
@@ -165,7 +136,35 @@ impl ReadyAppState {
                     notice_color(rf_ui::RunPanelNoticeLevel::Warning),
                 );
             }
+            if let Some(status) = view.run_status.as_ref() {
+                render_status_chip(
+                    ui,
+                    self.locale.runtime_label(status.status_label).as_ref(),
+                    run_status_color(status.status_label),
+                );
+            }
+            render_status_chip(
+                ui,
+                self.locale.runtime_label(viewport.mode_label).as_ref(),
+                egui::Color32::from_rgb(86, 118, 168),
+            );
+            render_status_chip(
+                ui,
+                self.locale.runtime_label(viewport.layout_label).as_ref(),
+                egui::Color32::from_rgb(86, 96, 108),
+            );
+            if ui
+                .small_button(self.locale.text(ShellText::FitToContent))
+                .on_hover_text(self.locale.text(ShellText::FitToContentDetail))
+                .clicked()
+            {
+                self.request_canvas_viewport_fit_to_content();
+            }
         });
+        if let Some(result) = self.canvas_command_result.as_ref() {
+            ui.colored_label(notice_color(result.level), &result.title);
+            render_wrapped_small(ui, &result.detail);
+        }
     }
 
     fn render_canvas_suggestions(
@@ -263,59 +262,35 @@ impl ReadyAppState {
         }
     }
 
-    fn render_canvas_selection_summary(
+    fn render_canvas_object_action_strip(
         &mut self,
         ui: &mut egui::Ui,
         widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
     ) {
+        let selection = widget.view().current_selection.as_ref();
+        let suggestion = selection.is_none().then(|| {
+            widget
+                .view()
+                .suggestions
+                .iter()
+                .find(|item| item.is_focused)
+        });
+        let suggestion = suggestion.flatten();
+        if selection.is_none() && suggestion.is_none() {
+            return;
+        }
+
         ui.horizontal_wrapped(|ui| {
-            if let Some(status) = widget.view().run_status.as_ref() {
-                render_status_chip(
-                    ui,
-                    self.locale.runtime_label(status.status_label).as_ref(),
-                    run_status_color(status.status_label),
-                );
-                if status.attention_count > 0 {
-                    render_status_chip(
-                        ui,
-                        &self
-                            .locale
-                            .count_label(status.attention_count, "attention", "attention"),
-                        notice_color(rf_ui::RunPanelNoticeLevel::Warning),
-                    );
-                }
-                if let Some(summary) = status
-                    .summary
-                    .as_ref()
-                    .and_then(|summary| compact_canvas_status_summary(summary, self.locale))
-                {
-                    ui.small(summary);
-                } else if let Some(reason) = status.pending_reason_label {
-                    match self.locale {
-                        StudioShellLocale::En => {
-                            ui.small(format!("pending: {}", self.locale.runtime_label(reason)))
-                        }
-                        StudioShellLocale::ZhCn => {
-                            ui.small(format!("待处理: {}", self.locale.runtime_label(reason)))
-                        }
-                    };
-                }
-                ui.separator();
-            }
-            ui.small(egui::RichText::new(self.locale.text(ShellText::Selection)).strong());
-            if let Some(selection) = widget.view().current_selection.as_ref() {
+            ui.small(
+                egui::RichText::new(self.locale.runtime_label("Canvas actions").as_ref()).strong(),
+            );
+            if let Some(selection) = selection {
                 render_status_chip(
                     ui,
                     self.locale.runtime_label(selection.kind_label).as_ref(),
                     egui::Color32::from_rgb(48, 112, 188),
                 );
-                ui.small(format!("{} · {}", selection.target_id, selection.summary));
-                if let Some(layout_source) = selection.layout_source_label {
-                    render_status_chip(ui, layout_source, egui::Color32::from_rgb(86, 96, 108));
-                }
-                if let Some(layout_detail) = selection.layout_detail.as_ref() {
-                    ui.small(layout_detail);
-                }
+                ui.small(&selection.target_id);
                 if ui
                     .small_button(self.locale.text(ShellText::Focus))
                     .on_hover_text(self.locale.runtime_label("Focus selected object").as_ref())
@@ -370,18 +345,12 @@ impl ReadyAppState {
                         }
                     }
                 }
-            } else if let Some(suggestion) = widget
-                .view()
-                .suggestions
-                .iter()
-                .find(|item| item.is_focused)
-            {
+            } else if let Some(suggestion) = suggestion {
                 render_status_chip(
                     ui,
                     self.locale.runtime_label("Suggestion").as_ref(),
                     egui::Color32::from_rgb(86, 118, 168),
                 );
-                ui.small(&suggestion.reason);
                 if ui
                     .add_enabled(
                         suggestion.explicit_accept_enabled,
@@ -398,63 +367,8 @@ impl ReadyAppState {
                 {
                     self.dispatch_canvas_suggestion(widget, &suggestion.id);
                 }
-            } else {
-                ui.small(self.locale.text(ShellText::NoneValue));
             }
         });
-    }
-
-    fn render_canvas_viewport_summary(
-        &mut self,
-        ui: &mut egui::Ui,
-        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
-    ) {
-        let viewport = &widget.view().viewport;
-        ui.horizontal_wrapped(|ui| {
-            ui.small(egui::RichText::new(self.locale.text(ShellText::Viewport)).strong());
-            render_status_chip(
-                ui,
-                self.locale.runtime_label(viewport.mode_label).as_ref(),
-                egui::Color32::from_rgb(86, 118, 168),
-            );
-            render_status_chip(
-                ui,
-                self.locale.runtime_label(viewport.layout_label).as_ref(),
-                egui::Color32::from_rgb(86, 96, 108),
-            );
-            let viewport_summary = compact_canvas_viewport_summary(&viewport.summary, self.locale);
-            ui.small(viewport_summary).on_hover_text(&viewport.summary);
-            if ui
-                .small_button(self.locale.text(ShellText::FitToContent))
-                .on_hover_text(self.locale.text(ShellText::FitToContentDetail))
-                .clicked()
-            {
-                self.request_canvas_viewport_fit_to_content();
-            }
-            if let Some(focus) = viewport.focus.as_ref() {
-                render_status_chip(
-                    ui,
-                    &format!(
-                        "{} {}",
-                        self.locale.runtime_label(focus.kind_label),
-                        focus.target_id
-                    ),
-                    egui::Color32::from_rgb(48, 112, 188),
-                );
-                ui.small(&focus.anchor_label);
-                if ui
-                    .small_button(self.locale.text(ShellText::Focus))
-                    .on_hover_text(&focus.detail)
-                    .clicked()
-                {
-                    self.dispatch_ui_command(&focus.command_id);
-                }
-            }
-        });
-        if let Some(result) = self.canvas_command_result.as_ref() {
-            ui.colored_label(notice_color(result.level), &result.title);
-            render_wrapped_small(ui, &result.detail);
-        }
     }
 
     fn render_canvas_legend(
@@ -1681,46 +1595,6 @@ fn truncate_canvas_label(value: &str, max_chars: usize) -> String {
         label.push_str("...");
     }
     label
-}
-
-fn is_developer_canvas_status_summary(summary: &str) -> bool {
-    summary.contains("pending reason")
-        || summary.contains("diagnostics=")
-        || summary.contains("solved flowsheet with")
-}
-
-fn compact_canvas_status_summary(summary: &str, locale: StudioShellLocale) -> Option<String> {
-    if is_developer_canvas_status_summary(summary) {
-        return None;
-    }
-    Some(truncate_canvas_label(
-        locale.runtime_label(summary).as_ref(),
-        42,
-    ))
-}
-
-fn compact_canvas_viewport_summary(summary: &str, locale: StudioShellLocale) -> String {
-    let Some((_, counts)) = summary.split_once(':') else {
-        return truncate_canvas_label(summary, 56);
-    };
-    let mut unit_count = None;
-    let mut stream_count = None;
-    for part in counts.split(',').map(str::trim) {
-        if part.contains("unit(s)") {
-            unit_count = part.split_whitespace().next();
-        } else if part.contains("material line(s)") {
-            stream_count = part.split_whitespace().next();
-        }
-    }
-    match (unit_count, stream_count, locale) {
-        (Some(units), Some(streams), StudioShellLocale::ZhCn) => {
-            format!("{units} 个单元 / {streams} 条物料线")
-        }
-        (Some(units), Some(streams), StudioShellLocale::En) => {
-            format!("{units} units / {streams} material lines")
-        }
-        _ => truncate_canvas_label(summary, 56),
-    }
 }
 
 fn compact_canvas_material_line_count(count: usize, locale: StudioShellLocale) -> String {
