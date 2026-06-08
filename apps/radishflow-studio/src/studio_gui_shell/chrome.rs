@@ -843,6 +843,13 @@ impl ReadyAppState {
     fn render_canvas_palette(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         let palette = &window.canvas.widget.view().place_unit_palette;
         ui.label(egui::RichText::new(self.locale.runtime_label(palette.title).as_ref()).strong());
+        render_wrapped_small(
+            ui,
+            match self.locale {
+                StudioShellLocale::En => "Use the supported module set to build small flowsheets.",
+                StudioShellLocale::ZhCn => "使用当前受控模块集搭建小流程。",
+            },
+        );
         if let Some(active) = palette.active_unit_kind.as_ref() {
             render_status_chip(
                 ui,
@@ -855,30 +862,73 @@ impl ReadyAppState {
             ui.add_space(6.0);
         }
 
+        ui.add(
+            egui::TextEdit::singleline(&mut self.module_palette_filter)
+                .hint_text(match self.locale {
+                    StudioShellLocale::En => "Filter modules",
+                    StudioShellLocale::ZhCn => "筛选模块",
+                })
+                .desired_width(ui.available_width()),
+        );
+        ui.add_space(6.0);
+
         self.render_authoring_checklists(ui, window);
         ui.add_space(8.0);
 
-        for option in &palette.options {
-            let option_label = self.locale.runtime_label(&option.label);
-            let option_detail = self.locale.runtime_label(&option.detail);
-            let response = ui
-                .add_enabled(
-                    option.enabled,
-                    egui::Button::new(option_label.as_ref())
-                        .selected(option.active)
-                        .min_size(egui::vec2(ui.available_width(), 30.0)),
-                )
-                .on_hover_text(option_detail.as_ref());
-            if response.clicked() {
-                self.dispatch_ui_command(&option.command_id);
+        let normalized_filter = normalized_module_palette_filter(&self.module_palette_filter);
+        let mut visible_options = 0usize;
+        for category in module_palette_categories(self.locale) {
+            let category_options = palette
+                .options
+                .iter()
+                .filter(|option| category.matches(option.kind))
+                .filter(|option| module_palette_option_matches(option, &normalized_filter))
+                .collect::<Vec<_>>();
+
+            if category_options.is_empty() {
+                continue;
             }
+
+            ui.separator();
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new(category.title).strong());
+                render_status_chip(
+                    ui,
+                    &category_options.len().to_string(),
+                    egui::Color32::from_rgb(86, 96, 108),
+                );
+            });
+            render_wrapped_small(ui, category.detail);
             ui.add_space(4.0);
+
+            for option in category_options {
+                visible_options += 1;
+                self.render_module_palette_option(ui, option);
+                ui.add_space(4.0);
+            }
+        }
+
+        if visible_options == 0 {
+            ui.separator();
+            render_wrapped_small(
+                ui,
+                match self.locale {
+                    StudioShellLocale::En => "No supported modules match the current filter.",
+                    StudioShellLocale::ZhCn => "当前筛选没有匹配的受控模块。",
+                },
+            );
         }
 
         let suggestions = &window.canvas.widget.view().suggestions;
         if !suggestions.is_empty() {
             ui.separator();
-            ui.label(egui::RichText::new(self.locale.text(ShellText::Suggestions)).strong());
+            ui.label(
+                egui::RichText::new(match self.locale {
+                    StudioShellLocale::En => "Canvas suggestions",
+                    StudioShellLocale::ZhCn => "画布建议",
+                })
+                .strong(),
+            );
             for suggestion in suggestions.iter().take(4) {
                 ui.horizontal_wrapped(|ui| {
                     render_status_chip(
@@ -917,6 +967,39 @@ impl ReadyAppState {
                 ui.add_space(6.0);
             }
         }
+    }
+
+    fn render_module_palette_option(
+        &mut self,
+        ui: &mut egui::Ui,
+        option: &radishflow_studio::StudioGuiCanvasPlaceUnitOptionViewModel,
+    ) {
+        let option_label = self.locale.runtime_label(&option.label);
+        let option_detail = self.locale.runtime_label(&option.detail);
+        ui.horizontal_wrapped(|ui| {
+            let response = ui
+                .add_enabled(
+                    option.enabled,
+                    egui::Button::new(option_label.as_ref())
+                        .selected(option.active)
+                        .min_size(egui::vec2(ui.available_width().min(170.0), 28.0)),
+                )
+                .on_hover_text(option_detail.as_ref());
+            if response.clicked() {
+                self.dispatch_ui_command(&option.command_id);
+            }
+            if option.active {
+                render_status_chip(
+                    ui,
+                    match self.locale {
+                        StudioShellLocale::En => "Active",
+                        StudioShellLocale::ZhCn => "活动",
+                    },
+                    egui::Color32::from_rgb(52, 128, 89),
+                );
+            }
+        });
+        render_wrapped_small(ui, option_detail.as_ref());
     }
 
     fn render_right_workbench(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
@@ -1927,6 +2010,100 @@ fn workbench_bottom_drawer_height(
         StudioShellBottomDrawerTab::ResultsTable => 250.0,
         StudioShellBottomDrawerTab::Suggestions | StudioShellBottomDrawerTab::Diagnostics => 190.0,
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ModulePaletteCategory {
+    title: &'static str,
+    detail: &'static str,
+    kinds: &'static [radishflow_studio::StudioGuiCanvasPlaceUnitKind],
+}
+
+impl ModulePaletteCategory {
+    fn matches(self, kind: radishflow_studio::StudioGuiCanvasPlaceUnitKind) -> bool {
+        self.kinds.contains(&kind)
+    }
+}
+
+const MODULE_PALETTE_STREAM_SOURCES: &[radishflow_studio::StudioGuiCanvasPlaceUnitKind] =
+    &[radishflow_studio::StudioGuiCanvasPlaceUnitKind::Feed];
+const MODULE_PALETTE_CONDITIONING_UNITS: &[radishflow_studio::StudioGuiCanvasPlaceUnitKind] = &[
+    radishflow_studio::StudioGuiCanvasPlaceUnitKind::Heater,
+    radishflow_studio::StudioGuiCanvasPlaceUnitKind::Cooler,
+    radishflow_studio::StudioGuiCanvasPlaceUnitKind::Valve,
+];
+const MODULE_PALETTE_MIXING_AND_SEPARATION: &[radishflow_studio::StudioGuiCanvasPlaceUnitKind] = &[
+    radishflow_studio::StudioGuiCanvasPlaceUnitKind::Mixer,
+    radishflow_studio::StudioGuiCanvasPlaceUnitKind::FlashDrum,
+];
+
+fn module_palette_categories(locale: StudioShellLocale) -> [ModulePaletteCategory; 3] {
+    match locale {
+        StudioShellLocale::En => [
+            ModulePaletteCategory {
+                title: "Stream sources",
+                detail: "Create material feeds that define composition and source conditions.",
+                kinds: MODULE_PALETTE_STREAM_SOURCES,
+            },
+            ModulePaletteCategory {
+                title: "Conditioning units",
+                detail: "Adjust temperature, pressure, or pressure loss before separation.",
+                kinds: MODULE_PALETTE_CONDITIONING_UNITS,
+            },
+            ModulePaletteCategory {
+                title: "Mixing and separation",
+                detail: "Combine feeds and split phases with the supported flowsheet units.",
+                kinds: MODULE_PALETTE_MIXING_AND_SEPARATION,
+            },
+        ],
+        StudioShellLocale::ZhCn => [
+            ModulePaletteCategory {
+                title: "流股源",
+                detail: "创建定义组成和源条件的物料进料。",
+                kinds: MODULE_PALETTE_STREAM_SOURCES,
+            },
+            ModulePaletteCategory {
+                title: "调节单元",
+                detail: "在分离前调整温度、压力或压降。",
+                kinds: MODULE_PALETTE_CONDITIONING_UNITS,
+            },
+            ModulePaletteCategory {
+                title: "汇合与分离",
+                detail: "用当前支持的单元完成进料汇合和相态分离。",
+                kinds: MODULE_PALETTE_MIXING_AND_SEPARATION,
+            },
+        ],
+    }
+}
+
+fn normalized_module_palette_filter(filter: &str) -> String {
+    filter.trim().to_ascii_lowercase()
+}
+
+fn module_palette_option_matches(
+    option: &radishflow_studio::StudioGuiCanvasPlaceUnitOptionViewModel,
+    normalized_filter: &str,
+) -> bool {
+    if normalized_filter.is_empty() {
+        return true;
+    }
+
+    option
+        .label
+        .to_ascii_lowercase()
+        .contains(normalized_filter)
+        || option
+            .detail
+            .to_ascii_lowercase()
+            .contains(normalized_filter)
+        || option
+            .unit_kind
+            .to_ascii_lowercase()
+            .contains(normalized_filter)
+        || option
+            .search_terms
+            .iter()
+            .any(|term| term.to_ascii_lowercase().contains(normalized_filter))
 }
 
 fn context_toolbar_status_color(status_label: &str) -> egui::Color32 {

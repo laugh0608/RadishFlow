@@ -255,6 +255,7 @@ impl StudioShellLocale {
             "Apply suggestion" => Cow::Borrowed("应用建议"),
             "Apply the focused canvas suggestion" => Cow::Borrowed("应用当前聚焦的画布建议"),
             "Run Log" => Cow::Borrowed("运行日志"),
+            "Place unit" => Cow::Borrowed("放置单元"),
             "Place" => Cow::Borrowed("放置"),
             "Move" => Cow::Borrowed("移动"),
             "Source" => Cow::Borrowed("源"),

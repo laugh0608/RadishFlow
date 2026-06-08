@@ -505,6 +505,7 @@ fn shell_locale_defaults_to_chinese_and_can_translate_runtime_labels() {
     );
     assert_eq!(locale.runtime_label("Focus").as_ref(), "聚焦");
     assert_eq!(locale.runtime_label("Place Feed").as_ref(), "放置进料");
+    assert_eq!(locale.runtime_label("Place unit").as_ref(), "放置单元");
     assert_eq!(
         StudioShellLocale::En.runtime_label("Converged").as_ref(),
         "Converged"
@@ -927,6 +928,77 @@ fn left_sidebar_top_tabs_align_with_module_project_roles() {
         assert!(
             !texts.iter().any(|text| text == retired),
             "left sidebar top roles must not expose `{retired}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
+fn module_sidebar_groups_supported_palette_by_modeling_roles() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.left_sidebar_tab = StudioShellLeftSidebarTab::Palette;
+
+    let texts = render_left_sidebar_texts(&mut app);
+
+    for expected in [
+        "模块",
+        "项目",
+        "放置单元",
+        "使用当前受控模块集搭建小流程。",
+        "流股源",
+        "调节单元",
+        "汇合与分离",
+        "放置进料",
+        "放置加热器",
+        "放置冷却器",
+        "放置阀门",
+        "放置混合器",
+        "放置闪蒸罐",
+    ] {
+        assert!(
+            texts.iter().any(|text| text == expected),
+            "expected module sidebar to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+
+    for hidden in ["完整模块库", "自由连线", "自动布线", "完整拖拽布局"] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden)),
+            "module sidebar must not expose out-of-scope `{hidden}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
+fn module_sidebar_filter_limits_palette_to_matching_supported_units() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.left_sidebar_tab = StudioShellLeftSidebarTab::Palette;
+    app.module_palette_filter = "flash".to_string();
+
+    let texts = render_left_sidebar_texts(&mut app);
+
+    for expected in ["汇合与分离", "放置闪蒸罐"] {
+        assert!(
+            texts.iter().any(|text| text == expected),
+            "expected filtered module sidebar to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+
+    for hidden in [
+        "流股源",
+        "调节单元",
+        "放置进料",
+        "放置加热器",
+        "放置冷却器",
+        "放置阀门",
+        "放置混合器",
+    ] {
+        assert!(
+            !texts.iter().any(|text| text == hidden),
+            "filtered module sidebar should hide `{hidden}`, rendered texts: {:?}",
             texts
         );
     }
