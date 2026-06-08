@@ -17,7 +17,7 @@
 
 ## 当前能做什么
 
-截至 2026-06-07，Studio 当前已经具备以下主路径能力：
+截至 2026-06-08，Studio 当前已经具备以下主路径能力：
 
 - 启动后默认进入中文 Home Dashboard，可从 `开始 / 最近项目 / 示例项目 / 环境 / 消息` 分区判断从哪里开始
 - 新建未命名空白项目，并从受控内置列表显式选择 `binary-hydrocarbon-lite-v1` 与 `methane / ethane` 后进入最短建模路径
@@ -27,7 +27,7 @@
 - 最近项目和示例项目使用统一 case tile 展示：tile 包含轻量流程缩影、路径 / 来源、物性包、组分摘要和 `Ready / Current / Missing file` 状态；单击选择，双击打开，文件缺失时只降级对应 tile 状态，不阻断首页
 - 进入项目后顶部导航收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；新建、打开、保存和另存为进入 `文件`，命令面板、Commands 面板和逻辑窗口进入 `工具`，语言进入 `设置`
 - 运行仓库内或便携 staging 内的 official hydrocarbon 正向示例 flowsheet
-- 在独立 `物性` 页维护当前受控物性包和项目组分；进入 `流程图` 后使用左侧 `模块 / 项目`、中央 `Canvas`、右侧 `检查器 / 模块设置 / 模块结果` 和底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 完成当前 MVP 建模与结果核对工作流；`模块` 面板已按 `流股源 / 调节单元 / 汇合与分离` 组织受控单元并支持本地筛选，`项目` 面板已按 `项目输入 / 示例入口 / 对象树 / 审阅状态` 分区
+- 在独立 `物性` 页维护当前受控物性包和项目组分；进入 `流程图` 后使用左侧 `模块 / 项目`、中央 `Canvas`、右侧 `检查器 / 模块设置 / 模块结果` 和底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 完成当前 MVP 建模与结果核对工作流；`模块` 面板已按 `流股源 / 调节单元 / 汇合与分离` 组织受控单元并支持本地筛选，`项目` 面板已按 `项目输入 / 示例入口 / 对象树 / 审阅状态` 分区，中央 Canvas 保留 `画布状态`、工具条、选择、视口、图例、画布实体和受控建议，不再重复项目对象树
 - `物性 / 流程图 / 运行 / 结果` screen 会在顶部导航下方显示上下文工具栏，只渲染已有 presentation / command / state 中可用的入口和状态
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
 - 选中单元时，右侧 `检查器` 的单元区域窄口径消费 `Module Settings` presentation：只显示正式 active inspector 来源的参数字段、端口、连接动作、诊断动作和帮助空状态
@@ -184,7 +184,7 @@ cargo run -p radishflow-studio
 3. 在左侧切到 `模块`，用 `放置进料`、`放置闪蒸罐` 或 `放置加热器 / 放置冷却器 / 放置阀门 / 放置混合器` 开始放置单元。
 4. 在 Canvas 中点击落点提交当前放置意图。
 5. 使用 Canvas 上的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` suggestion 补齐端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
-6. 在左侧 `项目` 或 Canvas 对象列表中选择 stream / unit，右侧 `检查器` 会切到对应对象。
+6. 在左侧 `项目` 的 `对象树` 中选择 stream / unit，或直接点击 Canvas 中的单元 / 物料线，右侧 `检查器` 会切到对应对象。
 7. 在流股检查器中编辑 `T / P / F` 和组成草稿；字段提交、全部应用、组成归一化都是显式动作。
 8. 选中 `Feed / Heater / Cooler / Mixer / Valve / Flash Drum` 时，可在单元检查器 / Module Settings 中编辑已暴露的 source temperature、source pressure、outlet temperature、outlet pressure、flash temperature 或 flash pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。若字段当前显示的是 outlet stream 模板值或内置默认值，但对应 unit parameter 尚未显式提交，即使输入值与显示值相同，也应提交一次，让正式 `SetUnitParameter` 写入项目文档。字段来源与 readiness 关系见 `docs/reference/units-and-conventions.md`。
 9. 若流股错连或漏连，先选中该 material stream，再使用 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 或 `Delete stream` 这组受控恢复动作；`Reconnect stream` 只在单端唯一候选且不会形成 unit dependency cycle 时可用。
@@ -240,7 +240,7 @@ Canvas 中的单元位置和 viewport offset 保存到项目同目录的 `<proje
 - `物性 / 流程图 / 运行 / 结果` screen 下方对应的上下文工具栏；这些工具栏只显示当前已有可用命令和状态
 - 顶部当前项目标题、运行状态、pending 状态和未保存提示；完整路径优先进入摘要、tooltip 或详情区域
 - 左侧 `模块 / 项目`，分别用于按分类筛选和放置 MVP 内建单元、查看作者任务清单，以及扫读 `项目输入 / 示例入口 / 对象树 / 审阅状态`
-- Canvas 上的单元、物流线和当前关注对象
+- Canvas 上的 `画布状态`、工具条、单元、物料线和当前关注对象；项目对象树仍在左侧 `项目`
 - 右侧 `检查器 / 模块设置 / 模块结果` tabs，其中 `检查器` 负责当前对象输入、端口和关联诊断；`模块设置` 窄口径消费正式 Module Settings DTO，不渲染 latest-result 内容；`模块结果` 负责只读结果审阅和选中单元的 Module Results 摘要
 - 底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` drawer，其中结果表只读消费当前 `SolveSnapshot`，默认消息区比结果 / 诊断页更紧凑
 - `诊断目标` 中可直接定位的流股 / 单元结果目标

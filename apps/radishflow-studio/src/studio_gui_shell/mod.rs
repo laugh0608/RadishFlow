@@ -110,7 +110,6 @@ struct ReadyAppState {
     right_sidebar_tab: StudioShellRightSidebarTab,
     bottom_drawer_tab: StudioShellBottomDrawerTab,
     module_palette_filter: String,
-    canvas_object_filter: CanvasObjectListFilter,
     canvas_viewport_navigation: CanvasViewportNavigationState,
     canvas_initial_viewport_fit: CanvasInitialViewportFitState,
     canvas_viewport_fit_to_content_requested: bool,
@@ -293,6 +292,7 @@ struct CanvasViewportAnchorNavigation {
     pending_scroll: bool,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 enum CanvasObjectListFilter {
     #[default]
@@ -421,7 +421,6 @@ impl ReadyAppState {
             right_sidebar_tab: StudioShellRightSidebarTab::default(),
             bottom_drawer_tab: StudioShellBottomDrawerTab::default(),
             module_palette_filter: String::new(),
-            canvas_object_filter: CanvasObjectListFilter::default(),
             canvas_viewport_navigation: CanvasViewportNavigationState::default(),
             canvas_initial_viewport_fit: canvas_initial_viewport_fit_from_config(config),
             canvas_viewport_fit_to_content_requested: false,
@@ -628,6 +627,7 @@ impl CanvasViewportNavigationState {
     }
 }
 
+#[cfg(test)]
 impl CanvasObjectListFilter {
     fn from_filter_id(filter_id: &str) -> Option<Self> {
         match filter_id {

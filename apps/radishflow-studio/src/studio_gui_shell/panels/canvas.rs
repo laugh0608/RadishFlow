@@ -10,18 +10,14 @@ impl ReadyAppState {
         let widget = &window.canvas.widget;
         self.render_canvas_toolbar(ui, widget);
         ui.add_space(4.0);
+        self.render_canvas_stage_summary(ui, widget);
         self.render_canvas_selection_summary(ui, widget);
         self.render_canvas_viewport_summary(ui, widget);
         self.render_canvas_legend(ui, widget);
         ui.separator();
-        let hovered_stream_id = self.render_canvas_drop_surface(ui, widget);
+        self.render_canvas_drop_surface(ui, widget);
         ui.add_space(8.0);
         self.render_canvas_suggestions(ui, widget, window, area_id);
-        egui::CollapsingHeader::new(self.locale.text(ShellText::Objects))
-            .default_open(false)
-            .show(ui, |ui| {
-                self.render_canvas_object_list(ui, widget, hovered_stream_id.as_deref());
-            });
     }
 
     fn render_canvas_toolbar(
@@ -130,6 +126,48 @@ impl ReadyAppState {
         }
     }
 
+    fn render_canvas_stage_summary(
+        &self,
+        ui: &mut egui::Ui,
+        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
+    ) {
+        let view = widget.view();
+        let object_list = &view.object_list;
+        ui.horizontal_wrapped(|ui| {
+            ui.small(
+                egui::RichText::new(self.locale.runtime_label("Canvas status").as_ref()).strong(),
+            );
+            render_status_chip(
+                ui,
+                &self
+                    .locale
+                    .count_label(object_list.unit_count, "unit", "units"),
+                egui::Color32::from_rgb(86, 118, 168),
+            );
+            render_status_chip(
+                ui,
+                &compact_canvas_material_line_count(object_list.stream_count, self.locale),
+                egui::Color32::from_rgb(42, 142, 122),
+            );
+            render_status_chip(
+                ui,
+                &self
+                    .locale
+                    .count_label(view.suggestions.len(), "suggestion", "suggestions"),
+                egui::Color32::from_rgb(86, 96, 108),
+            );
+            if object_list.attention_count > 0 {
+                render_status_chip(
+                    ui,
+                    &self
+                        .locale
+                        .count_label(object_list.attention_count, "attention", "attention"),
+                    notice_color(rf_ui::RunPanelNoticeLevel::Warning),
+                );
+            }
+        });
+    }
+
     fn render_canvas_suggestions(
         &mut self,
         ui: &mut egui::Ui,
@@ -223,137 +261,6 @@ impl ReadyAppState {
             | radishflow_studio::StudioGuiCanvasWidgetEvent::Disabled { .. }
             | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing { .. } => {}
         }
-    }
-
-    fn render_canvas_object_list(
-        &mut self,
-        ui: &mut egui::Ui,
-        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
-        hovered_stream_id: Option<&str>,
-    ) {
-        let object_list = &widget.view().object_list;
-        let selected_filter_enabled = object_list
-            .filter_options
-            .iter()
-            .find(|option| option.filter_id == self.canvas_object_filter.filter_id())
-            .map(|option| option.enabled)
-            .unwrap_or(false);
-        if !selected_filter_enabled {
-            self.canvas_object_filter = CanvasObjectListFilter::All;
-        }
-        ui.horizontal_wrapped(|ui| {
-            ui.small(egui::RichText::new(self.locale.text(ShellText::Objects)).strong());
-            render_status_chip(
-                ui,
-                &self
-                    .locale
-                    .count_label(object_list.unit_count, "unit", "units"),
-                egui::Color32::from_rgb(86, 118, 168),
-            );
-            render_status_chip(
-                ui,
-                &self
-                    .locale
-                    .count_label(object_list.stream_count, "stream", "streams"),
-                egui::Color32::from_rgb(42, 142, 122),
-            );
-            if object_list.attention_count > 0 {
-                render_status_chip(
-                    ui,
-                    &self
-                        .locale
-                        .count_label(object_list.attention_count, "attention", "attention"),
-                    notice_color(rf_ui::RunPanelNoticeLevel::Warning),
-                );
-            }
-        });
-        ui.horizontal_wrapped(|ui| {
-            for option in &object_list.filter_options {
-                let selected = self.canvas_object_filter.filter_id() == option.filter_id;
-                let label = format!(
-                    "{} {}",
-                    self.locale.runtime_label(option.label),
-                    option.count
-                );
-                if ui
-                    .add_enabled(option.enabled, egui::Button::new(label).selected(selected))
-                    .on_hover_text(option.detail)
-                    .clicked()
-                {
-                    if let Some(filter) = CanvasObjectListFilter::from_filter_id(option.filter_id) {
-                        self.canvas_object_filter = filter;
-                    }
-                }
-            }
-        });
-        if object_list.items.is_empty() {
-            ui.small(self.locale.text(ShellText::NoneValue));
-            return;
-        }
-        let visible_items = object_list
-            .items
-            .iter()
-            .filter(|item| self.canvas_object_filter.matches(item))
-            .collect::<Vec<_>>();
-        if visible_items.is_empty() {
-            ui.small(self.locale.text(ShellText::NoObjectsInFilter));
-            return;
-        }
-
-        egui::Grid::new("canvas-object-list")
-            .num_columns(3)
-            .striped(true)
-            .show(ui, |ui| {
-                for item in visible_items {
-                    let is_hover_related = hovered_stream_id
-                        .map(|stream_id| {
-                            item.related_stream_ids
-                                .iter()
-                                .any(|related_stream_id| related_stream_id == stream_id)
-                        })
-                        .unwrap_or(false);
-                    render_status_chip(
-                        ui,
-                        self.locale.runtime_label(item.kind_label).as_ref(),
-                        if is_hover_related {
-                            egui::Color32::from_rgb(180, 124, 42)
-                        } else if item.kind_label == "Unit" {
-                            egui::Color32::from_rgb(48, 112, 188)
-                        } else {
-                            egui::Color32::from_rgb(42, 142, 122)
-                        },
-                    );
-                    let response = ui
-                        .add(
-                            egui::Button::new(&item.label)
-                                .selected(item.is_active || is_hover_related),
-                        )
-                        .on_hover_text(&item.detail);
-                    if response.clicked() {
-                        self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
-                        self.dispatch_ui_command(&item.command_id);
-                    }
-                    ui.horizontal_wrapped(|ui| {
-                        for badge in &item.status_badges {
-                            render_status_chip(
-                                ui,
-                                &badge.short_label,
-                                canvas_status_badge_color(badge.severity_label),
-                            );
-                        }
-                        if let Some(summary) = item.attention_summary.as_ref() {
-                            render_status_chip(
-                                ui,
-                                self.locale.text(ShellText::Attention),
-                                notice_color(rf_ui::RunPanelNoticeLevel::Warning),
-                            );
-                            ui.small(summary);
-                        }
-                        ui.small(format!("{} · {}", item.target_id, item.detail));
-                    });
-                    ui.end_row();
-                }
-            });
     }
 
     fn render_canvas_selection_summary(
@@ -576,7 +483,7 @@ impl ReadyAppState {
         &mut self,
         ui: &mut egui::Ui,
         widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
-    ) -> Option<String> {
+    ) {
         let view = widget.view();
         let pending_edit = view.pending_edit.as_ref();
         let focus_callout = view.focus_callout.as_ref();
@@ -653,7 +560,6 @@ impl ReadyAppState {
         let mut clicked_unit = false;
         let mut hovered_unit = false;
         let mut clicked_port_command = None;
-        let mut hovered_port_stream_id = None;
         let mut hovered_port_callout = None;
         let mut completed_unit_drag = None;
         for unit in unit_blocks {
@@ -710,7 +616,6 @@ impl ReadyAppState {
                         egui::CursorIcon::Default
                     });
                 if port_response.hovered() {
-                    hovered_port_stream_id = port.stream_id.clone();
                     hovered_port_callout = Some((port_anchor, port));
                 }
                 if port_response.clicked() {
@@ -874,8 +779,6 @@ impl ReadyAppState {
         } else if response.clicked() && !clicked_unit && !clicked_stream && !clicked_port {
             self.clear_canvas_selection();
         }
-
-        hovered_port_stream_id
     }
 }
 
@@ -1817,6 +1720,20 @@ fn compact_canvas_viewport_summary(summary: &str, locale: StudioShellLocale) -> 
             format!("{units} units / {streams} material lines")
         }
         _ => truncate_canvas_label(summary, 56),
+    }
+}
+
+fn compact_canvas_material_line_count(count: usize, locale: StudioShellLocale) -> String {
+    match locale {
+        StudioShellLocale::ZhCn => format!("{count} 条物料线"),
+        StudioShellLocale::En => {
+            let label = if count == 1 {
+                "material line"
+            } else {
+                "material lines"
+            };
+            format!("{count} {label}")
+        }
     }
 }
 

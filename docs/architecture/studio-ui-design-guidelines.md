@@ -46,7 +46,7 @@ UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baselin
 
 ### 当前 RadishFlow
 
-当前 UI 的优势是浅色、克制、状态 chip 清晰，顶部导航已先收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`，打开 / 新建 / 保存 / 示例、运行、结果和命令面板不再作为同一排快速按钮平铺。问题仍集中在整体排版和分区：画布工具、suggestion、对象列表、运行面板、授权和调试信息还需要继续向成熟建模工作台结构收敛，避免用户难以判断“现在该看哪里、下一步点哪里、结果在哪里”。
+当前 UI 的优势是浅色、克制、状态 chip 清晰，顶部导航已先收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`，打开 / 新建 / 保存 / 示例、运行、结果和命令面板不再作为同一排快速按钮平铺。问题仍集中在整体排版和分区：画布工具、suggestion、左侧对象扫读、运行面板、授权和调试信息还需要继续向成熟建模工作台结构收敛，避免用户难以判断“现在该看哪里、下一步点哪里、结果在哪里”。
 
 后续应保留当前风格基调，但把功能分区从“开发态信息平铺”重排为“建模工作台”。
 
@@ -144,7 +144,7 @@ UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baselin
 
 ## 信息架构
 
-Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目标”。当前代码已以 Home Dashboard、八入口顶部导航、四类上下文工具栏、左侧 `模块 / 项目`、`模块` 面板分类 / 筛选、`项目` 面板分区、独立 `物性` 页、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 和状态汇总为基础；主设计稿目标仍以 `studio-client-main.pen` 为准，继续统一 Home、独立物性页、Flowsheet 工作台和模块设置 / 结果四个主 frame。
+Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目标”。当前代码已以 Home Dashboard、八入口顶部导航、四类上下文工具栏、左侧 `模块 / 项目`、`模块` 面板分类 / 筛选、`项目` 面板分区、中央 Canvas `画布状态` 概览与建模主舞台、独立 `物性` 页、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 和状态汇总为基础；主设计稿目标仍以 `studio-client-main.pen` 为准，继续统一 Home、独立物性页、Flowsheet 工作台和模块设置 / 结果四个主 frame。
 
 主设计稿的 Workbench 建议分为七个稳定区域：
 
@@ -154,7 +154,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 | Top Navigation | `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` |
 | Context Toolbar | 随当前导航显示保存、检查、运行、画布、结果或物性相关动作 |
 | Left Rail | `模块 / 项目`；模块页放流股和按分类折叠的单元操作，项目页放当前对象树 |
-| Canvas Stage | 类 IDE 的 flowsheet 标签页、流程图画布和左上角浮动画布工具条 |
+| Canvas Stage | 类 IDE 的 flowsheet 标签页、画布状态概览、流程图画布和左上角浮动画布工具条 |
 | Right Rail | `检查器 / 模块设置 / 模块结果`；不再放独立 `运行` 或 `物性` tab |
 | Bottom Area | 左侧运行信息 tabs，右侧当前案例状态汇总 |
 
@@ -323,7 +323,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 - 当前代码以 `检查器 / 模块设置 / 模块结果` tab 组织右侧栏；`运行` 和 `物性包` 不再作为右侧常驻 tab。
 - `物性` 页承载本地 package 摘要、内置 package 选择和同一套项目组分选择入口；用户刚进入 Workbench 时仍应能先从左侧项目树发现项目组分状态。
 - 属性字段采用 label + input + unit + validation 的行结构；单位必须紧贴数值，不藏在说明文字里。
-- 从左侧 Project、Canvas 对象列表或结果定位动作选择 stream / unit 后，应自然切换到对应检查器；stream 优先暴露 `T / P / F`、组成草稿和提交/归一化动作，unit 的可编辑参数进入 `模块设置`，latest unit result 进入 `模块结果`。
+- 从左侧 `项目` 对象树、Canvas 画布实体或结果定位动作选择 stream / unit 后，应自然切换到对应检查器；stream 优先暴露 `T / P / F`、组成草稿和提交/归一化动作，unit 的可编辑参数进入 `模块设置`，latest unit result 进入 `模块结果`。
 - Unit Inspector 当前只把 `Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 与 `Flash Drum` 的 flash temperature / pressure 作为可编辑参数行；字段必须显示 SI 单位和约束提示，提交走正式文档命令并同步对应 outlet stream 模板。若字段值来自 outlet stream 模板 / fallback 而 unit parameter 尚未显式存在，同值提交仍应写入正式 `SetUnitParameter`。其余单元信息仍以端口、关联步骤、关联诊断和最新只读结果为主，不提前设计完整单元参数表。
 - 结果检查器中面向用户的组成、相态和摘要行应优先使用本地化结构化短句；`z: ...`、`phases: ...` 这类原始调试文本只应进入 hover、日志或开发诊断，不应作为默认结果正文。
 - 模块结果、环境摘要和状态摘要应使用状态 chip、metric card、stream chip 和短说明组合；避免把 `状态 / Duty / Outlet T / Diagnostics` 或 `客户端 / 服务端 / 缓存` 做成松散的两列文字直排。

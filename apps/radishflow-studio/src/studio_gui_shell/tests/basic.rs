@@ -132,6 +132,32 @@ fn render_alpha_workbench_texts(app: &mut ReadyAppState) -> Vec<String> {
     texts
 }
 
+fn render_center_stage_texts(app: &mut ReadyAppState) -> Vec<String> {
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(860.0, 620.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            let mut hovered_drop_target = false;
+            app.render_center_stage(ctx, &window, &mut hovered_drop_target);
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
 fn render_right_sidebar_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
     let window = snapshot.window_model();
@@ -879,6 +905,7 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
         "流程图模式",
         "物料线",
         "画布",
+        "画布状态",
         "项目组分",
         "Methane",
         "Ethane",
@@ -909,6 +936,42 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
             texts
         );
     }
+}
+
+#[test]
+fn canvas_stage_keeps_object_tree_in_project_sidebar() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    let center_texts = render_center_stage_texts(&mut app);
+    for expected in ["画布", "画布状态", "选择", "视口", "物料线"] {
+        assert!(
+            center_texts.iter().any(|text| text.contains(expected)),
+            "expected center stage to render `{expected}`, rendered texts: {:?}",
+            center_texts
+        );
+    }
+    for hidden in [
+        "项目输入",
+        "示例入口",
+        "对象树",
+        "审阅状态",
+        "完整项目浏览器",
+        "自由连线",
+        "自动布线",
+    ] {
+        assert!(
+            !center_texts.iter().any(|text| text.contains(hidden)),
+            "center stage must not render project sidebar role `{hidden}`, rendered texts: {:?}",
+            center_texts
+        );
+    }
+
+    let left_texts = render_left_sidebar_texts(&mut app);
+    assert!(
+        left_texts.iter().any(|text| text == "对象树"),
+        "expected project sidebar to keep object tree ownership, rendered texts: {:?}",
+        left_texts
+    );
 }
 
 #[test]
