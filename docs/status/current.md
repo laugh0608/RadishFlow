@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-06-07
+更新时间：2026-06-08
 
 ## 用途
 
@@ -43,6 +43,7 @@
 - **Studio UI 实现第十四刀已完成 focused 推进：`运行` 已从顶栏下拉菜单收敛为 screen 导航，`window.run_context_toolbar` 只从现有 Run Panel command registry、Run Panel state、status summary、canvas suggestion count 和运行日志派生 Control / Recovery / Monitor 入口；未新增第二套运行状态源、完整运行控制台、完整日志系统、批量运行、自动调度或完整报表。**
 - **Studio UI 实现第十五刀已完成 focused 推进：`结果` 已从顶栏下拉菜单收敛为 screen 导航，`window.result_context_toolbar` 只从现有 Module Results、底部结果表、当前 / stale / missing `SolveSnapshot` 状态和已启用 Result focus command 派生 Review / Focus / Status 入口；未新增第二套结果状态源、完整报表、跨快照报表、模板、打印或批量导出。**
 - **Studio UI 实现第十六刀已完成 focused 推进：`工具 / 设置` 顶层菜单内容已拆成可测试的职责分组；`工具` 只消费 command palette shell state、Commands panel layout visibility 和 AppHost logical windows，`设置` 只消费当前 shell locale；未新增 help command、插件管理、单位集设置、完整偏好页、账号 / 授权 / 服务器设置或发布入口。**
+- **Studio UI 实现第十七刀已完成 focused 推进：底部 Workbench 从单一 drawer 收敛为左侧运行信息 tabs 与右侧 `状态汇总` 分栏；右侧只消费既有 `window.status_summary` 的 case、run、convergence、steps、diagnostics 与 snapshot 一致性，不伪造迭代数据，不新增完整报表、完整收敛曲线或第二套结果状态。**
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前开发策略
@@ -84,7 +85,7 @@ Studio UI 专题设计前置目标：
 - P0 / P1 评审时继续对照两张 `baseline/` 视觉基线，确保 Home / Workbench 的分区、信息密度、状态 chip 和主操作层级与项目视觉方向一致。
 - Studio 客户端本体优先覆盖 Home、Workbench、Canvas、Inspector、Result、Package / Auth 的职责关系，不提前扩自由连线、完整拖拽布局、自动布线、完整参数表或完整结果报表。
 - 模块设置 / 模块结果优先先在 `studio-client-main.pen` 中统一参数、端口、运行结果、诊断和帮助入口；若后续细节不足，再按窄口径创建 `module-settings-panel.pen`，不重复整套 Workbench。
-- 代码实现已允许从 presentation / window model 小切片推进，但仍不直接做大规模 egui 布局重排；Module Results DTO 已落到正式 window model 并由右侧 `模块结果` tab 消费，stale snapshot 不渲染旧 unit result；Home 最近项目继续由 shell preferences / recent path 持有，但已映射为同一 case tile DTO 并由 Home Dashboard 消费且人工复核通过；右侧 `模块设置` tab 已消费参数、端口和诊断，帮助入口当前仅表达“无正式 help command”；独立物性页已接入顶部导航并消费既有 Property page DTO，`Package` 不再保留为右侧主入口；底部运行信息已补 `收敛 / 建议` 入口；顶部导航已按设计稿收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`，旧打开 / 保存 / 示例按钮不再作为 Workbench 主横排按钮常驻；`流程图` screen 的上下文工具栏已通过 `window.flowsheet_context_toolbar` 消费既有 canvas / run command 和结果 / 状态 DTO；`物性` screen 的上下文工具栏已通过 `window.property_context_toolbar` 消费既有 package / component command 和 property page 状态；`运行` screen 的上下文工具栏已通过 `window.run_context_toolbar` 消费既有 Run Panel command / state、status summary、canvas suggestion count 和运行日志；`结果` screen 的上下文工具栏已通过 `window.result_context_toolbar` 消费既有 Module Results、结果表、Result focus command 和 `SolveSnapshot` 状态；`工具 / 设置` 菜单内容已拆成可测试分组并只消费 shell/window 既有状态。是否把 recent projects 从 shell preferences 上提到正式 snapshot 暂不作为当前 blocker。
+- 代码实现已允许从 presentation / window model 小切片推进，但仍不直接做大规模 egui 布局重排；Module Results DTO 已落到正式 window model 并由右侧 `模块结果` tab 消费，stale snapshot 不渲染旧 unit result；Home 最近项目继续由 shell preferences / recent path 持有，但已映射为同一 case tile DTO 并由 Home Dashboard 消费且人工复核通过；右侧 `模块设置` tab 已消费参数、端口和诊断，帮助入口当前仅表达“无正式 help command”；独立物性页已接入顶部导航并消费既有 Property page DTO，`Package` 不再保留为右侧主入口；底部运行信息已补 `收敛 / 建议` 入口，并已进一步收敛为左侧运行信息 tabs + 右侧 `状态汇总` 分栏；顶部导航已按设计稿收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`，旧打开 / 保存 / 示例按钮不再作为 Workbench 主横排按钮常驻；`流程图` screen 的上下文工具栏已通过 `window.flowsheet_context_toolbar` 消费既有 canvas / run command 和结果 / 状态 DTO；`物性` screen 的上下文工具栏已通过 `window.property_context_toolbar` 消费既有 package / component command 和 property page 状态；`运行` screen 的上下文工具栏已通过 `window.run_context_toolbar` 消费既有 Run Panel command / state、status summary、canvas suggestion count 和运行日志；`结果` screen 的上下文工具栏已通过 `window.result_context_toolbar` 消费既有 Module Results、结果表、Result focus command 和 `SolveSnapshot` 状态；`工具 / 设置` 菜单内容已拆成可测试分组并只消费 shell/window 既有状态。是否把 recent projects 从 shell preferences 上提到正式 snapshot 暂不作为当前 blocker。
 - 任何代码实现都必须继续遵守 presentation / command / state 边界；视觉优化不得绕过正式 UI 模型堆 shell 私有状态。
 
 ## 验证节奏
@@ -106,8 +107,8 @@ Studio UI 专题设计前置目标：
 
 ## 按需阅读
 
-- 最新流水和决策依据：`docs/devlogs/2026-06/2026-W23.md`
-- 上周阶段收口：`docs/devlogs/2026-05/2026-W22.md`
+- 最新流水和决策依据：`docs/devlogs/2026-06/2026-W24.md`
+- 上周阶段收口：`docs/devlogs/2026-06/2026-W23.md`
 - UI 专题设计前置：`docs/architecture/studio-ui-topic-plan.md`
 - MVP β 人工 smoke 与验收标准：`docs/mvp/beta-acceptance-checklist.md`
 - MVP 范围和非目标：`docs/mvp/scope.md`

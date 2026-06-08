@@ -1,6 +1,6 @@
 # RadishFlow MVP Roadmap
 
-更新时间：2026-06-07
+更新时间：2026-06-08
 
 ## 用途
 
@@ -21,7 +21,7 @@
 - MVP β 人工 smoke 与仓库级阶段基线验证已通过；通用小流程建模 v1 已完成普通空白项目主路径复核，而不是继续推进 tag、release notes、便携包或零散 UI 打磨。
 - 通用小流程建模 v1 已完成到第十六切片并通过阶段收口复核：运行按钮、`Resume`、F5 / Shift+F5、AppHost、StudioGuiDriver、StudioGuiHost command registry 等用户可触达运行入口已共用通用 `Flowsheet` readiness，普通空白项目不再自动匹配小案例 gate；`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 已覆盖显式输入、保存 / 重开 / rerun、结果审阅入口、关键结果合理性、单相 Flash 缺席语义、失败态定位、case-level review summary、编辑后旧结果失效语义，以及 Inspector 显示 outlet stream 默认值但缺显式 unit parameter 时的同值提交语义。
 - 阶段性约束已从“围绕 β 验收补覆盖”调整为“已通过阶段只修真实 blocker，下一组推进 Studio UI 专题设计前置和窄口径实现切片”：指定小案例入口、MVP β Smoke A-D 和结果审阅覆盖面不再作为每日 gate。
-- Studio UI 专题当前只允许沿评审后的 `studio-client-main.pen` 与 brief 做窄口径 implementation slices：Home case tile、Property page、status summary、Module Results、Module Settings、右侧栏职责、底部运行信息、顶部导航入口、流程图 / 物性 / 运行 / 结果上下文工具栏，以及 `工具 / 设置` 菜单职责已按既有 DTO / command surface / shell state 分步收敛；仍不做完整 ribbon、完整右侧栏重排、完整参数表、自由连线、完整偏好页或完整报表。
+- Studio UI 专题当前只允许沿评审后的 `studio-client-main.pen` 与 brief 做窄口径 implementation slices：Home case tile、Property page、status summary、Module Results、Module Settings、右侧栏职责、底部运行信息与状态汇总分栏、顶部导航入口、流程图 / 物性 / 运行 / 结果上下文工具栏，以及 `工具 / 设置` 菜单职责已按既有 DTO / command surface / shell state 分步收敛；仍不做完整 ribbon、完整右侧栏重排、完整参数表、自由连线、完整偏好页或完整报表。
 - 当前尚未达到正式 tag / release 节点标准，历史 `v26.5.1-dev` staging 材料不作为当前路线图事实源。
 
 当前不再把路线图作为每日推进清单。今天做什么、当前验证基线、下一阶段和暂不推进项，以 `docs/status/current.md` 为准；MVP α 验收清单保留为内部验收记录，不再作为当前日常推进主线。

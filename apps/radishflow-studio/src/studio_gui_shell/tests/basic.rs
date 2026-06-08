@@ -301,6 +301,33 @@ fn render_bottom_drawer_texts(app: &mut ReadyAppState) -> Vec<String> {
     texts
 }
 
+fn render_bottom_results_table_direct_texts(app: &mut ReadyAppState) -> Vec<String> {
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 640.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                app.render_bottom_results_table(ui, &window);
+            });
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
 fn render_home_dashboard_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
     let window = app.window_model_with_shell_home(&snapshot);
@@ -913,6 +940,67 @@ fn bottom_drawer_tabs_align_with_run_information_roles() {
             texts
         );
     }
+}
+
+#[test]
+fn bottom_workbench_renders_status_summary_as_right_split_role() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    let texts = render_bottom_drawer_texts(&mut app);
+
+    for expected in [
+        "状态汇总",
+        "案例",
+        "运行",
+        "收敛",
+        "步骤",
+        "诊断",
+        "快照",
+        "已保存",
+        "顺序步骤",
+        "无",
+    ] {
+        assert!(
+            texts.iter().any(|text| text == expected),
+            "expected bottom status summary split to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for hidden in [
+        "检查器",
+        "模块设置",
+        "模块结果",
+        "完整报表",
+        "跨快照报表",
+        "收敛曲线",
+    ] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden)),
+            "bottom status summary split must not expose `{hidden}`, rendered texts: {:?}",
+            texts
+        );
+    }
+}
+
+#[test]
+fn bottom_status_summary_split_tracks_current_snapshot_after_run() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+
+    let texts = render_bottom_drawer_texts(&mut app);
+
+    for expected in ["状态汇总", "当前", "已收敛", "步骤", "诊断"] {
+        assert!(
+            texts.iter().any(|text| text == expected),
+            "expected bottom status summary split to render current run `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    assert!(
+        !texts.iter().any(|text| text.contains("迭代")),
+        "bottom status summary must not fabricate iteration data, rendered texts: {:?}",
+        texts
+    );
 }
 
 #[test]
@@ -2057,7 +2145,7 @@ fn bottom_results_table_uses_localized_compact_phase_column() {
     app.dispatch_ui_command("run_panel.run_manual");
     app.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
 
-    let texts = render_bottom_drawer_texts(&mut app);
+    let texts = render_bottom_results_table_direct_texts(&mut app);
 
     assert!(
         texts.iter().any(|text| text == "流股"),

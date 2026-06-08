@@ -1053,6 +1053,30 @@ impl ReadyAppState {
     }
 
     fn render_bottom_workbench(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        let available_width = ui.available_width();
+        let status_summary_width = if available_width >= 960.0 {
+            320.0
+        } else {
+            (available_width * 0.34).clamp(240.0, 320.0)
+        };
+        let run_information_width = (available_width - status_summary_width - 18.0).max(420.0);
+
+        ui.horizontal(|ui| {
+            ui.vertical(|ui| {
+                ui.set_width(run_information_width);
+                self.render_bottom_run_information(ui, window);
+            });
+            ui.add_space(6.0);
+            ui.separator();
+            ui.add_space(6.0);
+            ui.vertical(|ui| {
+                ui.set_width(status_summary_width);
+                self.render_bottom_status_summary_card(ui, window);
+            });
+        });
+    }
+
+    fn render_bottom_run_information(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         ui.horizontal_wrapped(|ui| {
             ui.selectable_value(
                 &mut self.bottom_drawer_tab,
@@ -1107,6 +1131,67 @@ impl ReadyAppState {
                 StudioShellBottomDrawerTab::ResultsTable => {
                     self.render_bottom_results_table(ui, window)
                 }
+            });
+    }
+
+    fn render_bottom_status_summary_card(&self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        egui::Frame::group(ui.style())
+            .inner_margin(egui::Margin::symmetric(10, 8))
+            .show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(
+                        egui::RichText::new(
+                            self.locale
+                                .runtime_label(window.status_summary.title)
+                                .as_ref(),
+                        )
+                        .strong(),
+                    );
+                });
+                ui.add_space(4.0);
+                egui::Grid::new("bottom-status-summary-metrics")
+                    .num_columns(3)
+                    .spacing([8.0, 3.0])
+                    .show(ui, |ui| {
+                        for metric in &window.status_summary.metrics {
+                            ui.small(
+                                egui::RichText::new(
+                                    self.locale.runtime_label(metric.label).as_ref(),
+                                )
+                                .strong(),
+                            );
+                            render_status_chip(
+                                ui,
+                                self.locale.runtime_label(&metric.status_label).as_ref(),
+                                run_status_color(&metric.status_label),
+                            );
+                            if metric.value != metric.status_label {
+                                render_wrapped_small(
+                                    ui,
+                                    self.locale.runtime_label(&metric.value).as_ref(),
+                                );
+                            } else {
+                                ui.small("");
+                            }
+                            ui.end_row();
+                        }
+                    });
+                ui.add_space(4.0);
+                ui.horizontal_wrapped(|ui| {
+                    ui.small(
+                        egui::RichText::new(self.locale.runtime_label("Snapshot").as_ref())
+                            .strong(),
+                    );
+                    render_status_chip(
+                        ui,
+                        self.locale
+                            .runtime_label(window.status_summary.snapshot_consistency_label)
+                            .as_ref(),
+                        context_toolbar_status_color(
+                            window.status_summary.snapshot_consistency_label,
+                        ),
+                    );
+                });
             });
     }
 
@@ -1188,6 +1273,28 @@ impl ReadyAppState {
             );
         });
         ui.add_space(4.0);
+        let current_snapshot = window.runtime.latest_solve_snapshot.as_ref();
+        if let Some(snapshot) = current_snapshot {
+            render_wrapped_label(
+                ui,
+                self.locale.solve_snapshot_primary_summary(
+                    window.runtime.workspace_document.unit_count,
+                    snapshot.diagnostic_count,
+                    snapshot.stream_count,
+                ),
+            );
+            render_wrapped_small(
+                ui,
+                self.locale
+                    .snapshot_identity(&snapshot.snapshot_id, snapshot.sequence),
+            );
+            ui.small(self.locale.solve_snapshot_counts(
+                snapshot.stream_count,
+                snapshot.step_count,
+                snapshot.diagnostic_count,
+            ));
+            ui.add_space(6.0);
+        }
         egui::Grid::new("bottom-convergence-summary")
             .num_columns(3)
             .spacing([8.0, 3.0])
@@ -1214,28 +1321,10 @@ impl ReadyAppState {
                 }
             });
 
-        ui.add_space(6.0);
-        if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
-            render_wrapped_label(
-                ui,
-                self.locale.solve_snapshot_primary_summary(
-                    window.runtime.workspace_document.unit_count,
-                    snapshot.diagnostic_count,
-                    snapshot.stream_count,
-                ),
-            );
-            render_wrapped_small(
-                ui,
-                self.locale
-                    .snapshot_identity(&snapshot.snapshot_id, snapshot.sequence),
-            );
-            ui.small(self.locale.solve_snapshot_counts(
-                snapshot.stream_count,
-                snapshot.step_count,
-                snapshot.diagnostic_count,
-            ));
+        if current_snapshot.is_some() {
             return;
         }
+        ui.add_space(6.0);
         if let Some(failure) = window.runtime.latest_failure.as_ref() {
             self.render_latest_failure_summary(ui, failure);
             return;
@@ -1831,14 +1920,13 @@ fn workbench_bottom_drawer_height(
             {
                 156.0
             } else {
-                132.0
+                156.0
             }
         }
-        StudioShellBottomDrawerTab::RunLog => 156.0,
-        StudioShellBottomDrawerTab::Convergence
-        | StudioShellBottomDrawerTab::Suggestions
-        | StudioShellBottomDrawerTab::Diagnostics
-        | StudioShellBottomDrawerTab::ResultsTable => 190.0,
+        StudioShellBottomDrawerTab::RunLog => 170.0,
+        StudioShellBottomDrawerTab::Convergence => 230.0,
+        StudioShellBottomDrawerTab::ResultsTable => 250.0,
+        StudioShellBottomDrawerTab::Suggestions | StudioShellBottomDrawerTab::Diagnostics => 190.0,
     }
 }
 
