@@ -510,36 +510,33 @@ impl ReadyAppState {
             .show(ctx, |ui| {
                 ui.horizontal_wrapped(|ui| {
                     ui.small(
-                        egui::RichText::new(
-                            self.locale
-                                .runtime_label(window.status_summary.title)
-                                .as_ref(),
-                        )
-                        .strong(),
+                        egui::RichText::new(self.locale.runtime_label("Run").as_ref()).strong(),
                     );
-                    for metric in &window.status_summary.metrics {
-                        if metric.label == "Run" {
-                            render_status_chip(
-                                ui,
-                                self.locale.runtime_label(&metric.status_label).as_ref(),
-                                run_status_color(&metric.status_label),
-                            );
-                            continue;
-                        }
-                        ui.separator();
-                        ui.small(format!(
-                            "{}: {}",
-                            self.locale.runtime_label(metric.label),
-                            self.locale.runtime_label(&metric.value)
-                        ));
+                    if let Some(metric) = window
+                        .status_summary
+                        .metrics
+                        .iter()
+                        .find(|metric| metric.label == "Run")
+                    {
+                        render_status_chip(
+                            ui,
+                            self.locale.runtime_label(&metric.status_label).as_ref(),
+                            run_status_color(&metric.status_label),
+                        );
                     }
                     ui.separator();
+                    ui.small(
+                        egui::RichText::new(self.locale.runtime_label("Snapshot").as_ref())
+                            .strong(),
+                    );
                     render_status_chip(
                         ui,
                         self.locale
                             .runtime_label(window.status_summary.snapshot_consistency_label)
                             .as_ref(),
-                        run_status_color(window.status_summary.snapshot_consistency_label),
+                        context_toolbar_status_color(
+                            window.status_summary.snapshot_consistency_label,
+                        ),
                     );
                     ui.separator();
                     ui.small(self.locale.text(ShellText::UnitsSi));

@@ -353,6 +353,31 @@ fn render_bottom_drawer_texts(app: &mut ReadyAppState) -> Vec<String> {
     texts
 }
 
+fn render_bottom_status_bar_texts(app: &mut ReadyAppState) -> Vec<String> {
+    let snapshot = app.platform_host.snapshot();
+    let window = snapshot.window_model();
+    let ctx = egui::Context::default();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 120.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            app.render_bottom_status_bar(ctx, &window);
+        },
+    );
+
+    let mut texts = Vec::new();
+    for clipped_shape in &output.shapes {
+        collect_shape_texts(&clipped_shape.shape, &mut texts);
+    }
+    texts
+}
+
 fn render_bottom_results_table_direct_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
     let window = snapshot.window_model();
@@ -898,8 +923,10 @@ fn shell_defaults_to_alpha_workbench_layout_regions() {
         "结果表",
         "还没有求解快照。",
         "状态汇总",
-        "案例: 已保存",
-        "收敛: 无",
+        "案例",
+        "已保存",
+        "收敛",
+        "快照",
         "单位: SI",
         "求解器: 顺序模块法",
         "流程图模式",
@@ -1318,6 +1345,98 @@ fn bottom_status_summary_split_tracks_current_snapshot_after_run() {
         "bottom status summary must not fabricate iteration data, rendered texts: {:?}",
         texts
     );
+}
+
+#[test]
+fn workbench_first_viewport_keeps_selection_and_status_roles_separated() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.dispatch_ui_command("inspector.focus_unit:heater-1");
+
+    let center_texts = render_center_stage_texts(&mut app);
+    for expected in ["画布状态", "画布操作", "heater-1", "聚焦"] {
+        assert!(
+            center_texts.iter().any(|text| text == expected),
+            "expected center canvas role to render `{expected}`, rendered texts: {:?}",
+            center_texts
+        );
+    }
+    for hidden in ["画布选择", "状态汇总", "模块设置", "模块结果"] {
+        assert!(
+            !center_texts.iter().any(|text| text.contains(hidden)),
+            "center canvas must not render sidebar or bottom role `{hidden}`, rendered texts: {:?}",
+            center_texts
+        );
+    }
+
+    let right_texts = render_right_sidebar_texts(&mut app);
+    for expected in [
+        "画布选择",
+        "单元",
+        "heater-1",
+        "检查器",
+        "模块设置",
+        "模块结果",
+    ] {
+        assert!(
+            right_texts.iter().any(|text| text == expected),
+            "expected right sidebar role to render `{expected}`, rendered texts: {:?}",
+            right_texts
+        );
+    }
+    assert!(
+        right_texts
+            .iter()
+            .any(|text| text.contains("都跟随这个已选单元")),
+        "expected right sidebar to explain unit-pane coordination, rendered texts: {:?}",
+        right_texts
+    );
+    for hidden in ["状态汇总", "结果表"] {
+        assert!(
+            !right_texts.iter().any(|text| text.contains(hidden)),
+            "right sidebar must not render bottom status role `{hidden}`, rendered texts: {:?}",
+            right_texts
+        );
+    }
+
+    let bottom_texts = render_bottom_drawer_texts(&mut app);
+    for expected in ["状态汇总", "当前", "已收敛", "步骤", "诊断"] {
+        assert!(
+            bottom_texts.iter().any(|text| text == expected),
+            "expected bottom workbench role to render `{expected}`, rendered texts: {:?}",
+            bottom_texts
+        );
+    }
+    for hidden in ["画布选择", "检查器", "模块设置", "模块结果"] {
+        assert!(
+            !bottom_texts.iter().any(|text| text.contains(hidden)),
+            "bottom workbench must not render right sidebar role `{hidden}`, rendered texts: {:?}",
+            bottom_texts
+        );
+    }
+
+    let status_texts = render_bottom_status_bar_texts(&mut app);
+    for expected in [
+        "运行",
+        "当前",
+        "单位: SI",
+        "求解器: 顺序模块法",
+        "流程图模式",
+        "单元已选择: heater-1",
+    ] {
+        assert!(
+            status_texts.iter().any(|text| text == expected),
+            "expected thin status bar to render `{expected}`, rendered texts: {:?}",
+            status_texts
+        );
+    }
+    for hidden in ["状态汇总", "案例", "收敛", "步骤", "诊断"] {
+        assert!(
+            !status_texts.iter().any(|text| text == hidden),
+            "thin status bar must not duplicate full status summary item `{hidden}`, rendered texts: {:?}",
+            status_texts
+        );
+    }
 }
 
 #[test]

@@ -32,7 +32,7 @@
 | 左侧模块 / 项目 | Studio shell 左侧顶层入口已从 `项目 / 示例项目 / 放置` 收敛为 `模块 / 项目`；`模块` 继续消费既有 Canvas place-unit palette、authoring checklist 和 suggestion action，并已按 `流股源 / 调节单元 / 汇合与分离` 分类现有受控单元，支持本地筛选；`项目` 已整理为 `项目输入 / 示例入口 / 对象树 / 审阅状态`，继续消费项目对象树、项目物性包 / 组分扫读、示例入口和当前 run / snapshot 状态 | 完整模块库、完整项目浏览器、自由连线、自动布线和完整拖拽布局尚未进入范围 |
 | 中央 Canvas | 中央 Canvas 已移除重复的对象树副本，改为从既有 canvas presentation 派生 `画布状态` 数量概览；首屏已从独立 `选择 / 视口` 详情行收束为 `画布状态` 与 `画布操作`：状态行承接对象数量、运行状态、视口模式、布局状态和 `适应内容` 命令，操作条承接选中对象的聚焦、移动、断开、重连和删除命令；画布主体继续渲染工具条、图例、单元 / 物料线实体和受控建议，流股 / 单元对象导航由左侧 `项目` 面板和画布实体点击承担，选择语义详情由右侧栏承接 | 自由连线、自动布线、完整项目浏览器、完整拖拽布局、完整工具条体系、shell 私有对象状态和第二套对象树尚未进入范围 |
 | 独立物性页 | `StudioGuiWindowPropertyPageModel` 从 `workspace_document.property_package_choices`、`project_component_choices` 和已选 package / components 派生 package、component、metric 和 future section；Studio shell 已新增顶部 `主页 / 物性 / 流程图` 导航，独立 `物性` screen 消费同一 DTO；缺 package / 项目组分 readiness 聚焦该页面；命令仍走既有 package / component command id；右侧栏已移除 Package 主入口；顶部导航下方已新增 `window.property_context_toolbar`，只渲染当前可用 package / component 命令和 package / component / source 状态 | 物性页长期分析控件、更完整视觉重排、完整组分数据库、第三方物性包加载、完整 Thermodynamics PMC 和完整参数表尚未进入范围 |
-| 底部运行信息 / 状态汇总 | `StudioGuiWindowStatusSummaryModel` 从 document saved/revision、run panel view、latest current-revision `SolveSnapshot`、stale snapshot 或 latest failure 派生；底部抽屉已收敛为左侧 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 与右侧 `状态汇总` 分栏，其中 `收敛` 消费 status summary 与 snapshot 状态，`建议` 消费 Run Panel notice 和 canvas suggestions，右侧状态汇总只消费同一 DTO 的 case、run、convergence、steps、diagnostics 和 snapshot 一致性 | 完整收敛曲线、完整建议系统、完整报表和跨快照报表尚未进入范围 |
+| 底部运行信息 / 状态汇总 | `StudioGuiWindowStatusSummaryModel` 从 document saved/revision、run panel view、latest current-revision `SolveSnapshot`、stale snapshot 或 latest failure 派生；底部抽屉已收敛为左侧 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 与右侧 `状态汇总` 分栏，其中 `收敛` 消费 status summary 与 snapshot 状态，`建议` 消费 Run Panel notice 和 canvas suggestions，右侧状态汇总只消费同一 DTO 的 case、run、convergence、steps、diagnostics 和 snapshot 一致性；底部薄状态栏只展示 run、snapshot、SI 单位、求解器、流程图模式和当前选择扫读，不再重复完整状态汇总 | 完整收敛曲线、完整建议系统、完整报表和跨快照报表尚未进入范围 |
 | 右侧 Inspector / Module Settings | 右侧栏主入口已收敛为 `检查器 / 模块设置 / 模块结果`，并在三入口正文前用同一 `画布选择` 上下文头消费 Canvas current selection / command presentation；`检查器` 继续消费 active inspector detail；`StudioGuiWindowModuleSettingsModel` 已从 active unit Inspector detail 派生参数字段、端口、连接动作、诊断动作和空帮助状态，并由右侧 `模块设置` tab 消费；流股选择时模块设置保持已有 unit-only 空状态 | help command 还没有正式 command surface；完整视觉重排、完整参数表和第二套对象状态尚未进入范围 |
 | Module Results | `StudioGuiWindowModuleResultsModel` 已从 current-revision `SolveSnapshot` 派生 selected unit result、consumed / produced stream chips、related steps、diagnostics 和 diagnostic actions；右侧 `模块结果` tab 已消费该 DTO，stale snapshot 不渲染旧 unit result；右侧 `画布选择` 上下文只说明当前 Canvas 选择，流股选择不伪造单元结果；旧 `Run` 不在右侧栏继续扩展，运行日志 / 消息 / 结果表继续由底部区域承接 | 尚未新增独立模块结果页或画布模块详情标签页；完整报表、跨快照结果和第二套结果状态仍不进入范围 |
 
@@ -48,7 +48,7 @@
 - 左侧栏稳定为 `模块 / 项目`：模块页中物料流在上方，单元操作按分类折叠；项目页负责项目输入、示例入口、对象树和审阅状态。
 - 中央画布采用类似 IDE 的可切换标签页，保留轻量画布状态条和浮动工具条，项目对象树留在左侧 `项目` 面板。
 - 右侧栏稳定为 `检查器 / 模块设置 / 模块结果`，不保留独立 `运行` 或 `物性` tab。
-- 底部拆成左右两栏：左侧为运行日志、收敛、建议、诊断等 tabs；右侧为当前案例状态汇总。
+- 底部拆成左右两栏：左侧为运行日志、收敛、建议、诊断等 tabs；右侧为当前案例状态汇总；薄状态栏只做窗口级扫读。
 - 所有状态必须能映射到既有 presentation / command / state 模型，不新增第二套 UI 真相源。
 
 ## 顶部导航
