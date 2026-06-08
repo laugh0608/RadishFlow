@@ -1,6 +1,6 @@
 # Versioning And Release
 
-更新时间：2026-05-25
+更新时间：2026-06-08
 
 ## 目标
 
@@ -10,10 +10,10 @@
 
 - RadishFlow 对外版本如何命名
 - 哪些 tag 未来可视为规范发布 tag
-- CI 当前对哪些 tag 自动响应
+- CI/CD 当前在什么分支或手动入口响应
 - 当前阶段如何处理“项目发布版本”和“workspace 内部 crate 版本”的关系
 
-当前补充口径：截至 2026-05-25，RadishFlow 尚未达到正式 tag / release 节点标准。本文档保留未来版本命名和 CI 响应规则，但不要求也不鼓励为普通内部 smoke、历史 staging 或日常开发创建 tag。
+当前补充口径：截至 2026-06-08，RadishFlow 尚未达到正式 tag / release 节点标准。本文档保留未来版本命名规则，但当前不要求也不鼓励为普通内部 smoke、历史 staging 或日常开发创建 tag；CI/CD 自动入口只放在 `dev -> master/main` 稳定化 PR。
 
 ## 参考来源
 
@@ -100,29 +100,27 @@ vYY.M.RELEASE.DDXX
 
 当前仓库自动化口径冻结为：
 
-- `pull_request -> master`
-  - 由 `PR Checks` workflow 执行 `Repo Hygiene` 与 `Rust Baseline`
-- `push tag -> v*-dev`
-  - 由 `Release Checks` workflow 执行 `Repo Hygiene` 与 `Rust Baseline`
-- `push tag -> v*-test`
-  - 由 `Release Checks` workflow 执行 `Repo Hygiene` 与 `Rust Baseline`
-- `push tag -> v*-release`
-  - 由 `Release Checks` workflow 执行 `Repo Hygiene` 与 `Rust Baseline`
+- `pull_request -> master/main`
+  - 由 `PR Checks` workflow 执行 `Repo Hygiene`、三平台 `Rust Baseline`、Windows `.NET Adapter Baseline` 与 `Windows Staging Package`
+  - 这是当前唯一自动 CI/CD 入口，面向 `dev -> master/main` 的阶段稳定化合并
 - `workflow_dispatch`
-  - 允许手动触发 `Release Checks` 补跑同一组检查
+  - 允许手动触发 `Release Checks` 补跑同一组 staging preflight，并可指定 staging package version
 
 当前补充口径：
 
-- `master` ruleset 要求的状态检查固定为 `Repo Hygiene` 与 `Rust Baseline`
+- `master` / `main` ruleset 要求的状态检查固定为 `Repo Hygiene`、三平台 `Rust Baseline`、`.NET Adapter Baseline` 与 `Windows Staging Package`
 - GitHub 对 Actions required status checks 当前按 job 名匹配，不看 workflow 前缀或事件后缀
 - 当前向 Radish 对齐为拆分式门禁，但不引入当前仓库暂不存在的 Frontend Lint 或 pull_request -> dev 默认门禁
 - 仓库检查正式由 Rust `xtask` 实现，`.ps1` 与 `.sh` 只保留为调用包装层
-- 不再让 PR 检查与 tag / 手动检查共用同一个 workflow 名称，避免 required check 名称与实际上报名漂移
+- `.NET Adapter Baseline` 通过 `scripts/check-dotnet-capeopen.ps1` 在 Windows runner 上验证 `rf-ffi` native build、`.NET` solution build、contract tests 和 smoke tests，不执行 COM 注册或注册表写入
+- `Windows Staging Package` 通过 `scripts/package.ps1` 产出 portable staging package artifact，不创建 GitHub Release，也不发布安装包
+- 不再让 PR 检查与手动 staging 检查共用同一个 workflow 名称，避免 required check 名称与实际上报名漂移
 
 当前明确不做：
 
 - 不对普通 `push -> dev` 自动执行该工作流
-- 不对未带轨道后缀的普通 `v*` tag 自动触发
+- 不对 `pull_request -> dev` 自动执行该工作流
+- 不对任何 `v*` tag push 自动触发 CI/CD；规范 tag 只保留为未来正式发布节点口径
 
 ## 当前阶段的版本边界
 

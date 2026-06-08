@@ -5,10 +5,11 @@ param(
 
     [string]$NativeLibDir,
 
-    [ValidateSet('all', 'session', 'recovery', 'shutdown')]
-    [string]$UnitOpScenario = 'all',
+    [switch]$SkipNativeBuild,
 
-    [switch]$SkipBuild
+    [switch]$SkipDotnetBuild,
+
+    [switch]$SkipSmoke
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,7 +31,7 @@ function Get-RepositoryRoot {
         $current = $parent
     }
 
-    throw 'Could not locate repository root from scripts/smoke-test.ps1.'
+    throw 'Could not locate repository root from scripts/check-dotnet-capeopen.ps1.'
 }
 
 function Invoke-CheckedCommand {
@@ -51,7 +52,7 @@ function Invoke-CheckedCommand {
 
 if (-not [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform(
         [System.Runtime.InteropServices.OSPlatform]::Windows)) {
-    throw '.NET CAPE-OPEN smoke currently requires a Windows runner because it loads the Windows rf-ffi native library.'
+    throw '.NET CAPE-OPEN baseline currently requires a Windows runner because ContractTests target net10.0-windows7.0 and validate COM-facing surfaces.'
 }
 
 $repoRoot = Get-RepositoryRoot
@@ -69,34 +70,47 @@ if ([string]::IsNullOrWhiteSpace($NativeLibDir)) {
 }
 
 $NativeLibDir = [System.IO.Path]::GetFullPath($NativeLibDir)
-$smokeProject = Join-Path $repoRoot 'adapters\dotnet-capeopen\RadishFlow.CapeOpen.SmokeTests\RadishFlow.CapeOpen.SmokeTests.csproj'
+$solutionPath = Join-Path $repoRoot 'adapters\dotnet-capeopen\RadishFlow.CapeOpen.sln'
+$contractProject = Join-Path $repoRoot 'adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.csproj'
 
-if (-not $SkipBuild) {
+if (-not $SkipNativeBuild) {
     $cargoArgs = @('build', '-p', 'rf-ffi')
     if ($Configuration -eq 'Release') {
         $cargoArgs += '--release'
     }
 
     Invoke-CheckedCommand -Command 'cargo' -Arguments $cargoArgs
-    Invoke-CheckedCommand -Command 'dotnet' -Arguments @('build', $smokeProject, '-c', $Configuration, '--nologo')
 }
 
 if (-not (Test-Path -LiteralPath $NativeLibDir)) {
     throw "Native library directory was not found: $NativeLibDir"
 }
 
+if (-not $SkipDotnetBuild) {
+    Invoke-CheckedCommand -Command 'dotnet' -Arguments @('build', $solutionPath, '-c', $Configuration, '--nologo')
+}
+
 Invoke-CheckedCommand -Command 'dotnet' -Arguments @(
     'run',
     '--project',
-    $smokeProject,
+    $contractProject,
     '-c',
     $Configuration,
     '--no-build',
     '--',
     '--native-lib-dir',
-    $NativeLibDir,
-    '--unitop-scenario',
-    $UnitOpScenario
+    $NativeLibDir
 )
 
-Write-Host '.NET CAPE-OPEN smoke passed.'
+if (-not $SkipSmoke) {
+    $smokeArgs = @('-Configuration', $Configuration, '-NativeLibDir', $NativeLibDir, '-SkipBuild')
+    $pwshArgs = @(
+        '-NoProfile',
+        '-File',
+        (Join-Path $repoRoot 'scripts\smoke-test.ps1')
+    ) + $smokeArgs
+
+    Invoke-CheckedCommand -Command 'pwsh' -Arguments $pwshArgs
+}
+
+Write-Host '.NET CAPE-OPEN baseline passed.'

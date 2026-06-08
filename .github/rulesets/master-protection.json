@@ -55,6 +55,12 @@
           },
           {
             "context": "Rust Baseline (Windows)"
+          },
+          {
+            "context": ".NET Adapter Baseline"
+          },
+          {
+            "context": "Windows Staging Package"
           }
         ],
         "strict_required_status_checks_policy": true
