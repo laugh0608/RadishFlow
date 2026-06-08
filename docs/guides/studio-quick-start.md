@@ -20,15 +20,15 @@
 截至 2026-06-08，Studio 当前已经具备以下主路径能力：
 
 - 启动后默认进入中文 Home Dashboard，可从 `开始 / 最近项目 / 示例项目 / 环境 / 消息` 分区判断从哪里开始
-- 新建未命名空白项目，并从受控内置列表显式选择 `binary-hydrocarbon-lite-v1` 与 `methane / ethane` 后进入最短建模路径
+- 新建未命名空白项目后先进入独立 `物性` 页，并从受控内置列表显式选择 `binary-hydrocarbon-lite-v1` 与 `methane / ethane`，再进入最短建模路径
 - 打开已有 `*.rfproj.json` 项目
 - 通过首页 `新建项目`、`打开项目`、`打开示例项目` 或进入工作台后的 `文件` 菜单切换项目
 - 通过首页 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例` 从空白项目进入对应作者路径，并在左侧 `模块` 面板查看任务清单
-- 最近项目和示例项目使用统一 case tile 展示：tile 包含轻量流程缩影、路径 / 来源、物性包、组分摘要和 `Ready / Current / Missing file` 状态；单击选择，双击打开，文件缺失时只降级对应 tile 状态，不阻断首页
+- 最近项目、当前工作区和示例项目使用统一 case tile 展示：tile 包含轻量流程缩影、路径 / 来源、物性包、组分摘要和 `Ready / Current / Missing file` 状态；当前工作区 tile 只从当前 `workspace_document` 派生，不把未保存项目写入 recent projects；单击选择，双击打开，文件缺失时只降级对应 tile 状态，不阻断首页
 - 进入项目后顶部导航收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；新建、打开、保存和另存为进入 `文件`，命令面板、Commands 面板和逻辑窗口进入 `工具`，语言进入 `设置`
 - 运行仓库内或便携 staging 内的 official hydrocarbon 正向示例 flowsheet
 - 在独立 `物性` 页维护当前受控物性包和项目组分；进入 `流程图` 后使用左侧 `模块 / 项目`、中央 `Canvas`、右侧 `检查器 / 模块设置 / 模块结果` 和底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 完成当前 MVP 建模与结果核对工作流；`模块` 面板已按 `流股源 / 调节单元 / 汇合与分离` 组织受控单元并支持本地筛选，`项目` 面板已按 `项目输入 / 示例入口 / 对象树 / 审阅状态` 分区，中央 Canvas 保留 `画布状态`、工具条、选择、视口、图例、画布实体和受控建议，不再重复项目对象树
-- `物性 / 流程图 / 运行 / 结果` screen 会在顶部导航下方显示上下文工具栏，只渲染已有 presentation / command / state 中可用的入口和状态
+- `物性 / 流程图 / 运行 / 结果` screen 会在顶部导航下方显示上下文工具栏，只渲染已有 presentation / command / state 中可用的入口和状态；`物性` 工具栏会用同一 Property page DTO 显示 package、项目组分和进入流程图建模 readiness
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
 - 选中单元时，右侧 `检查器` 的单元区域窄口径消费 `Module Settings` presentation：只显示正式 active inspector 来源的参数字段、端口、连接动作、诊断动作和帮助空状态
 - 选中单元并存在当前 revision 的最新结果时，右侧 `模块结果` 窄口径消费 `Module Results` presentation：显示该单元 latest result、consumed / produced stream、关联步骤和诊断；若结果过期，不继续渲染旧单元结果
@@ -138,7 +138,7 @@ cargo run -p radishflow-studio
 启动后，第一视野是 Home Dashboard，而不是直接进入某个项目的画布。首页的稳定分区如下：
 
 - `开始`：`新建项目`、`创建 Mixer-Flash 小案例`、`创建 Heater-Flash 小案例`、`打开项目`、`打开示例项目`
-- `最近项目`：显示最近项目 tile、流程缩影、路径摘要、物性包、组分和就绪 / 当前 / 缺失状态；单击选择，双击打开
+- `最近项目`：显示当前工作区和最近项目 tile、流程缩影、路径摘要、物性包、组分和就绪 / 当前 / 缺失状态；单击选择，双击打开。当前工作区 tile 是返回当前文档的入口，未保存项目不会因此写入 recent projects，保存过的当前项目也不会通过 recent path 重新打开自身
 - `示例项目`：显示内置示例 tile、流程缩影、流程摘要、组分和物性包；单击选择，双击打开
 - `环境`：显示客户端、服务端和设备三组摘要
 - `消息`：显示登录、示例目录、物性包缓存等可行动摘要
@@ -169,9 +169,9 @@ cargo run -p radishflow-studio
 - `工具`：命令面板、Commands 面板显示 / 隐藏、逻辑窗口入口
 - `设置`：当前只放语言切换
 
-当前 screen 是 `物性 / 流程图 / 运行 / 结果` 时，顶部导航下方会显示对应上下文工具栏。它们只消费已有 DTO、command registry、Run Panel state、Module Results、结果表状态和 shell layout state，不新增第二套项目、物性、运行、结果或诊断真相源。
+当前 screen 是 `物性 / 流程图 / 运行 / 结果` 时，顶部导航下方会显示对应上下文工具栏。它们只消费已有 DTO、command registry、Run Panel state、Module Results、结果表状态和 shell layout state，不新增第二套项目、物性、运行、结果或诊断真相源。普通空白项目在 package 和至少一个项目组分选齐前，顶部 `流程图` 入口会保持不可用；可用性和 hover 说明来自同一个 `StudioGuiWindowPropertyPageModel`。
 
-新建或打开项目后，左侧 `项目` 面板会显示当前 `物性包` 和 `项目组分` 摘要；独立 `物性` 页提供同一组受控项目级输入入口和本地包摘要。MVP β 建模输入 v0 只提供受控内置 `binary-hydrocarbon-lite-v1` 物性包和 methane / ethane 组分目录；空白项目初始不预选，选择后分别写入 `Flowsheet.thermo.property_package_id` 与 `Flowsheet.components`，并决定 Stream Inspector 中 Feed composition 可添加的组分。
+新建普通空白项目后会先进入独立 `物性` 页；打开项目或示例后，左侧 `项目` 面板会显示当前 `物性包` 和 `项目组分` 摘要。独立 `物性` 页提供同一组受控项目级输入入口、本地包摘要和 `进入流程图建模` 状态。MVP β 建模输入 v0 只提供受控内置 `binary-hydrocarbon-lite-v1` 物性包和 methane / ethane 组分目录；空白项目初始不预选，选择后分别写入 `Flowsheet.thermo.property_package_id` 与 `Flowsheet.components`，并决定 Stream Inspector 中 Feed composition 可添加的组分。
 
 命令面板默认不占据第一视野。它不是功能移除，而是把低频、调试型入口和窗口工具从主工作流移到 `工具`。
 
@@ -179,16 +179,17 @@ cargo run -p radishflow-studio
 
 如果不想先打开示例，可以直接走当前最小空白建模路径：
 
-1. 在首页点击 `新建项目`，或进入工作台后从顶部 `文件` 菜单点击 `新建空白`。
-2. 在左侧 `项目` 或顶部 `物性` 页中选择 `binary-hydrocarbon-lite-v1`，再选择 methane / ethane 项目组分。
-3. 在左侧切到 `模块`，用 `放置进料`、`放置闪蒸罐` 或 `放置加热器 / 放置冷却器 / 放置阀门 / 放置混合器` 开始放置单元。
-4. 在 Canvas 中点击落点提交当前放置意图。
-5. 使用 Canvas 上的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` suggestion 补齐端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
-6. 在左侧 `项目` 的 `对象树` 中选择 stream / unit，或直接点击 Canvas 中的单元 / 物料线，右侧 `检查器` 会切到对应对象。
-7. 在流股检查器中编辑 `T / P / F` 和组成草稿；字段提交、全部应用、组成归一化都是显式动作。
-8. 选中 `Feed / Heater / Cooler / Mixer / Valve / Flash Drum` 时，可在单元检查器 / Module Settings 中编辑已暴露的 source temperature、source pressure、outlet temperature、outlet pressure、flash temperature 或 flash pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。若字段当前显示的是 outlet stream 模板值或内置默认值，但对应 unit parameter 尚未显式提交，即使输入值与显示值相同，也应提交一次，让正式 `SetUnitParameter` 写入项目文档。字段来源与 readiness 关系见 `docs/reference/units-and-conventions.md`。
-9. 若流股错连或漏连，先选中该 material stream，再使用 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 或 `Delete stream` 这组受控恢复动作；`Reconnect stream` 只在单端唯一候选且不会形成 unit dependency cycle 时可用。
-10. 在 `流程图` 或 `运行` 上下文工具栏点击 `运行当前流程`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐后，结果只从当前 revision 的最新 `SolveSnapshot` 展示到顶部 `结果` screen、右侧 `模块结果`、底部 `结果表`、Results commands 和轻量导出的 `Review` 摘要。正式物性包解析失败、结构性连接错误、拓扑错误和求解阶段参数失败继续由 Run Panel 诊断 / recovery 承载。
+1. 在首页点击 `新建项目`，或进入工作区后从顶部 `文件` 菜单点击 `新建空白`。
+2. Studio 会进入未命名空白项目的独立 `物性` 页。选择 `binary-hydrocarbon-lite-v1`，再选择 methane / ethane 项目组分。
+3. 当 `物性` 上下文工具栏中的 `进入流程图建模` 变为可用时，点击它，或点击顶部 `流程图`，进入建模工作台。空 flowsheet 会把建模入口聚焦到左侧 `模块` 面板；左侧 `项目` 面板继续扫读项目输入、对象树和审阅状态。
+4. 在左侧 `模块` 中用 `放置进料`、`放置闪蒸罐` 或 `放置加热器 / 放置冷却器 / 放置阀门 / 放置混合器` 开始放置单元。
+5. 在 Canvas 中点击落点提交当前放置意图。
+6. 使用 Canvas 上的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` suggestion 补齐端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
+7. 在左侧 `项目` 的 `对象树` 中选择 stream / unit，或直接点击 Canvas 中的单元 / 物料线，右侧 `检查器` 会切到对应对象。
+8. 在流股检查器中编辑 `T / P / F` 和组成草稿；字段提交、全部应用、组成归一化都是显式动作。
+9. 选中 `Feed / Heater / Cooler / Mixer / Valve / Flash Drum` 时，可在单元检查器 / Module Settings 中编辑已暴露的 source temperature、source pressure、outlet temperature、outlet pressure、flash temperature 或 flash pressure 字段；字段会显示 SI 单位和约束提示，提交后写回项目参数，并同步对应 outlet stream 模板。若字段当前显示的是 outlet stream 模板值或内置默认值，但对应 unit parameter 尚未显式提交，即使输入值与显示值相同，也应提交一次，让正式 `SetUnitParameter` 写入项目文档。字段来源与 readiness 关系见 `docs/reference/units-and-conventions.md`。
+10. 若流股错连或漏连，先选中该 material stream，再使用 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 或 `Delete stream` 这组受控恢复动作；`Reconnect stream` 只在单端唯一候选且不会形成 unit dependency cycle 时可用。
+11. 在 `流程图` 或 `运行` 上下文工具栏点击 `运行当前流程`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐后，结果只从当前 revision 的最新 `SolveSnapshot` 展示到顶部 `结果` screen、右侧 `模块结果`、底部 `结果表`、Results commands 和轻量导出的 `Review` 摘要。正式物性包解析失败、结构性连接错误、拓扑错误和求解阶段参数失败继续由 Run Panel 诊断 / recovery 承载。
 
 当前连接仍通过本地 suggestion 和正式 `DocumentCommand` 完成，不是自由拉线编辑器；单元参数编辑也仍限制在上述 MVP 已暴露字段，不等同于完整单元参数表。Module Settings 的帮助区目前只表达“暂无正式模块帮助命令”，不会临时伪造 help action。
 

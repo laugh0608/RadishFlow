@@ -1,6 +1,6 @@
 # Author Small Cases
 
-更新时间：2026-06-07
+更新时间：2026-06-08
 
 ## 用途
 
@@ -43,11 +43,13 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 
 空白项目不会预写默认物性包或默认组分。开始放置单元前，先完成项目级输入选择：
 
-- 左侧 `项目` 面板直接显示当前物性包和 `项目组分`；未选择时会显示可选的内置项。
-- 顶部 `物性` 页也提供同一受控组分选择入口和内置 package 选择入口。
+- 顶部 `物性` 页提供正式的受控组分选择入口、内置 package 选择入口和 `进入流程图建模` readiness。
+- 左侧 `项目` 面板显示当前物性包和 `项目组分` 摘要，供建模时扫读；项目级输入编辑仍以独立 `物性` 页和同一 command surface 为准。
 - 选择 `binary-hydrocarbon-lite-v1` 会写入 `Flowsheet.thermo.property_package_id`。
 - 选择 methane / ethane 会写入 `Flowsheet.components`；Stream Inspector 中的 composition 添加动作只从这份项目组分列表派生。
 - Feed composition 的数值修改仍在选中对应 stream 后，通过右侧 `检查器` 的字段草稿、`Normalize composition` 和提交命令完成。
+
+小案例作者入口会直接进入 Workbench 并打开左侧 `模块` 清单；如果尚未选 package / 项目组分，先从顶部 `物性` 返回独立物性页完成选择，再通过 `进入流程图建模` 或顶部 `流程图` 回到建模工作台。
 
 ## β 第二刀验收口径
 
@@ -87,8 +89,8 @@ Flash Drum -> liquid / vapor
 建议步骤：
 
 1. 在 Home 点击 `创建 Mixer-Flash 小案例`。
-2. 在左侧 `项目` 或顶部 `物性` 页中选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane。
-3. 在 `模块` 面板依次放置两个 `Feed`、一个 `Mixer`、一个 `Flash Drum`。
+2. 打开顶部 `物性` 页，选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane；`进入流程图建模` 可用后返回 `流程图`。
+3. 在左侧 `模块` 面板依次放置两个 `Feed`、一个 `Mixer`、一个 `Flash Drum`。
 4. 为两个 `Feed` 分别接受 `Create stream` suggestion，创建出口流股。
 5. 为 `Mixer` 接受两个 `Connect stream` suggestion，把两个 Feed outlet 接到 `inlet_a / inlet_b`。
 6. 接受 `Mixer` 的 `Create stream` suggestion，创建 mixer outlet。
@@ -147,8 +149,8 @@ Flash Drum -> liquid / vapor
 建议步骤：
 
 1. 在 Home 点击 `创建 Heater-Flash 小案例`。
-2. 在左侧 `项目` 或顶部 `物性` 页中选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane。
-3. 在 `模块` 面板依次放置一个 `Feed`、一个 `Heater`、一个 `Flash Drum`。
+2. 打开顶部 `物性` 页，选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane；`进入流程图建模` 可用后返回 `流程图`。
+3. 在左侧 `模块` 面板依次放置一个 `Feed`、一个 `Heater`、一个 `Flash Drum`。
 4. 为 `Feed` 接受 `Create stream` suggestion，创建出口流股。
 5. 为 `Heater` 接受 `Connect stream` suggestion，把 Feed outlet 接到 heater inlet。
 6. 接受 `Heater` 的 `Create stream` suggestion，创建 heater outlet。

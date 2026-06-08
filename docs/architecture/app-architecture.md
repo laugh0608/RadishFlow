@@ -47,7 +47,7 @@
 - 负责 `AuthSessionState` / `EntitlementState` 与 `StoredAuthCacheIndex` 之间的桥接与同步
 - 负责控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的协议映射、下载租约与本地缓存落盘编排
 - 负责从 `PropertyPackageProvider` 或本地 auth cache 组装最小真实求解链路，并把 `rf-solver::SolveSnapshot` 回写到 `rf-ui::AppState`
-- 负责把 Studio shell 入口组织为可复现的 MVP α / β 工作流：默认显示 Home，可从空白项目进入小案例作者路径，进入 case 后暴露主路径命令
+- 负责把 Studio shell 入口组织为可复现的 MVP α / β 工作流：默认显示 Home，普通空白项目先进入独立 `物性` 页，小案例作者入口可从空白项目直接进入左侧 `模块` 清单，进入 case 后暴露主路径命令
 - 负责让 `流程图` / `运行` 上下文工具栏、Run Panel `Resume`、`F5 / Shift+F5`、AppHost、StudioGuiDriver、StudioGuiHost command registry 等正式运行入口复用同一层建模输入 readiness；shell 只负责 notice、focus 和用户反馈，不在各入口复制另一套输入判断
 - 负责在 GUI shell 层提供用户操作与求解审计输出；默认 stderr 日志只作为开发态 smoke 和诊断入口，不替代未来正式审计 / telemetry 设计
 - 负责遵守 `eframe` / `winit` 事件循环约束：Windows 事件循环在主线程创建；干净最后窗口 close 不得被 `CancelClose` 拦截，关闭前清理逻辑窗口并停止当帧 fallback 布局；脏工作区 close 必须先确认保存 / 舍弃 / 取消
@@ -66,12 +66,12 @@
 Studio 首页、工作台分区、运行后结果视图和 Home 项目切换确认流程已落地。shell UI 边界按以下稳定入口治理：
 
 - Home Dashboard：应用启动后的默认首页，只承载 Start actions、Recent Cases、Example Cases、Environment 和 Messages；不读取 `SolveSnapshot`，不直接承载流程图编辑。
-- Home 项目入口：左侧 Start actions 保留 `新建项目`、小案例作者入口、`打开项目`、`打开示例项目`；最近项目和示例项目统一由 `StudioGuiWindowHomeCaseTileModel` 承载流程缩影、路径 / 来源、物性包、组分、状态与双击打开。小案例作者入口只创建空白项目并切到 `模块`，清单只读 canvas，不生成 flowsheet、不写项目、不进 undo。
+- Home 项目入口：左侧 Start actions 保留 `新建项目`、小案例作者入口、`打开项目`、`打开示例项目`；`新建项目` 创建普通空白项目后先进入独立 `物性` 页，小案例作者入口只创建空白项目并切到 `模块`，清单只读 canvas，不生成 flowsheet、不写项目、不进 undo。最近项目、当前工作区和示例项目统一由 `StudioGuiWindowHomeCaseTileModel` 承载流程缩影、路径 / 来源、物性包、组分、状态与双击打开；当前工作区 tile 只从当前 `workspace_document` 派生，不写入 recent projects，保存过的当前项目也应直接返回当前 workspace，而不是通过 recent path 重新打开自身。
 - 未保存确认：新建、打开或 case tile 双击时，若有未保存变更，必须先进入继续 / 取消确认。
-- 顶部导航：进入 case 后第一层只保留 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` 八个主入口、当前项目摘要和必要状态，不把调试计数和菜单全集置于第一视野。
+- 顶部导航：进入 case 后第一层只保留 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` 八个主入口、当前项目摘要和必要状态，不把调试计数和菜单全集置于第一视野。普通空白项目选齐 package 和至少一个项目组分前，`流程图` 入口不可用；禁用原因必须来自 Property page DTO 的同一 readiness，而不是 shell 私有判断。
 - 操作入口：新建空白、打开示例、打开项目、保存和另存为进入 `文件`；`主页 / 物性 / 流程图 / 运行 / 结果` 是主 screen；命令面板、Commands 面板显示 / 隐藏和逻辑窗口进入 `工具`；`设置` 当前只承载语言切换。
-- 上下文工具栏：`物性 / 流程图 / 运行 / 结果` screen 下方分别消费 `window.property_context_toolbar`、`window.flowsheet_context_toolbar`、`window.run_context_toolbar` 和 `window.result_context_toolbar`。这些 DTO 只从已有 property page、command registry、Run Panel state、Module Results、结果表状态、Canvas suggestion / layout state 和 `SolveSnapshot` 状态派生，不新增第二套项目、物性、运行、结果或诊断真相源。
-- 工作台分区：左侧收敛为 `模块 / 项目`，其中 `模块` 负责 MVP 放置入口、作者任务清单和画布建议；现有受控单元按 `流股源 / 调节单元 / 汇合与分离` 从 Canvas place-unit palette 分类渲染，并提供本地筛选，命令仍由正式 palette option 派发。`项目` 负责项目输入、示例入口、对象树和审阅状态；`项目` 面板可直接扫读受控物性包、项目组分、流股 / 单元对象、结果和诊断，空白项目不隐式预选求解输入。`物性` 是独立 screen，不再作为右侧 tab；右侧为 `检查器 / 模块设置 / 模块结果` tabs，`模块设置` 消费 `StudioGuiWindowModuleSettingsModel`，`模块结果` 消费 `StudioGuiWindowModuleResultsModel`。底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 承接可行动消息、运行日志、收敛摘要、suggestion、诊断和表格结果。
+- 上下文工具栏：`物性 / 流程图 / 运行 / 结果` screen 下方分别消费 `window.property_context_toolbar`、`window.flowsheet_context_toolbar`、`window.run_context_toolbar` 和 `window.result_context_toolbar`。`物性` 工具栏从 `StudioGuiWindowPropertyPageModel` 派生 package、component 和 `Modeling` 分组，`Enter Flowsheet Modeling` 的可用性、状态和说明与顶部 `流程图` 导航共用同一 `flowsheet_modeling_enabled` / detail。这些 DTO 只从已有 property page、command registry、Run Panel state、Module Results、结果表状态、Canvas suggestion / layout state 和 `SolveSnapshot` 状态派生，不新增第二套项目、物性、运行、结果或诊断真相源。
+- 工作台分区：左侧收敛为 `模块 / 项目`，其中 `模块` 负责 MVP 放置入口、作者任务清单和画布建议；现有受控单元按 `流股源 / 调节单元 / 汇合与分离` 从 Canvas place-unit palette 分类渲染，并提供本地筛选，命令仍由正式 palette option 派发。`项目` 负责项目输入扫读、示例入口、对象树和审阅状态；`项目` 面板可直接扫读受控物性包、项目组分、流股 / 单元对象、结果和诊断，空白项目不隐式预选求解输入，但项目级输入编辑的主入口仍是独立 `物性` screen。`物性` 不作为右侧 tab；右侧为 `检查器 / 模块设置 / 模块结果` tabs，`模块设置` 消费 `StudioGuiWindowModuleSettingsModel`，`模块结果` 消费 `StudioGuiWindowModuleResultsModel`。底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 承接可行动消息、运行日志、收敛摘要、suggestion、诊断和表格结果。
 - 结果反馈：成功后 shell 可聚焦顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表`，失败后聚焦顶部 `运行` screen、底部运行日志或诊断。结果面只读消费当前 revision 的最新 `SolveSnapshot`；文档编辑导致结果过期时只显示 stale notice，不继续用旧快照驱动 Result Inspector、结果表、Results commands 或复制 / 导出。`复制快照` / `导出文本` 格式化快照的 `Streams / Review / Units / Steps / Diagnostics`，不写项目 / undo，不扩报表 / 批量导出
 - 日志与审计：开发态 stderr 与 GUI activity 可继续服务 smoke，但正式 UI 只展示用户能采取行动的摘要，不把平台 timer 或 host internals 混入主路径
 - 关闭行为：干净最后窗口应自然结束进程；shell 可在清理逻辑窗口后停止当帧渲染，但不能拦截原生关闭请求。脏工作区必须先取消本次 close，请用户选择保存并关闭、舍弃并关闭或取消关闭；保存失败、另存为取消或覆盖确认未完成时保持打开。
@@ -80,9 +80,9 @@ Studio 首页、工作台分区、运行后结果视图和 Home 项目切换确�
 
 ### Studio Main Presentation 边界
 
-Studio UI 专题代码实现从 `StudioGuiWindowModel` 派生 DTO 开始，不先做 egui 大布局重排。当前 `studio_main` 已投影 Home 示例 / 最近 case tile、Property page、四类 context toolbar、底部 status summary、Module Settings 和 Module Results；详细映射见 `docs/architecture/designs/studio-client-main-brief.md`。
+Studio UI 专题代码实现从 `StudioGuiWindowModel` 派生 DTO 开始，不先做 egui 大布局重排。当前 `studio_main` 已投影 Home 示例 / 最近 / 当前工作区 case tile、Property page、四类 context toolbar、底部 status summary、Module Settings 和 Module Results；详细映射见 `docs/architecture/designs/studio-client-main-brief.md`。
 
-egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、物性、运行、结果或诊断真相源。Home recent tile 当前仍由 shell preferences / `project_open` 映射为同一 DTO，尚未上提到 `StudioGuiSnapshot`；后续细化 `物性`、`流程图`、`运行`、`结果` 与右侧 `检查器 / 模块设置 / 模块结果` 时，仍必须继续按正式 presentation / command / state 来源推进。
+egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、物性、运行、结果或诊断真相源。Home recent tile 当前仍由 shell preferences / `project_open` 映射为同一 DTO，当前工作区 tile 只从当前 `workspace_document` 派生，尚未上提到 `StudioGuiSnapshot`；后续细化 `物性`、`流程图`、`运行`、`结果` 与右侧 `检查器 / 模块设置 / 模块结果` 时，仍必须继续按正式 presentation / command / state 来源推进。
 
 `studio_gui_shell/panels/runtime/` 当前拆为 `runtime/mod.rs`、`runtime/results.rs` 和 `runtime/inspector.rs`。Module Settings 和 Module Results 细化必须继续先补正式 window model DTO 和 focused 回归，再让对应 runtime 子模块消费；不得在 shell 中私造结果、诊断、端口、参数或帮助命令缓存。当前模块帮助没有正式 command surface，只允许在 DTO 中表达为空状态。
 
@@ -612,7 +612,7 @@ pub struct StepSnapshot {
 - Unit Inspector 参数：`Feed`、`Heater / Cooler`、`Flash Drum` 写回 `outlet_temperature_k` / `outlet_pressure_pa`，`Mixer`、`Valve` 写回 `outlet_pressure_pa`；提交 `SetUnitParameter` 同步模板，Mixer pressure 不高于 inlet pressure，Heater / Cooler / Valve 不高于 inlet pressure；若字段值来自 outlet stream 模板、内置默认值或其他兼容 fallback，而 unit parameter 尚未显式存在，同值提交仍应生成正式参数命令
 - GUI window-model 必须把“显示值有效但缺显式 unit parameter”的字段暴露为可提交状态，并提供正式 `commit_command_id`；这种状态不是普通已同步字段，也不是控件私有 fallback
 - Unit Inspector 参数字段必须携带 SI 单位和约束 presentation；无效草稿不写文档/历史/模板。已入文档的无效参数由 `solver.step.parameter` 等诊断暴露，并携带 unit / port / stream context
-- 运行前 readiness 只读取已提交的文档态输入，不读取 Inspector 草稿，也不自动补写默认值；未就绪时 shell 显示“模型输入未完成”并聚焦到对应 package / stream / unit
+- 运行前 readiness 只读取已提交的文档态输入，不读取 Inspector 草稿，也不自动补写默认值；未就绪时 shell 显示“模型输入未完成”并聚焦到对应 stream / unit。缺物性包、缓存缺失或多包歧义继续交给正式 run package resolution 和 Run Panel 诊断
 
 采用这个方案的原因：
 
@@ -626,9 +626,20 @@ pub struct StepSnapshot {
 - 只有成功提交到文档的变更才形成命令
 - 只有影响方程系统的提交才触发求解相关检查
 
+### 物性到流程图建模 readiness
+
+普通空白项目的第一条主路径是 `新建项目 -> 物性 -> 选择物性包 / 项目组分 -> 流程图建模`。这层 readiness 只判断用户是否已经完成项目级建模前置输入：
+
+- 当前 `workspace_document` 已选择 property package。
+- 当前 `workspace_document` 已选择至少一个 project component。
+
+`StudioGuiWindowPropertyPageModel` 负责从当前 `workspace_document.property_package_choices`、`project_component_choices`、已选 package 和已选 components 派生 `flowsheet_modeling_enabled`、status label 和 detail。独立 `物性` 页摘要、`window.property_context_toolbar` 的 `Modeling` 分组、顶部 `流程图` 导航和 Home 当前工作区 tile 返回入口都必须消费这同一份 DTO 状态。
+
+这层 readiness 只决定是否允许用户从 Property 主路径进入 Flowsheet authoring，不替代正式运行命令的 package resolution、求解前建模输入检查、结构连接诊断或求解阶段失败诊断。进入 Workbench 后，左侧 `项目` 面板可以扫读 package / components，但不应复制另一套项目级物性状态。
+
 ### 运行前 readiness
 
-Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前，会先做一层通用建模输入检查。当前包括 `流程图` / `运行` 上下文工具栏中的 `运行当前流程`、Run Panel `Resume`、`F5 / Shift+F5`、命令面板、AppHost、StudioGuiDriver 与 StudioGuiHost command registry 等正式入口。它的职责是阻止明显未完成的建模输入进入求解器，让用户先回到具体 package / stream / unit 补齐输入。
+Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前，会先做一层通用建模输入检查。当前包括 `流程图` / `运行` 上下文工具栏中的 `运行当前流程`、Run Panel `Resume`、`F5 / Shift+F5`、命令面板、AppHost、StudioGuiDriver 与 StudioGuiHost command registry 等正式入口。它的职责是阻止明显未完成的建模输入进入求解器，让用户先回到具体 stream / unit 补齐输入。
 
 当前检查范围：
 

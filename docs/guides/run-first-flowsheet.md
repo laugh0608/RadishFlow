@@ -1,6 +1,6 @@
 # Run First Flowsheet
 
-更新时间：2026-06-07
+更新时间：2026-06-08
 
 ## 目的
 
@@ -50,8 +50,9 @@ cargo run -p radishflow-studio
 启动后默认进入 Home Dashboard。第一次运行建议先在首页打开内置示例：
 
 - 左侧 `开始` 区域的 `打开示例项目`
-- 中央 `示例项目` 列表中的示例行；单击选择，双击整行打开
+- 中央 `示例项目` 列表中的示例 tile；单击选择，双击打开
 - 有最近项目时，也可以从 `最近项目` 选择或双击打开已记录的项目
+- 若已经有当前工作区，也可以从 `最近项目` 区的当前工作区 tile 返回当前文档；这个 tile 不会把未保存项目写入 recent projects
 
 进入工作台后，仍可通过顶部 `文件` 菜单打开项目：
 
@@ -162,15 +163,16 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 如果想验证“不是只会打开示例”，可以用当前 MVP α 支持的最短空白路径：
 
-1. 在首页点击 `新建项目`，或进入工作台后点击顶部 `新建空白`，进入未命名空白项目。
-2. 左侧 `项目` 面板会显示当前物性包和 `项目组分`。空白项目不会预选求解输入；先选择内置 `binary-hydrocarbon-lite-v1` package，再选择 methane / ethane。它们会写入 `Flowsheet.thermo.property_package_id` 和 `Flowsheet.components`，并决定后续 Stream Inspector 中可添加的组成条目。
-3. 左侧切到 `模块`，放置 `进料` 和 `闪蒸罐`；需要中间设备时可加 `加热器 / 冷却器 / 阀门`，需要双入口时可加第二个 `进料` 和 `混合器`。按钮文案当前是 `放置进料`、`放置闪蒸罐` 等，项目对象名仍可显示为 `Feed`、`Flash Drum` 等领域名。
-4. 每次放置单元后，在 Canvas 中点击落点提交；这只提交当前放置意图，不是完整拖拽布局编辑器。
-5. 使用 Canvas suggestion 中的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` 动作补齐 `source -> sink` 端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
-6. 从左侧 `项目` 或 Canvas 对象列表选择 stream / unit，右侧 `检查器` 会显示当前对象。
-7. 流股检查器当前可编辑 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 和已有 flowsheet component catalog 中的组成条目；组成修改需要显式提交、归一化或丢弃。若流股缺少项目组分，可先通过检查器中的受控 add component 动作添加，再编辑对应摩尔分率。
-8. 单元检查器当前已暴露首批高频参数：Feed 的 source temperature / pressure、Heater / Cooler 的 outlet temperature / outlet pressure、Mixer / Valve 的 outlet pressure 与 Flash Drum 的 flash temperature / flash pressure；字段使用 SI 单位并显示约束提示，Mixer outlet pressure 不能高于两股已连接 inlet pressure 的较低值，Heater / Cooler / Valve outlet pressure 若高于已连接 inlet pressure 会停留在无效草稿态。其余内容仍以端口、关联步骤、关联诊断和最新 `SolveSnapshot` 中的单元结果为主，不等同于完整单元参数表。若字段显示的是 outlet stream 模板值或内置默认值，但单元参数尚未显式提交，仍应点提交；即使输入值与显示值相同，也会写入正式单元参数。字段来源与 readiness 关系见 `docs/reference/units-and-conventions.md`。
-9. 在 `流程图` 或 `运行` 上下文工具栏点击 `运行当前流程`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐并运行成功后，结果入口会聚焦到顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表`。正式物性包解析失败、结构性连接错误、拓扑错误和求解阶段参数失败仍由 Run Panel 诊断 / recovery 承载。
+1. 在首页点击 `新建项目`，或进入工作区后点击顶部 `文件 -> 新建空白`，进入未命名空白项目的独立 `物性` 页。
+2. 空白项目不会预选求解输入；先选择内置 `binary-hydrocarbon-lite-v1` package，再选择 methane / ethane。它们会写入 `Flowsheet.thermo.property_package_id` 和 `Flowsheet.components`，并决定后续 Stream Inspector 中可添加的组成条目。
+3. 当 `物性` 上下文工具栏中的 `进入流程图建模` 变为可用时，点击它，或点击顶部 `流程图`。进入工作台后，空 flowsheet 的首要建模入口在左侧 `模块` 面板，左侧 `项目` 面板继续扫读项目输入、对象树和审阅状态。
+4. 左侧切到 `模块`，放置 `进料` 和 `闪蒸罐`；需要中间设备时可加 `加热器 / 冷却器 / 阀门`，需要双入口时可加第二个 `进料` 和 `混合器`。按钮文案当前是 `放置进料`、`放置闪蒸罐` 等，项目对象名仍可显示为 `Feed`、`Flash Drum` 等领域名。
+5. 每次放置单元后，在 Canvas 中点击落点提交；这只提交当前放置意图，不是完整拖拽布局编辑器。
+6. 使用 Canvas suggestion 中的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` 动作补齐 `source -> sink` 端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
+7. 从左侧 `项目` 的 `对象树` 或 Canvas 画布实体选择 stream / unit，右侧 `检查器` 会显示当前对象。
+8. 流股检查器当前可编辑 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 和已有 flowsheet component catalog 中的组成条目；组成修改需要显式提交、归一化或丢弃。若流股缺少项目组分，可先通过检查器中的受控 add component 动作添加，再编辑对应摩尔分率。
+9. 单元检查器当前已暴露首批高频参数：Feed 的 source temperature / pressure、Heater / Cooler 的 outlet temperature / outlet pressure、Mixer / Valve 的 outlet pressure 与 Flash Drum 的 flash temperature / flash pressure；字段使用 SI 单位并显示约束提示，Mixer outlet pressure 不能高于两股已连接 inlet pressure 的较低值，Heater / Cooler / Valve outlet pressure 若高于已连接 inlet pressure 会停留在无效草稿态。其余内容仍以端口、关联步骤、关联诊断和最新 `SolveSnapshot` 中的单元结果为主，不等同于完整单元参数表。若字段显示的是 outlet stream 模板值或内置默认值，但单元参数尚未显式提交，仍应点提交；即使输入值与显示值相同，也会写入正式单元参数。字段来源与 readiness 关系见 `docs/reference/units-and-conventions.md`。
+10. 在 `流程图` 或 `运行` 上下文工具栏点击 `运行当前流程`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐并运行成功后，结果入口会聚焦到顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表`。正式物性包解析失败、结构性连接错误、拓扑错误和求解阶段参数失败仍由 Run Panel 诊断 / recovery 承载。
 
 如果误接或漏接了流股，可以选中对应 material stream 后使用右侧检查器或 Canvas 操作区中的受控恢复动作：
 
