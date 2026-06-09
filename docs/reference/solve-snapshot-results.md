@@ -240,6 +240,7 @@ case-level `review_summary` 是 Studio window-model 从同一份最新 `SolveSna
 - action target 应从当前 `SolveSnapshot`、related steps 或 related diagnostics 派生
 - `Results` command section 只能把当前最新 `SolveSnapshot` 内已有的 stream / unit target 暴露为 `inspector.focus_stream:*` / `inspector.focus_unit:*`
 - palette、menu、command list、runtime action button 与底部结果表都应继续走 host `dispatch_ui_command`，不为各自入口复制一套 target 解析
+- 顶部 `结果工具栏` 可以扫读 focus command 是否可用，但不应把当前 snapshot 的所有 stream / unit focus command 直接展开成一排长按钮；具体对象定位应由结果表、右侧相关 action、项目树或命令面板承担
 - `DiagnosticTargets` section 只汇总这组已存在 target，不另造 shell 私有状态机
 - runtime 最终渲染面的 `Inspect` 标签和 `source | target | summary` 文本只负责展示这组 action，不重写其语义
 

@@ -134,6 +134,9 @@ impl ReadyAppState {
                 if section.items.is_empty() {
                     continue;
                 }
+                if context_toolbar_section_is_top_bar_summary_only(toolbar.title, section.title) {
+                    continue;
+                }
                 ui.separator();
                 ui.small(
                     egui::RichText::new(self.locale.runtime_label(section.title).as_ref())
@@ -2184,6 +2187,13 @@ fn context_toolbar_status_color(status_label: &str) -> egui::Color32 {
         }
         _ => run_status_color(status_label),
     }
+}
+
+fn context_toolbar_section_is_top_bar_summary_only(
+    toolbar_title: &str,
+    section_title: &str,
+) -> bool {
+    toolbar_title == "Result Context" && section_title == "Focus"
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -935,11 +935,6 @@ fn result_context_toolbar_renders_existing_result_commands_and_state() {
         "审阅",
         "模块结果",
         "结果表",
-        "聚焦",
-        "Feed",
-        "Heated Outlet",
-        "Liquid Outlet",
-        "Vapor Outlet",
         "快照",
         "流股",
         "单元",
@@ -962,6 +957,10 @@ fn result_context_toolbar_renders_existing_result_commands_and_state() {
         "自动布线",
         "自由连线",
         "完整参数表",
+        "Inspect Result Stream",
+        "Heated Outlet",
+        "Liquid Outlet",
+        "Vapor Outlet",
     ] {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
