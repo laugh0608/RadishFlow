@@ -777,6 +777,32 @@ impl ReadyAppState {
         }
     }
 
+    pub(super) fn focus_result_table_stream(
+        &mut self,
+        snapshot_id: &str,
+        stream_id: impl Into<String>,
+    ) {
+        let stream_id = stream_id.into();
+        self.result_inspector
+            .select_stream(snapshot_id, stream_id.clone());
+        self.dispatch_ui_command(format!("inspector.focus_stream:{stream_id}"));
+        self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+        self.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
+    }
+
+    pub(super) fn focus_result_table_unit(
+        &mut self,
+        snapshot_id: &str,
+        unit_id: impl Into<String>,
+    ) {
+        let unit_id = unit_id.into();
+        self.result_inspector
+            .select_unit(snapshot_id, unit_id.clone());
+        self.dispatch_ui_command(format!("inspector.focus_unit:{unit_id}"));
+        self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
+        self.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
+    }
+
     pub(super) fn dispatch_inspector_field_draft_update(
         &mut self,
         command_id: impl Into<String>,

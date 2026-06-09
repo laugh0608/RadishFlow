@@ -220,6 +220,8 @@ case-level `review_summary` 是 Studio window-model 从同一份最新 `SolveSna
 
 这层摘要不改变 `SolveSnapshot.streams`、`StepSnapshot.consumed_streams` 或 `StepSnapshot.streams` 的正式语义，也不承担结果推导、重新计算或报表模板职责。若某个流股在 `Review` 分组和 step 明细中表现不一致，应优先按消费层 bug 排查，而不是让 `Review` 自行补造结果。
 
+底部结果表的定位行为也必须复用正式 focus command：点击 stream 行应派发 `inspector.focus_stream:*` 并进入右侧 `检查器`，点击 unit 行应派发 `inspector.focus_unit:*` 并进入右侧 `模块结果`，底部仍停留在 `结果表`。这保证底部结果表、Canvas 当前选择、右侧 `画布选择` 和 Inspector / Module Results 消费同一条定位语义。
+
 ### diagnostic target / focus action
 
 当前 `inspector.focus_stream:*` 与 `inspector.focus_unit:*` 的正式语义只是“定位到某个当前已有结果对象”。
@@ -230,13 +232,14 @@ case-level `review_summary` 是 Studio window-model 从同一份最新 `SolveSna
 - unit-centric 视图的输入/输出流股 action
 - `DiagnosticTargets`
 - `Module Settings` / `Module Results` / `Result Inspector` / step 列表中的相关 action
+- 底部结果表中的 stream / unit 行定位
 - `Results` command section、command palette、menu 和 command list 中的 result navigation
 
 稳定边界：
 
 - action target 应从当前 `SolveSnapshot`、related steps 或 related diagnostics 派生
 - `Results` command section 只能把当前最新 `SolveSnapshot` 内已有的 stream / unit target 暴露为 `inspector.focus_stream:*` / `inspector.focus_unit:*`
-- palette、menu、command list 与 runtime action button 都应继续走 host `dispatch_ui_command`，不为各自入口复制一套 target 解析
+- palette、menu、command list、runtime action button 与底部结果表都应继续走 host `dispatch_ui_command`，不为各自入口复制一套 target 解析
 - `DiagnosticTargets` section 只汇总这组已存在 target，不另造 shell 私有状态机
 - runtime 最终渲染面的 `Inspect` 标签和 `source | target | summary` 文本只负责展示这组 action，不重写其语义
 

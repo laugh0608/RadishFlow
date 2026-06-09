@@ -1635,9 +1635,10 @@ impl ReadyAppState {
                         .add(egui::Button::new(&stream.label).frame(false))
                         .on_hover_text(&stream.stream_id);
                     if response.clicked() {
-                        self.result_inspector
-                            .select_stream(&snapshot.snapshot_id, stream.stream_id.clone());
-                        self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
+                        self.focus_result_table_stream(
+                            &snapshot.snapshot_id,
+                            stream.stream_id.clone(),
+                        );
                     }
                     ui.label(format!("{:.2}", stream.temperature_k));
                     ui.label(format!("{:.0}", stream.pressure_pa));
@@ -1677,9 +1678,7 @@ impl ReadyAppState {
                         .add(egui::Button::new(&unit.unit_id).frame(false))
                         .on_hover_text(&unit.summary);
                     if unit_response.clicked() {
-                        self.result_inspector
-                            .select_unit(&snapshot.snapshot_id, unit.unit_id.clone());
-                        self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
+                        self.focus_result_table_unit(&snapshot.snapshot_id, unit.unit_id.clone());
                     }
                     ui.label(self.locale.runtime_label(unit.status_label).as_ref());
                     ui.label(format!("#{}", unit.step_index));

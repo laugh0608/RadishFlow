@@ -3360,6 +3360,75 @@ fn result_inspector_state_tracks_selected_unit_per_snapshot() {
 }
 
 #[test]
+fn bottom_results_table_routes_stream_and_unit_focus_to_matching_right_tab() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    let snapshot = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .latest_solve_snapshot
+        .expect("expected solve snapshot");
+    let snapshot_id = snapshot.snapshot_id.clone();
+
+    app.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
+    app.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
+    app.focus_result_table_stream(&snapshot_id, "stream-heated");
+
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Inspector);
+    assert_eq!(
+        app.bottom_drawer_tab,
+        StudioShellBottomDrawerTab::ResultsTable
+    );
+    assert_eq!(
+        app.result_inspector
+            .selected_stream_id_for_snapshot(&snapshot)
+            .as_deref(),
+        Some("stream-heated")
+    );
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Stream", "stream-heated"))
+    );
+
+    app.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+    app.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
+    app.focus_result_table_unit(&snapshot_id, "heater-1");
+
+    assert_eq!(
+        app.right_sidebar_tab,
+        StudioShellRightSidebarTab::ModuleResults
+    );
+    assert_eq!(
+        app.bottom_drawer_tab,
+        StudioShellBottomDrawerTab::ResultsTable
+    );
+    assert_eq!(
+        app.result_inspector
+            .selected_unit_id_for_snapshot(&snapshot)
+            .as_deref(),
+        Some("heater-1")
+    );
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "heater-1"))
+    );
+}
+
+#[test]
 fn result_inspector_state_tracks_official_near_boundary_flash_selector_transitions() {
     let mut app = ready_app_state(&synced_workspace_config());
     let provider = build_official_binary_hydrocarbon_provider();
