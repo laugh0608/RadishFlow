@@ -1368,6 +1368,10 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         snapshot.step_count.to_string()
     );
     assert_eq!(
+        find_status_summary_metric(&window, "Units").value,
+        snapshot.review_summary.unit_results.len().to_string()
+    );
+    assert_eq!(
         find_status_summary_metric(&window, "Diagnostics").value,
         snapshot.diagnostic_count.to_string()
     );
@@ -2170,6 +2174,30 @@ fn studio_gui_window_model_surfaces_current_module_results_for_active_unit() {
             .map(|step| step.unit_id.as_str())
             .collect::<Vec<_>>(),
         vec!["heater-1"]
+    );
+    let review_unit = snapshot
+        .review_summary
+        .unit_results
+        .iter()
+        .find(|unit| unit.unit_id == "heater-1")
+        .expect("expected heater review unit");
+    assert_eq!(review_unit.step_index, unit_result.step_index);
+    assert_eq!(review_unit.status_label, unit_result.status_label);
+    assert_eq!(
+        review_unit.consumed_stream_ids,
+        module_results
+            .consumed_stream_chips
+            .iter()
+            .map(|stream| stream.stream_id.clone())
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        review_unit.produced_stream_ids,
+        module_results
+            .produced_stream_chips
+            .iter()
+            .map(|stream| stream.stream_id.clone())
+            .collect::<Vec<_>>()
     );
     assert!(module_results.related_diagnostics.iter().any(|diagnostic| {
         diagnostic

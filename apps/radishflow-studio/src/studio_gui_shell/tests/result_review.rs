@@ -248,7 +248,9 @@ pub(super) fn assert_case_review_summary_covers_flow(
             .rev()
             .find(|step| step.unit_id == unit.unit_id)
             .unwrap_or_else(|| panic!("expected latest step for unit `{}`", unit.unit_id));
+        assert_eq!(unit.step_index, step.index);
         assert_eq!(unit.status_label, step.execution_status_label);
+        assert_eq!(unit.summary, step.summary);
         assert_eq!(
             unit.consumed_stream_ids,
             step.consumed_stream_results
@@ -322,22 +324,29 @@ pub(super) fn assert_bottom_result_table_contains_streams_and_steps(
             "expected bottom result table to render unit `{unit_id}`, rendered texts: {:?}",
             texts
         );
-        let step = snapshot
-            .steps
+        let unit = snapshot
+            .review_summary
+            .unit_results
             .iter()
-            .find(|step| step.unit_id == *unit_id)
-            .unwrap_or_else(|| panic!("expected step for unit {unit_id}"));
-        for stream_ref in step
-            .consumed_stream_results
+            .find(|unit| unit.unit_id == *unit_id)
+            .unwrap_or_else(|| panic!("expected review unit for {unit_id}"));
+        assert!(
+            texts
+                .iter()
+                .any(|text| text.contains(&format!("#{}", unit.step_index))),
+            "expected bottom result table to render review step index #{} for `{unit_id}`, rendered texts: {:?}",
+            unit.step_index,
+            texts
+        );
+        for stream_id in unit
+            .consumed_stream_ids
             .iter()
-            .chain(step.produced_stream_results.iter())
+            .chain(unit.produced_stream_ids.iter())
         {
             assert!(
-                texts
-                    .iter()
-                    .any(|text| text.contains(&stream_ref.stream_id)),
-                "expected bottom result table to render step stream reference `{}` for `{unit_id}`, rendered texts: {:?}",
-                stream_ref.stream_id,
+                texts.iter().any(|text| text.contains(stream_id)),
+                "expected bottom result table to render review stream reference `{}` for `{unit_id}`, rendered texts: {:?}",
+                stream_id,
                 texts
             );
         }

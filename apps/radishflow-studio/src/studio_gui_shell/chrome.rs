@@ -1654,8 +1654,7 @@ impl ReadyAppState {
                 }
             });
 
-        let unit_steps = latest_unit_steps(&snapshot.steps);
-        if !unit_steps.is_empty() {
+        if !snapshot.review_summary.unit_results.is_empty() {
             ui.add_space(8.0);
             ui.strong(self.locale.text(ShellText::Units));
             egui::Grid::new(format!(
@@ -1673,29 +1672,19 @@ impl ReadyAppState {
                 ui.strong(self.locale.text(ShellText::InspectorProducedStreams));
                 ui.end_row();
 
-                for step in unit_steps {
+                for unit in &snapshot.review_summary.unit_results {
                     let unit_response = ui
-                        .add(egui::Button::new(&step.unit_id).frame(false))
-                        .on_hover_text(&step.summary);
+                        .add(egui::Button::new(&unit.unit_id).frame(false))
+                        .on_hover_text(&unit.summary);
                     if unit_response.clicked() {
                         self.result_inspector
-                            .select_unit(&snapshot.snapshot_id, step.unit_id.clone());
+                            .select_unit(&snapshot.snapshot_id, unit.unit_id.clone());
                         self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
                     }
-                    ui.label(
-                        self.locale
-                            .runtime_label(step.execution_status_label)
-                            .as_ref(),
-                    );
-                    ui.label(format!("#{}", step.index));
-                    render_wrapped_small(
-                        ui,
-                        result_table_stream_references(&step.consumed_stream_results),
-                    );
-                    render_wrapped_small(
-                        ui,
-                        result_table_stream_references(&step.produced_stream_results),
-                    );
+                    ui.label(self.locale.runtime_label(unit.status_label).as_ref());
+                    ui.label(format!("#{}", unit.step_index));
+                    render_wrapped_small(ui, result_table_stream_ids(&unit.consumed_stream_ids));
+                    render_wrapped_small(ui, result_table_stream_ids(&unit.produced_stream_ids));
                     ui.end_row();
                 }
             });
@@ -2226,36 +2215,12 @@ fn result_table_header(locale: StudioShellLocale, header: ResultTableHeader) -> 
     }
 }
 
-fn latest_unit_steps(
-    steps: &[radishflow_studio::StudioGuiWindowSolveStepModel],
-) -> Vec<&radishflow_studio::StudioGuiWindowSolveStepModel> {
-    let mut unit_steps = Vec::new();
-    for step in steps {
-        if let Some(index) = unit_steps.iter().position(
-            |existing: &&radishflow_studio::StudioGuiWindowSolveStepModel| {
-                existing.unit_id == step.unit_id
-            },
-        ) {
-            unit_steps[index] = step;
-        } else {
-            unit_steps.push(step);
-        }
-    }
-    unit_steps
-}
-
-fn result_table_stream_references(
-    streams: &[radishflow_studio::StudioGuiWindowStreamResultReferenceModel],
-) -> String {
-    if streams.is_empty() {
+fn result_table_stream_ids(stream_ids: &[String]) -> String {
+    if stream_ids.is_empty() {
         return "-".to_string();
     }
 
-    streams
-        .iter()
-        .map(|stream| stream.stream_id.as_str())
-        .collect::<Vec<_>>()
-        .join(", ")
+    stream_ids.join(", ")
 }
 
 fn result_table_phase_summary(

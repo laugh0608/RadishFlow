@@ -223,7 +223,9 @@ pub struct StudioGuiWindowResultReviewSummaryModel {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowResultReviewUnitModel {
     pub unit_id: String,
+    pub step_index: usize,
     pub status_label: &'static str,
+    pub summary: String,
     pub consumed_stream_ids: Vec<String>,
     pub produced_stream_ids: Vec<String>,
 }
@@ -2192,7 +2194,9 @@ fn result_review_summary_model_from_parts(
         .into_iter()
         .map(|step| StudioGuiWindowResultReviewUnitModel {
             unit_id: step.unit_id.clone(),
+            step_index: step.index,
             status_label: step.execution_status_label,
+            summary: step.summary.clone(),
             consumed_stream_ids: step.consumed_stream_ids().map(str::to_string).collect(),
             produced_stream_ids: step.produced_stream_ids().map(str::to_string).collect(),
         })

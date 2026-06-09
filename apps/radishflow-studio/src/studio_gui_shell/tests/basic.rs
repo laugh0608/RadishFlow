@@ -1592,7 +1592,7 @@ fn bottom_status_summary_split_tracks_current_snapshot_after_run() {
 
     let texts = render_bottom_drawer_texts(&mut app);
 
-    for expected in ["状态汇总", "当前", "已收敛", "步骤", "诊断"] {
+    for expected in ["状态汇总", "当前", "已收敛", "步骤", "单元", "诊断"] {
         assert!(
             texts.iter().any(|text| text == expected),
             "expected bottom status summary split to render current run `{expected}`, rendered texts: {:?}",
@@ -1659,7 +1659,7 @@ fn workbench_first_viewport_keeps_selection_and_status_roles_separated() {
     }
 
     let bottom_texts = render_bottom_drawer_texts(&mut app);
-    for expected in ["状态汇总", "当前", "已收敛", "步骤", "诊断"] {
+    for expected in ["状态汇总", "当前", "已收敛", "步骤", "单元", "诊断"] {
         assert!(
             bottom_texts.iter().any(|text| text == expected),
             "expected bottom workbench role to render `{expected}`, rendered texts: {:?}",

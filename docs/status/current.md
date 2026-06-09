@@ -17,7 +17,7 @@
 - 阶段基线：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过；2026-06-02 真实环境 `./scripts/check-repo.sh` 通过。
 - 通用小流程建模 v1 已支持普通空白项目在受控范围内组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，并覆盖显式输入、运行、保存、重开、rerun 与结果审阅。
 - 当前主线已切到 **Studio UI 专题窄口径实现**。`studio-client-main.pen` 是当前唯一活跃 Studio 主设计稿，覆盖 Home、独立物性页、流程图工作台、模块设置 / 模块结果和底部运行 / 状态分栏。
-- 最新进度：**Studio UI 实现第三十二刀已完成 macOS 退出路径修正**。右侧 `模块设置` 已从正式 Inspector 字段和 notice 派生参数摘要；人工复核后确认 Home / 物性 / Workbench 主路径可用，并修正 macOS 默认 App 菜单 `Cmd+Q` 绕过保存确认的问题。
+- 最新进度：**Studio UI 实现第三十三刀已完成结果区同源收口**。脏项目 `Cmd+Q` 真实窗口 smoke 已复核通过；底部结果表的单元区改为消费 `review_summary.unit_results`，右侧 `模块结果`、底部 `结果表` 和 `状态汇总` 继续只读取当前 revision 的最新 `SolveSnapshot` 派生 DTO。
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前策略
@@ -49,12 +49,11 @@ Studio UI：
 - 中央 Canvas 只承接 `画布工具`、`画布状态`、`画布操作`、图例、画布实体和受控建议；放置入口留在左侧 `模块`，对象树留在左侧 `项目`，选择语义留在右侧栏。
 - 右侧栏稳定为 `检查器 / 模块设置 / 模块结果`，并用同一 `画布选择` 上下文头消费 Canvas current selection / command presentation。
 - `模块设置` 继续只消费 active unit Inspector DTO；参数摘要从现有字段、notice 和批量提交 / 放弃 command 派生，不新增第二套参数状态。
-- 底部区域稳定为左侧 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 与右侧 `状态汇总` 分栏；底部薄状态栏只做运行、快照、SI 单位、求解器、模式和当前选择扫读。
+- 底部区域稳定为左侧 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 与右侧 `状态汇总` 分栏；结果表的单元区消费 `review_summary.unit_results`，状态汇总额外扫读同源单元结果数量；底部薄状态栏只做运行、快照、SI 单位、求解器、模式和当前选择扫读。
 
 ## 下一步
 
-- 优先安排一次补充真实窗口 smoke，复核本次 macOS 默认 App 菜单关闭后，脏项目 `Cmd+Q` 是否进入与窗口关闭按钮相同的保存 / 放弃 / 取消确认路径。
-- 若继续代码推进，只做沿 `studio-client-main.pen`、brief、正式 DTO / command surface 的小切片；不直接做大规模 egui 布局重排。
+- 继续沿 `studio-client-main.pen`、brief、正式 DTO / command surface 做 Workbench 窄口径小切片；不直接做大规模 egui 布局重排。
 - 若发现真实主路径上的状态不一致、入口重复或首屏密度影响建模判断，只做支撑主路径判断的必要调整。
 
 ## 验证节奏

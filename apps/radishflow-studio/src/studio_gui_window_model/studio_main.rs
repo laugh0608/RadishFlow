@@ -481,6 +481,15 @@ impl StudioGuiWindowStatusSummaryModel {
             .as_ref()
             .map(|snapshot| snapshot.step_count.to_string())
             .unwrap_or_else(|| "N/A".to_string());
+        let (unit_value, unit_status_label) =
+            if let Some(snapshot) = runtime.latest_solve_snapshot.as_ref() {
+                (
+                    snapshot.review_summary.unit_results.len().to_string(),
+                    "Current".to_string(),
+                )
+            } else {
+                ("N/A".to_string(), "N/A".to_string())
+            };
         let diagnostic_value = runtime
             .latest_solve_snapshot
             .as_ref()
@@ -533,6 +542,13 @@ impl StudioGuiWindowStatusSummaryModel {
                     value: step_value,
                     status_label: "Sequential steps".to_string(),
                     detail: "Sequential modular solve steps; no fabricated iteration count."
+                        .to_string(),
+                },
+                StudioGuiWindowStatusSummaryMetricModel {
+                    label: "Units",
+                    value: unit_value,
+                    status_label: unit_status_label,
+                    detail: "Unit result count from the current SolveSnapshot review summary."
                         .to_string(),
                 },
                 StudioGuiWindowStatusSummaryMetricModel {
