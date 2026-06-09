@@ -58,7 +58,7 @@
 | 层级 | 内容 | 说明 |
 | --- | --- | --- |
 | 窄导航栏 | `文件`、`主页`、`物性`、`流程图`、`运行`、`结果`、`工具`、`设置` | `物性` 前置；取消意义不清的 `设备`；当前 `工具` 只承接命令面板、Commands panel 和逻辑窗口；当前 `设置` 只承接语言选择，单位集和偏好保留为未来空间 |
-| 上下文工具栏 | 随当前导航变化 | 当前 `流程图` 工具栏显示 Canvas suggestion / pending-edit command、Run 可用命令、Module Results / 结果表入口和状态摘要，不承接放置 palette 或选中对象移动 / 连接动作；`物性` 工具栏显示既有 package / component 命令、Property page 状态和进入流程图建模 readiness；`运行` 第一刀显示既有 Run Panel command、运行状态、收敛 / 建议 / 诊断 / 日志入口；`结果` 第一刀显示既有 Module Results / 结果表入口、Result focus command 和 snapshot 状态 |
+| 上下文工具栏 | 随当前导航变化 | 当前 `流程图` 工具栏显示 Canvas suggestion / pending-edit command、Run 可用命令、Module Results / 结果表入口和状态摘要，不承接放置 palette 或选中对象移动 / 连接动作；`物性` 工具栏显示既有 package / component 命令、Property page 状态和进入流程图建模 readiness；`运行` 工具栏显示既有 Run Panel command 与运行信息入口，Monitor 状态只在状态行扫读，不在按钮旁重复展示；`结果` 工具栏只显示 Module Results / 结果表入口和 snapshot / result count 状态，不把所有 Result focus command 展开成长按钮 |
 
 项目名称放在最顶部窗口标题栏；保存状态仍使用右侧状态 chip，例如 `已保存`、`有未保存更改`、`旧结果`。
 
