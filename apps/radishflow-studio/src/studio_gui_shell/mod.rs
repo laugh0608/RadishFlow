@@ -71,9 +71,22 @@ fn studio_native_options() -> eframe::NativeOptions {
             .with_min_inner_size(STUDIO_MIN_WINDOW_SIZE),
         ..Default::default()
     };
+    configure_studio_macos_event_loop(&mut options);
     configure_studio_wgpu_backend(&mut options);
     options
 }
+
+#[cfg(target_os = "macos")]
+fn configure_studio_macos_event_loop(options: &mut eframe::NativeOptions) {
+    use winit::platform::macos::EventLoopBuilderExtMacOS;
+
+    options.event_loop_builder = Some(Box::new(|builder| {
+        builder.with_default_menu(false);
+    }));
+}
+
+#[cfg(not(target_os = "macos"))]
+fn configure_studio_macos_event_loop(_options: &mut eframe::NativeOptions) {}
 
 #[cfg(target_os = "macos")]
 fn configure_studio_wgpu_backend(options: &mut eframe::NativeOptions) {

@@ -667,6 +667,17 @@ fn native_options_use_metal_only_on_macos_to_avoid_opengl_loader_noise() {
     }
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn native_options_disable_macos_default_menu_so_command_q_uses_shell_close_flow() {
+    let options = studio_native_options();
+
+    assert!(
+        options.event_loop_builder.is_some(),
+        "macOS must override the default App menu so Command+Q reaches the Studio close confirmation flow"
+    );
+}
+
 #[test]
 fn top_bar_aligns_primary_navigation_and_command_buckets() {
     let mut app = ready_app_state(&synced_workspace_config());
