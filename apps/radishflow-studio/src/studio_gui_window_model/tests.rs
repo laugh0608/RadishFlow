@@ -2249,6 +2249,18 @@ fn studio_gui_window_model_surfaces_module_settings_for_active_unit() {
         settings.parameter_batch_discard_command_id,
         active_detail.property_batch_discard_command_id
     );
+    let parameter_summary = settings
+        .parameter_summary
+        .as_ref()
+        .expect("expected module parameter summary");
+    assert_eq!(parameter_summary.title, "Parameter Summary");
+    assert_eq!(parameter_summary.status_label, "Synced");
+    assert_eq!(parameter_summary.total_field_count, 2);
+    assert_eq!(parameter_summary.dirty_field_count, 0);
+    assert_eq!(parameter_summary.issue_count, 0);
+    assert_eq!(parameter_summary.notice_count, 0);
+    assert!(!parameter_summary.batch_commit_available);
+    assert!(!parameter_summary.batch_discard_available);
     assert_eq!(
         settings.connection_actions,
         active_detail.connection_actions
@@ -2534,8 +2546,21 @@ fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_heater
             raw_value: "130000".to_string(),
         })
         .expect("expected invalid heater pressure draft update");
-    let detail = dispatch
-        .window
+    let window = dispatch.window;
+    let summary = window
+        .module_settings
+        .parameter_summary
+        .as_ref()
+        .expect("expected module parameter summary");
+    assert_eq!(summary.status_label, "Invalid");
+    assert_eq!(summary.total_field_count, 2);
+    assert_eq!(summary.dirty_field_count, 1);
+    assert_eq!(summary.issue_count, 2);
+    assert_eq!(summary.notice_count, 1);
+    assert!(!summary.batch_commit_available);
+    assert!(!summary.batch_discard_available);
+
+    let detail = window
         .runtime
         .active_inspector_detail
         .expect("expected active heater inspector detail");

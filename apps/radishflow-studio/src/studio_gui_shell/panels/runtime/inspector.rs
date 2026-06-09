@@ -66,6 +66,72 @@ impl ReadyAppState {
             });
         }
 
+        if let Some(summary) = settings.parameter_summary.as_ref() {
+            ui.add_space(4.0);
+            ui.horizontal_wrapped(|ui| {
+                ui.small(
+                    egui::RichText::new(self.locale.runtime_label(summary.title).as_ref()).strong(),
+                );
+                render_status_chip(
+                    ui,
+                    self.locale.runtime_label(summary.status_label).as_ref(),
+                    inspector_field_status_color(summary.status_label),
+                );
+                render_status_chip(
+                    ui,
+                    &format!(
+                        "{} {}",
+                        summary.total_field_count,
+                        self.locale.runtime_label("Fields")
+                    ),
+                    egui::Color32::from_rgb(86, 118, 168),
+                );
+                render_status_chip(
+                    ui,
+                    &format!(
+                        "{} {}",
+                        summary.dirty_field_count,
+                        self.locale.runtime_label("Drafts")
+                    ),
+                    inspector_field_status_color(if summary.dirty_field_count > 0 {
+                        "Draft"
+                    } else {
+                        "Synced"
+                    }),
+                );
+                render_status_chip(
+                    ui,
+                    &format!(
+                        "{} {}",
+                        summary.issue_count,
+                        self.locale.runtime_label("Issues")
+                    ),
+                    inspector_field_status_color(if summary.issue_count > 0 {
+                        "Invalid"
+                    } else {
+                        "Synced"
+                    }),
+                );
+                render_status_chip(
+                    ui,
+                    &format!(
+                        "{} {}",
+                        summary.notice_count,
+                        self.locale.runtime_label("Notices")
+                    ),
+                    egui::Color32::from_rgb(96, 106, 118),
+                );
+                if summary.batch_commit_available {
+                    render_status_chip(
+                        ui,
+                        self.locale.runtime_label("Commit ready").as_ref(),
+                        egui::Color32::from_rgb(54, 128, 84),
+                    );
+                }
+            });
+            render_wrapped_small(ui, &summary.detail);
+        }
+
         if !settings.parameter_fields.is_empty() {
             ui.add_space(4.0);
             ui.small(

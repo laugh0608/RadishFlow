@@ -18,10 +18,11 @@ pub use studio_main::{
     StudioGuiWindowHomeCaseTileModel, StudioGuiWindowHomeCaseTileSource,
     StudioGuiWindowHomeCaseTileStatus, StudioGuiWindowHomeModel, StudioGuiWindowModuleResultsModel,
     StudioGuiWindowModuleResultsState, StudioGuiWindowModuleSettingsModel,
-    StudioGuiWindowModuleSettingsState, StudioGuiWindowPropertyComponentModel,
-    StudioGuiWindowPropertyMetricModel, StudioGuiWindowPropertyPackageModel,
-    StudioGuiWindowPropertyPageModel, StudioGuiWindowStatusSummaryMetricModel,
-    StudioGuiWindowStatusSummaryModel, StudioGuiWindowThumbnailFlowModel,
+    StudioGuiWindowModuleSettingsParameterSummaryModel, StudioGuiWindowModuleSettingsState,
+    StudioGuiWindowPropertyComponentModel, StudioGuiWindowPropertyMetricModel,
+    StudioGuiWindowPropertyPackageModel, StudioGuiWindowPropertyPageModel,
+    StudioGuiWindowStatusSummaryMetricModel, StudioGuiWindowStatusSummaryModel,
+    StudioGuiWindowThumbnailFlowModel,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

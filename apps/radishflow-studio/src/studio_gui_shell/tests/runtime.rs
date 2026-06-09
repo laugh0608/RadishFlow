@@ -1513,6 +1513,12 @@ fn runtime_module_settings_tab_consumes_module_settings_dto_for_active_unit() {
             && texts.iter().any(|text| text == "stream-heated"),
         "expected Module Settings to render formal parameter and port surfaces, rendered texts: {texts:?}"
     );
+    for expected in ["参数摘要", "已同步", "2 字段", "0 草稿", "0 问题", "0 提示"] {
+        assert!(
+            texts.iter().any(|text| text == expected),
+            "expected Module Settings parameter summary `{expected}`, rendered texts: {texts:?}"
+        );
+    }
     assert!(
         texts.iter().any(|text| text == "帮助")
             && texts
