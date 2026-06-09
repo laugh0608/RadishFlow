@@ -1747,6 +1747,138 @@ fn property_page_main_path_enters_flowsheet_modeling_after_basis_selection() {
 }
 
 #[test]
+fn blank_project_main_path_workbench_first_viewport_uses_modeling_roles() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.create_blank_project();
+
+    app.enter_flowsheet_modeling_from_property();
+    assert_eq!(
+        app.screen,
+        StudioShellScreen::Property,
+        "incomplete property basis must keep the user on the property page"
+    );
+
+    select_builtin_binary_hydrocarbon_basis(&mut app);
+    app.enter_flowsheet_modeling_from_property();
+
+    assert_eq!(app.screen, StudioShellScreen::Workbench);
+    assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Palette);
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Inspector);
+    assert_eq!(app.bottom_drawer_tab, StudioShellBottomDrawerTab::Messages);
+
+    let top_texts = render_top_bar_texts(&mut app);
+    for expected in ["流程图工具栏", "运行当前流程", "模块结果", "结果表"] {
+        assert!(
+            top_texts.iter().any(|text| text.contains(expected)),
+            "expected Workbench top context to render `{expected}`, rendered texts: {:?}",
+            top_texts
+        );
+    }
+    for hidden in ["放置进料", "放置闪蒸罐", "自动布线", "完整报表"] {
+        assert!(
+            !top_texts.iter().any(|text| text.contains(hidden)),
+            "Workbench top context must not duplicate module or out-of-scope entry `{hidden}`, rendered texts: {:?}",
+            top_texts
+        );
+    }
+
+    let left_texts = render_left_sidebar_texts(&mut app);
+    for expected in [
+        "模块",
+        "项目",
+        "放置单元",
+        "流股源",
+        "调节单元",
+        "汇合与分离",
+        "放置进料",
+        "放置闪蒸罐",
+    ] {
+        assert!(
+            left_texts.iter().any(|text| text == expected),
+            "expected blank Workbench left rail to render `{expected}`, rendered texts: {:?}",
+            left_texts
+        );
+    }
+    for hidden in ["对象树", "审阅状态", "完整模块库", "自由连线", "自动布线"] {
+        assert!(
+            !left_texts.iter().any(|text| text.contains(hidden)),
+            "blank Workbench left rail must keep `{hidden}` out of the active module tab, rendered texts: {:?}",
+            left_texts
+        );
+    }
+
+    let center_texts = render_center_stage_texts(&mut app);
+    for expected in [
+        "画布工具",
+        "画布状态",
+        "0 个单元",
+        "0 条物料线",
+        "0 条建议",
+        "画布图例",
+        "选择画布工具",
+        "使用放置单元操作开始画布编辑",
+    ] {
+        assert!(
+            center_texts.iter().any(|text| text == expected),
+            "expected blank Workbench canvas to render `{expected}`, rendered texts: {:?}",
+            center_texts
+        );
+    }
+    for hidden in [
+        "放置进料",
+        "放置闪蒸罐",
+        "对象树",
+        "画布选择",
+        "模块设置",
+        "结果表",
+    ] {
+        assert!(
+            !center_texts.iter().any(|text| text.contains(hidden)),
+            "blank Workbench canvas must not render side or bottom role `{hidden}`, rendered texts: {:?}",
+            center_texts
+        );
+    }
+
+    let right_texts = render_right_sidebar_texts(&mut app);
+    for expected in [
+        "画布选择",
+        "无",
+        "检查器",
+        "属性",
+        "请从左侧项目树或画布选择流股/单元。",
+    ] {
+        assert!(
+            right_texts.iter().any(|text| text == expected),
+            "expected blank Workbench right rail to render `{expected}`, rendered texts: {:?}",
+            right_texts
+        );
+    }
+    for hidden in ["状态汇总", "结果表", "物性包"] {
+        assert!(
+            !right_texts.iter().any(|text| text.contains(hidden)),
+            "blank Workbench right rail must not render `{hidden}`, rendered texts: {:?}",
+            right_texts
+        );
+    }
+
+    let bottom_texts = render_bottom_drawer_texts(&mut app);
+    for expected in ["消息", "状态汇总", "还没有求解快照。", "快照", "无"] {
+        assert!(
+            bottom_texts.iter().any(|text| text == expected),
+            "expected blank Workbench bottom area to render `{expected}`, rendered texts: {:?}",
+            bottom_texts
+        );
+    }
+    for hidden in ["画布选择", "检查器", "模块设置", "模块结果", "完整报表"] {
+        assert!(
+            !bottom_texts.iter().any(|text| text.contains(hidden)),
+            "blank Workbench bottom area must not render `{hidden}`, rendered texts: {:?}",
+            bottom_texts
+        );
+    }
+}
+
+#[test]
 fn project_navigator_uses_row_click_without_repeated_inspect_buttons() {
     let mut app = ready_app_state(&synced_workspace_config());
 

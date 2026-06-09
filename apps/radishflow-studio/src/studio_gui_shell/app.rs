@@ -42,12 +42,17 @@ impl ReadyAppState {
     }
 
     pub(super) fn enter_flowsheet_modeling_from_property(&mut self) {
-        let unit_count = self
-            .platform_host
-            .snapshot()
-            .runtime
-            .workspace_document
-            .unit_count;
+        let snapshot = self.platform_host.snapshot();
+        let window = snapshot.window_model();
+        if !window.property_page.flowsheet_modeling_enabled {
+            self.screen = StudioShellScreen::Property;
+            self.platform_host.record_activity_line(
+                "blocked flowsheet modeling entry before property basis selection".to_string(),
+            );
+            return;
+        }
+
+        let unit_count = window.runtime.workspace_document.unit_count;
         self.screen = StudioShellScreen::Workbench;
         self.left_sidebar_tab = if unit_count == 0 {
             StudioShellLeftSidebarTab::Palette
