@@ -1397,7 +1397,16 @@ fn module_sidebar_groups_supported_palette_by_modeling_roles() {
         );
     }
 
-    for hidden in ["完整模块库", "自由连线", "自动布线", "完整拖拽布局"] {
+    for hidden in [
+        "完整模块库",
+        "自由连线",
+        "自动布线",
+        "完整拖拽布局",
+        "Start placing",
+        "创建定义组成",
+        "在分离前调整",
+        "用当前支持的单元",
+    ] {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
             "module sidebar must not expose out-of-scope `{hidden}`, rendered texts: {:?}",

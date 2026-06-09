@@ -986,20 +986,18 @@ impl ReadyAppState {
 
             ui.separator();
             ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new(category.title).strong());
+                ui.label(egui::RichText::new(category.title).strong())
+                    .on_hover_text(category.detail);
                 render_status_chip(
                     ui,
                     &category_options.len().to_string(),
                     egui::Color32::from_rgb(86, 96, 108),
                 );
             });
-            render_wrapped_small(ui, category.detail);
-            ui.add_space(4.0);
 
             for option in category_options {
                 visible_options += 1;
                 self.render_module_palette_option(ui, option);
-                ui.add_space(4.0);
             }
         }
 
@@ -1077,7 +1075,7 @@ impl ReadyAppState {
                     option.enabled,
                     egui::Button::new(option_label.as_ref())
                         .selected(option.active)
-                        .min_size(egui::vec2(ui.available_width().min(170.0), 28.0)),
+                        .min_size(egui::vec2(ui.available_width().min(170.0), 24.0)),
                 )
                 .on_hover_text(option_detail.as_ref());
             if response.clicked() {
@@ -1094,7 +1092,6 @@ impl ReadyAppState {
                 );
             }
         });
-        render_wrapped_small(ui, option_detail.as_ref());
     }
 
     fn render_right_workbench(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
@@ -1327,6 +1324,20 @@ impl ReadyAppState {
                         )
                         .strong(),
                     );
+                    ui.separator();
+                    ui.small(
+                        egui::RichText::new(self.locale.runtime_label("Snapshot").as_ref())
+                            .strong(),
+                    );
+                    render_status_chip(
+                        ui,
+                        self.locale
+                            .runtime_label(window.status_summary.snapshot_consistency_label)
+                            .as_ref(),
+                        context_toolbar_status_color(
+                            window.status_summary.snapshot_consistency_label,
+                        ),
+                    );
                 });
                 ui.add_space(4.0);
                 egui::Grid::new("bottom-status-summary-metrics")
@@ -1356,22 +1367,6 @@ impl ReadyAppState {
                             ui.end_row();
                         }
                     });
-                ui.add_space(4.0);
-                ui.horizontal_wrapped(|ui| {
-                    ui.small(
-                        egui::RichText::new(self.locale.runtime_label("Snapshot").as_ref())
-                            .strong(),
-                    );
-                    render_status_chip(
-                        ui,
-                        self.locale
-                            .runtime_label(window.status_summary.snapshot_consistency_label)
-                            .as_ref(),
-                        context_toolbar_status_color(
-                            window.status_summary.snapshot_consistency_label,
-                        ),
-                    );
-                });
             });
     }
 

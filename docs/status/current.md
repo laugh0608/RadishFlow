@@ -17,7 +17,7 @@
 - 阶段基线：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过；2026-06-02 真实环境 `./scripts/check-repo.sh` 通过。
 - 通用小流程建模 v1 已支持普通空白项目在受控范围内组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，并覆盖显式输入、运行、保存、重开、rerun 与结果审阅。
 - 当前主线已切到 **Studio UI 专题窄口径实现**。`studio-client-main.pen` 是当前唯一活跃 Studio 主设计稿，覆盖 Home、独立物性页、流程图工作台、模块设置 / 模块结果和底部运行 / 状态分栏。
-- 最新进度：**Studio UI 实现第三十六刀已完成运行页顶部收束**。脏项目 `Cmd+Q` 真实窗口 smoke 已复核通过；底部结果表的 stream / unit 定位会派发正式 `inspector.focus_*` command；顶部 `结果工具栏` 不再展开所有结果对象 focus command，顶部 `运行工具栏` 的 Monitor 入口不再重复渲染按钮旁状态 chip，状态统一交给下一行扫读。
+- 最新进度：**Studio UI 实现第三十七刀已完成左侧模块页密度收束**。脏项目 `Cmd+Q` 真实窗口 smoke 已复核通过；底部结果表的 stream / unit 定位会派发正式 `inspector.focus_*` command；顶部 `结果工具栏` 和 `运行工具栏` 已收束重复状态；左侧 `模块` 页保留分类、数量和放置按钮，说明文字改为 hover，不再常驻挤占首屏。
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前策略
@@ -45,11 +45,11 @@ Studio UI：
 
 - 顶部导航已收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；打开 / 新建 / 保存 / 示例归入 `文件`。
 - 独立 `物性` 页消费 `StudioGuiWindowPropertyPageModel`。普通空白项目创建后先进入 `物性`，Property 页入口、`window.property_context_toolbar`、顶部 `流程图` 导航、Home 显式 `返回工作区` 入口和内部进入 Workbench 行为共用 `flowsheet_modeling_enabled`；Home 返回按钮只在本次会话已打开或新建 case 后显示，当前 MVP 不渲染无效二级物性导航。
-- 左侧栏稳定为 `模块 / 项目`：`模块` 承接受控放置 palette、作者任务清单和画布建议；`项目` 承接项目输入、示例入口、对象树和审阅状态。
+- 左侧栏稳定为 `模块 / 项目`：`模块` 承接受控放置 palette、作者任务清单和画布建议；模块分类与选项说明保留在 hover / DTO，不作为首屏常驻说明；`项目` 承接项目输入、示例入口、对象树和审阅状态。
 - 中央 Canvas 只承接 `画布工具`、`画布状态`、`画布操作`、图例、画布实体和受控建议；放置入口留在左侧 `模块`，对象树留在左侧 `项目`，选择语义留在右侧栏。
 - 右侧栏稳定为 `检查器 / 模块设置 / 模块结果`，并用同一 `画布选择` 上下文头消费 Canvas current selection / command presentation。
 - `模块设置` 继续只消费 active unit Inspector DTO；参数摘要从现有字段、notice 和批量提交 / 放弃 command 派生，不新增第二套参数状态。
-- 底部区域稳定为左侧 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 与右侧 `状态汇总` 分栏；结果表的单元区消费 `review_summary.unit_results`，状态汇总额外扫读同源单元结果数量；结果表定位继续走正式 `inspector.focus_stream:*` / `inspector.focus_unit:*`，不维护第二套 shell 私有选择；顶部 `结果工具栏` 不直接铺开所有结果对象定位按钮，顶部 `运行工具栏` 不在 Monitor 按钮旁重复展示状态 chip；底部薄状态栏只做运行、快照、SI 单位、求解器、模式和当前选择扫读。
+- 底部区域稳定为左侧 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 与右侧 `状态汇总` 分栏；结果表的单元区消费 `review_summary.unit_results`，状态汇总额外扫读同源单元结果数量，snapshot 一致性在状态汇总标题行扫读；结果表定位继续走正式 `inspector.focus_stream:*` / `inspector.focus_unit:*`，不维护第二套 shell 私有选择；顶部 `结果工具栏` 不直接铺开所有结果对象定位按钮，顶部 `运行工具栏` 不在 Monitor 按钮旁重复展示状态 chip；底部薄状态栏只做运行、快照、SI 单位、求解器、模式和当前选择扫读。
 
 ## 下一步
 
