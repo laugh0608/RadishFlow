@@ -23,6 +23,8 @@ enum HomeText {
     SignInUnavailableTitle,
     SignInUnavailableDetail,
     Start,
+    ReturnWorkspace,
+    ReturnWorkspaceDetail,
     NewBlankCase,
     AuthorMixerFlashCase,
     AuthorMixerFlashDetail,
@@ -190,6 +192,21 @@ impl ReadyAppState {
     fn render_home_start_actions(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         ui.heading(home_text(self.locale, HomeText::Start));
         ui.add_space(8.0);
+
+        if self.home_current_workspace_is_available() {
+            if ui
+                .add(
+                    egui::Button::new(home_text(self.locale, HomeText::ReturnWorkspace))
+                        .fill(egui::Color32::from_rgb(226, 244, 236))
+                        .min_size(egui::vec2(ui.available_width(), 42.0)),
+                )
+                .clicked()
+            {
+                self.open_current_workspace_from_home();
+            }
+            render_wrapped_small(ui, home_text(self.locale, HomeText::ReturnWorkspaceDetail));
+            ui.add_space(8.0);
+        }
 
         if ui
             .add(
@@ -1391,6 +1408,8 @@ fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {
                 "OIDC / PKCE browser sign-in is not attached to this internal build yet."
             }
             HomeText::Start => "Start",
+            HomeText::ReturnWorkspace => "Return to Workspace",
+            HomeText::ReturnWorkspaceDetail => "Continue the currently open case.",
             HomeText::NewBlankCase => "New Project",
             HomeText::AuthorMixerFlashCase => "Create Mixer-Flash Case",
             HomeText::AuthorMixerFlashDetail => {
@@ -1451,6 +1470,8 @@ fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {
             HomeText::SignInUnavailableTitle => "登录暂不可用",
             HomeText::SignInUnavailableDetail => "当前内部构建尚未接入 OIDC / PKCE 浏览器登录。",
             HomeText::Start => "开始",
+            HomeText::ReturnWorkspace => "返回工作区",
+            HomeText::ReturnWorkspaceDetail => "继续当前已打开项目。",
             HomeText::NewBlankCase => "新建项目",
             HomeText::AuthorMixerFlashCase => "创建 Mixer-Flash 小案例",
             HomeText::AuthorMixerFlashDetail => "从空白项目开始，并打开模块任务清单。",

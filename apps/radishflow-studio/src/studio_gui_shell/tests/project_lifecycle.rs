@@ -1199,6 +1199,37 @@ fn closing_dirty_workspace_requires_explicit_confirmation() {
 }
 
 #[test]
+fn command_q_dirty_workspace_requires_explicit_confirmation() {
+    let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut app = ready_app_state(&config);
+
+    app.dispatch_ui_command("canvas.accept_focused");
+    let dirty_window = app.platform_host.snapshot().window_model();
+    assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
+
+    run_with_key_press(
+        egui::Key::Q,
+        egui::Modifiers {
+            command: true,
+            ..egui::Modifiers::NONE
+        },
+        |ctx| {
+            assert!(app.handle_quit_shortcut(ctx));
+        },
+    );
+
+    let blocked_window = app.platform_host.snapshot().window_model();
+    assert_eq!(
+        blocked_window.runtime.workspace_document.title,
+        dirty_window.runtime.workspace_document.title
+    );
+    assert_eq!(app.logical_window_count(), 1);
+    assert!(app.project_open.pending_close_window_confirmation.is_some());
+
+    let _ = std::fs::remove_file(project_path);
+}
+
+#[test]
 fn cancel_pending_close_keeps_dirty_workspace_active() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
     let mut app = ready_app_state(&config);

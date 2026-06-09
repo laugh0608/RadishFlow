@@ -27,11 +27,11 @@
 
 | 设计区域 | 当前实现映射 | 仍未完成 |
 | --- | --- | --- |
-| Home 示例 / 最近 tile | `StudioGuiWindowHomeModel` / `StudioGuiWindowHomeCaseTileModel` 已统一承载示例项目、最近项目和当前 workspace 返回 tile；示例项目从 `runtime.example_projects` 派生，最近项目仍由 shell preferences / `project_open` 持有并映射为同一 DTO，未保存当前项目只从当前 `workspace_document` 派生 `Current` tile，不写入 recent projects；egui Home Dashboard 已消费统一 tile presentation | 最近项目尚未上提到 `StudioGuiSnapshot`；Home 仍未按设计稿重排为完整 tile gallery 或工作区历史管理 |
+| Home 示例 / 最近 tile | `StudioGuiWindowHomeModel` / `StudioGuiWindowHomeCaseTileModel` 已统一承载示例项目、最近项目和当前 workspace 返回 tile；示例项目从 `runtime.example_projects` 派生，最近项目仍由 shell preferences / `project_open` 持有并映射为同一 DTO，未保存当前项目只从当前 `workspace_document` 派生 `Current` tile，不写入 recent projects；egui Home Dashboard 已消费统一 tile presentation，并在左侧开始区为当前已打开项目提供显式 `返回工作区` 操作 | 最近项目尚未上提到 `StudioGuiSnapshot`；Home 仍未按设计稿重排为完整 tile gallery 或工作区历史管理 |
 | 顶部导航 / 流程图 / 运行 / 结果上下文 / 工具设置菜单 | Studio shell 顶部已从旧 `快速操作` 横排按钮收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；打开 / 新建 / 保存 / 示例归入 `文件`；`流程图` screen 顶部导航下方已新增 `window.flowsheet_context_toolbar`，Canvas 段只消费当前可用 suggestion / pending-edit command，不再重复左侧 `模块` 放置 palette 或中央 `画布操作` 选中对象动作，Run 只消费已启用 Run Panel command，Review 只消费 Module Results、结果表和 snapshot 状态；`物性` screen 的 `window.property_context_toolbar` 继续消费 package / component command 和 Property page 状态，并已增加同源进入流程图建模 readiness；`运行` 已从下拉菜单收敛为 screen，`window.run_context_toolbar` 只消费 Run Panel command / state、status summary、canvas suggestion count 和运行日志；`结果` 已从下拉菜单收敛为 screen，`window.result_context_toolbar` 只消费 Module Results、底部结果表、当前 / stale / missing `SolveSnapshot` 状态和已启用 Result focus command；`工具 / 设置` 菜单内容已拆成可测试分组，分别消费 command palette shell state、Commands panel layout visibility、AppHost logical windows 和当前 shell locale | 厚重 ribbon、完整多页上下文工具栏、单位集设置、偏好页、help command、插件管理、账号 / 授权 / 服务器设置、完整运行控制台、完整日志系统、批量运行、完整报表、跨快照报表、模板、打印和批量导出尚未进入范围 |
 | 左侧模块 / 项目 | Studio shell 左侧顶层入口已从 `项目 / 示例项目 / 放置` 收敛为 `模块 / 项目`；`模块` 继续消费既有 Canvas place-unit palette、authoring checklist 和 suggestion action，并已按 `流股源 / 调节单元 / 汇合与分离` 分类现有受控单元，支持本地筛选，是当前受控单元的放置入口；`项目` 已整理为 `项目输入 / 示例入口 / 对象树 / 审阅状态`，继续消费项目对象树、项目物性包 / 组分扫读、示例入口和当前 run / snapshot 状态 | 完整模块库、完整项目浏览器、自由连线、自动布线和完整拖拽布局尚未进入范围 |
 | 中央 Canvas | 中央 Canvas 已移除重复的对象树副本，改为从既有 canvas presentation 派生 `画布状态` 数量概览；首屏已从独立 `选择 / 视口` 详情行收束为 `画布工具`、`画布状态` 与 `画布操作`：工具区只承接 `适应内容` 视图命令和当前建议命令，不再重复左侧 `模块` 面板的放置 palette；状态行承接对象数量、运行状态、视口模式和布局状态；操作条承接选中对象的聚焦、移动、断开、重连和删除命令，且这些选中对象动作不再被顶部 `流程图工具栏` 重复渲染；画布主体继续渲染图例、单元 / 物料线实体和受控建议，流股 / 单元对象导航由左侧 `项目` 面板和画布实体点击承担，选择语义详情由右侧栏承接；普通空白项目进入空 Workbench 后的首屏职责已由 focused test 锁定，中央不重复 palette、对象树、右侧栏或结果表 | 自由连线、自动布线、完整项目浏览器、完整拖拽布局、完整工具条体系、shell 私有对象状态和第二套对象树尚未进入范围 |
-| 独立物性页 | `StudioGuiWindowPropertyPageModel` 从 `workspace_document.property_package_choices`、`project_component_choices` 和已选 package / components 派生 package、component、metric、future section 和进入流程图建模 readiness；Studio shell 已新增顶部 `主页 / 物性 / 流程图` 导航，独立 `物性` screen 消费同一 DTO；普通空白项目创建后先进入 `物性`，Property 页摘要入口、顶部 `流程图` 导航、Home 当前 workspace 返回入口和内部进入 Workbench 行为共用同一 `flowsheet_modeling_enabled` 判断；缺 package / 项目组分 readiness 也聚焦该页面；命令仍走既有 package / component command id；右侧栏已移除 Package 主入口；顶部导航下方已新增 `window.property_context_toolbar`，只渲染当前可用 package / component 命令、进入建模入口和 package / component / modeling / source 状态 | 物性页长期分析控件、更完整视觉重排、完整组分数据库、第三方物性包加载、完整 Thermodynamics PMC 和完整参数表尚未进入范围 |
+| 独立物性页 | `StudioGuiWindowPropertyPageModel` 从 `workspace_document.property_package_choices`、`project_component_choices` 和已选 package / components 派生 package、component、metric、future section 和进入流程图建模 readiness；Studio shell 已新增顶部 `主页 / 物性 / 流程图` 导航，独立 `物性` screen 消费同一 DTO；普通空白项目创建后先进入 `物性`，Property 页摘要入口、顶部 `流程图` 导航、Home 当前 workspace 返回入口和内部进入 Workbench 行为共用同一 `flowsheet_modeling_enabled` 判断；缺 package / 项目组分 readiness 也聚焦该页面；命令仍走既有 package / component command id；右侧栏已移除 Package 主入口；顶部导航下方已新增 `window.property_context_toolbar`，只渲染当前可用 package / component 命令、进入建模入口和 package / component / modeling / source 状态；当前 egui MVP 页面不渲染无操作价值的左侧二级导航，只保留 package / 项目组分选择区和摘要区 | 物性页长期分析控件、更完整视觉重排、完整组分数据库、第三方物性包加载、完整 Thermodynamics PMC 和完整参数表尚未进入范围 |
 | 底部运行信息 / 状态汇总 | `StudioGuiWindowStatusSummaryModel` 从 document saved/revision、run panel view、latest current-revision `SolveSnapshot`、stale snapshot 或 latest failure 派生；底部抽屉已收敛为左侧 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 与右侧 `状态汇总` 分栏，其中 `收敛` 消费 status summary 与 snapshot 状态，`建议` 消费 Run Panel notice 和 canvas suggestions，右侧状态汇总只消费同一 DTO 的 case、run、convergence、steps、diagnostics 和 snapshot 一致性；底部薄状态栏只展示 run、snapshot、SI 单位、求解器、流程图模式和当前选择扫读，不再重复完整状态汇总 | 完整收敛曲线、完整建议系统、完整报表和跨快照报表尚未进入范围 |
 | 右侧 Inspector / Module Settings | 右侧栏主入口已收敛为 `检查器 / 模块设置 / 模块结果`，并在三入口正文前用同一 `画布选择` 上下文头消费 Canvas current selection / command presentation；`检查器` 继续消费 active inspector detail；`StudioGuiWindowModuleSettingsModel` 已从 active unit Inspector detail 派生参数字段、端口、连接动作、诊断动作和空帮助状态，并由右侧 `模块设置` tab 消费；流股选择时模块设置保持已有 unit-only 空状态 | help command 还没有正式 command surface；完整视觉重排、完整参数表和第二套对象状态尚未进入范围 |
 | Module Results | `StudioGuiWindowModuleResultsModel` 已从 current-revision `SolveSnapshot` 派生 selected unit result、consumed / produced stream chips、related steps、diagnostics 和 diagnostic actions；右侧 `模块结果` tab 已消费该 DTO，stale snapshot 不渲染旧 unit result；右侧 `画布选择` 上下文只说明当前 Canvas 选择，流股选择不伪造单元结果；旧 `Run` 不在右侧栏继续扩展，运行日志 / 消息 / 结果表继续由底部区域承接 | 尚未新增独立模块结果页或画布模块详情标签页；完整报表、跨快照结果和第二套结果状态仍不进入范围 |
@@ -84,7 +84,7 @@ Home 不是营销页，也不是低密度欢迎页。它应使用与工作台一
 | 区域 | 内容 |
 | --- | --- |
 | 顶部 | 应用名、当前页、环境状态、登录状态、保存 / 服务状态 |
-| 左侧开始区 | `新建项目`、`打开项目`、`打开示例项目`，小案例作者入口降级为次级链接 |
+| 左侧开始区 | 当前有工作区时显示 `返回工作区`；`新建项目`、`打开项目`、`打开示例项目`，小案例作者入口降级为次级链接 |
 | 中央 | 最近项目、示例项目，使用可扫读的流程缩影 tile gallery，不使用通用文件图标或营销型大卡片 |
 | 右侧 | 客户端、服务端、设备 / 缓存状态 |
 | 底部 | 可行动消息，例如登录、示例、缓存、物性包状态 |
@@ -118,7 +118,7 @@ tile gallery 的目标是让流程模拟用户能通过缩影快速识别案例�
 - 计算公式展示。
 - 物性分析，例如纯组分物性曲线、混合组分 Txy / Pxy 相图等。
 
-当前线框建议采用三层组织：
+长期线框建议采用三层组织：
 
 | 区域 | 当前内容 | 长期扩展 |
 | --- | --- | --- |
@@ -128,7 +128,7 @@ tile gallery 的目标是让流程模拟用户能通过缩影快速识别案例�
 
 当前 MVP 仍只支持受控内置 package 和 methane / ethane 等小型目录；设计稿不能暗示第三方物性包加载、完整组分数据库或完整 Thermodynamics PMC 已进入当前实现范围。
 
-物性页也应使用与 Workbench 一致的 card 化信息结构：左侧为物性工作区导航卡，中央为组分卡、方法 metric card 和参数预览卡，右侧为选中组分 summary card、关键物性 metric 和来源 / 方法调整说明卡；避免回到纯表格加长段落说明。
+当前 egui MVP 实现不渲染只有未来含义的左侧二级导航，而是使用两列结构：左侧承接 package 和项目组分选择，右侧承接当前 package、组分数、来源和进入流程图建模 readiness。长期设计稿仍可保留物性工作区导航空间，但只有当对应组分详情、方法、参数、来源或分析视图进入实现范围时才落到可见 UI。
 
 ## Flowsheet Workbench
 

@@ -1696,7 +1696,6 @@ fn property_screen_renders_independent_property_page_from_window_model() {
 
     for expected in [
         "物性",
-        "物性工作区",
         "物性包",
         "二元烃 Lite",
         "项目组分",
@@ -1709,6 +1708,14 @@ fn property_screen_renders_independent_property_page_from_window_model() {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
             "expected property page to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+
+    for hidden in ["物性工作区", "参数", "分析", "来源"] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden)),
+            "property page should not render inactive workspace navigation `{hidden}`, rendered texts: {:?}",
             texts
         );
     }
@@ -2888,10 +2895,17 @@ fn home_open_project_returns_to_current_workspace_when_current_tile_is_selected(
 
     app.create_blank_project();
     app.screen = StudioShellScreen::Home;
-    let _ = render_home_dashboard_texts(&mut app);
+    let texts = render_home_dashboard_texts(&mut app);
 
     assert!(app.home_selected_current_workspace);
     assert_eq!(app.home_selected_recent_project, None);
+    for expected in ["返回工作区", "继续当前已打开项目。"] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected home dashboard to render current workspace action `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
 
     app.open_selected_recent_project_or_picker();
 
@@ -2918,10 +2932,15 @@ fn home_current_workspace_tile_returns_to_flowsheet_after_property_main_path_rea
     app.create_blank_project();
     select_builtin_binary_hydrocarbon_basis(&mut app);
     app.screen = StudioShellScreen::Home;
-    let _ = render_home_dashboard_texts(&mut app);
+    let texts = render_home_dashboard_texts(&mut app);
 
     assert!(app.home_selected_current_workspace);
     assert_eq!(app.home_selected_recent_project, None);
+    assert!(
+        texts.iter().any(|text| text.contains("返回工作区")),
+        "expected home dashboard to expose an explicit return action, rendered texts: {:?}",
+        texts
+    );
 
     app.open_selected_recent_project_or_picker();
 

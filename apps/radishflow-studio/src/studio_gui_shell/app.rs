@@ -607,6 +607,10 @@ impl ReadyAppState {
             return;
         }
         self.sync_viewport_lifecycle(ctx);
+        let quit_shortcut_consumed = self.handle_quit_shortcut(ctx);
+        if quit_shortcut_consumed && self.logical_window_count() == 0 {
+            return;
+        }
         let toggle_shortcut_consumed = self.handle_command_palette_toggle_shortcut(ctx);
         self.drain_due_timers(ctx);
         self.drop_preview_overlay_anchor = None;
@@ -614,7 +618,7 @@ impl ReadyAppState {
         let snapshot = self.platform_host.snapshot();
         let window = self.window_model_with_shell_home(&snapshot);
         let palette_keyboard_consumed = self.handle_command_palette_keyboard(ctx, &window.commands);
-        if !toggle_shortcut_consumed && !palette_keyboard_consumed {
+        if !quit_shortcut_consumed && !toggle_shortcut_consumed && !palette_keyboard_consumed {
             self.dispatch_shortcuts(ctx);
         }
         let mut hovered_drop_target = false;
@@ -1524,6 +1528,19 @@ impl ReadyAppState {
     pub(super) fn sync_viewport_lifecycle(&mut self, ctx: &egui::Context) {
         let focused = ctx.input(|input| input.viewport().focused.unwrap_or(input.focused));
         self.last_viewport_focused = Some(focused);
+    }
+
+    pub(super) fn handle_quit_shortcut(&mut self, ctx: &egui::Context) -> bool {
+        let quit_requested =
+            ctx.input(|input| input.modifiers.command && input.key_pressed(egui::Key::Q));
+        if !quit_requested {
+            return false;
+        }
+
+        if self.close_current_window_for_viewport_request() {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        }
+        true
     }
 
     pub(super) fn handle_command_palette_toggle_shortcut(&mut self, ctx: &egui::Context) -> bool {

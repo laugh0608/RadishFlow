@@ -26,9 +26,9 @@ impl ReadyAppState {
             ui,
             match self.locale {
                 StudioShellLocale::En => {
-                    "Independent property workspace backed by the current flowsheet document."
+                    "Property page state is backed by the current flowsheet document."
                 }
-                StudioShellLocale::ZhCn => "独立物性工作区，状态来自当前 flowsheet 文档。",
+                StudioShellLocale::ZhCn => "物性页状态来自当前 flowsheet 文档。",
             },
         );
 
@@ -46,54 +46,11 @@ impl ReadyAppState {
             ))
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                ui.columns(3, |columns| {
-                    self.render_property_workspace_navigation(&mut columns[0], property_page);
-                    self.render_property_workspace_selection(&mut columns[1], property_page);
-                    self.render_property_workspace_summary(&mut columns[2], window);
+                ui.columns(2, |columns| {
+                    self.render_property_workspace_selection(&mut columns[0], property_page);
+                    self.render_property_workspace_summary(&mut columns[1], window);
                 });
             });
-    }
-
-    fn render_property_workspace_navigation(
-        &self,
-        ui: &mut egui::Ui,
-        property_page: &radishflow_studio::StudioGuiWindowPropertyPageModel,
-    ) {
-        egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            ui.label(
-                egui::RichText::new(match self.locale {
-                    StudioShellLocale::En => "Property workspace",
-                    StudioShellLocale::ZhCn => "物性工作区",
-                })
-                .strong(),
-            );
-            ui.add_space(4.0);
-            for label in [
-                self.locale.runtime_label("Components"),
-                self.locale.runtime_label("Package"),
-            ] {
-                let _ = ui.selectable_label(false, label.as_ref());
-            }
-            for section in &property_page.future_sections {
-                ui.add_enabled(
-                    false,
-                    egui::Button::new(self.locale.runtime_label(section).as_ref()),
-                );
-            }
-            ui.separator();
-            render_wrapped_small(
-                ui,
-                match self.locale {
-                    StudioShellLocale::En => {
-                        "MVP scope exposes controlled built-in packages and a small component catalog."
-                    }
-                    StudioShellLocale::ZhCn => {
-                        "当前 MVP 只暴露受控内置物性包和小型组分目录。"
-                    }
-                },
-            );
-        });
     }
 
     fn render_property_workspace_selection(
