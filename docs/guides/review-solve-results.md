@@ -1,6 +1,6 @@
 # Review Solve Results
 
-更新时间：2026-06-07
+更新时间：2026-06-09
 
 ## 目的
 
@@ -207,12 +207,12 @@ Module Results 当前还会把 selected unit result、consumed / produced stream
 
 ## 底部结果表
 
-底部 `结果表` 当前分两段展示同一份 `SolveSnapshot`：
+底部 `结果表` 当前分两段展示当前 revision 的同一份最新 `SolveSnapshot`：
 
-- 上半段是流股表：按流股列出 `T / P / F / H / 相态`，点击流股会切到结果审阅区对应流股。
-- 下半段是单元表：按每个单元的最新求解步骤列出状态、step 序号、消费流股和产出流股，点击单元会切到右侧 `模块结果` 的 Module Results 面。
+- 上半段是流股表：按流股列出 `T / P / F / H / 相态`，点击流股会派发 `inspector.focus_stream:*` 并切到右侧 `检查器`。
+- 下半段是单元表：按 `review_summary.unit_results` 列出每个单元的最新求解步骤、状态、step 序号、消费流股和产出流股，点击单元会派发 `inspector.focus_unit:*` 并切到右侧 `模块结果`。
 
-这张表只用于快速核对当前快照，不保存结果、不触发求解，也不是完整报表系统。小案例作者路径运行后，建议先在流股表确认关键 outlet，再在单元表确认 upstream / downstream 消费关系是否正确。
+点击结果表不会离开底部 `结果表` tab，也不会触发重新求解；它只通过正式 focus command 同步 Canvas 当前选择、右侧 `画布选择`、Inspector / Module Results。小案例作者路径运行后，建议先在流股表确认关键 outlet，再在单元表确认 upstream / downstream 消费关系是否正确。
 
 ## 当前快照复制 / 导出
 
