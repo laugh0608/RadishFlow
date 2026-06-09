@@ -2080,6 +2080,26 @@ fn home_dashboard_renders_recent_case_tiles_from_window_model() {
 }
 
 #[test]
+fn home_dashboard_hides_return_workspace_action_before_user_opens_or_creates_case() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    let texts = render_home_dashboard_texts(&mut app);
+
+    assert!(
+        !texts.iter().any(|text| text.contains("返回工作区")),
+        "fresh Home should not expose a return action before the user opens or creates a case, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        !texts
+            .iter()
+            .any(|text| text.contains("继续当前已打开项目。")),
+        "fresh Home should not render return-workspace helper text, rendered texts: {:?}",
+        texts
+    );
+}
+
+#[test]
 fn home_dashboard_exposes_unsaved_current_project_return_tile() {
     let mut app = ready_app_state(&synced_workspace_config());
 

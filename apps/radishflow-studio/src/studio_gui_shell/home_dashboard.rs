@@ -193,7 +193,7 @@ impl ReadyAppState {
         ui.heading(home_text(self.locale, HomeText::Start));
         ui.add_space(8.0);
 
-        if self.home_current_workspace_is_available() {
+        if self.home_return_workspace_action_is_available() {
             if ui
                 .add(
                     egui::Button::new(home_text(self.locale, HomeText::ReturnWorkspace))
@@ -572,6 +572,10 @@ impl ReadyAppState {
             .title
             .trim()
             .is_empty()
+    }
+
+    fn home_return_workspace_action_is_available(&self) -> bool {
+        self.home_workspace_return_available && self.home_current_workspace_is_available()
     }
 
     pub(in crate::studio_gui_shell) fn open_selected_example_project(

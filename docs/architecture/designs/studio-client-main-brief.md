@@ -27,7 +27,7 @@
 
 | 设计区域 | 当前实现映射 | 仍未完成 |
 | --- | --- | --- |
-| Home 示例 / 最近 tile | `StudioGuiWindowHomeModel` / `StudioGuiWindowHomeCaseTileModel` 已统一承载示例项目、最近项目和当前 workspace 返回 tile；示例项目从 `runtime.example_projects` 派生，最近项目仍由 shell preferences / `project_open` 持有并映射为同一 DTO，未保存当前项目只从当前 `workspace_document` 派生 `Current` tile，不写入 recent projects；egui Home Dashboard 已消费统一 tile presentation，并在左侧开始区为当前已打开项目提供显式 `返回工作区` 操作 | 最近项目尚未上提到 `StudioGuiSnapshot`；Home 仍未按设计稿重排为完整 tile gallery 或工作区历史管理 |
+| Home 示例 / 最近 tile | `StudioGuiWindowHomeModel` / `StudioGuiWindowHomeCaseTileModel` 已统一承载示例项目、最近项目和当前 workspace 返回 tile；示例项目从 `runtime.example_projects` 派生，最近项目仍由 shell preferences / `project_open` 持有并映射为同一 DTO，未保存当前项目只从当前 `workspace_document` 派生 `Current` tile，不写入 recent projects；egui Home Dashboard 已消费统一 tile presentation，并在本次会话已打开或新建 case 后于左侧开始区提供显式 `返回工作区` 操作 | 最近项目尚未上提到 `StudioGuiSnapshot`；Home 仍未按设计稿重排为完整 tile gallery 或工作区历史管理 |
 | 顶部导航 / 流程图 / 运行 / 结果上下文 / 工具设置菜单 | Studio shell 顶部已从旧 `快速操作` 横排按钮收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；打开 / 新建 / 保存 / 示例归入 `文件`；`流程图` screen 顶部导航下方已新增 `window.flowsheet_context_toolbar`，Canvas 段只消费当前可用 suggestion / pending-edit command，不再重复左侧 `模块` 放置 palette 或中央 `画布操作` 选中对象动作，Run 只消费已启用 Run Panel command，Review 只消费 Module Results、结果表和 snapshot 状态；`物性` screen 的 `window.property_context_toolbar` 继续消费 package / component command 和 Property page 状态，并已增加同源进入流程图建模 readiness；`运行` 已从下拉菜单收敛为 screen，`window.run_context_toolbar` 只消费 Run Panel command / state、status summary、canvas suggestion count 和运行日志；`结果` 已从下拉菜单收敛为 screen，`window.result_context_toolbar` 只消费 Module Results、底部结果表、当前 / stale / missing `SolveSnapshot` 状态和已启用 Result focus command；`工具 / 设置` 菜单内容已拆成可测试分组，分别消费 command palette shell state、Commands panel layout visibility、AppHost logical windows 和当前 shell locale | 厚重 ribbon、完整多页上下文工具栏、单位集设置、偏好页、help command、插件管理、账号 / 授权 / 服务器设置、完整运行控制台、完整日志系统、批量运行、完整报表、跨快照报表、模板、打印和批量导出尚未进入范围 |
 | 左侧模块 / 项目 | Studio shell 左侧顶层入口已从 `项目 / 示例项目 / 放置` 收敛为 `模块 / 项目`；`模块` 继续消费既有 Canvas place-unit palette、authoring checklist 和 suggestion action，并已按 `流股源 / 调节单元 / 汇合与分离` 分类现有受控单元，支持本地筛选，是当前受控单元的放置入口；`项目` 已整理为 `项目输入 / 示例入口 / 对象树 / 审阅状态`，继续消费项目对象树、项目物性包 / 组分扫读、示例入口和当前 run / snapshot 状态 | 完整模块库、完整项目浏览器、自由连线、自动布线和完整拖拽布局尚未进入范围 |
 | 中央 Canvas | 中央 Canvas 已移除重复的对象树副本，改为从既有 canvas presentation 派生 `画布状态` 数量概览；首屏已从独立 `选择 / 视口` 详情行收束为 `画布工具`、`画布状态` 与 `画布操作`：工具区只承接 `适应内容` 视图命令和当前建议命令，不再重复左侧 `模块` 面板的放置 palette；状态行承接对象数量、运行状态、视口模式和布局状态；操作条承接选中对象的聚焦、移动、断开、重连和删除命令，且这些选中对象动作不再被顶部 `流程图工具栏` 重复渲染；画布主体继续渲染图例、单元 / 物料线实体和受控建议，流股 / 单元对象导航由左侧 `项目` 面板和画布实体点击承担，选择语义详情由右侧栏承接；普通空白项目进入空 Workbench 后的首屏职责已由 focused test 锁定，中央不重复 palette、对象树、右侧栏或结果表 | 自由连线、自动布线、完整项目浏览器、完整拖拽布局、完整工具条体系、shell 私有对象状态和第二套对象树尚未进入范围 |
@@ -84,7 +84,7 @@ Home 不是营销页，也不是低密度欢迎页。它应使用与工作台一
 | 区域 | 内容 |
 | --- | --- |
 | 顶部 | 应用名、当前页、环境状态、登录状态、保存 / 服务状态 |
-| 左侧开始区 | 当前有工作区时显示 `返回工作区`；`新建项目`、`打开项目`、`打开示例项目`，小案例作者入口降级为次级链接 |
+| 左侧开始区 | 本次会话已打开或新建 case 后显示 `返回工作区`；`新建项目`、`打开项目`、`打开示例项目`，小案例作者入口降级为次级链接 |
 | 中央 | 最近项目、示例项目，使用可扫读的流程缩影 tile gallery，不使用通用文件图标或营销型大卡片 |
 | 右侧 | 客户端、服务端、设备 / 缓存状态 |
 | 底部 | 可行动消息，例如登录、示例、缓存、物性包状态 |

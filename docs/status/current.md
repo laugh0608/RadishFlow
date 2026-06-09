@@ -17,7 +17,7 @@
 - 阶段基线：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过；2026-06-02 真实环境 `./scripts/check-repo.sh` 通过。
 - 通用小流程建模 v1 已支持普通空白项目在受控范围内组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，并覆盖显式输入、运行、保存、重开、rerun 与结果审阅。
 - 当前主线已切到 **Studio UI 专题窄口径实现**。`studio-client-main.pen` 是当前唯一活跃 Studio 主设计稿，覆盖 Home、独立物性页、流程图工作台、模块设置 / 模块结果和底部运行 / 状态分栏。
-- 最新进度：**Studio UI 实现第三十刀已完成用户反馈切片**。Home 在存在当前工作区时新增显式 `返回工作区` 操作；当前 MVP 的 `物性` 页移除无操作价值的左侧二级导航，收敛为选择区与摘要区；`Cmd+Q` 已接入现有脏工作区关闭确认路径。
+- 最新进度：**Studio UI 实现第三十刀已完成用户反馈切片**。Home 在本次会话已打开或新建 case 后新增显式 `返回工作区` 操作；当前 MVP 的 `物性` 页移除无操作价值的左侧二级导航，收敛为选择区与摘要区；`Cmd+Q` 已接入现有脏工作区关闭确认路径。
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前策略
@@ -44,7 +44,7 @@
 Studio UI：
 
 - 顶部导航已收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；打开 / 新建 / 保存 / 示例归入 `文件`。
-- 独立 `物性` 页消费 `StudioGuiWindowPropertyPageModel`。普通空白项目创建后先进入 `物性`，Property 页入口、`window.property_context_toolbar`、顶部 `流程图` 导航、Home 显式 `返回工作区` 入口和内部进入 Workbench 行为共用 `flowsheet_modeling_enabled`；当前 MVP 不渲染无效二级物性导航。
+- 独立 `物性` 页消费 `StudioGuiWindowPropertyPageModel`。普通空白项目创建后先进入 `物性`，Property 页入口、`window.property_context_toolbar`、顶部 `流程图` 导航、Home 显式 `返回工作区` 入口和内部进入 Workbench 行为共用 `flowsheet_modeling_enabled`；Home 返回按钮只在本次会话已打开或新建 case 后显示，当前 MVP 不渲染无效二级物性导航。
 - 左侧栏稳定为 `模块 / 项目`：`模块` 承接受控放置 palette、作者任务清单和画布建议；`项目` 承接项目输入、示例入口、对象树和审阅状态。
 - 中央 Canvas 只承接 `画布工具`、`画布状态`、`画布操作`、图例、画布实体和受控建议；放置入口留在左侧 `模块`，对象树留在左侧 `项目`，选择语义留在右侧栏。
 - 右侧栏稳定为 `检查器 / 模块设置 / 模块结果`，并用同一 `画布选择` 上下文头消费 Canvas current selection / command presentation。

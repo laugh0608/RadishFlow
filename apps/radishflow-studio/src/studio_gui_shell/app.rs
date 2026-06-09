@@ -151,6 +151,7 @@ impl ReadyAppState {
                     detail: blank_project_created_notice_detail(self.locale, authoring_case)
                         .to_string(),
                 });
+                self.home_workspace_return_available = true;
                 self.screen = if authoring_case.is_some() {
                     StudioShellScreen::Workbench
                 } else {
@@ -531,6 +532,7 @@ impl ReadyAppState {
                             &project_path,
                         ),
                     }));
+                self.home_workspace_return_available = true;
                 self.screen = StudioShellScreen::Workbench;
                 self.active_authoring_case = None;
                 self.platform_host.record_activity_line(format!(
