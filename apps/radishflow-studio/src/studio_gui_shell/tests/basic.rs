@@ -885,6 +885,7 @@ fn property_main_path_readiness_tracks_property_package_and_components() {
 #[test]
 fn run_context_toolbar_renders_existing_run_commands_and_state() {
     let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
     app.screen = StudioShellScreen::Run;
 
     let texts = render_top_bar_texts(&mut app);
@@ -913,6 +914,8 @@ fn run_context_toolbar_renders_existing_run_commands_and_state() {
         "完整报表",
         "批量运行",
         "自动调度",
+        "可用",
+        "无",
     ] {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),

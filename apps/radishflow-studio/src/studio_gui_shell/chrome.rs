@@ -143,7 +143,7 @@ impl ReadyAppState {
                         .color(egui::Color32::from_rgb(92, 104, 117)),
                 );
                 for item in &section.items {
-                    self.render_context_toolbar_item(ui, item);
+                    self.render_context_toolbar_item(ui, toolbar.title, section.title, item);
                 }
             }
         });
@@ -168,6 +168,8 @@ impl ReadyAppState {
     fn render_context_toolbar_item(
         &mut self,
         ui: &mut egui::Ui,
+        toolbar_title: &str,
+        section_title: &str,
         item: &radishflow_studio::StudioGuiWindowContextToolbarItemModel,
     ) {
         let label = self.locale.runtime_label(&item.label);
@@ -212,7 +214,9 @@ impl ReadyAppState {
                 }
             }
         }
-        if let Some(status_label) = item.status_label.as_deref() {
+        if let Some(status_label) = item.status_label.as_deref()
+            && !context_toolbar_item_status_is_top_bar_summary_only(toolbar_title, section_title)
+        {
             render_status_chip(
                 ui,
                 self.locale.runtime_label(status_label).as_ref(),
@@ -2194,6 +2198,13 @@ fn context_toolbar_section_is_top_bar_summary_only(
     section_title: &str,
 ) -> bool {
     toolbar_title == "Result Context" && section_title == "Focus"
+}
+
+fn context_toolbar_item_status_is_top_bar_summary_only(
+    toolbar_title: &str,
+    section_title: &str,
+) -> bool {
+    toolbar_title == "Run Context" && section_title == "Monitor"
 }
 
 #[derive(Debug, Clone, Copy)]
