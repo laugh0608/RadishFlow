@@ -171,9 +171,10 @@ impl ReadyAppState {
                 return;
             }
 
-            render_wrapped_small(ui, &module.detail);
             if let Some(unit) = module.selected_unit_result.as_ref() {
-                self.render_unit_execution_result_inspector(ui, unit);
+                self.render_module_results_unit_summary(ui, unit);
+            } else {
+                render_wrapped_small(ui, &module.detail);
             }
 
             if !module.related_steps.is_empty() {
@@ -201,6 +202,53 @@ impl ReadyAppState {
                         ui.add_space(4.0);
                     }
                 });
+            }
+        });
+    }
+
+    fn render_module_results_unit_summary(
+        &mut self,
+        ui: &mut egui::Ui,
+        unit: &radishflow_studio::StudioGuiWindowUnitExecutionResultModel,
+    ) {
+        ui.add_space(4.0);
+        ui.horizontal_wrapped(|ui| {
+            ui.label(egui::RichText::new(&unit.unit_id).strong());
+            render_status_chip(
+                ui,
+                self.locale.runtime_label(unit.status_label).as_ref(),
+                run_status_color(unit.status_label),
+            );
+            ui.small(format!("#{}", unit.step_index));
+        });
+        render_wrapped_small(ui, compact_unit_result_summary(&unit.summary));
+        self.render_module_results_stream_chips(
+            ui,
+            self.locale.text(ShellText::InspectorConsumedStreams),
+            &unit.consumed_stream_results,
+        );
+        self.render_module_results_stream_chips(
+            ui,
+            self.locale.text(ShellText::InspectorProducedStreams),
+            &unit.produced_stream_results,
+        );
+        ui.add_space(4.0);
+    }
+
+    fn render_module_results_stream_chips(
+        &mut self,
+        ui: &mut egui::Ui,
+        title: &str,
+        streams: &[radishflow_studio::StudioGuiWindowStreamResultReferenceModel],
+    ) {
+        if streams.is_empty() {
+            return;
+        }
+        ui.horizontal_wrapped(|ui| {
+            ui.small(egui::RichText::new(title).strong());
+            for stream in streams {
+                let _ = self.render_small_command_action(ui, &stream.focus_action);
+                ui.small(egui::RichText::new(&stream.summary).small());
             }
         });
     }
@@ -1133,6 +1181,13 @@ fn module_results_state_color(
             egui::Color32::from_rgb(86, 96, 108)
         }
     }
+}
+
+fn compact_unit_result_summary(summary: &str) -> &str {
+    summary
+        .split_once(" with ")
+        .map(|(_, streams)| streams)
+        .unwrap_or(summary)
 }
 
 fn right_sidebar_selection_title(locale: StudioShellLocale) -> &'static str {

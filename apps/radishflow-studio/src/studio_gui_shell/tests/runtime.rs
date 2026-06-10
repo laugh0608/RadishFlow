@@ -1448,6 +1448,17 @@ fn runtime_module_results_tab_consumes_current_module_results_dto_for_active_uni
             && texts.iter().any(|text| text == "stream-heated"),
         "expected current module result to render latest stream values and stream focus actions, rendered texts: {texts:?}"
     );
+    assert!(
+        texts.iter().any(|text| text == "#1")
+            && texts.iter().any(|text| text.contains("1 inlet stream"))
+            && texts.iter().any(|text| text.contains("1 outlet stream")),
+        "expected compact unit result summary to keep step and stream role counts, rendered texts: {texts:?}"
+    );
+    assert!(
+        !texts.iter().any(|text| text.contains("Snapshot example-"))
+            && !texts.iter().any(|text| text.contains("executed unit")),
+        "current Module Results tab should not render the long snapshot id or full execution sentence in the right sidebar, rendered texts: {texts:?}"
+    );
 }
 
 #[test]
