@@ -808,6 +808,7 @@ fn property_context_toolbar_renders_existing_package_component_commands_and_stat
         );
     }
     for hidden in [
+        "binary-hydrocarbon-lite-v1",
         "第三方物性包",
         "完整组分数据库",
         "Thermodynamics PMC",
@@ -820,6 +821,22 @@ fn property_context_toolbar_renders_existing_package_component_commands_and_stat
             texts
         );
     }
+
+    select_builtin_binary_hydrocarbon_basis(&mut app);
+
+    let ready_texts = render_top_bar_texts(&mut app);
+    assert!(
+        ready_texts.iter().any(|text| text.contains("二元烃 Lite")),
+        "expected ready property context toolbar to render localized package label, rendered texts: {:?}",
+        ready_texts
+    );
+    assert!(
+        !ready_texts
+            .iter()
+            .any(|text| text.contains("binary-hydrocarbon-lite-v1")),
+        "ready property context toolbar must not render raw package id, rendered texts: {:?}",
+        ready_texts
+    );
 }
 
 #[test]
@@ -1735,6 +1752,8 @@ fn property_screen_renders_independent_property_page_from_window_model() {
         "进入流程图建模",
         "就绪",
         "物性包和项目组分已选择",
+        "已安排自动授权检查",
+        "后台按计划复查授权状态",
     ] {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
@@ -1743,10 +1762,19 @@ fn property_screen_renders_independent_property_page_from_window_model() {
         );
     }
 
-    for hidden in ["物性工作区", "参数", "分析", "来源"] {
+    for hidden in [
+        "binary-hydrocarbon-lite-v1",
+        "Automatic check scheduled",
+        "SystemTime",
+        "TimerElapsed",
+        "物性工作区",
+        "参数",
+        "分析",
+        "来源",
+    ] {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
-            "property page should not render inactive workspace navigation `{hidden}`, rendered texts: {:?}",
+            "property page should not render hidden or inactive text `{hidden}`, rendered texts: {:?}",
             texts
         );
     }

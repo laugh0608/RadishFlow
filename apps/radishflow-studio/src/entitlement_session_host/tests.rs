@@ -417,6 +417,13 @@ fn snapshot_host_state_marks_backoff_retry_when_scheduler_is_blocked() {
             .map(|notice| notice.title.as_str()),
         Some("Automatic retry scheduled")
     );
+    assert_eq!(
+        state
+            .host_notice
+            .as_ref()
+            .map(|notice| notice.message.as_str()),
+        Some("Studio will retry entitlement sync in the background.")
+    );
 }
 
 #[test]
@@ -630,6 +637,13 @@ fn snapshot_host_state_exposes_scheduled_check_notice() {
             .as_ref()
             .map(|notice| notice.title.as_str()),
         Some("Automatic check scheduled")
+    );
+    assert_eq!(
+        state
+            .host_notice
+            .as_ref()
+            .map(|notice| notice.message.as_str()),
+        Some("Studio will check entitlement again in the background.")
     );
 }
 

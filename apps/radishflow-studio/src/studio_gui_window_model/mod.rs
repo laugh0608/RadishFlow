@@ -1050,10 +1050,7 @@ fn property_context_status_items(
     vec![
         StudioGuiWindowContextToolbarStatusModel {
             label: "Package",
-            value: property_page
-                .selected_package_id
-                .clone()
-                .unwrap_or_else(|| "Unselected".to_string()),
+            value: property_context_selected_package_label(property_page),
             status_label: property_page.package_status_label.to_string(),
             detail: "Property package selection stored in the flowsheet document.".to_string(),
         },
@@ -1084,6 +1081,18 @@ fn property_context_status_items(
             detail: "MVP scope only exposes controlled built-in property assets.".to_string(),
         },
     ]
+}
+
+fn property_context_selected_package_label(
+    property_page: &StudioGuiWindowPropertyPageModel,
+) -> String {
+    property_page
+        .package_choices
+        .iter()
+        .find(|choice| choice.selected)
+        .map(|choice| choice.label.clone())
+        .or_else(|| property_page.selected_package_id.clone())
+        .unwrap_or_else(|| "Unselected".to_string())
 }
 
 fn run_context_monitor_items(

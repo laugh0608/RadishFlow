@@ -194,10 +194,15 @@ impl StudioGuiWindowPropertyPageModel {
             .filter(|component| component.selected)
             .count();
         let selected_package = document.property_package_id.clone();
-        let selected_package_component_summary = document
+        let selected_package_choice = document
             .property_package_choices
             .iter()
-            .find(|choice| choice.selected)
+            .find(|choice| choice.selected);
+        let selected_package_label = selected_package_choice
+            .map(|choice| choice.label.clone())
+            .or_else(|| selected_package.clone())
+            .unwrap_or_else(|| "Unselected".to_string());
+        let selected_package_component_summary = selected_package_choice
             .map(|choice| choice.component_summary.clone())
             .unwrap_or_else(|| "Unselected".to_string());
         let flowsheet_modeling_enabled = selected_package.is_some() && selected_component_count > 0;
@@ -254,7 +259,7 @@ impl StudioGuiWindowPropertyPageModel {
             metrics: vec![
                 StudioGuiWindowPropertyMetricModel {
                     label: "Package",
-                    value: selected_package.unwrap_or_else(|| "Unselected".to_string()),
+                    value: selected_package_label,
                     detail: selected_package_component_summary,
                 },
                 StudioGuiWindowPropertyMetricModel {

@@ -5459,7 +5459,7 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
             .map(|item| (item.label, item.value.as_str(), item.status_label.as_str()))
             .collect::<Vec<_>>(),
         vec![
-            ("Package", "binary-hydrocarbon-lite-v1", "Selected"),
+            ("Package", "Binary Hydrocarbon Lite", "Selected"),
             ("Components", "2", "Selected"),
             ("Modeling", "Flowsheet", "Ready"),
             ("Source", "Built-in", "Available"),
@@ -5507,7 +5507,7 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
     );
     assert_eq!(
         selected_window.property_context_toolbar.status_items[0].value,
-        "binary-hydrocarbon-lite-v1"
+        "Binary Hydrocarbon Lite"
     );
     assert_eq!(
         selected_window.property_context_toolbar.status_items[0].status_label,
