@@ -14,10 +14,10 @@
 
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN / COM 适配层构建稳态流程模拟软件。
 - MVP 第一阶段 M1-M5、MVP α、MVP β 人工 smoke、失败修复闭环和通用小流程建模 v1 均已阶段性收口。
-- 阶段基线：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过；2026-06-02 真实环境 `./scripts/check-repo.sh` 通过。
+- 阶段基线：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过；2026-06-10 `./scripts/check-repo.sh` 通过。
 - 通用小流程建模 v1 已支持普通空白项目在受控范围内组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，并覆盖显式输入、运行、保存、重开、rerun 与结果审阅。
 - 当前主线已切到 **Studio UI 专题窄口径实现**。`studio-client-main.pen` 是当前唯一活跃 Studio 主设计稿，覆盖 Home、独立物性页、流程图工作台、模块设置 / 模块结果和底部运行 / 状态分栏。
-- 最新进度：**Studio UI 实现第三十八刀已完成右侧 `模块结果` 密度收束**。脏项目 `Cmd+Q` 真实窗口 smoke 已复核通过；底部结果表的 stream / unit 定位会派发正式 `inspector.focus_*` command；顶部 `结果工具栏` 和 `运行工具栏` 已收束重复状态；左侧 `模块` 页保留分类、数量和放置按钮，说明文字改为 hover；右侧 `模块结果` 对 current unit result 采用紧凑单元、状态、step 和消费 / 产出流股 chip 展示，不再在首屏展开长 snapshot id。
+- 最新进度：**Studio UI 实现第三十八刀已完成右侧 `模块结果` 密度收束，仓库级验证已通过**。脏项目 `Cmd+Q` 真实窗口 smoke 已复核通过；底部结果表的 stream / unit 定位会派发正式 `inspector.focus_*` command；顶部 `结果工具栏` 和 `运行工具栏` 已收束重复状态；左侧 `模块` 页保留分类、数量和放置按钮，说明文字改为 hover；右侧 `模块结果` 对 current unit result 采用紧凑单元、状态、step 和消费 / 产出流股 chip 展示，不再在首屏展开长 snapshot id。
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前策略
