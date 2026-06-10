@@ -439,7 +439,7 @@ impl ReadyAppState {
                     ui.small(&tile.component_summary);
                     ui.separator();
                     ui.small(home_text(self.locale, HomeText::PropertyPackage));
-                    ui.small(&tile.package_summary);
+                    ui.small(self.locale.runtime_label(&tile.package_summary).as_ref());
                 });
             });
             let row_response = ui
@@ -713,11 +713,15 @@ impl ReadyAppState {
                             },
                             Some("examples/flowsheets"),
                         );
+                        let cache_package_summary =
+                            property_package_summary_from_id("binary-hydrocarbon-lite-v1");
+                        let localized_cache_package_summary =
+                            self.locale.runtime_label(&cache_package_summary);
                         self.render_home_message_row(
                             ui,
                             HomeMessageTag::Cache,
                             home_text(self.locale, HomeText::CacheReadyMessage),
-                            Some("binary-hydrocarbon-lite-v1"),
+                            Some(localized_cache_package_summary.as_ref()),
                         );
                     });
             });
@@ -934,7 +938,7 @@ fn recent_case_tile_from_path(
     let package_summary = project_file
         .as_ref()
         .and_then(|project| project.document.flowsheet.property_package_id())
-        .map(str::to_string)
+        .map(property_package_summary_from_id)
         .unwrap_or_else(|| "Unselected".to_string());
     let component_summary = project_file
         .as_ref()
@@ -976,7 +980,12 @@ fn current_workspace_case_tile(
         .iter()
         .find(|choice| choice.selected)
         .map(|choice| choice.label.clone())
-        .or_else(|| document.property_package_id.clone())
+        .or_else(|| {
+            document
+                .property_package_id
+                .as_deref()
+                .map(property_package_summary_from_id)
+        })
         .unwrap_or_else(|| "Unselected".to_string());
     let component_summary =
         component_summary_from_component_choices(&document.project_component_choices);
@@ -1008,6 +1017,12 @@ fn recent_case_title_from_path(project_path: &Path) -> String {
         .and_then(|name| name.to_str())
         .map(str::to_string)
         .unwrap_or_else(|| project_path.display().to_string())
+}
+
+fn property_package_summary_from_id(package_id: &str) -> String {
+    radishflow_studio::builtin_property_package(package_id)
+        .map(|package| package.label.to_string())
+        .unwrap_or_else(|| package_id.to_string())
 }
 
 fn component_summary_from_flowsheet(flowsheet: &rf_model::Flowsheet) -> String {

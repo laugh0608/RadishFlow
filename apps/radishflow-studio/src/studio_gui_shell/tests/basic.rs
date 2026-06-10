@@ -2064,7 +2064,7 @@ fn home_window_model_maps_recent_projects_to_case_tiles() {
         current_tile.title,
         "Feed Heater Flash Binary Hydrocarbon Example"
     );
-    assert_eq!(current_tile.package_summary, "binary-hydrocarbon-lite-v1");
+    assert_eq!(current_tile.package_summary, "Binary Hydrocarbon Lite");
     assert_eq!(current_tile.component_summary, "Ethane, Methane");
     assert!(
         current_tile
@@ -2100,7 +2100,7 @@ fn home_dashboard_renders_recent_case_tiles_from_window_model() {
         "Heater",
         "Flash Drum",
         "Ethane, Methane",
-        "binary-hydrocarbon-lite-v1",
+        "二元烃 Lite",
     ] {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
@@ -2108,6 +2108,13 @@ fn home_dashboard_renders_recent_case_tiles_from_window_model() {
             texts
         );
     }
+    assert!(
+        !texts
+            .iter()
+            .any(|text| text.contains("binary-hydrocarbon-lite-v1")),
+        "home recent/current tiles should render the localized package label instead of the raw package id, rendered texts: {:?}",
+        texts
+    );
 }
 
 #[test]

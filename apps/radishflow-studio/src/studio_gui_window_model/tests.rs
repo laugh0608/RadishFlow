@@ -1240,7 +1240,7 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
         mixer_tile.status,
         crate::StudioGuiWindowHomeCaseTileStatus::Ready
     );
-    assert_eq!(mixer_tile.package_summary, "binary-hydrocarbon-lite-v1");
+    assert_eq!(mixer_tile.package_summary, "Binary Hydrocarbon Lite");
     assert_eq!(
         mixer_tile
             .thumbnail

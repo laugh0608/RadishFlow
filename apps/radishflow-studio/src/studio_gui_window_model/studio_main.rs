@@ -721,7 +721,10 @@ fn example_case_tile_from_model(
         title: example.title.to_string(),
         detail: example.detail.to_string(),
         path_text: example.project_path.display().to_string(),
-        package_summary: "binary-hydrocarbon-lite-v1".to_string(),
+        package_summary: crate::builtin_property_package("binary-hydrocarbon-lite-v1")
+            .map(|package| package.label)
+            .unwrap_or("binary-hydrocarbon-lite-v1")
+            .to_string(),
         component_summary: "Methane, Ethane".to_string(),
         status,
         status_label: home_case_tile_status_label(status),
