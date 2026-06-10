@@ -1253,8 +1253,11 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
     assert_eq!(mixer_tile.thumbnail.edges, [(0, 2), (1, 2), (2, 3)]);
 
     assert_eq!(window.property_page.title, "Property");
-    assert_eq!(window.property_page.selected_package_id.as_deref(), None);
-    assert_eq!(window.property_page.package_status_label, "Unselected");
+    assert_eq!(
+        window.property_page.selected_package_id.as_deref(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert_eq!(window.property_page.package_status_label, "Selected");
     assert_eq!(window.property_page.package_choices.len(), 1);
     assert_eq!(
         window.property_page.package_choices[0].command_id,
@@ -1353,8 +1356,11 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
     assert_eq!(window.runtime.workspace_document.revision, 0);
     assert_eq!(window.runtime.workspace_document.unit_count, 3);
     assert_eq!(window.runtime.workspace_document.snapshot_history_count, 1);
-    assert_eq!(window.property_page.selected_package_id.as_deref(), None);
-    assert_eq!(window.property_page.package_status_label, "Unselected");
+    assert_eq!(
+        window.property_page.selected_package_id.as_deref(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert_eq!(window.property_page.package_status_label, "Selected");
     assert_eq!(window.property_page.selected_component_count, 2);
 
     let snapshot = window
@@ -5422,26 +5428,7 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
             .iter()
             .map(|section| section.title)
             .collect::<Vec<_>>(),
-        vec!["Package", "Modeling"]
-    );
-    let package_section = context_toolbar_section(&window.property_context_toolbar, "Package");
-    assert_eq!(
-        package_section
-            .items
-            .iter()
-            .map(|item| (
-                item.target,
-                item.command_id.as_deref(),
-                item.label.as_str(),
-                item.status_label.as_deref()
-            ))
-            .collect::<Vec<_>>(),
-        vec![(
-            crate::StudioGuiWindowContextToolbarItemTarget::Command,
-            Some("project.property_package.select:binary-hydrocarbon-lite-v1"),
-            "Binary Hydrocarbon Lite",
-            Some("Available")
-        )]
+        vec!["Modeling"]
     );
     let modeling_section = context_toolbar_section(&window.property_context_toolbar, "Modeling");
     assert_eq!(
@@ -5459,9 +5446,9 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
         vec![(
             crate::StudioGuiWindowContextToolbarItemTarget::FlowsheetModeling,
             None,
-            false,
+            true,
             "Enter Flowsheet Modeling",
-            Some("Incomplete")
+            Some("Ready")
         )]
     );
     assert_eq!(
@@ -5472,9 +5459,9 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
             .map(|item| (item.label, item.value.as_str(), item.status_label.as_str()))
             .collect::<Vec<_>>(),
         vec![
-            ("Package", "Unselected", "Unselected"),
+            ("Package", "binary-hydrocarbon-lite-v1", "Selected"),
             ("Components", "2", "Selected"),
-            ("Modeling", "Property", "Incomplete"),
+            ("Modeling", "Flowsheet", "Ready"),
             ("Source", "Built-in", "Available"),
         ]
     );

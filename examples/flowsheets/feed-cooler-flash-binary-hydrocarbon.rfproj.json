@@ -5,6 +5,9 @@
     "revision": 0,
     "flowsheet": {
       "name": "feed-cooler-flash-binary-hydrocarbon",
+      "thermo": {
+        "property_package_id": "binary-hydrocarbon-lite-v1"
+      },
       "components": {
         "methane": {
           "id": "methane",

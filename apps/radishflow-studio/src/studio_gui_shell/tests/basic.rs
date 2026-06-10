@@ -1343,10 +1343,18 @@ fn project_sidebar_separates_inputs_objects_examples_and_review_roles() {
         "单元",
         "结果",
         "诊断",
+        "二元烃 Lite",
     ] {
         assert!(
             texts.iter().any(|text| text == expected),
             "expected project sidebar to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for stale_state in ["unselected", "未选择"] {
+        assert!(
+            !texts.iter().any(|text| text == stale_state),
+            "project sidebar must not render stale package state `{stale_state}`, rendered texts: {:?}",
             texts
         );
     }
@@ -1725,7 +1733,8 @@ fn property_screen_renders_independent_property_page_from_window_model() {
         "Ethane",
         "摘要",
         "进入流程图建模",
-        "未完成",
+        "就绪",
+        "物性包和项目组分已选择",
     ] {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
@@ -2055,7 +2064,7 @@ fn home_window_model_maps_recent_projects_to_case_tiles() {
         current_tile.title,
         "Feed Heater Flash Binary Hydrocarbon Example"
     );
-    assert_eq!(current_tile.package_summary, "Unselected");
+    assert_eq!(current_tile.package_summary, "binary-hydrocarbon-lite-v1");
     assert_eq!(current_tile.component_summary, "Ethane, Methane");
     assert!(
         current_tile
@@ -2091,7 +2100,7 @@ fn home_dashboard_renders_recent_case_tiles_from_window_model() {
         "Heater",
         "Flash Drum",
         "Ethane, Methane",
-        "未选择",
+        "binary-hydrocarbon-lite-v1",
     ] {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
@@ -3013,7 +3022,7 @@ fn home_open_project_returns_to_current_workspace_when_selected_recent_is_curren
 
     app.open_selected_recent_project_or_picker();
 
-    assert_eq!(app.screen, StudioShellScreen::Property);
+    assert_eq!(app.screen, StudioShellScreen::Workbench);
     assert_eq!(
         app.home_selected_recent_project.as_deref(),
         Some(current_project.as_path())

@@ -675,13 +675,19 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         document: &radishflow_studio::StudioGuiWorkspaceDocumentSnapshot,
     ) {
+        let property_package_summary = document
+            .property_package_choices
+            .iter()
+            .find(|choice| choice.selected)
+            .map(|choice| choice.label.as_str())
+            .or(document.property_package_id.as_deref())
+            .unwrap_or("Unselected");
+        let localized_property_package_summary =
+            self.locale.runtime_label(property_package_summary);
         self.render_project_tree_row(
             ui,
             self.locale.text(ShellText::PropertyPackage),
-            document
-                .property_package_id
-                .as_deref()
-                .unwrap_or("unselected"),
+            localized_property_package_summary.as_ref(),
             None,
         );
         ui.add_space(6.0);
