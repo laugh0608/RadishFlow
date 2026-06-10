@@ -101,6 +101,8 @@ Home 不是营销页，也不是低密度欢迎页。它应使用与工作台一
 
 tile gallery 的目标是让流程模拟用户能通过缩影快速识别案例类型，而不是只靠文件名和路径判断。缩影应使用项目自己的浅色画布语言、SI 单位和简化单元符号；如果暂时没有真实项目缩略图，可由内置流程摘要生成稳定的简化图，不新增第二套项目真相源。
 
+Home recent / current / example case tile 的物性包摘要应从当前 document / builtin package choice 状态映射为可读 label；中文界面显示“二元烃 Lite”，空白项目显示“未选择”。稳定 package id 仍只属于项目文件、command id、运行请求和内部状态边界，不作为 Home 主展示文本，也不从运行结果反推第二套物性状态。
+
 ## 独立物性页
 
 物性页面是长期大工程，不能用一个侧栏 tab 承载。当前只画信息架构，为未来扩展留空间，不表示完整物性系统已实现。
@@ -128,7 +130,7 @@ tile gallery 的目标是让流程模拟用户能通过缩影快速识别案例�
 
 当前 MVP 仍只支持受控内置 package 和 methane / ethane 等小型目录；设计稿不能暗示第三方物性包加载、完整组分数据库或完整 Thermodynamics PMC 已进入当前实现范围。
 
-当前 egui MVP 实现不渲染只有未来含义的左侧二级导航，而是使用两列结构：左侧承接 package 和项目组分选择，右侧承接当前 package、组分数、来源和进入流程图建模 readiness。长期设计稿仍可保留物性工作区导航空间，但只有当对应组分详情、方法、参数、来源或分析视图进入实现范围时才落到可见 UI。
+当前 egui MVP 实现不渲染只有未来含义的左侧二级导航，而是使用两列结构：左侧承接 package 和项目组分选择，右侧承接当前 package、组分数、来源和进入流程图建模 readiness。Property toolbar、摘要和 package 选择卡只展示可读 package label，不把 raw package id 作为主界面文本；entitlement schedule notice 只展示用户可判断的授权检查摘要，不外露 timer event 或 `SystemTime` 调度结构。长期设计稿仍可保留物性工作区导航空间，但只有当对应组分详情、方法、参数、来源或分析视图进入实现范围时才落到可见 UI。
 
 ## Flowsheet Workbench
 

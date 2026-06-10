@@ -17,7 +17,7 @@
 - 阶段基线：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过；2026-06-10 `./scripts/check-repo.sh` 通过。
 - 通用小流程建模 v1 已支持普通空白项目在受控范围内组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，并覆盖显式输入、运行、保存、重开、rerun 与结果审阅。
 - 当前主线已切到 **Studio UI 专题窄口径实现**。`studio-client-main.pen` 是当前唯一活跃 Studio 主设计稿，覆盖 Home、独立物性页、流程图工作台、模块设置 / 模块结果和底部运行 / 状态分栏。
-- 最新进度：**Studio UI 实现第四十刀已收束 Home / Project / Property 的物性包展示口径，仓库级验证基线仍为 2026-06-10 `./scripts/check-repo.sh` 通过**。脏项目 `Cmd+Q` 真实窗口 smoke 已复核通过；底部结果表的 stream / unit 定位会派发正式 `inspector.focus_*` command；顶部 `结果工具栏` 和 `运行工具栏` 已收束重复状态；左侧 `模块` 页保留分类、数量和放置按钮，说明文字改为 hover；右侧 `模块结果` 对 current unit result 采用紧凑单元、状态、step 和消费 / 产出流股 chip 展示，不再在首屏展开长 snapshot id；official methane / ethane 示例项目文件已持久化 `binary-hydrocarbon-lite-v1`，左侧 `项目输入`、独立 `物性` 页、Home recent / current / example tile 和运行结果不再出现“已收敛但物性包未选择”或 raw package id 暴露的冲突。
+- 最新进度：**Studio UI 实现第四十一刀已根据真实截图继续收束独立 `物性` 页展示口径，仓库级验证基线仍为 2026-06-10 `./scripts/check-repo.sh` 通过**。脏项目 `Cmd+Q` 真实窗口 smoke 已复核通过；底部结果表的 stream / unit 定位会派发正式 `inspector.focus_*` command；顶部 `结果工具栏` 和 `运行工具栏` 已收束重复状态；左侧 `模块` 页保留分类、数量和放置按钮，说明文字改为 hover；右侧 `模块结果` 对 current unit result 采用紧凑单元、状态、step 和消费 / 产出流股 chip 展示，不再在首屏展开长 snapshot id；official methane / ethane 示例项目文件已持久化 `binary-hydrocarbon-lite-v1`，左侧 `项目输入`、独立 `物性` 页、Home recent / current / example tile 和运行结果不再出现“已收敛但物性包未选择”、raw package id 暴露或 entitlement timer debug 文本外露的冲突。
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前策略
@@ -44,7 +44,7 @@
 Studio UI：
 
 - 顶部导航已收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；打开 / 新建 / 保存 / 示例归入 `文件`。
-- 独立 `物性` 页消费 `StudioGuiWindowPropertyPageModel`。普通空白项目创建后先进入 `物性`，Property 页入口、`window.property_context_toolbar`、顶部 `流程图` 导航、Home 显式 `返回工作区` 入口和内部进入 Workbench 行为共用 `flowsheet_modeling_enabled`；Home 返回按钮只在本次会话已打开或新建 case 后显示，当前 MVP 不渲染无效二级物性导航。
+- 独立 `物性` 页消费 `StudioGuiWindowPropertyPageModel`。普通空白项目创建后先进入 `物性`，Property 页入口、`window.property_context_toolbar`、顶部 `流程图` 导航、Home 显式 `返回工作区` 入口和内部进入 Workbench 行为共用 `flowsheet_modeling_enabled`；Property toolbar、摘要和包选择卡显示可读 package label，不把稳定 id 当主展示文本；entitlement host schedule notice 输出用户可读摘要，平台卡不展示 timer event / `SystemTime` 调度结构；Home 返回按钮只在本次会话已打开或新建 case 后显示，当前 MVP 不渲染无效二级物性导航。
 - Home recent / current / example case tile 的物性包展示只从当前 document / builtin package choice 映射为可读 label；中文界面显示“二元烃 Lite”，空白项目仍显示“未选择”，项目文件继续只保存稳定 package id。
 - 左侧栏稳定为 `模块 / 项目`：`模块` 承接受控放置 palette、作者任务清单和画布建议；模块分类与选项说明保留在 hover / DTO，不作为首屏常驻说明；`项目` 承接项目输入、示例入口、对象树和审阅状态；`项目输入` 的物性包扫读来自当前 `workspace_document.property_package_choices` / `property_package_id`，不从运行结果反推。
 - 中央 Canvas 只承接 `画布工具`、`画布状态`、`画布操作`、图例、画布实体和受控建议；放置入口留在左侧 `模块`，对象树留在左侧 `项目`，选择语义留在右侧栏。
@@ -55,8 +55,9 @@ Studio UI：
 
 ## 下一步
 
-- 继续沿 `studio-client-main.pen`、brief、正式 DTO / command surface 做 Workbench 窄口径小切片；不直接做大规模 egui 布局重排。
-- 若发现真实主路径上的状态不一致、入口重复或首屏密度影响建模判断，只做支撑主路径判断的必要调整。
+- 2026-06-11 优先做第四十一刀后的真实窗口复核：Home recent / current / example tile、独立 `物性` 页、左侧 `项目输入`、Workbench 运行 / 结果区是否仍有 raw package id、entitlement timer debug 文本或状态口径不一致。
+- 若复核没有真实 blocker，继续沿 `studio-client-main.pen`、brief、正式 DTO / command surface 做 Workbench 窄口径小切片；是否拆 `module-settings-panel.pen` 只根据右侧栏评审是否仍缺细化决定。
+- 继续不做大规模 egui 布局重排；只处理真实主路径上影响建模判断的入口重复、状态不一致或首屏密度问题。
 
 ## 验证节奏
 
