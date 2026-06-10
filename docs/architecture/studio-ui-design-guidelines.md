@@ -1,6 +1,6 @@
 # Studio UI Design Guidelines
 
-更新时间：2026-06-08
+更新时间：2026-06-10
 
 ## 用途
 
@@ -175,7 +175,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 - `radishflow-home-dashboard-concept.png` 保留为早期概念稿参考：它的信息架构方向正确，但字段和示例数据偏概念演示，不作为后续实现的优先基线。
 - Start actions 只保留当前主路径：`新建项目`、当前小案例作者入口、`打开项目`、`打开示例项目`；登录放在顶部 App Bar，不把完整命令面板或调试入口放进第一视野。最近项目的继续入口由 `最近项目` tile 承载，不再作为左侧重复按钮常驻。当前评审结论是 Home 信息密度和工作台一致性仍不足，后续应优先对照 Home v2 基线做 focused 修正，而不是继续堆低密度欢迎文案。
 - 小案例作者入口只负责创建空白项目并打开对应任务清单，不自动生成 flowsheet，不写 `FlowsheetDocument`，不进入 undo，也不替代 placement / suggestion / parameter / run / save / export 工作流。
-- 最近项目和示例项目必须可扫读：优先使用流程缩影 tile gallery，而不是纯文本列表或通用文件图标。每个 tile 包含浅色 flowsheet thumbnail、名称、路径或来源、最后打开时间、流程摘要、组分 / 物性包摘要和状态标签；单击选择，双击打开。
+- 最近项目和示例项目必须可扫读：优先使用流程缩影 tile gallery，而不是纯文本列表或通用文件图标。每个 tile 包含浅色 flowsheet thumbnail、名称、路径或来源、最后打开时间、流程摘要、组分 / 物性包摘要和状态标签；单击选择，双击打开。物性包摘要展示可读 label，例如 `二元烃 Lite`，不直接展示 `binary-hydrocarbon-lite-v1` 这类稳定 id。
 - 客户端 / 服务端 / 设备信息默认以状态卡或紧凑 section 呈现；详细路径、backend、cache 细节和诊断信息进入展开项。
 - 登录入口应优先是 `登录` 按钮，而不是内嵌账号密码表单；桌面登录继续遵守 OIDC Authorization Code + PKCE + 系统浏览器 + loopback redirect 的边界。
 - 未登录、服务端不可用、物性包缓存缺失、示例目录缺失等问题应显示为可行动状态，不使用开发态错误文本。
@@ -281,7 +281,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 - suggestion 是辅助建模入口，不和对象库按钮混排成一列命令。
 - 示例、项目树与对象库可以用 tab 或分段控件切换，避免同时展开造成拥挤。
 - 打开示例不应只依赖顶部按钮；左侧必须有稳定、可扫读的示例管理入口。
-- 项目级输入不应只藏在单一面板。当前左侧 `项目` 面板必须能扫读受控项目组分和当前物性包，独立 `物性` 页提供正式编辑入口，且组分选择 / 移除入口应直接作用于 `Flowsheet.components`，不引入 shell 私有组分状态。
+- 项目级输入不应只藏在单一面板。当前左侧 `项目` 面板必须能扫读受控项目组分和当前物性包，独立 `物性` 页提供正式编辑入口，且组分选择 / 移除入口应直接作用于 `Flowsheet.components`，不引入 shell 私有组分状态。Home、左侧 `项目输入` 和独立 `物性` 页都应从同一 document / choice 状态映射可读 package label；稳定 id 只属于项目文件、command id、运行请求和内部状态边界。
 
 后续细化目标：
 
@@ -321,14 +321,14 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 
 - 右侧默认只展示和当前选择或当前任务相关的信息。
 - 当前代码以 `检查器 / 模块设置 / 模块结果` tab 组织右侧栏；`运行` 和 `物性包` 不再作为右侧常驻 tab。
-- `物性` 页承载本地 package 摘要、内置 package 选择、同一套项目组分选择入口和进入流程图建模的 readiness；用户进入 Workbench 后仍应能先从左侧项目树发现项目组分状态。
+- `物性` 页承载本地 package 摘要、内置 package 选择、同一套项目组分选择入口和进入流程图建模的 readiness；用户进入 Workbench 后仍应能先从左侧项目树发现项目组分状态。Property toolbar、摘要和 package 选择卡展示可读 package label，不把 raw id 当作主界面文案。
 - 属性字段采用 label + input + unit + validation 的行结构；单位必须紧贴数值，不藏在说明文字里。
 - 从左侧 `项目` 对象树、Canvas 画布实体或结果定位动作选择 stream / unit 后，应自然切换到对应检查器；stream 优先暴露 `T / P / F`、组成草稿和提交/归一化动作，unit 的可编辑参数进入 `模块设置`，latest unit result 进入 `模块结果`。
 - Unit Inspector 当前只把 `Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 与 `Flash Drum` 的 flash temperature / pressure 作为可编辑参数行；字段必须显示 SI 单位和约束提示，提交走正式文档命令并同步对应 outlet stream 模板。若字段值来自 outlet stream 模板 / fallback 而 unit parameter 尚未显式存在，同值提交仍应写入正式 `SetUnitParameter`。其余单元信息仍以端口、关联步骤、关联诊断和最新只读结果为主，不提前设计完整单元参数表。
 - 结果检查器中面向用户的组成、相态和摘要行应优先使用本地化结构化短句；`z: ...`、`phases: ...` 这类原始调试文本只应进入 hover、日志或开发诊断，不应作为默认结果正文。
 - 模块结果、环境摘要和状态摘要应使用状态 chip、metric card、stream chip 和短说明组合；避免把 `状态 / Duty / Outlet T / Diagnostics` 或 `客户端 / 服务端 / 缓存` 做成松散的两列文字直排。
 - 草稿态、未归一组成、运行阻断和只读结果要有稳定视觉语义。
-- Runtime 中的开发态活动、平台 timer、GUI activity、原始项目路径编辑默认折叠。
+- Runtime 中的开发态活动、平台 timer、GUI activity、原始项目路径编辑默认折叠。entitlement schedule notice 只显示用户可判断的授权检查摘要，不外露 `TimerElapsed`、`SystemTime` 或 backoff 结构。
 
 后续细化目标：
 

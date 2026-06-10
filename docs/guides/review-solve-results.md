@@ -1,6 +1,6 @@
 # Review Solve Results
 
-更新时间：2026-06-09
+更新时间：2026-06-10
 
 ## 目的
 
@@ -28,6 +28,8 @@
 - `examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json`
 
 如果只是第一次上手，先从第一条开始；如果你更想看 non-flash intermediate 的 `bubble_dew_window`，第二条更直观。
+
+这些 official hydrocarbon 示例项目已经保存 `binary-hydrocarbon-lite-v1`，界面会显示为 `二元烃 Lite`。结果审阅只消费当前 revision 的最新 `SolveSnapshot`，不从运行结果反推或修正物性包选择；如果 Home、独立 `物性` 页或左侧 `项目输入` 仍显示 `未选择`，应回到项目文件 / Property page choice 状态排查。
 
 如果你是从 Home 的 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例` 进入，先按 `docs/guides/author-small-cases.md` 完成放置、连接和参数提交，再回到本文档审阅结果。
 

@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-06-09
+更新时间：2026-06-10
 
 ## 当前目标
 
@@ -66,15 +66,15 @@
 Studio 首页、工作台分区、运行后结果视图和项目切换确认流程已落地。shell UI 边界按以下稳定入口治理：
 
 - Home Dashboard 是启动默认首页，只承载 Start actions、Recent Cases、Example Cases、Environment 和 Messages；不读取 `SolveSnapshot`，不直接承载流程图编辑。`新建项目` 创建普通空白项目后先进入独立 `物性` 页；小案例作者入口只创建空白项目并切到左侧 `模块` 清单，清单只读 canvas，不生成 flowsheet、不写项目、不进 undo。
-- 最近项目、当前工作区和示例项目统一由 `StudioGuiWindowHomeCaseTileModel` 承载流程缩影、路径 / 来源、物性包、组分和状态。当前工作区 tile 只从 `workspace_document` 派生，不写入 recent projects；保存过的当前项目应直接返回当前 workspace，而不是通过 recent path 重新打开自身。
+- 最近项目、当前工作区和示例项目统一由 `StudioGuiWindowHomeCaseTileModel` 承载流程缩影、路径 / 来源、物性包 label、组分和状态。当前工作区 tile 只从 `workspace_document` 派生，不写入 recent projects；保存过的当前项目应直接返回当前 workspace，而不是通过 recent path 重新打开自身。Home tile 的 `package_summary` 只从当前 document / builtin package choice 映射为可读 label，例如 `二元烃 Lite`；稳定 package id 只留在项目文件、command id、运行请求和内部状态边界。
 - 新建、打开、case tile 双击、Home `返回工作区`、窗口关闭按钮和 macOS `Cmd+Q` / 应用退出请求共享同一条工作区生命周期语义。若有未保存变更，必须先进入保存并继续 / 舍弃并继续 / 取消确认；取消、保存失败、另存为取消或覆盖确认未完成时保持当前工作区、MRU 和 `FlowsheetDocument` 不变。
 - 进入 case 后，第一层只保留 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` 八个主入口、当前项目摘要和必要状态。普通空白项目选齐 package 和至少一个项目组分前，`流程图` 入口不可用；禁用原因必须来自 Property page DTO 的同一 readiness。
 - `物性 / 流程图 / 运行 / 结果` screen 下方分别消费 `window.property_context_toolbar`、`window.flowsheet_context_toolbar`、`window.run_context_toolbar` 和 `window.result_context_toolbar`。工具栏只展示当前 screen 的主路径命令和状态，不展开调试命令全集；`运行` 工具栏不重复 Monitor 状态 chip，`结果` 工具栏不把所有 stream / unit focus command 展开成长按钮。
-- 工作台分区固定为左侧 `模块 / 项目`、中央 Canvas、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 和状态汇总。`模块` 消费 Canvas place-unit palette 并按 `流股源 / 调节单元 / 汇合与分离` 分类；分类和选项 detail 可进入 hover / DTO，不作为首屏常驻说明。`项目` 负责项目输入、示例入口、对象树和审阅状态；项目级输入编辑主入口仍是独立 `物性` screen。
+- 工作台分区固定为左侧 `模块 / 项目`、中央 Canvas、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 和状态汇总。`模块` 消费 Canvas place-unit palette 并按 `流股源 / 调节单元 / 汇合与分离` 分类；分类和选项 detail 可进入 hover / DTO，不作为首屏常驻说明。`项目` 负责项目输入、示例入口、对象树和审阅状态；项目级输入编辑主入口仍是独立 `物性` screen。左侧 `项目输入` 和独立 `物性` 页同样展示可读 package label，不从运行结果反推第二套物性包状态。
 - `模块设置` 只消费 `StudioGuiWindowModuleSettingsModel`，从 active unit Inspector detail 派生参数摘要、字段、端口、连接动作和诊断动作；参数摘要不得混入 latest-result。`模块结果` 只消费 `StudioGuiWindowModuleResultsModel`，从 current-revision latest `SolveSnapshot` 派生 selected unit result、consumed / produced stream、related steps、diagnostics 和 diagnostic actions。
 - 成功运行后 shell 可聚焦顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表`，失败后聚焦顶部 `运行` screen、底部运行日志或诊断。结果面只读消费当前 revision 的最新 `SolveSnapshot`；stale snapshot 只显示过期提示，不继续驱动 Result Inspector、结果表、Results commands、复制 / 导出或 `review_summary`。
 - 底部 `结果表` 的 stream / unit 行必须派发正式 `inspector.focus_stream:*` / `inspector.focus_unit:*`，分别定位到右侧 `检查器` / `模块结果`，底部仍停留在 `结果表`。底部状态汇总只消费 `StudioGuiWindowStatusSummaryModel`，snapshot 一致性等低高度信息可以放在标题行，不另建 shell 私有摘要。
-- 开发态 stderr 与 GUI activity 可继续服务 smoke，但正式 UI 只展示用户能采取行动的摘要，不把平台 timer 或 host internals 混入主路径。
+- 开发态 stderr 与 GUI activity 可继续服务 smoke，但正式 UI 只展示用户能采取行动的摘要，不把平台 timer、`TimerElapsed`、`SystemTime` 或 host internals 混入主路径。
 
 当前 Studio UI 主设计稿已收敛到 `docs/architecture/designs/studio-client-main.pen`。它是设计目标，不代表当前代码已达到最终视觉细化。实现时必须复用既有 `WorkspaceDocument`、inspector draft、command surface、run panel state 和 latest current-revision `SolveSnapshot`；布局变化不得新增私有选择、结果、诊断或参数缓存。
 
@@ -82,7 +82,7 @@ Studio 首页、工作台分区、运行后结果视图和项目切换确认流�
 
 Studio UI 专题代码实现从 `StudioGuiWindowModel` 派生 DTO 开始，不先做 egui 大布局重排。当前 `studio_main` 已投影 Home case tile、Property page、四类 context toolbar、底部 status summary、Module Settings、Module Results 和结果表定位语义；详细映射见 `docs/architecture/designs/studio-client-main-brief.md`。
 
-egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、物性、运行、结果或诊断真相源。Home recent tile 当前仍由 shell preferences / `project_open` 映射为同一 DTO，当前工作区 tile 只从 `workspace_document` 派生；后续细化 `物性`、`流程图`、`运行`、`结果` 与右侧三 tab 时，仍必须继续按正式 presentation / command / state 来源推进。
+egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、物性、运行、结果或诊断真相源。Home recent tile 当前仍由 shell preferences / `project_open` 映射为同一 DTO，当前工作区 tile 只从 `workspace_document` 派生；Property toolbar、Property page metric、Home case tile 和 Project input sweep 都应从同一 document / choice 状态映射可读 label，不能在 renderer 里直接铺 raw package id。后续细化 `物性`、`流程图`、`运行`、`结果` 与右侧三 tab 时，仍必须继续按正式 presentation / command / state 来源推进。
 
 `studio_gui_shell/panels/runtime/` 当前拆为 `runtime/mod.rs`、`runtime/results.rs` 和 `runtime/inspector.rs`。Module Settings 和 Module Results 细化必须先补正式 window model DTO 和 focused 回归，再让 runtime 子模块消费；不得在 shell 中私造结果、诊断、端口、参数或帮助命令缓存。当前模块帮助没有正式 command surface，只允许在 DTO 中表达为空状态。
 

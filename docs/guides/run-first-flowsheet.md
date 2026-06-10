@@ -1,6 +1,6 @@
 # Run First Flowsheet
 
-更新时间：2026-06-08
+更新时间：2026-06-10
 
 ## 目的
 
@@ -67,6 +67,8 @@ cargo run -p radishflow-studio
 ```text
 examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json
 ```
+
+official hydrocarbon 示例文件已经在 `flowsheet.thermo.property_package_id` 中保存稳定 id `binary-hydrocarbon-lite-v1`。Studio 的 Home、独立 `物性` 页和左侧 `项目输入` 会把它显示为可读 label `二元烃 Lite`；如果看到 `未选择`，应优先检查项目文件或 package choice 状态，而不是从运行结果反推物性包状态。
 
 如果你更想先看更复杂一点的路径，也可以改用：
 
@@ -164,7 +166,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 如果想验证“不是只会打开示例”，可以用当前 MVP α 支持的最短空白路径：
 
 1. 在首页点击 `新建项目`，或进入工作区后点击顶部 `文件 -> 新建空白`，进入未命名空白项目的独立 `物性` 页。
-2. 空白项目不会预选求解输入；先选择内置 `binary-hydrocarbon-lite-v1` package，再选择 methane / ethane。它们会写入 `Flowsheet.thermo.property_package_id` 和 `Flowsheet.components`，并决定后续 Stream Inspector 中可添加的组成条目。
+2. 空白项目不会预选求解输入；先在界面选择内置 `二元烃 Lite` package，再选择 methane / ethane。它们会分别写入 `Flowsheet.thermo.property_package_id = "binary-hydrocarbon-lite-v1"` 和 `Flowsheet.components`，并决定后续 Stream Inspector 中可添加的组成条目。
 3. 当 `物性` 上下文工具栏中的 `进入流程图建模` 变为可用时，点击它，或点击顶部 `流程图`。进入工作台后，空 flowsheet 的首要建模入口在左侧 `模块` 面板，左侧 `项目` 面板继续扫读项目输入、对象树和审阅状态。
 4. 左侧切到 `模块`，放置 `进料` 和 `闪蒸罐`；需要中间设备时可加 `加热器 / 冷却器 / 阀门`，需要双入口时可加第二个 `进料` 和 `混合器`。按钮文案当前是 `放置进料`、`放置闪蒸罐` 等，项目对象名仍可显示为 `Feed`、`Flash Drum` 等领域名。
 5. 每次放置单元后，在 Canvas 中点击落点提交；这只提交当前放置意图，不是完整拖拽布局编辑器。
@@ -183,7 +185,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 这些动作都进入 undo/redo 历史，但仍不是自由连线、任意端口选择或自动布线工具。
 
-当前仍不支持自由拉线、任意端口点击创建、任意端口重连、自动布线、完整组件库、第三方物性包加载、完整物性包浏览器或完整单元参数表。当前只支持受控内置 package 与 methane / ethane 项目组分选择；这些能力不等同于完整组分数据库或完整物性包系统。
+当前仍不支持自由拉线、任意端口点击创建、任意端口重连、自动布线、完整组件库、第三方物性包加载、完整物性包浏览器或完整单元参数表。当前只支持受控内置 `二元烃 Lite` package 与 methane / ethane 项目组分选择；这些能力不等同于完整组分数据库或完整物性包系统。
 
 ## 7. MVP β 小案例作者路径
 
