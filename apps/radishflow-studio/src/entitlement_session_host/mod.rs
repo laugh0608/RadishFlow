@@ -348,14 +348,11 @@ fn host_notice_from_schedule(
     timer: Option<&EntitlementSessionTimerArm>,
 ) -> Option<EntitlementNotice> {
     if schedule.blocked_by_backoff {
-        let backoff = schedule.backoff.as_ref()?;
+        schedule.backoff.as_ref()?;
         return Some(EntitlementNotice::new(
             EntitlementNoticeLevel::Warning,
             "Automatic retry scheduled",
-            format!(
-                "entitlement session will retry {:?} after backoff at {:?}",
-                backoff.action, backoff.retry_not_before
-            ),
+            "Studio will retry entitlement sync in the background.",
         ));
     }
 
@@ -364,10 +361,7 @@ fn host_notice_from_schedule(
         return Some(EntitlementNotice::new(
             EntitlementNoticeLevel::Info,
             "Automatic check scheduled",
-            format!(
-                "entitlement session will trigger {:?} at {:?}",
-                timer.event, timer.due_at
-            ),
+            "Studio will check entitlement again in the background.",
         ));
     }
 

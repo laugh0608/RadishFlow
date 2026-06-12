@@ -18,10 +18,11 @@ pub use studio_main::{
     StudioGuiWindowHomeCaseTileModel, StudioGuiWindowHomeCaseTileSource,
     StudioGuiWindowHomeCaseTileStatus, StudioGuiWindowHomeModel, StudioGuiWindowModuleResultsModel,
     StudioGuiWindowModuleResultsState, StudioGuiWindowModuleSettingsModel,
-    StudioGuiWindowModuleSettingsState, StudioGuiWindowPropertyComponentModel,
-    StudioGuiWindowPropertyMetricModel, StudioGuiWindowPropertyPackageModel,
-    StudioGuiWindowPropertyPageModel, StudioGuiWindowStatusSummaryMetricModel,
-    StudioGuiWindowStatusSummaryModel, StudioGuiWindowThumbnailFlowModel,
+    StudioGuiWindowModuleSettingsParameterSummaryModel, StudioGuiWindowModuleSettingsState,
+    StudioGuiWindowPropertyComponentModel, StudioGuiWindowPropertyMetricModel,
+    StudioGuiWindowPropertyPackageModel, StudioGuiWindowPropertyPageModel,
+    StudioGuiWindowStatusSummaryMetricModel, StudioGuiWindowStatusSummaryModel,
+    StudioGuiWindowThumbnailFlowModel,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -222,7 +223,9 @@ pub struct StudioGuiWindowResultReviewSummaryModel {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowResultReviewUnitModel {
     pub unit_id: String,
+    pub step_index: usize,
     pub status_label: &'static str,
+    pub summary: String,
     pub consumed_stream_ids: Vec<String>,
     pub produced_stream_ids: Vec<String>,
 }
@@ -1047,10 +1050,7 @@ fn property_context_status_items(
     vec![
         StudioGuiWindowContextToolbarStatusModel {
             label: "Package",
-            value: property_page
-                .selected_package_id
-                .clone()
-                .unwrap_or_else(|| "Unselected".to_string()),
+            value: property_context_selected_package_label(property_page),
             status_label: property_page.package_status_label.to_string(),
             detail: "Property package selection stored in the flowsheet document.".to_string(),
         },
@@ -1081,6 +1081,18 @@ fn property_context_status_items(
             detail: "MVP scope only exposes controlled built-in property assets.".to_string(),
         },
     ]
+}
+
+fn property_context_selected_package_label(
+    property_page: &StudioGuiWindowPropertyPageModel,
+) -> String {
+    property_page
+        .package_choices
+        .iter()
+        .find(|choice| choice.selected)
+        .map(|choice| choice.label.clone())
+        .or_else(|| property_page.selected_package_id.clone())
+        .unwrap_or_else(|| "Unselected".to_string())
 }
 
 fn run_context_monitor_items(
@@ -2191,7 +2203,9 @@ fn result_review_summary_model_from_parts(
         .into_iter()
         .map(|step| StudioGuiWindowResultReviewUnitModel {
             unit_id: step.unit_id.clone(),
+            step_index: step.index,
             status_label: step.execution_status_label,
+            summary: step.summary.clone(),
             consumed_stream_ids: step.consumed_stream_ids().map(str::to_string).collect(),
             produced_stream_ids: step.produced_stream_ids().map(str::to_string).collect(),
         })

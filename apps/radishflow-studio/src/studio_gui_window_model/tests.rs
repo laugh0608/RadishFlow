@@ -1240,7 +1240,7 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
         mixer_tile.status,
         crate::StudioGuiWindowHomeCaseTileStatus::Ready
     );
-    assert_eq!(mixer_tile.package_summary, "binary-hydrocarbon-lite-v1");
+    assert_eq!(mixer_tile.package_summary, "Binary Hydrocarbon Lite");
     assert_eq!(
         mixer_tile
             .thumbnail
@@ -1253,8 +1253,11 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
     assert_eq!(mixer_tile.thumbnail.edges, [(0, 2), (1, 2), (2, 3)]);
 
     assert_eq!(window.property_page.title, "Property");
-    assert_eq!(window.property_page.selected_package_id.as_deref(), None);
-    assert_eq!(window.property_page.package_status_label, "Unselected");
+    assert_eq!(
+        window.property_page.selected_package_id.as_deref(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert_eq!(window.property_page.package_status_label, "Selected");
     assert_eq!(window.property_page.package_choices.len(), 1);
     assert_eq!(
         window.property_page.package_choices[0].command_id,
@@ -1353,8 +1356,11 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
     assert_eq!(window.runtime.workspace_document.revision, 0);
     assert_eq!(window.runtime.workspace_document.unit_count, 3);
     assert_eq!(window.runtime.workspace_document.snapshot_history_count, 1);
-    assert_eq!(window.property_page.selected_package_id.as_deref(), None);
-    assert_eq!(window.property_page.package_status_label, "Unselected");
+    assert_eq!(
+        window.property_page.selected_package_id.as_deref(),
+        Some("binary-hydrocarbon-lite-v1")
+    );
+    assert_eq!(window.property_page.package_status_label, "Selected");
     assert_eq!(window.property_page.selected_component_count, 2);
 
     let snapshot = window
@@ -1366,6 +1372,10 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
     assert_eq!(
         find_status_summary_metric(&window, "Steps").value,
         snapshot.step_count.to_string()
+    );
+    assert_eq!(
+        find_status_summary_metric(&window, "Units").value,
+        snapshot.review_summary.unit_results.len().to_string()
     );
     assert_eq!(
         find_status_summary_metric(&window, "Diagnostics").value,
@@ -2171,6 +2181,30 @@ fn studio_gui_window_model_surfaces_current_module_results_for_active_unit() {
             .collect::<Vec<_>>(),
         vec!["heater-1"]
     );
+    let review_unit = snapshot
+        .review_summary
+        .unit_results
+        .iter()
+        .find(|unit| unit.unit_id == "heater-1")
+        .expect("expected heater review unit");
+    assert_eq!(review_unit.step_index, unit_result.step_index);
+    assert_eq!(review_unit.status_label, unit_result.status_label);
+    assert_eq!(
+        review_unit.consumed_stream_ids,
+        module_results
+            .consumed_stream_chips
+            .iter()
+            .map(|stream| stream.stream_id.clone())
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        review_unit.produced_stream_ids,
+        module_results
+            .produced_stream_chips
+            .iter()
+            .map(|stream| stream.stream_id.clone())
+            .collect::<Vec<_>>()
+    );
     assert!(module_results.related_diagnostics.iter().any(|diagnostic| {
         diagnostic
             .related_unit_ids
@@ -2249,6 +2283,18 @@ fn studio_gui_window_model_surfaces_module_settings_for_active_unit() {
         settings.parameter_batch_discard_command_id,
         active_detail.property_batch_discard_command_id
     );
+    let parameter_summary = settings
+        .parameter_summary
+        .as_ref()
+        .expect("expected module parameter summary");
+    assert_eq!(parameter_summary.title, "Parameter Summary");
+    assert_eq!(parameter_summary.status_label, "Synced");
+    assert_eq!(parameter_summary.total_field_count, 2);
+    assert_eq!(parameter_summary.dirty_field_count, 0);
+    assert_eq!(parameter_summary.issue_count, 0);
+    assert_eq!(parameter_summary.notice_count, 0);
+    assert!(!parameter_summary.batch_commit_available);
+    assert!(!parameter_summary.batch_discard_available);
     assert_eq!(
         settings.connection_actions,
         active_detail.connection_actions
@@ -2534,8 +2580,21 @@ fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_heater
             raw_value: "130000".to_string(),
         })
         .expect("expected invalid heater pressure draft update");
-    let detail = dispatch
-        .window
+    let window = dispatch.window;
+    let summary = window
+        .module_settings
+        .parameter_summary
+        .as_ref()
+        .expect("expected module parameter summary");
+    assert_eq!(summary.status_label, "Invalid");
+    assert_eq!(summary.total_field_count, 2);
+    assert_eq!(summary.dirty_field_count, 1);
+    assert_eq!(summary.issue_count, 2);
+    assert_eq!(summary.notice_count, 1);
+    assert!(!summary.batch_commit_available);
+    assert!(!summary.batch_discard_available);
+
+    let detail = window
         .runtime
         .active_inspector_detail
         .expect("expected active heater inspector detail");
@@ -5369,26 +5428,7 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
             .iter()
             .map(|section| section.title)
             .collect::<Vec<_>>(),
-        vec!["Package", "Modeling"]
-    );
-    let package_section = context_toolbar_section(&window.property_context_toolbar, "Package");
-    assert_eq!(
-        package_section
-            .items
-            .iter()
-            .map(|item| (
-                item.target,
-                item.command_id.as_deref(),
-                item.label.as_str(),
-                item.status_label.as_deref()
-            ))
-            .collect::<Vec<_>>(),
-        vec![(
-            crate::StudioGuiWindowContextToolbarItemTarget::Command,
-            Some("project.property_package.select:binary-hydrocarbon-lite-v1"),
-            "Binary Hydrocarbon Lite",
-            Some("Available")
-        )]
+        vec!["Modeling"]
     );
     let modeling_section = context_toolbar_section(&window.property_context_toolbar, "Modeling");
     assert_eq!(
@@ -5406,9 +5446,9 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
         vec![(
             crate::StudioGuiWindowContextToolbarItemTarget::FlowsheetModeling,
             None,
-            false,
+            true,
             "Enter Flowsheet Modeling",
-            Some("Incomplete")
+            Some("Ready")
         )]
     );
     assert_eq!(
@@ -5419,9 +5459,9 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
             .map(|item| (item.label, item.value.as_str(), item.status_label.as_str()))
             .collect::<Vec<_>>(),
         vec![
-            ("Package", "Unselected", "Unselected"),
+            ("Package", "Binary Hydrocarbon Lite", "Selected"),
             ("Components", "2", "Selected"),
-            ("Modeling", "Property", "Incomplete"),
+            ("Modeling", "Flowsheet", "Ready"),
             ("Source", "Built-in", "Available"),
         ]
     );
@@ -5467,7 +5507,7 @@ fn studio_gui_window_model_builds_property_context_toolbar_from_property_page_co
     );
     assert_eq!(
         selected_window.property_context_toolbar.status_items[0].value,
-        "binary-hydrocarbon-lite-v1"
+        "Binary Hydrocarbon Lite"
     );
     assert_eq!(
         selected_window.property_context_toolbar.status_items[0].status_label,

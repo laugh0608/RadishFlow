@@ -2691,6 +2691,7 @@ dependencies = [
  "rfd",
  "serde",
  "serde_json",
+ "winit",
 ]
 
 [[package]]

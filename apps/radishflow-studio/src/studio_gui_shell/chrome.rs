@@ -134,13 +134,16 @@ impl ReadyAppState {
                 if section.items.is_empty() {
                     continue;
                 }
+                if context_toolbar_section_is_top_bar_summary_only(toolbar.title, section.title) {
+                    continue;
+                }
                 ui.separator();
                 ui.small(
                     egui::RichText::new(self.locale.runtime_label(section.title).as_ref())
                         .color(egui::Color32::from_rgb(92, 104, 117)),
                 );
                 for item in &section.items {
-                    self.render_context_toolbar_item(ui, item);
+                    self.render_context_toolbar_item(ui, toolbar.title, section.title, item);
                 }
             }
         });
@@ -165,6 +168,8 @@ impl ReadyAppState {
     fn render_context_toolbar_item(
         &mut self,
         ui: &mut egui::Ui,
+        toolbar_title: &str,
+        section_title: &str,
         item: &radishflow_studio::StudioGuiWindowContextToolbarItemModel,
     ) {
         let label = self.locale.runtime_label(&item.label);
@@ -209,7 +214,9 @@ impl ReadyAppState {
                 }
             }
         }
-        if let Some(status_label) = item.status_label.as_deref() {
+        if let Some(status_label) = item.status_label.as_deref()
+            && !context_toolbar_item_status_is_top_bar_summary_only(toolbar_title, section_title)
+        {
             render_status_chip(
                 ui,
                 self.locale.runtime_label(status_label).as_ref(),
@@ -668,13 +675,19 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         document: &radishflow_studio::StudioGuiWorkspaceDocumentSnapshot,
     ) {
+        let property_package_summary = document
+            .property_package_choices
+            .iter()
+            .find(|choice| choice.selected)
+            .map(|choice| choice.label.as_str())
+            .or(document.property_package_id.as_deref())
+            .unwrap_or("Unselected");
+        let localized_property_package_summary =
+            self.locale.runtime_label(property_package_summary);
         self.render_project_tree_row(
             ui,
             self.locale.text(ShellText::PropertyPackage),
-            document
-                .property_package_id
-                .as_deref()
-                .unwrap_or("unselected"),
+            localized_property_package_summary.as_ref(),
             None,
         );
         ui.add_space(6.0);
@@ -979,20 +992,18 @@ impl ReadyAppState {
 
             ui.separator();
             ui.horizontal_wrapped(|ui| {
-                ui.label(egui::RichText::new(category.title).strong());
+                ui.label(egui::RichText::new(category.title).strong())
+                    .on_hover_text(category.detail);
                 render_status_chip(
                     ui,
                     &category_options.len().to_string(),
                     egui::Color32::from_rgb(86, 96, 108),
                 );
             });
-            render_wrapped_small(ui, category.detail);
-            ui.add_space(4.0);
 
             for option in category_options {
                 visible_options += 1;
                 self.render_module_palette_option(ui, option);
-                ui.add_space(4.0);
             }
         }
 
@@ -1070,7 +1081,7 @@ impl ReadyAppState {
                     option.enabled,
                     egui::Button::new(option_label.as_ref())
                         .selected(option.active)
-                        .min_size(egui::vec2(ui.available_width().min(170.0), 28.0)),
+                        .min_size(egui::vec2(ui.available_width().min(170.0), 24.0)),
                 )
                 .on_hover_text(option_detail.as_ref());
             if response.clicked() {
@@ -1087,7 +1098,6 @@ impl ReadyAppState {
                 );
             }
         });
-        render_wrapped_small(ui, option_detail.as_ref());
     }
 
     fn render_right_workbench(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
@@ -1320,6 +1330,20 @@ impl ReadyAppState {
                         )
                         .strong(),
                     );
+                    ui.separator();
+                    ui.small(
+                        egui::RichText::new(self.locale.runtime_label("Snapshot").as_ref())
+                            .strong(),
+                    );
+                    render_status_chip(
+                        ui,
+                        self.locale
+                            .runtime_label(window.status_summary.snapshot_consistency_label)
+                            .as_ref(),
+                        context_toolbar_status_color(
+                            window.status_summary.snapshot_consistency_label,
+                        ),
+                    );
                 });
                 ui.add_space(4.0);
                 egui::Grid::new("bottom-status-summary-metrics")
@@ -1349,22 +1373,6 @@ impl ReadyAppState {
                             ui.end_row();
                         }
                     });
-                ui.add_space(4.0);
-                ui.horizontal_wrapped(|ui| {
-                    ui.small(
-                        egui::RichText::new(self.locale.runtime_label("Snapshot").as_ref())
-                            .strong(),
-                    );
-                    render_status_chip(
-                        ui,
-                        self.locale
-                            .runtime_label(window.status_summary.snapshot_consistency_label)
-                            .as_ref(),
-                        context_toolbar_status_color(
-                            window.status_summary.snapshot_consistency_label,
-                        ),
-                    );
-                });
             });
     }
 
@@ -1635,9 +1643,10 @@ impl ReadyAppState {
                         .add(egui::Button::new(&stream.label).frame(false))
                         .on_hover_text(&stream.stream_id);
                     if response.clicked() {
-                        self.result_inspector
-                            .select_stream(&snapshot.snapshot_id, stream.stream_id.clone());
-                        self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
+                        self.focus_result_table_stream(
+                            &snapshot.snapshot_id,
+                            stream.stream_id.clone(),
+                        );
                     }
                     ui.label(format!("{:.2}", stream.temperature_k));
                     ui.label(format!("{:.0}", stream.pressure_pa));
@@ -1654,8 +1663,7 @@ impl ReadyAppState {
                 }
             });
 
-        let unit_steps = latest_unit_steps(&snapshot.steps);
-        if !unit_steps.is_empty() {
+        if !snapshot.review_summary.unit_results.is_empty() {
             ui.add_space(8.0);
             ui.strong(self.locale.text(ShellText::Units));
             egui::Grid::new(format!(
@@ -1673,29 +1681,17 @@ impl ReadyAppState {
                 ui.strong(self.locale.text(ShellText::InspectorProducedStreams));
                 ui.end_row();
 
-                for step in unit_steps {
+                for unit in &snapshot.review_summary.unit_results {
                     let unit_response = ui
-                        .add(egui::Button::new(&step.unit_id).frame(false))
-                        .on_hover_text(&step.summary);
+                        .add(egui::Button::new(&unit.unit_id).frame(false))
+                        .on_hover_text(&unit.summary);
                     if unit_response.clicked() {
-                        self.result_inspector
-                            .select_unit(&snapshot.snapshot_id, step.unit_id.clone());
-                        self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
+                        self.focus_result_table_unit(&snapshot.snapshot_id, unit.unit_id.clone());
                     }
-                    ui.label(
-                        self.locale
-                            .runtime_label(step.execution_status_label)
-                            .as_ref(),
-                    );
-                    ui.label(format!("#{}", step.index));
-                    render_wrapped_small(
-                        ui,
-                        result_table_stream_references(&step.consumed_stream_results),
-                    );
-                    render_wrapped_small(
-                        ui,
-                        result_table_stream_references(&step.produced_stream_results),
-                    );
+                    ui.label(self.locale.runtime_label(unit.status_label).as_ref());
+                    ui.label(format!("#{}", unit.step_index));
+                    render_wrapped_small(ui, result_table_stream_ids(&unit.consumed_stream_ids));
+                    render_wrapped_small(ui, result_table_stream_ids(&unit.produced_stream_ids));
                     ui.end_row();
                 }
             });
@@ -2198,6 +2194,20 @@ fn context_toolbar_status_color(status_label: &str) -> egui::Color32 {
     }
 }
 
+fn context_toolbar_section_is_top_bar_summary_only(
+    toolbar_title: &str,
+    section_title: &str,
+) -> bool {
+    toolbar_title == "Result Context" && section_title == "Focus"
+}
+
+fn context_toolbar_item_status_is_top_bar_summary_only(
+    toolbar_title: &str,
+    section_title: &str,
+) -> bool {
+    toolbar_title == "Run Context" && section_title == "Monitor"
+}
+
 #[derive(Debug, Clone, Copy)]
 enum ResultTableHeader {
     Stream,
@@ -2226,36 +2236,12 @@ fn result_table_header(locale: StudioShellLocale, header: ResultTableHeader) -> 
     }
 }
 
-fn latest_unit_steps(
-    steps: &[radishflow_studio::StudioGuiWindowSolveStepModel],
-) -> Vec<&radishflow_studio::StudioGuiWindowSolveStepModel> {
-    let mut unit_steps = Vec::new();
-    for step in steps {
-        if let Some(index) = unit_steps.iter().position(
-            |existing: &&radishflow_studio::StudioGuiWindowSolveStepModel| {
-                existing.unit_id == step.unit_id
-            },
-        ) {
-            unit_steps[index] = step;
-        } else {
-            unit_steps.push(step);
-        }
-    }
-    unit_steps
-}
-
-fn result_table_stream_references(
-    streams: &[radishflow_studio::StudioGuiWindowStreamResultReferenceModel],
-) -> String {
-    if streams.is_empty() {
+fn result_table_stream_ids(stream_ids: &[String]) -> String {
+    if stream_ids.is_empty() {
         return "-".to_string();
     }
 
-    streams
-        .iter()
-        .map(|stream| stream.stream_id.as_str())
-        .collect::<Vec<_>>()
-        .join(", ")
+    stream_ids.join(", ")
 }
 
 fn result_table_phase_summary(

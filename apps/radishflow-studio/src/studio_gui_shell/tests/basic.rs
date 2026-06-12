@@ -667,6 +667,17 @@ fn native_options_use_metal_only_on_macos_to_avoid_opengl_loader_noise() {
     }
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn native_options_disable_macos_default_menu_so_command_q_uses_shell_close_flow() {
+    let options = studio_native_options();
+
+    assert!(
+        options.event_loop_builder.is_some(),
+        "macOS must override the default App menu so Command+Q reaches the Studio close confirmation flow"
+    );
+}
+
 #[test]
 fn top_bar_aligns_primary_navigation_and_command_buckets() {
     let mut app = ready_app_state(&synced_workspace_config());
@@ -797,6 +808,7 @@ fn property_context_toolbar_renders_existing_package_component_commands_and_stat
         );
     }
     for hidden in [
+        "binary-hydrocarbon-lite-v1",
         "第三方物性包",
         "完整组分数据库",
         "Thermodynamics PMC",
@@ -809,6 +821,22 @@ fn property_context_toolbar_renders_existing_package_component_commands_and_stat
             texts
         );
     }
+
+    select_builtin_binary_hydrocarbon_basis(&mut app);
+
+    let ready_texts = render_top_bar_texts(&mut app);
+    assert!(
+        ready_texts.iter().any(|text| text.contains("二元烃 Lite")),
+        "expected ready property context toolbar to render localized package label, rendered texts: {:?}",
+        ready_texts
+    );
+    assert!(
+        !ready_texts
+            .iter()
+            .any(|text| text.contains("binary-hydrocarbon-lite-v1")),
+        "ready property context toolbar must not render raw package id, rendered texts: {:?}",
+        ready_texts
+    );
 }
 
 #[test]
@@ -874,6 +902,7 @@ fn property_main_path_readiness_tracks_property_package_and_components() {
 #[test]
 fn run_context_toolbar_renders_existing_run_commands_and_state() {
     let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
     app.screen = StudioShellScreen::Run;
 
     let texts = render_top_bar_texts(&mut app);
@@ -902,6 +931,8 @@ fn run_context_toolbar_renders_existing_run_commands_and_state() {
         "完整报表",
         "批量运行",
         "自动调度",
+        "可用",
+        "无",
     ] {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
@@ -924,11 +955,6 @@ fn result_context_toolbar_renders_existing_result_commands_and_state() {
         "审阅",
         "模块结果",
         "结果表",
-        "聚焦",
-        "Feed",
-        "Heated Outlet",
-        "Liquid Outlet",
-        "Vapor Outlet",
         "快照",
         "流股",
         "单元",
@@ -951,6 +977,10 @@ fn result_context_toolbar_renders_existing_result_commands_and_state() {
         "自动布线",
         "自由连线",
         "完整参数表",
+        "Inspect Result Stream",
+        "Heated Outlet",
+        "Liquid Outlet",
+        "Vapor Outlet",
     ] {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
@@ -1330,10 +1360,18 @@ fn project_sidebar_separates_inputs_objects_examples_and_review_roles() {
         "单元",
         "结果",
         "诊断",
+        "二元烃 Lite",
     ] {
         assert!(
             texts.iter().any(|text| text == expected),
             "expected project sidebar to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+    for stale_state in ["unselected", "未选择"] {
+        assert!(
+            !texts.iter().any(|text| text == stale_state),
+            "project sidebar must not render stale package state `{stale_state}`, rendered texts: {:?}",
             texts
         );
     }
@@ -1384,7 +1422,16 @@ fn module_sidebar_groups_supported_palette_by_modeling_roles() {
         );
     }
 
-    for hidden in ["完整模块库", "自由连线", "自动布线", "完整拖拽布局"] {
+    for hidden in [
+        "完整模块库",
+        "自由连线",
+        "自动布线",
+        "完整拖拽布局",
+        "Start placing",
+        "创建定义组成",
+        "在分离前调整",
+        "用当前支持的单元",
+    ] {
         assert!(
             !texts.iter().any(|text| text.contains(hidden)),
             "module sidebar must not expose out-of-scope `{hidden}`, rendered texts: {:?}",
@@ -1581,7 +1628,7 @@ fn bottom_status_summary_split_tracks_current_snapshot_after_run() {
 
     let texts = render_bottom_drawer_texts(&mut app);
 
-    for expected in ["状态汇总", "当前", "已收敛", "步骤", "诊断"] {
+    for expected in ["状态汇总", "当前", "已收敛", "步骤", "单元", "诊断"] {
         assert!(
             texts.iter().any(|text| text == expected),
             "expected bottom status summary split to render current run `{expected}`, rendered texts: {:?}",
@@ -1648,7 +1695,7 @@ fn workbench_first_viewport_keeps_selection_and_status_roles_separated() {
     }
 
     let bottom_texts = render_bottom_drawer_texts(&mut app);
-    for expected in ["状态汇总", "当前", "已收敛", "步骤", "诊断"] {
+    for expected in ["状态汇总", "当前", "已收敛", "步骤", "单元", "诊断"] {
         assert!(
             bottom_texts.iter().any(|text| text == expected),
             "expected bottom workbench role to render `{expected}`, rendered texts: {:?}",
@@ -1696,7 +1743,6 @@ fn property_screen_renders_independent_property_page_from_window_model() {
 
     for expected in [
         "物性",
-        "物性工作区",
         "物性包",
         "二元烃 Lite",
         "项目组分",
@@ -1704,11 +1750,31 @@ fn property_screen_renders_independent_property_page_from_window_model() {
         "Ethane",
         "摘要",
         "进入流程图建模",
-        "未完成",
+        "就绪",
+        "物性包和项目组分已选择",
+        "已安排自动授权检查",
+        "后台按计划复查授权状态",
     ] {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
             "expected property page to render `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
+
+    for hidden in [
+        "binary-hydrocarbon-lite-v1",
+        "Automatic check scheduled",
+        "SystemTime",
+        "TimerElapsed",
+        "物性工作区",
+        "参数",
+        "分析",
+        "来源",
+    ] {
+        assert!(
+            !texts.iter().any(|text| text.contains(hidden)),
+            "property page should not render hidden or inactive text `{hidden}`, rendered texts: {:?}",
             texts
         );
     }
@@ -1744,6 +1810,138 @@ fn property_page_main_path_enters_flowsheet_modeling_after_basis_selection() {
     assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Palette);
     assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Inspector);
     assert_eq!(app.bottom_drawer_tab, StudioShellBottomDrawerTab::Messages);
+}
+
+#[test]
+fn blank_project_main_path_workbench_first_viewport_uses_modeling_roles() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.create_blank_project();
+
+    app.enter_flowsheet_modeling_from_property();
+    assert_eq!(
+        app.screen,
+        StudioShellScreen::Property,
+        "incomplete property basis must keep the user on the property page"
+    );
+
+    select_builtin_binary_hydrocarbon_basis(&mut app);
+    app.enter_flowsheet_modeling_from_property();
+
+    assert_eq!(app.screen, StudioShellScreen::Workbench);
+    assert_eq!(app.left_sidebar_tab, StudioShellLeftSidebarTab::Palette);
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Inspector);
+    assert_eq!(app.bottom_drawer_tab, StudioShellBottomDrawerTab::Messages);
+
+    let top_texts = render_top_bar_texts(&mut app);
+    for expected in ["流程图工具栏", "运行当前流程", "模块结果", "结果表"] {
+        assert!(
+            top_texts.iter().any(|text| text.contains(expected)),
+            "expected Workbench top context to render `{expected}`, rendered texts: {:?}",
+            top_texts
+        );
+    }
+    for hidden in ["放置进料", "放置闪蒸罐", "自动布线", "完整报表"] {
+        assert!(
+            !top_texts.iter().any(|text| text.contains(hidden)),
+            "Workbench top context must not duplicate module or out-of-scope entry `{hidden}`, rendered texts: {:?}",
+            top_texts
+        );
+    }
+
+    let left_texts = render_left_sidebar_texts(&mut app);
+    for expected in [
+        "模块",
+        "项目",
+        "放置单元",
+        "流股源",
+        "调节单元",
+        "汇合与分离",
+        "放置进料",
+        "放置闪蒸罐",
+    ] {
+        assert!(
+            left_texts.iter().any(|text| text == expected),
+            "expected blank Workbench left rail to render `{expected}`, rendered texts: {:?}",
+            left_texts
+        );
+    }
+    for hidden in ["对象树", "审阅状态", "完整模块库", "自由连线", "自动布线"] {
+        assert!(
+            !left_texts.iter().any(|text| text.contains(hidden)),
+            "blank Workbench left rail must keep `{hidden}` out of the active module tab, rendered texts: {:?}",
+            left_texts
+        );
+    }
+
+    let center_texts = render_center_stage_texts(&mut app);
+    for expected in [
+        "画布工具",
+        "画布状态",
+        "0 个单元",
+        "0 条物料线",
+        "0 条建议",
+        "画布图例",
+        "选择画布工具",
+        "使用放置单元操作开始画布编辑",
+    ] {
+        assert!(
+            center_texts.iter().any(|text| text == expected),
+            "expected blank Workbench canvas to render `{expected}`, rendered texts: {:?}",
+            center_texts
+        );
+    }
+    for hidden in [
+        "放置进料",
+        "放置闪蒸罐",
+        "对象树",
+        "画布选择",
+        "模块设置",
+        "结果表",
+    ] {
+        assert!(
+            !center_texts.iter().any(|text| text.contains(hidden)),
+            "blank Workbench canvas must not render side or bottom role `{hidden}`, rendered texts: {:?}",
+            center_texts
+        );
+    }
+
+    let right_texts = render_right_sidebar_texts(&mut app);
+    for expected in [
+        "画布选择",
+        "无",
+        "检查器",
+        "属性",
+        "请从左侧项目树或画布选择流股/单元。",
+    ] {
+        assert!(
+            right_texts.iter().any(|text| text == expected),
+            "expected blank Workbench right rail to render `{expected}`, rendered texts: {:?}",
+            right_texts
+        );
+    }
+    for hidden in ["状态汇总", "结果表", "物性包"] {
+        assert!(
+            !right_texts.iter().any(|text| text.contains(hidden)),
+            "blank Workbench right rail must not render `{hidden}`, rendered texts: {:?}",
+            right_texts
+        );
+    }
+
+    let bottom_texts = render_bottom_drawer_texts(&mut app);
+    for expected in ["消息", "状态汇总", "还没有求解快照。", "快照", "无"] {
+        assert!(
+            bottom_texts.iter().any(|text| text == expected),
+            "expected blank Workbench bottom area to render `{expected}`, rendered texts: {:?}",
+            bottom_texts
+        );
+    }
+    for hidden in ["画布选择", "检查器", "模块设置", "模块结果", "完整报表"] {
+        assert!(
+            !bottom_texts.iter().any(|text| text.contains(hidden)),
+            "blank Workbench bottom area must not render `{hidden}`, rendered texts: {:?}",
+            bottom_texts
+        );
+    }
 }
 
 #[test]
@@ -1894,7 +2092,7 @@ fn home_window_model_maps_recent_projects_to_case_tiles() {
         current_tile.title,
         "Feed Heater Flash Binary Hydrocarbon Example"
     );
-    assert_eq!(current_tile.package_summary, "Unselected");
+    assert_eq!(current_tile.package_summary, "Binary Hydrocarbon Lite");
     assert_eq!(current_tile.component_summary, "Ethane, Methane");
     assert!(
         current_tile
@@ -1930,7 +2128,7 @@ fn home_dashboard_renders_recent_case_tiles_from_window_model() {
         "Heater",
         "Flash Drum",
         "Ethane, Methane",
-        "未选择",
+        "二元烃 Lite",
     ] {
         assert!(
             texts.iter().any(|text| text.contains(expected)),
@@ -1938,6 +2136,33 @@ fn home_dashboard_renders_recent_case_tiles_from_window_model() {
             texts
         );
     }
+    assert!(
+        !texts
+            .iter()
+            .any(|text| text.contains("binary-hydrocarbon-lite-v1")),
+        "home recent/current tiles should render the localized package label instead of the raw package id, rendered texts: {:?}",
+        texts
+    );
+}
+
+#[test]
+fn home_dashboard_hides_return_workspace_action_before_user_opens_or_creates_case() {
+    let mut app = ready_app_state(&synced_workspace_config());
+
+    let texts = render_home_dashboard_texts(&mut app);
+
+    assert!(
+        !texts.iter().any(|text| text.contains("返回工作区")),
+        "fresh Home should not expose a return action before the user opens or creates a case, rendered texts: {:?}",
+        texts
+    );
+    assert!(
+        !texts
+            .iter()
+            .any(|text| text.contains("继续当前已打开项目。")),
+        "fresh Home should not render return-workspace helper text, rendered texts: {:?}",
+        texts
+    );
 }
 
 #[test]
@@ -2756,10 +2981,17 @@ fn home_open_project_returns_to_current_workspace_when_current_tile_is_selected(
 
     app.create_blank_project();
     app.screen = StudioShellScreen::Home;
-    let _ = render_home_dashboard_texts(&mut app);
+    let texts = render_home_dashboard_texts(&mut app);
 
     assert!(app.home_selected_current_workspace);
     assert_eq!(app.home_selected_recent_project, None);
+    for expected in ["返回工作区", "继续当前已打开项目。"] {
+        assert!(
+            texts.iter().any(|text| text.contains(expected)),
+            "expected home dashboard to render current workspace action `{expected}`, rendered texts: {:?}",
+            texts
+        );
+    }
 
     app.open_selected_recent_project_or_picker();
 
@@ -2786,10 +3018,15 @@ fn home_current_workspace_tile_returns_to_flowsheet_after_property_main_path_rea
     app.create_blank_project();
     select_builtin_binary_hydrocarbon_basis(&mut app);
     app.screen = StudioShellScreen::Home;
-    let _ = render_home_dashboard_texts(&mut app);
+    let texts = render_home_dashboard_texts(&mut app);
 
     assert!(app.home_selected_current_workspace);
     assert_eq!(app.home_selected_recent_project, None);
+    assert!(
+        texts.iter().any(|text| text.contains("返回工作区")),
+        "expected home dashboard to expose an explicit return action, rendered texts: {:?}",
+        texts
+    );
 
     app.open_selected_recent_project_or_picker();
 
@@ -2820,7 +3057,7 @@ fn home_open_project_returns_to_current_workspace_when_selected_recent_is_curren
 
     app.open_selected_recent_project_or_picker();
 
-    assert_eq!(app.screen, StudioShellScreen::Property);
+    assert_eq!(app.screen, StudioShellScreen::Workbench);
     assert_eq!(
         app.home_selected_recent_project.as_deref(),
         Some(current_project.as_path())
@@ -3174,6 +3411,75 @@ fn result_inspector_state_tracks_selected_unit_per_snapshot() {
             .first()
             .map(|step| step.unit_id.as_str()),
         "expected unit selection to reset on snapshot identity change"
+    );
+}
+
+#[test]
+fn bottom_results_table_routes_stream_and_unit_focus_to_matching_right_tab() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    let snapshot = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .latest_solve_snapshot
+        .expect("expected solve snapshot");
+    let snapshot_id = snapshot.snapshot_id.clone();
+
+    app.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
+    app.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
+    app.focus_result_table_stream(&snapshot_id, "stream-heated");
+
+    assert_eq!(app.right_sidebar_tab, StudioShellRightSidebarTab::Inspector);
+    assert_eq!(
+        app.bottom_drawer_tab,
+        StudioShellBottomDrawerTab::ResultsTable
+    );
+    assert_eq!(
+        app.result_inspector
+            .selected_stream_id_for_snapshot(&snapshot)
+            .as_deref(),
+        Some("stream-heated")
+    );
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Stream", "stream-heated"))
+    );
+
+    app.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+    app.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
+    app.focus_result_table_unit(&snapshot_id, "heater-1");
+
+    assert_eq!(
+        app.right_sidebar_tab,
+        StudioShellRightSidebarTab::ModuleResults
+    );
+    assert_eq!(
+        app.bottom_drawer_tab,
+        StudioShellBottomDrawerTab::ResultsTable
+    );
+    assert_eq!(
+        app.result_inspector
+            .selected_unit_id_for_snapshot(&snapshot)
+            .as_deref(),
+        Some("heater-1")
+    );
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .window_model()
+            .runtime
+            .active_inspector_target
+            .as_ref()
+            .map(|target| (target.kind_label, target.target_id.as_str())),
+        Some(("Unit", "heater-1"))
     );
 }
 

@@ -42,12 +42,17 @@ impl ReadyAppState {
     }
 
     pub(super) fn enter_flowsheet_modeling_from_property(&mut self) {
-        let unit_count = self
-            .platform_host
-            .snapshot()
-            .runtime
-            .workspace_document
-            .unit_count;
+        let snapshot = self.platform_host.snapshot();
+        let window = snapshot.window_model();
+        if !window.property_page.flowsheet_modeling_enabled {
+            self.screen = StudioShellScreen::Property;
+            self.platform_host.record_activity_line(
+                "blocked flowsheet modeling entry before property basis selection".to_string(),
+            );
+            return;
+        }
+
+        let unit_count = window.runtime.workspace_document.unit_count;
         self.screen = StudioShellScreen::Workbench;
         self.left_sidebar_tab = if unit_count == 0 {
             StudioShellLeftSidebarTab::Palette
@@ -146,6 +151,7 @@ impl ReadyAppState {
                     detail: blank_project_created_notice_detail(self.locale, authoring_case)
                         .to_string(),
                 });
+                self.home_workspace_return_available = true;
                 self.screen = if authoring_case.is_some() {
                     StudioShellScreen::Workbench
                 } else {
@@ -526,6 +532,7 @@ impl ReadyAppState {
                             &project_path,
                         ),
                     }));
+                self.home_workspace_return_available = true;
                 self.screen = StudioShellScreen::Workbench;
                 self.active_authoring_case = None;
                 self.platform_host.record_activity_line(format!(
@@ -602,6 +609,10 @@ impl ReadyAppState {
             return;
         }
         self.sync_viewport_lifecycle(ctx);
+        let quit_shortcut_consumed = self.handle_quit_shortcut(ctx);
+        if quit_shortcut_consumed && self.logical_window_count() == 0 {
+            return;
+        }
         let toggle_shortcut_consumed = self.handle_command_palette_toggle_shortcut(ctx);
         self.drain_due_timers(ctx);
         self.drop_preview_overlay_anchor = None;
@@ -609,7 +620,7 @@ impl ReadyAppState {
         let snapshot = self.platform_host.snapshot();
         let window = self.window_model_with_shell_home(&snapshot);
         let palette_keyboard_consumed = self.handle_command_palette_keyboard(ctx, &window.commands);
-        if !toggle_shortcut_consumed && !palette_keyboard_consumed {
+        if !quit_shortcut_consumed && !toggle_shortcut_consumed && !palette_keyboard_consumed {
             self.dispatch_shortcuts(ctx);
         }
         let mut hovered_drop_target = false;
@@ -764,6 +775,32 @@ impl ReadyAppState {
             self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
             self.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
         }
+    }
+
+    pub(super) fn focus_result_table_stream(
+        &mut self,
+        snapshot_id: &str,
+        stream_id: impl Into<String>,
+    ) {
+        let stream_id = stream_id.into();
+        self.result_inspector
+            .select_stream(snapshot_id, stream_id.clone());
+        self.dispatch_ui_command(format!("inspector.focus_stream:{stream_id}"));
+        self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
+        self.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
+    }
+
+    pub(super) fn focus_result_table_unit(
+        &mut self,
+        snapshot_id: &str,
+        unit_id: impl Into<String>,
+    ) {
+        let unit_id = unit_id.into();
+        self.result_inspector
+            .select_unit(snapshot_id, unit_id.clone());
+        self.dispatch_ui_command(format!("inspector.focus_unit:{unit_id}"));
+        self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
+        self.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
     }
 
     pub(super) fn dispatch_inspector_field_draft_update(
@@ -1519,6 +1556,19 @@ impl ReadyAppState {
     pub(super) fn sync_viewport_lifecycle(&mut self, ctx: &egui::Context) {
         let focused = ctx.input(|input| input.viewport().focused.unwrap_or(input.focused));
         self.last_viewport_focused = Some(focused);
+    }
+
+    pub(super) fn handle_quit_shortcut(&mut self, ctx: &egui::Context) -> bool {
+        let quit_requested =
+            ctx.input(|input| input.modifiers.command && input.key_pressed(egui::Key::Q));
+        if !quit_requested {
+            return false;
+        }
+
+        if self.close_current_window_for_viewport_request() {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        }
+        true
     }
 
     pub(super) fn handle_command_palette_toggle_shortcut(&mut self, ctx: &egui::Context) -> bool {

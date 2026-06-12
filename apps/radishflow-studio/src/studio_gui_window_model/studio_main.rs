@@ -95,6 +95,19 @@ pub enum StudioGuiWindowModuleSettingsState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StudioGuiWindowModuleSettingsParameterSummaryModel {
+    pub title: &'static str,
+    pub status_label: &'static str,
+    pub detail: String,
+    pub total_field_count: usize,
+    pub dirty_field_count: usize,
+    pub issue_count: usize,
+    pub notice_count: usize,
+    pub batch_commit_available: bool,
+    pub batch_discard_available: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowModuleSettingsModel {
     pub title: &'static str,
     pub state: StudioGuiWindowModuleSettingsState,
@@ -102,6 +115,7 @@ pub struct StudioGuiWindowModuleSettingsModel {
     pub detail: String,
     pub selected_unit: Option<StudioGuiWindowInspectorTargetModel>,
     pub summary_rows: Vec<StudioGuiWindowInspectorTargetSummaryRowModel>,
+    pub parameter_summary: Option<StudioGuiWindowModuleSettingsParameterSummaryModel>,
     pub parameter_fields: Vec<StudioGuiWindowInspectorTargetFieldModel>,
     pub parameter_notices: Vec<StudioGuiWindowInspectorPropertyNoticeModel>,
     pub parameter_batch_commit_command_id: Option<String>,
@@ -180,10 +194,15 @@ impl StudioGuiWindowPropertyPageModel {
             .filter(|component| component.selected)
             .count();
         let selected_package = document.property_package_id.clone();
-        let selected_package_component_summary = document
+        let selected_package_choice = document
             .property_package_choices
             .iter()
-            .find(|choice| choice.selected)
+            .find(|choice| choice.selected);
+        let selected_package_label = selected_package_choice
+            .map(|choice| choice.label.clone())
+            .or_else(|| selected_package.clone())
+            .unwrap_or_else(|| "Unselected".to_string());
+        let selected_package_component_summary = selected_package_choice
             .map(|choice| choice.component_summary.clone())
             .unwrap_or_else(|| "Unselected".to_string());
         let flowsheet_modeling_enabled = selected_package.is_some() && selected_component_count > 0;
@@ -240,7 +259,7 @@ impl StudioGuiWindowPropertyPageModel {
             metrics: vec![
                 StudioGuiWindowPropertyMetricModel {
                     label: "Package",
-                    value: selected_package.unwrap_or_else(|| "Unselected".to_string()),
+                    value: selected_package_label,
                     detail: selected_package_component_summary,
                 },
                 StudioGuiWindowPropertyMetricModel {
@@ -286,6 +305,7 @@ impl StudioGuiWindowModuleSettingsModel {
                 ),
                 selected_unit: Some(selected_unit.clone()),
                 summary_rows: Vec::new(),
+                parameter_summary: None,
                 parameter_fields: Vec::new(),
                 parameter_notices: Vec::new(),
                 parameter_batch_commit_command_id: None,
@@ -309,6 +329,12 @@ impl StudioGuiWindowModuleSettingsModel {
             ),
             selected_unit: Some(detail.target.clone()),
             summary_rows: detail.summary_rows.clone(),
+            parameter_summary: module_settings_parameter_summary(
+                &detail.property_fields,
+                &detail.property_notices,
+                detail.property_batch_commit_command_id.as_deref(),
+                detail.property_batch_discard_command_id.as_deref(),
+            ),
             parameter_fields: detail.property_fields.clone(),
             parameter_notices: detail.property_notices.clone(),
             parameter_batch_commit_command_id: detail.property_batch_commit_command_id.clone(),
@@ -460,6 +486,15 @@ impl StudioGuiWindowStatusSummaryModel {
             .as_ref()
             .map(|snapshot| snapshot.step_count.to_string())
             .unwrap_or_else(|| "N/A".to_string());
+        let (unit_value, unit_status_label) =
+            if let Some(snapshot) = runtime.latest_solve_snapshot.as_ref() {
+                (
+                    snapshot.review_summary.unit_results.len().to_string(),
+                    "Current".to_string(),
+                )
+            } else {
+                ("N/A".to_string(), "N/A".to_string())
+            };
         let diagnostic_value = runtime
             .latest_solve_snapshot
             .as_ref()
@@ -515,6 +550,13 @@ impl StudioGuiWindowStatusSummaryModel {
                         .to_string(),
                 },
                 StudioGuiWindowStatusSummaryMetricModel {
+                    label: "Units",
+                    value: unit_value,
+                    status_label: unit_status_label,
+                    detail: "Unit result count from the current SolveSnapshot review summary."
+                        .to_string(),
+                },
+                StudioGuiWindowStatusSummaryMetricModel {
                     label: "Diagnostics",
                     value: diagnostic_value,
                     status_label: "Diagnostics".to_string(),
@@ -551,6 +593,7 @@ fn module_settings_empty(
         detail: detail.to_string(),
         selected_unit: None,
         summary_rows: Vec::new(),
+        parameter_summary: None,
         parameter_fields: Vec::new(),
         parameter_notices: Vec::new(),
         parameter_batch_commit_command_id: None,
@@ -562,6 +605,62 @@ fn module_settings_empty(
         help_actions: Vec::new(),
         help_detail: help_detail.to_string(),
     }
+}
+
+fn module_settings_parameter_summary(
+    fields: &[StudioGuiWindowInspectorTargetFieldModel],
+    notices: &[StudioGuiWindowInspectorPropertyNoticeModel],
+    batch_commit_command_id: Option<&str>,
+    batch_discard_command_id: Option<&str>,
+) -> Option<StudioGuiWindowModuleSettingsParameterSummaryModel> {
+    if fields.is_empty() {
+        return None;
+    }
+
+    let total_field_count = fields.len();
+    let dirty_field_count = fields.iter().filter(|field| field.is_dirty).count();
+    let invalid_field_count = fields
+        .iter()
+        .filter(|field| field.status_label == "Invalid")
+        .count();
+    let invalid_notice_count = notices
+        .iter()
+        .filter(|notice| notice.status_label == "Invalid")
+        .count();
+    let issue_count = invalid_field_count + invalid_notice_count;
+    let status_label = if issue_count > 0 {
+        "Invalid"
+    } else if dirty_field_count > 0 {
+        "Draft"
+    } else {
+        "Synced"
+    };
+    let batch_commit_available =
+        batch_commit_command_id.is_some() && dirty_field_count > 0 && issue_count == 0;
+    let batch_discard_available = batch_discard_command_id.is_some() && dirty_field_count > 0;
+    let detail = if issue_count > 0 {
+        format!(
+            "{total_field_count} parameter field(s), {dirty_field_count} draft(s), {issue_count} issue(s); fix invalid values before committing."
+        )
+    } else if dirty_field_count > 0 {
+        format!(
+            "{total_field_count} parameter field(s), {dirty_field_count} draft(s), ready for batch commit."
+        )
+    } else {
+        format!("{total_field_count} parameter field(s), all synced with the current document.")
+    };
+
+    Some(StudioGuiWindowModuleSettingsParameterSummaryModel {
+        title: "Parameter Summary",
+        status_label,
+        detail,
+        total_field_count,
+        dirty_field_count,
+        issue_count,
+        notice_count: notices.len(),
+        batch_commit_available,
+        batch_discard_available,
+    })
 }
 
 fn module_settings_state_label(state: StudioGuiWindowModuleSettingsState) -> &'static str {
@@ -627,7 +726,10 @@ fn example_case_tile_from_model(
         title: example.title.to_string(),
         detail: example.detail.to_string(),
         path_text: example.project_path.display().to_string(),
-        package_summary: "binary-hydrocarbon-lite-v1".to_string(),
+        package_summary: crate::builtin_property_package("binary-hydrocarbon-lite-v1")
+            .map(|package| package.label)
+            .unwrap_or("binary-hydrocarbon-lite-v1")
+            .to_string(),
         component_summary: "Methane, Ethane".to_string(),
         status,
         status_label: home_case_tile_status_label(status),

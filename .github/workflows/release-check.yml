@@ -1,12 +1,12 @@
 name: Release Checks
 
 on:
-  push:
-    tags:
-      - 'v*-dev'
-      - 'v*-test'
-      - 'v*-release'
   workflow_dispatch:
+    inputs:
+      package_version:
+        description: Optional staging package version. Leave empty to use the packaging script default.
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -32,6 +32,9 @@ jobs:
 
       - name: Check repository hygiene
         run: ./scripts/check-text-files.sh
+
+      - name: Check document size advisory
+        run: bash scripts/check-doc-size.sh --include-advisory
 
   rust-baseline:
     name: Rust Baseline
@@ -90,3 +93,64 @@ jobs:
       - name: Run rust baseline
         shell: pwsh
         run: ./scripts/check-repo.ps1 -SkipTextFiles
+
+  dotnet-adapter-baseline:
+    name: .NET Adapter Baseline
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Run .NET CAPE-OPEN baseline
+        shell: pwsh
+        run: ./scripts/check-dotnet-capeopen.ps1
+
+  windows-staging-package:
+    name: Windows Staging Package
+    runs-on: windows-latest
+    needs:
+      - repo-hygiene
+      - rust-baseline
+      - rust-baseline-macos
+      - rust-baseline-windows
+      - dotnet-adapter-baseline
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build Windows staging package
+        shell: pwsh
+        run: |
+          $version = '${{ inputs.package_version }}'
+          $arguments = @('-Configuration', 'Release', '-Clean')
+          if (-not [string]::IsNullOrWhiteSpace($version)) {
+              $arguments += @('-Version', $version)
+          }
+
+          ./scripts/package.ps1 @arguments
+
+      - name: Upload Windows staging package
+        uses: actions/upload-artifact@v4
+        with:
+          name: radishflow-windows-staging-package
+          path: artifacts/packages/RadishFlow-*.zip
+          if-no-files-found: error

@@ -8,7 +8,9 @@
 - synthetic demo 示例：`feed-heater-flash-synthetic-demo.rfproj.json`、`feed-cooler-flash-synthetic-demo.rfproj.json`、`feed-valve-flash-synthetic-demo.rfproj.json`、`feed-mixer-flash-synthetic-demo.rfproj.json`、`feed-mixer-heater-flash-synthetic-demo.rfproj.json`
 - PME 验证示例：`feed-heater-flash-water-ethanol.rfproj.json`
 
-其中，synthetic demo 族继续使用 `component-a/component-b` 与 `binary-hydrocarbon-synthetic-demo-v1` 语义，主要服务 solver / integration / interop 回归，不再与 official methane/ethane 示例共用泛化命名。
+其中，official hydrocarbon 示例使用 methane / ethane，并在项目文件的 `flowsheet.thermo.property_package_id` 中持久化 `binary-hydrocarbon-lite-v1`。Studio 的 Home、独立物性页、左侧项目输入和运行路径读取同一物性包状态；界面主展示会把该稳定 id 映射为可读 label `二元烃 Lite`，项目文件和命令边界仍保留稳定 id。
+
+synthetic demo 族继续使用 `component-a/component-b` 与 `binary-hydrocarbon-synthetic-demo-v1` 语义，主要服务 solver / integration / interop 回归，不再与 official methane/ethane 示例共用泛化命名。
 
 同时，`failures/` 子目录当前开始承载仓库级负向回归夹具：
 

@@ -26,9 +26,9 @@ impl ReadyAppState {
             ui,
             match self.locale {
                 StudioShellLocale::En => {
-                    "Independent property workspace backed by the current flowsheet document."
+                    "Property page state is backed by the current flowsheet document."
                 }
-                StudioShellLocale::ZhCn => "独立物性工作区，状态来自当前 flowsheet 文档。",
+                StudioShellLocale::ZhCn => "物性页状态来自当前 flowsheet 文档。",
             },
         );
 
@@ -46,54 +46,11 @@ impl ReadyAppState {
             ))
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                ui.columns(3, |columns| {
-                    self.render_property_workspace_navigation(&mut columns[0], property_page);
-                    self.render_property_workspace_selection(&mut columns[1], property_page);
-                    self.render_property_workspace_summary(&mut columns[2], window);
+                ui.columns(2, |columns| {
+                    self.render_property_workspace_selection(&mut columns[0], property_page);
+                    self.render_property_workspace_summary(&mut columns[1], window);
                 });
             });
-    }
-
-    fn render_property_workspace_navigation(
-        &self,
-        ui: &mut egui::Ui,
-        property_page: &radishflow_studio::StudioGuiWindowPropertyPageModel,
-    ) {
-        egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            ui.label(
-                egui::RichText::new(match self.locale {
-                    StudioShellLocale::En => "Property workspace",
-                    StudioShellLocale::ZhCn => "物性工作区",
-                })
-                .strong(),
-            );
-            ui.add_space(4.0);
-            for label in [
-                self.locale.runtime_label("Components"),
-                self.locale.runtime_label("Package"),
-            ] {
-                let _ = ui.selectable_label(false, label.as_ref());
-            }
-            for section in &property_page.future_sections {
-                ui.add_enabled(
-                    false,
-                    egui::Button::new(self.locale.runtime_label(section).as_ref()),
-                );
-            }
-            ui.separator();
-            render_wrapped_small(
-                ui,
-                match self.locale {
-                    StudioShellLocale::En => {
-                        "MVP scope exposes controlled built-in packages and a small component catalog."
-                    }
-                    StudioShellLocale::ZhCn => {
-                        "当前 MVP 只暴露受控内置物性包和小型组分目录。"
-                    }
-                },
-            );
-        });
     }
 
     fn render_property_workspace_selection(
@@ -124,7 +81,6 @@ impl ReadyAppState {
                             .min_size(egui::vec2(ui.available_width(), 30.0)),
                     )
                     .on_hover_text(&choice.detail);
-                render_wrapped_small(ui, &choice.package_id);
                 render_wrapped_small(ui, &choice.component_summary);
                 if response.clicked() {
                     self.dispatch_ui_command(&choice.command_id);
@@ -301,8 +257,11 @@ impl ReadyAppState {
                 );
                 if let Some(notice) = entitlement.notice.as_ref() {
                     ui.add_space(4.0);
-                    ui.colored_label(notice_color_from_entitlement(notice.level), &notice.title);
-                    render_wrapped_label(ui, &notice.message);
+                    ui.colored_label(
+                        notice_color_from_entitlement(notice.level),
+                        property_platform_notice_title(self.locale, notice),
+                    );
+                    render_wrapped_label(ui, property_platform_notice_message(self.locale, notice));
                 }
             });
         }
@@ -319,6 +278,44 @@ fn property_package_choice_label(
             "binary-hydrocarbon-lite-v1" => "二元烃 Lite".to_string(),
             _ => choice.label.clone(),
         },
+    }
+}
+
+fn property_platform_notice_title(
+    locale: StudioShellLocale,
+    notice: &rf_ui::EntitlementNotice,
+) -> String {
+    match (locale, notice.title.as_str()) {
+        (StudioShellLocale::En, "Automatic check scheduled") => {
+            "Automatic entitlement check scheduled".to_string()
+        }
+        (StudioShellLocale::ZhCn, "Automatic check scheduled") => "已安排自动授权检查".to_string(),
+        (StudioShellLocale::En, "Automatic retry scheduled") => {
+            "Automatic entitlement retry scheduled".to_string()
+        }
+        (StudioShellLocale::ZhCn, "Automatic retry scheduled") => "已安排自动授权重试".to_string(),
+        _ => locale.runtime_label(&notice.title).into_owned(),
+    }
+}
+
+fn property_platform_notice_message(
+    locale: StudioShellLocale,
+    notice: &rf_ui::EntitlementNotice,
+) -> String {
+    match (locale, notice.title.as_str()) {
+        (StudioShellLocale::En, "Automatic check scheduled") => {
+            "Studio will check entitlement again in the background.".to_string()
+        }
+        (StudioShellLocale::ZhCn, "Automatic check scheduled") => {
+            "Studio 会在后台按计划复查授权状态。".to_string()
+        }
+        (StudioShellLocale::En, "Automatic retry scheduled") => {
+            "Studio will retry entitlement sync in the background.".to_string()
+        }
+        (StudioShellLocale::ZhCn, "Automatic retry scheduled") => {
+            "Studio 会在后台稍后重试授权同步。".to_string()
+        }
+        _ => locale.runtime_label(&notice.message).into_owned(),
     }
 }
 
