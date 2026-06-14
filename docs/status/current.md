@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-06-10
+更新时间：2026-06-14
 
 ## 用途
 
@@ -8,7 +8,7 @@
 读者：开发者、用户、AI / Agent。  
 不包含：完整历史流水、详细设计推演、测试日志和长期说明书。
 
-默认先读本文档。只有当任务需要具体实现细节、历史依据或专题边界时，再读取下方“按需阅读”列表。`AGENTS.md` / `CLAUDE.md` 只保留长期协作规则，不承载当前阶段流水。
+默认先读本文档。若要进入具体功能或开发目标，再读取 `docs/topics/README.md` 和对应专题文档。`AGENTS.md` / `CLAUDE.md` 只保留长期协作规则，不承载当前阶段流水。
 
 ## 阶段结论
 
@@ -16,21 +16,38 @@
 - MVP 第一阶段 M1-M5、MVP α、MVP β 人工 smoke、失败修复闭环和通用小流程建模 v1 均已阶段性收口。
 - 阶段基线：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过；2026-06-10 `./scripts/check-repo.sh` 通过。
 - 通用小流程建模 v1 已支持普通空白项目在受控范围内组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，并覆盖显式输入、运行、保存、重开、rerun 与结果审阅。
-- 当前主线已切到 **Studio UI 专题窄口径实现**。`studio-client-main.pen` 是当前唯一活跃 Studio 主设计稿，覆盖 Home、独立物性页、流程图工作台、模块设置 / 模块结果和底部运行 / 状态分栏。
-- 最新进度：**Studio UI 实现第四十一刀已根据真实截图继续收束独立 `物性` 页展示口径，仓库级验证基线仍为 2026-06-10 `./scripts/check-repo.sh` 通过**。脏项目 `Cmd+Q` 真实窗口 smoke 已复核通过；底部结果表的 stream / unit 定位会派发正式 `inspector.focus_*` command；顶部 `结果工具栏` 和 `运行工具栏` 已收束重复状态；左侧 `模块` 页保留分类、数量和放置按钮，说明文字改为 hover；右侧 `模块结果` 对 current unit result 采用紧凑单元、状态、step 和消费 / 产出流股 chip 展示，不再在首屏展开长 snapshot id；official methane / ethane 示例项目文件已持久化 `binary-hydrocarbon-lite-v1`，左侧 `项目输入`、独立 `物性` 页、Home recent / current / example tile 和运行结果不再出现“已收敛但物性包未选择”、raw package id 暴露或 entitlement timer debug 文本外露的冲突。
+- 2026-06-10 前的 Studio UI 专题实现已把 Home、独立 `物性` 页、流程图工作台、右侧 `模块设置 / 模块结果`、底部运行 / 状态分栏和 package label 展示口径阶段性收束。
+- 2026-06-14 起，当前主线从“Studio UI 第 N 刀”调整为 **总进度 + 一级轨道专题 + 二级功能专题** 的开发节奏。具体单元、建模对象、后端服务和后端 Web UI 进入 `docs/topics/` 下的二级专题，实现前按专题阅读目标、范围、非目标、验收和验证。
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
+
+## 当前激活专题
+
+当前专题索引：`docs/topics/README.md`。
+
+一级轨道专题：
+
+| 专题 | 状态 | 当前作用 |
+| --- | --- | --- |
+| `docs/topics/studio-main-workflow.md` | Active | 当前主线入口，约束 Studio 从 Home、物性、建模、运行、结果审阅到保存 / 重开的主路径 |
+| `docs/topics/property-basis-and-components.md` | Active | 约束内置 package、项目组分、保存 / 重开和运行请求之间的同一事实源 |
+| `docs/topics/flowsheet-modeling-and-solve.md` | Active | 约束受控单元、连接、readiness、Run Panel 和 solver 边界 |
+| `docs/topics/results-review-diagnostics.md` | Active | 约束 `SolveSnapshot`、结果表、模块结果、状态汇总、诊断和 recovery action |
+| `docs/topics/project-lifecycle-storage.md` | Backlog | 记录打开、保存、另存为、最近项目、sidecar 和脏改确认边界；当前不扩张 |
+| `docs/topics/capeopen-pmc-adapter.md` | Frozen / Blocker-only | `.NET 10` CAPE-OPEN / COM 适配层保持基线，只修真实 blocker |
+
+当前已建立的二级功能专题：
+
+- 单元模块：`docs/topics/unitops/feed-source.md`、`docs/topics/unitops/heater-cooler.md`、`docs/topics/unitops/flash-drum.md`、`docs/topics/unitops/mixer.md`、`docs/topics/unitops/valve.md`
+- 建模对象：`docs/topics/modeling/material-stream.md`
+- 平台与服务：`docs/topics/platform/control-plane-service.md`、`docs/topics/platform/control-plane-web-ui.md`
 
 ## 当前策略
 
-已经通过的阶段只修真实 blocker：
-
-- 无法完成主路径建模
-- 无法运行或运行结果明显错误
-- 保存 / 重开破坏项目
-- 文档事实源与代码能力明显冲突
-- 仓库级验证或核心 focused test 失败
-
-当前不再主动追逐 hover、提示、按钮文案、局部 selector、presentation 小瑕疵或更多同构作者入口。`Mixer-Flash` / `Heater-Flash` 作者路径、MVP β Smoke A-D 和结果审阅对象覆盖保留为代表性回归，不作为日常 gate。
+- 新增或修改功能前，先确认它属于哪个一级轨道专题和哪个二级功能专题；没有清晰归属时，先补专题文档，不直接写代码。
+- 已通过的阶段只修真实 blocker：无法完成主路径建模、无法运行、结果明显错误、保存 / 重开破坏项目、文档事实源与代码能力冲突、仓库级验证或核心 focused test 失败。
+- 不再把 hover、按钮文案、局部 selector、presentation 小瑕疵或同构入口作为默认推进内容。
+- UI 改动必须服务当前激活专题的主路径、状态一致性或验收标准；不再以“第 N 刀”作为独立目标。
+- 架构、接口、项目格式、验证基线或阶段边界变化时，同步更新对应专题文档，再更新本文档摘要和周志。
 
 ## 能力基线
 
@@ -41,51 +58,64 @@
 - 缺物性包、结构性连接、拓扑、非法旧项目和求解阶段参数失败继续交给正式 Run Panel 诊断 / recovery；readiness 不扩成第二套 solver。
 - 轻量结果审阅已满足当前主路径判断；完整报表、模板、打印、批量导出和跨快照报表仍不进入当前阶段。
 
-Studio UI：
+Studio 主路径：
 
-- 顶部导航已收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；打开 / 新建 / 保存 / 示例归入 `文件`。
-- 独立 `物性` 页消费 `StudioGuiWindowPropertyPageModel`。普通空白项目创建后先进入 `物性`，Property 页入口、`window.property_context_toolbar`、顶部 `流程图` 导航、Home 显式 `返回工作区` 入口和内部进入 Workbench 行为共用 `flowsheet_modeling_enabled`；Property toolbar、摘要和包选择卡显示可读 package label，不把稳定 id 当主展示文本；entitlement host schedule notice 输出用户可读摘要，平台卡不展示 timer event / `SystemTime` 调度结构；Home 返回按钮只在本次会话已打开或新建 case 后显示，当前 MVP 不渲染无效二级物性导航。
-- Home recent / current / example case tile 的物性包展示只从当前 document / builtin package choice 映射为可读 label；中文界面显示“二元烃 Lite”，空白项目仍显示“未选择”，项目文件继续只保存稳定 package id。
-- 左侧栏稳定为 `模块 / 项目`：`模块` 承接受控放置 palette、作者任务清单和画布建议；模块分类与选项说明保留在 hover / DTO，不作为首屏常驻说明；`项目` 承接项目输入、示例入口、对象树和审阅状态；`项目输入` 的物性包扫读来自当前 `workspace_document.property_package_choices` / `property_package_id`，不从运行结果反推。
-- 中央 Canvas 只承接 `画布工具`、`画布状态`、`画布操作`、图例、画布实体和受控建议；放置入口留在左侧 `模块`，对象树留在左侧 `项目`，选择语义留在右侧栏。
-- 右侧栏稳定为 `检查器 / 模块设置 / 模块结果`，并用同一 `画布选择` 上下文头消费 Canvas current selection / command presentation。
-- `模块设置` 继续只消费 active unit Inspector DTO；参数摘要从现有字段、notice 和批量提交 / 放弃 command 派生，不新增第二套参数状态。
-- `模块结果` 继续只消费 `window.module_results`；current 结果态在右侧栏使用紧凑执行摘要和流股 chip，旧结果、无结果、无单元仍保留必要说明，不新增独立模块结果页或第二套结果状态。
-- 底部区域稳定为左侧 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 与右侧 `状态汇总` 分栏；结果表的单元区消费 `review_summary.unit_results`，状态汇总额外扫读同源单元结果数量，snapshot 一致性在状态汇总标题行扫读；结果表定位继续走正式 `inspector.focus_stream:*` / `inspector.focus_unit:*`，不维护第二套 shell 私有选择；顶部 `结果工具栏` 不直接铺开所有结果对象定位按钮，顶部 `运行工具栏` 不在 Monitor 按钮旁重复展示状态 chip；底部薄状态栏只做运行、快照、SI 单位、求解器、模式和当前选择扫读。
+- 顶部导航稳定为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`。
+- 普通空白项目创建后先进入独立 `物性` 页；Property 页入口、上下文工具栏、顶部 `流程图` 导航、Home `返回工作区` 和内部进入 Workbench 行为共用同一 Property readiness。
+- Home recent / current / example case tile、左侧 `项目输入`、独立 `物性` 页和运行结果展示同源 package label；稳定 package id 只留在项目文件、command id、运行请求和内部状态边界。
+- Workbench 区域职责稳定为左侧 `模块 / 项目`、中央 Canvas、右侧 `检查器 / 模块设置 / 模块结果`、底部运行信息与状态汇总。
+- 结果表定位继续走正式 `inspector.focus_stream:*` / `inspector.focus_unit:*`，不维护第二套 shell 私有选择。
+
+CAPE-OPEN / COM：
+
+- Rust Core 不直接处理 COM。
+- `.NET 10` CAPE-OPEN / COM 适配层只在真实 PME / Windows baseline 暴露 blocker 时推进。
+- 注册、反注册、PME 人工验证和环境修改仍按协作规则先告知用户。
 
 ## 下一步
 
-- 2026-06-11 优先做第四十一刀后的真实窗口复核：Home recent / current / example tile、独立 `物性` 页、左侧 `项目输入`、Workbench 运行 / 结果区是否仍有 raw package id、entitlement timer debug 文本或状态口径不一致。
-- 若复核没有真实 blocker，继续沿 `studio-client-main.pen`、brief、正式 DTO / command surface 做 Workbench 窄口径小切片；是否拆 `module-settings-panel.pen` 只根据右侧栏评审是否仍缺细化决定。
-- 继续不做大规模 egui 布局重排；只处理真实主路径上影响建模判断的入口重复、状态不一致或首屏密度问题。
+- 优先补 `docs/topics/studio-main-workflow.md` 对应的主路径 smoke 记录模板，覆盖 Home -> 物性 -> 流程图 -> 运行 -> 结果审阅 -> 保存 / 重开 / rerun。
+- 后续代码切片必须绑定到一个当前激活专题的阶段目标和退出标准。
+- 若继续修 Studio 主路径，只处理真实窗口或 focused test 暴露的状态冲突、入口重复、结果不可判断或保存 / 重开问题。
+- 若要推进新功能，例如更完整的连接编辑、完整报表、物性分析、控制面管理或发布流程，先新增独立专题并明确范围 / 非目标 / 验收。
+- 若改动落到具体单元或后端服务，优先更新对应二级功能专题，而不是继续扩写一级轨道专题。
 
 ## 验证节奏
 
 - 核心数据、求解、保存和项目格式：必须测试。
 - 新能力主路径：至少覆盖一条 happy path focused test。
 - UI 展示细节：除非曾经造成 blocker，否则不为单个小展示点新增测试。
-- 阶段收口：执行 `pwsh ./scripts/check-repo.ps1`。
+- 阶段收口：执行 `./scripts/check-repo.sh`；涉及 Windows `.NET` / CAPE-OPEN baseline 时按专题和协作规则使用 Windows / 真实环境验证。
 - 若仓库级验证在沙盒中出现明显环境性失败，可按协作规则申请真实环境复验。
 
 ## 暂不推进
 
 - 不继续在 β 第一刀上追加同构 Home 作者入口或同类 checklist；既有小案例清单只作为导航提示，不作为通用建模运行 gate。
-- 仍不推进 tag、release notes、便携包刷新或对外发布自动化；这些事项等待后续明确发布节点。
-- 不做自由连线编辑器、任意端口选择器、自动布线系统、完整拖拽布局编辑器、完整报表系统、跨快照报表、模板导出、完整参数表。
+- 不做自由连线编辑器、任意端口选择器、自动布线系统、完整拖拽布局编辑器。
+- 不做完整报表系统、跨快照报表、模板导出、打印、批量导出。
 - 不引入第三方 CAPE-OPEN 模型、第三方物性包加载、完整组分数据库或完整 Thermodynamics PMC。
+- 不推进 tag、release notes、便携包刷新、安装器或发布自动化；这些事项等待后续明确发布节点。
 - 不把 CAPE-OPEN / COM 语义倒灌到 Rust Core。
 - 不为未来可能需求预先堆叠不明意义的 helper / manager / orchestrator / context / adapter。
 
 ## 按需阅读
 
+- 专题索引：`docs/topics/README.md`
+- 当前主路径专题：`docs/topics/studio-main-workflow.md`
+- 物性基础：`docs/topics/property-basis-and-components.md`
+- 流程图建模与求解：`docs/topics/flowsheet-modeling-and-solve.md`
+- 结果审阅、诊断与恢复：`docs/topics/results-review-diagnostics.md`
+- 项目生命周期：`docs/topics/project-lifecycle-storage.md`
+- CAPE-OPEN PMC 适配层：`docs/topics/capeopen-pmc-adapter.md`
+- 具体单元模块：`docs/topics/unitops/`
+- 建模对象：`docs/topics/modeling/`
+- 后端服务与管理台：`docs/topics/platform/`
 - 最新流水和决策依据：`docs/devlogs/2026-06/2026-W24.md`
-- 上周阶段收口：`docs/devlogs/2026-06/2026-W23.md`
-- UI 专题设计前置：`docs/architecture/studio-ui-topic-plan.md`
-- MVP β 人工 smoke 与验收标准：`docs/mvp/beta-acceptance-checklist.md`
 - MVP 范围和非目标：`docs/mvp/scope.md`
 - MVP 路线图：`docs/radishflow-mvp-roadmap.md`
 - 仓库全局模块边界：`docs/architecture/overview.md`
 - App / Canvas / UI：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`、`docs/architecture/studio-ui-design-guidelines.md`
+- UI 专题设计前置：`docs/architecture/studio-ui-topic-plan.md`
 - 热力学 / 闪蒸细节：`docs/thermo/mvp-model.md`
 - CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
 - 代码风格、命名或抽象判断：`docs/development/code-style.md`
@@ -93,6 +123,6 @@ Studio UI：
 
 ## 更新规则
 
-- 本文档只保留当前阶段、下阶段目标、验证节奏和暂不推进项。
-- 历史流水写入周志；长期边界写入专题文档；不要把本文档写成长篇进度报告。
-- 每次完成重要阶段收口后，优先更新本文档顶部阶段结论和下阶段目标。
+- 本文档只保留当前阶段、当前激活专题、下阶段目标、验证节奏和暂不推进项。
+- 功能和开发目标写入 `docs/topics/`；历史流水写入周志；长期边界写入专题架构文档。
+- 每次完成重要阶段收口后，优先更新对应专题文档，再同步本文档顶部阶段结论和下阶段目标。
