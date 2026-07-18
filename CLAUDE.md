@@ -70,6 +70,7 @@
 - 架构边界与模块职责：`docs/architecture/overview.md`、`docs/architecture/app-architecture.md`
 - CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
 - 分支与 PR 治理：`docs/adr/0001-branch-and-pr-governance.md`
+- 目标为 `dev`、`master` 或 `main` 的 Pull Request 自动运行 `PR Checks`；普通 `push -> dev` 不触发，`dev` 当前不要求 required checks
 - 外部参考：`CapeOpenCore` 仅作为 CAPE-OPEN / COM 语义和历史经验参考；`DWSIM` 仅作为模块拆分、自动化入口和 flowsheet solver 组织经验参考；二者都不在本仓库协作中跨工作区修改，也不直接迁移实现代码
 
 ## 仓库结构速记

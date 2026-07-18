@@ -42,8 +42,9 @@ Accepted
 
 - 允许作为当前阶段默认目标分支
 - 当前阶段不启用分支保护
-- 作为日常开发分支，不自动触发 CI/CD
-- 本地提交前按改动风险自行执行 focused test 或仓库级验证；CI/CD 统一放到 `dev -> master/main` 稳定化 PR
+- 普通 `push -> dev` 不自动触发 CI/CD
+- 目标为 `dev` 的 Pull Request 自动运行 `PR Checks`，为其他开发者提供合并前反馈；`dev` 当前不启用 required checks 或 branch protection
+- 直接进入共享 `dev` 的连续开发仍在本地按改动风险执行 focused test 或仓库级验证；完整强制门禁统一放到 `dev -> master/main` 稳定化 PR
 
 ## 需要在 GitHub 仓库设置中完成的动作
 
@@ -64,7 +65,7 @@ Accepted
 
 - PR 模板
 - GitHub Actions PR 检查工作流
-  - `PR Checks` 当前默认只在目标分支为 `master` / `main` 的 Pull Request 上自动触发，用于 `dev -> master/main` 稳定化合并
+  - `PR Checks` 在目标分支为 `dev`、`master` 或 `main` 的 Pull Request 上自动触发；目标为 `dev` 的 PR 提供合并前反馈，默认分支 PR 用于阶段稳定化合并，普通 `dev` push 不触发
   - 当前拆分为 `Repo Hygiene`、三平台 `Rust Baseline`、`.NET Adapter Baseline` 与 `Windows Staging Package`，保留拆分式门禁，但不引入当前仓库并不存在的 `Frontend Lint`
   - `master` / `main` required checks 当前按 job 名 `Repo Hygiene` / `Rust Baseline` / `Rust Baseline (macOS)` / `Rust Baseline (Windows)` / `.NET Adapter Baseline` / `Windows Staging Package` 配置，不使用 workflow 前缀
   - 规范 tag push 暂不自动触发 CI/CD；`Release Checks` 仅保留 `workflow_dispatch` 手动 staging 入口，避免普通内部 staging 或历史 tag 造成误发布信号

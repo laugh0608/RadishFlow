@@ -20,7 +20,7 @@
 - 要求 `Repo Hygiene`、Linux `Rust Baseline`、`Rust Baseline (macOS)`、`Rust Baseline (Windows)`、`.NET Adapter Baseline` 与 `Windows Staging Package` 检查通过
 - `PR Checks` 当前拆分为 `Repo Hygiene`、三平台 Rust baseline、Windows `.NET` 适配层 baseline 和 Windows staging package job，保留拆分式门禁，但不引入当前仓库并不存在的 `Frontend Lint`
 - GitHub 对 Actions required status checks 当前按 job 名匹配，不看 workflow 前缀或事件后缀，因此 ruleset 中固定写 job 名
-- `PR Checks` 只响应 `pull_request -> master/main`，用于 `dev -> master/main` 的阶段稳定化合并，不响应 `dev` 日常 push 或 `pull_request -> dev`
+- `PR Checks` 响应 `pull_request -> dev/master/main`；目标为 `dev` 的 PR 为其他开发者提供合并前反馈，目标为默认分支的 PR 承担阶段稳定化门禁，普通 `dev` push 不触发
 - `Release Checks` 当前只保留 `workflow_dispatch` 手动 staging 入口；tag push 不自动触发 CI/CD，避免普通内部 staging 或历史 tag 造成误发布信号
 - 允许 `merge` 与 `rebase` 两种合并方式，禁用 `squash`
 - 管理员仅可通过 Pull Request 方式绕过规则，不开放直接 push
@@ -30,7 +30,7 @@
 - `dev` 是当前常态开发分支
 - 当前阶段不启用 branch protection
 - 当前默认不要求 push 到 `dev` 时自动触发仓库检查
-- 当前也不仿照 `Radish` 对 `pull_request -> dev` 强制收口；CI/CD 自动入口只放在 `dev -> master/main` 这一类默认分支 PR
+- 目标为 `dev` 的 Pull Request 自动运行 `PR Checks`，但 `dev` 当前不启用 required checks 或 branch protection；直接进入共享 `dev` 的连续开发仍按改动风险执行本地验证
 - 如后续进入多人并行开发，再评估是否对 `dev` 追加保护
 
 ## 检查入口
