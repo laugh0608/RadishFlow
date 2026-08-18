@@ -1,5 +1,5 @@
 {
-  "version": "2.13",
+  "version": "2.14",
   "children": [
     {
       "type": "frame",
@@ -1091,7 +1091,8 @@
               "content": "用流程缩影快速识别上次工作的模型；单击选择，双击打开。",
               "lineHeight": 1.25,
               "fontFamily": "Inter",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "rectangle",
@@ -1308,7 +1309,8 @@
                   "content": "~/Projects/RadishFlow/cases/co2-capture.rfp",
                   "lineHeight": 1.25,
                   "fontFamily": "Inter",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "rectangle",
@@ -1350,7 +1352,8 @@
                   "content": "PR package",
                   "lineHeight": 1.25,
                   "fontFamily": "Inter",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -1609,7 +1612,8 @@
                   "content": "~/Projects/RadishFlow/cases/mixer-flash.rfp",
                   "lineHeight": 1.25,
                   "fontFamily": "Inter",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "rectangle",
@@ -1651,7 +1655,8 @@
                   "content": "Methane / Ethane",
                   "lineHeight": 1.25,
                   "fontFamily": "Inter",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -1808,7 +1813,8 @@
                   "content": "~/Projects/RadishFlow/cases/feed-flash.rfp",
                   "lineHeight": 1.25,
                   "fontFamily": "Inter",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "rectangle",
@@ -1850,7 +1856,8 @@
                   "content": "Hydrocarbon",
                   "lineHeight": 1.25,
                   "fontFamily": "Inter",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -1881,7 +1888,8 @@
               "content": "内置示例展示受控小流程，不暗示完整报表、自由连线或第三方物性包已进入当前范围。",
               "lineHeight": 1.25,
               "fontFamily": "Inter",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             },
             {
               "type": "rectangle",
@@ -2047,7 +2055,8 @@
                   "content": "examples/flowsheets/feed-flash.rfp",
                   "lineHeight": 1.25,
                   "fontFamily": "Inter",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "rectangle",
@@ -2089,7 +2098,8 @@
                   "content": "Methane / Ethane",
                   "lineHeight": 1.25,
                   "fontFamily": "Inter",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -2297,7 +2307,8 @@
                   "content": "examples/flowsheets/cooler-flash.rfp",
                   "lineHeight": 1.25,
                   "fontFamily": "Inter",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "rectangle",
@@ -2339,7 +2350,8 @@
                   "content": "Hydrocarbon",
                   "lineHeight": 1.25,
                   "fontFamily": "Inter",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -2598,7 +2610,8 @@
                   "content": "examples/flowsheets/mixer-flash.rfp",
                   "lineHeight": 1.25,
                   "fontFamily": "Inter",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "rectangle",
@@ -2640,7 +2653,8 @@
                   "content": "Methane / Ethane",
                   "lineHeight": 1.25,
                   "fontFamily": "Inter",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -2686,7 +2700,8 @@
                   "content": "缩影由流程摘要生成，只表达拓扑和关键单元；项目状态仍来自 MRU、示例发现和正式 command / presentation 模型。",
                   "lineHeight": 1.25,
                   "fontFamily": "Inter",
-                  "fontSize": 10
+                  "fontSize": 10,
+                  "fontWeight": "normal"
                 }
               ]
             }
@@ -12087,5 +12102,6 @@
       "type": "number",
       "value": 16
     }
-  }
+  },
+  "fileToken": "60121bee-8c9c-4bd6-8334-0affe28fb279"
 }
