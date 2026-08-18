@@ -35,7 +35,7 @@
         "dismiss_stale_reviews_on_push": true,
         "require_code_owner_review": false,
         "require_last_push_approval": false,
-        "required_approving_review_count": 1,
+        "required_approving_review_count": 0,
         "required_review_thread_resolution": true
       }
     },
@@ -45,22 +45,7 @@
         "do_not_enforce_on_create": true,
         "required_status_checks": [
           {
-            "context": "Repo Hygiene"
-          },
-          {
-            "context": "Rust Baseline"
-          },
-          {
-            "context": "Rust Baseline (macOS)"
-          },
-          {
-            "context": "Rust Baseline (Windows)"
-          },
-          {
-            "context": ".NET Adapter Baseline"
-          },
-          {
-            "context": "Windows Staging Package"
+            "context": "Candidate Quality"
           }
         ],
         "strict_required_status_checks_policy": true

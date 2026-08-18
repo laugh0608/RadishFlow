@@ -1,6 +1,6 @@
 # ADR 0001: Branch And PR Governance
 
-更新时间：2026-06-08
+更新时间：2026-08-18
 
 ## 状态
 
@@ -36,7 +36,7 @@ Accepted
 - 必须通过仓库检查和 staging package 验证
 - 当前允许 `merge commit` 与 `rebase merge`，禁用 `squash merge`
 - 管理员仅可通过 PR 方式绕过规则
-- 允许在单人开发阶段保留管理员 PR 直过能力
+- 单人维护阶段不要求额外审批，但仍要求已解决会话
 
 ### `dev` 规则
 
@@ -53,7 +53,7 @@ Accepted
 1. 创建远端 `dev` 分支
 2. 将默认分支切换为 `dev`，或至少把开发 PR 默认目标改为 `dev`
 3. 对 `master` / `main` 启用 branch protection
-4. 要求 `master` / `main` 通过 `Repo Hygiene`、三平台 `Rust Baseline`、`.NET Adapter Baseline` 与 `Windows Staging Package` 状态检查
+4. 要求 `master` / `main` 通过聚合状态检查 `Candidate Quality`
 5. 对 `master` / `main` 开启 “Require a pull request before merging”
 6. 仓库 Merge options 中启用 `Merge commits` 与 `Rebase merging`，关闭 `Squash merging`
 7. 配置管理员仅通过 PR 绕过，不开放直接 push
@@ -66,8 +66,8 @@ Accepted
 - PR 模板
 - GitHub Actions PR 检查工作流
   - `PR Checks` 在目标分支为 `dev`、`master` 或 `main` 的 Pull Request 上自动触发；目标为 `dev` 的 PR 提供合并前反馈，默认分支 PR 用于阶段稳定化合并，普通 `dev` push 不触发
-  - 当前拆分为 `Repo Hygiene`、三平台 `Rust Baseline`、`.NET Adapter Baseline` 与 `Windows Staging Package`，保留拆分式门禁，但不引入当前仓库并不存在的 `Frontend Lint`
-  - `master` / `main` required checks 当前按 job 名 `Repo Hygiene` / `Rust Baseline` / `Rust Baseline (macOS)` / `Rust Baseline (Windows)` / `.NET Adapter Baseline` / `Windows Staging Package` 配置，不使用 workflow 前缀
+  - 当前拆分为 `Repo Hygiene`、三平台 `Rust Baseline`、`.NET Adapter Baseline` 与 `Windows Staging Package` 六个组件，并由 `Candidate Quality` 聚合收口
+  - `Candidate Quality` 使用 `if: always()` 汇总六个组件，任一组件失败、取消或跳过都会失败；`master` / `main` ruleset 只绑定该稳定 context
   - 规范 tag push 暂不自动触发 CI/CD；`Release Checks` 仅保留 `workflow_dispatch` 手动 staging 入口，避免普通内部 staging 或历史 tag 造成误发布信号
 - 文本编码与文件格式检查脚本
   - 正式实现源收口到 Rust `xtask`，`.ps1` 与 `.sh` 仅作为平台包装层
@@ -84,7 +84,7 @@ Accepted
 - `dev` 可以作为当前阶段的真实日常开发面，不被日常 CI 噪声阻塞
 - 文档、规范、脚本和代码都能纳入统一 PR 检查
 - `.NET` CAPE-OPEN 适配层和 Windows staging package 不再游离于默认分支合并门禁之外
-- 单人开发阶段仍保留必要的管理员 PR 绕过能力
+- 单人开发阶段不再依赖管理员 bypass 完成常规 PR 合并
 
 代价：
 
