@@ -33,6 +33,9 @@ jobs:
       - name: Check repository hygiene
         run: ./scripts/check-text-files.sh
 
+      - name: Check repository governance
+        run: cargo run --quiet -p xtask -- check-repository-governance
+
       - name: Check document size advisory
         run: bash scripts/check-doc-size.sh --include-advisory
 

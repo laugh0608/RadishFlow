@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-08-18
+更新时间：2026-08-20
 
 ## 用途
 
@@ -15,7 +15,8 @@
 - 自 2026-06-12 起业务功能开发保持停止；模拟功能、物性模型、CAPE-OPEN / COM 适配、产品路线与发布能力不再推进。仓库外围基础设施仍可按需维护，包括文档治理、CI、ruleset、安全基线、仓库元数据和工具链兼容性；这不表示恢复产品开发或对外支持。
 - 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN / COM 适配层构建稳态流程模拟软件。
 - MVP 第一阶段 M1-M5、MVP α、MVP β 人工 smoke、失败修复闭环和通用小流程建模 v1 均已阶段性收口。
-- 阶段基线：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过；2026-06-10 `./scripts/check-repo.sh` 通过。
+- 阶段基线：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过；2026-06-10 与 2026-08-20 `./scripts/check-repo.sh` 通过。
+- 2026-08-20 已补齐仓库社区与安全治理基线：根目录贡献、安全和行为准则入口与停止公开维护口径一致，远程 Private Vulnerability Reporting 已接入 Issue 选择器；Rust `xtask` 已增加必需文件、Markdown 相对链接、JSON、协作文件同步、GitHub 配置契约和 diff whitespace 门禁。
 - 通用小流程建模 v1 已支持普通空白项目在受控范围内组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，并覆盖显式输入、运行、保存、重开、rerun 与结果审阅。
 - 2026-06-10 前的 Studio UI 专题实现已把 Home、独立 `物性` 页、流程图工作台、右侧 `模块设置 / 模块结果`、底部运行 / 状态分栏和 package label 展示口径阶段性收束。
 - 2026-06-14 起，当前主线从“Studio UI 第 N 刀”调整为 **总进度 + 一级轨道专题 + 二级功能专题** 的开发节奏。具体单元、建模对象、后端服务和后端 Web UI 进入 `docs/topics/` 下的二级专题，实现前按专题阅读目标、范围、非目标、验收和验证。
@@ -87,6 +88,7 @@ CAPE-OPEN / COM：
 - 新能力主路径：至少覆盖一条 happy path focused test。
 - UI 展示细节：除非曾经造成 blocker，否则不为单个小展示点新增测试。
 - 阶段收口：执行 `./scripts/check-repo.sh`；涉及 Windows `.NET` / CAPE-OPEN baseline 时按专题和协作规则使用 Windows / 真实环境验证。
+- 仓库治理、CI 或社区健康文件改动：执行 `cargo test -p xtask` 与 `cargo run --quiet -p xtask -- check-repository-governance`，阶段收口时仍回到正式 `check-repo` 入口。
 - 若仓库级验证在沙盒中出现明显环境性失败，可按协作规则申请真实环境复验。
 
 ## 暂不推进
@@ -111,7 +113,7 @@ CAPE-OPEN / COM：
 - 具体单元模块：`docs/topics/unitops/`
 - 建模对象：`docs/topics/modeling/`
 - 后端服务与管理台：`docs/topics/platform/`
-- 最新流水和决策依据：`docs/devlogs/2026-06/2026-W24.md`
+- 最新流水和决策依据：`docs/devlogs/2026-08/2026-W34.md`
 - MVP 范围和非目标：`docs/mvp/scope.md`
 - MVP 路线图：`docs/radishflow-mvp-roadmap.md`
 - 仓库全局模块边界：`docs/architecture/overview.md`

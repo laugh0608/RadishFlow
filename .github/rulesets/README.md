@@ -35,7 +35,8 @@
 
 ## 检查入口
 
-- `scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 当前复用同一套 Rust `xtask` 实现
+- `scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 当前复用同一套 Rust `xtask` 实现；除 Rust workspace 基线外，还执行必需治理文件、Markdown 相对链接、JSON、协作文件同步、GitHub 配置契约和 diff whitespace 检查
+- `PR Checks` 的 `Repo Hygiene` 会针对 PR base ref 单独执行治理检查，确保 `git diff --check` 覆盖完整 PR 差异；`Release Checks` 在手动 staging 前执行同一治理基线
 - `scripts/check-dotnet-capeopen.ps1` 当前作为 Windows `.NET 10` CAPE-OPEN baseline 入口，负责 `rf-ffi` native build、`.NET` solution build、contract tests 和 smoke tests；不执行 COM 注册、反注册或注册表写入
 - `scripts/package.ps1` 当前只产出 Windows portable staging package；CI 上传 workflow artifact，不创建 GitHub Release，也不发布安装包
 - CI 当前在 Linux / macOS runner 上使用 `.sh` 入口，在 Windows runner 上使用 `.ps1`

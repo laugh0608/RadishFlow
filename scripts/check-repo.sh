@@ -6,13 +6,22 @@ repo_root="$(cd -- "${script_dir}/.." && pwd)"
 
 args=(run --quiet -p xtask -- check-repo)
 
-for arg in "$@"; do
-  case "$arg" in
+while (($# > 0)); do
+  case "$1" in
     --skip-clippy|--skip-text-files)
-      args+=("$arg")
+      args+=("$1")
+      shift
+      ;;
+    --base-ref)
+      if (($# < 2)); then
+        echo "--base-ref requires a value" >&2
+        exit 2
+      fi
+      args+=("$1" "$2")
+      shift 2
       ;;
     *)
-      echo "unsupported argument: $arg" >&2
+      echo "unsupported argument: $1" >&2
       exit 2
       ;;
   esac

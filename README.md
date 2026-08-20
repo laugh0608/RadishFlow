@@ -27,9 +27,12 @@ RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 `.NET 10
 
 ## 当前状态入口
 
-- 当前阶段、当前重点、当前验证基线和下一步建议：`docs/status/current.md`
-- 文档总索引：`docs/README.md`
-- 协作规则入口：`AGENTS.md`、`CLAUDE.md`
+- [当前阶段、当前重点、当前验证基线和下一步建议](docs/status/current.md)
+- [文档总索引](docs/README.md)
+- 协作规则入口：[AGENTS.md](AGENTS.md)、[CLAUDE.md](CLAUDE.md)
+- [维护与潜在贡献边界](CONTRIBUTING.md)
+- [社区交流规范](CODE_OF_CONDUCT.md)
+- [漏洞私下报告与处理边界](SECURITY.md)
 
 根 `README.md` 只保留稳定入口信息，不再重复维护易过期的阶段进度。
 
@@ -56,7 +59,7 @@ pwsh ./scripts/normalize-text-files.ps1
 ./scripts/check-text-files.sh
 ```
 
-`check-repo` 会统一执行文本门禁、`cargo fmt --all --check`、`cargo check --workspace`、`cargo test --workspace` 与 `cargo clippy --workspace --all-targets -- -D warnings`。
+`check-repo` 会统一执行仓库治理与文本门禁、`cargo fmt --all --check`、`cargo check --workspace`、`cargo test --workspace` 与 `cargo clippy --workspace --all-targets -- -D warnings`。治理门禁覆盖必需文件、Markdown 相对链接、JSON、协作文件同步、GitHub 配置契约和 `git diff --check`。
 
 ## 文本与格式约束
 
@@ -97,7 +100,9 @@ pwsh ./scripts/normalize-text-files.ps1
 
 当前仓库采用自定义的 source-available 许可。默认允许阅读源码用于个人参考和学习，但不默认授予复制、分发、修改、衍生开发或商业使用权利。
 
-完整条款见 `LICENSE` 文件。
+完整条款见 [LICENSE](LICENSE) 文件。
+
+项目当前不接受外部业务功能贡献；维护状态、潜在贡献授权和合规边界见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 参考仓库
 

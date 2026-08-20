@@ -130,6 +130,7 @@
 补充说明：
 
 - `scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 当前是正式仓库级验证入口，复用同一套 Rust `xtask` 实现
+- `check-repo` 除 Rust workspace 基线外，还执行仓库治理门禁：检查必需治理文件、仓库自有 Markdown 相对链接、JSON、`AGENTS.md` / `CLAUDE.md` 同步、GitHub Issue / ruleset / workflow / PR 模板契约和 `git diff --check`；`adapters/reference/` 下的外部参考资料不纳入链接与 JSON 治理检查
 - 如果某一步改动只涉及文档，仍应至少确认工作区未引入额外脏改动
 - 仓库治理或 CI 改动优先执行 `pwsh ./scripts/check-repo.ps1`；在 Linux/macOS/CI 中执行 `./scripts/check-repo.sh`
 - 仓库文本格式门禁只约束仓库自有文本资产；`adapters/reference/` 下的外部参考资料允许保留上游编码、BOM 与换行格式，不应为通过门禁而批量改写

@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [switch]$SkipClippy,
-    [switch]$SkipTextFiles
+    [switch]$SkipTextFiles,
+    [string]$BaseRef
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,6 +19,10 @@ try {
 
     if ($SkipTextFiles) {
         $arguments += "--skip-text-files"
+    }
+
+    if ($BaseRef) {
+        $arguments += @("--base-ref", $BaseRef)
     }
 
     Write-Host "==> cargo $($arguments -join ' ')"

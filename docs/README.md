@@ -1,6 +1,6 @@
 # RadishFlow Docs
 
-更新时间：2026-06-14
+更新时间：2026-08-20
 
 ## 先读什么
 
@@ -101,6 +101,9 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 
 | 文档 | 说明 |
 | --- | --- |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | 当前维护状态、潜在贡献边界、许可证与验证要求 |
+| [CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) | 项目空间中的社区交流规范与行为问题报告方式 |
+| [SECURITY.md](../SECURITY.md) | 漏洞私下报告入口、安全问题范围与披露边界 |
 | `adr/0001-branch-and-pr-governance.md` | 分支、PR 与保护规则治理决策 |
 | `../.github/rulesets/master-protection.json` | `master` 保护规则模板 |
 

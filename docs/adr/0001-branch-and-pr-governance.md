@@ -1,6 +1,6 @@
 # ADR 0001: Branch And PR Governance
 
-更新时间：2026-08-18
+更新时间：2026-08-20
 
 ## 状态
 
@@ -64,6 +64,9 @@ Accepted
 为配合该决策，仓库内已同步增加：
 
 - PR 模板
+- 社区与安全治理入口
+  - 根目录 `CONTRIBUTING.md`、`CODE_OF_CONDUCT.md` 与 `SECURITY.md` 明确停更、许可、行为和私密漏洞报告边界
+  - `.github/ISSUE_TEMPLATE/config.yml` 关闭普通空白 Issue，并只把安全问题引导到已启用的 GitHub Private Vulnerability Reporting
 - GitHub Actions PR 检查工作流
   - `PR Checks` 在目标分支为 `dev`、`master` 或 `main` 的 Pull Request 上自动触发；目标为 `dev` 的 PR 提供合并前反馈，默认分支 PR 用于阶段稳定化合并，普通 `dev` push 不触发
   - 当前拆分为 `Repo Hygiene`、三平台 `Rust Baseline`、`.NET Adapter Baseline` 与 `Windows Staging Package` 六个组件，并由 `Candidate Quality` 聚合收口
@@ -71,6 +74,10 @@ Accepted
   - 规范 tag push 暂不自动触发 CI/CD；`Release Checks` 仅保留 `workflow_dispatch` 手动 staging 入口，避免普通内部 staging 或历史 tag 造成误发布信号
 - 文本编码与文件格式检查脚本
   - 正式实现源收口到 Rust `xtask`，`.ps1` 与 `.sh` 仅作为平台包装层
+- 仓库治理检查
+  - Rust `xtask` 统一检查必需治理文件、仓库自有 Markdown 相对链接、JSON、`AGENTS.md` / `CLAUDE.md` 同步、Issue / ruleset / workflow / PR 模板契约和 `git diff --check`
+  - 本地 `check-repo` 检查工作区与暂存区差异；PR 的 `Repo Hygiene` 使用 base ref 检查完整 PR 差异
+  - `adapters/reference/` 下的外部参考资料保留上游状态，不纳入 Markdown 链接与 JSON 治理检查
 - Rust workspace 基础校验入口
 - Windows `.NET 10` CAPE-OPEN baseline 入口：`scripts/check-dotnet-capeopen.ps1` 负责 native build、`.NET` solution build、contract tests 和 smoke tests；不执行 COM 注册、反注册或注册表写入
 - Windows portable staging package 入口：`scripts/package.ps1` 只产出 workflow artifact，不创建 GitHub Release，也不发布安装包

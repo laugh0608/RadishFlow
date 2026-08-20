@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -31,6 +33,9 @@ jobs:
 
       - name: Check repository hygiene
         run: ./scripts/check-text-files.sh
+
+      - name: Check repository governance
+        run: cargo run --quiet -p xtask -- check-repository-governance --base-ref "origin/${{ github.base_ref }}"
 
       - name: Check document size advisory
         run: bash scripts/check-doc-size.sh --include-advisory
