@@ -1343,7 +1343,7 @@ fn render_home_thumbnail(
     egui::Frame::new()
         .fill(egui::Color32::from_rgb(244, 247, 251))
         .stroke(egui::Stroke::new(
-            1.0,
+            1.0_f32,
             egui::Color32::from_rgb(218, 226, 238),
         ))
         .corner_radius(6.0)

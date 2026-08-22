@@ -6,6 +6,10 @@ use std::{
     process::Command,
 };
 
+mod repository_governance;
+
+use repository_governance::check_repository_governance;
+
 const TEXT_EXTENSIONS: &[&str] = &[
     "md", "toml", "rs", "ps1", "sh", "yml", "yaml", "json", "props", "targets", "sln", "txt", "cs",
     "csproj", "idl",
@@ -53,8 +57,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             let options = WorkspaceValidationOptions::parse(args)?;
             validate_workspace(&repo_root, options.skip_clippy)?;
         }
+        "check-repository-governance" => {
+            let options = RepositoryGovernanceOptions::parse(args)?;
+            check_repository_governance(&repo_root, options.base_ref.as_deref())?;
+        }
         "check-repo" => {
             let options = RepoCheckOptions::parse(args)?;
+
+            check_repository_governance(&repo_root, options.base_ref.as_deref())?;
 
             if !options.skip_text_files {
                 check_text_files(&repo_root)?;
@@ -77,7 +87,8 @@ fn usage() -> &'static str {
     "Usage:
   cargo run -p xtask -- check-text-files
   cargo run -p xtask -- validate-workspace [--skip-clippy]
-  cargo run -p xtask -- check-repo [--skip-clippy] [--skip-text-files]"
+  cargo run -p xtask -- check-repository-governance [--base-ref <ref>]
+  cargo run -p xtask -- check-repo [--skip-clippy] [--skip-text-files] [--base-ref <ref>]"
 }
 
 fn resolve_repo_root() -> Result<PathBuf, io::Error> {
@@ -292,16 +303,50 @@ impl WorkspaceValidationOptions {
 struct RepoCheckOptions {
     skip_clippy: bool,
     skip_text_files: bool,
+    base_ref: Option<String>,
 }
 
 impl RepoCheckOptions {
     fn parse(args: impl IntoIterator<Item = String>) -> Result<Self, io::Error> {
         let mut options = Self::default();
 
-        for arg in args {
+        let mut args = args.into_iter();
+        while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--skip-clippy" => options.skip_clippy = true,
                 "--skip-text-files" => options.skip_text_files = true,
+                "--base-ref" => {
+                    options.base_ref = Some(
+                        args.next()
+                            .ok_or_else(|| invalid_input("--base-ref requires a value"))?,
+                    );
+                }
+                _ => return Err(invalid_input(format!("unsupported argument `{arg}`"))),
+            }
+        }
+
+        Ok(options)
+    }
+}
+
+#[derive(Default)]
+struct RepositoryGovernanceOptions {
+    base_ref: Option<String>,
+}
+
+impl RepositoryGovernanceOptions {
+    fn parse(args: impl IntoIterator<Item = String>) -> Result<Self, io::Error> {
+        let mut options = Self::default();
+        let mut args = args.into_iter();
+
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "--base-ref" => {
+                    options.base_ref = Some(
+                        args.next()
+                            .ok_or_else(|| invalid_input("--base-ref requires a value"))?,
+                    );
+                }
                 _ => return Err(invalid_input(format!("unsupported argument `{arg}`"))),
             }
         }

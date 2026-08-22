@@ -3,6 +3,7 @@ name: PR Checks
 on:
   pull_request:
     branches:
+      - dev
       - master
       - main
 
@@ -21,6 +22,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -30,6 +33,9 @@ jobs:
 
       - name: Check repository hygiene
         run: ./scripts/check-text-files.sh
+
+      - name: Check repository governance
+        run: cargo run --quiet -p xtask -- check-repository-governance --base-ref "origin/${{ github.base_ref }}"
 
       - name: Check document size advisory
         run: bash scripts/check-doc-size.sh --include-advisory
@@ -145,3 +151,56 @@ jobs:
           name: radishflow-windows-staging-package
           path: artifacts/packages/RadishFlow-*.zip
           if-no-files-found: error
+
+  candidate-quality:
+    name: Candidate Quality
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - repo-hygiene
+      - rust-baseline
+      - rust-baseline-macos
+      - rust-baseline-windows
+      - dotnet-adapter-baseline
+      - windows-staging-package
+    steps:
+      - name: Summarize PR quality gate
+        shell: bash
+        env:
+          REPO_HYGIENE_RESULT: ${{ needs.repo-hygiene.result }}
+          RUST_BASELINE_RESULT: ${{ needs.rust-baseline.result }}
+          RUST_BASELINE_MACOS_RESULT: ${{ needs.rust-baseline-macos.result }}
+          RUST_BASELINE_WINDOWS_RESULT: ${{ needs.rust-baseline-windows.result }}
+          DOTNET_ADAPTER_BASELINE_RESULT: ${{ needs.dotnet-adapter-baseline.result }}
+          WINDOWS_STAGING_PACKAGE_RESULT: ${{ needs.windows-staging-package.result }}
+        run: |
+          failed=false
+          {
+            echo "## PR Quality Gate"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          append_result() {
+            local check_name="$1"
+            local check_result="$2"
+            echo "| ${check_name} | ${check_result} |" >> "$GITHUB_STEP_SUMMARY"
+            if [[ "${check_result}" != "success" ]]; then
+              failed=true
+            fi
+          }
+
+          append_result "Repo Hygiene" "${REPO_HYGIENE_RESULT}"
+          append_result "Rust Baseline" "${RUST_BASELINE_RESULT}"
+          append_result "Rust Baseline (macOS)" "${RUST_BASELINE_MACOS_RESULT}"
+          append_result "Rust Baseline (Windows)" "${RUST_BASELINE_WINDOWS_RESULT}"
+          append_result ".NET Adapter Baseline" "${DOTNET_ADAPTER_BASELINE_RESULT}"
+          append_result "Windows Staging Package" "${WINDOWS_STAGING_PACKAGE_RESULT}"
+
+          if [[ "${failed}" == "true" ]]; then
+            echo "One or more PR quality components did not succeed." >&2
+            exit 1
+          fi
+
+          echo "All PR quality components succeeded."

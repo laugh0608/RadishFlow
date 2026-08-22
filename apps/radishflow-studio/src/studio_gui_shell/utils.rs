@@ -261,7 +261,7 @@ pub(super) fn render_new_stack_insert_overlay(
     egui::Frame::group(ui.style())
         .fill(egui::Color32::from_rgb(235, 244, 255))
         .stroke(egui::Stroke::new(
-            1.5,
+            1.5_f32,
             egui::Color32::from_rgb(56, 126, 214),
         ))
         .show(ui, |ui| {
@@ -342,9 +342,9 @@ pub(super) fn drop_lane_fill(is_active_preview: bool) -> egui::Color32 {
 
 pub(super) fn drop_lane_stroke(is_active_preview: bool) -> egui::Stroke {
     if is_active_preview {
-        egui::Stroke::new(1.5, egui::Color32::from_rgb(56, 126, 214))
+        egui::Stroke::new(1.5_f32, egui::Color32::from_rgb(56, 126, 214))
     } else {
-        egui::Stroke::new(1.0, egui::Color32::from_rgb(171, 181, 190))
+        egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(171, 181, 190))
     }
 }
 
@@ -358,9 +358,9 @@ pub(super) fn stack_preview_fill(is_target_stack: bool) -> egui::Color32 {
 
 pub(super) fn stack_preview_stroke(is_target_stack: bool) -> egui::Stroke {
     if is_target_stack {
-        egui::Stroke::new(1.5, egui::Color32::from_rgb(56, 126, 214))
+        egui::Stroke::new(1.5_f32, egui::Color32::from_rgb(56, 126, 214))
     } else {
-        egui::Stroke::new(1.0, egui::Color32::from_rgb(60, 60, 60))
+        egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(60, 60, 60))
     }
 }
 
@@ -397,7 +397,7 @@ pub(super) fn paint_stack_tab_insert_marker(
     let Some(x) = stack_insert_marker_x(tab_strip_rect, tab_rects, preview) else {
         return;
     };
-    let stroke = egui::Stroke::new(2.5, egui::Color32::from_rgb(56, 126, 214));
+    let stroke = egui::Stroke::new(2.5_f32, egui::Color32::from_rgb(56, 126, 214));
     let top = tab_strip_rect.top() + 2.0;
     let bottom = tab_strip_rect.bottom() - 2.0;
     let painter = ui.painter();
@@ -558,12 +558,12 @@ pub(super) fn paint_area_preview_overlay(
                 egui::pos2(accent_x, header_rect.top() + 3.0),
                 egui::pos2(accent_x, header_rect.bottom() - 3.0),
             ],
-            egui::Stroke::new(3.0, egui::Color32::from_rgb(150, 196, 255)),
+            egui::Stroke::new(3.0_f32, egui::Color32::from_rgb(150, 196, 255)),
         );
     }
 
     if preview.overlay.highlighted_area_ids.contains(&area_id) {
-        let stroke = egui::Stroke::new(1.5, egui::Color32::from_rgb(56, 126, 214));
+        let stroke = egui::Stroke::new(1.5_f32, egui::Color32::from_rgb(56, 126, 214));
         let left = header_rect.left() + 6.0;
         let right = header_rect.right() - 6.0;
         let top = header_rect.top() + 3.0;
@@ -576,7 +576,7 @@ pub(super) fn paint_area_preview_overlay(
     }
 
     if preview_anchor_matches_area(Some(preview), area_id) {
-        let stroke = egui::Stroke::new(2.5, egui::Color32::from_rgb(56, 126, 214));
+        let stroke = egui::Stroke::new(2.5_f32, egui::Color32::from_rgb(56, 126, 214));
         let y = header_rect.top() + 2.0;
         let left = header_rect.left() + 10.0;
         let right = header_rect.right() - 10.0;
@@ -743,7 +743,7 @@ pub(super) fn notice_color_from_entitlement(level: rf_ui::EntitlementNoticeLevel
 pub(super) fn render_status_chip(ui: &mut egui::Ui, label: &str, color: egui::Color32) {
     egui::Frame::new()
         .fill(color.gamma_multiply(0.12))
-        .stroke(egui::Stroke::new(1.0, color.gamma_multiply(0.8)))
+        .stroke(egui::Stroke::new(1.0_f32, color.gamma_multiply(0.8)))
         .corner_radius(6.0)
         .inner_margin(egui::Margin::symmetric(8, 3))
         .show(ui, |ui| {

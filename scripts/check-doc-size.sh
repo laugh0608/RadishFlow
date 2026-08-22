@@ -37,7 +37,7 @@ rule_for_path() {
     docs/adr/*.md)
       echo "12000 adr enforced"
       ;;
-    docs/guides/*.md|docs/capeopen/pme-validation.md)
+    docs/guides/*.md|docs/development/agent-collaboration.md|docs/capeopen/pme-validation.md)
       echo "15000 guide enforced"
       ;;
     docs/reference/*.md)

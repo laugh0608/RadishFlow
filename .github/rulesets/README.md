@@ -17,10 +17,10 @@
 - 禁止 force push
 - 禁止删除分支
 - 仅允许通过 Pull Request 合并
-- 要求 `Repo Hygiene`、Linux `Rust Baseline`、`Rust Baseline (macOS)`、`Rust Baseline (Windows)`、`.NET Adapter Baseline` 与 `Windows Staging Package` 检查通过
-- `PR Checks` 当前拆分为 `Repo Hygiene`、三平台 Rust baseline、Windows `.NET` 适配层 baseline 和 Windows staging package job，保留拆分式门禁，但不引入当前仓库并不存在的 `Frontend Lint`
-- GitHub 对 Actions required status checks 当前按 job 名匹配，不看 workflow 前缀或事件后缀，因此 ruleset 中固定写 job 名
-- `PR Checks` 只响应 `pull_request -> master/main`，用于 `dev -> master/main` 的阶段稳定化合并，不响应 `dev` 日常 push 或 `pull_request -> dev`
+- 单人维护阶段不要求额外审批，但仍要求已解决会话
+- 仅要求聚合检查 `Candidate Quality` 通过；它会汇总 `Repo Hygiene`、Linux `Rust Baseline`、`Rust Baseline (macOS)`、`Rust Baseline (Windows)`、`.NET Adapter Baseline` 与 `Windows Staging Package` 六个组件结果
+- `PR Checks` 保留六个独立组件便于定位失败，并由稳定的 `Candidate Quality` 统一收口；任一组件失败、取消或跳过都会使聚合检查失败
+- `PR Checks` 响应 `pull_request -> dev/master/main`；目标为 `dev` 的 PR 为其他开发者提供合并前反馈，目标为默认分支的 PR 承担阶段稳定化门禁，普通 `dev` push 不触发
 - `Release Checks` 当前只保留 `workflow_dispatch` 手动 staging 入口；tag push 不自动触发 CI/CD，避免普通内部 staging 或历史 tag 造成误发布信号
 - 允许 `merge` 与 `rebase` 两种合并方式，禁用 `squash`
 - 管理员仅可通过 Pull Request 方式绕过规则，不开放直接 push
@@ -30,12 +30,13 @@
 - `dev` 是当前常态开发分支
 - 当前阶段不启用 branch protection
 - 当前默认不要求 push 到 `dev` 时自动触发仓库检查
-- 当前也不仿照 `Radish` 对 `pull_request -> dev` 强制收口；CI/CD 自动入口只放在 `dev -> master/main` 这一类默认分支 PR
+- 目标为 `dev` 的 Pull Request 自动运行 `PR Checks`，但 `dev` 当前不启用 required checks 或 branch protection；直接进入共享 `dev` 的连续开发仍按改动风险执行本地验证
 - 如后续进入多人并行开发，再评估是否对 `dev` 追加保护
 
 ## 检查入口
 
-- `scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 当前复用同一套 Rust `xtask` 实现
+- `scripts/check-repo.ps1` 与 `scripts/check-repo.sh` 当前复用同一套 Rust `xtask` 实现；除 Rust workspace 基线外，还执行必需治理文件、Markdown 相对链接、JSON、协作文件同步、GitHub 配置契约和 diff whitespace 检查
+- `PR Checks` 的 `Repo Hygiene` 会针对 PR base ref 单独执行治理检查，确保 `git diff --check` 覆盖完整 PR 差异；`Release Checks` 在手动 staging 前执行同一治理基线
 - `scripts/check-dotnet-capeopen.ps1` 当前作为 Windows `.NET 10` CAPE-OPEN baseline 入口，负责 `rf-ffi` native build、`.NET` solution build、contract tests 和 smoke tests；不执行 COM 注册、反注册或注册表写入
 - `scripts/package.ps1` 当前只产出 Windows portable staging package；CI 上传 workflow artifact，不创建 GitHub Release，也不发布安装包
 - CI 当前在 Linux / macOS runner 上使用 `.sh` 入口，在 Windows runner 上使用 `.ps1`
@@ -50,6 +51,8 @@ gh api repos/<owner>/<repo>/rulesets --method POST --input .github/rulesets/mast
 
 如果仓库中已存在旧 ruleset，建议改用 `PUT /repos/{owner}/{repo}/rulesets/{ruleset_id}` 更新。
 
+本目录模板还包含 Conventional Commits 的远端校验规则。当前远端 ruleset 未启用该规则；仅调整 Actions 触发策略、required checks 或合并方式时，应基于远端现状构造精确更新，不直接导入完整模板扩大门禁范围。
+
 `master-protection.json` 中的 `actor_id: 5` 按“RepositoryRole = Admin”模板生成，表示管理员只能通过 PR 绕过规则。
 
 ## 配套仓库设置
@@ -58,3 +61,4 @@ gh api repos/<owner>/<repo>/rulesets --method POST --input .github/rulesets/mast
 - 仓库 Merge options 中启用 `Merge commits`
 - 关闭 `Squash merging`
 - 如后续增加 `CODEOWNERS`，再决定是否开启 code owner review
+- 如果后续形成稳定的多人评审安排，再提高 `required_approving_review_count`；单人阶段不应把管理员 bypass 当作每次合并的常规路径

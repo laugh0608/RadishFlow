@@ -288,7 +288,7 @@ impl ReadyAppState {
                 egui::Frame::popup(ui.style())
                     .fill(egui::Color32::from_rgb(246, 250, 255))
                     .stroke(egui::Stroke::new(
-                        1.5,
+                        1.5_f32,
                         egui::Color32::from_rgb(56, 126, 214),
                     ))
                     .show(ui, |ui| {

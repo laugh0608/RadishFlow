@@ -758,12 +758,12 @@ fn paint_canvas_drop_surface(painter: &egui::Painter, rect: egui::Rect, active: 
         egui::Color32::from_rgb(170, 178, 188)
     };
     painter.rect_filled(rect, 6.0, fill);
-    paint_canvas_rect_border(painter, rect, egui::Stroke::new(1.5, stroke_color));
+    paint_canvas_rect_border(painter, rect, egui::Stroke::new(1.5_f32, stroke_color));
     paint_canvas_grid(
         painter,
         rect.shrink(1.0),
         egui::Stroke::new(
-            1.0,
+            1.0_f32,
             egui::Color32::from_rgba_unmultiplied(120, 135, 150, 34),
         ),
     );
@@ -1007,22 +1007,25 @@ fn paint_canvas_stream_line(
     };
     let stroke = egui::Stroke::new(
         if stream.is_active_inspector_target {
-            2.4
+            2.4_f32
         } else {
-            1.6
+            1.6_f32
         },
         color,
     );
     if stream.is_active_inspector_target {
         painter.line_segment(
             [geometry.start, geometry.end],
-            egui::Stroke::new(6.0, egui::Color32::from_rgba_unmultiplied(48, 112, 188, 42)),
+            egui::Stroke::new(
+                6.0_f32,
+                egui::Color32::from_rgba_unmultiplied(48, 112, 188, 42),
+            ),
         );
     }
     painter.line_segment(
         [geometry.start, geometry.end],
         egui::Stroke::new(
-            4.4,
+            4.4_f32,
             egui::Color32::from_rgba_unmultiplied(255, 255, 255, 210),
         ),
     );
@@ -1034,12 +1037,15 @@ fn paint_canvas_stream_line(
 fn paint_canvas_viewport_stream_focus(painter: &egui::Painter, geometry: CanvasStreamLineGeometry) {
     painter.line_segment(
         [geometry.start, geometry.end],
-        egui::Stroke::new(8.0, egui::Color32::from_rgba_unmultiplied(210, 128, 38, 54)),
+        egui::Stroke::new(
+            8.0_f32,
+            egui::Color32::from_rgba_unmultiplied(210, 128, 38, 54),
+        ),
     );
     painter.circle_stroke(
         geometry.start.lerp(geometry.end, 0.5),
         13.0,
-        egui::Stroke::new(2.0, egui::Color32::from_rgb(210, 128, 38)),
+        egui::Stroke::new(2.0_f32, egui::Color32::from_rgb(210, 128, 38)),
     );
 }
 
@@ -1094,7 +1100,7 @@ fn paint_canvas_stream_label(
     paint_canvas_rect_border(
         painter,
         rect,
-        egui::Stroke::new(1.0, color.gamma_multiply(0.7)),
+        egui::Stroke::new(1.0_f32, color.gamma_multiply(0.7)),
     );
     painter.text(
         rect.center(),
@@ -1199,11 +1205,11 @@ fn paint_canvas_stream_arrow(
     let back = geometry.end - direction * 10.0;
     painter.line_segment(
         [geometry.end, back + normal * 4.5],
-        egui::Stroke::new(1.6, color),
+        egui::Stroke::new(1.6_f32, color),
     );
     painter.line_segment(
         [geometry.end, back - normal * 4.5],
-        egui::Stroke::new(1.6, color),
+        egui::Stroke::new(1.6_f32, color),
     );
 }
 
@@ -1291,15 +1297,18 @@ fn paint_canvas_unit_block(
         egui::Color32::from_rgb(255, 255, 255)
     };
     let stroke = if unit.is_active_inspector_target {
-        egui::Stroke::new(2.0, egui::Color32::from_rgb(48, 112, 188))
+        egui::Stroke::new(2.0_f32, egui::Color32::from_rgb(48, 112, 188))
     } else {
-        egui::Stroke::new(1.2, egui::Color32::from_rgb(98, 113, 126))
+        egui::Stroke::new(1.2_f32, egui::Color32::from_rgb(98, 113, 126))
     };
     if unit.is_active_inspector_target {
         paint_canvas_rect_border(
             painter,
             rect.expand(4.0),
-            egui::Stroke::new(3.0, egui::Color32::from_rgba_unmultiplied(48, 112, 188, 50)),
+            egui::Stroke::new(
+                3.0_f32,
+                egui::Color32::from_rgba_unmultiplied(48, 112, 188, 50),
+            ),
         );
     }
     painter.rect_filled(rect, 6.0, fill);
@@ -1360,7 +1369,7 @@ fn paint_canvas_viewport_unit_focus(painter: &egui::Painter, rect: egui::Rect) {
     paint_canvas_rect_border(
         painter,
         focus_rect,
-        egui::Stroke::new(2.4, egui::Color32::from_rgb(210, 128, 38)),
+        egui::Stroke::new(2.4_f32, egui::Color32::from_rgb(210, 128, 38)),
     );
 }
 
@@ -1411,9 +1420,9 @@ fn paint_canvas_unit_port_marker(
         egui::Color32::from_rgb(174, 184, 194)
     };
     let stroke = if port.is_connected {
-        egui::Stroke::new(1.1, egui::Color32::from_rgb(34, 92, 82))
+        egui::Stroke::new(1.1_f32, egui::Color32::from_rgb(34, 92, 82))
     } else {
-        egui::Stroke::new(1.0, egui::Color32::from_rgb(112, 124, 136))
+        egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(112, 124, 136))
     };
     painter.circle_filled(anchor, 4.2, fill);
     painter.circle_stroke(anchor, 4.2, stroke);
@@ -1473,7 +1482,10 @@ fn paint_canvas_port_hover_callout(
 
     painter.line_segment(
         [anchor, connector_end],
-        egui::Stroke::new(1.0, egui::Color32::from_rgba_unmultiplied(38, 50, 62, 120)),
+        egui::Stroke::new(
+            1.0_f32,
+            egui::Color32::from_rgba_unmultiplied(38, 50, 62, 120),
+        ),
     );
     painter.rect_filled(
         callout_rect.translate(egui::vec2(0.0, 2.0)),
@@ -1481,7 +1493,7 @@ fn paint_canvas_port_hover_callout(
         egui::Color32::from_rgba_unmultiplied(30, 42, 54, 26),
     );
     painter.rect_filled(callout_rect, 5.0, egui::Color32::from_rgb(255, 255, 255));
-    paint_canvas_rect_border(painter, callout_rect, egui::Stroke::new(1.2, color));
+    paint_canvas_rect_border(painter, callout_rect, egui::Stroke::new(1.2_f32, color));
     painter.text(
         callout_rect.left_top() + egui::vec2(9.0, 7.0),
         egui::Align2::LEFT_TOP,
@@ -1558,7 +1570,10 @@ fn paint_canvas_focus_callout(
 
     painter.line_segment(
         [anchor, connector_end],
-        egui::Stroke::new(1.2, egui::Color32::from_rgba_unmultiplied(38, 50, 62, 130)),
+        egui::Stroke::new(
+            1.2_f32,
+            egui::Color32::from_rgba_unmultiplied(38, 50, 62, 130),
+        ),
     );
     painter.rect_filled(
         callout_rect.translate(egui::vec2(0.0, 2.0)),
@@ -1566,7 +1581,7 @@ fn paint_canvas_focus_callout(
         egui::Color32::from_rgba_unmultiplied(30, 42, 54, 32),
     );
     painter.rect_filled(callout_rect, 6.0, egui::Color32::from_rgb(255, 255, 255));
-    paint_canvas_rect_border(painter, callout_rect, egui::Stroke::new(1.4, color));
+    paint_canvas_rect_border(painter, callout_rect, egui::Stroke::new(1.4_f32, color));
     painter.rect_filled(
         egui::Rect::from_min_size(callout_rect.min, egui::vec2(5.0, callout_rect.height())),
         0.0,
@@ -1652,7 +1667,7 @@ fn render_canvas_chip_with_hover(
 ) {
     let response = egui::Frame::new()
         .fill(color.gamma_multiply(0.12))
-        .stroke(egui::Stroke::new(1.0, color.gamma_multiply(0.8)))
+        .stroke(egui::Stroke::new(1.0_f32, color.gamma_multiply(0.8)))
         .corner_radius(6.0)
         .inner_margin(egui::Margin::symmetric(8, 3))
         .show(ui, |ui| {

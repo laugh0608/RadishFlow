@@ -1,98 +1,89 @@
 # 当前状态
 
-更新时间：2026-06-10
+更新时间：2026-08-22
 
 ## 用途
 
-用途：为新会话恢复上下文、判断“今天做什么”提供入口。  
-读者：开发者、用户、AI / Agent。  
-不包含：完整历史流水、详细设计推演、测试日志和长期说明书。
+用途：为新会话恢复当前维护状态、优先级、临时门禁和“当前不做”提供最小入口。
 
-默认先读本文档。只有当任务需要具体实现细节、历史依据或专题边界时，再读取下方“按需阅读”列表。`AGENTS.md` / `CLAUDE.md` 只保留长期协作规则，不承载当前阶段流水。
+读者：仓库维护者、用户与 AI / Agent。
 
-## 阶段结论
+不包含：完整历史流水、详细功能设计、长期协作规则、命令级测试日志和发布说明。
 
-- 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN / COM 适配层构建稳态流程模拟软件。
-- MVP 第一阶段 M1-M5、MVP α、MVP β 人工 smoke、失败修复闭环和通用小流程建模 v1 均已阶段性收口。
-- 阶段基线：2026-05-28 真实环境 `pwsh ./scripts/check-repo.ps1` 通过；2026-06-10 `./scripts/check-repo.sh` 通过。
-- 通用小流程建模 v1 已支持普通空白项目在受控范围内组合 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，并覆盖显式输入、运行、保存、重开、rerun 与结果审阅。
-- 当前主线已切到 **Studio UI 专题窄口径实现**。`studio-client-main.pen` 是当前唯一活跃 Studio 主设计稿，覆盖 Home、独立物性页、流程图工作台、模块设置 / 模块结果和底部运行 / 状态分栏。
-- 最新进度：**Studio UI 实现第四十一刀已根据真实截图继续收束独立 `物性` 页展示口径，仓库级验证基线仍为 2026-06-10 `./scripts/check-repo.sh` 通过**。脏项目 `Cmd+Q` 真实窗口 smoke 已复核通过；底部结果表的 stream / unit 定位会派发正式 `inspector.focus_*` command；顶部 `结果工具栏` 和 `运行工具栏` 已收束重复状态；左侧 `模块` 页保留分类、数量和放置按钮，说明文字改为 hover；右侧 `模块结果` 对 current unit result 采用紧凑单元、状态、step 和消费 / 产出流股 chip 展示，不再在首屏展开长 snapshot id；official methane / ethane 示例项目文件已持久化 `binary-hydrocarbon-lite-v1`，左侧 `项目输入`、独立 `物性` 页、Home recent / current / example tile 和运行结果不再出现“已收敛但物性包未选择”、raw package id 暴露或 entitlement timer debug 文本外露的冲突。
+默认先读本文档。需要处理具体领域时，再按“按需阅读”进入对应专题；`AGENTS.md` / `CLAUDE.md` 只保留跨任务、跨阶段且必须启动即生效的长期约束。
+
+## 当前结论
+
+- 自 2026-06-12 起，RadishFlow 业务功能开发保持停止；不再推进模拟功能、物性模型、CAPE-OPEN / COM 适配、产品路线、发布能力或对外支持。
+- 当前只按需维护不扩张产品能力的仓库外围基础设施，包括文档治理、CI、ruleset、安全基线、仓库元数据和工具链兼容性；外围维护不表示恢复产品开发。
+- MVP 第一阶段 M1-M5、MVP α、MVP β 人工 smoke、失败修复闭环和通用小流程建模 v1 已在停更前阶段性收口，现有专题与验收材料作为能力和边界记录保留。
+- `docs/topics/` 中原有 Active / Backlog 状态记录停更前的开发组织，不代表当前仍有激活开发主线；当前维护状态以本文档和根 `README.md` 为准。
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
-## 当前策略
+## 当前维护范围
 
-已经通过的阶段只修真实 blocker：
+### 可以按需推进
 
-- 无法完成主路径建模
-- 无法运行或运行结果明显错误
-- 保存 / 重开破坏项目
-- 文档事实源与代码能力明显冲突
-- 仓库级验证或核心 focused test 失败
+- 修正文档真相源、索引、篇幅、链接、编码和协作入口职责。
+- 维护 CI、ruleset、PR 模板、社区健康文件、安全报告入口和仓库治理检查。
+- 修复不改变产品能力的工具链兼容性、构建环境或仓库元数据问题。
+- 处理仓库所有者明确授权、且不突破停止公开业务功能维护边界的其他外围事项。
 
-当前不再主动追逐 hover、提示、按钮文案、局部 selector、presentation 小瑕疵或更多同构作者入口。`Mixer-Flash` / `Heater-Flash` 作者路径、MVP β Smoke A-D 和结果审阅对象覆盖保留为代表性回归，不作为日常 gate。
+### 当前优先级
 
-## 能力基线
+1. 保持根协作入口短、稳定、全文同步，并把阶段信息和详细规则归回 `docs/` 真相源。
+2. 保持仓库治理脚本、CI 契约、社区健康文件和远端规则口径一致。
+3. 后续外围维护继续采用定向验证；阶段收口时回到正式仓库级检查入口。
 
-通用建模与求解：
+当前没有排期中的产品功能切片。若未来需要改变停更边界，应先由仓库所有者明确决策，并同步更新根 `README.md`、本文档和受影响专题；不得仅通过修改某篇专题的状态恢复开发。
 
-- 普通空白项目不再进入或自动匹配小案例状态；运行前检查按当前 `Flowsheet` 的真实建模输入判断。
-- 缺项目组分、缺 Feed composition、Feed source stream 状态缺口、必要单元参数缺失和组成未归一由 readiness 定位到具体 stream / unit。
-- 缺物性包、结构性连接、拓扑、非法旧项目和求解阶段参数失败继续交给正式 Run Panel 诊断 / recovery；readiness 不扩成第二套 solver。
-- 轻量结果审阅已满足当前主路径判断；完整报表、模板、打印、批量导出和跨快照报表仍不进入当前阶段。
+## 已保留能力基线
 
-Studio UI：
+以下内容只描述停更前已经形成的能力，用于理解代码和历史专题，不构成继续开发计划：
 
-- 顶部导航已收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；打开 / 新建 / 保存 / 示例归入 `文件`。
-- 独立 `物性` 页消费 `StudioGuiWindowPropertyPageModel`。普通空白项目创建后先进入 `物性`，Property 页入口、`window.property_context_toolbar`、顶部 `流程图` 导航、Home 显式 `返回工作区` 入口和内部进入 Workbench 行为共用 `flowsheet_modeling_enabled`；Property toolbar、摘要和包选择卡显示可读 package label，不把稳定 id 当主展示文本；entitlement host schedule notice 输出用户可读摘要，平台卡不展示 timer event / `SystemTime` 调度结构；Home 返回按钮只在本次会话已打开或新建 case 后显示，当前 MVP 不渲染无效二级物性导航。
-- Home recent / current / example case tile 的物性包展示只从当前 document / builtin package choice 映射为可读 label；中文界面显示“二元烃 Lite”，空白项目仍显示“未选择”，项目文件继续只保存稳定 package id。
-- 左侧栏稳定为 `模块 / 项目`：`模块` 承接受控放置 palette、作者任务清单和画布建议；模块分类与选项说明保留在 hover / DTO，不作为首屏常驻说明；`项目` 承接项目输入、示例入口、对象树和审阅状态；`项目输入` 的物性包扫读来自当前 `workspace_document.property_package_choices` / `property_package_id`，不从运行结果反推。
-- 中央 Canvas 只承接 `画布工具`、`画布状态`、`画布操作`、图例、画布实体和受控建议；放置入口留在左侧 `模块`，对象树留在左侧 `项目`，选择语义留在右侧栏。
-- 右侧栏稳定为 `检查器 / 模块设置 / 模块结果`，并用同一 `画布选择` 上下文头消费 Canvas current selection / command presentation。
-- `模块设置` 继续只消费 active unit Inspector DTO；参数摘要从现有字段、notice 和批量提交 / 放弃 command 派生，不新增第二套参数状态。
-- `模块结果` 继续只消费 `window.module_results`；current 结果态在右侧栏使用紧凑执行摘要和流股 chip，旧结果、无结果、无单元仍保留必要说明，不新增独立模块结果页或第二套结果状态。
-- 底部区域稳定为左侧 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 与右侧 `状态汇总` 分栏；结果表的单元区消费 `review_summary.unit_results`，状态汇总额外扫读同源单元结果数量，snapshot 一致性在状态汇总标题行扫读；结果表定位继续走正式 `inspector.focus_stream:*` / `inspector.focus_unit:*`，不维护第二套 shell 私有选择；顶部 `结果工具栏` 不直接铺开所有结果对象定位按钮，顶部 `运行工具栏` 不在 Monitor 按钮旁重复展示状态 chip；底部薄状态栏只做运行、快照、SI 单位、求解器、模式和当前选择扫读。
+- 受控流程可覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，以及显式输入、运行、保存、重开、rerun 和轻量结果审阅。
+- Studio 已形成 Home、独立物性页、流程图工作台、模块设置 / 结果和运行状态区域的主路径。
+- Rust Core 与 `.NET 10` 适配层保持隔离；CAPE-OPEN / COM 语义不进入 Rust Core。
+- 更详细的能力、状态命令和验收证据以 `docs/topics/`、`docs/mvp/`、`docs/reference/` 与历史周志为准。
 
-## 下一步
+## 当前验证基线
 
-- 2026-06-11 优先做第四十一刀后的真实窗口复核：Home recent / current / example tile、独立 `物性` 页、左侧 `项目输入`、Workbench 运行 / 结果区是否仍有 raw package id、entitlement timer debug 文本或状态口径不一致。
-- 若复核没有真实 blocker，继续沿 `studio-client-main.pen`、brief、正式 DTO / command surface 做 Workbench 窄口径小切片；是否拆 `module-settings-panel.pen` 只根据右侧栏评审是否仍缺细化决定。
-- 继续不做大规模 egui 布局重排；只处理真实主路径上影响建模判断的入口重复、状态不一致或首屏密度问题。
+- 文档、协作入口或仓库治理改动：执行 `cargo test -p xtask` 与 `cargo run --quiet -p xtask -- check-repository-governance`，并检查文档体量和工作区差异。
+- 阶段收口或跨模块治理变化：在 macOS / Linux / CI 执行 `./scripts/check-repo.sh`；Windows 使用 `pwsh ./scripts/check-repo.ps1`。
+- `check-repo` 是正式仓库级入口，统一执行治理与文本门禁、Rust workspace 格式、构建、测试和 clippy 基线。
+- `adapters/reference/` 下的外部参考资料保留上游编码、BOM 和换行格式，不为通过仓库文本门禁而批量改写。
+- 重要验证若出现明显的沙盒权限、受限 restore、project reference 解析或 native 装载差异，先按 Agent 协作规则告知用户，再申请最小范围真实环境复验。
 
-## 验证节奏
+最近通过记录：
 
-- 核心数据、求解、保存和项目格式：必须测试。
-- 新能力主路径：至少覆盖一条 happy path focused test。
-- UI 展示细节：除非曾经造成 blocker，否则不为单个小展示点新增测试。
-- 阶段收口：执行 `pwsh ./scripts/check-repo.ps1`。
-- 若仓库级验证在沙盒中出现明显环境性失败，可按协作规则申请真实环境复验。
+- 2026-05-28：真实环境 `pwsh ./scripts/check-repo.ps1` 通过。
+- 2026-06-10、2026-08-20、2026-08-22：`./scripts/check-repo.sh` 通过。
 
-## 暂不推进
+## 当前不推进
 
-- 不继续在 β 第一刀上追加同构 Home 作者入口或同类 checklist；既有小案例清单只作为导航提示，不作为通用建模运行 gate。
-- 仍不推进 tag、release notes、便携包刷新或对外发布自动化；这些事项等待后续明确发布节点。
-- 不做自由连线编辑器、任意端口选择器、自动布线系统、完整拖拽布局编辑器、完整报表系统、跨快照报表、模板导出、完整参数表。
-- 不引入第三方 CAPE-OPEN 模型、第三方物性包加载、完整组分数据库或完整 Thermodynamics PMC。
+- 不新增或扩张模拟功能、物性模型、单元模块、自由连线、完整报表或控制面能力。
+- 不引入第三方 CAPE-OPEN 模型、第三方物性包、完整组分数据库或完整 Thermodynamics PMC。
+- 不推进 tag、release notes、便携包刷新、安装器、发布自动化或对外推广。
+- 不恢复公开 Bug、功能提案、产品问题处理、外部业务功能 PR 合并或支持承诺。
 - 不把 CAPE-OPEN / COM 语义倒灌到 Rust Core。
-- 不为未来可能需求预先堆叠不明意义的 helper / manager / orchestrator / context / adapter。
+- 不为未来可能需求预先堆叠不明意义的 helper、manager、orchestrator、context 或 adapter。
 
 ## 按需阅读
 
-- 最新流水和决策依据：`docs/devlogs/2026-06/2026-W24.md`
-- 上周阶段收口：`docs/devlogs/2026-06/2026-W23.md`
-- UI 专题设计前置：`docs/architecture/studio-ui-topic-plan.md`
-- MVP β 人工 smoke 与验收标准：`docs/mvp/beta-acceptance-checklist.md`
-- MVP 范围和非目标：`docs/mvp/scope.md`
-- MVP 路线图：`docs/radishflow-mvp-roadmap.md`
-- 仓库全局模块边界：`docs/architecture/overview.md`
-- App / Canvas / UI：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`、`docs/architecture/studio-ui-design-guidelines.md`
-- 热力学 / 闪蒸细节：`docs/thermo/mvp-model.md`
+- 文档总索引与篇幅治理：`docs/README.md`
+- Agent 协作、授权与验证选择：`docs/development/agent-collaboration.md`
+- 停更前专题与能力索引：`docs/topics/README.md`
+- MVP 冻结范围与非目标：`docs/mvp/scope.md`
+- 仓库分层与模块边界：`docs/architecture/overview.md`
+- App / Canvas / UI 边界：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`
+- 热力学与闪蒸契约：`docs/thermo/mvp-model.md`
 - CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
-- 代码风格、命名或抽象判断：`docs/development/code-style.md`
-- 文档篇幅和拆分规则：`docs/README.md`
+- 代码风格、命名和抽象判断：`docs/development/code-style.md`
+- 分支与 PR 治理：`docs/adr/0001-branch-and-pr-governance.md`
+- 最新历史流水：`docs/devlogs/2026-08/2026-W34.md`
 
 ## 更新规则
 
-- 本文档只保留当前阶段、下阶段目标、验证节奏和暂不推进项。
-- 历史流水写入周志；长期边界写入专题文档；不要把本文档写成长篇进度报告。
-- 每次完成重要阶段收口后，优先更新本文档顶部阶段结论和下阶段目标。
+- 本文档只维护当前状态、当前优先级、临时验证基线、当前不推进项和最近必要事实。
+- 长期协作规则进入 Agent 协作指南；功能和领域细节进入专题；历史过程和命令级证据进入周志或记录。
+- 完成重要外围维护后，先更新对应专题或治理文档，再同步本文档中仍需保留的当前摘要。
