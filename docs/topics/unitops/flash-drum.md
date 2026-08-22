@@ -4,8 +4,8 @@
 
 ## 用途
 
-用途：定义当前 MVP 中 `Flash Drum` 的 flash 参数、端口、相态结果、单相缺席语义和结果审阅边界。  
-读者：负责 `rf-flash`、`rf-unitops`、`rf-solver`、Studio 结果审阅和诊断的开发者、用户、AI / Agent。  
+用途：定义当前 MVP 中 `Flash Drum` 的 flash 参数、端口、相态结果、单相缺席语义和结果审阅边界。
+读者：负责 `rf-flash`、`rf-unitops`、`rf-solver`、Studio 结果审阅和诊断的开发者、用户、AI / Agent。
 不包含：严格气液分离器设计、液位控制、动态 holdup、压降模型、夹带、效率、三相闪蒸和完整相平衡数据库。
 
 ## 专题层级

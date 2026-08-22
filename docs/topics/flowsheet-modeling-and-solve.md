@@ -4,8 +4,8 @@
 
 ## 用途
 
-用途：定义受控流程图建模、单元参数、连接建议、readiness、Run Panel 和 solver 之间的开发边界。  
-读者：负责 `rf-model`、`rf-flowsheet`、`rf-unitops`、`rf-solver`、Studio 建模入口和运行门禁的开发者、用户、AI / Agent。  
+用途：定义受控流程图建模、单元参数、连接建议、readiness、Run Panel 和 solver 之间的开发边界。
+读者：负责 `rf-model`、`rf-flowsheet`、`rf-unitops`、`rf-solver`、Studio 建模入口和运行门禁的开发者、用户、AI / Agent。
 不包含：自由连线编辑器、任意端口选择器、自动布线系统、完整拖拽布局器、复杂回路收敛和动态模拟。
 
 ## 专题目标

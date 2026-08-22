@@ -4,8 +4,8 @@
 
 ## 用途
 
-用途：定义当前求解结果、结果表、模块结果、状态汇总、诊断和 recovery action 的同源审阅边界。  
-读者：负责 `SolveSnapshot`、Result Inspector、Module Results、Run Panel 诊断和结果相关 UI 的开发者、用户、AI / Agent。  
+用途：定义当前求解结果、结果表、模块结果、状态汇总、诊断和 recovery action 的同源审阅边界。
+读者：负责 `SolveSnapshot`、Result Inspector、Module Results、Run Panel 诊断和结果相关 UI 的开发者、用户、AI / Agent。
 不包含：完整报表系统、跨快照历史报表、模板导出、打印、批量导出和完整后处理平台。
 
 ## 专题目标

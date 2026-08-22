@@ -4,8 +4,8 @@
 
 ## 用途
 
-用途：定义当前 MVP 中 `Feed` 单元的输入、端口、参数、运行结果和诊断边界。  
-读者：负责 `rf-unitops`、Studio 模块设置、Canvas 放置、readiness 和结果审阅的开发者、用户、AI / Agent。  
+用途：定义当前 MVP 中 `Feed` 单元的输入、端口、参数、运行结果和诊断边界。
+读者：负责 `rf-unitops`、Studio 模块设置、Canvas 放置、readiness 和结果审阅的开发者、用户、AI / Agent。
 不包含：完整物料源库、动态进料、外部数据源绑定、批量工况和真实工厂历史数据接口。
 
 ## 专题层级

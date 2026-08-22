@@ -4,8 +4,8 @@
 
 ## 用途
 
-用途：定义项目级物性 package、项目组分选择、保存 / 重开和运行请求之间的事实源与开发边界。  
-读者：负责物性页、项目文件、运行 package resolution、Home / 项目输入展示和相关测试的开发者、用户、AI / Agent。  
+用途：定义项目级物性 package、项目组分选择、保存 / 重开和运行请求之间的事实源与开发边界。
+读者：负责物性页、项目文件、运行 package resolution、Home / 项目输入展示和相关测试的开发者、用户、AI / Agent。
 不包含：完整组分数据库、第三方 Property Package 加载、完整 Thermodynamics PMC、物性参数拟合和高级物性分析实现。
 
 ## 专题目标

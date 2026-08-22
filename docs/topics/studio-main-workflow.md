@@ -4,8 +4,8 @@
 
 ## 用途
 
-用途：定义 Studio 主工作台从启动、物性配置、流程图建模、运行、结果审阅到保存 / 重开的主路径开发边界。  
-读者：负责 Studio UI、window model、command surface、主路径验证和真实窗口 smoke 的开发者、用户、AI / Agent。  
+用途：定义 Studio 主工作台从启动、物性配置、流程图建模、运行、结果审阅到保存 / 重开的主路径开发边界。
+读者：负责 Studio UI、window model、command surface、主路径验证和真实窗口 smoke 的开发者、用户、AI / Agent。
 不包含：完整视觉系统、自由连线编辑器、完整报表、完整参数表、控制面管理 UI 和发布计划。
 
 ## 专题目标

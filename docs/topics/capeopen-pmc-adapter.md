@@ -4,8 +4,8 @@
 
 ## 用途
 
-用途：定义 `.NET 10` CAPE-OPEN / COM 适配层、PMC 注册、PME 人工验证和 Rust FFI 边界。  
-读者：负责 `adapters/dotnet-capeopen/`、`rf-ffi`、COM 注册脚本、DWSIM / COFE 验证和互操作测试的开发者、用户、AI / Agent。  
+用途：定义 `.NET 10` CAPE-OPEN / COM 适配层、PMC 注册、PME 人工验证和 Rust FFI 边界。
+读者：负责 `adapters/dotnet-capeopen/`、`rf-ffi`、COM 注册脚本、DWSIM / COFE 验证和互操作测试的开发者、用户、AI / Agent。
 不包含：Rust Core 内部 COM 语义、第三方 CAPE-OPEN 模型加载、完整 Thermodynamics PMC、PME 自动化产品化和安装器发布。
 
 ## 专题目标

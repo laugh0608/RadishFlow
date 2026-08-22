@@ -4,8 +4,8 @@
 
 ## 用途
 
-用途：定义当前 MVP 中物流股的字段、单位、组成、连接、结果和诊断边界。  
-读者：负责 `rf-model`、`rf-flowsheet`、Stream Inspector、Canvas connection、readiness 和结果审阅的开发者、用户、AI / Agent。  
+用途：定义当前 MVP 中物流股的字段、单位、组成、连接、结果和诊断边界。
+读者：负责 `rf-model`、`rf-flowsheet`、Stream Inspector、Canvas connection、readiness 和结果审阅的开发者、用户、AI / Agent。
 不包含：完整物流数据库、多基准组成切换、能量 / 信号流股、动态状态历史和工业数据采集。
 
 ## 专题层级

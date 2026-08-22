@@ -4,8 +4,8 @@
 
 ## 用途
 
-用途：定义当前 MVP 中 `Mixer` 的双入口、出口压力、混合结果、连接建议和诊断边界。  
-读者：负责 `rf-unitops`、`rf-flowsheet`、Studio Canvas suggestion、模块设置和结果审阅的开发者、用户、AI / Agent。  
+用途：定义当前 MVP 中 `Mixer` 的双入口、出口压力、混合结果、连接建议和诊断边界。
+读者：负责 `rf-unitops`、`rf-flowsheet`、Studio Canvas suggestion、模块设置和结果审阅的开发者、用户、AI / Agent。
 不包含：多入口任意混合器、反应混合、能量损失模型、压降网络和复杂管网求解。
 
 ## 专题层级
