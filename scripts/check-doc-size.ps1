@@ -24,7 +24,7 @@ function Get-DocSizeRule {
     if ($path -like "docs/adr/*.md") {
         return [pscustomobject]@{ Limit = 12000; Scope = "adr"; Enforced = $true }
     }
-    if ($path -like "docs/guides/*.md" -or $path -eq "docs/capeopen/pme-validation.md") {
+    if ($path -like "docs/guides/*.md" -or $path -eq "docs/development/agent-collaboration.md" -or $path -eq "docs/capeopen/pme-validation.md") {
         return [pscustomobject]@{ Limit = 15000; Scope = "guide"; Enforced = $true }
     }
     if ($path -like "docs/reference/*.md") {

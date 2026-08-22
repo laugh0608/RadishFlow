@@ -1,30 +1,31 @@
 # RadishFlow Docs
 
-更新时间：2026-08-20
+更新时间：2026-08-22
 
 ## 先读什么
 
 如果你是第一次进入仓库，默认先读这几个入口：
 
 1. `status/current.md`
-2. `topics/README.md`
-3. `../README.md`
+2. `../README.md`
+3. `topics/README.md`
 4. `guides/studio-quick-start.md`
 5. `architecture/overview.md`
 
 阅读原则：
 
 - 想知道“今天做什么”或“当前阶段到哪了”，先读 `status/current.md`
+- 想知道 Agent 怎么协作、哪些操作要授权、如何选择验证，读 `development/agent-collaboration.md`
 - 想知道“某个功能或开发目标怎么做、做到哪、怎么验收”，先读 `topics/README.md`
 - 想知道“现在怎么用 Studio”，先读 `guides/`
 - 想知道“字段、单位、结果是什么意思”，先读 `reference/`
 - 想知道“为什么这样分层、边界怎么定”，再读 `architecture/`
 
-`AGENTS.md` / `CLAUDE.md` 只保留长期协作规则，不承担当前说明书职责。
+`AGENTS.md` / `CLAUDE.md` 只保留启动即生效的长期约束，不承担当前说明书、命令手册或历史记录职责。
 
 ## Development Topics
 
-Topics 文档回答“一个功能、能力包或开发目标怎么设计、分阶段推进、验收和验证”。当前开发节奏采用 `status/current.md` 总进度 + `topics/` 一级轨道专题 + 二级功能专题。
+Topics 文档回答“一个功能、能力包或开发目标怎么设计、分阶段推进、验收和验证”。当前业务功能开发已停止，Topic 状态保留为停更前的组织和边界记录，不代表仍有排期中的产品开发主线。
 
 | 文档 | 说明 |
 | --- | --- |
@@ -39,6 +40,15 @@ Topics 文档回答“一个功能、能力包或开发目标怎么设计、分�
 | `topics/unitops/` | Feed、Heater / Cooler、Flash Drum、Mixer、Valve 等单元模块专题 |
 | `topics/modeling/` | Material Stream 等建模对象专题 |
 | `topics/platform/` | Control Plane 后端服务和后端 Web UI 专题 |
+
+## Development And Collaboration
+
+这组文档承载按任务读取的稳定开发与协作规则，不复制当前阶段状态。
+
+| 文档 | 说明 |
+| --- | --- |
+| `development/agent-collaboration.md` | Agent 任务推进、操作授权、环境边界、验证选择和文档归位规则 |
+| `development/code-style.md` | 跨语言代码风格、命名、抽象和 review 判断标准 |
 
 ## Guides
 
@@ -80,7 +90,6 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | `architecture/open-source-references.md` | 可借鉴的开源参考与许可边界 |
 | `thermo/mvp-model.md` | 热力学与 `TP Flash` 当前最小模型和数值口径 |
 | `capeopen/boundary.md` | Rust Core 与 `.NET 10` CAPE-OPEN 适配层边界 |
-| `development/code-style.md` | 跨语言代码风格、命名和抽象判断标准 |
 
 ## Status, Scope, Logs
 
@@ -122,6 +131,7 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 新增或更新文档时，优先按下面的职责落位：
 
 - `guides/`：怎么做
+- `development/`：开发协作、验证选择、命名和实现规范
 - `topics/`：一级开发轨道和二级功能专题的设计、范围、验收和验证
 - `reference/`：字段、参数、单位、结果、格式是什么
 - `architecture/`：为什么这样设计、边界如何划分
@@ -139,7 +149,7 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | 当前状态入口：`status/current.md` | 8k 字符 | 只保留当前阶段、最近摘要、下一步和按需阅读 |
 | 文档目录入口：`README.md` | 10k 字符 | 只做导航和维护规则，不承载长解释 |
 | Topics 专题 | 15k-25k 字符 | 每篇只承载一个功能或开发目标，复杂专题拆成子专题 |
-| Guide / Runbook | 15k 字符 | 每篇只讲一个任务流，多个任务流拆文档 |
+| Guide / Runbook / 协作指南 | 15k 字符 | 每篇只讲一个任务流或一类稳定协作规则，多个职责拆文档 |
 | Reference / Architecture / Boundary | 25k-30k 字符 | 超限时拆成入口摘要和专题正文 |
 | ADR | 12k 字符 | 一事一议，不写成历史报告 |
 | Devlog / 历史草案 | 可更长 | 不作为默认入口，默认体量检查只报告受约束文档；需要时用 advisory 检查查看历史材料 |
