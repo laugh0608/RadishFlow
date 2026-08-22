@@ -38,6 +38,8 @@
 
 普通维护从 `docs/*`、`chore/*`、`fix/*` 或其他职责明确的主题分支向 `dev` 发起 Pull Request。`master` / `main` 只接收阶段性稳定化合并或明确的 `hotfix/*`；禁止直接 push 或 force push 共享分支。具体规则以 ADR 0001 为准。
 
+稳定化 `dev -> master/main` PR 优先使用 merge commit。任何 PR 合并到 `master` / `main` 后，开始下一轮开发前必须把最新 `origin/master` / `origin/main` 回灌并推送到 `dev`；可快进时优先 fast-forward，否则使用普通 merge，禁止使用 rebase、reset、force push 或重写既有提交伪造同步。回灌只关闭分支拓扑，不代表创建 tag、发布 artifact 或执行部署。
+
 提交信息遵循 Conventional Commits，例如：
 
 ```text

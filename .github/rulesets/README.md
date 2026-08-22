@@ -9,7 +9,9 @@
 2. 功能、文档、规范类变更默认先合并到 `dev`
 3. 阶段性稳定后，再从 `dev` 发起到默认分支（当前为 `master`，如切换可适配 `main`）的 Pull Request
 4. 默认分支 PR 必须通过仓库检查和 staging package 验证
-5. 管理员如需绕过规则，也只能通过 Pull Request，不开放直接 push
+5. 合并到默认分支后，先把最新默认分支回灌并推送到 `dev`；可快进时优先 fast-forward，否则使用普通 merge
+6. 完成回灌后，再独立决定是否创建 tag、发布 artifact、GitHub Release 或执行部署
+7. 管理员如需绕过规则，也只能通过 Pull Request，不开放直接 push
 
 ## 默认分支规则说明
 
@@ -22,7 +24,7 @@
 - `PR Checks` 保留六个独立组件便于定位失败，并由稳定的 `Candidate Quality` 统一收口；任一组件失败、取消或跳过都会使聚合检查失败
 - `PR Checks` 响应 `pull_request -> dev/master/main`；目标为 `dev` 的 PR 为其他开发者提供合并前反馈，目标为默认分支的 PR 承担阶段稳定化门禁，普通 `dev` push 不触发
 - `Release Checks` 当前只保留 `workflow_dispatch` 手动 staging 入口；tag push 不自动触发 CI/CD，避免普通内部 staging 或历史 tag 造成误发布信号
-- 允许 `merge` 与 `rebase` 两种合并方式，禁用 `squash`
+- 允许 `merge` 与 `rebase` 两种合并方式，禁用 `squash`；`dev -> master/main` 优先使用 merge commit，以便稳定主线直接 fast-forward 回灌 `dev`
 - 管理员仅可通过 Pull Request 方式绕过规则，不开放直接 push
 
 ## dev 策略说明
@@ -31,6 +33,7 @@
 - 当前阶段不启用 branch protection
 - 当前默认不要求 push 到 `dev` 时自动触发仓库检查
 - 目标为 `dev` 的 Pull Request 自动运行 `PR Checks`，但 `dev` 当前不启用 required checks 或 branch protection；直接进入共享 `dev` 的连续开发仍按改动风险执行本地验证
+- `dev` 接受稳定主线合并结果的回灌；回灌完成前不开始下一轮集成开发
 - 如后续进入多人并行开发，再评估是否对 `dev` 追加保护
 
 ## 检查入口

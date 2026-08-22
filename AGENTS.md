@@ -56,7 +56,7 @@
 | 命名、抽象和实现风格 | `docs/development/code-style.md` |
 | Agent 协作、操作授权、验证与文档归位 | `docs/development/agent-collaboration.md` |
 | CAPE-OPEN / COM 边界与验证 | `docs/capeopen/boundary.md`、`docs/capeopen/pme-validation.md` |
-| 分支、PR 和合并治理 | `docs/adr/0001-branch-and-pr-governance.md` |
+| 分支、PR、合并与回灌治理 | `docs/adr/0001-branch-and-pr-governance.md` |
 | 文档分类、索引和篇幅 | `docs/README.md` |
 | 外部参考与许可边界 | `docs/architecture/open-source-references.md`、根 `LICENSE` |
 
@@ -80,9 +80,13 @@
 
 ## Git 与文档约束
 
+- `dev` 是日常集成分支；`master` / `main` 是稳定主线，只通过 Pull Request 合并。
+- 稳定主线允许 merge commit 与 rebase merge，禁用 squash merge；`dev -> master/main` 优先使用 merge commit，以便合并结果直接 fast-forward 回灌 `dev`。
+- 任何 PR 合并到 `master` / `main` 后，都必须先把最新 `origin/master` / `origin/main` 回灌并推送到 `dev`，再开始下一轮开发；可快进时优先 fast-forward，否则使用普通 merge。
+- 回灌禁止使用 rebase、reset、force push 或重写既有提交伪造同步，也不会自动触发 tag、发布或部署。
 - 提交信息使用简洁明确的 Conventional Commits；复杂提交补充 `3-6` 条简短说明。
 - 代码、文档和治理改动按主题组织，提交前确认最小验证已完成；不添加 AI 协作者署名。
-- 分支角色、PR 门禁和合并策略只在对应 ADR 与仓库配置中维护，不复制到本文件。
+- 更完整的分支角色、PR 门禁、回灌步骤和异常分支处理只在对应 ADR 与仓库配置中维护。
 - 优先更新已有文档，不为一次性讨论创建散文档；历史过程和验证流水进入周志、记录或归档，不堆入入口文档。
 
 ## 入口文件维护
