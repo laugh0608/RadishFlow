@@ -1,6 +1,6 @@
 # ADR 0001: Branch And PR Governance
 
-更新时间：2026-08-22
+更新时间：2026-08-29
 
 ## 状态
 
@@ -18,14 +18,15 @@ Accepted
 ### 分支角色
 
 - `master` / `main`: 稳定主线，只接受 Pull Request 合并；当前仓库仍以 `master` 为主，若后续切换默认分支则同一规则迁移到 `main`
-- `dev`: 日常集成分支，功能、文档、规范类分支默认合并到这里
-- `feature/*`: 功能开发分支
-- `docs/*`: 文档与规范分支
-- `chore/*`: 基础设施、脚本、CI、仓库治理分支
+- `dev`: 常态开发与集成分支，允许直接承载串行推进的维护提交
+- `feature/*`: 需要独立隔离或评审时使用的功能开发分支
+- `docs/*`: 需要独立隔离或评审时使用的文档与规范分支
+- `chore/*`: 需要独立隔离或评审时使用的基础设施、脚本、CI、仓库治理分支
 
 ### 合并策略
 
-- 默认开发流程为 `feature/*` -> `dev`
+- 串行推进的普通维护默认直接在 `dev` 完成，不为了流程形式自动创建主题分支、Pull Request 或额外 worktree
+- 项目所有者明确要求、外部贡献、并行写入、风险隔离或明确评审需求时，使用主题分支并向 `dev` 发 Pull Request；Agent 不自动创建 `codex/*` 等临时分支
 - 阶段性稳定后，再通过 PR 将 `dev` 合并到 `master` / `main`
 - `dev -> master/main` 的阶段性 PR 优先使用 merge commit，使合并后的稳定主线可以直接 fast-forward 回灌 `dev`；仓库仍允许 rebase merge，但必须承担后续普通 merge 回灌
 - 仅在必须修复主线问题时，才允许 `hotfix/*` 直接向 `master` / `main` 发 PR
@@ -49,7 +50,7 @@ Accepted
 
 ### `dev` 规则
 
-- 允许作为当前阶段默认目标分支
+- 作为当前阶段常态开发与集成分支，允许串行推进的普通维护直接提交
 - 当前阶段不启用分支保护
 - 普通 `push -> dev` 不自动触发 CI/CD
 - 目标为 `dev` 的 Pull Request 自动运行 `PR Checks`，为其他开发者提供合并前反馈；`dev` 当前不启用 required checks 或 branch protection
@@ -108,7 +109,7 @@ Accepted
 代价：
 
 - 需要维护远端 `master` / `main` 保护设置
-- 开发节奏从“直接提交”切换为“分支 + PR”
+- 直接在 `dev` 连续维护时，需要维护者按改动风险主动执行并如实记录本地验证
 - 每次合入 `master` / `main` 后增加一次明确的稳定主线回灌动作
 - 默认分支 PR 检查时间会增加，尤其是 Windows `.NET` baseline 和 staging package job
 

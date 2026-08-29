@@ -80,7 +80,10 @@
 
 ## Git 与文档约束
 
-- `dev` 是日常集成分支；`master` / `main` 是稳定主线，只通过 Pull Request 合并。
+- `dev` 是常态开发与集成分支；串行推进的普通维护直接在 `dev` 开发和提交，不要求主题分支、Pull Request 或额外 worktree。
+- 只有项目所有者明确要求、外部贡献、并行写入、确有隔离价值的高风险改动或 hotfix 才创建主题分支；Agent 不自动创建 `codex/*` 等临时分支。
+- `dev` 当前不启用 branch protection，普通 push 不自动触发 CI；直接维护按改动范围完成本地验证，需要评审或隔离时再通过 Pull Request 合入 `dev`。
+- `master` / `main` 是稳定主线，只通过 Pull Request 合并。
 - 稳定主线允许 merge commit 与 rebase merge，禁用 squash merge；`dev -> master/main` 优先使用 merge commit，以便合并结果直接 fast-forward 回灌 `dev`。
 - 任何 PR 合并到 `master` / `main` 后，都必须先把最新 `origin/master` / `origin/main` 回灌并推送到 `dev`，再开始下一轮开发；可快进时优先 fast-forward，否则使用普通 merge。
 - 回灌禁止使用 rebase、reset、force push 或重写既有提交伪造同步，也不会自动触发 tag、发布或部署。
