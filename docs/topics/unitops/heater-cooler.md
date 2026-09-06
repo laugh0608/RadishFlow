@@ -1,6 +1,8 @@
 # Heater / Cooler 换热器专题
 
-更新时间：2026-06-14
+更新时间：2026-09-06
+
+> 本文保留已有能力与历史设计；自 2026-06-12 起业务功能开发停止。下文阶段、验证计划和历史状态不构成当前排期或操作授权，维护范围以 [当前状态](../../status/current.md) 为准。
 
 ## 用途
 
@@ -91,8 +93,8 @@
 - focused test：Heater-Flash happy path、Cooler-Flash happy path、参数缺失、pressure invalid draft、保存 / 重开 / rerun、结果一致性。
 - 仓库级：涉及核心单元或求解改动时执行 `./scripts/check-repo.sh`。
 
-## 状态记录
+## 历史组织记录
 
-- 当前状态：Active
+- 历史状态：Active
 - 最近更新：2026-06-14 建立二级功能专题。
-- 下一步：只修 T/P 调节主路径真实 blocker；完整换热器模型另开专题。
+- 历史下一步（未激活）：只修 T/P 调节主路径真实 blocker；完整换热器模型另开专题。

@@ -15,7 +15,7 @@ RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 `.NET 10
 
 ## 当前定位
 
-当前第一阶段保持以下稳定边界：
+停更前第一阶段形成以下边界，现作为历史能力保留：
 
 - Rust 实现稳态模拟核心
 - Rust 实现桌面 UI
@@ -23,7 +23,9 @@ RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 `.NET 10
 - 当前不加载第三方 CAPE-OPEN 模型
 - Rust 不直接处理 COM；Rust 与 `.NET` 边界只允许句柄、基础数值、UTF-8 字符串和 JSON
 
-更具体的阶段目标、冻结范围和非目标，以 `docs/status/current.md`、`docs/mvp/scope.md` 和 `docs/capeopen/boundary.md` 为准。
+更具体的维护状态、历史能力与限制，见 [当前状态](docs/status/current.md)、[MVP 范围](docs/mvp/scope.md) 和 [CAPE-OPEN 边界](docs/capeopen/boundary.md)。
+
+现有模型使用简化物性与单元假设，内置样例用于演示和软件回归；求解收敛、α / β 验收和跨层一致性不构成工程工况准确性证明。模型假设、样例来源限制及独立验证缺口统一见 [热力学 MVP 模型](docs/thermo/mvp-model.md)。
 
 ## 当前状态入口
 
@@ -89,7 +91,7 @@ pwsh ./scripts/normalize-text-files.ps1
 - `docs/architecture/overview.md`: 当前仓库分层与模块边界
 - `docs/architecture/app-architecture.md`: 桌面 App 架构规划
 - `docs/architecture/auth-entitlement-architecture.md`: 桌面登录、授权与远端物性资产架构
-- `docs/mvp/scope.md`: MVP 范围、非目标与近期开发节奏
+- `docs/mvp/scope.md`: 已保留的 MVP 范围、模型限制与验收含义
 - `docs/thermo/mvp-model.md`: 热力学与闪蒸的当前契约
 - `docs/capeopen/boundary.md`: Rust 与 `.NET 10` 的 CAPE-OPEN 边界
 - `docs/adr/0001-branch-and-pr-governance.md`: 分支与 PR 治理策略

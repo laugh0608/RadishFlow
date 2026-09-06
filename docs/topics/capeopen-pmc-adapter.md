@@ -1,6 +1,8 @@
 # CAPE-OPEN PMC 适配层
 
-更新时间：2026-06-14
+更新时间：2026-09-06
+
+> 本文保留已有能力与历史设计；自 2026-06-12 起业务功能开发停止。下文阶段、验证计划和历史状态不构成当前排期或操作授权，维护范围以 [当前状态](../status/current.md) 为准。
 
 ## 用途
 
@@ -30,6 +32,16 @@
 - 不推进完整 Thermodynamics PMC。
 - Windows `.NET` / PME 验证需在真实 Windows 或 GitHub Windows runner 完成。
 - 当前不做正式发布、安装器或自动 COM 注册。
+
+## Native engine 生命周期静态风险
+
+2026-09-06 核对 [RadishFlowNativeEngine](../../adapters/dotnet-capeopen/RadishFlow.CapeOpen.Adapter/RadishFlowNativeEngine.cs) 与 [P/Invoke 声明](../../adapters/dotnet-capeopen/RadishFlow.CapeOpen.Adapter/RfNativeMethods.cs)：调用通过 `DangerousGetHandle()` 取得裸句柄，`Dispose()` 直接释放底层 engine；该封装未统一检查释放状态，也未提供调用期引用保护或同一 engine 的调用串行化。
+
+释放后再次调用、调用与 Dispose 并发或同一 engine 并发进入 native，存在失效指针或违反 Rust 可变访问约束的风险。PMC 外层已有生命周期守卫，不能据此推导独立公开 Adapter 的所有消费方式均已安全。[Microsoft SafeHandle 文档](https://learn.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.safehandle.dangerousgethandle?view=net-10.0) 说明裸句柄可能失效，需正确保护其生命周期。
+
+本次结论来自静态代码审阅，不是 Windows 崩溃复现或完整互操作审计。若后续获准修复，可评估让 P/Invoke 消费 SafeHandle 或成对引用保护，并明确已释放调用、调用期间 Dispose 和同一 engine 串行访问的契约与测试；只加 disposed 布尔值不足以解决调用与释放竞态。
+
+已有 DWSIM / COFE smoke 继续只证明记录中的版本、场景和调用顺序，不扩张为任意线程或任意 PME 兼容承诺。
 
 ## 用户路径
 
@@ -99,8 +111,8 @@
 - Windows：执行 `.NET` build、contract tests、smoke tests 和必要 PME 人工验证。
 - 仓库级：涉及适配层关键变更时优先执行 `pwsh ./scripts/check-repo.ps1` 或 Windows CI 基线。
 
-## 状态记录
+## 历史组织记录
 
-- 当前状态：Frozen / Blocker-only
+- 历史状态：Frozen / Blocker-only
 - 最近更新：2026-06-14 从路线图和 current 状态中拆出 CAPE-OPEN 适配层专题入口。
-- 下一步：只在 `.NET` baseline、注册脚本或 PME 人工验证暴露真实 blocker 时推进。
+- 历史下一步（未激活）：只在 `.NET` baseline、注册脚本或 PME 人工验证暴露真实 blocker 时推进。

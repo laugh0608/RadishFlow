@@ -1,304 +1,89 @@
 # MVP Scope
 
-更新时间：2026-06-01
-
-## MVP 目标
-
-第一阶段 MVP 目标保持不变：
-
-构建一个以 Rust 为核心、以 Rust UI 为主界面、以 .NET 10 暴露 CAPE-OPEN Unit Operation PMC 的最小稳态流程模拟闭环，并让至少一个自有单元模型可被外部 PME 识别与调用。
-
-## 当前冻结范围
-
-第一阶段当前冻结为以下内容：
-
-- 二元体系
-- 最小物性参数集
-- 简化热力学模型
-- `TP Flash`
-- 流股对象
-- 单元模块：`Feed`、`Mixer`、`Heater/Cooler`、`Valve`、`Flash Drum`
-- 无回路或极简回路的顺序模块法
-- JSON 项目格式
-- 一个可注册的自有 CAPE-OPEN Unit Operation PMC
-
-## 明确不做
-
-以下内容当前阶段明确不做：
-
-- 加载第三方 CAPE-OPEN 单元
-- 加载第三方 CAPE-OPEN Thermo/Property Package
-- 完整 Thermodynamics PMC
-- recycle 全功能收敛
-- 动态模拟（远期方向，非当前阶段）
-- CFD 模拟（远期方向，非当前阶段）
-- 大规模组分数据库
-- UI 视觉精修优先级高于内核闭环
-
-动态模拟和 CFD 模拟已进入长期产品规划，但当前只作为远期方向记录。它们不得改变本阶段“稳态流程模拟 + 最小 CAPE-OPEN Unit Operation PMC”的验收边界，也不为当前通用小流程建模 v1 增加 schema、crate、UI 或测试要求。
-
-## 当前阶段细化决策
-
-为避免范围漂移，当前阶段补充冻结以下实现细节：
-
-- 统一使用 SI 基本单位，温度用 K，压力用 Pa，摩尔流量用 mol/s
-- 流股组成先统一为摩尔分率，不在第一轮引入质量基和体积分率切换
-- 相标签当前只保留 `overall`、`liquid`、`vapor`
-- `rf-model` 只负责对象模型，不先塞进求解策略和 COM 语义
-- `rf-thermo` 与 `rf-flash` 先定接口，再补 Antoine、Raoult 和 Rachford-Rice
-- `rf-unitops` 第一轮统一围绕标准 `MaterialStreamState` 输入输出，不提前把 flowsheet 调度或 FFI 细节塞进单元接口
-- `Feed`、`Mixer`、`Flash Drum` 当前先冻结为 canonical material ports：`Feed(outlet)`、`Mixer(inlet_a/inlet_b/outlet)`、`Flash Drum(inlet/liquid/vapor)`
-- `rf-flowsheet` 第一轮连接校验只覆盖 canonical material ports、流股存在性与“一股一源一汇”；终端产品流允许只有 source、没有 sink
-- `.NET 10` 适配层当前允许推进到 `M4/M5` 交界的最小互调与 `UnitOp.Mvp` 宿主语义收口，但范围只限于 `rf-ffi` 薄适配、`UnitOp.Mvp` 对象面、contract/smoke 基线、库内只读宿主模型，以及 action execution request planning / orchestration result / host view snapshot / validation outcome / calculation outcome / host round outcome / follow-up 这类不承担完整宿主生命周期的薄 helper
-- `UnitOp.Mvp` 当前应优先把宿主语义收口为正式只读模型、显式请求规划模型或窄边界 outcome 模型，例如 configuration snapshot、action plan、action execution request plan、action execution orchestration result、host view snapshot、port/material snapshot、execution snapshot、session snapshot、canonical session state、validation outcome、calculation outcome、host round outcome、统一 follow-up 与 stop kind，不把组合逻辑散落到 smoke host、测试字面量或未来 PME 入口
-- `UnitOp.Mvp` 当前也已补出独立 `SampleHost`，用于证明未来 PME host / 其他宿主可直接复用上述正式消费面，而不是继续依赖 smoke driver
-- `SampleHost` 当前又已补出 `PmeLikeUnitOperationHost / PmeLikeUnitOperationSession / PmeLikeUnitOperationInput` 薄宿主入口，把“创建组件、初始化、读取视图、提交参数/端口对象、执行 validate/calculate round、读取正式结果面、终止”整理成更接近 PME host 的最小 session 形状；这层仍只消费 `UnitOp.Mvp` 正式 reader / planner / host round，不引入 COM 注册、PME 自动化互调或第三方模型加载
-- `UnitOp.Mvp` 当前已冻结自有 MVP Unit Operation PMC 的 `CLSID / ProgID / Versioned ProgID`，并新增带执行门控的 `RadishFlow.CapeOpen.Registration`；当前默认仍是 dry-run，但已支持在显式 `--execute` + `--confirm` 下执行 `register / unregister`，并收口 preflight fail 阻断、HKLM elevation 检查、registry plan 限界、三棵树 JSON 备份、execution log 与失败 rollback；这不代表当前阶段已经默认注册 COM 或驱动 PME
-- 仓库根 `scripts/register-com.ps1` 当前已作为正式注册脚本入口，负责 build、环境变量重定向、confirmation token 提示与 `Registration.exe` 转调；本机 `current-user register/unregister` 闭环验证当前已通过这条入口完成一次顺序复查
-- `docs/capeopen/pme-validation.md` 当前已补出目标 PME 人工验证说明，冻结执行前验证基线、dry-run 审查项、执行型注册门控、安装/反安装运行手册、人工 PME 验证路径、通过标准、失败分类与验证记录模板；`examples/pme-validation/` 当前也已补出可复用模板；这一步只把真实 PME 前置路径文档化，不代表当前阶段已经进入默认 COM 注册或 PME 自动化互调
-- `DWSIM / COFE` 人工复验当前已把 discovery、activation、placement、端口连接与最小 `Validate / Calculate` 主路径推进到阶段性闭环：两者均能发现并放置当前 PMC，也能连接 `Feed / Product` material streams；COFE material object release warning、outlet not flashed 报错与 mass balance 警告均已在 water/ethanol 复验样例下收敛
-- 当前为 DWSIM 画布接受条件已补齐 `Consumes Thermodynamics`、`Supports Thermodynamics 1.0` 与 `Supports Thermodynamics 1.1` 注册分类，但这只是 discovery/acceptance 层兼容 probe，不改变 MVP 不实现完整 Thermo PMC、不加载第三方 property package 的范围边界
-- 当前已把 `ICapeUtilities` 前序 slot 调整为 `Parameters get -> SimulationContext set -> Initialize -> Terminate -> Edit`，并把 COFE 需要的 `SimulationContext` getter 保留为 `Edit` 之后的同 `DispId(2)` late-bound getter；端口连接当前允许在连接期间保留 live PME material object 引用，用于短生命周期读取 Feed material 与写回 Product material，并在断开/终止时释放本 UnitOp 持有的 RCW。DWSIM parameter enumeration 要求 `Parameters.Item(i)` 返回对象本身同时支持 `ICapeIdentification / ICapeParameterSpec / ICapeOptionParameterSpec / ICapeParameter`，这一路径已纳入 contract test
-- 当前明确不继续线性堆叠 calculation report accessor；若宿主需要更高层语义，应优先在库内增加 reader / snapshot / presentation，而不是继续在 PMC 主类追加 convenience API
-- 当前仍不提前展开 COM 注册、PME 互调壳、第三方 CAPE-OPEN 模型加载或完整外部 Thermo/Property Package 宿主兼容
-
-App 与交互层当前进一步冻结以下口径：
-
-- MVP 保持单文档工作区，不急于做多文档容器
-- 单文档工作区不等于单文件实现，源码仍按职责拆分
-- 属性编辑采用字段级草稿态，语义提交后才写回文档
-- 求解控制采用 `SimulationMode(Active/Hold)` 与 `RunStatus` 分离模型
-- 求解结果采用独立 `SolveSnapshot`，不直接覆盖文档对象
-- 结果快照应保留按步展开能力，为撤回/前进和脚本化扩展留接口
-- `DocumentMetadata` 只保存文档身份与序列化元信息，不保存文件路径、求解态和用户偏好
-- `UserPreferences` 只保存应用级偏好与快照窗口策略，不污染文档语义
-- `CommandHistory` 只记录语义化文档命令，运行控制和文档生命周期动作不进入撤回栈
-- `SolveSessionState` 必须绑定当前观察的文档修订号，`SolveSnapshot` 由工作区持有有界历史窗口
-- Studio 当前 GUI-facing 宿主边界已形成 `StudioGuiHost + StudioGuiDriver + StudioGuiSnapshot + StudioGuiWindowModel + StudioGuiWindowLayoutState` 这一条正式契约，不再要求 `main.rs` 或未来真实 GUI 手工拼装窗口摘要
-- Studio 当前 GUI 命令面也已进一步收口为 `StudioGuiCommandRegistry + StudioGuiShortcutRouter + dispatch_ui_command(command_id)` 这一条统一入口，至少覆盖 run panel、canvas suggestion、离散 layout nudge 与选中流股恢复命令；未来真实 GUI 不应再长期保留 widget 私有 typed action 与正式 command id 并行的双轨接线
-- Studio 当前窗口布局状态已冻结为独立 UI 状态面，覆盖 `panel dock_region/stack_group/visibility/collapsed/order`、stack active tab、region 内 stack placement、`center_area`、`region_weights`、多窗口 `layout scope` 与 GUI-facing `drop target` 摘要推导
-- Studio 当前也已把 tab 展示角色冻结到 `StudioGuiWindowPanelLayout`，显式区分 `Standalone / ActiveTab / InactiveTab`，不让真实 GUI 再自行猜测 tab 化 panel 的展示模式
-- Studio 当前也已把 tab strip 交互纳入正式 mutation，至少覆盖 active tab 切换、前后循环、stack 内重排和 unstack，不再把这几类行为留给 GUI 框架私有状态
-- Studio 当前又已把 drop preview 查询正式前推到 `StudioGuiWindowDropTargetQuery + StudioGuiHost / StudioGuiDriver` 入口；未来真实 GUI 应按 `window_id + hover/anchor/placement` 请求预览，而不是继续读取 layout 内部状态后手工拼 mutation
-- Studio 当前又已把 query 结果扩成 `drop_target + preview_layout_state + preview_window`，让真实 GUI 在 hover 时可以直接消费预览态窗口模型，而不必自己再从摘要重建 tabbed/dock 结果
-- Studio 当前又已把 drop release 正式前推到同一套 query 词汇，新增 `ApplyWindowDropTarget / WindowDropTargetApplyRequested`，让 GUI 侧不必继续维护“预览用 query / 落地用 mutation”两套接口
-- Studio 当前又已把 hover 预览前推为显式会话态，新增 `SetWindowDropTargetPreview / ClearWindowDropTargetPreview` 与 `WindowDropTargetPreviewRequested / WindowDropTargetPreviewCleared`；host 会非持久化保存当前 preview，并通过 `StudioGuiSnapshot / StudioGuiWindowModel.drop_preview` 直接暴露给 GUI
-- Studio 当前又已把 `drop_preview` 继续收口为 GUI-facing presentation，直接携带 `preview_layout + changed_area_ids`，让 GUI 不必自己从当前态/预览态做差分才能画出 hover 预览
-- Studio 当前又已把 `drop_preview` 继续补成 overlay DTO，直接携带目标 `dock_region/stack_group/tab_index`、目标 stack tabs、高亮 area 集与 active tab，减少真实 GUI 对底层摘要字段的二次拆解
-- 第一版 `eframe/egui` GUI 壳当前已直接消费这份 `drop_preview.overlay`，把局部插入条、anchor 顶线、新 stack 占位、target-anchored 浮动 overlay 与局部 hint pill 画在目标位置，不再主要依赖顶栏说明文本
-- 当前 GUI 壳仍冻结在“单原生窗口承载逻辑窗口切换”的边界，不在这一阶段展开多原生窗口宿主
-- Studio 当前多窗口布局 scope 已从运行时 `window_id` 收口到基于 `window_role + layout_slot` 的稳定 key，避免布局恢复直接依赖临时窗口号
-- Studio 当前又已把原生 timer 宿主 glue 冻结为 `StudioGuiNativeTimerRuntime + StudioGuiPlatformHost + StudioGuiPlatformTimerDriverState` 三层边界，真实桌面框架后续不应再在入口层自行维护逻辑 binding、平台 native timer id 映射和 stale callback 判定
-- Studio 当前平台 timer 回灌与执行口径又已进一步冻结为：
-- 平台 request / command：`StudioGuiPlatformTimerRequest` / `StudioGuiPlatformTimerCommand`
-- start ack / failure ack：`acknowledge_platform_timer_started(...)` / `acknowledge_platform_timer_start_failed(...)`
-- callback outcome：`dispatch_native_timer_elapsed_by_native_id(...)`
-- batch / round 宿主结果：`dispatch_native_timer_elapsed_by_native_ids(...)`、`dispatch_due_native_timer_events_batch(...)`、`process_async_platform_round(...)`
-- batch / round 执行型宿主结果：`dispatch_native_timer_elapsed_by_native_ids_and_execute_platform_timers(...)`、`drain_due_native_timer_events_and_execute_platform_timers(...)`、`process_async_platform_round_and_execute_actions(...)`
-- Studio 当前 async round 动作顺序也已冻结为 `follow_up cleanup -> timer request`；真实桌面框架应优先复用 `StudioGuiPlatformAsyncRound::actions()` 或 executed async round，而不是在框架层重复归并和排序
-- Studio 当前应用层运行入口先冻结为 `StudioAppFacade + WorkspaceRunCommand + WorkspaceSolveService + solver_bridge` 四层，不让 UI 直接拼接底层 provider/solver 细节
-- `rf-ui` 当前运行栏状态先冻结为 `RunPanelState + RunPanelIntent + RunPanelCommandModel + RunPanelWidgetModel`，把按钮意图、主动作、按钮槽位、文本布局和最小渲染/触发所需状态都留在 UI 层，不让视图层或 Studio 侧重复发明一套按钮语义
-- Studio 当前对运行栏的最小消费也已前推到 `RunPanelWidgetEvent`，不再只接受裸 `RunPanelIntent`
-- Studio 当前也已补出 `run_panel_driver`，把最小运行栏驱动逻辑留在应用层，而不散落在入口层
-- 当前最小桌面入口 `run_studio_bootstrap` 也已补出 `StudioBootstrapTrigger`，允许样例入口显式选择“走 intent 触发”“走主按钮触发”或“走指定 widget action 触发”
-- Studio 当前运行触发先明确区分 `Manual` / `Automatic`，并把 `SimulationMode` / `pending_reason` 的运行门控收口在应用层
-- Studio 当前默认包选择采取保守策略：只有唯一候选包明确时才自动选中；多包场景必须显式指定 package，不在当前阶段隐式猜包
-- Studio 当前 Automatic 触发在命中 `HoldMode` / `NoPendingRequest` 时应先返回 skip，再决定是否需要 package 解析，避免多包缓存场景下的无意义失败
-- 当前最小桌面入口 `run_studio_bootstrap` 也已改为默认走 `StudioBootstrapTrigger::WidgetPrimaryAction`，并向入口层输出 `RunPanelWidgetModel`，确保“桌面触发点 -> UI 组件动作 -> Studio driver / 控制动作 -> UI 组件 DTO”边界在样例入口里就成立
-- 当前 `egui` Studio 壳已开始消费上述运行入口与 `SolveSnapshot` presentation：Runtime 面板可切换仓库内置正向示例项目、触发运行、按 summary / overall composition / phases 结构化显示流股结果，并展示求解步骤、诊断、日志；这一路径继续保持 `StudioAppFacade -> WorkspaceRunCommand -> WorkspaceSolveService -> solver_bridge` 边界不被绕过
-- 当前 `egui` Studio 壳又已补出项目打开入口：用户可通过路径输入或 Windows 原生文件选择器打开现有 `*.rfproj.json`，打开会重建当前 Studio runtime，打开失败会保留当前工作区并显示错误反馈；内置示例切换复用这条打开流程；若当前文档存在未保存修订，则先进入显式确认状态，避免静默丢弃当前上下文；打开成功后会记录到 shell 级最近项目列表并写入独立 Studio preferences 文件，重启后会恢复该列表；点击最近项目继续复用相同打开流程与未保存确认保护
-- 当前 `egui` Studio 壳又已补出最小 Result Inspector、失败结果 presentation、诊断目标定位命令、活动 Inspector 详情、通用 action DTO、Stream Inspector 字段级 presentation、字段 draft update / 单字段 commit / 多字段批量 commit driver，以及基础 `edit.undo / edit.redo` 文档历史命令；Stream Inspector 字段当前覆盖 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 与已有 `overall_mole_fractions` 组分条目，并已提供从 flowsheet 已定义组件中显式添加缺失组成条目、删除非最后组成条目的受控 command surface；Unit Inspector 当前覆盖 Feed source temperature / pressure、Heater/Cooler outlet temperature / outlet pressure、Mixer / Valve outlet pressure 与 Flash Drum flash temperature / flash pressure 这些关键 SI 参数，字段携带 SI 单位和约束提示，Mixer outlet pressure 高于两股已连接 inlet pressure 的较低值时停留在 invalid draft，Heater / Cooler / Valve outlet pressure 高于已连接 inlet pressure 时停留在 invalid draft；提交走 `DocumentCommand::SetUnitParameter` 并同步对应 outlet stream 模板，Flash Drum 会同步 liquid / vapor 两个出口模板；若无效参数已进入文档，运行会以 `solver.step.parameter` 诊断指向相关 unit / port / stream；活动 Inspector 当前也会在选中已运行单元时显示最新 `SolveSnapshot` 中的单元执行状态、step 序号、summary、输入流股和产出流股跳转；求解步骤 presentation 当前也统一携带单元、输入流股与产出流股 command action，供 Runtime、Active Inspector 和 Result Inspector 复用；失败结果 presentation 当前也携带 recovery action 与 recovery target action，分别复用 `run_panel.recover_failure` 与 `InspectorTarget` command；Active Inspector 的 unit port 列表当前也可在诊断修订号匹配当前文档时显示对应 port 的只读 attention 摘要。所有入口均通过正式 command / driver / runtime 边界执行，不由 shell 直接写 `FlowsheetDocument`
-- 当前 Canvas / Inspector 已允许受控恢复已存在 material stream：`Disconnect stream` 解除该流股在所有材料端口上的绑定并保留流股规格，`Disconnect source` / `Disconnect sink` 只解除唯一对应材料端点，`Reconnect stream` 只补齐单端流股的唯一、未占用且不会形成 unit dependency cycle 的端点，`Delete stream` 先解除材料端口绑定再删除该流股；这些动作均通过正式 `DocumentCommand` 与 undo history。它们只用于修正 MVP material stream 的错连 / 漏连，不得扩成自由连线编辑器、任意端口选择、自动布线或完整拖拽布局编辑器。
-- Result Inspector 当前只消费当前 `SolveSnapshot` 中已经 materialized 的结果：stream result summary 可显示 overall molar enthalpy，stream comparison 可比较 summary / composition / phase rows，unit-centric 视图可审阅最新 step 的输入/产出流股、关联诊断和 Inspector focus action。下一阶段允许补当前 snapshot 的轻量结果复制、摘要导出或更清晰表格审阅；不得扩成跨快照报表、模板报表、打印系统或完整导出体系。
-- 当前画布编辑前置状态先冻结为 `CanvasEditIntent` transient state：`begin_place_unit` 只表达“准备放置某类单元”的意图，不写入 `FlowsheetDocument`、不递增 revision、也不进入 `CommandHistory`；`commit_canvas_pending_edit_at(CanvasPoint)` 会把当前 `PlaceUnit` 意图提交为带 canonical ports 的 `DocumentCommand::CreateUnit`，并把动态落点写入项目同目录 `<project>.rfstudio-layout.json` sidecar 作为最小 Canvas layout state；文档语义变化会清理 pending edit。GUI 侧当前已通过 `StudioGuiCanvasState / StudioGuiCanvasPresentation / canvas.cancel_pending_edit` 展示和取消当前意图，并通过 `StudioGuiCanvasPlaceUnitPaletteViewModel` 暴露 `Feed / Mixer / Heater / Cooler / Valve / Flash Drum` 六类内建单元的 begin-place command；`egui` Canvas 面板只消费这份 palette 来发起 pending edit，点击落点仍复用同一条提交路径。提交成功后会经由新单元的 object command target / focus anchor 生成 `StudioGuiCanvasCommandResultViewModel`，统一驱动新建提示、Inspector 焦点、Canvas 一次性定位、GUI activity 与命令面只读反馈；无 pending edit、unsupported unit kind、dispatch 失败或 anchor 过期也使用同一套 warning / error result。当前又补出 `canvas.move_selected_unit.left/right/up/down`，把离散 layout nudge 前推为正式 widget action / command surface；宿主仍只更新 `<project>.rfstudio-layout.json` 中的单元坐标，缺少 sidecar 坐标时先按当前 transient grid slot pin 出初始坐标，再执行一步移动。它不写项目文档、不递增 revision、不进入 `CommandHistory`。这仍不代表已经实现完整画布单元创建器或拖拽布局编辑器
-- 当前 `egui` Studio 壳又已补出 Canvas 最小可见与只读扫读层：已有 unit 会优先按 sidecar 中的 placement 坐标投影为单元块，缺失坐标时回退临时网格；已有 material stream 绑定会投影为物流线，活动 Inspector 目标会驱动画布 selection、focus callout 和 viewport focus anchor；对象列表会统一展示 unit / stream，并可按 `All / Attention / Units / Streams` 临时筛选；material port marker、端口 hover、运行/诊断 badge、状态 legend 与 Canvas attention summary 只帮助扫读已有绑定和诊断目标；最近一次 Canvas command result 会以只读 command-surface 摘要进入命令列表 / 命令面板，但不是可执行命令、不参与 Enter 选择、不进入项目状态或跨会话历史。上述能力不引入端口点击编辑、连线创建、拖拽布局或项目 schema 扩张
-- 当前 Canvas 本地建模建议已从只读扫读继续补到最短可求解路径：`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum` 与 `Feed + Feed -> Mixer -> Flash Drum` 都可通过 placement palette、local Canvas suggestions、正式 `DocumentCommand` 与 `run_panel.run_manual` 走到求解收敛。suggestion acceptance 当前只校验本次 source/sink/stream 的局部一致性，不要求半成品 flowsheet 立即通过完整连接校验；完整性错误继续由运行诊断与 recovery path 承担。`Mixer` 入口建议只在可连接 source-only stream 数量与未绑定 inlet 数量一致时生成，避免多来源场景静默猜测入口；`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 创建建议必须等必要 inlet 已绑定后才出现，避免无自由连线阶段先制造额外 source-only stream；GUI 侧当前按 acceptance payload 把可写回 suggestion 显示为明确的 `连接流股` / `Connect stream` 或 `创建流股` / `Create stream` 动作，使用户不必依赖当前 focused suggestion 也能显式选择要接受的连接或 outlet stream 创建
-- 当前 `egui` Studio 壳又已补出 `file.save` 与 `Save As` 最小项目持久化闭环：保存命令经由 `StudioRuntimeTrigger::DocumentLifecycle` 写回当前 `*.rfproj.json`，成功后刷新 `last_saved_revision / has_unsaved_changes`；未命名空白项目首次 `Save` 会进入 Windows 原生保存选择器；顶部 `Save As` 可显式写入新路径，并更新当前项目路径、项目路径输入框与最近项目列表；若 `Save As` 目标文件已存在且不是当前项目路径，shell 先进入显式覆盖确认，确认后才写入，取消则保留当前工作区和目标文件
-- 当前 `rf-store::write_project_file` 已改为同目录 staged write：先写临时 sibling 并同步，再替换正式项目文件；Unix 类平台使用 `rename` 替换语义，Windows 当前用临时备份做受控替换和失败回滚，避免半写入 JSON 直接污染项目文件
-- 当前 Studio 字段编辑快捷键策略已冻结为最小安全闭环：`Ctrl+S` 即使在文本输入焦点下也触发 `file.save`；`Ctrl+Z / Ctrl+Y` 在普通焦点下触发 `edit.undo / edit.redo`，但文本输入焦点下保留给输入框自身的编辑撤销/重做；Stream Inspector 输入框的 `Enter` 只提交当前字段，不隐式触发 `Apply all`
-- 中文/英文切换当前只属于 GUI shell 偏好，不写入 `DocumentMetadata`、`UserPreferences` 或项目文件；系统 CJK 字体 fallback 也只在应用启动时配置，不新增仓库字体资产
-- 当前不再把“首版 demo 前硬化期”的保守限制作为阻止主线功能推进的理由；允许按专题推进 UI 信息架构、sidecar 级单元拖动、sidecar 级 viewport 记忆和轻量结果审阅增强。当前原生文件选择器只覆盖 Windows 打开与另存为，不承诺跨平台文件工作流；最近项目持久化只覆盖 shell 级 MRU 路径列表，不等同于完整应用偏好系统。后续更完整画布编辑或结果报表仍应先补正式 presentation / command / state 边界再进入真实 UI。
+更新时间：2026-09-06
 
-流程图交互增强方向当前补充冻结以下边界：
+## 用途与维护状态
 
-- 后续允许流程图画布在平面视图与立体投影视图之间切换，但底层继续共享同一份 flowsheet 语义、项目文件与命令历史，不为 3D 单独引入第二套文档模型
-- 物流线、能量流线、信号流线的可视化后续允许支持静态/动态双模式，但当前阶段不为了表现层效果提前扩张 `rf-model` / `rf-flowsheet` 的核心语义
-- 流线类型与运行状态后续应采用正交表达：类型优先靠主色区分，状态优先靠线型、透明度、饱和度、方向箭头动效或状态徽标区分，不先把单一配色方案写死到产品语义
-- 对标准单元放置后的“待补全入口/出口/连线”后续允许以灰态 ghost 形态显示，并通过 `Tab` 或明确接受动作补全；未接受前不直接写回正式文档
-- `RadishMind` 后续只作为建议与预测的辅助来源，不替代本地 canonical port 规则、连接校验、求解器诊断与文档命令边界
+用途：记录停更前 MVP 的能力范围、实现限制与验收含义。
+读者：需要判断现有代码能做什么、不能证明什么的使用者和维护者。
+不包含：逐周开发流水、详细接口定义、工具链命令和新的开发排期。
 
-认证、授权与受控物性资产当前进一步冻结以下口径：
+自 2026-06-12 起业务功能开发保持停止。本文的能力与目标均为历史基线，不授权恢复开发；当前外围维护范围以 [当前状态](../status/current.md) 为准。
 
-- 桌面端统一走 `OIDC Authorization Code + PKCE`
-- RadishFlow 桌面端是 `public client`，不内置长期 `client_secret`
-- 登录默认采用系统浏览器 + loopback redirect，不照搬 Web 客户端 `localStorage` token 方案
-- Access Token / Refresh Token 只允许落在操作系统安全存储
-- 外部控制面默认采用 `ASP.NET Core / .NET 10`，不额外引入 Go 服务主线
-- 高价值原始物性资产不默认完整下发到客户端
-- 本地求解热路径继续本地执行，远端服务只承担身份、授权、租约、清单和派生包分发
-- 派生物性包分发优先采用对象存储 / CDN / 下载网关 + 短时票据，不把控制面 API 设计成长时大文件出口
-- 允许引入离线租约与本地派生物性包缓存，但不承诺客户端绝对防提取
-- 项目文件继续固定为单文件 `*.rfproj.json` 真相源，授权缓存索引与派生包缓存继续留在应用私有缓存根目录
-- MVP 默认不把 `snapshot_history`、token 明文、授权缓存索引或 Studio 窗口布局状态混进项目文件
-- Studio 当前窗口布局偏好已冻结为项目同目录 sidecar：`<project>.rfstudio-layout.json`
-- 桌面交付默认采用“压缩包 + 主入口 + 附带资源目录”的原生客户端形态，不以单文件可执行为当前阶段目标
+## 已保留的 MVP 范围
 
-## 当前阶段优先目标
+第一阶段验证了 Rust Core + Rust Studio + `.NET 10` CAPE-OPEN Unit Operation PMC 的最小稳态流程闭环。
 
-在真正恢复主线功能推进前，当前阶段优先目标曾调整为仓库地基建设：
+| 领域 | 已有范围 | 尚不具备的能力 |
+| --- | --- | --- |
+| 物性与闪蒸 | 二元样例、Antoine / 理想 K 值、Rachford-Rice TP Flash、泡露点窗口、常热容相焓 | 完整焓参考态与潜热、PH / PS Flash、真实 EOS 与完整组分数据库 |
+| 单元与流程 | Feed、Mixer、Heater / Cooler、Valve、Flash Drum，无回路顺序模块法 | recycle 全功能收敛、严格塔器、复杂多组分或反应网络 |
+| Studio | 物性选择、受控放置与连接、输入检查、运行、结果审阅和失败恢复 | 任意端口自由连线、自动布线、完整报表、完整多文档工作台 |
+| 项目生命周期 | 新建、打开、保存、另存为、undo / redo、布局 sidecar、最近项目 | 云同步、多人协作、完整跨平台原生文件工作流 |
+| CAPE-OPEN | 自有 PMC、受控注册、DWSIM / COFE 代表场景的历史人工验证 | 第三方模型加载、完整 Thermodynamics PMC、任意 PME 兼容承诺 |
+| 控制面 | 客户端协议、HTTP transport、缓存与租约编排 | 本仓库内的服务端交付、真实登录到授权分发的完整联调 |
 
-- 完善仓库规范
-- 完善代码与文档格式规范
-- 建立分支、PR 和 CI 基线
-- 完善 App 架构规划
-- 完善设计文档与进度文档
+已覆盖的受控流程为：
 
-当前判断逻辑是：
+- `Feed -> Flash Drum`
+- `Feed -> Heater/Cooler/Valve -> Flash Drum`
+- `Feed + Feed -> Mixer -> Flash Drum`
 
-- 这些工作不直接产出功能，但会决定后续功能开发是否可持续
-- 在仓库还很新时完成这些约束，成本远低于中后期补治理
-- 当前主线还没有复杂历史包袱，适合现在就冻结工程基础口径
+M1-M5、MVP α / β 和通用小流程建模的收口指上述范围内的契约与用户路径验收，不表示工业工况准确性认证或正式发布。证据见 [α 清单](alpha-acceptance-checklist.md)、[β 清单](beta-acceptance-checklist.md) 和 [历史路线图](../radishflow-mvp-roadmap.md)。
 
-截至 2026-04-27，CAPE-OPEN / PME 验证基线已阶段性冻结，仓库地基也已足以支撑短线主线回到 Rust Studio 的最小可操作工作台闭环；后续应继续保持边界清晰和验证稳定，但不再把“地基建设”作为阻止 Studio 可见闭环推进的理由。
+## 数值与数据解释边界
 
-截至 2026-05-12，MVP 第一阶段的 M1-M5 最小线均已形成可验证基线：Rust Core 能跑通最小稳态流程，Rust Studio 已具备最小可操作工作台闭环，`rf-ffi` 与 `.NET 10` CAPE-OPEN / PME 路径也已有回归与人工验证记录。当前优先目标应从继续补细粒度消费面测试，切换为 MVP α 验收与发布硬化；后续只修验收路径暴露的真实 blocker，不再把 near-boundary、command surface 或 runtime click 细节扩成开放式任务池。
+- `binary-hydrocarbon-lite-v1` 和相关 golden 是软件演示与回归样例；methane / ethane 名称以及历史材料中的 `official` 不代表参数已完成真实物性验证。
+- Mixer 当前按摩尔流量加权温度；Valve 当前保持入口温度并调低压力；Heater / Cooler 使用指定出口 T/P。它们不构成完整能量闭环。
+- 相焓采用以 `298.15 K` 为参考的常热容显热模型，不能据此解释真实相变潜热。
+- `Converged` 表示当前模型的求解路径成功，不表示已验证物性适用范围、能量守恒或工程误差。
+- golden 回归、跨层 DTO 一致性和独立物理基准是不同证据，不能互相替代。
 
-截至 2026-05-25，首版 demo 前硬化期、MVP α 内部验收节点和第一轮受控扩展均已收口。当前优先目标切换为 MVP β：高频建模能力与小案例作者体验。后续不再围绕 Canvas / Inspector 的 hover、提示、按钮、边界说明做开放式补口，而应把能力包组织成可被用户复现的小建模闭环；当前已从 Home 提供 `Feed + Feed -> Mixer -> Flash Drum` 与 `Feed -> Heater -> Flash Drum` 两条空白项目作者路径。允许成组推进高频 Unit Inspector 参数、受控连接编辑设计和可复现示例案例。文档语义变化仍必须通过正式 command / validation / undo，布局 / 视口和作者清单选择仍必须明确为 shell-local 或 sidecar state；仍不进入自由连线编辑器、自动布线系统、完整拖拽布局编辑器、完整报表系统、完整参数表、第三方 CAPE-OPEN 模型加载或第三方物性包加载。
+公式、关联式温区、样例解释和数值证据要求统一见 [热力学 MVP 模型](../thermo/mvp-model.md)，不在各单元专题复制另一套假设。
 
-截至 2026-05-26，MVP β 第一刀：小案例作者体验 v0 已通过。项目当前由个人开发者推进，后续节奏从“持续补细颗粒度体验缺口”切换为“更大颗粒能力包”。已通过阶段只修真实 blocker，例如无法完成主路径建模、无法运行、结果明显错误、保存 / 重开破坏项目、文档事实源与代码能力冲突或验证失败。`Feed -> Valve -> Flash Drum` 作者路径、更多 checklist、hover / selector / 按钮文案等同类补口先降级为 backlog。下一阶段优先目标是 MVP β 第二刀：建模输入能力 v0，让用户能在受控范围内配置项目组分、选择内置物性方法 / package、输入 Feed 组成和单元参数，并用这些输入能力复现 official demo case。
+## 保留的领域与应用约束
 
-截至 2026-05-27，MVP β 第二刀：建模输入能力 v0 已通过，结果核对与案例说明 v0 第一版、受控连接恢复 v0、剩余单元建模闭环 v0 也已完成 focused 收口。`Cooler` / `Valve` 已通过内部测试覆盖空白项目手工搭建、参数提交、保存 / 重开 / rerun 与 `SolveSnapshot` 核对；但当前 UI 仍是草稿状态，不新增对应 Home 作者入口，也不补会随 UI 变化废弃的用户操作 guide。下一阶段建议推进失败修复闭环 v0，围绕缺物性包、缺项目组分、缺 stream composition、参数越界、断连 / 漏连等真实 blocker 核对诊断、recovery target、Inspector focus、修复命令和保存 / 重开 / rerun 稳定性。
+### Core
 
-截至 2026-05-28，失败修复闭环 v0、MVP β 人工 smoke v0 与仓库级阶段基线验证均已通过，通用小流程建模 v1 已推进前两步。普通空白项目不再进入或自动匹配 `Mixer-Flash` / `Heater-Flash` 小案例状态；运行前检查按当前 `Flowsheet` 的项目组分、material port 连接、stream reference、Feed source stream T/P/F/z、composition 归一和 Heater / Cooler / Valve / Mixer / Flash Drum 必要参数判断，并定位到具体 stream / unit / port。物性包选择继续由正式 run package resolution 判断，避免 shell 误拦仍可由本地唯一缓存包解析的旧示例项目。官方示例项目若要直接运行，也必须携带正式 `UnitOperationParameters`，不再依赖 outlet stream template fallback 代表用户已提交参数。既有小案例清单只保留为导航提示，不作为通用建模运行 gate；仍不推进 tag、release notes、便携包刷新、自由连线编辑器、自动布线、完整拖拽布局器或完整报表系统。
-
-截至 2026-06-01，通用小流程建模 v1 已推进到第十二切片。普通空白项目中的 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 已覆盖显式输入、保存 / 重开 / rerun、单元 step、Result Inspector、底部结果表、Results commands、轻量导出、关键结果合理性、单相 Flash 零流量出口缺席语义、重开失败态定位、case-level review summary，以及编辑后旧结果失效语义。结果审阅仍只消费当前 revision 的最新 `SolveSnapshot`；文档编辑后旧快照只可作为 stale notice 来源，不新增完整报表系统、跨快照历史或 shell 私有结果真相源。
-
-阶段门禁进一步调整：MVP β smoke、指定小案例作者入口和结果审阅覆盖面已完成其阶段职责，不再作为日常推进 gate。后续可以围绕普通空白项目真实建模缺口、结果新旧状态表达和 readiness / Run Panel 边界继续推进；这些改动仍必须服务建模正确性和结果可判断性，不进入视觉精修、大改版、完整报表、模板、打印、批量导出或跨快照报表。
-
-当前仍保留的硬边界不变：不加载第三方 CAPE-OPEN 单元或第三方 Property Package，不做完整组分数据库、完整 Thermodynamics PMC、动态模拟、CFD、自由连线编辑器、任意端口选择器、自动布线或完整拖拽布局器；CAPE-OPEN / COM 语义仍不得倒灌到 Rust Core。readiness 只拦截确定的建模输入缺失，结构性连接 / 拓扑 / 非法旧项目 / 求解阶段参数失败继续由正式 Run Panel 诊断和 recovery 承担。
+- 内部使用 SI：温度 K、压力 Pa、摩尔流量 mol/s；组成使用摩尔分率，相标签为 overall / liquid / vapor。
+- `rf-model` 只承载对象模型；COM 语义留在 `.NET`，求解调度留在 solver。
+- 单元围绕 `MaterialStreamState` 输入输出执行，连接使用 canonical material ports；一股一源一汇，终端产品流可只有 source。
+- 当前求解器拒绝环路；早期“极简回路”设想不作为已实现能力。
 
-## 近期开发节奏
+### Studio 与项目
 
-当前建议以周为单位推进，先把主线拆细：
+- 保持单文档工作区，普通空白项目通过独立物性页显式选择受控 package 与组分，不预写选中状态。
+- readiness 检查真实建模输入；小案例作者清单仅用于导航，不是通用运行 gate，也不代替 solver 的连接、拓扑和执行诊断。
+- Inspector 草稿只有经语义提交才进入文档；显示的 outlet 默认值不等同于已提交 unit parameter。
+- 文档变更通过正式命令进入 revision 和 undo history；当前 undo / redo 使用 before / after flowsheet 快照。
+- 结果按 document revision 失效；审阅、复制和轻量 `.txt` 导出使用当前快照，不在 UI 重算数值。
+- 受控 suggestion 必须由用户显式接受；断开、删除和唯一合法候选重连继续走命令边界，不等于自由连线。
+- 单元位置与 viewport offset 保存在 `<project>.rfstudio-layout.json`，不写入项目语义或文档历史。
+- `Save / Save As`、覆盖确认、脏改关闭和退出共用项目生命周期；staged write 的平台恢复限制见 [存储专题](../topics/project-lifecycle-storage.md)。
+- 项目格式是单文件 `*.rfproj.json`；授权缓存、token、snapshot history 和窗口布局不混入项目文件。
+- 中文 / 英文切换属于 shell 偏好；当前 shell 已内嵌 Inter 与 SourceHanSansSC 字体。Windows 原生打开 / 保存选择器不构成跨平台文件工作流承诺。
 
-### 2026-W13
-
-- 完成仓库骨架初始化提交
-- 建立第一批 Rust 基础类型和领域模型骨架
-- 完善初始化文档、协作约定与周志体系
+详细边界见 [App Architecture](../architecture/app-architecture.md) 与 [专题索引](../topics/README.md)。
 
-### 2026-W14
+### 互操作与外部控制面
 
-- 完善分支与 PR 治理规则
-- 建立 GitHub Actions PR 检查
-- 建立文本编码、文件格式与 Rust 基础验证脚本
-- 完善 App 架构与当前阶段开发规划文档
+- Rust 与 `.NET` 之间只传递句柄、基础数值、UTF-8 和 JSON。
+- 自有 PMC 的接口、GUID、IDL / TLB、异常、注册和 PME 消费路径由 [CAPE-OPEN 边界](../capeopen/boundary.md) 管理。
+- 注册保持默认 dry-run、执行 preflight 和显式确认，不因历史验证通过而默认修改系统环境。
+- 历史控制面目标采用 OIDC Authorization Code + PKCE；public client 不内置长期 client_secret，token 目标存储为操作系统安全存储。
+- 本地求解不依赖逐次远端计算；控制面与资产分发方案不代表已经部署。实现现状见 [控制面专题](../topics/platform/control-plane-service.md)。
 
-### 2026-W15
+## 非目标与后续决策
 
-- 冻结 `AppState`、`WorkspaceState`、`FlowsheetDocument`、`DocumentMetadata`、`UserPreferences` 的字段边界
-- 冻结字段级草稿提交流程、`CommandHistory` 边界和工作区保存态口径
-- 冻结 `SolveSessionState`、`DiagnosticSummary`、`SolvePendingReason` 与 `SolveSnapshot` 的关系
-- 明确 UI 交互层、求解层和快照历史之间的数据所有权
-- 冻结桌面登录、授权、离线租约与远端资产控制面的总体边界
-- 冻结 `StoredProjectFile` / `StoredAuthCacheIndex` JSON DTO、相对缓存路径布局、客户端注册与 scope 命名
+当前不推进新增模拟能力、物性模型、第三方 CAPE-OPEN、控制面、发布包或对外支持。动态模拟、CFD、立体视图、智能辅助、完整报表和资产商业化仅保留为历史设想。
 
-补充说明：
+若未来由项目所有者明确改变维护状态，应先选择目标用户、体系和工况，再重新确认范围与验收。可供评估的优先顺序记录在 [路线图的后续决策参考](../radishflow-mvp-roadmap.md#后续决策参考未排期)，不作为当前执行清单。
 
-- 截至 2026-03-29，上述大部分基础冻结项已提前完成，不再视为后续待办
-- 截至 2026-03-29，本地 `PropertyPackageManifest` / `payload` 实体读写、`PropertyPackageProvider` 的本地缓存接线、下载落盘路径、下载 JSON 到本地 payload 的映射和首个真实样例包也已提前完成
-- 截至 2026-03-29，下载获取抽象、基于规范化 payload 的摘要校验、失败回滚和样例摘要也已提前收口完成
-- 截至 2026-03-29，下载抓取失败分类与有限次重试策略也已提前收口完成
-- 截至 2026-03-29，原始 HTTP 请求/响应适配层与状态码到失败分类的映射也已提前收口完成
-- 截至 2026-03-29，基于 `reqwest + rustls` 的真实 HTTP client adapter 也已提前收口完成
-- 截至 2026-03-29，控制面 `entitlement / manifest / lease / offline refresh` HTTP client 与应用层编排也已提前收口完成
-- 当前剩余重点已经进一步转向联网失败策略细化、数值主线和求解闭环，而不是继续停留在第一轮 DTO 草案
+## 文档路由
 
-补充对齐：
-
-- 今天（2026-03-30）优先在已接通的控制面 client 与应用层编排之上，细化授权刷新后的 UI 事件流、联网失败提示和离线刷新触发策略
-- 之后优先恢复 `rf-thermo` / `rf-flash` 数值主线，再进入 `rf-solver` 的无回路顺序模块法与首个可求解 flowsheet 示例
-
-进一步补充：
-
-- 截至 2026-03-31，`rf-thermo` / `rf-flash` 的最小二元数值主线、黄金样例、`rf-unitops` / `rf-flowsheet` 的第一轮边界，以及 `rf-solver` 的首个无回路闭环都已提前推进
-- 当前近期主线已从“补第一条求解闭环”切换为“扩第二个内建单元、增加第二个示例 flowsheet，并细化求解结果与诊断口径”
-
-截至 2026-04-01，再补充对齐：
-
-- `rf-ui` 已能把内核 `SolveSnapshot` 映射并回写到 `AppState`
-- `apps/radishflow-studio` 已具备从物性包加载、工作区运行命令、运行门控到结果回写的最小应用层闭环
-- 当前近期 Studio 主线已从“只有求解 bridge”切换为“继续把运行命令、结果派发和后续异步执行边界收口”
-
-### 2026-W16
-
-- 已提前完成 `rf-thermo` 中的 Antoine 饱和蒸气压与理想体系 `K` 值估算
-- 已提前完成 `rf-flash` 中的 Rachford-Rice 和最小二元 `TP Flash`
-- 已提前建立 `tests/thermo-golden` 与 `tests/flash-golden` 的首批黄金样例
-- 2026-05-05 又补齐 M2 的基础焓值出口：`rf-thermo` 当前按物性包 liquid/vapor 常热容计算相对 `298.15 K` 的 MVP 显热相焓，`rf-flash` 当前会把 liquid/vapor 与 overall molar enthalpy 写入 `PhaseState`，`Flash Drum` outlet stream 继续保留对应相焓；这仍不是完整焓基准或相变潜热模型
-
-### 2026-W17
-
-- 已提前完成 `rf-unitops` 中 `Feed`、`Mixer`、`Flash Drum` 的最小统一接口
-- 已提前完成 `rf-flowsheet` 中的端口连接与基本校验
-- 已提前明确单元输入输出的标准流股接口与 canonical material ports
-
-### 2026-W18
-
-- 已提前完成 `rf-solver` 中首轮无回路顺序模块法
-- 已提前增加第一个可直接从 `*.rfproj.json` 载入并求解的示例 flowsheet
-- 完成 `DWSIM / COFE` water/ethanol 人工 PME 验证记录、PME trace 开关化、TypeLib 生成脚本化与 CAPE-OPEN / PME 阶段性冻结
-- 回到 Rust Studio 主线，补出“打开示例项目 -> 运行求解 -> 查看结果/诊断”的第一版真实 `egui` 可见闭环，并补中文 shell 选项与 CJK 字体 fallback；2026-04-28 继续补出路径输入式项目打开入口、Windows 原生打开选择器、打开反馈、未保存改动打开前确认、shell 级最近项目列表及其独立 preferences 持久化、结构化流股结果 presentation 与结果区基础本地化；2026-04-29 继续补出 Result Inspector、失败结果、诊断目标命令、活动 Inspector 详情、Stream Inspector 字段级草稿更新/提交和基础文档历史 undo/redo；2026-04-30 继续补出保存 / 另存为生命周期、Stream Inspector 多字段批量提交、字段编辑快捷键焦点策略、项目文件 staged write 与 Save As 覆盖确认；2026-05-01 继续补出保存 / 另存失败恢复、Result Inspector 摘要可读性、产出单元诊断关联、当前快照内两股流股对比、Stream Inspector 总体组成字段编辑边界，以及 Canvas pending edit、单类型放置、单元块、物流线、选择反馈、对象列表、焦点气泡、端口 marker、端口 hover、运行/诊断 badge 和对象列表临时筛选；2026-05-02 继续补出 Canvas legend、viewport/focus anchor、对象定位结果、pending edit 创建/失败统一 `StudioGuiCanvasCommandResultViewModel` 反馈、最近一次 command result 的只读 command-surface 摘要，以及 Feed/Mixer/Heater/Cooler/Valve/Flash Drum 多单元 placement palette，并通过 `pwsh ./scripts/check-repo.ps1` 完成仓库级验证；2026-05-03 补齐多单元 placement 提交端回归矩阵，逐类锁定 `CreateUnit kind`、canonical ports、Inspector 焦点、Canvas focus anchor 和 command result 反馈，并将 Canvas 当前只读扫读层标记为阶段收口
-
-### 2026-W19 以后
-
-- 不再把 `rf-ffi`、`.NET 10` 适配层或 PME 人工验证列为“尚未启动”的后续项；这些路径已经形成当前回归基线，后续只做明确回归修复、验证脚本维护和官方接口真相源校准
-- Studio / Canvas 暂停继续扩 hover、legend、focus、command feedback 等周边 presentation 细节，把当前只读扫读层和多单元 placement palette 视为已收口边界
-- 2026-05-04 已补齐三条最短可操作建模路径：`Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`；这些路径当前通过本地 Canvas suggestions 补齐连接和必要 outlet stream，并已由 shell 回归测试锁定到手动求解收敛
-- 2026-05-04 继续补齐真正空白项目前置缺口；2026-05-14 顶部 `New Blank` 进入未命名空白项目，并为最短建模路径准备本地 `binary-hydrocarbon-lite-v1` 物性包缓存；2026-05-27 起，空白项目不再预写默认二元 official hydrocarbon 组件或默认物性包，必须由用户显式选择 `binary-hydrocarbon-lite-v1` 与 methane / ethane 后再创建 Feed source stream 和运行。2026-05-28 起，运行前 readiness 要求 Feed source stream 的 T/P/F/z 与 Flash Drum 等必要单元参数都进入文档；Feed source stream 可沿用本地规则默认值，但 `Feed -> Flash Drum` 最短闭环仍需显式提交 Flash Drum flash temperature / pressure 后运行
-- 2026-05-04 又补出显式 suggestion acceptance；2026-05-20 UI 文案进一步按 acceptance payload 区分为 `连接流股` / `Connect stream` 与 `创建流股` / `Create stream`：每条带 acceptance payload 的本地建议都可单独接受，当前已验证非 focused outlet suggestion 也能先被接受，后续仍可补齐 `Feed -> Flash Drum` 并运行收敛
-- 2026-05-04 又补出 Canvas placement 坐标最小持久化：落点保存到 `<project>.rfstudio-layout.json` sidecar，保存并重开项目后单元位置可恢复，且仍可继续显式接受 connection suggestions 并运行收敛
-- 2026-05-04 又补出 Active Inspector 单元最新执行结果审阅：选中已运行单元时，窗口模型会暴露执行状态、step 序号、summary 和产出流股跳转，并由 shell 只读展示；2026-05-05 进一步补出输入流股跳转
-- 2026-05-04 又补出求解步骤导航 action：Runtime 全局步骤、Active Inspector 关联步骤和 Result Inspector 关联步骤都可复用同一单元/产出流股跳转 presentation；2026-05-05 进一步纳入输入流股跳转
-- 2026-05-04 又补出失败摘要动作：失败结果可直接暴露修复命令与 recovery target 定位命令，继续复用既有 RunPanel recovery 与 Inspector target 边界
-- 2026-05-04 又把上述错误定位入口收口为统一 `StudioGuiWindowDiagnosticTargetActionModel`：失败摘要、Result Inspector、Active Inspector 与求解步骤都会汇总可执行的诊断目标 action，仍只复用 `run_panel.recover_failure` 与 `InspectorTarget` command，不新增第二套错误处理状态机
-- 2026-05-04 又补出失败详情结构化 presentation：失败结果现在可直接显示 latest diagnostic 的 document revision、severity、primary code、diagnostic count、相关 unit / stream / port target；port target 只定位到所属 unit，不新增端口级私有命令，也不从错误 message 文本反解析
-- 2026-05-04 又补出 Canvas unit layout nudge 的正式边界：`canvas.move_selected_unit.left/right/up/down` 由 `StudioGuiCanvasWidgetModel`、`StudioGuiCommandRegistry` 与 `dispatch_ui_command(command_id)` 统一派发，只更新 `<project>.rfstudio-layout.json` 中的单元坐标；缺少 sidecar 坐标时先按当前 transient grid slot pin 出初始位置，保存后重开可恢复，且不会把布局移动误记为项目文档修改。当前 selection presentation 与 command result 会显式显示 `sidecar position` / `transient grid` 来源，避免 pin 行为隐藏在 shell 私有逻辑里
-- 2026-05-04 又把结构化 port target 延伸到 Canvas attention 与 Active Inspector port attention：Canvas unit / stream / material port hover、对象列表 attention summary 和 Active Inspector unit port 行都会只读显示 `DiagnosticSummary` / `DiagnosticSnapshot` 已有 target 字段；Active Inspector 还会按 document revision 做 stale diagnostic 门控，避免修复后继续显示旧失败
-- 2026-05-04 又补出 Result Inspector unit-centric 视图：`StudioGuiWindowResultInspectorModel` 现在同时携带 `unit_options / selected_unit_id / selected_unit / unit_related_steps / unit_related_diagnostics / unit_diagnostic_actions / has_stale_unit_selection`，新增 `result_inspector_with_unit(...)` 入口；shell Runtime 面板在结果区流股详情下补出 `Unit results` 折叠区，按单元维度复用既有 unit execution result / 求解步骤 / 关联诊断 / 诊断目标动作 presentation，命令仍走 `inspector.focus_unit:*` / `inspector.focus_stream:*`，与 stream selection 互不联动；随后 `rf-solver` 已把 solver step 的结构化 consumed / produced stream 快照直接前推到 `rf-ui::StepSnapshot` 和 Studio DTO，单元最新结果、求解步骤与关联诊断现在可同时审阅输入流股和产出流股的 Inspector focus action，stream-centric related steps 也可显示上游产出和下游消费该流股的求解步骤，stream / comparison selector summary 也会在已有已物化 molar enthalpy 时显示 `H`，unit selector summary 也会显示最新 step 的输入/产出流股摘要，stream comparison 正文也会为 base / compared stream 暴露既有 Inspector focus action，但仍不进入完整结果表格、导出或报表系统
-- 2026-05-06 先完成 Docs 入口和代码规范收口，再收紧 `rf-thermo` / `rf-flash` 直接数值 API 的 mole fraction 归一契约；Studio 随后把 Stream Inspector composition normalize、草稿提示、运行阻塞、字段/整股 discard、受控添加缺失组分和受控删除非最后组分全部接到正式 presentation / command / driver / runtime 边界。新增或删除组成条目都不做隐式差值补偿，shell 不保存私有组成状态；完整组件库、项目级组件创建/删除、组分删除迁移和复杂物性包选择器仍不在当前 MVP 范围内
-- 2026-05-07 至 2026-05-08 已把主线继续收回 `rf-thermo / rf-flash` 数值稳定性：bubble/dew pressure / temperature、`phase_region` 与结构化 `bubble_dew_window` 的 golden / focused tests 已扩到 three-composition two-phase 与 synthetic `liquid-only / vapor-only` 单相 near-boundary `±ΔP / ±ΔT` 基线；同一组 DTO 又已前推到 `Heater/Cooler/Valve/Mixer -> Flash` 的 integration / workspace run path，锁定非 flash 中间流股与 flash inlet consumed stream 的正式一致性回归
-- 下一轮主线应继续围绕这套数值基线收口 `rf-thermo / rf-flash`、`SolveSnapshot` 结果消费与端到端回归，而不是回到 Canvas / Inspector 周边细节扩张；也不要把当前空白项目受控选择、suggestion connection、placement 坐标持久化、单元结果摘要、port attention 或 near-boundary 回归误扩为完整组件库、完整物性包浏览/切换、项目向导、自由连线编辑器、拖拽布局编辑器或结果报表系统
-- 2026-05-12 阶段复盘后，当前 focused 收口应视为已足够支撑 MVP α 验收；下一轮优先建立 acceptance checklist、运行仓库级验证和用户视角 smoke，而不是继续主动寻找更多 shell 消费面细节。
-- 若继续推进 Canvas，必须先补正式 `DocumentCommand` / validation / layout state 边界，不在 `egui` shell 中直接堆完整画布编辑器或拖拽布局
-- 2026-05-21 至 2026-05-22 已围绕无自由连线阶段的可恢复性继续收口：先让 outlet stream suggestion 等必要 inlet 绑定后再出现，再补选中 material stream 的受控断开 / 删除动作。当前恢复能力只覆盖现有 MVP material stream，不新增任意端口重连、自动布线或完整画布编辑器
-- 2026-05-24 阶段复盘后，当前不再把“单次只放开一个窄口径补口”作为长期节奏；它只作为风险较高能力的准入方式。下一轮主线应组织为 MVP β 能力包，例如成组单元参数、受控连接编辑或可复现小案例，而不是继续追逐 Canvas / Inspector presentation 细节
-
-## 当前阶段的判断标准
-
-当前不是“做得多”就对，而是满足以下判断标准才算推进正确：
-
-- 边界清晰
-- 工作区始终可 `cargo check`
-- 文档、代码和阶段目标互相一致
-- 不把 `M4/M5` 的复杂度提前压进 `M2/M3`
-
-2026-05-24 之后，MVP β 能力包还需满足以下准入条件：
-
-- 每个能力包必须能落到一条真实可复现建模路径，先服务 `Feed/Heater/Cooler/Valve/Mixer/Flash Drum` 小流程，再考虑泛化
-- 文档语义变更必须通过正式 `DocumentCommand`、validation 和 undo history；纯布局 / 视口体验必须明确留在 sidecar 或 shell-local state
-- 新能力至少覆盖 focused 自动化验证；涉及主路径时按能力包补人工 smoke 记录，不要求每个小补口都单独做完整人工 smoke
-- 若实现开始需要自由端口拖线、全局路由、跨快照报表、第三方模型加载或系统级副作用，必须先回到专题设计和人工确认
-
-2026-05-26 之后补充停止规则：
-
-- 一个能力包满足“主路径可走通、保存 / 重开不坏、结果能核对、必要验证通过、入口文档说明清楚”即应停止，不继续追逐局部 presentation 完美。
-- UI 展示细节默认不为单点新增测试；除非它曾造成 blocker 或影响主路径验收。
-- 阶段收口优先执行仓库级验证；日常小修只跑与风险匹配的 focused tests。
-- 下阶段优先执行 MVP β 人工 smoke；若暴露真实 blocker，再按缺物性包、缺项目组分、缺 stream composition、单元参数越界、断连 / 漏连后的诊断定位、recovery action、Inspector focus、保存重开和 rerun 稳定性修根因。
-
-补充对 `.NET 10` `UnitOp.Mvp` 当前子线的判断口径：
-
-- 若新增的是库内正式只读宿主语义，且能被 contract tests 与 smoke host 共同消费，方向通常正确
-- 若新增的是只为某个 smoke 场景或临时宿主脚本服务的 helper / accessor / 字面量折叠，应优先回收到正式 reader / snapshot / catalog 再继续推进
-- 若开始需要依赖 COM 注册、PME 自动化互调、第三方模型加载或额外系统环境副作用才能证明价值，则大概率已经越过当前阶段边界
+- 当前维护范围与验证入口：[current.md](../status/current.md)
+- 模块实际职责：[架构总览](../architecture/overview.md)
+- 数值假设与准确性边界：[热力学模型](../thermo/mvp-model.md)
+- 功能、单元和存储契约：[专题索引](../topics/README.md)
+- 历史 M1-M5 与计划对齐：[路线图](../radishflow-mvp-roadmap.md)
+- 逐周过程、历史命令及实现收口：[周志索引](../devlogs/README.md)

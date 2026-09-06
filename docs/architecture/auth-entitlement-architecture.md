@@ -1,6 +1,8 @@
 # Auth And Entitlement Architecture
 
-更新时间：2026-06-10
+更新时间：2026-09-06
+
+> 本文保留历史目标架构。当前已有客户端 DTO、HTTP transport、缓存与租约编排，但本仓库未交付控制面服务端，也没有由这些单元测试证明的真实登录、授权和资产分发完整闭环。业务开发保持停止，见 [当前状态](../status/current.md) 与 [控制面专题](../topics/platform/control-plane-service.md)。
 
 ## 目标
 

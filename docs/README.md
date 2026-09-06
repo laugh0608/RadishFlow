@@ -1,6 +1,6 @@
 # RadishFlow Docs
 
-更新时间：2026-08-22
+更新时间：2026-09-06
 
 ## 先读什么
 
@@ -81,14 +81,14 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | `architecture/app-architecture.md` | 桌面 App 的状态、命令与模块边界 |
 | `architecture/canvas-interaction-contract.md` | 画布视图模式、流线状态与 suggestion 契约 |
 | `architecture/studio-ui-topic-plan.md` | Studio UI 专题阶段的端点边界、信息架构、主工作流和 `.pen` 设计稿规则 |
-| `architecture/designs/studio-client-main-brief.md` | 当前唯一活跃 Studio 主设计稿的文字 brief，覆盖 Home、独立物性页、Flowsheet 工作台和模块设置 / 结果 |
+| `architecture/designs/studio-client-main-brief.md` | 已保留 Studio 主设计稿的文字 brief，设计完成不代表所有界面已实现 |
 | `architecture/studio-ui-design-guidelines.md` | Studio 首屏、画布、面板、按钮、文字和结果审阅的 UI 设计规范 |
 | `architecture/studio-visual-system.md` | Studio 视觉定位、token、色彩角色、控件状态和视觉验收口径 |
 | `architecture/ui-inspiration-reference.md` | AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 等优秀产品截图的 UI 设计灵感参考 |
 | `architecture/auth-entitlement-architecture.md` | 桌面登录、授权、控制面与本地求解边界 |
 | `architecture/versioning.md` | 版本命名、 tag 与发布轨道约定 |
 | `architecture/open-source-references.md` | 可借鉴的开源参考与许可边界 |
-| `thermo/mvp-model.md` | 热力学与 `TP Flash` 当前最小模型和数值口径 |
+| `thermo/mvp-model.md` | 公式与单元近似、样例身份、数值证据及独立验证缺口 |
 | `capeopen/boundary.md` | Rust Core 与 `.NET 10` CAPE-OPEN 适配层边界 |
 
 ## Status, Scope, Logs
@@ -98,11 +98,11 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | 文档 | 说明 |
 | --- | --- |
 | `status/current.md` | 当前阶段、重点、验证基线和按需阅读入口 |
-| `topics/README.md` | 功能 / 开发目标专题索引，承接当前阶段的可执行子专题 |
-| `mvp/scope.md` | 第一阶段 MVP 冻结范围、非目标与开发节奏 |
+| `topics/README.md` | 已有能力与历史功能专题索引，不表示当前存在产品排期 |
+| `mvp/scope.md` | 已保留的 MVP 范围、模型限制与验收含义 |
 | `mvp/alpha-acceptance-checklist.md` | MVP α 验收矩阵、smoke 记录口径和 release blocker 分类 |
 | `mvp/beta-acceptance-checklist.md` | MVP β 人工 smoke、通过 / 失败标准和暂不推进项 |
-| `radishflow-mvp-roadmap.md` | 第一阶段 MVP 路线图 |
+| `radishflow-mvp-roadmap.md` | 历史里程碑与未排期的后续决策参考 |
 | `devlogs/README.md` | 按月份分组的周志索引与命名规则 |
 | `releases/v26.5.1-dev.md` | 历史 `v26.5.1-dev` 便携 staging 草案和验证记录；不作为当前正式版本节点事实源 |
 
@@ -138,6 +138,8 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 - `status/` / `mvp/` / `devlogs/`：当前阶段、范围和演进记录
 
 不要继续把“使用说明”“字段参考”和“架构边界”混写进同一篇大文档。
+
+当前校准已将架构与 MVP 入口中的重复开发流水收敛为历史引用。实现限制与静态风险保留在对应领域真相源，未排期建议不写成已批准方案，历史验收不重标为本次验证；文档更新时间仅表示说明被维护。
 
 ## 文档体量约束
 

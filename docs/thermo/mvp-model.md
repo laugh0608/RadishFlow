@@ -1,85 +1,100 @@
 # Thermo MVP Model
 
-更新时间：2026-05-10
+更新时间：2026-09-06
 
-该目录用于沉淀第一阶段热力学模型范围与样例数据。
+## 用途与维护状态
 
-## 当前最小边界
+用途：说明已有热力学与闪蒸的公式、简化假设、样例解释和验证证据边界。
+读者：维护计算内核、物性样例、单元或结果消费链路的开发者，以及需要判断结果含义的使用者。
+不包含：完整物性数据库、工业工况准确性承诺、详细 UI 交互和新增功能排期。
 
-为配合 `M1/M2` 的基础结构建设，当前代码中已经冻结以下最小职责边界：
+业务功能开发自 2026-06-12 起停止。本文校准已有模型与未验证项，不恢复数值主线；当前维护范围见 [当前状态](../status/current.md)。
 
-- `rf-thermo` 负责纯组分热力学数据结构和热力学接口，不负责 COM、UI 或 flowsheet 连接逻辑。
-- `rf-flash` 负责 `TP Flash` 的输入输出契约和求解器接口，不直接持有 CAPE-OPEN 适配语义。
-- `rf-model` 负责流股和相态结果对象，供 `rf-flash` 产出和后续 unit operation 复用。
+## 职责与实际实现
 
-补充冻结以下分层约束：
+- `rf-thermo` 定义 `ThermoComponent / ThermoSystem / ThermoProvider`，计算关联式、K 值、相焓和泡露点。
+- `rf-flash` 定义 `TpFlashInput / TpFlashResult / TpFlashSolver`，执行 TP Flash 与相组成求解。
+- `rf-model` 承载 `MaterialStreamState / PhaseState / BubbleDewWindow`，供单元、solver 和 UI 传递。
+- `rf-types` 是相区 pressure / temperature tolerance 的真相源；flash 复用该容差调和边界附近的分类差异，远离边界的真实冲突仍报错。
 
-- `rf-thermo` 只负责纯计算和 provider 接口，不直接承担文件系统缓存、授权缓存索引或网络下载逻辑。
-- 本地物性包缓存、缓存索引和路径布局属于 `rf-store` 职责，不反向污染热力学接口。
-- 控制面交互、授权编排和派生包下载属于桌面应用层职责，不直接进入 `rf-thermo` / `rf-flash`。
+目标上计算与 provider 接口不承担文件缓存、授权索引或网络编排。当前 `rf-thermo::CachedPropertyPackageProvider` 实际直接依赖 `rf-store` 并执行缓存装载与过期过滤，尚不满足完整的纯计算隔离；详见 [架构总览](../architecture/overview.md#core-与持久化)。本次不移动代码，也不把既有偏移改写成新的目标边界。
 
-## 已落地的数据契约
+现有具体实现仍命名为 `PlaceholderThermoProvider` 与 `PlaceholderTpFlashSolver`，但已执行以下算法；名称既不表示完全未实现，也不表示通用物性实现已经完成。
 
-当前最小 API 已包含：
+## 已实现公式与输入约定
 
-- `ThermoComponent`
-- `AntoineCoefficients`
-- `ThermoSystem`
-- `ThermoProvider`
-- `TpFlashInput`
-- `TpFlashResult`
-- `TpFlashSolver`
+| 部分 | 当前实现 | 解释限制 |
+| --- | --- | --- |
+| Antoine | `ln(P_sat / kPa) = A - B / (T[K] + C)` | 系数必须匹配该对数底与单位，不能直接套用其他单位制的 A/B/C |
+| 理想 K 值 | `K_i = P_sat_i / P` | 理想溶液 / 理想气相近似；无逸度系数、活度系数和真实 EOS |
+| TP Flash | Rachford-Rice、相区判别、相分率和相组成 | 限当前 MVP 样例假设 |
+| 泡露点 | 定温 bubble/dew pressure，定压 bubble/dew temperature | 由同一关联式估算，不是完整 phase envelope tracing |
+| 相摩尔焓 | `h_phase = sum_i(x_i,phase * Cp_i,phase) * (T - 298.15 K)` | 常热容显热近似，未建立完整相间参考态与相变潜热 |
+| overall 摩尔焓 | liquid / vapor 相焓按 flash 相分率加权 | 是该简化模型的混合结果，不表示能量平衡已求解 |
 
-## 当前已实现内容
+表中 `x_i,phase` 是传入该相焓计算的组分摩尔分率。温度、压力和流量使用 K、Pa、mol/s；组成使用摩尔分率。直接 thermo / flash 数值 API 要求组成有限、非负并归一；单元层会先归一化文档组成，Studio 运行 readiness 另行检查文档输入。
 
-- `rf-thermo` 已实现基于 Antoine 相关式的饱和蒸气压计算
-- `rf-thermo` 已实现基于理想体系假设的 `K` 值估算
-- `rf-thermo` 已实现固定温度下的 bubble/dew pressure 边界估算
-- `rf-thermo` 已实现 fixed-pressure 的 bubble/dew temperature 边界估算
-- `rf-thermo` 已实现基于 property package 中 liquid/vapor 常热容的 MVP 相 molar enthalpy，参考温度固定为 `298.15 K`
-- `rf-flash` 已实现 Rachford-Rice 求解
-- `rf-flash` 已实现最小二元汽液两相 `TP Flash`
-- `rf-flash` 当前已可产出带 `overall` / `liquid` / `vapor` 相态结果的 `MaterialStreamState`，并把 liquid/vapor 与按相分率加权的 overall molar enthalpy 写入相态结果
-- `rf-flash` 当前会在 `TP Flash` 结果中显式携带 `liquid-only / two-phase / vapor-only` phase region 与 bubble/dew pressure / temperature
-- `rf-model::MaterialStreamState` 当前已为相平衡边界正式携带结构化 `bubble_dew_window`
-- `Flash Drum` liquid / vapor outlet，以及 `Mixer`、`Heater/Cooler`、`Valve` 的非 flash 中间流股 outlet，当前都已能在 unit operation 层直接物化并透传这组窗口；其中 flash outlet 会按各自 outlet composition 重算窗口，而不是直接复用 overall flash feed 的边界
-- `Mixer`、`Heater/Cooler` 与 `Valve` 的 flowing outlet 当前也会通过同一条 `TP Flash` 参考路径物化 overall molar enthalpy，并把这份 `overall` phase `H` 沿 `rf-solver -> rf-ui::SolveSnapshot -> workspace run path / Studio consumer` 只读透传，不在集成层分叉第二套 enthalpy 求值语义
-- `Feed/source stream` 的 solved path 当前也会通过同一条 `TP Flash` 参考路径物化 overall molar enthalpy，并把这份 `overall` phase `H` 沿 `rf-solver -> rf-ui::SolveSnapshot -> workspace run path / Studio consumer` 只读透传；当 source stream 被 first consumer 消费时，consumer step 会继续复用同一份已物化 DTO，而不是再分叉第二套 upstream enthalpy 口径
-- `rf-solver::SolveSnapshot` 与 `rf-ui::SolveSnapshot` 当前已能稳定透传上述窗口；source stream、本轮 solver step 的 consumed stream 与 produced stream 都继续沿同一份结构化 DTO 进入 workspace run path / Result Inspector / Active Inspector，不在集成层重算或二次组装
-- `tests/rust-integration` 与 workspace run path 当前也已把 `binary-hydrocarbon-lite-v1` 三组 two-phase 组成的 near-boundary `±ΔP / ±ΔT` case 前推到 `feed-heater-flash-binary-hydrocarbon`、`feed-cooler-flash-binary-hydrocarbon`、`feed-valve-flash-binary-hydrocarbon` 与 `feed-mixer-flash-binary-hydrocarbon` 正式链路，并把 synthetic `liquid-only / vapor-only` 单相 near-boundary case 前推到 `feed-heater-flash` / `feed-cooler-flash` / `feed-valve-flash` / `feed-mixer-flash` 正式链路，锁定非 flash 中间流股 `T / P / z / overall H / bubble_dew_window`、后续 flash inlet consumed stream 与 workspace run path 之间的端到端一致性回归，避免 example / Studio / solver 快照链路各跑一套窗口或焓值判断
-- `tests/thermo-golden` 与 `tests/flash-golden` 当前都已从单一样例扩到覆盖 `liquid-only / two-phase / vapor-only` 三类正式金样；`rf-flash` 与 `rf-types` focused tests 也已锁定 exact bubble/dew boundary 和 tolerance 内外的 phase region 判定
-- `tests/thermo-golden` 与 `tests/flash-golden` 当前也已补齐 near-boundary `±ΔP / ±ΔT` 小扰动金样，并把 `binary-hydrocarbon-lite-v1` 的 two-phase 组成从单一 `z=[0.2, 0.8]` 扩到靠 bubble / dew 两侧的 `z=[0.195, 0.805]` 与 `z=[0.23, 0.77]`；再加上现有 synthetic `liquid-only / vapor-only` 样例，`rf-thermo` 与 `rf-flash` focused tests 会继续锁定 bubble/dew 两侧跨 boundary 前后的 phase region 与 `bubble_dew_window` 稳定行为
-- `rf-types` 当前是 phase-region pressure / temperature tolerance 常量的真相源；`rf-flash` 只复用这组 tolerance 调和边界容差带内的 pressure / temperature 分类差异，非边界附近的真实分类冲突仍应作为 flash error 暴露
-- `apps/radishflow-studio` bootstrap 生成的本地 `binary-hydrocarbon-lite-v1` 样例包当前也已对齐同一套 Antoine 温度依赖假设，确保空白项目 / Studio run path 与 golden / integration 样例共享一致的 bubble/dew temperature 基线
-- `rf-thermo` 当前要求传入热力学状态和相态焓计算的 mole fractions 在有限、非负之外必须归一到 1；`rf-flash` 直接调用入口会继承该契约，unit operation 层仍负责先把文档流股组成归一化后再调用 flash
+[AntoineCoefficients](../../crates/rf-thermo/src/lib.rs) 当前只保存 A/B/C，没有适用温区、临界性质或数据引用字段。数值有限、压力为正及求解成功，均不能替代关联式适用范围判断。
 
-## 当前刻意未实现的内容
+## 单元近似与能量解释
 
-为了避免在第一轮就把范围扩散到完整热力学求解，以下内容仍保持为后续任务：
+| 单元 | 当前行为 | 未完成的物理含义 |
+| --- | --- | --- |
+| Feed | 从已提交源流股物化状态与整体焓 | 不提供独立物性准确性证明 |
+| Mixer | 合并流量和组成，按摩尔流量加权入口温度，限制出口压力 | 未通过总焓平衡求出口温度；热容、组成或相态变化时不保证绝热能量守恒 |
+| Heater / Cooler | 使用指定出口 T/P，继承入口流量与组成，并物化焓与窗口 | 无指定热负荷反算温度的 PH 路径，不构成完整换热器模型 |
+| Valve | 保持入口温度并降低压力，继承流量与组成 | 不等同于绝热等焓节流，未求解 PH Flash |
+| Flash Drum | 在指定 T/P 下进行汽液分配，形成 liquid / vapor outlet | 固定 TP 分离不自动证明设备绝热能量平衡 |
 
-- 完整焓参考态、相变潜热与更真实物性模型
-- `PH Flash`
-- `PS Flash`
-- 更完整 phase envelope tracing
-- 多物性模型切换与更复杂 EOS
-- 超出当前 MVP 的复杂多组分与更大数据库能力
+当前相焓在 `298.15 K` 的液相与气相都回到零点，没有用相间参考焓差表达真实汽化潜热。因此 H 适合验证 DTO、单位和当前算法一致性，不能直接作为真实相变热负荷依据。
 
-## 下一步建议
+Mixer 的区别可对照 [IDAES Mixer 模型](https://idaes-pse.readthedocs.io/en/stable/reference_guides/model_libraries/generic/unit_models/mixer.html)：其能量混合使用总焓平衡。该引用用于说明物理模型差异，不表示本仓库采用该实现或与其完成对标。
 
-当前数值主线已经从“补第一版算法”切换为“围绕已实现算法建立更稳定的闭环与回归基线”，优先顺序建议保持为：
+## 样例身份与适用范围
 
-1. 先把当前 three-composition two-phase 与 synthetic 单相样例在 `Heater/Cooler/Valve/Mixer -> Flash` 已前推到 integration / workspace run path 的 near-boundary `±ΔP / ±ΔT` 基线维持为正式回归，并继续把 source stream、非 flash 中间流股和 solver step 输入/输出流股 `T / P / z / overall H / bubble_dew_window` 作为同一组正式边界维护
-2. 若继续补数值样例，优先围绕当前二元 MVP 假设继续扩更广的 boundary drift / tolerance-focused cases，而不是回退到只看单一组成
-3. 保持 Result Inspector / Active Inspector 继续只读消费已结构化的 `bubble_dew_window` 与已物化的 enthalpy，不要在 shell / UI 中分叉第二套相平衡或焓值求解语义
-4. 待 MVP 闭环更稳后，再评估更真实 EOS 或更复杂物性模型
+`binary-hydrocarbon-lite-v1`、其 methane / ethane 组分名以及历史文档中的 `official hydrocarbon`，标识的是仓库标准演示与回归路径，不代表独立审核的真实物性数据。当前没有从样例追溯到独立参考输出、适用温区和工程误差的完整证据链；这些结果应按演示 / 合成模型解释。
 
-## 测试样例要求
+例如 [300 K 黄金样例](../../tests/thermo-golden/binary-hydrocarbon-lite-v1-300k-650kpa.json) 把 methane 的 Antoine 计算结果记为饱和蒸气压。NIST 给出的甲烷临界温度约为 `190.6 K`，其 Antoine 数据也明确列出低于约 `190.5 K` 的适用温区；该样例在 `300 K` 的计算值不能作为真实甲烷纯组分汽液饱和蒸气压。这个判断针对纯组分关联式，不推导为含超临界组分的混合物一定不能形成两相。[NIST Chemistry WebBook: Methane](https://webbook.nist.gov/cgi/cbook.cgi?ID=C74828&Mask=4)
 
-为避免数值接口在后续迭代中漂移，当前阶段应持续维护以下最小验证材料：
+`water-ethanol-lite-v1` 的 PME 人工记录用于验证宿主识别、材料读写和调用闭环，也不构成独立物性准确性背书。
 
-- `tests/thermo-golden` 中的热力学黄金样例
-- `tests/flash-golden` 中的 `TP Flash` 黄金样例
-- bubble/dew pressure / temperature 的 exact boundary、near-boundary 与 phase region focused tests
-- 与 flowsheet 闭环样例联动的端到端回归样例
-- 未归一、非有限、负组成等输入契约边界测试，避免数值 API 静默接受无效 mole fractions
-- 黄金样例进入版本控制，数值变更应能够被回归测试直接发现
+以后如获准引入真实数据，应先明确关联式形式与单位、组分身份、来源版本、适用温压区间、参考态、独立期望值和误差依据。当前 DTO 未实现这些元数据，本次不更改数据格式、样例名称或结果值。
+
+## 结果传递契约
+
+- TP Flash 输出携带 `phase_region` 与 `bubble_dew_window`，并物化 liquid / vapor 与 overall 摩尔焓。
+- Flash Drum outlet 按各自组成重算边界窗口，不直接复用 feed 的窗口。
+- Feed、Mixer、Heater / Cooler、Valve 的整体焓通过同一 TP Flash 路径物化；后续 consumer step 复用已物化流股。
+- `rf-solver -> rf-ui -> Studio` 传递同一份 T/P/z/H/窗口结果；Result Inspector、Active Inspector 和导出不得分叉另一套数值求值逻辑。
+- `Converged` 表示当前算法与执行契约成功，不包含物性适用域认证、能量守恒认证或工程精度等级。
+
+结果状态、revision 与相缺席语义见 [SolveSnapshot 参考](../reference/solve-snapshot-results.md)。
+
+## 验证证据与缺口
+
+| 证据 | 当前已有内容 | 能证明的范围 |
+| --- | --- | --- |
+| 算法回归 | thermo / flash golden，三组 two-phase 组成，synthetic 单相和 exact / near-boundary ±ΔP / ±ΔT | 实现是否偏离已保存的期望值 |
+| 输入契约 | 未归一、非有限、负组成等 focused tests | API 输入拒绝与容差行为 |
+| 跨层一致性 | Feed、Heater / Cooler / Valve / Mixer 到 Flash 的集成和 workspace 路径 | 已物化状态是否一致传入 solver step 与 UI |
+| 独立物理基准 | 当前样例未提供完整独立来源、适用工况和误差证据 | 不能从前三类测试通过推导工程准确性 |
+
+golden 中的小数位数和数值容差属于实现回归条件，不是物性数据不确定度；大量边界变体也不能代替独立基准。
+
+若未来获准推进数值验证，可评估以下缺口，不把它们记为已通过或当前新增门禁：
+
+- 独立参考数据或独立实现的对照，记录同一模型、参考态、单位与容差依据。
+- 组分与总物料守恒；完成能量模型后再验证相应单元的焓平衡残差。
+- 组分排列不变性、流量缩放、近纯组分、零流量和适用温区边界。
+- 将同一数值案例的跨层透传测试与物理准确性测试分开组织，避免复制同源期望值造成独立验证的假象。
+
+## 尚未实现与后续决策
+
+完整焓参考态、潜热、PH / PS Flash、真实 EOS、更复杂多组分与 phase envelope tracing 仍未实现。若未来重新决定投入，应按目标体系和工况选择模型，优先建立物性来源与能量闭环，再扩展 UI 或远期能力；这属于 [未排期的决策参考](../radishflow-mvp-roadmap.md#后续决策参考未排期)。
+
+## 相关样例
+
+- [Thermo golden](../../tests/thermo-golden/README.md)
+- [Flash golden](../../tests/flash-golden/README.md)
+- [本地物性样例](../../examples/sample-components/README.md)
+- [单位与字段约定](../reference/units-and-conventions.md)

@@ -1,6 +1,8 @@
 # CAPE-OPEN Boundary
 
-更新时间：2026-04-26
+更新时间：2026-09-06
+
+> 本文保留接口边界与历史验证说明。业务开发保持停止；下文“允许推进”或“推荐验证”不构成当前授权，见 [当前状态](../status/current.md)。native 句柄生命周期的未修复静态风险见 [适配层专题](../topics/capeopen-pmc-adapter.md#native-engine-生命周期静态风险)。
 
 ## 边界目标
 

@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-08-22
+更新时间：2026-09-06
 
 ## 用途
 
@@ -31,9 +31,9 @@
 
 ### 当前优先级
 
-1. 保持根协作入口短、稳定、全文同步，并把阶段信息和详细规则归回 `docs/` 真相源。
-2. 保持仓库治理脚本、CI 契约、社区健康文件和远端规则口径一致。
-3. 后续外围维护继续采用定向验证；阶段收口时回到正式仓库级检查入口。
+1. 保持维护状态、实际能力、模型限制和验证含义一致；修正架构、专题与使用入口的过期描述，避免把历史规划解释为当前授权。
+2. 按需评估工具链声明与锁定依赖的一致性，保留可复现基线；已知问题见下方工具链说明。
+3. 保持仓库治理脚本、CI 契约、社区健康文件与分支规则一致；外围维护采用定向验证，阶段收口回到正式仓库级入口。
 
 当前没有排期中的产品功能切片。若未来需要改变停更边界，应先由仓库所有者明确决策，并同步更新根 `README.md`、本文档和受影响专题；不得仅通过修改某篇专题的状态恢复开发。
 
@@ -44,7 +44,24 @@
 - 受控流程可覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，以及显式输入、运行、保存、重开、rerun 和轻量结果审阅。
 - Studio 已形成 Home、独立物性页、流程图工作台、模块设置 / 结果和运行状态区域的主路径。
 - Rust Core 与 `.NET 10` 适配层保持隔离；CAPE-OPEN / COM 语义不进入 Rust Core。
+- 数值实现仍使用演示物性、常热容显热和简化单元行为；golden、结果透传与用户路径验收不等于独立物理准确性证明，见 [热力学模型](../thermo/mvp-model.md)。
 - 更详细的能力、状态命令和验收证据以 `docs/topics/`、`docs/mvp/`、`docs/reference/` 与历史周志为准。
+
+## 已知差异与风险路由
+
+- 架构目标与实际实现差异：`rf-thermo` 缓存装载依赖、`rf-canvas` 占位和 Studio 同步求解见 [架构总览](../architecture/overview.md)。
+- 原生句柄释放与并发调用静态风险见 [CAPE-OPEN 专题](../topics/capeopen-pmc-adapter.md)。
+- Windows 保存替换与回滚双重失败的静态风险见 [项目生命周期专题](../topics/project-lifecycle-storage.md)。
+
+上述业务实现风险尚未修复；本次文档审阅不等于 Windows 故障复现，也不授权突破停更边界。未排期的后续投资顺序只作为 [路线图决策参考](../radishflow-mvp-roadmap.md#后续决策参考未排期)。
+
+## 工具链现状
+
+2026-09-06 核对发现，workspace 声明 `rust-version = "1.86"`，而 `Cargo.lock` 锁定的 `time 0.3.47` 与 `image 0.25.10` 的包元数据都要求 Rust `1.88.0`。因此不能按当前声明承诺 Rust 1.86 可构建整个锁定 workspace；完整依赖组合的实际最低支持版本尚未复验。
+
+`rust-toolchain.toml` 与 CI 目前使用浮动 `stable`，不是固定工具链。可评估的外围维护包括对齐最低版本声明、验证锁定依赖、明确固定基线与工具链升级检查的分工；本次未修改 Cargo 声明、lockfile、CI 或正式检查命令。
+
+macOS 现有图形依赖链中的 `block 0.1.6` 仍给出未来 Rust 兼容性警告，未阻断本次检查，不视为已经完成依赖升级。
 
 ## 当前验证基线
 
@@ -58,6 +75,7 @@
 
 - 2026-05-28：真实环境 `pwsh ./scripts/check-repo.ps1` 通过。
 - 2026-06-10、2026-08-20、2026-08-22：`./scripts/check-repo.sh` 通过。
+- 2026-09-06：macOS、Rust / Cargo 1.96.0，保持 Cargo 离线的 `./scripts/check-repo.sh` 通过，1,122 项 Rust 测试通过；未执行 GUI、Windows `.NET` / COM / PME 复验，详细记录见 [2026-W36](../devlogs/2026-09/2026-W36.md)。
 
 ## 当前不推进
 
@@ -80,7 +98,7 @@
 - CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
 - 代码风格、命名和抽象判断：`docs/development/code-style.md`
 - 分支与 PR 治理：`docs/adr/0001-branch-and-pr-governance.md`
-- 最新历史流水：`docs/devlogs/2026-08/2026-W34.md`
+- 最新历史流水：`docs/devlogs/2026-09/2026-W36.md`
 
 ## 更新规则
 

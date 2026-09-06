@@ -1,6 +1,6 @@
 # 开发专题索引
 
-更新时间：2026-08-22
+更新时间：2026-09-06
 
 ## 用途
 
@@ -24,7 +24,7 @@
 
 ## 一级轨道专题
 
-| 专题 | 状态 | 当前目标 | 入口 |
+| 专题 | 历史状态 | 停更前目标 | 入口 |
 | --- | --- | --- | --- |
 | Studio 主工作台与空白项目建模主路径 | Active | 把普通空白项目从物性配置、建模、运行、结果审阅和保存 / 重开收束成可复现主路径 | `studio-main-workflow.md` |
 | 项目物性基础与组分选择 | Active | 稳定内置 package、项目组分、保存 / 重开和运行请求之间的同一事实源 | `property-basis-and-components.md` |
@@ -37,7 +37,7 @@
 
 ### 单元模块
 
-| 专题 | 状态 | 父专题 | 入口 |
+| 专题 | 历史状态 | 父专题 | 入口 |
 | --- | --- | --- | --- |
 | Feed / 进料源 | Active | 流程图建模与求解闭环 | `unitops/feed-source.md` |
 | Heater / Cooler 换热器 | Active | 流程图建模与求解闭环 | `unitops/heater-cooler.md` |
@@ -47,29 +47,31 @@
 
 ### 建模对象
 
-| 专题 | 状态 | 父专题 | 入口 |
+| 专题 | 历史状态 | 父专题 | 入口 |
 | --- | --- | --- | --- |
 | Material Stream 物流股 | Active | 流程图建模与求解闭环 / 结果审阅、诊断与恢复 | `modeling/material-stream.md` |
 
 ### 平台与服务
 
-| 专题 | 状态 | 父专题 | 入口 |
+| 专题 | 历史状态 | 父专题 | 入口 |
 | --- | --- | --- | --- |
 | Control Plane 后端服务 | Backlog | 项目物性基础与组分选择 / 项目生命周期与存储 | `platform/control-plane-service.md` |
 | Control Plane Web UI 后端管理台 | Backlog | Control Plane 后端服务 | `platform/control-plane-web-ui.md` |
 
-## 专题状态定义
+## 历史专题状态定义
 
 | 状态 | 含义 |
 | --- | --- |
 | Draft | 已建文档但尚未作为近期实现依据 |
-| Active | 当前或近期会推进，代码实现前必须读取 |
+| Active | 当时的活跃专题；现在不表示获准恢复实现 |
 | Blocked | 已确认阻塞，等待决策、外部环境或前置专题 |
-| Done | 当前阶段验收完成，可继续维护真实 bug |
+| Done | 当时约定范围内验收完成，不代表工程准确性或当前支持承诺 |
 | Frozen | 阶段性冻结，只修 blocker，不扩范围 |
 | Backlog | 已记录但暂不推进 |
 
 ## 新增专题规则
+
+当前新增文档不激活业务开发；已有问题优先更新所属专题。下列模板规则不替代当前维护边界。
 
 新增专题时优先复制 `topic-template.md`，并至少写清：
 

@@ -1,6 +1,8 @@
 # Flash Drum 闪蒸罐专题
 
-更新时间：2026-06-14
+更新时间：2026-09-06
+
+> 本文保留已有能力与历史设计；自 2026-06-12 起业务功能开发停止。下文阶段、验证计划和历史状态不构成当前排期或操作授权，维护范围以 [当前状态](../../status/current.md) 为准。
 
 ## 用途
 
@@ -92,8 +94,8 @@
 - focused test：Feed-Flash happy path、参数缺失、单相 flash、两相 flash、terminal stream result、保存 / 重开 / rerun。
 - 仓库级：涉及 flash、solver 或结果语义时执行 `./scripts/check-repo.sh`。
 
-## 状态记录
+## 历史组织记录
 
-- 当前状态：Active
+- 历史状态：Active
 - 最近更新：2026-06-14 建立二级功能专题。
-- 下一步：只修当前 TP Flash 主路径和结果审阅真实 blocker。
+- 历史下一步（未激活）：只修当前 TP Flash 主路径和结果审阅真实 blocker。

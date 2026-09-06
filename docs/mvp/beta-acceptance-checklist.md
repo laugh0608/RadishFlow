@@ -1,6 +1,8 @@
 # MVP Beta Acceptance Checklist
 
-更新时间：2026-05-28
+更新时间：2026-09-06
+
+> 本文保留历史验收标准与当时记录，`Pass` 只说明对应提交和场景通过，不自动外推到当前 Windows / GUI 状态或物理准确性。业务开发停止，维护范围见 [当前状态](../status/current.md)，数值证据边界见 [热力学模型](../thermo/mvp-model.md)。
 
 ## 用途
 

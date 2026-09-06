@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-06-06
+更新时间：2026-09-06
 
 ## 目的
 
@@ -51,6 +51,8 @@
 ## `SolveSnapshot` 的稳定语义
 
 `SolveSnapshot` 表示“某个文档修订号上的一次不可变求解结果”。
+
+它是当前实现的结果真相源，不是独立物理基准；`Converged`、相区、H 和泡露点窗口的含义受当前物性与单元近似约束。统一解释见 [热力学模型](../thermo/mvp-model.md)。
 
 当前稳定边界：
 
