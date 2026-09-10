@@ -1,6 +1,6 @@
 # Control Plane 后端服务专题
 
-更新时间：2026-09-06
+更新时间：2026-09-10
 
 > 本文保留已有能力与历史设计；自 2026-06-12 起业务功能开发停止。下文阶段、验证计划和历史状态不构成当前排期或操作授权，维护范围以 [当前状态](../../status/current.md) 为准。
 
@@ -15,6 +15,7 @@
 - 层级：二级功能
 - 父专题：`docs/topics/property-basis-and-components.md`、`docs/topics/project-lifecycle-storage.md`
 - 关联专题：`docs/architecture/auth-entitlement-architecture.md`
+- 子专题：[账户、登录与 Radish 联合身份](account-and-federated-login.md)，承接未来账户映射、准入、认证与业务授权衔接的评估；当前为未排期草案，不替换现行统一身份方案。
 
 ## 专题目标
 

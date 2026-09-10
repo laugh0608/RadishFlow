@@ -1,6 +1,6 @@
 # RadishFlow Docs
 
-更新时间：2026-09-06
+更新时间：2026-09-10
 
 ## 先读什么
 
@@ -25,7 +25,7 @@
 
 ## Development Topics
 
-Topics 文档回答“一个功能、能力包或开发目标怎么设计、分阶段推进、验收和验证”。当前业务功能开发已停止，Topic 状态保留为停更前的组织和边界记录，不代表仍有排期中的产品开发主线。
+Topics 文档回答“一个功能、能力包或开发目标怎么设计、分阶段推进、验收和验证”。当前业务功能开发已停止，历史 Topic 状态保留为停更前的组织和边界记录；新增未来规划单独标记为未排期，不代表存在已激活的产品开发主线。
 
 | 文档 | 说明 |
 | --- | --- |
@@ -39,7 +39,8 @@ Topics 文档回答“一个功能、能力包或开发目标怎么设计、分�
 | `topics/capeopen-pmc-adapter.md` | `.NET 10` CAPE-OPEN / COM PMC 适配层和 PME 验证基线 |
 | `topics/unitops/` | Feed、Heater / Cooler、Flash Drum、Mixer、Valve 等单元模块专题 |
 | `topics/modeling/` | Material Stream 等建模对象专题 |
-| `topics/platform/` | Control Plane 后端服务和后端 Web UI 专题 |
+| `topics/platform/` | Control Plane 后端服务、后端 Web UI 与账户联合登录专题 |
+| `topics/platform/account-and-federated-login.md` | 参考 Radish / RadishMind 的未来账户与登录规划；未排期、待架构决策 |
 
 ## Development And Collaboration
 

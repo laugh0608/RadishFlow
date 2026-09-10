@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-09-06
+更新时间：2026-09-10
 
 ## 用途
 
@@ -91,6 +91,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍给出未来 Rust 兼容性�
 - 文档总索引与篇幅治理：`docs/README.md`
 - Agent 协作、授权与验证选择：`docs/development/agent-collaboration.md`
 - 停更前专题与能力索引：`docs/topics/README.md`
+- 未排期账户与联合登录规划：`docs/topics/platform/account-and-federated-login.md`；待架构决策，不恢复业务实现。
 - MVP 冻结范围与非目标：`docs/mvp/scope.md`
 - 仓库分层与模块边界：`docs/architecture/overview.md`
 - App / Canvas / UI 边界：`docs/architecture/app-architecture.md`、`docs/architecture/canvas-interaction-contract.md`
@@ -98,7 +99,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍给出未来 Rust 兼容性�
 - CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
 - 代码风格、命名和抽象判断：`docs/development/code-style.md`
 - 分支与 PR 治理：`docs/adr/0001-branch-and-pr-governance.md`
-- 最新历史流水：`docs/devlogs/2026-09/2026-W36.md`
+- 最新历史流水：`docs/devlogs/2026-09/2026-W37.md`
 
 ## 更新规则
 

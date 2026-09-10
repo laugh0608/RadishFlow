@@ -1,6 +1,6 @@
 # 开发专题索引
 
-更新时间：2026-09-06
+更新时间：2026-09-10
 
 ## 用途
 
@@ -11,7 +11,7 @@
 不包含：完整历史流水、逐日提交记录、具体代码实现细节和一次性讨论。
 
 > [!IMPORTANT]
-> 自 2026-06-12 起业务功能开发保持停止。下列表格中的 Active / Backlog 是停更前的专题组织记录，不表示当前仍有排期中的开发主线；所有专题当前只作为能力、边界和历史方案索引保留。当前维护范围以 `docs/status/current.md` 和根 `README.md` 为准。
+> 自 2026-06-12 起业务功能开发保持停止。下列表格中的 Active / Backlog 是停更前的专题组织记录，不表示当前仍有排期中的开发主线；专题当前只作为能力、边界、历史方案和未排期规划索引保留。当前维护范围以 `docs/status/current.md` 和根 `README.md` 为准。
 
 ## 组织原则
 
@@ -57,6 +57,14 @@
 | --- | --- | --- | --- |
 | Control Plane 后端服务 | Backlog | 项目物性基础与组分选择 / 项目生命周期与存储 | `platform/control-plane-service.md` |
 | Control Plane Web UI 后端管理台 | Backlog | Control Plane 后端服务 | `platform/control-plane-web-ui.md` |
+
+### 未来规划（未激活）
+
+| 专题 | 当前文档状态 | 父专题 | 入口 |
+| --- | --- | --- | --- |
+| 账户、登录与 Radish 联合身份 | Draft / 未排期 / 待架构决策 | Control Plane 后端服务 | [账户与联合登录](platform/account-and-federated-login.md) |
+
+此处记录停更后按所有者要求补充的规划，不属于停更前的历史排期；建立专题不批准架构变更或恢复实现。
 
 ## 历史专题状态定义
 
