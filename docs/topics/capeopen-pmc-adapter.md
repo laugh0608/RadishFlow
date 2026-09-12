@@ -1,8 +1,8 @@
 # CAPE-OPEN PMC 适配层
 
-更新时间：2026-09-06
+更新时间：2026-09-12
 
-> 本文保留已有能力与历史设计；自 2026-06-12 起业务功能开发停止。下文阶段、验证计划和历史状态不构成当前排期或操作授权，维护范围以 [当前状态](../status/current.md) 为准。
+> 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
 ## 用途
 
@@ -14,7 +14,7 @@
 
 - `.NET 10` 适配层继续作为 CAPE-OPEN / COM 语义唯一承载层。
 - Rust Core 只通过 `rf-ffi` 暴露稳定 C ABI / JSON / error 边界。
-- 当前阶段保持 DWSIM / COFE 关键 PME 兼容基线，只修真实 blocker。
+- 保持 DWSIM / COFE 关键 PME 兼容基线，推进 native 生命周期、调用可靠性与接口契约的正常迭代。
 
 ## 当前实现快照
 
@@ -94,7 +94,7 @@
 | 阶段 | 目标 | 退出标准 |
 | --- | --- | --- |
 | M1 | 基线冻结 | DWSIM / COFE 关键人工验证路径记录完整 |
-| M2 | Blocker 修复 | 仅修验证暴露的 discovery / activation / validate / calculate blocker |
+| M2 | 可靠性完善 | 生命周期、释放与并发调用契约有回归覆盖；discovery / activation / validate / calculate 基线保持通过 |
 | M3 | 发布前复验 | 进入正式 release 节点前，按 runbook 重新执行 Windows / PME 验证 |
 
 ## 验收标准
@@ -111,8 +111,8 @@
 - Windows：执行 `.NET` build、contract tests、smoke tests 和必要 PME 人工验证。
 - 仓库级：涉及适配层关键变更时优先执行 `pwsh ./scripts/check-repo.ps1` 或 Windows CI 基线。
 
-## 历史组织记录
+## 状态记录
 
-- 历史状态：Frozen / Blocker-only
-- 最近更新：2026-06-14 从路线图和 current 状态中拆出 CAPE-OPEN 适配层专题入口。
-- 历史下一步（未激活）：只在 `.NET` baseline、注册脚本或 PME 人工验证暴露真实 blocker 时推进。
+- 当前状态：Active
+- 最近更新：2026-09-12，恢复开发状态并对齐当前迭代入口；既有能力仍以实现快照和验收记录为准。
+- 下一步：复核 native 句柄生命周期和并发调用契约，补齐确定性回归，再执行相应 Windows / PME 验证。

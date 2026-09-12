@@ -1,8 +1,8 @@
 # Material Stream 物流股专题
 
-更新时间：2026-09-06
+更新时间：2026-09-12
 
-> 本文保留已有能力与历史设计；自 2026-06-12 起业务功能开发停止。下文阶段、验证计划和历史状态不构成当前排期或操作授权，维护范围以 [当前状态](../../status/current.md) 为准。
+> 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../../status/current.md) 为准。
 
 ## 用途
 
@@ -93,8 +93,8 @@
 - focused test：source stream 输入、composition normalize、stream focus command、intermediate / terminal result、stale snapshot。
 - 仓库级：涉及 stream 模型或连接语义时执行 `./scripts/check-repo.sh`。
 
-## 历史组织记录
+## 状态记录
 
-- 历史状态：Active
-- 最近更新：2026-06-14 建立二级功能专题。
-- 历史下一步（未激活）：只修当前 material stream 输入 / 连接 / 结果真实 blocker。
+- 当前状态：Active
+- 最近更新：2026-09-12，恢复开发状态并对齐当前迭代入口；既有能力仍以实现快照和验收记录为准。
+- 下一步：完善 material stream 的输入、连接与结果契约，并覆盖当前用户路径的诊断和回归。

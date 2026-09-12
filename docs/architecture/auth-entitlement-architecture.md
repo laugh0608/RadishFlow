@@ -1,8 +1,8 @@
 # Auth And Entitlement Architecture
 
-更新时间：2026-09-10
+更新时间：2026-09-12
 
-> 本文保留历史目标架构。当前已有客户端 DTO、HTTP transport、缓存与租约编排，但本仓库未交付控制面服务端，也没有由这些单元测试证明的真实登录、授权和资产分发完整闭环。业务开发保持停止，见 [当前状态](../status/current.md) 与 [控制面专题](../topics/platform/control-plane-service.md)。
+> 本文保留历史目标架构。当前已有客户端 DTO、HTTP transport、缓存与租约编排，但本仓库未交付控制面服务端，也没有由这些单元测试证明的真实登录、授权和资产分发完整闭环。后续实现按当前优先级与专题范围推进，见 [当前状态](../status/current.md) 与 [控制面专题](../topics/platform/control-plane-service.md)。
 
 未来账户规划见 [账户、登录与 Radish 联合身份专题](../topics/platform/account-and-federated-login.md)。该草案新增对 RadishMind 产品账户映射与独立业务授权做法的评估；是否引入产品账户、独立密码登录或产品会话，须经专题 M0 决策后再更新本文。本文现有“不自建第二套用户 / 账号密码体系”和桌面 Bearer 契约不因草案建立而被替换。
 

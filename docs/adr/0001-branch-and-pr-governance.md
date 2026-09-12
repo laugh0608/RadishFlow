@@ -77,8 +77,8 @@ Accepted
 - PR 模板
   - 面向 `master` / `main` 时要求明确合并后回灌 `dev` 的执行人和时机
 - 社区与安全治理入口
-  - 根目录 `CONTRIBUTING.md`、`CODE_OF_CONDUCT.md` 与 `SECURITY.md` 明确停更、许可、行为和私密漏洞报告边界
-  - `.github/ISSUE_TEMPLATE/config.yml` 关闭普通空白 Issue，并只把安全问题引导到已启用的 GitHub Private Vulnerability Reporting
+  - 根目录 `CONTRIBUTING.md`、`CODE_OF_CONDUCT.md` 与 `SECURITY.md` 明确开发贡献、许可、行为和私密漏洞报告边界
+  - `.github/ISSUE_TEMPLATE/config.yml` 开放普通 Issue 用于产品问题与功能建议，并把安全问题单独引导到 GitHub Private Vulnerability Reporting
 - GitHub Actions PR 检查工作流
   - `PR Checks` 在目标分支为 `dev`、`master` 或 `main` 的 Pull Request 上自动触发；目标为 `dev` 的 PR 提供合并前反馈，默认分支 PR 用于阶段稳定化合并，普通 `dev` push 不触发
   - 当前拆分为 `Repo Hygiene`、三平台 `Rust Baseline`、`.NET Adapter Baseline` 与 `Windows Staging Package` 六个组件，并由 `Candidate Quality` 聚合收口

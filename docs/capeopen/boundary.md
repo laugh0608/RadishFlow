@@ -1,8 +1,8 @@
 # CAPE-OPEN Boundary
 
-更新时间：2026-09-06
+更新时间：2026-09-12
 
-> 本文保留接口边界与历史验证说明。业务开发保持停止；下文“允许推进”或“推荐验证”不构成当前授权，见 [当前状态](../status/current.md)。native 句柄生命周期的未修复静态风险见 [适配层专题](../topics/capeopen-pmc-adapter.md#native-engine-生命周期静态风险)。
+> 本文定义接口边界并保留历史验证说明。具体迭代与验证安排见 [当前状态](../status/current.md)。native 句柄生命周期的未修复静态风险见 [适配层专题](../topics/capeopen-pmc-adapter.md#native-engine-生命周期静态风险)。
 
 ## 边界目标
 
@@ -158,7 +158,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - COFE trace 中 `Validate()` 返回 "Required parameter `Flowsheet Json` is not configured." 属于 MVP 必填参数未配置时的预期 invalid 结果，不再视为 discovery、activation、placement 或 connection blocker；参数完整配置后 `Validate()` 与 `Calculate()` 已完成真实复验。
 - DWSIM 日志中的 `AutomaticTranslation.AutomaticTranslator.SetMainWindow(...)` `NullReferenceException` 属于 DWSIM 主窗口 extender 初始化路径，发生在 RadishFlow UnitOp activation 前；当前只记录为宿主侧启动噪声。
 
-截至 2026-04-27，CAPE-OPEN / PME 主线进入阶段性冻结：
+历史阶段记录：2026-04-27 曾将 CAPE-OPEN / PME 主线阶段性冻结；以下记录当时的范围取舍。2026-09-12 起按 [适配层专题](../topics/capeopen-pmc-adapter.md) 恢复可靠性与接口契约迭代，第三方模型等范围扩展仍按专题评审：
 
 - 当前以 `DWSIM / COFE` 人工验证记录、`ContractTests`、`SampleHost`、受控注册脚本和 `scripts/gen-typelib.ps1` 作为 M5 回归基线。
 - 除非出现明确回归，不再主动扩张新的 PME 兼容接口、PME 自动化互调、完整 OLE 持久化、out-of-proc COM shim、完整 Thermo PMC 或第三方 CAPE-OPEN 模型加载。

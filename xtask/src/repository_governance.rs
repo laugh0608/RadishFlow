@@ -414,7 +414,7 @@ fn check_issue_template_contract(repo_root: &Path, errors: &mut Vec<String>) {
         repo_root,
         ".github/ISSUE_TEMPLATE/config.yml",
         &[
-            "blank_issues_enabled: false",
+            "blank_issues_enabled: true",
             "私下报告安全问题",
             "https://github.com/laugh0608/RadishFlow/security/advisories/new",
         ],
@@ -588,7 +588,7 @@ fn check_pull_request_template_contract(repo_root: &Path, errors: &mut Vec<Strin
         repo_root,
         ".github/PULL_REQUEST_TEMPLATE.md",
         &[
-            "已停止公开业务功能维护和外部 PR 合并",
+            "本次改动符合当前开发范围",
             "CONTRIBUTING.md",
             "SECURITY.md",
             "任职单位或其他第三方的保密材料",

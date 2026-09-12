@@ -1,6 +1,6 @@
 # 开发专题索引
 
-更新时间：2026-09-10
+更新时间：2026-09-12
 
 ## 用途
 
@@ -11,7 +11,7 @@
 不包含：完整历史流水、逐日提交记录、具体代码实现细节和一次性讨论。
 
 > [!IMPORTANT]
-> 自 2026-06-12 起业务功能开发保持停止。下列表格中的 Active / Backlog 是停更前的专题组织记录，不表示当前仍有排期中的开发主线；专题当前只作为能力、边界、历史方案和未排期规划索引保留。当前维护范围以 `docs/status/current.md` 和根 `README.md` 为准。
+> 自 2026-09-12 起恢复正常开发和迭代。下表按专题组织已有能力与后续工作；Active 专题按范围持续迭代，Draft / Backlog 按优先级纳入计划，具体切片以 `docs/status/current.md` 为准。
 
 ## 组织原则
 
@@ -24,20 +24,20 @@
 
 ## 一级轨道专题
 
-| 专题 | 历史状态 | 停更前目标 | 入口 |
+| 专题 | 当前状态 | 专题目标 | 入口 |
 | --- | --- | --- | --- |
 | Studio 主工作台与空白项目建模主路径 | Active | 把普通空白项目从物性配置、建模、运行、结果审阅和保存 / 重开收束成可复现主路径 | `studio-main-workflow.md` |
 | 项目物性基础与组分选择 | Active | 稳定内置 package、项目组分、保存 / 重开和运行请求之间的同一事实源 | `property-basis-and-components.md` |
 | 流程图建模与求解闭环 | Active | 维护受控单元、连接、readiness、Run Panel 和 solver 之间的边界 | `flowsheet-modeling-and-solve.md` |
 | 结果审阅、诊断与恢复 | Active | 让 stream / unit 结果、诊断目标和 recovery action 使用同一套 snapshot / command 口径 | `results-review-diagnostics.md` |
-| 项目生命周期与存储 | Backlog | 明确打开、保存、另存为、最近项目、sidecar 和脏改确认的长期边界 | `project-lifecycle-storage.md` |
-| CAPE-OPEN PMC 适配层 | Frozen / Blocker-only | 保持 `.NET 10` PMC、COM 注册和 PME 验证基线，只修真实 blocker | `capeopen-pmc-adapter.md` |
+| 项目生命周期与存储 | Active | 明确打开、保存、另存为、最近项目、sidecar 和脏改确认的长期边界 | `project-lifecycle-storage.md` |
+| CAPE-OPEN PMC 适配层 | Active | 完善 `.NET 10` PMC 生命周期与调用可靠性，保持 COM 注册和 PME 验证基线 | `capeopen-pmc-adapter.md` |
 
 ## 二级功能专题
 
 ### 单元模块
 
-| 专题 | 历史状态 | 父专题 | 入口 |
+| 专题 | 当前状态 | 父专题 | 入口 |
 | --- | --- | --- | --- |
 | Feed / 进料源 | Active | 流程图建模与求解闭环 | `unitops/feed-source.md` |
 | Heater / Cooler 换热器 | Active | 流程图建模与求解闭环 | `unitops/heater-cooler.md` |
@@ -47,13 +47,13 @@
 
 ### 建模对象
 
-| 专题 | 历史状态 | 父专题 | 入口 |
+| 专题 | 当前状态 | 父专题 | 入口 |
 | --- | --- | --- | --- |
 | Material Stream 物流股 | Active | 流程图建模与求解闭环 / 结果审阅、诊断与恢复 | `modeling/material-stream.md` |
 
 ### 平台与服务
 
-| 专题 | 历史状态 | 父专题 | 入口 |
+| 专题 | 当前状态 | 父专题 | 入口 |
 | --- | --- | --- | --- |
 | Control Plane 后端服务 | Backlog | 项目物性基础与组分选择 / 项目生命周期与存储 | `platform/control-plane-service.md` |
 | Control Plane Web UI 后端管理台 | Backlog | Control Plane 后端服务 | `platform/control-plane-web-ui.md` |
@@ -64,22 +64,22 @@
 | --- | --- | --- | --- |
 | 账户、登录与 Radish 联合身份 | Draft / 未排期 / 待架构决策 | Control Plane 后端服务 | [账户与联合登录](platform/account-and-federated-login.md) |
 
-此处记录停更后按所有者要求补充的规划，不属于停更前的历史排期；建立专题不批准架构变更或恢复实现。
+此处记录仍待范围与架构决策的规划；进入实施前先完成对应专题的前置决策。
 
-## 历史专题状态定义
+## 专题状态定义
 
 | 状态 | 含义 |
 | --- | --- |
 | Draft | 已建文档但尚未作为近期实现依据 |
-| Active | 当时的活跃专题；现在不表示获准恢复实现 |
+| Active | 当前持续迭代的专题，具体切片由当前优先级确定 |
 | Blocked | 已确认阻塞，等待决策、外部环境或前置专题 |
-| Done | 当时约定范围内验收完成，不代表工程准确性或当前支持承诺 |
+| Done | 约定范围内验收完成，后续扩展需更新范围与验收标准 |
 | Frozen | 阶段性冻结，只修 blocker，不扩范围 |
 | Backlog | 已记录但暂不推进 |
 
 ## 新增专题规则
 
-当前新增文档不激活业务开发；已有问题优先更新所属专题。下列模板规则不替代当前维护边界。
+已有问题优先更新所属专题；新增专题按当前优先级组织，不以文档建立代替实现或验收。
 
 新增专题时优先复制 `topic-template.md`，并至少写清：
 
