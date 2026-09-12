@@ -6,6 +6,7 @@ namespace RadishFlow.CapeOpen.Adapter;
 public sealed class RadishFlowNativeEngine : IDisposable
 {
     private readonly RfNativeEngineHandle _handle;
+    private readonly object _gate = new();
 
     public RadishFlowNativeEngine()
     {
@@ -32,8 +33,8 @@ public sealed class RadishFlowNativeEngine : IDisposable
 
         InvokeStatus(
             "flowsheet_load_json",
-            utf8 => RfNativeMethods.FlowsheetLoadJson(
-                _handle.DangerousGetHandle(),
+            (handle, utf8) => RfNativeMethods.FlowsheetLoadJson(
+                handle,
                 utf8,
                 (nuint)utf8.Length),
             json);
@@ -46,21 +47,25 @@ public sealed class RadishFlowNativeEngine : IDisposable
 
         var manifestUtf8 = Encoding.UTF8.GetBytes(manifestPath);
         var payloadUtf8 = Encoding.UTF8.GetBytes(payloadPath);
-        var status = RfNativeMethods.PropertyPackageLoadFromFiles(
-            _handle.DangerousGetHandle(),
-            manifestUtf8,
-            (nuint)manifestUtf8.Length,
-            payloadUtf8,
-            (nuint)payloadUtf8.Length);
-        EnsureSuccess("property_package_load_from_files", status);
+        WithHandle(handle =>
+        {
+            var status = RfNativeMethods.PropertyPackageLoadFromFiles(
+                handle,
+                manifestUtf8,
+                (nuint)manifestUtf8.Length,
+                payloadUtf8,
+                (nuint)payloadUtf8.Length);
+            EnsureSuccess(handle, "property_package_load_from_files", status);
+            return status;
+        });
     }
 
     public string GetPropertyPackageListJson()
     {
         return ReadOwnedUtf8String(
             "property_package_list_json",
-            (out nint pointer) => RfNativeMethods.PropertyPackageListJson(
-                _handle.DangerousGetHandle(),
+            (RfNativeEngineHandle handle, out nint pointer) => RfNativeMethods.PropertyPackageListJson(
+                handle,
                 out pointer));
     }
 
@@ -70,8 +75,8 @@ public sealed class RadishFlowNativeEngine : IDisposable
 
         InvokeStatus(
             "flowsheet_solve",
-            utf8 => RfNativeMethods.FlowsheetSolve(
-                _handle.DangerousGetHandle(),
+            (handle, utf8) => RfNativeMethods.FlowsheetSolve(
+                handle,
                 utf8,
                 (nuint)utf8.Length),
             packageId);
@@ -81,8 +86,8 @@ public sealed class RadishFlowNativeEngine : IDisposable
     {
         return ReadOwnedUtf8String(
             "flowsheet_get_snapshot_json",
-            (out nint pointer) => RfNativeMethods.FlowsheetGetSnapshotJson(
-                _handle.DangerousGetHandle(),
+            (RfNativeEngineHandle handle, out nint pointer) => RfNativeMethods.FlowsheetGetSnapshotJson(
+                handle,
                 out pointer));
     }
 
@@ -93,8 +98,8 @@ public sealed class RadishFlowNativeEngine : IDisposable
         var utf8 = Encoding.UTF8.GetBytes(streamId);
         return ReadOwnedUtf8String(
             "stream_get_snapshot_json",
-            (out nint pointer) => RfNativeMethods.StreamGetSnapshotJson(
-                _handle.DangerousGetHandle(),
+            (RfNativeEngineHandle handle, out nint pointer) => RfNativeMethods.StreamGetSnapshotJson(
+                handle,
                 utf8,
                 (nuint)utf8.Length,
                 out pointer));
@@ -102,54 +107,70 @@ public sealed class RadishFlowNativeEngine : IDisposable
 
     public string? TryGetLastErrorMessage()
     {
-        return TryReadOwnedUtf8String(
-            (out nint pointer) => RfNativeMethods.EngineLastErrorMessage(
-                _handle.DangerousGetHandle(),
-                out pointer));
+        return WithHandle(handle => TryReadOwnedUtf8String(
+            handle, RfNativeMethods.EngineLastErrorMessage, out _));
     }
 
     public string? TryGetLastErrorJson()
     {
-        return TryReadOwnedUtf8String(
-            (out nint pointer) => RfNativeMethods.EngineLastErrorJson(
-                _handle.DangerousGetHandle(),
-                out pointer));
+        return WithHandle(handle => TryReadOwnedUtf8String(
+            handle, RfNativeMethods.EngineLastErrorJson, out _));
     }
 
     public void Dispose()
     {
-        _handle.Dispose();
+        lock (_gate)
+        {
+            _handle.Dispose();
+        }
     }
 
-    private void InvokeStatus(string operation, Func<byte[], RfFfiStatus> nativeCall, string value)
+    // The complete operation, including native error retrieval, shares the same
+    // gate as Dispose. SafeHandle marshalling protects each P/Invoke call.
+    internal T WithHandle<T>(Func<RfNativeEngineHandle, T> operation)
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_handle.IsClosed, this);
+            return operation(_handle);
+        }
+    }
+
+    private void InvokeStatus(
+        string operation,
+        Func<RfNativeEngineHandle, byte[], RfFfiStatus> nativeCall,
+        string value)
     {
         var utf8 = Encoding.UTF8.GetBytes(value);
-        var status = nativeCall(utf8);
-        EnsureSuccess(operation, status);
+        WithHandle(handle =>
+        {
+            var status = nativeCall(handle, utf8);
+            EnsureSuccess(handle, operation, status);
+            return status;
+        });
     }
 
-    private string ReadOwnedUtf8String(
-        string operation,
-        NativeOwnedUtf8Call nativeCall)
+    private string ReadOwnedUtf8String(string operation, NativeOwnedUtf8Call nativeCall)
     {
-        var value = TryReadOwnedUtf8String(nativeCall, out var status);
-        EnsureSuccess(operation, status);
-        return value ?? string.Empty;
+        return WithHandle(handle =>
+        {
+            var value = TryReadOwnedUtf8String(handle, nativeCall, out var status);
+            EnsureSuccess(handle, operation, status);
+            return value ?? string.Empty;
+        });
     }
 
-    private string? TryReadOwnedUtf8String(
+    private static string? TryReadOwnedUtf8String(
+        RfNativeEngineHandle handle,
         NativeOwnedUtf8Call nativeCall,
         out RfFfiStatus status)
     {
-        status = nativeCall(out var pointer);
+        status = nativeCall(handle, out var pointer);
         try
         {
-            if (pointer == IntPtr.Zero)
-            {
-                return null;
-            }
-
-            return System.Runtime.InteropServices.Marshal.PtrToStringUTF8(pointer);
+            return pointer == IntPtr.Zero
+                ? null
+                : System.Runtime.InteropServices.Marshal.PtrToStringUTF8(pointer);
         }
         finally
         {
@@ -160,12 +181,7 @@ public sealed class RadishFlowNativeEngine : IDisposable
         }
     }
 
-    private string? TryReadOwnedUtf8String(NativeOwnedUtf8Call nativeCall)
-    {
-        return TryReadOwnedUtf8String(nativeCall, out _);
-    }
-
-    private void EnsureSuccess(string operation, RfFfiStatus status)
+    private static void EnsureSuccess(RfNativeEngineHandle handle, string operation, RfFfiStatus status)
     {
         if (status == RfFfiStatus.Ok)
         {
@@ -175,9 +191,9 @@ public sealed class RadishFlowNativeEngine : IDisposable
         throw RadishFlowNativeException.Create(
             operation,
             status,
-            TryGetLastErrorMessage(),
-            TryGetLastErrorJson());
+            TryReadOwnedUtf8String(handle, RfNativeMethods.EngineLastErrorMessage, out _),
+            TryReadOwnedUtf8String(handle, RfNativeMethods.EngineLastErrorJson, out _));
     }
 
-    private delegate RfFfiStatus NativeOwnedUtf8Call(out nint pointer);
+    private delegate RfFfiStatus NativeOwnedUtf8Call(RfNativeEngineHandle handle, out nint pointer);
 }

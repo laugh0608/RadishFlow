@@ -32,7 +32,7 @@
 ### 当前优先级
 
 1. 明确下一阶段的目标用户、体系与工况，定义物性来源、适用范围和数值验收标准；据此选择一个可独立交付的功能切片。
-2. 优先复现并处理已知可靠性风险：Windows 保存失败后的恢复信息与 native 句柄生命周期；使用故障注入、释放与并发调用测试建立证据。
+2. 第一轮可靠性切片已收口：Flash 非有限流量拒绝、Windows 保存恢复上下文与 native 生命周期保护已通过 macOS / Windows 仓库级及对应适配层验证，作为后续回归基线。
 3. 围绕选定场景完善建模、求解、结果诊断和保存 / 重开的完整用户路径；数值能力按独立基准与守恒要求验收。
 4. 保持跨平台工具链与 CI 基线，补充远端运行和按需 `stable` 兼容性验证；发布前另行完成平台、GUI 与 PME 验收。
 
@@ -51,10 +51,10 @@
 ## 已知差异与风险路由
 
 - 架构目标与实际实现差异：`rf-thermo` 缓存装载依赖、`rf-canvas` 占位和 Studio 同步求解见 [架构总览](../architecture/overview.md)。
-- 原生句柄释放与并发调用静态风险见 [CAPE-OPEN 专题](../topics/capeopen-pmc-adapter.md)。
-- Windows 保存替换与回滚双重失败的静态风险见 [项目生命周期专题](../topics/project-lifecycle-storage.md)。
+- 原生句柄释放与并发调用契约及验证范围见 [CAPE-OPEN 专题](../topics/capeopen-pmc-adapter.md)。
+- Windows 保存替换与回滚失败的恢复契约见 [项目生命周期专题](../topics/project-lifecycle-storage.md)。
 
-上述风险尚未修复，现有静态审阅不等于故障复现。后续实现与验收顺序见 [迭代路线图](../radishflow-mvp-roadmap.md#后续迭代顺序)。
+本轮可靠性修复及平台验证状态见最新周志；模型、架构和发布的其他已知边界继续按各专题管理。后续实现与验收顺序见 [迭代路线图](../radishflow-mvp-roadmap.md#后续迭代顺序)。
 
 ## 工具链现状
 
@@ -81,6 +81,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 - 2026-09-06：macOS、Rust / Cargo 1.96.0，保持 Cargo 离线的 `./scripts/check-repo.sh` 通过，1,122 项 Rust 测试通过；未执行 GUI、Windows `.NET` / COM / PME 复验，详细记录见 [2026-W36](../devlogs/2026-09/2026-W36.md)。
 - 2026-09-12：固定 Rust 1.96.0 后，macOS 真实环境离线 `check-repo` 全部通过（含 1,122 项测试与严格 clippy）；CI 配置完成静态复核，远端三平台运行尚未执行，详见 [2026-W37](../devlogs/2026-09/2026-W37.md)。
 - 2026-09-12：提交 `a5f8d966` 在 UTM Debian 13.6 ARM64 与 Windows 11 ARM64 中串行完成 `check-repo`，两端各 1,120 项测试与严格 clippy 通过；Windows 补齐 Clang 19.1.5 后在现有 Windows PowerShell 5.1 中通过，不替代 CI 的 PowerShell 7 / x64 runner 或 `.NET` / COM / PME 验证，环境与证据见 [2026-W37](../devlogs/2026-09/2026-W37.md#2026-09-12-utm-跨平台复验)。
+- 2026-09-12：第一轮可靠性修复通过 macOS / Windows ARM64 `check-repo`（分别 1,128 / 1,126 项测试及严格 clippy）；Windows `.NET 10.0.300` 解决方案构建、35 项 contract 与 Adapter smoke 通过，含 4 个新增生命周期场景。未复验 PME GUI、COM 注册或 x64 CI，详见 [本轮记录](../devlogs/2026-09/2026-W37.md#2026-09-12-第一轮可靠性修复)。
 
 ## 当前范围控制
 

@@ -32,7 +32,7 @@
 | 相摩尔焓 | `h_phase = sum_i(x_i,phase * Cp_i,phase) * (T - 298.15 K)` | 常热容显热近似，未建立完整相间参考态与相变潜热 |
 | overall 摩尔焓 | liquid / vapor 相焓按 flash 相分率加权 | 是该简化模型的混合结果，不表示能量平衡已求解 |
 
-表中 `x_i,phase` 是传入该相焓计算的组分摩尔分率。温度、压力和流量使用 K、Pa、mol/s；组成使用摩尔分率。直接 thermo / flash 数值 API 要求组成有限、非负并归一；单元层会先归一化文档组成，Studio 运行 readiness 另行检查文档输入。
+表中 `x_i,phase` 是传入该相焓计算的组分摩尔分率。温度、压力和流量使用 K、Pa、mol/s；组成使用摩尔分率。直接 thermo / flash 数值 API 要求组成有限、非负并归一；TP Flash 总摩尔流量必须有限且非负，拒绝 NaN 和正负无穷，零流量保持允许；单元层会先归一化文档组成，Studio 运行 readiness 另行检查文档输入。
 
 [AntoineCoefficients](../../crates/rf-thermo/src/lib.rs) 当前只保存 A/B/C，没有适用温区、临界性质或数据引用字段。数值有限、压力为正及求解成功，均不能替代关联式适用范围判断。
 

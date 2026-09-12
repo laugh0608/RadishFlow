@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::fmt;
+use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
@@ -250,9 +251,23 @@ pub struct RfErrorContext {
     related_unit_ids: Vec<UnitId>,
     related_stream_ids: Vec<StreamId>,
     related_port_targets: Vec<DiagnosticPortTarget>,
+    file_recovery: Option<FileRecoveryContext>,
+}
+
+/// Recovery information when both replacing a file and restoring its backup fail.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileRecoveryContext {
+    pub target_path: PathBuf,
+    pub backup_path: PathBuf,
+    pub replacement_error: String,
+    pub recovery_error: String,
 }
 
 impl RfErrorContext {
+    pub fn file_recovery(&self) -> Option<&FileRecoveryContext> {
+        self.file_recovery.as_ref()
+    }
+
     pub fn diagnostic_code(&self) -> Option<&str> {
         self.diagnostic_code.as_deref()
     }
@@ -271,6 +286,11 @@ impl RfErrorContext {
 }
 
 impl RfError {
+    pub fn with_file_recovery(mut self, recovery: FileRecoveryContext) -> Self {
+        self.context.file_recovery = Some(recovery);
+        self
+    }
+
     pub fn new(code: ErrorCode, message: impl Into<String>) -> Self {
         Self {
             code,

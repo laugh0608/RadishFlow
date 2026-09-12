@@ -33,15 +33,17 @@
 - Windows `.NET` / PME 验证需在真实 Windows 或 GitHub Windows runner 完成。
 - 当前不做正式发布、安装器或自动 COM 注册。
 
-## Native engine 生命周期静态风险
+## Native engine 生命周期
 
-2026-09-06 核对 [RadishFlowNativeEngine](../../adapters/dotnet-capeopen/RadishFlow.CapeOpen.Adapter/RadishFlowNativeEngine.cs) 与 [P/Invoke 声明](../../adapters/dotnet-capeopen/RadishFlow.CapeOpen.Adapter/RfNativeMethods.cs)：调用通过 `DangerousGetHandle()` 取得裸句柄，`Dispose()` 直接释放底层 engine；该封装未统一检查释放状态，也未提供调用期引用保护或同一 engine 的调用串行化。
+2026-09-12 修复 [RadishFlowNativeEngine](../../adapters/dotnet-capeopen/RadishFlow.CapeOpen.Adapter/RadishFlowNativeEngine.cs) 的公开调用边界：同一 engine 的完整操作与 `Dispose()` 共用实例锁；P/Invoke 直接接收 `RfNativeEngineHandle`，由 SafeHandle marshalling 保护 native 调用期间的句柄引用。Rust C ABI 和 COM 接口形状保持不变。
 
-释放后再次调用、调用与 Dispose 并发或同一 engine 并发进入 native，存在失效指针或违反 Rust 可变访问约束的风险。PMC 外层已有生命周期守卫，不能据此推导独立公开 Adapter 的所有消费方式均已安全。[Microsoft SafeHandle 文档](https://learn.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.safehandle.dangerousgethandle?view=net-10.0) 说明裸句柄可能失效，需正确保护其生命周期。
+- 已进入的调用完成后，等待中的 Dispose 才能释放句柄；同一 engine 的调用串行执行。
+- 释放后使用有效参数调用任何 native 操作都会抛出 `ObjectDisposedException`，重复 Dispose 可安全返回；无效参数仍按既有参数校验抛错。
+- native 错误消息和 JSON 在同一操作锁内读取，避免被另一线程的调用覆盖。
+- 锁以单次 Adapter 操作为边界；调用方若需要跨 Load / Solve / Get 多次调用的事务一致性，仍应管理自己的会话编排。
+- Rust C ABI 的其他直接消费者仍须遵守有效句柄、唯一所有权和串行访问要求；本次改动不让任意裸指针调用自动安全。
 
-本次结论来自静态代码审阅，不是 Windows 崩溃复现或完整互操作审计。若后续获准修复，可评估让 P/Invoke 消费 SafeHandle 或成对引用保护，并明确已释放调用、调用期间 Dispose 和同一 engine 串行访问的契约与测试；只加 disposed 布尔值不足以解决调用与释放竞态。
-
-已有 DWSIM / COFE smoke 继续只证明记录中的版本、场景和调用顺序，不扩张为任意线程或任意 PME 兼容承诺。
+Adapter smoke 新增释放后调用、调用期间 Dispose、同一 engine 串行化和并发错误隔离四个场景。验证状态见当前周志；DWSIM / COFE 历史 smoke 仍只证明所记录宿主与场景，不扩张为任意 PME 兼容承诺。
 
 ## 用户路径
 
@@ -114,5 +116,5 @@
 ## 状态记录
 
 - 当前状态：Active
-- 最近更新：2026-09-12，恢复开发状态并对齐当前迭代入口；既有能力仍以实现快照和验收记录为准。
-- 下一步：复核 native 句柄生命周期和并发调用契约，补齐确定性回归，再执行相应 Windows / PME 验证。
+- 最近更新：2026-09-12，native 生命周期保护通过 macOS Adapter smoke 与 Windows ARM64 构建、35 项 contract、Adapter smoke；运行环境和验证边界见 [周志](../devlogs/2026-09/2026-W37.md#2026-09-12-第一轮可靠性修复)。
+- 下一步：按选定功能切片维护上述回归；后续涉及宿主行为或发布时执行对应 PME 复验。

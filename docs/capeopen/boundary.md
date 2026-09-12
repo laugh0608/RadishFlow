@@ -2,7 +2,7 @@
 
 更新时间：2026-09-12
 
-> 本文定义接口边界并保留历史验证说明。具体迭代与验证安排见 [当前状态](../status/current.md)。native 句柄生命周期的未修复静态风险见 [适配层专题](../topics/capeopen-pmc-adapter.md#native-engine-生命周期静态风险)。
+> 本文定义接口边界并保留历史验证说明。具体迭代与验证安排见 [当前状态](../status/current.md)。native 句柄生命周期契约见 [适配层专题](../topics/capeopen-pmc-adapter.md#native-engine-生命周期)。
 
 ## 边界目标
 

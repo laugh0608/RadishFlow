@@ -23,7 +23,7 @@
 | M1 | 仓库与基础骨架 | workspace、分层和治理检查已形成 |
 | M2 | 二元 TP Flash | 算法、golden 与相边界回归已形成；不等于独立物性准确性验证 |
 | M3 | 小流程与 Studio 闭环 | 受控建模、运行、结果审阅、保存 / 重开 / rerun 已有回归 |
-| M4 | Rust FFI 与 .NET 适配 | JSON / error、native 装载与调用路径已有基线；生命周期静态风险仍需处理 |
+| M4 | Rust FFI 与 .NET 适配 | JSON / error、native 装载与调用路径已有基线；生命周期保护已补齐，平台验证见周志 |
 | M5 | PME 识别并调用 PMC | DWSIM / COFE 代表场景完成历史人工验证，不推导为任意宿主支持 |
 
 MVP α、β 人工 smoke、失败恢复和通用小流程建模已阶段性收口。已通过范围不包含完整自由连线、真实 EOS、recycle 收敛、完整能量闭环、第三方模型加载或正式发布。历史 `v26.5.1-dev` 仅为内部 staging 记录。
@@ -55,8 +55,8 @@ Control Plane、完整报表、复杂画布、智能辅助、动态模拟与 CFD
 | 工具链最低版本、可复现性 | [当前状态](status/current.md) | 已对齐固定基线与支持声明，作为持续开发基线，后续兼容性按需验证 |
 | 物性样例、近似与数值证据 | [热力学模型](thermo/mvp-model.md) | 实现能力说明与未完成验证 |
 | 缓存进入 thermo、Canvas 实际位置 | [架构总览](architecture/overview.md) | 目标与实现差异 |
-| native 句柄释放保护 | [适配层专题](topics/capeopen-pmc-adapter.md) | 静态风险，未复现 Windows 崩溃 |
-| Windows 保存回滚错误 | [存储专题](topics/project-lifecycle-storage.md) | 静态风险，未执行故障注入 |
+| native 句柄释放保护 | [适配层专题](topics/capeopen-pmc-adapter.md) | 已补齐调用与释放保护，验证范围见专题 |
+| Windows 保存回滚错误 | [存储专题](topics/project-lifecycle-storage.md) | 已保留双重失败上下文并补齐故障注入，平台验证见专题 |
 | Studio 调用层次与同步执行 | [App 架构](architecture/app-architecture.md) | 维护性建议，无性能测量结论 |
 
 ## 历史规划与详细入口

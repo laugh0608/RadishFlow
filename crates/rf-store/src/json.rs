@@ -26,6 +26,9 @@ use crate::{
     StoredPropertyPackagePayload, StoredStudioLayoutFile, StoredStudioPreferencesFile,
 };
 
+#[cfg(any(windows, test))]
+mod staged_replace;
+
 pub fn read_project_file(path: impl AsRef<Path>) -> RfResult<StoredProjectFile> {
     let path = path.as_ref();
     let contents = fs::read_to_string(path)
@@ -304,18 +307,9 @@ fn replace_with_staged_file(temp_path: &Path, path: &Path, action: &str) -> RfRe
     }
 
     let backup_path = create_unique_backup_sibling(path)?;
-    fs::rename(path, &backup_path).map_err(|error| map_io_error(action, path, &error))?;
-
-    match fs::rename(temp_path, path) {
-        Ok(()) => {
-            let _ = fs::remove_file(&backup_path);
-            Ok(())
-        }
-        Err(error) => {
-            let _ = fs::rename(&backup_path, path);
-            Err(map_io_error(action, path, &error))
-        }
-    }
+    staged_replace::replace_existing_file(temp_path, path, &backup_path, action, |from, to| {
+        fs::rename(from, to)
+    })
 }
 
 fn create_unique_temp_sibling(path: &Path) -> RfResult<PathBuf> {
