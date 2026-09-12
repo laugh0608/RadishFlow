@@ -79,6 +79,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 - 2026-06-10、2026-08-20、2026-08-22：`./scripts/check-repo.sh` 通过。
 - 2026-09-06：macOS、Rust / Cargo 1.96.0，保持 Cargo 离线的 `./scripts/check-repo.sh` 通过，1,122 项 Rust 测试通过；未执行 GUI、Windows `.NET` / COM / PME 复验，详细记录见 [2026-W36](../devlogs/2026-09/2026-W36.md)。
 - 2026-09-12：固定 Rust 1.96.0 后，macOS 真实环境离线 `check-repo` 全部通过（含 1,122 项测试与严格 clippy）；CI 配置完成静态复核，远端三平台运行尚未执行，详见 [2026-W37](../devlogs/2026-09/2026-W37.md)。
+- 2026-09-12：提交 `a5f8d966` 在 UTM Debian 13.6 ARM64 与 Windows 11 ARM64 中串行完成 `check-repo`，两端各 1,120 项测试与严格 clippy 通过；Windows 补齐 Clang 19.1.5 后在现有 Windows PowerShell 5.1 中通过，不替代 CI 的 PowerShell 7 / x64 runner 或 `.NET` / COM / PME 验证，环境与证据见 [2026-W37](../devlogs/2026-09/2026-W37.md#2026-09-12-utm-跨平台复验)。
 
 ## 当前不推进
 
