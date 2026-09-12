@@ -1088,12 +1088,11 @@ impl AppState {
         &mut self,
         action: &RunPanelRecoveryAction,
     ) -> Option<InspectorTarget> {
-        if let Some(mutation) = action.mutation.as_ref() {
-            if let Ok((command, next_flowsheet)) =
+        if let Some(mutation) = action.mutation.as_ref()
+            && let Ok((command, next_flowsheet)) =
                 apply_run_panel_recovery_mutation(&self.workspace.document.flowsheet, mutation)
-            {
-                self.commit_document_change(command, next_flowsheet, SystemTime::now());
-            }
+        {
+            self.commit_document_change(command, next_flowsheet, SystemTime::now());
         }
         self.workspace.selection.selected_units.clear();
         self.workspace.selection.selected_streams.clear();

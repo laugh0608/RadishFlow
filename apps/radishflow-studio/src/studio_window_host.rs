@@ -379,12 +379,11 @@ impl StudioRuntimeHostPort {
 
         if shutdown.was_entitlement_timer_owner {
             if let Some(new_owner_window_id) = self.windows.keys().next().copied() {
-                if let Some(new_owner_state) = self.windows.get_mut(&new_owner_window_id) {
-                    if let Some(observer_layout_slot) = new_owner_state.clear_observer_layout_slot()
-                    {
-                        self.allocated_observer_layout_slots
-                            .remove(&observer_layout_slot);
-                    }
+                if let Some(new_owner_state) = self.windows.get_mut(&new_owner_window_id)
+                    && let Some(observer_layout_slot) = new_owner_state.clear_observer_layout_slot()
+                {
+                    self.allocated_observer_layout_slots
+                        .remove(&observer_layout_slot);
                 }
                 if let Some(slot) = shutdown.cleared_entitlement_timer.clone() {
                     self.windows

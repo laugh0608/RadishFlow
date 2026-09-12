@@ -306,19 +306,17 @@ impl ReadyAppState {
                             radishflow_studio::StudioGuiCanvasActionId::MoveSelectedUnit(
                                 *direction,
                             ),
-                        ) {
-                            if ui
-                                .add_enabled(
-                                    action.enabled,
-                                    egui::Button::new(
-                                        self.locale.runtime_label(&action.label).as_ref(),
-                                    ),
-                                )
-                                .on_hover_text(self.locale.runtime_label(&action.detail).as_ref())
-                                .clicked()
-                            {
-                                self.dispatch_ui_command(&action.command_id);
-                            }
+                        ) && ui
+                            .add_enabled(
+                                action.enabled,
+                                egui::Button::new(
+                                    self.locale.runtime_label(&action.label).as_ref(),
+                                ),
+                            )
+                            .on_hover_text(self.locale.runtime_label(&action.detail).as_ref())
+                            .clicked()
+                        {
+                            self.dispatch_ui_command(&action.command_id);
                         }
                     }
                 } else if selection.kind_label == "Stream" {
@@ -329,8 +327,8 @@ impl ReadyAppState {
                         radishflow_studio::StudioGuiCanvasActionId::ReconnectSelectedStream,
                         radishflow_studio::StudioGuiCanvasActionId::DeleteSelectedStream,
                     ] {
-                        if let Some(action) = widget.action(action_id) {
-                            if ui
+                        if let Some(action) = widget.action(action_id)
+                            && ui
                                 .add_enabled(
                                     action.enabled,
                                     egui::Button::new(
@@ -339,9 +337,8 @@ impl ReadyAppState {
                                 )
                                 .on_hover_text(self.locale.runtime_label(&action.detail).as_ref())
                                 .clicked()
-                            {
-                                self.dispatch_ui_command(&action.command_id);
-                            }
+                        {
+                            self.dispatch_ui_command(&action.command_id);
                         }
                     }
                 }
@@ -575,20 +572,19 @@ impl ReadyAppState {
                     ),
                 });
             }
-            if unit_response.dragged() {
-                if let Some(drag) = self
+            if unit_response.dragged()
+                && let Some(drag) = self
                     .canvas_unit_drag
                     .as_mut()
                     .filter(|drag| drag.unit_id == unit.unit_id)
-                {
-                    drag.current_position = canvas_unit_drag_position(
-                        rect,
-                        &viewport_transform,
-                        drag,
-                        unit_response.interact_pointer_pos(),
-                        unit_response.drag_delta(),
-                    );
-                }
+            {
+                drag.current_position = canvas_unit_drag_position(
+                    rect,
+                    &viewport_transform,
+                    drag,
+                    unit_response.interact_pointer_pos(),
+                    unit_response.drag_delta(),
+                );
             }
             if self
                 .canvas_unit_drag
@@ -617,16 +613,16 @@ impl ReadyAppState {
             }
         }
 
-        if let Some(callout) = focus_callout {
-            if let Some(anchor) = canvas_focus_callout_anchor(
+        if let Some(callout) = focus_callout
+            && let Some(anchor) = canvas_focus_callout_anchor(
                 rect,
                 &viewport_transform,
                 callout,
                 unit_blocks,
                 stream_lines,
-            ) {
-                paint_canvas_focus_callout(&painter, rect, anchor, callout);
-            }
+            )
+        {
+            paint_canvas_focus_callout(&painter, rect, anchor, callout);
         }
         if let Some((anchor, port)) = hovered_port_callout {
             paint_canvas_port_hover_callout(&painter, rect, anchor, port);
@@ -639,10 +635,11 @@ impl ReadyAppState {
         }
 
         let clicked_stream = clicked_stream_command.is_some();
-        if !clicked_unit && !clicked_port {
-            if let Some(command_id) = clicked_stream_command {
-                self.dispatch_ui_command(command_id);
-            }
+        if !clicked_unit
+            && !clicked_port
+            && let Some(command_id) = clicked_stream_command
+        {
+            self.dispatch_ui_command(command_id);
         }
 
         let hovered_port = hovered_port_callout.is_some();

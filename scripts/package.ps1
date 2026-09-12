@@ -179,7 +179,7 @@ if ($Clean) {
 }
 
 if (-not $SkipBuild) {
-    $buildArgs = @('build', '-p', 'radishflow-studio', '--bin', 'radishflow-studio')
+    $buildArgs = @('build', '--locked', '-p', 'radishflow-studio', '--bin', 'radishflow-studio')
     if ($Configuration -eq 'Release') {
         $buildArgs += '--release'
     }

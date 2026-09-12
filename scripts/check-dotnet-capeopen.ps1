@@ -74,7 +74,7 @@ $solutionPath = Join-Path $repoRoot 'adapters\dotnet-capeopen\RadishFlow.CapeOpe
 $contractProject = Join-Path $repoRoot 'adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests\RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests.csproj'
 
 if (-not $SkipNativeBuild) {
-    $cargoArgs = @('build', '-p', 'rf-ffi')
+    $cargoArgs = @('build', '--locked', '-p', 'rf-ffi')
     if ($Configuration -eq 'Release') {
         $cargoArgs += '--release'
     }

@@ -413,10 +413,10 @@ fn find_menu_command<'a>(
     command_id: &str,
 ) -> Option<&'a StudioGuiCommandMenuCommandModel> {
     for node in nodes {
-        if let Some(command) = node.command.as_ref() {
-            if command.command_id == command_id {
-                return Some(command);
-            }
+        if let Some(command) = node.command.as_ref()
+            && command.command_id == command_id
+        {
+            return Some(command);
         }
         if let Some(command) = find_menu_command(&node.children, command_id) {
             return Some(command);

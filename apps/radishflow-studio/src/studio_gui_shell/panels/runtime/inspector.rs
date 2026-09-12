@@ -137,21 +137,19 @@ impl ReadyAppState {
             ui.small(
                 egui::RichText::new(self.locale.text(ShellText::InspectorProperties)).strong(),
             );
-            if let Some(command_id) = settings.parameter_batch_commit_command_id.as_ref() {
-                if ui
+            if let Some(command_id) = settings.parameter_batch_commit_command_id.as_ref()
+                && ui
                     .small_button(self.locale.text(ShellText::InspectorFieldApplyAll))
                     .clicked()
-                {
-                    self.dispatch_inspector_field_draft_batch_commit(command_id.clone());
-                }
+            {
+                self.dispatch_inspector_field_draft_batch_commit(command_id.clone());
             }
-            if let Some(command_id) = settings.parameter_batch_discard_command_id.as_ref() {
-                if ui
+            if let Some(command_id) = settings.parameter_batch_discard_command_id.as_ref()
+                && ui
                     .small_button(self.locale.text(ShellText::InspectorFieldDiscardAll))
                     .clicked()
-                {
-                    self.dispatch_inspector_field_draft_batch_discard(command_id.clone());
-                }
+            {
+                self.dispatch_inspector_field_draft_batch_discard(command_id.clone());
             }
             for notice in &settings.parameter_notices {
                 ui.add_space(4.0);
@@ -325,29 +323,26 @@ impl ReadyAppState {
             ui.small(
                 egui::RichText::new(self.locale.text(ShellText::InspectorProperties)).strong(),
             );
-            if let Some(command_id) = detail.property_batch_commit_command_id.as_ref() {
-                if ui
+            if let Some(command_id) = detail.property_batch_commit_command_id.as_ref()
+                && ui
                     .small_button(self.locale.text(ShellText::InspectorFieldApplyAll))
                     .clicked()
-                {
-                    self.dispatch_inspector_field_draft_batch_commit(command_id.clone());
-                }
+            {
+                self.dispatch_inspector_field_draft_batch_commit(command_id.clone());
             }
-            if let Some(command_id) = detail.property_batch_discard_command_id.as_ref() {
-                if ui
+            if let Some(command_id) = detail.property_batch_discard_command_id.as_ref()
+                && ui
                     .small_button(self.locale.text(ShellText::InspectorFieldDiscardAll))
                     .clicked()
-                {
-                    self.dispatch_inspector_field_draft_batch_discard(command_id.clone());
-                }
+            {
+                self.dispatch_inspector_field_draft_batch_discard(command_id.clone());
             }
-            if let Some(command_id) = detail.property_composition_normalize_command_id.as_ref() {
-                if ui
+            if let Some(command_id) = detail.property_composition_normalize_command_id.as_ref()
+                && ui
                     .small_button(self.locale.text(ShellText::InspectorNormalizeComposition))
                     .clicked()
-                {
-                    self.dispatch_inspector_composition_normalize(command_id.clone());
-                }
+            {
+                self.dispatch_inspector_composition_normalize(command_id.clone());
             }
             for notice in &detail.property_notices {
                 ui.add_space(4.0);
@@ -563,33 +558,30 @@ impl ReadyAppState {
                 ui.small(egui::RichText::new(unit_label).strong());
             }
 
-            if let Some(command_id) = field.commit_command_id.as_ref() {
-                if submit_on_enter
+            if let Some(command_id) = field.commit_command_id.as_ref()
+                && (submit_on_enter
                     || ui
                         .small_button(self.locale.text(ShellText::InspectorFieldApply))
-                        .clicked()
-                {
-                    self.dispatch_inspector_field_draft_commit(command_id.clone());
-                }
+                        .clicked())
+            {
+                self.dispatch_inspector_field_draft_commit(command_id.clone());
             }
-            if let Some(command_id) = field.discard_command_id.as_ref() {
-                if ui
+            if let Some(command_id) = field.discard_command_id.as_ref()
+                && ui
                     .small_button(self.locale.text(ShellText::InspectorFieldDiscard))
                     .clicked()
-                {
-                    self.dispatch_inspector_field_draft_discard(command_id.clone());
-                }
+            {
+                self.dispatch_inspector_field_draft_discard(command_id.clone());
             }
-            if let Some(remove_command_id) = field.remove_command_id.as_ref() {
-                if ui
+            if let Some(remove_command_id) = field.remove_command_id.as_ref()
+                && ui
                     .small_button(
                         self.locale
                             .text(ShellText::InspectorRemoveCompositionComponent),
                     )
                     .clicked()
-                {
-                    self.dispatch_inspector_composition_component_remove(remove_command_id.clone());
-                }
+            {
+                self.dispatch_inspector_composition_component_remove(remove_command_id.clone());
             }
         });
 

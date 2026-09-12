@@ -14,10 +14,10 @@ pub(super) fn find_menu_command_by_label<'a>(
     label: &str,
 ) -> Option<&'a crate::StudioGuiCommandMenuCommandModel> {
     for node in nodes {
-        if let Some(command) = node.command.as_ref() {
-            if command.label == label {
-                return Some(command);
-            }
+        if let Some(command) = node.command.as_ref()
+            && command.label == label
+        {
+            return Some(command);
         }
         if let Some(command) = find_menu_command_by_label(&node.children, label) {
             return Some(command);

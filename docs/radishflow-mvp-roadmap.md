@@ -1,6 +1,6 @@
 # RadishFlow MVP Roadmap
 
-更新时间：2026-09-06
+更新时间：2026-09-12
 
 ## 用途
 
@@ -52,7 +52,7 @@ Control Plane、完整报表、复杂画布、智能辅助、动态模拟与 CFD
 
 | 事项 | 记录位置 | 当前性质 |
 | --- | --- | --- |
-| 工具链最低版本、可复现性 | [当前状态](status/current.md) | 可评估的外围维护，未在本次改代码 |
+| 工具链最低版本、可复现性 | [当前状态](status/current.md) | 已对齐固定基线与支持声明；属于外围维护，后续兼容性按需验证 |
 | 物性样例、近似与数值证据 | [热力学模型](thermo/mvp-model.md) | 实现能力说明与未完成验证 |
 | 缓存进入 thermo、Canvas 实际位置 | [架构总览](architecture/overview.md) | 目标与实现差异 |
 | native 句柄释放保护 | [适配层专题](topics/capeopen-pmc-adapter.md) | 静态风险，未复现 Windows 崩溃 |

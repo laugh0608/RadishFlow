@@ -24,6 +24,7 @@
 - `PR Checks` 保留六个独立组件便于定位失败，并由稳定的 `Candidate Quality` 统一收口；任一组件失败、取消或跳过都会使聚合检查失败
 - `PR Checks` 响应 `pull_request -> dev/master/main`；目标为 `dev` 的 PR 为其他开发者提供合并前反馈，目标为默认分支的 PR 承担阶段稳定化门禁，普通 `dev` push 不触发
 - `Release Checks` 当前只保留 `workflow_dispatch` 手动 staging 入口；tag push 不自动触发 CI/CD，避免普通内部 staging 或历史 tag 造成误发布信号
+- `Rust Compatibility` 仅手动执行三平台浮动 `stable` 检查，不属于 required checks，也不参与 `Candidate Quality`；正式 workflow 继续使用仓库固定工具链。
 - 允许 `merge` 与 `rebase` 两种合并方式，禁用 `squash`；`dev -> master/main` 优先使用 merge commit，以便稳定主线直接 fast-forward 回灌 `dev`
 - 管理员仅可通过 Pull Request 方式绕过规则，不开放直接 push
 

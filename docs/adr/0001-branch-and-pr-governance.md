@@ -1,6 +1,6 @@
 # ADR 0001: Branch And PR Governance
 
-更新时间：2026-08-29
+更新时间：2026-09-12
 
 ## 状态
 
@@ -84,6 +84,7 @@ Accepted
   - 当前拆分为 `Repo Hygiene`、三平台 `Rust Baseline`、`.NET Adapter Baseline` 与 `Windows Staging Package` 六个组件，并由 `Candidate Quality` 聚合收口
   - `Candidate Quality` 使用 `if: always()` 汇总六个组件，任一组件失败、取消或跳过都会失败；`master` / `main` ruleset 只绑定该稳定 context
   - 规范 tag push 暂不自动触发 CI/CD；`Release Checks` 仅保留 `workflow_dispatch` 手动 staging 入口，避免普通内部 staging 或历史 tag 造成误发布信号
+  - 正式 workflow 使用仓库固定 Rust 基线；独立的 `Rust Compatibility` 仅手动检查三平台浮动 `stable`，不加入 `Candidate Quality`，不改变六组件合并门禁或触发发布。工具链维护规则见 [Agent 协作指南](../development/agent-collaboration.md#rust-工具链与锁定依赖)
 - 文本编码与文件格式检查脚本
   - 正式实现源收口到 Rust `xtask`，`.ps1` 与 `.sh` 仅作为平台包装层
 - 仓库治理检查

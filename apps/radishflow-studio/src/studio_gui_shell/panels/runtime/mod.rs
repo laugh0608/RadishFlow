@@ -541,14 +541,13 @@ impl ReadyAppState {
                     {
                         self.open_project_from_picker();
                     }
-                    if let Some(path) = document.project_path.as_ref() {
-                        if ui
+                    if let Some(path) = document.project_path.as_ref()
+                        && ui
                             .button(self.locale.text(ShellText::UseCurrentPath))
                             .clicked()
-                        {
-                            self.project_open.path_input = path.clone();
-                            self.project_open.notice = None;
-                        }
+                    {
+                        self.project_open.path_input = path.clone();
+                        self.project_open.notice = None;
                     }
                 });
             });

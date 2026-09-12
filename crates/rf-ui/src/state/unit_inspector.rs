@@ -79,13 +79,13 @@ impl AppState {
                     value,
                 )
             });
-        if missing_explicit_parameter && validation == DraftValidationState::Valid {
-            if let DraftValue::Number(draft) = &mut draft_value {
-                if !draft.is_dirty {
-                    draft.is_dirty = true;
-                    is_dirty = true;
-                }
-            }
+        if missing_explicit_parameter
+            && validation == DraftValidationState::Valid
+            && let DraftValue::Number(draft) = &mut draft_value
+            && !draft.is_dirty
+        {
+            draft.is_dirty = true;
+            is_dirty = true;
         }
 
         if !is_dirty && validation != DraftValidationState::Invalid {

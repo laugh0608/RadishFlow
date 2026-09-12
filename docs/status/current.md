@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-09-10
+更新时间：2026-09-12
 
 ## 用途
 
@@ -32,7 +32,7 @@
 ### 当前优先级
 
 1. 保持维护状态、实际能力、模型限制和验证含义一致；修正架构、专题与使用入口的过期描述，避免把历史规划解释为当前授权。
-2. 按需评估工具链声明与锁定依赖的一致性，保留可复现基线；已知问题见下方工具链说明。
+2. 保持固定工具链、最低支持版本声明与锁定依赖一致；按需手动检查新版 `stable` 兼容性，工具链说明见下文。
 3. 保持仓库治理脚本、CI 契约、社区健康文件与分支规则一致；外围维护采用定向验证，阶段收口回到正式仓库级入口。
 
 当前没有排期中的产品功能切片。若未来需要改变停更边界，应先由仓库所有者明确决策，并同步更新根 `README.md`、本文档和受影响专题；不得仅通过修改某篇专题的状态恢复开发。
@@ -57,15 +57,17 @@
 
 ## 工具链现状
 
-2026-09-06 核对发现，workspace 声明 `rust-version = "1.86"`，而 `Cargo.lock` 锁定的 `time 0.3.47` 与 `image 0.25.10` 的包元数据都要求 Rust `1.88.0`。因此不能按当前声明承诺 Rust 1.86 可构建整个锁定 workspace；完整依赖组合的实际最低支持版本尚未复验。
+workspace 最低支持版本声明为 Rust `1.96`，`rust-toolchain.toml`、`PR Checks` 与 `Release Checks` 固定使用 `1.96.0`。这是仓库选择维护的支持下限与验证基线，不表示更低版本必然无法编译；不承诺未验证的低版本兼容性。
 
-`rust-toolchain.toml` 与 CI 目前使用浮动 `stable`，不是固定工具链。可评估的外围维护包括对齐最低版本声明、验证锁定依赖、明确固定基线与工具链升级检查的分工；本次未修改 Cargo 声明、lockfile、CI 或正式检查命令。
+2026-09-12 核对完整锁定依赖图共 469 个包，外部依赖已声明的最高 Rust 要求为 `1.88.0`（`image`、`time`、`time-core`、`time-macros`），另有 127 个包未声明最低版本。元数据不构成完整 workspace 在 Rust 1.88 上可构建的证据；原有 `1.86` 声明已撤回，`Cargo.lock` 保持不变。
 
-macOS 现有图形依赖链中的 `block 0.1.6` 仍给出未来 Rust 兼容性警告，未阻断本次检查，不视为已经完成依赖升级。
+正式 Rust 检查与 CI 构建入口使用 `--locked`；浮动 `stable` 由独立的 `Rust Compatibility` 手动工作流在三平台检查，不进入 `Candidate Quality`，不自动升级固定版本。维护步骤与复现范围见 [工具链维护规则](../development/agent-collaboration.md#rust-工具链与锁定依赖)。
+
+macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警告；固定工具链不等于完成依赖升级，也不保证未来编译器兼容。
 
 ## 当前验证基线
 
-- 文档、协作入口或仓库治理改动：执行 `cargo test -p xtask` 与 `cargo run --quiet -p xtask -- check-repository-governance`，并检查文档体量和工作区差异。
+- 文档、协作入口或仓库治理改动：执行 `cargo test --locked -p xtask` 与 `cargo run --locked --quiet -p xtask -- check-repository-governance`，并检查文档体量和工作区差异。
 - 阶段收口或跨模块治理变化：在 macOS / Linux / CI 执行 `./scripts/check-repo.sh`；Windows 使用 `pwsh ./scripts/check-repo.ps1`。
 - `check-repo` 是正式仓库级入口，统一执行治理与文本门禁、Rust workspace 格式、构建、测试和 clippy 基线。
 - `adapters/reference/` 下的外部参考资料保留上游编码、BOM 和换行格式，不为通过仓库文本门禁而批量改写。
@@ -76,6 +78,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍给出未来 Rust 兼容性�
 - 2026-05-28：真实环境 `pwsh ./scripts/check-repo.ps1` 通过。
 - 2026-06-10、2026-08-20、2026-08-22：`./scripts/check-repo.sh` 通过。
 - 2026-09-06：macOS、Rust / Cargo 1.96.0，保持 Cargo 离线的 `./scripts/check-repo.sh` 通过，1,122 项 Rust 测试通过；未执行 GUI、Windows `.NET` / COM / PME 复验，详细记录见 [2026-W36](../devlogs/2026-09/2026-W36.md)。
+- 2026-09-12：固定 Rust 1.96.0 后，macOS 真实环境离线 `check-repo` 全部通过（含 1,122 项测试与严格 clippy）；CI 配置完成静态复核，远端三平台运行尚未执行，详见 [2026-W37](../devlogs/2026-09/2026-W37.md)。
 
 ## 当前不推进
 

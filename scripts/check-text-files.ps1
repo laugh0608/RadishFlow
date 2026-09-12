@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 Push-Location $RepoRoot
 
 try {
-    $arguments = @("run", "--quiet", "-p", "xtask", "--", "check-text-files")
+    $arguments = @("run", "--locked", "--quiet", "-p", "xtask", "--", "check-text-files")
 
     Write-Host "==> cargo $($arguments -join ' ')"
     & cargo @arguments

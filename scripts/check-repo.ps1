@@ -11,7 +11,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Push-Location $repoRoot
 
 try {
-    $arguments = @("run", "--quiet", "-p", "xtask", "--", "check-repo")
+    $arguments = @("run", "--locked", "--quiet", "-p", "xtask", "--", "check-repo")
 
     if ($SkipClippy) {
         $arguments += "--skip-clippy"

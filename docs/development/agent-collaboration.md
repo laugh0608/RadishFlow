@@ -1,6 +1,6 @@
 # Agent 协作与执行规则
 
-更新时间：2026-08-22
+更新时间：2026-09-12
 
 用途：承接 `AGENTS.md` / `CLAUDE.md` 不适合在每次任务启动时全量加载的协作细则。
 
@@ -128,6 +128,18 @@
 - `.NET 10` CAPE-OPEN 解决方案、native 装载和 PME smoke 按对应专题在合适环境验证，不用沙盒假阳性或假阴性替代最终结论。
 - 当前正式命令、阶段附加门禁和最近通过记录只在 `docs/status/current.md` 维护，不复制到根入口。
 - 本周重要推进写入 `docs/devlogs/YYYY-MM/YYYY-Www.md`；记录目标、完成情况、关键决策、风险与未完成项、下周建议。
+
+### Rust 工具链与锁定依赖
+
+- `Cargo.toml` 的 workspace `rust-version` 声明仓库选择支持的最低 Rust 版本；它不是对“理论上最老能编译的版本”的探测结果。未在候选低版本运行完整验证前，不下调声明或承诺兼容。
+- `rust-toolchain.toml` 固定日常验证工具链到具体补丁版本；`PR Checks` 与 `Release Checks` 中所有 Rust setup 使用同一版本。当前数值和验证证据见 [当前状态](../status/current.md)。本机可用 `rustup show active-toolchain` 排查环境变量或目录 override，不能只凭配置文件判断实际运行版本。
+- 正式 Rust 构建、测试、clippy 和 CI 的 `xtask` 入口使用 `--locked`，锁文件需要变化时直接失败；该选项允许下载已有锁定版本，不等于离线。依赖缓存齐全时可设置 `CARGO_NET_OFFLINE=true` 复验。
+- `.github/workflows/rust-compatibility.yml` 仅由 `workflow_dispatch` 手动触发，在 Linux、macOS、Windows 上运行浮动 `stable` 的 `check-repo`；job 显式设置 `RUSTUP_TOOLCHAIN=stable`，让子命令也使用待评估工具链。它不进入 `Candidate Quality`，不自动更新基线、依赖或产物。
+- 维护工具链时，先用 `cargo metadata --locked --format-version 1` 核对锁定依赖及 `rust_version`，再在选定版本执行正式检查。依赖声明的最高版本只是下界线索；缺失声明、目标平台、features 和源码使用的语言特性都可能影响实际兼容性。
+- 更新固定版本时，同步工具链文件、两个正式 workflow 和必要的最低版本声明；先通过本机正式基线，再通过对应 CI 验证其他平台。记录未执行的平台和运行态检查，不用 macOS 成功替代 Windows / Linux 或 `.NET` / COM 验证。
+- 固定 Rust 和 `Cargo.lock` 用于复现编译器与 Rust 依赖组合；CI runner 镜像、系统库、Actions 引用和 `.NET` SDK 未全部固定，因此不承诺逐字节一致的构建产物。
+
+字段与工具行为参考 [Cargo rust-version](https://doc.rust-lang.org/cargo/reference/rust-version.html) 和 [Rust toolchain Action](https://github.com/dtolnay/rust-toolchain)。
 
 ## 根协作入口维护
 

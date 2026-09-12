@@ -398,12 +398,12 @@ fn manifest_defaults_for_source(
 }
 
 fn validate_optional_positive_finite(value: Option<f64>, label: &str) -> RfResult<()> {
-    if let Some(value) = value {
-        if !value.is_finite() || value <= 0.0 {
-            return Err(RfError::invalid_input(format!(
-                "{label} must be a finite number greater than zero"
-            )));
-        }
+    if let Some(value) = value
+        && (!value.is_finite() || value <= 0.0)
+    {
+        return Err(RfError::invalid_input(format!(
+            "{label} must be a finite number greater than zero"
+        )));
     }
 
     Ok(())

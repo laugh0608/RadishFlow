@@ -16,16 +16,20 @@ const REQUIRED_FILES: &[&str] = &[
     ".github/rulesets/master-protection.json",
     ".github/workflows/pr-check.yml",
     ".github/workflows/release-check.yml",
+    ".github/workflows/rust-compatibility.yml",
     "AGENTS.md",
     "CLAUDE.md",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
+    "Cargo.toml",
+    "Cargo.lock",
     "LICENSE",
     "README.md",
     "SECURITY.md",
     "docs/README.md",
     "docs/adr/0001-branch-and-pr-governance.md",
     "docs/status/current.md",
+    "rust-toolchain.toml",
     "scripts/check-repo.ps1",
     "scripts/check-repo.sh",
     "xtask/src/repository_governance.rs",
@@ -547,9 +551,24 @@ fn check_workflow_contract(repo_root: &Path, errors: &mut Vec<String>) {
         errors,
     );
 
+    check_required_fragments(
+        repo_root,
+        ".github/workflows/rust-compatibility.yml",
+        &[
+            "workflow_dispatch:",
+            "permissions:\n  contents: read",
+            "RUSTUP_TOOLCHAIN: stable",
+            "dtolnay/rust-toolchain@stable",
+            "./scripts/check-repo.sh",
+            "./scripts/check-repo.ps1",
+        ],
+        errors,
+    );
+
     for relative_path in [
         ".github/workflows/pr-check.yml",
         ".github/workflows/release-check.yml",
+        ".github/workflows/rust-compatibility.yml",
     ] {
         let Ok(content) = fs::read_to_string(repo_root.join(relative_path)) else {
             continue;

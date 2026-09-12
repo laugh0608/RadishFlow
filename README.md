@@ -40,6 +40,8 @@ RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 `.NET 10
 
 ## 快速开始
 
+仓库通过 `rust-toolchain.toml` 固定 Rust 工具链，通过 `Cargo.lock` 与 `--locked` 保持正式检查的依赖组合；支持版本见 [当前状态](docs/status/current.md)，升级与兼容性检查方式见 [工具链维护规则](docs/development/agent-collaboration.md#rust-工具链与锁定依赖)。
+
 默认仓库级验证入口：
 
 ```powershell
@@ -61,7 +63,7 @@ pwsh ./scripts/normalize-text-files.ps1
 ./scripts/check-text-files.sh
 ```
 
-`check-repo` 会统一执行仓库治理与文本门禁、`cargo fmt --all --check`、`cargo check --workspace`、`cargo test --workspace` 与 `cargo clippy --workspace --all-targets -- -D warnings`。治理门禁覆盖必需文件、Markdown 相对链接、JSON、协作文件同步、GitHub 配置契约和 `git diff --check`。
+`check-repo` 会统一执行仓库治理与文本门禁、`cargo fmt --all --check`、`cargo check --locked --workspace`、`cargo test --locked --workspace` 与 `cargo clippy --locked --workspace --all-targets -- -D warnings`。治理门禁覆盖必需文件、Markdown 相对链接、JSON、协作文件同步、GitHub 配置契约和 `git diff --check`。
 
 ## 文本与格式约束
 
