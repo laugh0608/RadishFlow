@@ -28,7 +28,7 @@
 
 - 单文档工作区。
 - 项目文件 staged write。
-- `Save` / `Save As` / 覆盖确认。
+- `Save` / `Save As` / 覆盖确认；macOS 原生项目打开、首次保存与另存为主路径已实窗验证，Windows / Linux 新增路径证据见下文。
 - 最近项目列表和当前工作区返回入口。
 - 脏项目窗口关闭与 `Cmd+Q` 统一确认。
 - Canvas layout sidecar 使用 `<project>.rfstudio-layout.json`。
@@ -116,7 +116,9 @@ Windows 保存已有文件继续先移出备份，再提交 staged 文件。2026
 
 - 保存、另存为、关闭确认走 document lifecycle trigger。
 - 项目修改通过语义化 document command 更新 revision。
-- 运行控制和文档生命周期不进入 undo history。
+- 运行控制和文档生命周期不进入 undo history；文档历史只在当前会话保留，重开不恢复 Undo / Redo 栈。
+- 保存只写已提交的项目输入，不自动应用 Inspector 草稿；单元显示名称随项目保存，单元位置按稳定 ID 写入 sidecar。
+- 项目保存成功后再同步当前单元位置；布局写入失败单独警告并允许重试，不回退已经保存的工程文档。
 
 ### UI 与交互
 
@@ -149,5 +151,5 @@ Windows 保存已有文件继续先移出备份，再提交 staged 文件。2026
 ## 状态记录
 
 - 当前状态：Active
-- 最近更新：2026-09-13，B0 明确底层保存重开测试通过与 macOS GUI picker 缺失的区别；既有 Windows 保存恢复证据继续保留，详见 [周志](../devlogs/2026-09/2026-W37.md)。
-- 下一步：确认 macOS 原生文件选择器修复范围；补齐后再验收普通空白案例 GUI 保存 / 重开，保持底层与其他平台证据分开。
+- 最近更新：2026-09-13，macOS 项目 picker 已实现；删除 / 恢复、中文重命名和快捷键保存均已完成实窗重开 / rerun，草稿不自动入盘、sidecar 保留和会话历史边界已复核，详见 [周志](../devlogs/2026-09/2026-W37.md)。
+- 下一步：随 B1-4 保持保存快捷键与文档生命周期一致；macOS 原生覆盖按钮组合 / 真实权限故障和 Windows / Linux 新增路径仍待验证，Linux 项目选择器实现另行定范围。

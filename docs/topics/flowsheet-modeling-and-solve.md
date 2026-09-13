@@ -44,7 +44,8 @@
 - 支持 `Feed + Feed -> Mixer -> Flash Drum`。
 - Feed source stream T/P/F/z、composition 归一和必要单元参数进入 readiness。
 - Canvas suggestion 可显式接受连接或创建 outlet stream。
-- Unit Inspector 参数提交走正式文档命令，并支持保存 / 重开 / rerun。
+- Unit Inspector 参数与单元显示名称提交走正式文档命令，并支持保存 / 重开 / rerun。
+- 六类单元可经影响确认删除，保留流股和相邻绑定；删除与重命名有单次历史、Undo / Redo 和结果旧化回归。导航按当前对象身份校验；分层实窗证据见下文。
 
 已知缺口：
 
@@ -155,7 +156,7 @@
 | 其余五类单元逐项实窗 | 待验证；自动化矩阵通过不等同全部 GUI 路径验收 |
 | 原生持久化 | macOS 本轮主路径已验证，扩展边界见 [生命周期 B1](project-lifecycle-storage.md#b1-macos-原生项目文件选择器2026-09-13)；Windows / Linux 本轮待验证 |
 
-B0 表是旧基线记录，其中“删除缺失”已由本节覆盖，“重命名缺失”由下述 B1-3 覆盖。
+B0 表保留当时基线：“删除缺失”由本节覆盖，“重命名缺失”由 B1-3 覆盖；导航误报与快捷键待验证结论分别由后续导航修复、焦点复核更新。
 
 ### B1-2 Canvas 导航反馈（2026-09-13）
 

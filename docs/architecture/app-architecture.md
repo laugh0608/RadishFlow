@@ -12,7 +12,7 @@
 
 本文保留 MVP 应用契约；后续基础编辑能力按 [Studio 主路径](../topics/studio-main-workflow.md#基础功能完善切片) 与建模专题扩展。完整拖拽布局、完整报表或多文档工作台不作为当前切片的附带实现。
 
-长期边界见 [模拟平台规划](simulation-platform.md)：`SimulationMode::Active / Hold` 表示运行触发策略，工程模型、运行任务与数值状态分离。未来变量浏览器、COM 与脚本共用公开描述和应用命令；录制器记录语义操作，`CommandHistory` 只负责文档 Undo / Redo，运行、保存、导出与动态检查点另有契约。本轮仅更新规划。
+长期边界见 [模拟平台规划](simulation-platform.md)：`SimulationMode::Active / Hold` 表示运行触发策略，工程模型、运行任务与数值状态分离。未来变量浏览器、COM 与脚本共用公开描述和应用命令；录制器记录语义操作，`CommandHistory` 只负责文档 Undo / Redo，运行、保存、导出与动态检查点另有契约。这些长期接口尚未实现。
 
 ## 冻结决策
 
@@ -459,7 +459,6 @@ egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、�
 
 - `CreateUnit`
 - `DeleteUnit`
-- `MoveUnit`
 - `ConnectPorts`
 - `DisconnectPorts`
 - `RenameUnit`
@@ -476,7 +475,7 @@ egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、�
 
 补充冻结口径：
 
-- `MoveUnit` 进入历史栈，因为节点几何位置属于文档语义的一部分
+- `MoveUnit` 类型仍保留，但当前 Studio 移动 / 拖动只写 layout sidecar，不改文档 revision、不进入历史；不得因类型存在认定该命令已被消费
 - 当前 `ConnectPorts` 必须显式携带 `stream_id`，并允许 `to_unit_id / to_port` 为空，以覆盖“复用已有 stream 接到 sink”与“创建 terminal outlet stream”两类正式 material connection 写回
 - `SetSimulationMode`、`RunSolve`、`ClearResults` 属于运行控制动作，直接作用于 `SolveSessionState`
 - `OpenDocument`、`SaveDocument`、`SaveDocumentAs` 属于文档生命周期动作，不进入 undo/redo 历史
@@ -754,15 +753,15 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 
 - 手动运行已经进入真实 GUI 工作台主路径：`流程图` / `运行` 上下文工具栏中的 `运行当前流程` 派发 `run_panel.run_manual`，并通过 command registry 的 availability / disabled reason 控制按钮状态。`StudioAppFacade`、`WorkspaceControlAction`、`WorkspaceControlState`、`RunPanelWidgetModel` 与 `run_panel_driver` 构成稳定链路；后台调度、取消、自动运行与 `Hold -> Active` 恢复仍留给后续 GUI 交互细化。
 - Studio app-host GUI 动作入口统一为 `StudioAppHostController::dispatch_ui_command(command_id)`。run panel command registry 首批稳定命令为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；菜单、快捷键、命令面板、palette 和 runtime 小型 action button 都应复用这条派发链。
-- Canvas suggestion、layout nudge、单元拖动和选中流股恢复已纳入同一条 command surface。layout nudge / 单元拖动只写 `<project>.rfstudio-layout.json` sidecar；`canvas.disconnect_selected_stream*`、`canvas.reconnect_selected_stream` 和 `canvas.delete_selected_stream` 是无自由连线阶段的受控恢复动作，进入 `CommandHistory`，但不得扩成端口选择器、自由连线、自动布线或完整拖拽布局。
+- Canvas suggestion、layout nudge、单元拖动和流股恢复复用 command surface；移动只写 sidecar，断开 / 重连 / 流股删除进入文档历史。`canvas.delete_selected_unit` 先由 shell 确认影响，再派发领域事务；重命名复用 Inspector 草稿。取消、失效确认和无效草稿不提交，细则见 [建模专题](../topics/flowsheet-modeling-and-solve.md)。
 - 结果审阅、错误定位和诊断目标都必须复用 `StudioGuiWindowDiagnosticTargetActionModel`、`inspector.focus_stream:*`、`inspector.focus_unit:*` 或既有 focus action。`selected_stream / comparison_stream / selected_unit` 只是 shell-local selector state，不缓存第二份结果；comparison 复位不代表结果语义变化。
 - `StudioGuiCommandRegistry` 从最新 `SolveSnapshot` 派生 `Results` command section；result stream / unit navigation 只暴露为正式 focus command。顶部 `结果` 工具栏只扫读结果入口和状态，不承担所有对象定位按钮。
 - Module Settings、Module Results、case-level `review_summary` 和 `stale_solve_snapshot` 的边界见本文上方 `Studio Shell UI 规范化边界` 与 `docs/reference/solve-snapshot-results.md`。它们都服务当前 revision 的结果审阅和轻量导出，不成为第二套结果缓存或报表模型。
 - 失败详情只消费 `latest_diagnostic`，显示 primary code、revision、severity、count 与相关 target；GUI 不从 message 文本反解析或私造端口级 command。Run Panel recovery action 必须区分聚焦与修复，用户主动选中流股后的恢复动作走对应 `canvas.*selected_stream*` 命令，不复用 failure-only recovery command。
 - `StudioAppHostController` 对 `DispatchCanvasInteraction` 不应无条件 `refresh_local_canvas_suggestions()`；local-rules refresh 只应发生在真正改写文档或显式要求重算 suggestion 的路径上，避免破坏 GUI 命令面的连续交互语义。
 - `studio_gui_shell` 已通过 shell 级等价回归锁定 run panel、canvas suggestion、layout nudge、选中流股恢复和 disabled gate 在菜单、工具栏、命令面板、Canvas / Inspector 入口之间的共享派发语义；后续提示应停留在 presentation 层，不越过 disabled gate 改状态。
-- 字段编辑快捷键策略当前冻结为：`Ctrl+S` 始终保存；`Ctrl+Z / Ctrl+Y` 在文本输入焦点下由输入框处理，普通焦点、画布焦点和 Inspector 面板焦点下才派发文档历史命令；`Enter` 在 Stream Inspector 字段输入中只提交当前字段。
-- `apps/radishflow-studio/src` 已开始按职责做浅层目录治理；`bootstrap`、`studio_gui_shell`、`studio_gui_host`、`studio_gui_driver`、`studio_gui_window_layout`、`studio_window_host_manager`、`entitlement_session_host`、`property_package_download_client`、`auth_cache_sync`、`app_facade` 与 `control_plane_client` 已转为目录模块。后续新增实现应优先并入同域子目录。
+- 文本焦点拥有文本 Undo / Redo，非文本适用焦点才派发文档历史；Stream / Unit Inspector 的 Enter 提交有效当前字段，Escape 保留草稿。macOS 当前文档快捷键为 ⌘S / ⌘Z / ⌘Y，registry 仍用 Ctrl 表达主修饰键，平台展示与 ⇧⌘Z 缺口见 [B1-4 候选](../topics/flowsheet-modeling-and-solve.md#b1-4-候选平台快捷键展示与文档重做)。
+- Studio 源码按领域职责组织浅层模块；新增实现并入同域目录，避免继续扩大入口文件。
 
 ## 结果快照模型
 
@@ -817,15 +816,11 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 当前建议的动作类别：
 
 - 文档生命周期动作：新建、打开、保存、另存为
-- 可撤回文档命令：新增单元、删除节点、连接端口、移动节点、编辑参数
+- 可撤回文档命令：新增 / 删除 / 重命名单元、连接 / 断开流股、编辑参数
 - 运行控制动作：切换 `SimulationMode`、校验、运行、停止、清空结果
 - 纯 UI 动作：框选、缩放、平移、面板展开/收起
 
-这样做的好处：
-
-- 便于后续加入 undo/redo
-- 便于把 UI 操作映射为可测试事务
-- 便于将来接入自动化或脚本入口
+语义命令提供可测试事务与文档撤销边界，未来自动化复用该边界。
 
 补充约定：
 
@@ -833,7 +828,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - 文档生命周期动作和运行控制动作都不进入 `CommandHistory`
 - 纯画布浏览行为不进入命令历史
 - 纯 UI 布局变化默认不触发求解
-- 纯几何移动正式归入文档命令，因为它改变流程图持久化几何信息
+- 单元几何移动属于 layout sidecar，不属于工程文档或其撤销历史
 
 ## Core 与 UI 的数据边界
 

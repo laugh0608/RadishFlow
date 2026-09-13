@@ -1,6 +1,6 @@
 # Canvas Interaction Contract
 
-更新时间：2026-06-08
+更新时间：2026-09-13
 
 ## 文档目的
 
@@ -419,6 +419,8 @@ pub struct GhostElement {
 4. 受控流股恢复动作可进入 `CommandHistory`：整股断开保留流股规格，source / sink 端点级断开只解除唯一对应端点，删除流股会先解除材料端口绑定；单端重连只补齐唯一候选端点。后续继续细化时必须显式处理端口合法性、已有绑定冲突、失败恢复和 undo；不得扩展成任意自由拉线编辑器。
 5. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。当前已允许单元块直接拖动位置，拖动 active 时应避免同时触发 viewport pan，释放后仍只写 sidecar，不写 `FlowsheetDocument`、不递增 revision、不进入 `CommandHistory`。
 6. viewport 初始居中、`Fit to content` 和 sidecar 级 offset 记忆已落地；后续若继续扩展 viewport，只允许在明确 shell-local / sidecar 边界内做单能力增量，不得把 viewport 混入项目语义、求解输入或文档历史。短线段标签后续若继续优化，应作为 Canvas presentation 专题处理，不引入自动布线。
+
+单元删除与重命名的领域事务见 [建模专题](../topics/flowsheet-modeling-and-solve.md)。导航按对象种类 / ID 在当前 presentation 重新解析锚点，绘制与校验读取同一份当前视图；布局序号变化或选择切换不等于对象消失，真实删除仍报告失效，Undo 恢复后可重新定位。
 
 ## 当前仍待后续细化的问题
 

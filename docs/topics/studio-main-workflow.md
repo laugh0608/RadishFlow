@@ -25,6 +25,7 @@
 - Workbench 已稳定为左侧 `模块 / 项目`、中央 Canvas、右侧 `检查器 / 模块设置 / 模块结果`、底部运行信息与状态汇总。
 - `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 已有受控建模能力和 focused 回归。
 - `Cmd+Q` 与窗口关闭共用脏工作区确认路径。
+- 单元删除、显示名称编辑与导航修复已接通；macOS 普通空白来源的编辑、原生保存重开、文本 / 文档历史主路径已复核。其余单元逐项实窗与跨平台新增路径仍待验证，分层证据见建模和生命周期专题。
 
 已知缺口：
 
