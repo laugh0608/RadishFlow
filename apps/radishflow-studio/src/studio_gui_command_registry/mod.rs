@@ -203,7 +203,11 @@ impl StudioGuiCommandRegistry {
         let widget = canvas.widget();
         for action in &widget.actions {
             let is_place_unit = matches!(action.id, StudioGuiCanvasActionId::BeginPlaceUnit(_));
-            let is_layout_nudge = matches!(action.id, StudioGuiCanvasActionId::MoveSelectedUnit(_));
+            let is_unit_edit = matches!(
+                action.id,
+                StudioGuiCanvasActionId::MoveSelectedUnit(_)
+                    | StudioGuiCanvasActionId::DeleteSelectedUnit
+            );
             let is_stream_edit = matches!(
                 action.id,
                 StudioGuiCanvasActionId::DisconnectSelectedStream
@@ -214,7 +218,7 @@ impl StudioGuiCommandRegistry {
             );
             let should_include = if is_place_unit {
                 canvas_target_window_id.is_some()
-            } else if is_layout_nudge || is_stream_edit {
+            } else if is_unit_edit || is_stream_edit {
                 canvas_target_window_id.is_some() && action.enabled
             } else {
                 !canvas.suggestions.is_empty() || canvas.pending_edit.is_some()
@@ -723,6 +727,11 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
             ],
             shortcut: None,
         },
+        "canvas.delete_selected_unit" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Unit", "Delete Selected Unit"],
+            search_terms: &["unit", "delete", "remove", "删除", "单元"],
+            shortcut: None,
+        },
         "canvas.delete_selected_stream" => StudioGuiCommandDefaults {
             menu_path: &["Canvas", "Stream", "Delete Selected Stream"],
             search_terms: &[
@@ -762,6 +771,7 @@ fn canvas_sort_order(action_id: StudioGuiCanvasActionId) -> u16 {
         StudioGuiCanvasActionId::DisconnectSelectedStreamSink => 394,
         StudioGuiCanvasActionId::ReconnectSelectedStream => 400,
         StudioGuiCanvasActionId::DeleteSelectedStream => 410,
+        StudioGuiCanvasActionId::DeleteSelectedUnit => 420,
     }
 }
 

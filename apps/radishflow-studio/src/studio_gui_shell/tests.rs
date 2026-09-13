@@ -182,6 +182,7 @@ mod project_lifecycle;
 mod result_review;
 mod runtime;
 mod runtime_synthetic_flash_inlet_boundary;
+mod unit_deletion;
 
 fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGuiCommandEntry> {
     commands

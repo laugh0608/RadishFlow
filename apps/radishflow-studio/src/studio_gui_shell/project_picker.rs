@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 
 pub(super) trait ProjectFilePicker {
+    fn supports_project_dialogs(&self) -> bool {
+        true
+    }
     fn pick_project_file(&mut self) -> Option<PathBuf>;
     fn pick_save_project_file(&mut self) -> Option<PathBuf>;
     fn pick_result_export_file(&mut self) -> Option<PathBuf>;
@@ -10,6 +13,9 @@ pub(super) trait ProjectFilePicker {
 pub(super) struct NativeProjectFilePicker;
 
 impl ProjectFilePicker for NativeProjectFilePicker {
+    fn supports_project_dialogs(&self) -> bool {
+        cfg!(any(target_os = "windows", target_os = "macos"))
+    }
     fn pick_project_file(&mut self) -> Option<PathBuf> {
         pick_native_project_file()
     }
@@ -23,7 +29,7 @@ impl ProjectFilePicker for NativeProjectFilePicker {
     }
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 fn pick_native_project_file() -> Option<PathBuf> {
     rfd::FileDialog::new()
         .set_title("Open RadishFlow project")
@@ -31,7 +37,7 @@ fn pick_native_project_file() -> Option<PathBuf> {
         .pick_file()
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 fn pick_native_save_project_file() -> Option<PathBuf> {
     rfd::FileDialog::new()
         .set_title("Save RadishFlow project")
@@ -40,12 +46,12 @@ fn pick_native_save_project_file() -> Option<PathBuf> {
         .map(ensure_project_file_extension)
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn pick_native_project_file() -> Option<PathBuf> {
     None
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn pick_native_save_project_file() -> Option<PathBuf> {
     None
 }
@@ -64,7 +70,7 @@ fn pick_native_result_export_file() -> Option<PathBuf> {
     None
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 fn ensure_project_file_extension(path: PathBuf) -> PathBuf {
     let value = path.to_string_lossy();
     if value.ends_with(rf_store::STORED_PROJECT_FILE_EXTENSION) {
@@ -84,4 +90,18 @@ fn ensure_text_file_extension(path: PathBuf) -> PathBuf {
         return path;
     }
     PathBuf::from(format!("{value}.txt"))
+}
+
+impl super::ReadyAppState {
+    pub(super) fn project_dialogs_available(&mut self) -> bool {
+        if self.project_file_picker.supports_project_dialogs() {
+            return true;
+        }
+        self.project_open.notice = Some(super::ProjectOpenNotice {
+            level: super::ProjectOpenNoticeLevel::Warning,
+            title: "文件选择器不可用".to_string(),
+            detail: "当前平台尚未接入原生项目文件选择器，工作区保持不变。".to_string(),
+        });
+        false
+    }
 }

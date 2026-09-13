@@ -319,6 +319,20 @@ impl ReadyAppState {
                             self.dispatch_ui_command(&action.command_id);
                         }
                     }
+                    if let Some(action) = widget
+                        .action(radishflow_studio::StudioGuiCanvasActionId::DeleteSelectedUnit)
+                        && ui
+                            .add_enabled(
+                                action.enabled,
+                                egui::Button::new(
+                                    self.locale.runtime_label(&action.label).as_ref(),
+                                ),
+                            )
+                            .on_hover_text(&action.detail)
+                            .clicked()
+                    {
+                        self.dispatch_ui_command(&action.command_id);
+                    }
                 } else if selection.kind_label == "Stream" {
                     for action_id in [
                         radishflow_studio::StudioGuiCanvasActionId::DisconnectSelectedStream,

@@ -215,6 +215,9 @@ impl StudioGuiHost {
                 crate::StudioGuiCanvasActionId::ReconnectSelectedStream => {
                     StudioGuiCanvasInteractionAction::ReconnectSelectedStream
                 }
+                crate::StudioGuiCanvasActionId::DeleteSelectedUnit => {
+                    StudioGuiCanvasInteractionAction::DeleteSelectedUnit
+                }
                 crate::StudioGuiCanvasActionId::DeleteSelectedStream => {
                     StudioGuiCanvasInteractionAction::DeleteSelectedStream
                 }
@@ -551,11 +554,16 @@ impl StudioGuiHost {
     ) -> RfResult<()> {
         self.canvas_unit_positions.insert(unit_id.clone(), position);
         let flowsheet = &self.controller.document().flowsheet;
-        self.canvas_unit_positions
-            .retain(|unit_id, _| flowsheet.units.contains_key(unit_id));
+        // Keep deleted positions in memory for Undo; persist only live objects.
+        let live_positions = self
+            .canvas_unit_positions
+            .iter()
+            .filter(|(unit_id, _)| flowsheet.units.contains_key(*unit_id))
+            .map(|(unit_id, position)| (unit_id.clone(), *position))
+            .collect();
         match self.controller.document_path() {
             Some(project_path) => {
-                save_persisted_canvas_unit_positions(project_path, &self.canvas_unit_positions)
+                save_persisted_canvas_unit_positions(project_path, &live_positions)
             }
             None => Ok(()),
         }

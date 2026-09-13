@@ -24,6 +24,9 @@ impl ReadyAppState {
     }
 
     pub(super) fn open_project_from_picker(&mut self) {
+        if !self.project_dialogs_available() {
+            return;
+        }
         let Some(project_path) = self.project_file_picker.pick_project_file() else {
             self.project_open.notice = Some(ProjectOpenNotice {
                 level: ProjectOpenNoticeLevel::Info,
@@ -124,6 +127,7 @@ impl ReadyAppState {
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
                 self.platform_host = platform_host;
+                self.pending_unit_deletion = None;
                 self.platform_timer_executor = EguiPlatformTimerExecutor::default();
                 self.command_palette.close();
                 self.last_area_focus = None;
@@ -235,6 +239,7 @@ impl ReadyAppState {
                     detail: format!("Saved revision {} to {path}", document.revision),
                 });
                 self.project_open.pending_save_as_overwrite = None;
+                self.persist_saved_canvas_layout();
             }
             Err(error) => {
                 self.project_open.notice = Some(ProjectOpenNotice {
@@ -256,6 +261,9 @@ impl ReadyAppState {
     }
 
     pub(super) fn save_project_as_from_picker(&mut self) {
+        if !self.project_dialogs_available() {
+            return;
+        }
         let Some(project_path) = self.project_file_picker.pick_save_project_file() else {
             self.project_open.notice = Some(ProjectOpenNotice {
                 level: ProjectOpenNoticeLevel::Info,
@@ -321,6 +329,7 @@ impl ReadyAppState {
                             project_path.display()
                         ),
                     }));
+                self.persist_saved_canvas_layout();
             }
             Err(error) => {
                 self.project_open.notice = Some(ProjectOpenNotice {
@@ -500,6 +509,7 @@ impl ReadyAppState {
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
                 self.platform_host = platform_host;
+                self.pending_unit_deletion = None;
                 self.platform_timer_executor = EguiPlatformTimerExecutor::default();
                 self.command_palette.close();
                 self.last_area_focus = None;
@@ -628,6 +638,7 @@ impl ReadyAppState {
             self.render_home_dashboard(ctx, &window);
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
+            self.render_unit_deletion_dialog(ctx);
             return;
         }
         self.render_top_bar(
@@ -641,6 +652,7 @@ impl ReadyAppState {
             self.render_property_page(ctx, &window);
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
+            self.render_unit_deletion_dialog(ctx);
             return;
         }
         self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
@@ -651,6 +663,7 @@ impl ReadyAppState {
         self.render_command_palette(ctx, &window.commands);
         self.render_floating_drop_preview_overlay(ctx, &window);
         self.render_pending_close_window_dialog(ctx);
+        self.render_unit_deletion_dialog(ctx);
         self.finish_drop_preview_cycle(
             ctx,
             window.layout_state.scope.window_id,
@@ -669,6 +682,7 @@ impl ReadyAppState {
             self.render_home_dashboard(ctx, &window);
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
+            self.render_unit_deletion_dialog(ctx);
             return;
         }
 
@@ -683,6 +697,7 @@ impl ReadyAppState {
             self.render_property_page(ctx, &window);
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
+            self.render_unit_deletion_dialog(ctx);
             return;
         }
         self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
@@ -693,6 +708,7 @@ impl ReadyAppState {
         self.render_command_palette(ctx, &window.commands);
         self.render_floating_drop_preview_overlay(ctx, &window);
         self.render_pending_close_window_dialog(ctx);
+        self.render_unit_deletion_dialog(ctx);
     }
 
     pub(super) fn dispatch_run_panel_widget(&mut self, event: RunPanelWidgetEvent) {
@@ -717,6 +733,18 @@ impl ReadyAppState {
 
     pub(super) fn dispatch_ui_command(&mut self, command_id: impl Into<String>) {
         let command_id = command_id.into();
+        if command_id == radishflow_studio::FILE_SAVE_COMMAND_ID {
+            self.save_project();
+            return;
+        }
+        if command_id == "canvas.delete_selected_unit" {
+            self.request_unit_deletion();
+            return;
+        }
+        self.dispatch_confirmed_ui_command(command_id);
+    }
+
+    pub(super) fn dispatch_confirmed_ui_command(&mut self, command_id: String) {
         if self.intercept_modeling_readiness_run_if_needed(&command_id) {
             return;
         }
@@ -1620,6 +1648,9 @@ impl ReadyAppState {
     }
 
     pub(super) fn dispatch_shortcuts(&mut self, ctx: &egui::Context) {
+        if self.pending_unit_deletion.is_some() {
+            return;
+        }
         let focus_context = self.focus_context(ctx);
         if matches!(focus_context, StudioGuiFocusContext::CommandPalette) {
             return;

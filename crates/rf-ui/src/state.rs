@@ -1,4 +1,5 @@
 mod actions;
+mod unit_edit;
 mod unit_inspector;
 use actions::*;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -430,6 +431,8 @@ impl AppLogFeed {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceState {
+    // Retain identities across deletion and history branching for this document session.
+    allocated_unit_ids: BTreeSet<UnitId>,
     pub document: FlowsheetDocument,
     pub document_path: Option<PathBuf>,
     pub last_saved_revision: Option<u64>,
@@ -450,6 +453,7 @@ impl WorkspaceState {
         let run_panel = RunPanelState::from_runtime(&solve_session, None, None);
 
         Self {
+            allocated_unit_ids: document.flowsheet.units.keys().cloned().collect(),
             document,
             document_path: None,
             last_saved_revision: None,
@@ -472,6 +476,8 @@ impl WorkspaceState {
     ) -> u64 {
         let before = self.document.flowsheet.clone();
         let after = next_flowsheet.clone();
+        self.allocated_unit_ids.extend(before.units.keys().cloned());
+        self.allocated_unit_ids.extend(after.units.keys().cloned());
         let revision = self.document.replace_flowsheet(next_flowsheet, changed_at);
         self.command_history
             .record(CommandHistoryEntry::with_snapshots(
@@ -841,8 +847,11 @@ impl AppState {
             return Ok(None);
         };
 
-        let (command, next_flowsheet, unit_id) =
-            apply_canvas_edit_intent(&self.workspace.document.flowsheet, &intent)?;
+        let (command, next_flowsheet, unit_id) = apply_canvas_edit_intent(
+            &self.workspace.document.flowsheet,
+            &intent,
+            &self.workspace.allocated_unit_ids,
+        )?;
         let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at);
         self.workspace.selection.selected_units.clear();
         self.workspace.selection.selected_streams.clear();

@@ -327,6 +327,7 @@ impl StudioShellLocale {
             "Move right" => Cow::Borrowed("右移"),
             "Move up" => Cow::Borrowed("上移"),
             "Move down" => Cow::Borrowed("下移"),
+            "Delete unit" => Cow::Borrowed("删除单元"),
             "Disconnect stream" => Cow::Borrowed("断开流股"),
             "Disconnect source" => Cow::Borrowed("断开源端"),
             "Disconnect sink" => Cow::Borrowed("断开目标端"),

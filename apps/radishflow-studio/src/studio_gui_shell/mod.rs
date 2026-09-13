@@ -37,7 +37,9 @@ mod home_dashboard;
 mod locale;
 mod modeling_readiness;
 mod panels;
+mod project_layout_save;
 mod project_picker;
+mod unit_deletion;
 mod utils;
 
 #[cfg(test)]
@@ -114,6 +116,7 @@ struct ReadyAppState {
     platform_timer_executor: EguiPlatformTimerExecutor,
     command_palette: CommandPaletteState,
     project_open: ProjectOpenState,
+    pending_unit_deletion: Option<unit_deletion::PendingUnitDeletion>,
     home_workspace_return_available: bool,
     home_selected_current_workspace: bool,
     home_selected_recent_project: Option<PathBuf>,
@@ -423,6 +426,7 @@ impl ReadyAppState {
             platform_host: StudioGuiPlatformHost::new(config)?,
             platform_timer_executor: EguiPlatformTimerExecutor::default(),
             command_palette: CommandPaletteState::default(),
+            pending_unit_deletion: None,
             project_open: ProjectOpenState::from_path_and_recent(
                 &config.project_path,
                 recent_projects,

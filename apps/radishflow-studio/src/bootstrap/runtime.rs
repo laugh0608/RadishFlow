@@ -628,6 +628,18 @@ impl BootstrapSession {
         Ok(result)
     }
 
+    pub(crate) fn delete_selected_unit(&mut self) -> RfResult<Option<u64>> {
+        let Some(rf_ui::InspectorTarget::Unit(unit_id)) =
+            self.app_state.workspace.drafts.active_target.clone()
+        else {
+            return Ok(None);
+        };
+        let revision = self.app_state.delete_unit(&unit_id, SystemTime::now())?;
+        self.refresh_local_canvas_suggestions();
+        self.dispatch_automatic_run_after_canvas_write_if_needed()?;
+        Ok(Some(revision))
+    }
+
     pub(crate) fn delete_selected_stream_and_connections(
         &mut self,
     ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
