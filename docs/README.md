@@ -1,6 +1,6 @@
 # RadishFlow Docs
 
-更新时间：2026-09-12
+更新时间：2026-09-13
 
 ## 先读什么
 
@@ -20,6 +20,7 @@
 - 想知道“现在怎么用 Studio”，先读 `guides/`
 - 想知道“字段、单位、结果是什么意思”，先读 `reference/`
 - 想知道“为什么这样分层、边界怎么定”，再读 `architecture/`
+- 想知道长期能力地图、弱耦合与多模式计算边界，读 `architecture/simulation-platform.md`；阶段顺序见 `radishflow-mvp-roadmap.md`
 
 `AGENTS.md` / `CLAUDE.md` 只保留启动即生效的长期约束，不承担当前说明书、命令手册或历史记录职责。
 
@@ -79,6 +80,7 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | 文档 | 说明 |
 | --- | --- |
 | `architecture/overview.md` | 当前仓库分层、crate 边界与阶段职责 |
+| `architecture/simulation-platform.md` | 长期能力与产品参考、递归分块与多种求解方式、动态 / 瞬态 / 间歇、变量树 / COM 自动化与录制回放 |
 | `architecture/app-architecture.md` | 桌面 App 的状态、命令与模块边界 |
 | `architecture/canvas-interaction-contract.md` | 画布视图模式、流线状态与 suggestion 契约 |
 | `architecture/studio-ui-topic-plan.md` | Studio UI 专题阶段的端点边界、信息架构、主工作流和 `.pen` 设计稿规则 |
@@ -99,11 +101,11 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | 文档 | 说明 |
 | --- | --- |
 | `status/current.md` | 当前阶段、重点、验证基线和按需阅读入口 |
-| `topics/README.md` | 已有能力与历史功能专题索引，不表示当前存在产品排期 |
+| `topics/README.md` | 已有能力与开发专题索引；长期目标进入具体切片后再排期 |
 | `mvp/scope.md` | 已保留的 MVP 范围、模型限制与验收含义 |
 | `mvp/alpha-acceptance-checklist.md` | MVP α 验收矩阵、smoke 记录口径和 release blocker 分类 |
 | `mvp/beta-acceptance-checklist.md` | MVP β 人工 smoke、通过 / 失败标准和暂不推进项 |
-| `radishflow-mvp-roadmap.md` | 历史里程碑与未排期的后续决策参考 |
+| `radishflow-mvp-roadmap.md` | 历史里程碑、基础功能优先的近期顺序与长期阶段退出标准 |
 | `devlogs/README.md` | 按月份分组的周志索引与命名规则 |
 | `releases/v26.5.1-dev.md` | 历史 `v26.5.1-dev` 便携 staging 草案和验证记录；不作为当前正式版本节点事实源 |
 

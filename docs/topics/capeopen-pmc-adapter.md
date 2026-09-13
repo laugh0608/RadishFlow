@@ -1,6 +1,6 @@
 # CAPE-OPEN PMC 适配层
 
-更新时间：2026-09-12
+更新时间：2026-09-13
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -9,6 +9,8 @@
 用途：定义 `.NET 10` CAPE-OPEN / COM 适配层、PMC 注册、PME 人工验证和 Rust FFI 边界。
 读者：负责 `adapters/dotnet-capeopen/`、`rf-ffi`、COM 注册脚本、DWSIM / COFE 验证和互操作测试的开发者、用户、AI / Agent。
 不包含：Rust Core 内部 COM 语义、第三方 CAPE-OPEN 模型加载、完整 Thermodynamics PMC、PME 自动化产品化和安装器发布。
+
+变量浏览树、模块创建与参数读写等通用 COM Automation 已进入 [长期自动化目标](../architecture/simulation-platform.md#统一-api-的目标形态)，未来建立独立应用自动化适配；它不等同于 CAPE-OPEN 接口，也不把本专题的既有 PMC 测试视为通用自动化已交付。
 
 ## 专题目标
 

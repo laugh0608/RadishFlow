@@ -62,7 +62,7 @@
 
 ## 项目长期边界
 
-- 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN / COM 适配层构建稳态流程模拟软件。
+- 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN / COM 适配层构建可扩展流程模拟平台；从稳态起步，长期覆盖动态与瞬态，目标边界见 `docs/architecture/simulation-platform.md`。
 - 单位统一使用 SI 基本单位；温度使用 K，压力使用 Pa，摩尔流量使用 mol/s。
 - Rust 不直接处理 COM；CAPE-OPEN / COM 语义只留在 `.NET` 适配层。
 - `rf-model` 只承载对象模型，不提前承载求解策略或 COM 语义。

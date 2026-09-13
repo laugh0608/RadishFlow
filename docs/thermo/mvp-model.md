@@ -1,6 +1,6 @@
 # Thermo MVP Model
 
-更新时间：2026-09-12
+更新时间：2026-09-13
 
 ## 用途与维护状态
 
@@ -90,7 +90,7 @@ golden 中的小数位数和数值容差属于实现回归条件，不是物性�
 
 ## 尚未实现与后续决策
 
-完整焓参考态、潜热、PH / PS Flash、真实 EOS、更复杂多组分与 phase envelope tracing 仍未实现。后续迭代按目标体系和工况选择模型，优先建立物性来源与能量闭环，再扩展 UI 或远期能力；具体顺序见 [迭代路线图](../radishflow-mvp-roadmap.md#后续迭代顺序)。
+完整焓参考态、潜热、PH / PS Flash、真实 EOS、更复杂多组分与 phase envelope tracing 仍未实现。对应数值切片按目标体系与工况选择模型，建立物性来源、能量闭环与独立基准；这些前提不阻塞编辑、配置、保存等基础功能完善。总体顺序见 [迭代路线图](../radishflow-mvp-roadmap.md#后续迭代顺序)，独立物性分析、估算及多模式计算的长期边界见 [模拟平台规划](../architecture/simulation-platform.md)。
 
 ## 相关样例
 

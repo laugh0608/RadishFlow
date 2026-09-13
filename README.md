@@ -2,19 +2,21 @@
 
 > RadishFlow 自 2026-09-12 起恢复正常开发和迭代。当前阶段与优先级见 [当前状态](docs/status/current.md)，具体范围与验收要求见对应开发专题。
 
-RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 `.NET 10` 负责 CAPE-OPEN / COM 适配的稳态流程模拟软件。
+RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 `.NET 10` 负责 CAPE-OPEN / COM 适配的可扩展流程模拟平台。当前从稳态流程起步，长期覆盖动态、瞬态及多种求解组织方式。
 
 ## 当前定位
 
 项目以已完成的第一阶段 MVP 为基础继续迭代，保持以下架构边界：
 
-- Rust 实现稳态模拟核心
+- Rust 实现计算核心，当前为受控稳态流程，长期按领域能力扩展
 - Rust 实现桌面 UI
 - `.NET 10` 暴露自有 CAPE-OPEN Unit Operation PMC
 - 当前不加载第三方 CAPE-OPEN 模型
 - Rust 不直接处理 COM；Rust 与 `.NET` 边界只允许句柄、基础数值、UTF-8 字符串和 JSON
 
 更具体的开发状态、已有能力与限制，见 [当前状态](docs/status/current.md)、[MVP 范围](docs/mvp/scope.md) 和 [CAPE-OPEN 边界](docs/capeopen/boundary.md)。
+
+近期先完善基础功能与使用闭环；长期建设可独立组合的组分、物性与分析、画布、单元与反应、模拟、算法、报告及对外 API 系统，包含递归分块求解、间歇操作、变量浏览树、COM 自动化和脚本录制 / 回放。领域边界见 [模拟平台长期规划](docs/architecture/simulation-platform.md)，阶段与验收见 [开发路线图](docs/radishflow-mvp-roadmap.md)。目标能力按阶段实现，不代表现有产品已具备。
 
 现有模型使用简化物性与单元假设，内置样例用于演示和软件回归；求解收敛、α / β 验收和跨层一致性不构成工程工况准确性证明。模型假设、样例来源限制及独立验证缺口统一见 [热力学 MVP 模型](docs/thermo/mvp-model.md)。
 

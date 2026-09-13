@@ -1,12 +1,14 @@
 # CAPE-OPEN Boundary
 
-更新时间：2026-09-12
+更新时间：2026-09-13
 
 > 本文定义接口边界并保留历史验证说明。具体迭代与验证安排见 [当前状态](../status/current.md)。native 句柄生命周期契约见 [适配层专题](../topics/capeopen-pmc-adapter.md#native-engine-生命周期)。
 
 ## 边界目标
 
 该文档用于冻结 Rust Core 与 `.NET 10` CAPE-OPEN 适配层之间的边界，避免 COM 语义反向污染 Rust 核心。
+
+2026-09-13 明确的变量树式 COM Automation 属于未来应用自动化适配，与本文件的 CAPE-OPEN PMC / PME 契约分开设计。它同样由 .NET 承载 COM 语义，并转发到统一领域命令与查询；本轮不更改既有 CAPE-OPEN 接口、GUID、注册或运行行为。目标见 [统一 API](../architecture/simulation-platform.md#统一-api-的目标形态)。
 
 ## 第一阶段原则
 
