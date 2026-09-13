@@ -1,6 +1,6 @@
 # 项目生命周期与存储
 
-更新时间：2026-09-12
+更新时间：2026-09-13
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -37,6 +37,23 @@
 
 - 多文档、多窗口原生宿主、云同步和完整偏好系统未进入范围。
 - 跨平台原生文件选择器仍不是完整工作流承诺。
+
+## B0 保存与重开复核（2026-09-13）
+
+基线 `15ac7b97`，macOS ARM64。本轮从普通空白项目构建 Feed–Flash 并求解，分层结论如下；详细操作与测试命令见 [W37](../devlogs/2026-09/2026-W37.md#2026-09-13-b0-基础能力复核)。
+
+| 能力 | 状态 | 证据与边界 |
+| --- | --- | --- |
+| 底层保存 / 重开 / rerun | 已验证可用 | [空白项目 shell 测试](../../apps/radishflow-studio/src/studio_gui_shell/tests/canvas.rs) 24 项与 [生命周期测试](../../apps/radishflow-studio/src/studio_gui_shell/tests/project_lifecycle.rs) 31 项通过，含参数、重连、物性与组分、sidecar、覆盖取消、失败不推进保存状态；使用真实临时项目文件，部分流程注入 picker，不等同原生选择器实测 |
+| macOS 空白项目 GUI 首次保存 / 另存为 | 缺失 | [project_picker.rs](../../apps/radishflow-studio/src/studio_gui_shell/project_picker.rs) 的非 Windows 分支直接返回 `None`。实窗点击“文件 → 保存”不显示对话框，消息为 `Save As canceled`，项目仍未保存；这是未实现平台能力被展示为取消，不是用户主动取消 |
+| macOS GUI 任意文件打开 | 缺失 | 同一非 Windows picker 分支返回 `None`；本轮未将示例入口或底层 `open_project_from_input` 当作任意路径 GUI 打开已完成的证据 |
+| 本轮空白案例 GUI 保存后重开 | 待验证 | 首次保存受上述缺口阻塞，没有生成本轮 GUI 案例文件；不能把 shell 测试的保存重开声明成这份实窗案例已保存 |
+| 脏项目窗口关闭 / 取消 | 已验证可用 | 实窗关闭出现保存 / 舍弃 / 取消；取消保留案例，随后舍弃一次性验证项目并关闭。`Cmd+Q` 有现有测试，本轮未重新实测该快捷键 |
+| Windows / Linux 原生生命周期 | 待验证 | Windows 有 rfd 实现，本轮未启动 UTM 或复验其选择器；Linux 与 macOS 共享未实现 picker 分支，不能从 macOS 结果推导 Linux 运行态全部表现 |
+
+应单独确认的修复范围：补 macOS 原生打开 / 首次保存 / 另存为到现有 `ProjectFilePicker` 与 lifecycle 路径，区分平台不支持、取消和失败；验证扩展名、含中文 / 空格路径、覆盖确认、取消保留、IO 失败可重试、保存后重开 / rerun 和 sidecar。保持项目格式、staged write 与 Windows 恢复契约，不把本项扩大成文件管理器或发布打包。本轮仅登记方案，不改依赖或 picker 实现。
+
+这是 [B1-1 单元删除候选](flowsheet-modeling-and-solve.md#b1-1-候选单元删除与关联清理待确认未实施) 在 macOS 完成完整 GUI 持久化验收的独立前置缺口；两项应分别确认范围。
 
 ## Windows staged write 失败恢复
 
@@ -121,5 +138,5 @@ Windows 保存已有文件继续先移出备份，再提交 staged 文件。2026
 ## 状态记录
 
 - 当前状态：Active
-- 最近更新：2026-09-12，Windows 保存双重失败恢复上下文与四项故障注入通过 macOS / Windows ARM64 仓库级验证，详见 [周志](../devlogs/2026-09/2026-W37.md#2026-09-12-第一轮可靠性修复)。
-- 下一步：后续涉及用户路径改动时，验证保存 / 重开 / rerun 及原生文件选择器行为。
+- 最近更新：2026-09-13，B0 明确底层保存重开测试通过与 macOS GUI picker 缺失的区别；既有 Windows 保存恢复证据继续保留，详见 [周志](../devlogs/2026-09/2026-W37.md)。
+- 下一步：确认 macOS 原生文件选择器修复范围；补齐后再验收普通空白案例 GUI 保存 / 重开，保持底层与其他平台证据分开。
