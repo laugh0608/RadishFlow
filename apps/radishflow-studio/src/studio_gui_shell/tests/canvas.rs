@@ -2677,7 +2677,7 @@ fn canvas_viewport_navigation_reconciles_against_current_presentation_focus() {
 
     app.dispatch_ui_command("inspector.focus_stream:stream-feed");
     let window = app.platform_host.snapshot().window_model();
-    app.reconcile_canvas_viewport_navigation(window.canvas.widget.view().viewport.focus.as_ref());
+    app.reconcile_canvas_viewport_navigation(window.canvas.widget.view());
 
     assert_eq!(
         app.canvas_viewport_navigation
@@ -2687,7 +2687,9 @@ fn canvas_viewport_navigation_reconciles_against_current_presentation_focus() {
         Some("stream-feed:0")
     );
 
-    app.reconcile_canvas_viewport_navigation(None);
+    app.dispatch_ui_command("canvas.delete_selected_stream");
+    let window = app.platform_host.snapshot().window_model();
+    app.reconcile_canvas_viewport_navigation(window.canvas.widget.view());
 
     assert_eq!(app.canvas_viewport_navigation.active_anchor, None);
     assert_eq!(
@@ -2701,6 +2703,19 @@ fn canvas_viewport_navigation_reconciles_against_current_presentation_focus() {
             "anchor_expired",
             "Canvas navigation anchor expired"
         ))
+    );
+
+    app.dispatch_ui_command("edit.undo");
+    let window = app.platform_host.snapshot().window_model();
+    app.reconcile_canvas_viewport_navigation(window.canvas.widget.view());
+    assert!(
+        app.canvas_command_result.is_none(),
+        "Undo must clear the deleted-object warning"
+    );
+    app.dispatch_ui_command("inspector.focus_stream:stream-feed");
+    assert_eq!(
+        app.canvas_command_result.as_ref().unwrap().status_label,
+        "located"
     );
 
     let _ = std::fs::remove_file(project_path);

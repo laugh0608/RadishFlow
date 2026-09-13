@@ -37,7 +37,7 @@
 3. 基础闭环稳定后集中推进数值与工程能力，先按递归分块与循环块扩展序贯求解；具体模型明确工况、独立基准与鲁棒性要求。联立模块 / 联立方程、动态、瞬态、间歇与 APC 研究按依赖逐步实施。
 4. 持续处理可靠性与跨平台问题。第一轮 Flash、保存恢复与 native 生命周期修复已收口；保持对应回归、固定工具链和 CI，发布前另行完成平台、GUI 与 PME 验收。
 
-2026-09-13 B0 复核后，项目所有者确认推进 [B1-1 单元删除与关联清理](../topics/flowsheet-modeling-and-solve.md#b1-1-单元删除与关联清理2026-09-13) 与独立的 [macOS 项目文件选择器](../topics/project-lifecycle-storage.md#b1-macos-原生项目文件选择器2026-09-13)。两项已实现，六类单元自动化矩阵和 macOS 普通空白 Feed–Heater–Flash 删除 / 撤销 / 保存重开主路径通过；其余逐项实窗及 Windows / Linux 新增路径仍待验证。下一步建议确认并修复 Canvas 对象存在但导航提示锚点过期的反馈不一致；重命名仍未实现。账户联合登录仍为待架构决策的 Draft。
+2026-09-13 B0 复核后，项目所有者确认推进 [B1-1 单元删除与关联清理](../topics/flowsheet-modeling-and-solve.md#b1-1-单元删除与关联清理2026-09-13) 与独立的 [macOS 项目文件选择器](../topics/project-lifecycle-storage.md#b1-macos-原生项目文件选择器2026-09-13)。两项已实现，六类单元自动化矩阵和 macOS 普通空白 Feed–Heater–Flash 删除 / 撤销 / 保存重开主路径通过；其余逐项实窗及 Windows / Linux 新增路径仍待验证。[B1-2 Canvas 导航反馈](../topics/flowsheet-modeling-and-solve.md#b1-2-canvas-导航反馈2026-09-13) 已修复并完成 macOS 实窗复验；下一步候选为单元重命名，先明确名称校验策略和事务验收。账户联合登录仍为待架构决策的 Draft。
 
 ## 当前能力基线
 
@@ -86,6 +86,8 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 - 2026-09-13：B0 通过 macOS 真实环境离线 `check-repo`（1,128 项测试及严格 clippy），并完成普通空白 Feed–Flash 实窗编辑复核；GUI 首次保存未通过，能力分层与操作证据见 [B0 记录](../devlogs/2026-09/2026-W37.md#2026-09-13-b0-基础能力复核)。
 
 - 2026-09-13：B1-1 单元删除与 macOS 项目选择器通过真实环境离线 `check-repo`（1,136 项测试及严格 clippy），并完成普通空白 Feed–Heater–Flash 删除 / Undo / Redo、原生保存重开与 rerun；逐项范围见 [B1 记录](../devlogs/2026-09/2026-W37.md#2026-09-13-b1-1-单元删除与-macos-保存闭环)。
+
+- 2026-09-13：B1-2 导航修复通过真实环境离线 `check-repo`（1,139 项测试及严格 clippy），macOS 实窗完成选择、断开重连、删除 / Undo 后重新定位与 rerun；见 [导航修复记录](../devlogs/2026-09/2026-W37.md#2026-09-13-b1-2-canvas-导航反馈修复)。
 
 ## 当前范围控制
 

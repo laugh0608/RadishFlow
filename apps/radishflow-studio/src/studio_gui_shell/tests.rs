@@ -175,6 +175,7 @@ fn test_preferences_path(name: &str) -> PathBuf {
 
 mod basic;
 mod canvas;
+mod canvas_navigation;
 mod command_palette;
 mod command_surface;
 mod failure_recovery_lifecycle;

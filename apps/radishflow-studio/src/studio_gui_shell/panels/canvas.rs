@@ -14,7 +14,7 @@ impl ReadyAppState {
         self.render_canvas_object_action_strip(ui, widget);
         self.render_canvas_legend(ui, widget);
         ui.separator();
-        self.render_canvas_drop_surface(ui, widget);
+        self.render_canvas_drop_surface(ui);
         ui.add_space(8.0);
         self.render_canvas_suggestions(ui, widget, window, area_id);
     }
@@ -404,17 +404,16 @@ impl ReadyAppState {
         });
     }
 
-    fn render_canvas_drop_surface(
-        &mut self,
-        ui: &mut egui::Ui,
-        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
-    ) {
-        let view = widget.view();
+    fn render_canvas_drop_surface(&mut self, ui: &mut egui::Ui) {
+        // Earlier controls can change selection or topology in this same egui frame.
+        // Resolve navigation and paint geometry from the same current presentation.
+        let window = self.platform_host.snapshot().window_model();
+        let view = window.canvas.widget.view();
         let pending_edit = view.pending_edit.as_ref();
         let focus_callout = view.focus_callout.as_ref();
         let unit_blocks = &view.unit_blocks;
         let stream_lines = &view.stream_lines;
-        self.reconcile_canvas_viewport_navigation(view.viewport.focus.as_ref());
+        self.reconcile_canvas_viewport_navigation(view);
         let available_width = ui.available_width().max(320.0);
         let desired_size = egui::vec2(available_width, 280.0);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click_and_drag());

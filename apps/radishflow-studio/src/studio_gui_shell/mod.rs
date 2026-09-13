@@ -31,6 +31,7 @@ use rf_ui::{
 
 mod app;
 mod authoring;
+mod canvas_navigation;
 mod chrome;
 mod fonts;
 mod home_dashboard;
@@ -611,22 +612,6 @@ impl CanvasViewportNavigationState {
             pending_scroll: true,
         });
         Some(focus.anchor_label.clone())
-    }
-
-    fn reconcile(
-        &mut self,
-        focus: Option<&radishflow_studio::StudioGuiCanvasViewportFocusViewModel>,
-    ) -> Option<String> {
-        let active = self.active_anchor.as_ref()?;
-        let still_current = focus
-            .map(|focus| focus.anchor_label == active.anchor_label)
-            .unwrap_or(false);
-        if !still_current {
-            let anchor_label = active.anchor_label.clone();
-            self.active_anchor = None;
-            return Some(anchor_label);
-        }
-        None
     }
 
     fn is_active_anchor(&self, anchor_label: &str) -> bool {
