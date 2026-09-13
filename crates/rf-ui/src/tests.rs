@@ -413,3 +413,5 @@ mod inspector;
 mod recovery;
 mod run_panel;
 mod unit_deletion;
+
+mod unit_rename;

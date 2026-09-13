@@ -159,7 +159,7 @@ impl ReadyAppState {
                         self.locale.runtime_label(notice.status_label).as_ref(),
                         inspector_field_status_color(notice.status_label),
                     );
-                    render_wrapped_small(ui, &notice.message);
+                    render_wrapped_small(ui, self.locale.runtime_label(&notice.message).as_ref());
                 });
             }
             for field in &settings.parameter_fields {
@@ -352,7 +352,7 @@ impl ReadyAppState {
                         self.locale.runtime_label(notice.status_label).as_ref(),
                         inspector_field_status_color(notice.status_label),
                     );
-                    render_wrapped_small(ui, &notice.message);
+                    render_wrapped_small(ui, self.locale.runtime_label(&notice.message).as_ref());
                 });
             }
             if let Some(summary) = detail.property_composition_summary.as_ref() {
@@ -685,7 +685,7 @@ fn localized_inspector_constraint<'a>(
             {
                 return std::borrow::Cow::Borrowed("单位 Pa；输入正数，不能高于已连接入口压力。");
             }
-            std::borrow::Cow::Borrowed(text)
+            locale.runtime_label(text)
         }
     }
 }

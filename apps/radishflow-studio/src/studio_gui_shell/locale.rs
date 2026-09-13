@@ -327,6 +327,10 @@ impl StudioShellLocale {
             "Move right" => Cow::Borrowed("右移"),
             "Move up" => Cow::Borrowed("上移"),
             "Move down" => Cow::Borrowed("下移"),
+            "Name cannot be blank; duplicate display names are allowed. Object ID and connections remain unchanged." => {
+                Cow::Borrowed("名称不能为空白；允许重名。对象 ID 和连接保持不变。")
+            }
+            "Name cannot be blank." => Cow::Borrowed("名称不能为空白。"),
             "Delete unit" => Cow::Borrowed("删除单元"),
             "Disconnect stream" => Cow::Borrowed("断开流股"),
             "Disconnect source" => Cow::Borrowed("断开源端"),
