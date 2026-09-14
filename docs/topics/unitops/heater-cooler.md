@@ -1,6 +1,6 @@
 # Heater / Cooler 换热器专题
 
-更新时间：2026-09-12
+更新时间：2026-09-14
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../../status/current.md) 为准。
 
@@ -28,14 +28,15 @@
 
 - `Heater` / `Cooler` 支持 inlet / outlet material path。
 - Unit Inspector 覆盖 `outlet_temperature_k` 和 `outlet_pressure_pa`。
-- outlet pressure 高于已连接 inlet pressure 时停留在 invalid draft。
+- outlet pressure 高于已连接 inlet pressure 时停留在 invalid draft；提交上游 Feed / 流股压力后，保留草稿会按最新约束重验，保留原始输入且不自动提交。
 - 提交参数会同步对应 outlet stream 模板。
-- `Heater/Cooler -> Flash Drum` 路径已覆盖保存 / 重开 / rerun 与结果审阅。
+- `Heater/Cooler -> Flash Drum` 自动化已覆盖保存 / 重开 / rerun 与结果审阅；2026-09-14 的 B2-3 将正式结果输出断言扩展到 Cooler，并覆盖其压力草稿联动。
+- macOS 普通空白来源的 Heater 主路径已验证；Cooler 独立空白建模、温压编辑和原生保存 / 输出实窗仍待 B2-5 验收。
 
 已知缺口：
 
 - 当前没有 UA、热负荷、能量流股或严格换热面积模型。
-- `Cooler` / `Valve` 有 focused 覆盖，但不新增同构 Home 作者入口。
+- `Cooler` 复用普通空白建模入口，不新增同构 Home 作者入口；自动化覆盖不代替原生窗口逐项验收。
 
 ## 范围
 
@@ -81,6 +82,18 @@
 | M2 | 结果一致性复核 | outlet stream、unit step produced stream 和 flash consumed stream 同源 |
 | M3 | 严格换热器评估 | 若推进 UA / duty / energy stream，先开新专题 |
 
+## B2-5（候选）：Cooler 空白建模与温压结果闭环
+
+安排在 2026-09-15，承接 B2-4；尚未开始实施或实窗验收。先复核已有自动化，仅对发现的真实缺口补实现和回归。
+
+- 从普通空白项目选择物性 / 组分，搭建 `Feed -> Cooler -> Flash Drum`；显式提交出口 T/P，确认降温后的中间流股由 Flash 消费。
+- 核对缺参数提示、非法温度 / 超入口压力草稿拒绝，以及上游压力变化后保留草稿双向重验；提交、文档 Undo / Redo 与结果旧化保持一致。
+- 制造可恢复的参数或连接失败，核对 F5 / F8 定位、修正后重跑及结果面板反馈。
+- 原生保存、重开、重跑，核对 Cooler 产出、Flash 消费、结果表及复制 / 文本导出的当前 snapshot / revision、SI 数值和物料一致性；未提交草稿不入项目，旧结果不能输出。
+- macOS 实窗前先告知，使用独立临时工程并读回保存 / 导出文件；按实际代码影响补定向验证，需要阶段收口时执行当时的仓库基线，证据归周志。
+
+本切片验证现有目标 T/P 调节模型的软件闭环，不引入 UA、热负荷或能量流股；Windows / Linux 原生路径另行安排，未测项保持待验证。
+
 ## 验收标准
 
 - 必须显式提交 outlet T/P 才算参数完成。
@@ -96,5 +109,5 @@
 ## 状态记录
 
 - 当前状态：Active
-- 最近更新：2026-09-12，恢复开发状态并对齐当前迭代入口；既有能力仍以实现快照和验收记录为准。
-- 下一步：完善 T/P 调节主路径与数值证据；更完整的换热模型按目标工况确定范围与能量验收。
+- 最近更新：2026-09-14，补齐共享压力草稿重验、Cooler 自动化输出覆盖与尚待实窗的区分。
+- 下一步：2026-09-15 优先 B2-5；更完整的换热模型按后续目标工况单独确定范围与能量验收。

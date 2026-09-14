@@ -1,6 +1,6 @@
 # Canvas Interaction Contract
 
-更新时间：2026-09-13
+更新时间：2026-09-14
 
 ## 文档目的
 
@@ -124,7 +124,7 @@
 - 若缺少 sidecar placement，presentation 可按物料流依赖顺序给未定位单元生成可解释的 transient grid slot；加载 sidecar 时应过滤当前项目已不存在的 unit id。
 - 选中单元后，Canvas 可允许在空白处点击，把该单元定位到点击对应的 world 坐标；也可直接拖动单元块，释放后把最终 world 坐标写入 layout sidecar。该行为只更新 layout sidecar，不写 `FlowsheetDocument`，不进入 `CommandHistory`，也不代表完整拖拽布局编辑器。
 - Canvas 空白区域可允许拖拽平移 viewport，并把 offset 保存到同一个 `<project>.rfstudio-layout.json` sidecar；Canvas 也可提供 `Fit to content` 把当前内容重新居中并覆盖该 offset。该状态只影响 shell 初始呈现，不写 `FlowsheetDocument`，不进入 `CommandHistory`，也不代表完整视图持久化系统。
-- 已绑定端口可通过点击或对象选择聚焦对应流股 / 单元检查器；运行成功后可自动聚焦顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表`，失败后可聚焦顶部 `运行` screen、底部运行日志或诊断。
+- 已绑定端口可通过点击或对象选择聚焦对应流股 / 单元检查器；运行成功后切至右侧 `模块结果` 和底部 `结果表`，失败后切至右侧 `检查器` 和底部 `消息`；运行反馈本身不切换顶部 screen。恢复定位读取实际应用目标，目标被修复动作删除时清理旧导航反馈。
 - 选中物料流股后，Canvas / Inspector 可暴露受控恢复动作：`Disconnect stream` 仅在流股仍有材料端口绑定时解除全部绑定并保留流股规格，`Disconnect source` / `Disconnect sink` 仅解除唯一 source 或 sink 端点绑定，`Delete stream` 先解除材料端口绑定再删除该流股；这些动作都通过正式 `DocumentCommand` 写回并进入 undo history。
 - 选中单端 material stream 时，Canvas 可启用窄口径 `Reconnect stream`：source-only 流股只允许接到唯一未绑定且不会形成 unit dependency cycle 的 material inlet；sink-only 流股只允许接到唯一未绑定且不会形成 unit dependency cycle 的 material outlet。该动作只补齐当前流股唯一缺失端点，写回为正式 `DocumentCommand::ConnectPorts` 并进入 undo history；不可用时 Canvas、Inspector 和 shell 应复用同一套原因说明，例如已双端连接、缺 source / sink、没有可用端点、候选不唯一或唯一候选会形成 cycle。
 - 上述恢复 / 重连动作只覆盖当前 MVP 物料流股和现有最短建模路径，用于修正错连、漏连或误建流股；它不是自由连线编辑器，不提供任意端口选择、任意端口重连、自动布线、批量重排或完整拖拽布局编辑。

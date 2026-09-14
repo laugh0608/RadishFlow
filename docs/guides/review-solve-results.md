@@ -1,6 +1,6 @@
 # Review Solve Results
 
-更新时间：2026-09-12
+更新时间：2026-09-14
 
 > 本文用于运行与验证当前 MVP 用户路径。内置样例与历史 `official` 称谓表示仓库演示 / 回归案例，运行成功不构成工程精度验证；解释结果前请阅读 [模型与样例边界](../thermo/mvp-model.md)。
 
@@ -37,7 +37,7 @@
 
 ## 先看哪四处
 
-一次运行成功后，先按下面顺序看：
+一次运行成功后，右侧切到 `模块结果`，底部切到 `结果表`。需要完整结果审阅时点击顶部 `结果`，按下面顺序看：
 
 1. 顶部 `结果` screen 的当前快照状态，以及右侧 `模块结果` 的选中单元 Module Results 摘要
 2. 结果审阅区的流股结果视图和 comparison
@@ -204,7 +204,7 @@ Module Results 当前还会把 selected unit result、consumed / produced stream
 - `诊断目标` 只汇总当前 `SolveSnapshot`、相关 step 和相关 diagnostic 已经存在的目标，不是 shell 私造的第三套导航模型
 - `Results` commands 也只派发既有 `inspector.focus_stream:*` / `inspector.focus_unit:*`，不会创建第二套结果缓存
 - Module Settings 只显示参数、端口、连接动作、诊断动作和帮助空状态；当前还没有正式模块帮助 command，因此不应出现临时 help action
-- `复制快照` / `导出文本` 只把当前同一份 `SolveSnapshot` 格式化为纯文本，覆盖流股摘要、Review 摘要、单元结果、求解步骤和诊断；它们不写项目文件、不进入 undo，也不是完整报表、模板系统或批量导出入口
+- `复制当前结果` / `导出当前结果...` 只把当前同一份 `SolveSnapshot` 格式化为纯文本，覆盖流股摘要、Review 摘要、单元结果、求解步骤和诊断；它们不写项目文件、不进入 undo，也不是完整报表、模板系统或批量导出入口
 - 如果某个 section 没有 `诊断目标`，应先理解为“当前没有已物化目标”，而不是默认它被隐藏或漏显示
 
 底部 `结果表` 当前采用中文 `流股 / 相态` 表头。`相态` 列应显示短摘要，例如 `总体 1.000`、`气相 1.000`、`无`，过长的原始相态明细只适合放进 tooltip、日志或开发诊断，不应撑开表格或裁切主要数值列。
@@ -220,7 +220,7 @@ Module Results 当前还会把 selected unit result、consumed / produced stream
 
 ## 当前快照复制 / 导出
 
-结果审阅区当前提供 `复制快照` 与 `导出文本...`。它们只把当前最新 `SolveSnapshot` 格式化成轻量纯文本，内容覆盖：
+顶部 `结果` 页提供 `复制当前结果` 与 `导出当前结果...`，与运行结果审阅区的输出入口共用同一份当前 revision 的最新 `SolveSnapshot`。尚未运行、重开后未重跑或结果已过期时，两个入口禁用；重新运行后再输出。文本头包含快照 ID、sequence 和 `document_revision`，内容覆盖：
 
 - 流股摘要
 - Review 摘要：source / intermediate / terminal streams、latest unit results、diagnostics count
@@ -237,6 +237,8 @@ Module Results 当前还会把 selected unit result、consumed / produced stream
 - 不进入 undo / redo
 - 不触发重新求解
 - 不生成跨快照历史、模板化报表或批量导出任务
+
+文件导出在 macOS / Windows 接入原生保存对话框，文件名自动补齐 `.txt`；Linux 当前明确提示暂不支持，可使用复制。选择已有文件后，应用会显示具体路径并要求确认覆盖；取消不写入。若选路或确认期间结果发生变化，旧结果不能继续输出，应重新运行并从结果页重试。写入失败会报告错误，已有目标通过临时文件写入与安全替换保护；平台及故障验证范围见 [结果专题](../topics/results-review-diagnostics.md#b2-1轻量结果输出闭环)。
 
 如果需要归档某次结果，这个文本可以作为轻量人工审阅材料；如果需要可复算的正式 case，仍应保存项目文件本身。
 

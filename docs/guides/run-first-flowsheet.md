@@ -1,6 +1,6 @@
 # Run First Flowsheet
 
-更新时间：2026-09-12
+更新时间：2026-09-14
 
 > 本文用于运行与验证当前 MVP 用户路径。内置样例与历史 `official` 称谓表示仓库演示 / 回归案例，运行成功不构成工程精度验证；解释结果前请阅读 [模型与样例边界](../thermo/mvp-model.md)。
 
@@ -175,8 +175,8 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 6. 使用 Canvas suggestion 中的 `Connect stream` / `连接流股` 或 `Create stream` / `创建流股` 动作补齐 `source -> sink` 端口绑定和必要 outlet stream。`Heater / Cooler / Valve`、`Mixer` 和 `Flash Drum` 的 outlet stream 建议会等必要 inlet 绑定后才出现。
 7. 从左侧 `项目` 的 `对象树` 或 Canvas 画布实体选择 stream / unit，右侧 `检查器` 会显示当前对象。
 8. 流股检查器当前可编辑 `name / temperature_k / pressure_pa / total_molar_flow_mol_s` 和已有 flowsheet component catalog 中的组成条目；组成修改需要显式提交、归一化或丢弃。若流股缺少项目组分，可先通过检查器中的受控 add component 动作添加，再编辑对应摩尔分率。
-9. 单元检查器当前已暴露首批高频参数：Feed 的 source temperature / pressure、Heater / Cooler 的 outlet temperature / outlet pressure、Mixer / Valve 的 outlet pressure 与 Flash Drum 的 flash temperature / flash pressure；字段使用 SI 单位并显示约束提示，Mixer outlet pressure 不能高于两股已连接 inlet pressure 的较低值，Heater / Cooler / Valve outlet pressure 若高于已连接 inlet pressure 会停留在无效草稿态。其余内容仍以端口、关联步骤、关联诊断和最新 `SolveSnapshot` 中的单元结果为主，不等同于完整单元参数表。若字段显示的是 outlet stream 模板值或内置默认值，但单元参数尚未显式提交，仍应点提交；即使输入值与显示值相同，也会写入正式单元参数。字段来源与 readiness 关系见 `docs/reference/units-and-conventions.md`。
-10. 在 `流程图` 或 `运行` 上下文工具栏点击 `运行当前流程`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐并运行成功后，结果入口会聚焦到顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表`。正式物性包解析失败、结构性连接错误、拓扑错误和求解阶段参数失败仍由 Run Panel 诊断 / recovery 承载。
+9. 单元检查器当前已暴露首批高频参数：Feed 的 source temperature / pressure、Heater / Cooler 的 outlet temperature / outlet pressure、Mixer / Valve 的 outlet pressure 与 Flash Drum 的 flash temperature / flash pressure；字段使用 SI 单位并显示约束提示，Mixer outlet pressure 不能高于两股已连接 inlet pressure 的较低值，Heater / Cooler / Valve outlet pressure 若高于已连接 inlet pressure 会停留在无效草稿态。其余内容仍以端口、关联步骤、关联诊断和最新 `SolveSnapshot` 中的单元结果为主，不等同于完整单元参数表。若字段显示的是 outlet stream 模板值或内置默认值，但单元参数尚未显式提交，仍应点提交；即使输入值与显示值相同，也会写入正式单元参数。通过 Inspector 提交上游 Feed / 流股压力后，保留的下游压力草稿会按新入口上限重新校验，不必重输；有效草稿仍需显式应用。字段来源与 readiness 关系见 `docs/reference/units-and-conventions.md`。
+10. 在 `流程图` 或 `运行` 上下文工具栏点击 `运行当前流程`。若 Feed source stream 的 `T / P / F / z`、项目组分引用、composition 归一或必要单元参数尚未就绪，Studio 会先显示“模型输入未完成”并聚焦到对应 stream / unit；输入补齐并运行成功后，右侧切至 `模块结果`、底部切至 `结果表`；需要复制或导出时再点击顶部 `结果`。正式物性包解析失败、结构性连接错误、拓扑错误和求解阶段参数失败仍由 Run Panel 诊断 / recovery 承载。
 
 如果误接或漏接了流股，可以选中对应 material stream 后使用右侧检查器或 Canvas 操作区中的受控恢复动作：
 

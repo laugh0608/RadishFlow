@@ -1,6 +1,6 @@
 # Author Small Cases
 
-更新时间：2026-09-12
+更新时间：2026-09-14
 
 > 本文用于运行与验证当前 MVP 用户路径。内置样例与历史 `official` 称谓表示仓库演示 / 回归案例，运行成功不构成工程精度验证；解释结果前请阅读 [模型与样例边界](../thermo/mvp-model.md)。
 
@@ -75,7 +75,7 @@ Home 作者入口从空白项目复现时，流股 ID 会按当前 canvas 生成
 - `Review`：按 source / intermediate / terminal stream 分组，并汇总 latest unit results 的消费 / 产出流股
 - `Units` / `Steps`：每个单元实际消费和产出的流股引用
 - `Flash Drum`：flash inlet 是否来自上游中间流股，以及 liquid / vapor outlet 的流量分割和相态
-- `复制快照` / `导出文本`：应包含同一份快照里的 `Streams / Review / Units / Steps / Diagnostics`，不写项目文件，也不重新求解
+- `复制当前结果` / `导出当前结果...`：应包含同一份快照里的 `Streams / Review / Units / Steps / Diagnostics`，不写项目文件，也不重新求解
 
 ## Mixer-Flash 小案例
 

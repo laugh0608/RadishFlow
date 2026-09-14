@@ -264,7 +264,7 @@ Canvas 中的单元位置和 viewport offset 保存到项目同目录的 `<proje
 - `诊断目标` 中可直接定位的流股 / 单元结果目标
 - 当前快照导出中的 `Review` 摘要：按 source / intermediate / terminal streams 与 latest unit results 快速核对同一条结果链路
 
-如果运行成功，Studio 会把结果入口聚焦到顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表`。选中单元时，`模块结果` 会先展示当前单元的 Module Results 摘要，再展示同一份快照的流股 / 步骤 / 诊断结果。`Flash Drum` 相关结果当前应能进一步展示：
+如果运行成功，Studio 会切至右侧 `模块结果` 和底部 `结果表`，顶部页面保持当前选择；需要完整审阅或输出时点击顶部 `结果`。选中单元时，`模块结果` 会先展示当前单元的 Module Results 摘要，再展示同一份快照的流股 / 步骤 / 诊断结果。`Flash Drum` 相关结果当前应能进一步展示：
 
 - `phase_region`
 - `bubble_dew_window`
