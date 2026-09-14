@@ -154,5 +154,6 @@ B0 收口：受控 Feed–Flash 创建、参数提交、连接、目标端断开
 - B1-2 更新：Canvas 导航已按当前对象身份与同帧 presentation 校验，已修复误报；macOS 选择、断开重连、删除 / Undo 与 rerun 实窗通过，细节见建模专题。
 - B1-3 更新：单元重命名已实现，沿用流股的非空白、允许重名规则；六类事务测试与 macOS Heater 中文改名 / Undo / Redo / 原生另存重开 / rerun 通过，详见 [建模专题](flowsheet-modeling-and-solve.md#b1-3-单元重命名2026-09-13)。
 - B1-4 更新：2026-09-14 已统一 Primary / 物理 Ctrl、平台标签及重做别名，补齐确认状态隔离；macOS 文本 / 文档历史、单次修订、旧化和保存重开通过。Windows / Linux 原生验证仍待补；Escape 保留草稿和显式丢弃不变。
-- B2 首轮复核：普通空白项目的物性包 / 组分选择与移除门禁、非法温度拒绝、重开 rerun 和当前结果审阅已有 macOS 证据；轻量输出函数存在不等于默认结果页可达，macOS / Linux 原生导出仍未接入。
-- 下一步：[B2-1 轻量结果输出闭环](results-review-diagnostics.md#b2-1-候选轻量结果输出闭环)，先确认操作入口、current / stale / missing、保存失败和平台支持，再实施。其他单元、远距离视口及 Windows / Linux 路径继续待验证。
+- B2 首轮复核：普通空白项目的物性包 / 组分选择与移除门禁、非法温度拒绝、重开 rerun 和当前结果审阅已有 macOS 证据；当时确认的默认结果入口和 macOS 导出缺口已由 B2-1 收口。
+- B2-1 更新：[轻量结果输出闭环](results-review-diagnostics.md#b2-1轻量结果输出闭环) 已完成默认入口、执行时校验、macOS 原生导出、安全覆盖及取消 / 失败 / 不支持反馈；macOS 全仓与实窗通过。
+- 下一步：B2-2 运行失败诊断与恢复复核；其他单元、远距离视口及 Windows / Linux 原生路径继续待验证。

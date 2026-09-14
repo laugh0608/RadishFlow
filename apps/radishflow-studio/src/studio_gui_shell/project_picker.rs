@@ -4,6 +4,9 @@ pub(super) trait ProjectFilePicker {
     fn supports_project_dialogs(&self) -> bool {
         true
     }
+    fn supports_result_export_dialogs(&self) -> bool {
+        true
+    }
     fn pick_project_file(&mut self) -> Option<PathBuf>;
     fn pick_save_project_file(&mut self) -> Option<PathBuf>;
     fn pick_result_export_file(&mut self) -> Option<PathBuf>;
@@ -22,6 +25,10 @@ impl ProjectFilePicker for NativeProjectFilePicker {
 
     fn pick_save_project_file(&mut self) -> Option<PathBuf> {
         pick_native_save_project_file()
+    }
+
+    fn supports_result_export_dialogs(&self) -> bool {
+        cfg!(any(target_os = "windows", target_os = "macos"))
     }
 
     fn pick_result_export_file(&mut self) -> Option<PathBuf> {
@@ -56,7 +63,7 @@ fn pick_native_save_project_file() -> Option<PathBuf> {
     None
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "macos"))]
 fn pick_native_result_export_file() -> Option<PathBuf> {
     rfd::FileDialog::new()
         .set_title("Export RadishFlow solve snapshot")
@@ -65,7 +72,7 @@ fn pick_native_result_export_file() -> Option<PathBuf> {
         .map(ensure_text_file_extension)
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn pick_native_result_export_file() -> Option<PathBuf> {
     None
 }
@@ -83,13 +90,16 @@ fn ensure_project_file_extension(path: PathBuf) -> PathBuf {
     ))
 }
 
-#[cfg(target_os = "windows")]
-fn ensure_text_file_extension(path: PathBuf) -> PathBuf {
-    let value = path.to_string_lossy();
-    if value.ends_with(".txt") {
+pub(super) fn ensure_text_file_extension(path: PathBuf) -> PathBuf {
+    if path
+        .extension()
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("txt"))
+    {
         return path;
     }
-    PathBuf::from(format!("{value}.txt"))
+    let mut value = path.into_os_string();
+    value.push(".txt");
+    PathBuf::from(value)
 }
 
 impl super::ReadyAppState {

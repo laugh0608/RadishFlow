@@ -1,6 +1,6 @@
 # 项目生命周期与存储
 
-更新时间：2026-09-13
+更新时间：2026-09-14
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -57,7 +57,7 @@
 
 ## B1 macOS 原生项目文件选择器（2026-09-13）
 
-已将现有 `rfd 0.15` 项目打开 / 保存选择器扩展到 macOS，复用 `ProjectFilePicker`、覆盖确认及 staged write；`Cargo.lock` 不变。不支持项目选择器的平台先显示能力未实现提示，不再伪装成用户取消。结果导出选择器保持原范围。
+已将现有 `rfd 0.15` 项目打开 / 保存选择器扩展到 macOS，复用 `ProjectFilePicker`、覆盖确认及 staged write；`Cargo.lock` 不变。不支持项目选择器的平台先显示能力未实现提示，不再伪装成用户取消。当时结果导出选择器保持原范围，后续实现见 [B2-1](results-review-diagnostics.md#b2-1轻量结果输出闭环)。
 
 - 已验证可用：macOS 实窗首次保存、另存为、原生打开与取消打开；中文含空格路径、无扩展名自动补 `.rfproj.json`、显式扩展名不重复。普通空白 Feed–Heater–Flash 的删除版 / Undo 恢复版分别保存重开，恢复版 rerun 收敛。
 - 已验证可用：保存同步当前单元位置，首次保存和另存为均写入目标 sidecar；不保存已删除单元位置，会话中仍可 Undo 恢复。统一 shell 保存命令与文件菜单路径，避免命令面板保存漏写布局。
@@ -68,7 +68,9 @@ B0 表中的 macOS 项目 picker 缺失已由本节覆盖，B0 当时观察保�
 
 ## Windows staged write 失败恢复
 
-Windows 保存已有文件继续先移出备份，再提交 staged 文件。2026-09-12 将替换与恢复序列收口到 [staged_replace](../../crates/rf-store/src/json/staged_replace.rs)，补齐双重失败的信息：
+2026-09-14 B2-1 将 staged write 从 JSON 模块提取到同域存储模块，JSON 与文本导出共用安全写入和恢复序列；工程格式及保存调用语义不变。
+
+Windows 保存已有文件继续先移出备份，再提交 staged 文件。2026-09-12 将替换与恢复序列收口到 [staged_replace](../../crates/rf-store/src/staged_file/staged_replace.rs)，补齐双重失败的信息：
 
 - 备份移动失败：保留原文件，返回原始 IO 错误。
 - 替换失败、恢复成功：原文件可重开，保存仍返回失败，不推进 Studio 的已保存 revision。

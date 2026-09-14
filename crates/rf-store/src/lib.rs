@@ -4,6 +4,7 @@ mod json;
 mod layout;
 mod package_cache;
 mod project;
+mod staged_file;
 mod studio_layout;
 mod studio_preferences;
 
@@ -42,6 +43,7 @@ pub use project::{
     DateTimeUtc, STORED_PROJECT_FILE_EXTENSION, StoredDocumentMetadata, StoredProjectDocument,
     StoredProjectFile,
 };
+pub use staged_file::{FileOverwritePolicy, write_text_file};
 pub use studio_layout::{
     STORED_STUDIO_LAYOUT_FILE_KIND, STORED_STUDIO_LAYOUT_FILE_SUFFIX,
     STORED_STUDIO_LAYOUT_SCHEMA_VERSION, StoredStudioCanvasUnitPosition,

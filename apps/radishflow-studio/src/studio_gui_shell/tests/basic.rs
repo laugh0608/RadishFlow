@@ -952,6 +952,8 @@ fn result_context_toolbar_renders_existing_result_commands_and_state() {
 
     for expected in [
         "结果工具栏",
+        "复制当前结果",
+        "导出当前结果",
         "审阅",
         "模块结果",
         "结果表",

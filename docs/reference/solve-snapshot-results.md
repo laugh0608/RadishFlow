@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-09-06
+更新时间：2026-09-14
 
 ## 目的
 
@@ -256,6 +256,8 @@ UI / shell 不应通过解析错误文本反推出这些分类；分类、summar
 ### text copy / export
 
 当前快照复制和文本导出只消费同一份最新 `SolveSnapshot`，并把已物化的流股摘要、case-level review summary、单元结果、求解步骤和诊断格式化为纯文本。
+
+文本头包含 `snapshot_id`、`sequence`、`document_revision`、状态与摘要；默认结果页和 Runtime 复用输出操作，执行前重新校验当前快照身份和文档 revision。平台选择器、覆盖和失败恢复契约见 [B2-1](../topics/results-review-diagnostics.md#b2-1轻量结果输出闭环)。
 
 稳定 section 口径：
 

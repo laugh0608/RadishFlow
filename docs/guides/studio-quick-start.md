@@ -34,7 +34,7 @@
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
 - 选中单元时，右侧 `检查器` 的单元区域窄口径消费 `Module Settings` presentation：只显示正式 active inspector 来源的参数字段、端口、连接动作、诊断动作和帮助空状态
 - 选中单元并存在当前 revision 的最新结果时，右侧 `模块结果` 窄口径消费 `Module Results` presentation：显示该单元 latest result、consumed / produced stream、关联步骤和诊断；若结果过期，不继续渲染旧单元结果
-- 复制当前 `SolveSnapshot` 文本，或导出当前快照为轻量 `.txt`；导出文本包含 `Streams / Review / Units / Steps / Diagnostics`
+- 复制当前 `SolveSnapshot` 文本，或导出当前快照为轻量 `.txt`；导出文本包含快照 ID、文档 revision、SI 单位与 `Streams / Review / Units / Steps / Diagnostics`
 - 通过 `检查`、`诊断目标`、结果选择项和命令入口在流股、单元、步骤和当前检查器之间定位同一份结果
 - 在流股检查器中编辑流股基础字段与组成草稿，并显式提交、归一化或丢弃
 - 在单元检查器 / Module Settings 中编辑首批关键单元参数：`Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 和 `Flash Drum` 的 flash temperature / flash pressure
@@ -134,7 +134,7 @@ cargo run -p radishflow-studio
 
 - `docs/guides/run-first-flowsheet.md`
 
-如果内置示例已经跑通，下一步建议从首页点击 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例`，按 `docs/guides/author-small-cases.md` 从空白项目复现小案例：放置单元、接受 suggestion、提交单元参数、运行、保存重开、重跑并导出当前结果。这些作者入口只打开空白项目和任务清单，不是自由连线、自动布线或完整项目向导。当前轻量导出操作位于 Runtime 区域，尚未进入默认结果页；原生导出仅 Windows 接入，macOS / Linux 的缺口见 [B2-1](../topics/results-review-diagnostics.md#b2-1-候选轻量结果输出闭环)。
+如果内置示例已经跑通，下一步建议从首页点击 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例`，按 `docs/guides/author-small-cases.md` 从空白项目复现小案例：放置单元、接受 suggestion、提交单元参数、运行、保存重开、重跑并导出当前结果。这些作者入口只打开空白项目和任务清单，不是自由连线、自动布线或完整项目向导。运行后进入顶部“结果”页，可点击“复制当前结果”或“导出当前结果”。macOS / Windows 提供文本保存选择器；Linux 暂用复制，文件导出会明确提示不支持。未运行或编辑导致结果过期时，输出入口禁用。路径自动补 `.txt`，已有目标需确认覆盖；取消或失败会在结果页显示原因，不改变工程保存路径，具体边界见 [B2-1](../topics/results-review-diagnostics.md#b2-1轻量结果输出闭环)。
 
 ## 启动首页
 

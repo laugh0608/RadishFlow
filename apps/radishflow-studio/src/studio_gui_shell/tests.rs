@@ -181,6 +181,7 @@ mod command_surface;
 mod failure_recovery_lifecycle;
 mod platform_shortcuts;
 mod project_lifecycle;
+mod result_export;
 mod result_review;
 mod runtime;
 mod runtime_synthetic_flash_inlet_boundary;

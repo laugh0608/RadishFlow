@@ -6,6 +6,7 @@ impl StudioGuiWindowSolveSnapshotModel {
             "RadishFlow Solve Snapshot".to_string(),
             format!("snapshot_id: {}", self.snapshot_id),
             format!("sequence: {}", self.sequence),
+            format!("document_revision: {}", self.document_revision),
             format!("status: {}", self.status_label),
             format!("summary: {}", one_line(&self.summary)),
             format!(

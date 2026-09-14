@@ -40,6 +40,7 @@ mod modeling_readiness;
 mod panels;
 mod project_layout_save;
 mod project_picker;
+mod result_export;
 mod unit_deletion;
 mod utils;
 
@@ -118,6 +119,7 @@ struct ReadyAppState {
     command_palette: CommandPaletteState,
     project_open: ProjectOpenState,
     pending_unit_deletion: Option<unit_deletion::PendingUnitDeletion>,
+    pending_result_export: Option<result_export::PendingResultExport>,
     home_workspace_return_available: bool,
     home_selected_current_workspace: bool,
     home_selected_recent_project: Option<PathBuf>,
@@ -428,6 +430,7 @@ impl ReadyAppState {
             platform_timer_executor: EguiPlatformTimerExecutor::default(),
             command_palette: CommandPaletteState::default(),
             pending_unit_deletion: None,
+            pending_result_export: None,
             project_open: ProjectOpenState::from_path_and_recent(
                 &config.project_path,
                 recent_projects,

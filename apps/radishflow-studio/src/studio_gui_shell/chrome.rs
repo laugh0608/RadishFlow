@@ -66,6 +66,9 @@ impl ReadyAppState {
                 ui.separator();
                 self.render_context_toolbar(ui, context_toolbar);
             }
+            if self.screen == StudioShellScreen::Results {
+                self.render_result_output_actions(ui, window);
+            }
             self.render_project_operation_strip(ui);
             if !window.commands.menu_tree.is_empty()
                 && window
