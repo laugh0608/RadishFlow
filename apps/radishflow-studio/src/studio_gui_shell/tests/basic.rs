@@ -7,7 +7,7 @@ use radishflow_studio::test_support::{
     solve_snapshot_model_from_project_with_provider_and_edit,
 };
 
-fn render_top_bar_texts(app: &mut ReadyAppState) -> Vec<String> {
+pub(super) fn render_top_bar_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
     let window = snapshot.window_model();
     let windows = snapshot.app_host_state.windows.clone();

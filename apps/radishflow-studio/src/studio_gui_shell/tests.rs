@@ -179,6 +179,7 @@ mod canvas_navigation;
 mod command_palette;
 mod command_surface;
 mod failure_recovery_lifecycle;
+mod failure_recovery_navigation;
 mod platform_shortcuts;
 mod project_lifecycle;
 mod result_export;

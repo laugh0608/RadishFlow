@@ -33,6 +33,7 @@ mod app;
 mod authoring;
 mod canvas_navigation;
 mod chrome;
+mod failure_recovery;
 mod fonts;
 mod home_dashboard;
 mod locale;

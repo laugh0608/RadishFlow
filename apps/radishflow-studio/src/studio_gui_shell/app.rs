@@ -694,7 +694,6 @@ impl ReadyAppState {
                     &command_id,
                     canvas_navigation.as_ref(),
                 );
-                self.update_workbench_tabs_after_command(&command_id, &dispatch.dispatch.window);
                 self.record_canvas_object_navigation_feedback(
                     canvas_navigation.as_ref(),
                     viewport_requested,
@@ -714,30 +713,6 @@ impl ReadyAppState {
                     Some(message.as_str()),
                 );
             }
-        }
-    }
-
-    fn update_workbench_tabs_after_command(
-        &mut self,
-        command_id: &str,
-        window: &StudioGuiWindowModel,
-    ) {
-        if !matches!(
-            command_id,
-            "run_panel.run_manual" | "run_panel.resume_workspace" | "run_panel.recover_failure"
-        ) {
-            return;
-        }
-
-        if window.runtime.latest_failure.is_some() {
-            self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
-            self.bottom_drawer_tab = StudioShellBottomDrawerTab::Messages;
-        } else if window.runtime.latest_solve_snapshot.is_some() {
-            self.right_sidebar_tab = StudioShellRightSidebarTab::ModuleResults;
-            self.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
-        } else {
-            self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
-            self.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
         }
     }
 
@@ -1051,8 +1026,11 @@ impl ReadyAppState {
         &mut self,
         event: StudioGuiEvent,
     ) -> RfResult<StudioGuiPlatformExecutedDispatch> {
-        self.platform_host
-            .dispatch_event_and_execute_platform_timer(event, &mut self.platform_timer_executor)
+        let dispatch = self
+            .platform_host
+            .dispatch_event_and_execute_platform_timer(event, &mut self.platform_timer_executor)?;
+        self.follow_run_and_recovery_outcome(&dispatch);
+        Ok(dispatch)
     }
 
     pub(super) fn record_canvas_pending_edit_commit_feedback(

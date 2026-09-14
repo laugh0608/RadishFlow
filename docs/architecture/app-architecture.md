@@ -756,7 +756,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - Canvas suggestion、layout nudge、单元拖动和流股恢复复用 command surface；移动只写 sidecar，断开 / 重连 / 流股删除进入文档历史。`canvas.delete_selected_unit` 先由 shell 确认影响，再派发领域事务；重命名复用 Inspector 草稿。取消、失效确认和无效草稿不提交，细则见 [建模专题](../topics/flowsheet-modeling-and-solve.md)。
 - 结果审阅、错误定位和诊断目标都必须复用 `StudioGuiWindowDiagnosticTargetActionModel`、`inspector.focus_stream:*`、`inspector.focus_unit:*` 或既有 focus action。`selected_stream / comparison_stream / selected_unit` 只是 shell-local selector state，不缓存第二份结果；comparison 复位不代表结果语义变化。
 - `StudioGuiCommandRegistry` 从最新 `SolveSnapshot` 派生 `Results` command section；result stream / unit navigation 只暴露为正式 focus command。顶部 `结果` 工具栏只扫读结果入口和状态，不承担所有对象定位按钮。
-- 结果页与 Runtime 共用 shell 输出：执行前重验当前快照及 revision，文件提交复用 `rf-store` staged write。平台与失败语义见 [B2-1](../topics/results-review-diagnostics.md#b2-1轻量结果输出闭环)。
+- shell 输出重验当前快照，落盘复用 staged write；运行 / 恢复反馈按正式 dispatch 和 applied target 同步面板与画布，见 [结果与恢复专题](../topics/results-review-diagnostics.md)。
 - Module Settings、Module Results、case-level `review_summary` 和 `stale_solve_snapshot` 的边界见本文上方 `Studio Shell UI 规范化边界` 与 `docs/reference/solve-snapshot-results.md`。它们都服务当前 revision 的结果审阅和轻量导出，不成为第二套结果缓存或报表模型。
 - 失败详情只消费 `latest_diagnostic`，显示 primary code、revision、severity、count 与相关 target；GUI 不从 message 文本反解析或私造端口级 command。Run Panel recovery action 必须区分聚焦与修复，用户主动选中流股后的恢复动作走对应 `canvas.*selected_stream*` 命令，不复用 failure-only recovery command。
 - `StudioAppHostController` 对 `DispatchCanvasInteraction` 不应无条件 `refresh_local_canvas_suggestions()`；local-rules refresh 只应发生在真正改写文档或显式要求重算 suggestion 的路径上，避免破坏 GUI 命令面的连续交互语义。

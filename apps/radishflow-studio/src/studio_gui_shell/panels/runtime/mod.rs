@@ -273,6 +273,18 @@ impl ReadyAppState {
             &failure.title,
         );
         render_wrapped_label(ui, &failure.message);
+        if let Some(recovery_detail) = failure.recovery_detail {
+            ui.add_space(4.0);
+            let title = failure
+                .recovery_title
+                .unwrap_or(self.locale.text(ShellText::SuggestedRecovery));
+            if let Some(action) = failure.recovery_action.as_ref() {
+                let _ = self.render_small_command_action(ui, action);
+            } else {
+                ui.small(egui::RichText::new(title).strong());
+            }
+            render_wrapped_small(ui, recovery_detail);
+        }
         if let Some(detail) = failure.diagnostic_detail.as_ref() {
             self.render_failure_diagnostic_detail(ui, detail);
         }
@@ -282,16 +294,19 @@ impl ReadyAppState {
                 format!("{}: {message}", self.locale.text(ShellText::LatestLog)),
             );
         }
-        if let Some(recovery_detail) = failure.recovery_detail {
-            ui.add_space(4.0);
-            let title = failure
-                .recovery_title
-                .unwrap_or(self.locale.text(ShellText::SuggestedRecovery));
-            ui.small(egui::RichText::new(title).strong());
-            render_wrapped_small(ui, recovery_detail);
-        }
-        if !failure.diagnostic_actions.is_empty() {
-            self.render_diagnostic_target_actions(ui, &failure.diagnostic_actions);
+        let focus_actions = failure
+            .diagnostic_actions
+            .iter()
+            .filter(|action| {
+                failure
+                    .recovery_action
+                    .as_ref()
+                    .is_none_or(|recovery| action.action.command_id != recovery.command_id)
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        if !focus_actions.is_empty() {
+            self.render_diagnostic_target_actions(ui, &focus_actions);
         }
     }
 
