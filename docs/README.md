@@ -1,6 +1,6 @@
 # RadishFlow Docs
 
-更新时间：2026-09-13
+更新时间：2026-09-14
 
 ## 先读什么
 
@@ -40,8 +40,9 @@ Topics 文档回答“一个功能、能力包或开发目标怎么设计、分�
 | `topics/capeopen-pmc-adapter.md` | `.NET 10` CAPE-OPEN / COM PMC 适配层和 PME 验证基线 |
 | `topics/unitops/` | Feed、Heater / Cooler、Flash Drum、Mixer、Valve 等单元模块专题 |
 | `topics/modeling/` | Material Stream 等建模对象专题 |
-| `topics/platform/` | Control Plane 后端服务、后端 Web UI 与账户联合登录专题 |
+| `topics/platform/` | Control Plane 后端服务、后端 Web UI、账户联合登录与公共 API 访问控制专题 |
 | `topics/platform/account-and-federated-login.md` | 参考 Radish / RadishMind 的未来账户与登录规划；未排期、待架构决策 |
+| [公共 API 与访问控制](topics/platform/public-api-and-access-control.md) | 凭据 / API key、资源权限、撤销、计算配额及分阶段验收；规划方向已确认、未排期 |
 
 ## Development And Collaboration
 
@@ -80,7 +81,7 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | 文档 | 说明 |
 | --- | --- |
 | `architecture/overview.md` | 当前仓库分层、crate 边界与阶段职责 |
-| `architecture/simulation-platform.md` | 长期能力与产品参考、递归分块与多种求解方式、动态 / 瞬态 / 间歇、变量树 / COM 自动化与录制回放 |
+| `architecture/simulation-platform.md` | 长期能力与产品参考、多种模拟 / 求解方式、插件系统、变量树 / COM 自动化与录制回放 |
 | `architecture/app-architecture.md` | 桌面 App 的状态、命令与模块边界 |
 | `architecture/canvas-interaction-contract.md` | 画布视图模式、流线状态与 suggestion 契约 |
 | `architecture/studio-ui-topic-plan.md` | Studio UI 专题阶段的端点边界、信息架构、主工作流和 `.pen` 设计稿规则 |
@@ -88,7 +89,7 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | `architecture/studio-ui-design-guidelines.md` | Studio 首屏、画布、面板、按钮、文字和结果审阅的 UI 设计规范 |
 | `architecture/studio-visual-system.md` | Studio 视觉定位、token、色彩角色、控件状态和视觉验收口径 |
 | `architecture/ui-inspiration-reference.md` | AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 等优秀产品截图的 UI 设计灵感参考 |
-| `architecture/auth-entitlement-architecture.md` | 桌面登录、授权、控制面与本地求解边界 |
+| `architecture/auth-entitlement-architecture.md` | 软件许可 / 产品授权 / 操作权限分层、桌面登录、控制面与本地求解边界 |
 | `architecture/versioning.md` | 版本命名、 tag 与发布轨道约定 |
 | `architecture/open-source-references.md` | 可借鉴的开源参考与许可边界 |
 | `thermo/mvp-model.md` | 公式与单元近似、样例身份、数值证据及独立验证缺口 |

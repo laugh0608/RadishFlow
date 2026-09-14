@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-09-13
+更新时间：2026-09-14
 
 ## 用途
 
@@ -19,6 +19,7 @@
 - MVP 第一阶段 M1-M5、MVP α / β 与通用小流程建模 v1 已阶段性收口，后续迭代以现有能力与验证证据为起点。
 - 2026-09-13 起，近期主线调整为基础功能与使用闭环完善；独立数值研究不作为编辑、保存等基础功能的统一前置门禁，基本正确性与可靠性仍随功能验证。
 - 长期覆盖稳态、动态、瞬态、间歇 / 半间歇，以及递归分块、序贯模块、联立模块和联立方程；统一 API 明确采用变量 / 动作浏览树，支持 COM 自动化和操作录制 / 回放。领域与术语边界见 [模拟平台长期规划](../architecture/simulation-platform.md)；目标不表示已实现或同时排期。
+- 2026-09-14 确认补入插件系统、参考 RadishNexus 的分层许可与公共 API 授权 / 配额规划；基础功能优先级不变，插件运行时、具体许可政策、接口和部署仍待切片决策，见 [路线图](../radishflow-mvp-roadmap.md#插件与公共-api-的实施切片)。
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前开发范围与优先级
@@ -39,7 +40,7 @@
 
 2026-09-13 已完成 B0 分层复核、B1-1 单元删除、macOS 原生项目保存、B1-2 导航修复和 B1-3 重命名。六类事务测试及 macOS 普通空白来源的 Feed–Heater–Flash 实窗主路径通过；其他单元逐项实窗及 Windows / Linux 新增路径仍待验证。快捷键复核确认 macOS Ctrl 标签与实际 ⌘ 不符，且缺少 ⇧⌘Z 文档重做；具体状态与验收见 [建模专题](../topics/flowsheet-modeling-and-solve.md)，保存边界见 [生命周期专题](../topics/project-lifecycle-storage.md)。账户联合登录仍为待架构决策的 Draft。
 
-### 明日事项（2026-09-14）
+### 当前待办（2026-09-14）
 
 - [ ] 优先推进 [B1-4 平台快捷键展示与文档重做](../topics/flowsheet-modeling-and-solve.md#b1-4-候选平台快捷键展示与文档重做)：先收口主修饰键与物理 Ctrl 的区分、macOS ⇧⌘Z 与 ⌘Y 兼容范围，再实现和验证；本日尚未实施。
 - [ ] 保持文本 / 文档历史作用域，验证每次仅一条事务、结果旧化、保存重开及平台键位提示一致；Escape 保留草稿和显式丢弃沿用现状。真实窗口前先告知，若使用 UTM 则串行且最多一台运行。
@@ -110,6 +111,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 - Agent 协作、授权与验证选择：`docs/development/agent-collaboration.md`
 - 开发专题与能力索引：`docs/topics/README.md`
 - 未排期账户与联合登录规划：`docs/topics/platform/account-and-federated-login.md`；实现前完成 M0 范围与架构决策。
+- 插件与许可边界：[插件系统](../architecture/simulation-platform.md#插件系统)、[授权分层](../architecture/auth-entitlement-architecture.md#软件许可产品授权与操作权限)；公共凭据、资源权限与计算限额见 [公共 API 专题](../topics/platform/public-api-and-access-control.md)。
 - MVP 冻结范围与非目标：`docs/mvp/scope.md`
 - 仓库分层与模块边界：`docs/architecture/overview.md`
 - 长期能力地图、弱耦合边界与模拟 / 求解方式：`docs/architecture/simulation-platform.md`
@@ -118,7 +120,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 - CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
 - 代码风格、命名和抽象判断：`docs/development/code-style.md`
 - 分支与 PR 治理：`docs/adr/0001-branch-and-pr-governance.md`
-- 最新历史流水：`docs/devlogs/2026-09/2026-W37.md`
+- 最新历史流水：`docs/devlogs/2026-09/2026-W38.md`；基础编辑与实窗证据继续见 `2026-W37.md`。
 
 ## 更新规则
 

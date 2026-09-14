@@ -1,6 +1,6 @@
 # 开发专题索引
 
-更新时间：2026-09-13
+更新时间：2026-09-14
 
 ## 用途
 
@@ -16,6 +16,8 @@
 2026-09-13 确立基础功能优先的近期顺序。[模拟平台长期规划](../architecture/simulation-platform.md) 统一维护组分、物性分析、画布、单元 / 反应、稳态 / 动态 / 瞬态、算法、报告和 API 的能力地图；未来能力进入实施时再建立对应专题，不把长期清单全部标为 Active。近期从 [Studio 基础功能切片](studio-main-workflow.md#基础功能完善切片) 推进。
 
 后续明确的递归分块、间歇 / 半间歇、变量树式 API、COM 自动化及操作录制 / 回放同样由长期规划承载。gPROMS 为方程建模重点参考；APC 暂按先进过程控制领域规划，尚未指定同名产品。
+
+2026-09-14 补充 [插件系统](../architecture/simulation-platform.md#插件系统)、[许可与授权分层](../architecture/auth-entitlement-architecture.md#软件许可产品授权与操作权限) 和下表公共 API 专题。方向已确认，运行时、具体许可政策与接口仍待实施切片决策，不改变基础功能优先级。
 
 ## 组织原则
 
@@ -67,6 +69,7 @@
 | 专题 | 当前文档状态 | 父专题 | 入口 |
 | --- | --- | --- | --- |
 | 账户、登录与 Radish 联合身份 | Draft / 未排期 / 待架构决策 | Control Plane 后端服务 | [账户与联合登录](platform/account-and-federated-login.md) |
+| 公共 API 与访问控制 | Draft / 规划方向已确认 / 未排期 | Control Plane 后端服务（远端访问控制） | [公共 API 与访问控制](platform/public-api-and-access-control.md) |
 
 此处记录仍待范围与架构决策的规划；进入实施前先完成对应专题的前置决策。
 
