@@ -206,3 +206,97 @@ fn inlet_changes_preserve_unparseable_drafts_as_invalid() {
         assert_eq!(draft.current, raw);
     }
 }
+
+#[test]
+fn mixer_draft_tracks_both_inlets_when_the_limiting_source_changes() {
+    let mut app = pressure_draft_app(BuiltinUnitKind::Mixer);
+    let id = UnitId::new("unit-1");
+    app.workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&id)
+        .unwrap()
+        .ports[0]
+        .name = "inlet_a".to_string();
+    app.workspace
+        .document
+        .flowsheet
+        .insert_stream(MaterialStreamState::from_tpzf(
+            "stream-second",
+            "Second feed",
+            330.0,
+            100_000.0,
+            1.0,
+            Default::default(),
+        ))
+        .unwrap();
+    app.workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&id)
+        .unwrap()
+        .ports
+        .push(UnitPort::new(
+            "inlet_b",
+            PortDirection::Inlet,
+            PortKind::Material,
+            Some("stream-second".into()),
+        ));
+    app.focus_inspector_target(InspectorTarget::Unit(id.clone()));
+    app.update_unit_inspector_draft(&id, UnitInspectorDraftField::OutletPressurePa, "110000")
+        .unwrap();
+    for (stream, pressure, validation) in [
+        ("stream-feed", "130000", DraftValidationState::Invalid),
+        ("stream-second", "120000", DraftValidationState::Valid),
+        ("stream-feed", "105000", DraftValidationState::Invalid),
+        ("stream-second", "160000", DraftValidationState::Invalid),
+        ("stream-feed", "110000", DraftValidationState::Valid),
+    ] {
+        let stream_id = StreamId::new(stream);
+        let revision = app.workspace.document.revision;
+        app.focus_inspector_target(InspectorTarget::Stream(stream_id.clone()));
+        app.update_stream_inspector_draft(
+            &stream_id,
+            StreamInspectorDraftField::PressurePa,
+            pressure,
+        )
+        .unwrap();
+        app.commit_stream_inspector_draft(
+            &stream_id,
+            StreamInspectorDraftField::PressurePa,
+            timestamp(20 + revision),
+        )
+        .unwrap()
+        .unwrap();
+        let DraftValue::Number(draft) =
+            &app.workspace.drafts.fields["unit:unit-1:outlet_pressure_pa"]
+        else {
+            panic!("expected pressure draft")
+        };
+        assert_eq!(draft.validation, validation, "after {stream} = {pressure}");
+        assert_eq!(draft.current, "110000");
+        assert_eq!(app.workspace.document.revision, revision + 1);
+        assert_eq!(
+            app.workspace.document.flowsheet.units[&id]
+                .parameters
+                .outlet_pressure_pa,
+            Some(90_000.0)
+        );
+    }
+    app.focus_inspector_target(InspectorTarget::Unit(id.clone()));
+    app.commit_unit_inspector_draft(
+        &id,
+        UnitInspectorDraftField::OutletPressurePa,
+        timestamp(30),
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(
+        app.workspace.document.flowsheet.units[&id]
+            .parameters
+            .outlet_pressure_pa,
+        Some(110_000.0)
+    );
+}

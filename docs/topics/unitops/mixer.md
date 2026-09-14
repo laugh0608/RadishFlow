@@ -1,6 +1,6 @@
 # Mixer 混合器专题
 
-更新时间：2026-09-12
+更新时间：2026-09-14
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../../status/current.md) 为准。
 
@@ -30,7 +30,7 @@
 - Unit Inspector 覆盖 `outlet_pressure_pa`。
 - outlet pressure 高于两股 inlet pressure 较低值时停留在 invalid draft。
 - Mixer suggestion 只在 source-only stream 数量与未绑定 inlet 数量一致时生成。
-- `Feed + Feed -> Mixer -> Flash Drum` 已覆盖显式输入、保存 / 重开 / rerun 和结果审阅。
+- `Feed + Feed -> Mixer -> Flash Drum` 已覆盖显式输入、保存 / 重开 / rerun 和结果审阅；B2-4 补齐不等流量编辑、两入口最低压力切换和 macOS 普通空白用户闭环。
 
 已知缺口：
 
@@ -98,5 +98,16 @@
 ## 状态记录
 
 - 当前状态：Active
-- 最近更新：2026-09-12，恢复开发状态并对齐当前迭代入口；既有能力仍以实现快照和验收记录为准。
-- 下一步：在双入口 Mixer 基线上明确混合计算的物性与能量要求，再实施对应模型与回归。
+- 最近更新：2026-09-14，B2-4 完成下述基础路径验收和回归，未修改产品运行逻辑。
+- 下一步：按基础功能优先级继续 Cooler；任意入口与混合能量模型待独立切片。
+
+
+## B2-4：双进料建模与结果联动
+
+- 普通空白项目选择二元烃 Lite 和两组分后，从模块面板放置 Feed、Mixer、第二个 Feed、Flash Drum；只有一股来源时不生成 Mixer 入口建议。补齐第二股后，用户分别接受 `inlet_a / inlet_b` 绑定，两入口齐全后才建议创建混合出口。三来源歧义继续由既有 local-rules 回归验证，未新增入口选择策略。
+- 缺显式 outlet pressure 时 F5 提示补齐并定位 Mixer；两入口为 150000 / 120000 Pa 时，130000 Pa 草稿不可应用。保留压力草稿对两入口约束的重验沿用 B2-3，实现不变；新增测试覆盖最低压力来源切换、只提高另一股仍不能解禁、等于最低压力时可提交。
+- macOS 不等流量案例：第一股为 300 K、150000 Pa、2 mol/s、甲烷 0.5；第二股为 330 K、120000 Pa、1 mol/s、甲烷 0.8。Mixer 显式 90000 Pa，产出 310 K、3 mol/s、甲烷 / 乙烷 0.6 / 0.4，Flash 入口消费同一结果。
+- 显式断开第二股目标端后，运行报 `solver.connection_validation.unbound_inlet_port` 并定位 `mixer-1:inlet_b`；F8 定位 Mixer，选中原流股重连后恢复收敛。
+- 保存 revision 26、原生重开清空快照、F5 rerun、当前复制及原生文本导出通过。模块结果、结果表和文本中的混合出口均为 310 K、90000 Pa、3 mol/s、567.615 J/mol；不将当前温度加权近似解释为总焓守恒。
+- [同域 Mixer 回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/canvas/mixer.rs) 保留既有连接 / 保存 / 审阅覆盖，并验证流量从 2:1 改为 1:1 后旧结果不可导出；保存重开重跑得到 315 K、2 mol/s、甲烷 0.65，Mixer 产出与 Flash 消费引用相等，输出不改工程文件。
+- Windows / Linux 原生路径、多来源歧义逐项实窗、零流量边界和独立物理准确性不在本轮实窗结论内。详细验证与文件证据见 [W38](../../devlogs/2026-09/2026-W38.md#2026-09-14-b2-4-mixer-双进料建模与结果联动)。
