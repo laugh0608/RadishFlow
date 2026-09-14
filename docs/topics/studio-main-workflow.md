@@ -157,4 +157,5 @@ B0 收口：受控 Feed–Flash 创建、参数提交、连接、目标端断开
 - B2 首轮复核：普通空白项目的物性包 / 组分选择与移除门禁、非法温度拒绝、重开 rerun 和当前结果审阅已有 macOS 证据；当时确认的默认结果入口和 macOS 导出缺口已由 B2-1 收口。
 - B2-1 更新：[轻量结果输出闭环](results-review-diagnostics.md#b2-1轻量结果输出闭环) 已完成默认入口、执行时校验、macOS 原生导出、安全覆盖及取消 / 失败 / 不支持反馈；macOS 全仓与实窗通过。
 - B2-2 更新：[失败诊断与恢复](results-review-diagnostics.md#b2-2运行失败诊断与恢复) 已补齐顶部动作、恢复定位和 F5 / F8 面板反馈；macOS 参数 / 连接修复、保存重开与当前结果通过。
-- 下一步：优先 Valve 普通空白建模与参数联动复核；Mixer / Cooler、远距离视口及 Windows / Linux 原生路径继续待验证。
+- B2-3 更新：[Valve 空白建模与参数联动](unitops/valve.md#b2-3空白建模与参数联动) 完成跨对象草稿重验、macOS 空白建模、保存重开重跑及当前结果输出。
+- 下一步：优先 Mixer 双进料建模与参数 / 结果联动；Cooler、远距离视口及 Windows / Linux 原生路径继续待验证。

@@ -504,6 +504,7 @@ impl WorkspaceState {
             ));
         self.canvas_interaction.invalidate_all();
         self.solve_session.mark_document_revision_advanced(revision);
+        self.refresh_unit_parameter_drafts();
         revision
     }
 

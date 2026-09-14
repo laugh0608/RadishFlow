@@ -68,11 +68,9 @@ impl AppState {
         if !unit_inspector_draft_fields(unit).contains(&field) {
             return None;
         }
-        let missing_explicit_parameter = !unit_inspector_parameter_is_explicit(unit, &field);
         let raw_value = raw_value.into();
         let key = unit_inspector_draft_key(unit_id, &field);
-        let (mut draft_value, mut is_dirty, validation) = if field == UnitInspectorDraftField::Name
-        {
+        let (draft_value, is_dirty, validation) = if field == UnitInspectorDraftField::Name {
             let validation = if raw_value.trim().is_empty() {
                 DraftValidationState::Invalid
             } else {
@@ -90,28 +88,8 @@ impl AppState {
                 validation,
             )
         } else {
-            let original_value = unit_inspector_parameter_value(
-                &self.workspace.document.flowsheet,
-                unit_id,
-                &field,
-            )?;
-            unit_draft_value_from_raw(original_value, raw_value, |value| {
-                is_valid_unit_parameter_value_for_unit(
-                    &self.workspace.document.flowsheet,
-                    unit,
-                    &field,
-                    value,
-                )
-            })
+            unit_parameter_draft_value(&self.workspace.document.flowsheet, unit, &field, raw_value)?
         };
-        if missing_explicit_parameter
-            && validation == DraftValidationState::Valid
-            && let DraftValue::Number(draft) = &mut draft_value
-            && !draft.is_dirty
-        {
-            draft.is_dirty = true;
-            is_dirty = true;
-        }
 
         if !is_dirty && validation != DraftValidationState::Invalid {
             self.workspace.drafts.fields.remove(&key);
@@ -279,12 +257,49 @@ pub fn unit_inspector_parameter_is_explicit(
     }
 }
 
-fn unit_draft_value_from_raw(
-    original_value: f64,
+impl WorkspaceState {
+    pub(super) fn refresh_unit_parameter_drafts(&mut self) {
+        let flowsheet = &self.document.flowsheet;
+        self.drafts.fields.retain(|key, value| {
+            let Some((unit_id, field)) = unit_inspector_draft_key_parts(key) else {
+                return true;
+            };
+            let DraftValue::Number(draft) = value else {
+                return true;
+            };
+            let Some(unit) = flowsheet.units.get(&unit_id) else {
+                return false;
+            };
+            let Some((next, is_dirty, validation)) =
+                unit_parameter_draft_value(flowsheet, unit, &field, draft.current.clone())
+            else {
+                return false;
+            };
+            *value = next;
+            is_dirty || validation == DraftValidationState::Invalid
+        });
+    }
+}
+
+fn unit_parameter_draft_value(
+    flowsheet: &Flowsheet,
+    unit: &UnitNode,
+    field: &UnitInspectorDraftField,
     raw_value: String,
-    is_valid_number: impl Fn(f64) -> bool,
-) -> (DraftValue, bool, DraftValidationState) {
-    unit_number_draft_value(original_value, raw_value, is_valid_number)
+) -> Option<(DraftValue, bool, DraftValidationState)> {
+    let original = unit_inspector_parameter_value(flowsheet, &unit.id, field)?;
+    let (mut value, mut is_dirty, validation) =
+        unit_number_draft_value(original, raw_value, |number| {
+            is_valid_unit_parameter_value_for_unit(flowsheet, unit, field, number)
+        });
+    if !unit_inspector_parameter_is_explicit(unit, field)
+        && validation == DraftValidationState::Valid
+        && let DraftValue::Number(draft) = &mut value
+    {
+        draft.is_dirty = true;
+        is_dirty = true;
+    }
+    Some((value, is_dirty, validation))
 }
 
 fn unit_number_draft_value<F>(

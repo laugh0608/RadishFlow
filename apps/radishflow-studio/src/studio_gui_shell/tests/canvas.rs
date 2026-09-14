@@ -1190,53 +1190,53 @@ fn blank_project_single_inlet_flash_paths_save_reopen_and_rerun() {
             &[case.unit_id, "SolveSnapshot", "Latest step"],
         );
 
-        if case.case_name == "heater" {
-            let export_path = project_path.with_extension("txt");
-            app.export_solve_snapshot_to_path(snapshot, export_path.clone());
-            let exported = fs::read_to_string(&export_path).expect("expected heater export read");
-            assert!(exported.contains("Review\ncategory\titems"));
-            assert!(exported.contains("source_streams\tstream-feed-1-outlet"));
-            assert!(exported.contains(&format!(
-                "intermediate_streams\t{}",
-                case.unit_outlet_stream_id
-            )));
-            assert!(exported.contains("terminal_streams\tstream-flash-1-liquid"));
-            assert!(exported.contains("units\tfeed-1 status=Converged"));
-            assert!(exported.contains(&format!("{} status=Converged", case.unit_id)));
-            assert!(exported.contains(
-                "Streams\nstream_id\tlabel\tT\tP\tF\tH\tcomposition\tphases\tbubble_dew_window"
-            ));
-            assert!(exported.contains(
+        let export_path = project_path.with_extension("txt");
+        app.export_solve_snapshot_to_path(snapshot, export_path.clone());
+        let exported =
+            fs::read_to_string(&export_path).expect("expected single-inlet case export read");
+        assert!(exported.contains("Review\ncategory\titems"));
+        assert!(exported.contains("source_streams\tstream-feed-1-outlet"));
+        assert!(exported.contains(&format!(
+            "intermediate_streams\t{}",
+            case.unit_outlet_stream_id
+        )));
+        assert!(exported.contains("terminal_streams\tstream-flash-1-liquid"));
+        assert!(exported.contains("units\tfeed-1 status=Converged"));
+        assert!(exported.contains(&format!("{} status=Converged", case.unit_id)));
+        assert!(exported.contains(
+            "Streams\nstream_id\tlabel\tT\tP\tF\tH\tcomposition\tphases\tbubble_dew_window"
+        ));
+        assert!(
+            exported.contains(
                 "Units\nunit_id\tstep\tstatus\tsummary\tconsumed_streams\tproduced_streams"
-            ));
-            assert!(exported.contains(
-                "Steps\nindex\tunit_id\tstatus\tsummary\tconsumed_streams\tproduced_streams"
-            ));
-            assert!(exported.contains(case.unit_id));
-            assert!(exported.contains("flash-1"));
-            assert!(exported.contains(case.unit_outlet_stream_id));
-            assert!(exported.contains("stream-feed-1-outlet"));
-            assert!(exported.contains("stream-flash-1-liquid"));
-            assert!(exported.contains("stream-flash-1-vapor"));
-            assert!(exported.contains("methane=0.2500"));
-            assert!(exported.contains("ethane=0.7500"));
-            assert!(exported.contains("phase_region="));
-            assert!(exported.contains("bubble_pressure="));
-            assert!(exported.contains("dew_pressure="));
-            assert!(exported.contains("bubble_temperature="));
-            assert!(exported.contains("dew_temperature="));
-            assert!(
-                !app.platform_host
-                    .snapshot()
-                    .window_model()
-                    .runtime
-                    .workspace_document
-                    .has_unsaved_changes,
-                "heater result export must not dirty the authored case"
-            );
-            let _ = fs::remove_file(export_path);
-        }
-
+            )
+        );
+        assert!(exported.contains(
+            "Steps\nindex\tunit_id\tstatus\tsummary\tconsumed_streams\tproduced_streams"
+        ));
+        assert!(exported.contains(case.unit_id));
+        assert!(exported.contains("flash-1"));
+        assert!(exported.contains(case.unit_outlet_stream_id));
+        assert!(exported.contains("stream-feed-1-outlet"));
+        assert!(exported.contains("stream-flash-1-liquid"));
+        assert!(exported.contains("stream-flash-1-vapor"));
+        assert!(exported.contains("methane=0.2500"));
+        assert!(exported.contains("ethane=0.7500"));
+        assert!(exported.contains("phase_region="));
+        assert!(exported.contains("bubble_pressure="));
+        assert!(exported.contains("dew_pressure="));
+        assert!(exported.contains("bubble_temperature="));
+        assert!(exported.contains("dew_temperature="));
+        assert!(
+            !app.platform_host
+                .snapshot()
+                .window_model()
+                .runtime
+                .workspace_document
+                .has_unsaved_changes,
+            "result export must not dirty the authored case"
+        );
+        let _ = fs::remove_file(export_path);
         let _ = fs::remove_file(project_path);
     }
 }
