@@ -81,7 +81,7 @@ impl ReadyAppState {
             Some(shortcut) => format!(
                 "{} ({})",
                 self.locale.runtime_label(&action.label),
-                format_shortcut(shortcut)
+                shortcut.format(radishflow_studio::StudioGuiShortcutPlatform::current())
             ),
             None => self.locale.runtime_label(&action.label).into_owned(),
         };

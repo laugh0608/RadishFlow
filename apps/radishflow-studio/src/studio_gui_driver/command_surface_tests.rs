@@ -154,7 +154,7 @@ fn gui_driver_saves_current_project_through_command_surface() {
 }
 
 #[test]
-fn gui_driver_routes_ctrl_s_from_text_input_to_save_command() {
+fn gui_driver_routes_primary_s_from_text_input_to_save_command() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
     driver
@@ -164,7 +164,7 @@ fn gui_driver_routes_ctrl_s_from_text_input_to_save_command() {
     let dispatch = driver
         .dispatch_event(StudioGuiEvent::ShortcutPressed {
             shortcut: StudioGuiShortcut {
-                modifiers: vec![crate::StudioGuiShortcutModifier::Ctrl],
+                modifiers: vec![crate::StudioGuiShortcutModifier::Primary],
                 key: crate::StudioGuiShortcutKey::S,
             },
             focus_context: StudioGuiFocusContext::TextInput,
@@ -189,7 +189,7 @@ fn gui_driver_routes_ctrl_s_from_text_input_to_save_command() {
 }
 
 #[test]
-fn gui_driver_routes_disabled_ctrl_z_without_executing_history() {
+fn gui_driver_routes_disabled_primary_z_without_executing_history() {
     let mut driver = StudioGuiDriver::new(&synced_workspace_config()).expect("expected driver");
     driver
         .dispatch_event(StudioGuiEvent::OpenWindowRequested)
@@ -198,7 +198,7 @@ fn gui_driver_routes_disabled_ctrl_z_without_executing_history() {
     let dispatch = driver
         .dispatch_event(StudioGuiEvent::ShortcutPressed {
             shortcut: StudioGuiShortcut {
-                modifiers: vec![crate::StudioGuiShortcutModifier::Ctrl],
+                modifiers: vec![crate::StudioGuiShortcutModifier::Primary],
                 key: crate::StudioGuiShortcutKey::Z,
             },
             focus_context: StudioGuiFocusContext::Global,

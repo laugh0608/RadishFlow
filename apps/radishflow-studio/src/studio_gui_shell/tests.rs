@@ -179,6 +179,7 @@ mod canvas_navigation;
 mod command_palette;
 mod command_surface;
 mod failure_recovery_lifecycle;
+mod platform_shortcuts;
 mod project_lifecycle;
 mod result_review;
 mod runtime;
@@ -199,6 +200,7 @@ fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGu
                 menu_path: vec!["Commands".to_string()],
                 search_terms: Vec::new(),
                 shortcut: None,
+                shortcut_aliases: Vec::new(),
             }));
             &*entry
         })

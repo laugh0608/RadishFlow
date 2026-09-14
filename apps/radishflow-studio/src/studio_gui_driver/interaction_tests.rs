@@ -84,7 +84,7 @@ fn gui_driver_reports_ignored_shortcut_when_text_input_owns_undo_redo() {
         let dispatch = driver
             .dispatch_event(StudioGuiEvent::ShortcutPressed {
                 shortcut: StudioGuiShortcut {
-                    modifiers: vec![crate::StudioGuiShortcutModifier::Ctrl],
+                    modifiers: vec![crate::StudioGuiShortcutModifier::Primary],
                     key,
                 },
                 focus_context: StudioGuiFocusContext::TextInput,
@@ -94,7 +94,7 @@ fn gui_driver_reports_ignored_shortcut_when_text_input_owns_undo_redo() {
         assert_ignored_shortcut(
             &dispatch,
             StudioGuiShortcut {
-                modifiers: vec![crate::StudioGuiShortcutModifier::Ctrl],
+                modifiers: vec![crate::StudioGuiShortcutModifier::Primary],
                 key,
             },
             StudioGuiShortcutIgnoreReason::TextInputOwnsShortcut,

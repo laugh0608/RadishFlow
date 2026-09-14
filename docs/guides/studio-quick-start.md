@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-09-13
+更新时间：2026-09-14
 
 > 本文用于运行与验证当前 MVP 用户路径。内置样例与历史 `official` 称谓表示仓库演示 / 回归案例，运行成功不构成工程精度验证；解释结果前请阅读 [模型与样例边界](../thermo/mvp-model.md)。
 
@@ -134,7 +134,7 @@ cargo run -p radishflow-studio
 
 - `docs/guides/run-first-flowsheet.md`
 
-如果内置示例已经跑通，下一步建议从首页点击 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例`，按 `docs/guides/author-small-cases.md` 从空白项目复现小案例：放置单元、接受 suggestion、提交单元参数、运行、保存重开、重跑并导出当前结果。这些作者入口只打开空白项目和任务清单，不是自由连线、自动布线或完整项目向导。
+如果内置示例已经跑通，下一步建议从首页点击 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例`，按 `docs/guides/author-small-cases.md` 从空白项目复现小案例：放置单元、接受 suggestion、提交单元参数、运行、保存重开、重跑并导出当前结果。这些作者入口只打开空白项目和任务清单，不是自由连线、自动布线或完整项目向导。当前轻量导出操作位于 Runtime 区域，尚未进入默认结果页；原生导出仅 Windows 接入，macOS / Linux 的缺口见 [B2-1](../topics/results-review-diagnostics.md#b2-1-候选轻量结果输出闭环)。
 
 ## 启动首页
 
@@ -206,7 +206,7 @@ Home 的 recent / current / example case tile 显示的是从当前 document / b
 
 删除单元时，先在画布操作区点击“删除单元”，检查名称、ID 和关联流股，再确认。只移除该设备及自身端口绑定，流股和相邻设备保留；缺源或缺输入由运行诊断指出，不会自动重接。
 
-名称和数值输入中的 Undo / Redo 只影响文本草稿；Enter 提交有效字段，Escape 退出文本焦点但保留草稿，需放弃时点击“丢弃”。macOS 文档撤销 / 重做当前使用 `⌘Z / ⌘Y`；文本重做支持 `⇧⌘Z`，文档尚未支持该组合，面板仍显示 Ctrl 标签。也可从 `工具` 命令面板执行文档 Undo / Redo。
+名称和数值输入中的 Undo / Redo 只影响文本草稿；Enter 提交有效字段，Escape 退出文本焦点但保留草稿，需放弃时点击“丢弃”。macOS 文档撤销 / 重做使用 `⌘Z / ⇧⌘Z`，保留 `⌘Y` 兼容重做；Windows / Linux 使用 `Ctrl+Z / Ctrl+Y`。提示随平台显示，文本框内的组合由文本编辑处理，待确认对话框阻止文档历史快捷键。也可从 `工具` 命令面板执行文档 Undo / Redo。
 
 成功编辑、文档 Undo / Redo 后需重新运行才能获得当前结果。`文件 → 保存 / 另存为` 只保存已提交值，不自动应用草稿；macOS 保存快捷键为 `⌘S`。首次保存同步布局 sidecar；若提示“项目已保存，布局保存失败”，工程数据已保存，可重试保存布局。重开保留工程和已保存布局，Undo / Redo 历史不跨会话保留。
 

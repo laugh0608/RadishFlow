@@ -1534,11 +1534,11 @@ impl ReadyAppState {
     }
 
     pub(super) fn dispatch_shortcuts(&mut self, ctx: &egui::Context) {
-        if self.pending_unit_deletion.is_some() {
-            return;
-        }
         let focus_context = self.focus_context(ctx);
-        if matches!(focus_context, StudioGuiFocusContext::CommandPalette) {
+        if matches!(
+            focus_context,
+            StudioGuiFocusContext::CommandPalette | StudioGuiFocusContext::ModalDialog
+        ) {
             return;
         }
 
@@ -1560,7 +1560,17 @@ impl ReadyAppState {
     }
 
     pub(super) fn focus_context(&self, ctx: &egui::Context) -> StudioGuiFocusContext {
-        if self.command_palette.open {
+        if self.pending_unit_deletion.is_some()
+            || self.project_open.pending_confirmation.is_some()
+            || self.project_open.pending_blank_project_confirmation
+            || self.project_open.pending_save_as_overwrite.is_some()
+            || self
+                .project_open
+                .pending_close_window_confirmation
+                .is_some()
+        {
+            StudioGuiFocusContext::ModalDialog
+        } else if self.command_palette.open {
             StudioGuiFocusContext::CommandPalette
         } else if ctx.wants_keyboard_input() {
             StudioGuiFocusContext::TextInput

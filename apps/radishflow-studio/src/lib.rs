@@ -220,6 +220,7 @@ pub use studio_gui_command_registry::{
     StudioGuiCommandEntry, StudioGuiCommandGroup, StudioGuiCommandMenuCommandModel,
     StudioGuiCommandMenuNode, StudioGuiCommandPresentation, StudioGuiCommandRegistry,
     StudioGuiCommandSection, StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier,
+    StudioGuiShortcutPlatform,
 };
 pub use studio_gui_driver::{
     StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome, StudioGuiEvent,

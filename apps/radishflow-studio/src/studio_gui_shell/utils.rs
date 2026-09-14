@@ -96,82 +96,52 @@ pub(super) fn drain_due_platform_timer_callbacks(
 
 pub(super) fn collect_shortcuts(input: &egui::InputState) -> Vec<StudioGuiShortcut> {
     let mut shortcuts = Vec::new();
-
-    if input.modifiers.command && input.key_pressed(egui::Key::S) {
-        shortcuts.push(StudioGuiShortcut {
-            modifiers: command_modifiers_from_egui(input.modifiers),
-            key: StudioGuiShortcutKey::S,
-        });
+    for event in &input.events {
+        let egui::Event::Key {
+            key,
+            pressed: true,
+            modifiers,
+            ..
+        } = event
+        else {
+            continue;
+        };
+        let (key, uses_primary) = match key {
+            egui::Key::S if modifiers.command => (StudioGuiShortcutKey::S, true),
+            egui::Key::Z if modifiers.command => (StudioGuiShortcutKey::Z, true),
+            egui::Key::Y if modifiers.command => (StudioGuiShortcutKey::Y, true),
+            egui::Key::F5 => (StudioGuiShortcutKey::F5, false),
+            egui::Key::F6 => (StudioGuiShortcutKey::F6, false),
+            egui::Key::F8 => (StudioGuiShortcutKey::F8, false),
+            egui::Key::Tab => (StudioGuiShortcutKey::Tab, false),
+            egui::Key::Escape => (StudioGuiShortcutKey::Escape, false),
+            _ => continue,
+        };
+        let mut chord_modifiers = Vec::new();
+        if uses_primary || modifiers.mac_cmd {
+            chord_modifiers.push(StudioGuiShortcutModifier::Primary);
+        }
+        // On macOS, physical Control is independent of Command. On other
+        // platforms Control has already been consumed by primary chords.
+        if modifiers.ctrl && (!uses_primary || modifiers.mac_cmd) {
+            chord_modifiers.push(StudioGuiShortcutModifier::Ctrl);
+        }
+        if modifiers.shift {
+            chord_modifiers.push(StudioGuiShortcutModifier::Shift);
+        }
+        if modifiers.alt {
+            chord_modifiers.push(StudioGuiShortcutModifier::Alt);
+        }
+        let shortcut = StudioGuiShortcut {
+            modifiers: chord_modifiers,
+            key,
+        };
+        // Preserve one dispatch per chord per frame, including OS key repeats.
+        if !shortcuts.contains(&shortcut) {
+            shortcuts.push(shortcut);
+        }
     }
-    if input.modifiers.command && input.key_pressed(egui::Key::Z) {
-        shortcuts.push(StudioGuiShortcut {
-            modifiers: command_modifiers_from_egui(input.modifiers),
-            key: StudioGuiShortcutKey::Z,
-        });
-    }
-    if input.modifiers.command && input.key_pressed(egui::Key::Y) {
-        shortcuts.push(StudioGuiShortcut {
-            modifiers: command_modifiers_from_egui(input.modifiers),
-            key: StudioGuiShortcutKey::Y,
-        });
-    }
-    if input.key_pressed(egui::Key::F5) {
-        shortcuts.push(StudioGuiShortcut {
-            modifiers: modifiers_from_egui(input.modifiers),
-            key: StudioGuiShortcutKey::F5,
-        });
-    }
-    if input.key_pressed(egui::Key::F6) {
-        shortcuts.push(StudioGuiShortcut {
-            modifiers: modifiers_from_egui(input.modifiers),
-            key: StudioGuiShortcutKey::F6,
-        });
-    }
-    if input.key_pressed(egui::Key::F8) {
-        shortcuts.push(StudioGuiShortcut {
-            modifiers: modifiers_from_egui(input.modifiers),
-            key: StudioGuiShortcutKey::F8,
-        });
-    }
-    if input.key_pressed(egui::Key::Tab) {
-        shortcuts.push(StudioGuiShortcut {
-            modifiers: modifiers_from_egui(input.modifiers),
-            key: StudioGuiShortcutKey::Tab,
-        });
-    }
-    if input.key_pressed(egui::Key::Escape) {
-        shortcuts.push(StudioGuiShortcut {
-            modifiers: modifiers_from_egui(input.modifiers),
-            key: StudioGuiShortcutKey::Escape,
-        });
-    }
-
     shortcuts
-}
-
-pub(super) fn modifiers_from_egui(modifiers: egui::Modifiers) -> Vec<StudioGuiShortcutModifier> {
-    let mut items = Vec::new();
-    if modifiers.ctrl {
-        items.push(StudioGuiShortcutModifier::Ctrl);
-    }
-    if modifiers.shift {
-        items.push(StudioGuiShortcutModifier::Shift);
-    }
-    if modifiers.alt {
-        items.push(StudioGuiShortcutModifier::Alt);
-    }
-    items
-}
-
-fn command_modifiers_from_egui(modifiers: egui::Modifiers) -> Vec<StudioGuiShortcutModifier> {
-    let mut items = vec![StudioGuiShortcutModifier::Ctrl];
-    if modifiers.shift {
-        items.push(StudioGuiShortcutModifier::Shift);
-    }
-    if modifiers.alt {
-        items.push(StudioGuiShortcutModifier::Alt);
-    }
-    items
 }
 
 pub(super) fn region_panel_width(
@@ -837,30 +807,6 @@ pub(super) fn format_duration(duration: Duration) -> String {
     } else {
         format!("{}d{}h", seconds / 86_400, (seconds % 86_400) / 3_600)
     }
-}
-
-pub(super) fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
-    let mut parts = shortcut
-        .modifiers
-        .iter()
-        .map(|modifier| match modifier {
-            StudioGuiShortcutModifier::Ctrl => "Ctrl",
-            StudioGuiShortcutModifier::Shift => "Shift",
-            StudioGuiShortcutModifier::Alt => "Alt",
-        })
-        .collect::<Vec<_>>();
-    let key = match shortcut.key {
-        StudioGuiShortcutKey::S => "S",
-        StudioGuiShortcutKey::Z => "Z",
-        StudioGuiShortcutKey::Y => "Y",
-        StudioGuiShortcutKey::F5 => "F5",
-        StudioGuiShortcutKey::F6 => "F6",
-        StudioGuiShortcutKey::F8 => "F8",
-        StudioGuiShortcutKey::Tab => "Tab",
-        StudioGuiShortcutKey::Escape => "Escape",
-    };
-    parts.push(key);
-    parts.join("+")
 }
 
 pub(super) trait PaletteSelectable {

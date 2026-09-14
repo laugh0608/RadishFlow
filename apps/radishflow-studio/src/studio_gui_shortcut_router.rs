@@ -337,7 +337,7 @@ mod tests {
         let route = route_shortcut(
             &registry(),
             &StudioGuiShortcut {
-                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                modifiers: vec![StudioGuiShortcutModifier::Primary],
                 key: StudioGuiShortcutKey::S,
             },
             StudioGuiFocusContext::TextInput,
@@ -360,7 +360,7 @@ mod tests {
             let route = route_shortcut(
                 &registry(),
                 &StudioGuiShortcut {
-                    modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                    modifiers: vec![StudioGuiShortcutModifier::Primary],
                     key,
                 },
                 StudioGuiFocusContext::TextInput,
@@ -385,7 +385,7 @@ mod tests {
             let route = route_shortcut(
                 &registry(),
                 &StudioGuiShortcut {
-                    modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                    modifiers: vec![StudioGuiShortcutModifier::Primary],
                     key,
                 },
                 StudioGuiFocusContext::Global,

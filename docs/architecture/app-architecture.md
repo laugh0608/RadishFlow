@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-09-13
+更新时间：2026-09-14
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -760,7 +760,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - 失败详情只消费 `latest_diagnostic`，显示 primary code、revision、severity、count 与相关 target；GUI 不从 message 文本反解析或私造端口级 command。Run Panel recovery action 必须区分聚焦与修复，用户主动选中流股后的恢复动作走对应 `canvas.*selected_stream*` 命令，不复用 failure-only recovery command。
 - `StudioAppHostController` 对 `DispatchCanvasInteraction` 不应无条件 `refresh_local_canvas_suggestions()`；local-rules refresh 只应发生在真正改写文档或显式要求重算 suggestion 的路径上，避免破坏 GUI 命令面的连续交互语义。
 - `studio_gui_shell` 已通过 shell 级等价回归锁定 run panel、canvas suggestion、layout nudge、选中流股恢复和 disabled gate 在菜单、工具栏、命令面板、Canvas / Inspector 入口之间的共享派发语义；后续提示应停留在 presentation 层，不越过 disabled gate 改状态。
-- 文本焦点拥有文本 Undo / Redo，非文本适用焦点才派发文档历史；Stream / Unit Inspector 的 Enter 提交有效当前字段，Escape 保留草稿。macOS 当前文档快捷键为 ⌘S / ⌘Z / ⌘Y，registry 仍用 Ctrl 表达主修饰键，平台展示与 ⇧⌘Z 缺口见 [B1-4 候选](../topics/flowsheet-modeling-and-solve.md#b1-4-候选平台快捷键展示与文档重做)。
+- 文本焦点拥有文本 Undo / Redo，非文本适用焦点才派发文档历史；Stream / Unit Inspector 的 Enter 提交有效当前字段，Escape 保留草稿。快捷键模型用 `Primary` 表达平台主修饰键、`Ctrl` 表达物理 Control，绑定与标签同源；macOS 使用 ⌘S / ⌘Z / ⇧⌘Z，保留 ⌘Y 别名，Windows / Linux 使用 Ctrl+S / Ctrl+Z / Ctrl+Y。输入使用事件自身修饰键，文档确认状态优先阻断快捷键；实现与平台证据见 [B1-4](../topics/flowsheet-modeling-and-solve.md#b1-4平台快捷键展示与文档重做)。
 - Studio 源码按领域职责组织浅层模块；新增实现并入同域目录，避免继续扩大入口文件。
 
 ## 结果快照模型
