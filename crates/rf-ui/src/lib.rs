@@ -18,6 +18,9 @@ mod state;
 pub mod variable_browser;
 pub mod variable_commands;
 
+// Public input type for canonical unit creation; re-export avoids an extra caller dependency.
+pub use rf_unitops::BuiltinUnitKind;
+
 pub use auth::{
     AuditUsageAck, AuditUsageRequest, AuthSessionState, AuthSessionStatus, AuthenticatedUser,
     EntitlementNotice, EntitlementNoticeLevel, EntitlementSnapshot, EntitlementState,
@@ -71,7 +74,7 @@ pub use state::{
     StreamInspectorCompositionComponentAddResult, StreamInspectorCompositionComponentRemoveResult,
     StreamInspectorDraftBatchCommitResult, StreamInspectorDraftBatchDiscardResult,
     StreamInspectorDraftCommitResult, StreamInspectorDraftDiscardResult, StreamInspectorDraftField,
-    StreamInspectorDraftUpdateResult, StreamReconnectEditResult, UiPanelsState,
+    StreamInspectorDraftUpdateResult, StreamReconnectEditResult, UiPanelsState, UnitCreateResult,
     UnitInspectorDraftCommitResult, UnitInspectorDraftDiscardResult, UnitInspectorDraftField,
     UnitInspectorDraftUpdateResult, UserPreferences, WorkspaceState, latest_snapshot,
     latest_snapshot_id, stale_snapshot, stream_inspector_draft_key,

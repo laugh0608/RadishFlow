@@ -1,27 +1,10 @@
 use super::*;
 
-pub(super) fn apply_canvas_edit_intent(
+pub(super) fn prepare_builtin_unit_creation(
     flowsheet: &Flowsheet,
-    intent: &CanvasEditIntent,
+    builtin_kind: BuiltinUnitKind,
     allocated_unit_ids: &BTreeSet<UnitId>,
 ) -> RfResult<(DocumentCommand, Flowsheet, UnitId)> {
-    match intent {
-        CanvasEditIntent::PlaceUnit { unit_kind } => {
-            apply_place_unit_canvas_edit(flowsheet, unit_kind, allocated_unit_ids)
-        }
-    }
-}
-
-pub(super) fn apply_place_unit_canvas_edit(
-    flowsheet: &Flowsheet,
-    unit_kind: &str,
-    allocated_unit_ids: &BTreeSet<UnitId>,
-) -> RfResult<(DocumentCommand, Flowsheet, UnitId)> {
-    let builtin_kind = parse_canvas_unit_kind(unit_kind).ok_or_else(|| {
-        RfError::invalid_input(format!(
-            "canvas place unit intent uses unsupported unit kind `{unit_kind}`"
-        ))
-    })?;
     let spec = builtin_unit_spec(builtin_kind);
     let unit_id = next_canvas_unit_id(flowsheet, builtin_kind, allocated_unit_ids);
     let unit = UnitNode::new(
@@ -141,16 +124,11 @@ pub(super) fn apply_canvas_suggestion_acceptance(
         ))
     })?;
 
-    let (command, next_flowsheet) = match acceptance {
+    match acceptance {
         CanvasSuggestionAcceptance::MaterialConnection(connection) => {
-            apply_material_connection_acceptance(
-                &app_state.workspace.document.flowsheet,
-                connection,
-            )?
+            app_state.commit_material_connection(connection, SystemTime::now())?;
         }
-    };
-
-    app_state.commit_document_change(command, next_flowsheet, SystemTime::now());
+    }
     Ok(())
 }
 

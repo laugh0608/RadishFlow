@@ -19,6 +19,9 @@ pub enum ParameterType {
     UnitIdentity,
     StreamIdentity,
     PortName,
+    UnitKind,
+    MaterialPort,
+    PackageSelection,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ActionParameter {
@@ -132,12 +135,9 @@ impl VariableBrowser<'_> {
                 action(
                     CreateUnit,
                     "创建单元",
-                    vec![
-                        parameter("unit_id", UnitIdentity, false),
-                        parameter("kind", Text, false),
-                    ],
+                    vec![parameter("kind", UnitKind, false)],
                     vec![],
-                    "使用受支持单元类型与未占用身份；Studio 放置入口分配身份。",
+                    "使用六类内置单元；创建入口分配未占用身份和标准端口；应用调用需匹配文档 / 修订且无未处理编辑。",
                     "新单元身份和文档修订",
                 ),
                 action(
@@ -145,13 +145,11 @@ impl VariableBrowser<'_> {
                     "连接端口",
                     vec![
                         parameter("stream_id", StreamIdentity, false),
-                        parameter("from_unit_id", UnitIdentity, false),
-                        parameter("from_port", PortName, false),
-                        parameter("to_unit_id", UnitIdentity, true),
-                        parameter("to_port", PortName, true),
+                        parameter("source", MaterialPort, false),
+                        parameter("sink", MaterialPort, true),
                     ],
                     vec![],
-                    "使用现有受控连接入口；对象存在、端口方向及物料类型匹配；候选唯一且不违反占用与拓扑规则。目标单元和目标端口成对指定。",
+                    "执行时匹配当前本地规则候选，并校验端口方向、类型和占用；可创建受控出口流股。完整拓扑仍在运行前校验。",
                     "文档修订；连接关系",
                 ),
                 action(
@@ -168,13 +166,13 @@ impl VariableBrowser<'_> {
                 ActionDescriptor {
                     kind: Run,
                     label: "运行当前流程",
-                    parameters: vec![],
+                    parameters: vec![parameter("package", PackageSelection, false)],
                     fields: vec![],
-                    preconditions: "无待提交或无效草稿；物性、组分与模型输入就绪；运行时执行 readiness 和求解校验。",
+                    preconditions: "物性包可显式选择或使用 Preferred；无待提交或无效草稿；物性、组分与模型输入就绪；运行时执行 readiness 和求解校验。",
                     modifies_document: false,
                     undoable: false,
                     asynchronous: false,
-                    returns: "当前求解快照或结构化失败；现有执行为同步，无任务取消承诺",
+                    returns: "运行 outcome 与控制状态（含阻塞 / 失败）；同步执行，无任务取消承诺",
                 },
             ],
         })

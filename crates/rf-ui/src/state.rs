@@ -1,6 +1,7 @@
 mod actions;
 mod input_commands;
 mod unit_edit;
+pub use unit_edit::UnitCreateResult;
 pub(crate) mod unit_inspector;
 use actions::*;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -849,12 +850,17 @@ impl AppState {
             return Ok(None);
         };
 
-        let (command, next_flowsheet, unit_id) = apply_canvas_edit_intent(
-            &self.workspace.document.flowsheet,
-            &intent,
-            &self.workspace.allocated_unit_ids,
-        )?;
-        let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at);
+        let CanvasEditIntent::PlaceUnit { unit_kind } = &intent;
+        let kind = parse_canvas_unit_kind(unit_kind).ok_or_else(|| {
+            RfError::invalid_input(format!(
+                "canvas place unit intent uses unsupported unit kind `{unit_kind}`"
+            ))
+        })?;
+        let UnitCreateResult {
+            command,
+            unit_id,
+            revision,
+        } = self.create_builtin_unit(kind, changed_at)?;
         self.workspace.selection.selected_units.clear();
         self.workspace.selection.selected_streams.clear();
         self.workspace

@@ -14,6 +14,7 @@ mod entitlement_session_host_presentation;
 mod entitlement_session_host_runtime;
 mod inspector_draft_driver;
 mod inspector_target_driver;
+pub mod modeling_actions;
 mod property_package_download;
 mod property_package_download_client;
 mod run_panel_driver;
