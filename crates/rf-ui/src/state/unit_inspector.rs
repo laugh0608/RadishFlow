@@ -153,9 +153,6 @@ impl AppState {
             return Ok(None);
         };
 
-        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
-        apply_unit_parameter_value(&mut next_flowsheet, unit_id, &field, &command_value)?;
-
         let command = match (&field, command_value) {
             (UnitInspectorDraftField::Name, CommandValue::Text(new_name)) => {
                 DocumentCommand::RenameUnit {
@@ -169,11 +166,10 @@ impl AppState {
                 value,
             },
         };
-        let revision = self.workspace.commit_inspector_document_change(
-            command.clone(),
-            next_flowsheet,
-            changed_at,
-        );
+        let revision = self
+            .workspace
+            .commit_input_document_command(command.clone(), changed_at)?
+            .revision;
         self.workspace.drafts.fields.remove(&key);
         self.refresh_run_panel_state();
 
@@ -394,7 +390,7 @@ pub(crate) fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorD
     fields
 }
 
-fn apply_unit_parameter_value(
+pub(super) fn apply_unit_parameter_value(
     flowsheet: &mut Flowsheet,
     unit_id: &UnitId,
     field: &UnitInspectorDraftField,

@@ -12,7 +12,7 @@
 
 本文保留 MVP 应用契约；后续基础编辑能力按 [Studio 主路径](../topics/studio-main-workflow.md#基础功能完善切片) 与建模专题扩展。完整拖拽布局、完整报表或多文档工作台不作为当前切片的附带实现。
 
-长期边界见 [模拟平台规划](simulation-platform.md)：`SimulationMode::Active / Hold` 表示运行触发策略，工程模型、运行任务与数值状态分离。COM / 脚本及录制共用描述和应用命令；`CommandHistory` 只负责文档 Undo / Redo，运行、保存、导出与动态检查点另有契约。完整自动化接口待实现；`rf-ui::variable_browser` 借用文档及同工作区快照，提供独立于窗口的只读查询，见 [B3-1](../topics/studio-main-workflow.md#b3-1变量与动作描述只读浏览)。
+长期边界见 [模拟平台规划](simulation-platform.md)：`SimulationMode::Active / Hold` 表示运行触发策略，工程模型、运行任务与数值状态分离。COM / 脚本及录制共用描述和应用命令；`CommandHistory` 只负责文档 Undo / Redo，运行、保存、导出与动态检查点另有契约。完整自动化接口待实现；变量查询与共享输入事务见 [Studio B3](../topics/studio-main-workflow.md#b3-2统一变量写入与输入事务)。
 
 ## 冻结决策
 

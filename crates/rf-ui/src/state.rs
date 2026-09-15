@@ -1,4 +1,5 @@
 mod actions;
+mod input_commands;
 mod unit_edit;
 pub(crate) mod unit_inspector;
 use actions::*;
@@ -1268,19 +1269,15 @@ impl AppState {
             return Ok(None);
         };
 
-        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
-        apply_stream_specification_value(&mut next_flowsheet, stream_id, &field, &command_value)?;
-
         let command = DocumentCommand::SetStreamSpecification {
             stream_id: stream_id.clone(),
             field: field.command_field(),
             value: command_value,
         };
-        let revision = self.workspace.commit_inspector_document_change(
-            command.clone(),
-            next_flowsheet,
-            changed_at,
-        );
+        let revision = self
+            .workspace
+            .commit_input_document_command(command.clone(), changed_at)?
+            .revision;
         self.workspace.drafts.fields.remove(&key);
         self.refresh_run_panel_state();
 
@@ -1341,7 +1338,6 @@ impl AppState {
             .get(stream_id)
             .expect("stream existence was checked above");
         let fields = stream_inspector_draft_fields(stream);
-        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
         let mut keys = Vec::new();
         let mut values = Vec::new();
 
@@ -1354,12 +1350,6 @@ impl AppState {
                 continue;
             };
 
-            apply_stream_specification_value(
-                &mut next_flowsheet,
-                stream_id,
-                &field,
-                &command_value,
-            )?;
             keys.push(key);
             values.push(StreamSpecificationValue {
                 field: field.command_field(),
@@ -1372,11 +1362,10 @@ impl AppState {
         }
 
         let command = stream_specification_command(stream_id, values);
-        let revision = self.workspace.commit_inspector_document_change(
-            command.clone(),
-            next_flowsheet,
-            changed_at,
-        );
+        let revision = self
+            .workspace
+            .commit_input_document_command(command.clone(), changed_at)?
+            .revision;
         for key in &keys {
             self.workspace.drafts.fields.remove(key);
         }
@@ -1462,19 +1451,12 @@ impl AppState {
 
         let mut values = Vec::new();
         let mut keys = Vec::new();
-        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
         let mut changes_document = false;
         for (component_id, key, original_value, value) in entries {
             let normalized = value / sum;
             changes_document |= normalized != original_value;
             let field = StreamInspectorDraftField::OverallMoleFraction(component_id);
             let command_value = CommandValue::Number(normalized);
-            apply_stream_specification_value(
-                &mut next_flowsheet,
-                stream_id,
-                &field,
-                &command_value,
-            )?;
             keys.push(key);
             values.push(StreamSpecificationValue {
                 field: field.command_field(),
@@ -1487,11 +1469,10 @@ impl AppState {
         }
 
         let command = stream_specification_command(stream_id, values);
-        let revision = self.workspace.commit_inspector_document_change(
-            command.clone(),
-            next_flowsheet,
-            changed_at,
-        );
+        let revision = self
+            .workspace
+            .commit_input_document_command(command.clone(), changed_at)?
+            .revision;
         for key in &keys {
             self.workspace.drafts.fields.remove(key);
         }
@@ -1538,19 +1519,16 @@ impl AppState {
         let field = StreamInspectorDraftField::OverallMoleFraction(component_id.clone());
         let key = stream_inspector_draft_key(stream_id, &field);
         let command_value = CommandValue::Number(initial_fraction);
-        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
-        apply_stream_specification_value(&mut next_flowsheet, stream_id, &field, &command_value)?;
 
         let command = DocumentCommand::SetStreamSpecification {
             stream_id: stream_id.clone(),
             field: field.command_field(),
             value: command_value,
         };
-        let revision = self.workspace.commit_inspector_document_change(
-            command.clone(),
-            next_flowsheet,
-            changed_at,
-        );
+        let revision = self
+            .workspace
+            .commit_input_document_command(command.clone(), changed_at)?
+            .revision;
         self.workspace.drafts.fields.remove(&key);
         self.refresh_run_panel_state();
 

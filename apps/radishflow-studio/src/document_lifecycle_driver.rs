@@ -109,6 +109,10 @@ mod tests {
     fn app_state_from_example(path: &PathBuf) -> AppState {
         let project_json = crate::test_support::official_heater_binary_hydrocarbon_project_json();
         fs::write(path, project_json).expect("expected temporary project file");
+        app_state_from_project_file(path)
+    }
+
+    fn app_state_from_project_file(path: &PathBuf) -> AppState {
         let project_file = read_project_file(path).expect("expected project file");
         let metadata = &project_file.document.metadata;
         let mut document = rf_ui::FlowsheetDocument::new(
@@ -125,6 +129,78 @@ mod tests {
         let mut app_state = AppState::new(document);
         app_state.mark_saved(path.clone());
         app_state
+    }
+
+    #[test]
+    fn variable_write_saves_reopens_with_stable_identity_and_resolves_new_results() {
+        use rf_ui::variable_browser::{
+            ObjectId, VariableBrowser, VariableField, VariableId, VariableSection, VariableValue,
+        };
+        use rf_ui::variable_commands::VariableWriteRequest;
+        let path = temp_project_path("variable-write");
+        let mut app = app_state_from_example(&path);
+        let provider = crate::test_support::build_official_binary_hydrocarbon_in_memory_provider(
+            crate::test_support::OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+        );
+        let service = crate::WorkspaceSolveService::new();
+        let package = crate::test_support::OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID;
+        service
+            .run_with_property_package(&mut app, &provider, package)
+            .unwrap();
+        let original = rf_ui::latest_snapshot(&app.workspace).unwrap().clone();
+        let id = VariableId {
+            document: app.workspace.document.metadata.document_id.clone(),
+            object: ObjectId::Unit(rf_types::UnitId::new("heater-1")),
+            section: VariableSection::Inputs,
+            field: VariableField::OutletTemperature,
+        };
+        app.write_variable(
+            VariableWriteRequest {
+                variable: id.clone(),
+                expected_revision: app.workspace.document.revision,
+                value: VariableValue::Number(330.),
+            },
+            SystemTime::now(),
+        )
+        .unwrap();
+        assert!(rf_ui::latest_snapshot(&app.workspace).is_none());
+        assert_eq!(rf_ui::stale_snapshot(&app.workspace), Some(&original));
+        dispatch_document_lifecycle(&mut app, StudioDocumentLifecycleCommand::Save).unwrap();
+        let bytes = fs::read(&path).unwrap();
+        let saved = read_project_file(&path).unwrap();
+        assert_eq!(saved.document.revision, app.workspace.document.revision);
+        let mut reopened = app_state_from_project_file(&path);
+        assert!(rf_ui::latest_snapshot(&reopened.workspace).is_none());
+        assert_eq!(
+            VariableBrowser::new(&reopened.workspace.document, None, None)
+                .read(&id)
+                .unwrap()
+                .value,
+            Some(VariableValue::Number(330.))
+        );
+        service
+            .run_with_property_package(&mut reopened, &provider, package)
+            .unwrap();
+        let result = rf_ui::latest_snapshot(&reopened.workspace).unwrap();
+        assert_eq!(result.document_revision, saved.document.revision);
+        let heater = result
+            .steps
+            .iter()
+            .find(|s| s.unit_id.as_str() == "heater-1")
+            .unwrap();
+        assert_eq!(heater.streams[0].temperature_k, 330.);
+        let flash = result
+            .steps
+            .iter()
+            .find(|s| s.unit_id.as_str() == "flash-1")
+            .unwrap();
+        assert_eq!(heater.streams, flash.consumed_streams);
+        assert_eq!(fs::read(&path).unwrap(), bytes);
+        assert_eq!(
+            reopened.workspace.last_saved_revision,
+            Some(result.document_revision)
+        );
+        fs::remove_file(path).unwrap();
     }
 
     #[test]

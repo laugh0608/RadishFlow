@@ -99,7 +99,7 @@ pub struct VariableDescriptor {
     pub state: ValueState,
     pub source: ValueSource,
     pub constraint: Option<NumericConstraint>,
-    /// Writes are only available through the existing document command / Inspector.
+    /// Writes use AppState::write_variable or the Inspector, sharing document transactions.
     pub write_via: Option<ActionKind>,
     pub note: &'static str,
 }
