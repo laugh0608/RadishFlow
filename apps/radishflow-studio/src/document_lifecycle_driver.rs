@@ -1,8 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use rf_store::{StoredDocumentMetadata, StoredProjectFile, write_project_file};
+use rf_store::{StoredDocumentMetadata, StoredProjectFile, read_project_file, write_project_file};
 use rf_types::{RfError, RfResult};
-use rf_ui::{AppLogLevel, AppState};
+use rf_ui::{AppLogLevel, AppState, DocumentMetadata, FlowsheetDocument};
 
 pub const FILE_SAVE_COMMAND_ID: &str = "file.save";
 pub const FILE_SAVE_AS_COMMAND_ID: &str = "file.save_as";
@@ -26,6 +26,23 @@ pub struct DocumentLifecycleOutcome {
     pub revision: u64,
     pub last_saved_revision: Option<u64>,
     pub has_unsaved_changes: bool,
+}
+
+/// Load only project inputs; runtime, cache and window state belong to the caller.
+pub fn load_project_app_state(project_path: &Path) -> RfResult<AppState> {
+    let stored = read_project_file(project_path)?.document;
+    let metadata = stored.metadata;
+    let mut document = FlowsheetDocument::new(
+        stored.flowsheet,
+        DocumentMetadata::new(metadata.document_id, metadata.title, metadata.created_at),
+    );
+    document.revision = stored.revision;
+    document.metadata.schema_version = metadata.schema_version;
+    document.metadata.updated_at = metadata.updated_at;
+
+    let mut app_state = AppState::new(document);
+    app_state.mark_saved(project_path.to_path_buf());
+    Ok(app_state)
 }
 
 pub fn dispatch_document_lifecycle(

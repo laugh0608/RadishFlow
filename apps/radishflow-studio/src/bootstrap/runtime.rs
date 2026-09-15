@@ -17,12 +17,12 @@ use crate::{
     select_property_package, snapshot_entitlement_session_driver_state,
     snapshot_entitlement_session_schedule, snapshot_run_panel_driver_state, update_inspector_draft,
 };
-use rf_store::{StoredAuthCacheIndex, read_project_file};
+use rf_store::StoredAuthCacheIndex;
 use rf_types::{RfError, RfResult};
 use rf_ui::AppState;
 
 use super::seed::{
-    BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID, BootstrapControlPlaneClient, app_state_from_project_file,
+    BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID, BootstrapControlPlaneClient,
     app_state_from_untitled_blank_project, normalized_system_time_now,
     seed_bootstrap_runtime_state, seed_sample_auth_cache,
 };
@@ -371,10 +371,7 @@ impl BootstrapSession {
                 &untitled.title,
                 untitled.created_at,
             ),
-            None => {
-                let project_file = read_project_file(&config.project_path)?;
-                app_state_from_project_file(&project_file, &config.project_path)
-            }
+            None => crate::load_project_app_state(&config.project_path)?,
         };
         let cache_root = TemporaryCacheRoot::new("studio-bootstrap")?;
         let seeded_auth_cache = seed_sample_auth_cache(
