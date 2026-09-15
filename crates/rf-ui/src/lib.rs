@@ -15,6 +15,7 @@ mod run_panel_text;
 mod run_panel_view;
 mod run_panel_widget;
 mod state;
+pub mod variable_browser;
 
 pub use auth::{
     AuditUsageAck, AuditUsageRequest, AuthSessionState, AuthSessionStatus, AuthenticatedUser,

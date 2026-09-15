@@ -365,7 +365,7 @@ fn unit_command_value_from_draft(
     }
 }
 
-fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorDraftField> {
+pub(crate) fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorDraftField> {
     let mut fields = match unit.kind.as_str() {
         rf_unitops::FEED_KIND => {
             vec![
@@ -484,7 +484,7 @@ fn is_valid_unit_parameter_value(_field: &UnitInspectorDraftField, value: f64) -
     value.is_finite() && value > 0.0
 }
 
-fn is_valid_unit_parameter_value_for_unit(
+pub(crate) fn is_valid_unit_parameter_value_for_unit(
     flowsheet: &Flowsheet,
     unit: &UnitNode,
     field: &UnitInspectorDraftField,
@@ -505,7 +505,7 @@ fn is_valid_unit_parameter_value_for_unit(
     true
 }
 
-fn unit_outlet_pressure_cannot_exceed_inlet(unit: &UnitNode) -> bool {
+pub(crate) fn unit_outlet_pressure_cannot_exceed_inlet(unit: &UnitNode) -> bool {
     matches!(
         unit.kind.as_str(),
         rf_unitops::MIXER_KIND
@@ -515,7 +515,7 @@ fn unit_outlet_pressure_cannot_exceed_inlet(unit: &UnitNode) -> bool {
     )
 }
 
-fn inlet_pressure_limit(flowsheet: &Flowsheet, unit: &UnitNode) -> Option<f64> {
+pub(crate) fn inlet_pressure_limit(flowsheet: &Flowsheet, unit: &UnitNode) -> Option<f64> {
     unit.ports
         .iter()
         .filter(|port| port.direction == PortDirection::Inlet && port.kind == PortKind::Material)

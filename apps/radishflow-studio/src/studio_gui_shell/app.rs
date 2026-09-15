@@ -566,6 +566,7 @@ impl ReadyAppState {
         let mut hovered_drop_target = false;
         if self.screen == StudioShellScreen::Home {
             self.render_home_dashboard(ctx, &window);
+            self.render_variable_browser(ctx);
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
@@ -581,6 +582,7 @@ impl ReadyAppState {
         if self.screen == StudioShellScreen::Property {
             self.render_bottom_status_bar(ctx, &window);
             self.render_property_page(ctx, &window);
+            self.render_variable_browser(ctx);
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
@@ -592,6 +594,7 @@ impl ReadyAppState {
         self.render_bottom_status_bar(ctx, &window);
         self.render_bottom_drawer(ctx, &window);
         self.render_center_stage(ctx, &window, &mut hovered_drop_target);
+        self.render_variable_browser(ctx);
         self.render_command_palette(ctx, &window.commands);
         self.render_floating_drop_preview_overlay(ctx, &window);
         self.render_pending_close_window_dialog(ctx);
@@ -1474,7 +1477,8 @@ impl ReadyAppState {
     }
 
     pub(super) fn focus_context(&self, ctx: &egui::Context) -> StudioGuiFocusContext {
-        if self.pending_unit_deletion.is_some()
+        if self.variable_browser.open
+            || self.pending_unit_deletion.is_some()
             || self.pending_result_export.is_some()
             || self.project_open.pending_confirmation.is_some()
             || self.project_open.pending_blank_project_confirmation

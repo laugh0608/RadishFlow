@@ -1,5 +1,6 @@
 mod cooler;
 mod mixer;
+mod variable_browser;
 
 use super::result_review::{
     assert_bottom_result_table_contains_streams_and_steps, assert_case_review_summary_covers_flow,

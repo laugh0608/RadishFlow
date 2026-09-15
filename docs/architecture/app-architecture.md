@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-09-14
+更新时间：2026-09-15
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -12,7 +12,7 @@
 
 本文保留 MVP 应用契约；后续基础编辑能力按 [Studio 主路径](../topics/studio-main-workflow.md#基础功能完善切片) 与建模专题扩展。完整拖拽布局、完整报表或多文档工作台不作为当前切片的附带实现。
 
-长期边界见 [模拟平台规划](simulation-platform.md)：`SimulationMode::Active / Hold` 表示运行触发策略，工程模型、运行任务与数值状态分离。未来变量浏览器、COM 与脚本共用公开描述和应用命令；录制器记录语义操作，`CommandHistory` 只负责文档 Undo / Redo，运行、保存、导出与动态检查点另有契约。这些长期接口尚未实现。
+长期边界见 [模拟平台规划](simulation-platform.md)：`SimulationMode::Active / Hold` 表示运行触发策略，工程模型、运行任务与数值状态分离。COM / 脚本及录制共用描述和应用命令；`CommandHistory` 只负责文档 Undo / Redo，运行、保存、导出与动态检查点另有契约。完整自动化接口待实现；`rf-ui::variable_browser` 借用文档及同工作区快照，提供独立于窗口的只读查询，见 [B3-1](../topics/studio-main-workflow.md#b3-1变量与动作描述只读浏览)。
 
 ## 冻结决策
 

@@ -367,6 +367,12 @@ impl ReadyAppState {
             ui.close_menu();
         }
 
+        if ui.button("变量浏览器 / Variable Browser").clicked() {
+            self.command_palette.close();
+            self.variable_browser.open = true;
+            ui.close_menu();
+        }
+
         let commands_visible = window
             .layout_state
             .panel(StudioGuiWindowAreaId::Commands)

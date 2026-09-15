@@ -1,6 +1,6 @@
 mod actions;
 mod unit_edit;
-mod unit_inspector;
+pub(crate) mod unit_inspector;
 use actions::*;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
