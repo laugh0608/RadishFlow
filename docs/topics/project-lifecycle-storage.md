@@ -1,6 +1,6 @@
 # 项目生命周期与存储
 
-更新时间：2026-09-14
+更新时间：2026-09-15
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -26,7 +26,7 @@
 
 已完成：
 
-- 单文档工作区。
+- 单文档工作区；GUI 与无界面消费者共用 `load_project_app_state`，经正式存储读取 / 校验后恢复元数据和修订，运行态由各调用者建立。
 - 项目文件 staged write。
 - `Save` / `Save As` / 覆盖确认；macOS 原生项目打开、首次保存与另存为主路径已实窗验证，Windows / Linux 新增路径证据见下文。
 - 最近项目列表和当前工作区返回入口。
@@ -117,6 +117,7 @@ Windows 保存已有文件继续先移出备份，再提交 staged 文件。2026
 ### 命令与接口
 
 - 保存、另存为、关闭确认走 document lifecycle trigger。
+- [无界面 CLI](../reference/headless-cli.md) 只读取已有项目并修改本次内存副本，不派发保存、不写 sidecar / 偏好或认证缓存；响应中的修订与写入 receipt 不表示工程已经落盘。
 - 项目修改通过语义化 document command 更新 revision。
 - 运行控制和文档生命周期不进入 undo history；文档历史只在当前会话保留，重开不恢复 Undo / Redo 栈。
 - 保存只写已提交的项目输入，不自动应用 Inspector 草稿；单元显示名称随项目保存，单元位置按稳定 ID 写入 sidecar。

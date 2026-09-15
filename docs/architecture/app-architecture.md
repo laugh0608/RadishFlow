@@ -12,7 +12,7 @@
 
 本文保留 MVP 应用契约；后续基础编辑能力按 [Studio 主路径](../topics/studio-main-workflow.md#基础功能完善切片) 与建模专题扩展。完整拖拽布局、完整报表或多文档工作台不作为当前切片的附带实现。
 
-长期边界见 [模拟平台规划](simulation-platform.md)：`SimulationMode::Active / Hold` 表示运行触发策略，工程模型、运行任务与数值状态分离。COM / 脚本及录制共用描述和应用命令；`CommandHistory` 只负责文档 Undo / Redo，运行、保存、导出与动态检查点另有契约。完整自动化接口待实现；变量读写、受控动作与 CLI 消费者见 [Studio B3](../topics/studio-main-workflow.md#b3-4首个无界面参数化运行消费者)。
+长期边界见 [模拟平台规划](simulation-platform.md)：`SimulationMode::Active / Hold` 表示运行触发策略，工程模型、运行任务与数值状态分离。COM / 脚本及录制共用描述和应用命令；`CommandHistory` 只负责文档 Undo / Redo，运行、保存、导出与动态检查点另有契约。自动化现状见 [Studio B3](../topics/studio-main-workflow.md#b3-4首个无界面参数化运行消费者)。
 
 ## 冻结决策
 
@@ -270,7 +270,7 @@ egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、�
 
 冻结边界：
 
-- `revision` 先正式冻结为单调递增 `u64`，每次语义提交成功后递增
+- `revision` 为单调递增 `u64`；实际文档变更及 Undo / Redo 后递增。相同有效输入不新增修订或历史、不旧化结果
 - 保存、另存为、切换面板、框选、缩放、草稿字符变化都不递增 `revision`
 - `flowsheet` 只承载流程图对象模型、参数、连接和用户显式设定值
 - `metadata` 只承载文档元信息，不承载文件路径、选择集、求解态或用户偏好
@@ -541,7 +541,7 @@ pub struct StepSnapshot {
 
 ### 参数提交流
 
-推荐事件流如下：
+实际变更才执行下列流程；输入事务先校验副本，相同有效值不改修订。写入不自动求解：
 
 1. 用户编辑字段，形成草稿态
 2. 用户触发语义提交
@@ -550,7 +550,7 @@ pub struct StepSnapshot {
 5. 命令写入 `CommandHistory`，若此前处于 undo 状态则截断 redo 尾部
 6. `SolveSessionState.observed_revision` 更新为当前修订号，`pending_reason = DocumentRevisionAdvanced`
 7. `RunStatus` 进入 `Dirty`
-8. 若 `SimulationMode = Active`，立即进入检查与求解流程
+8. Active 自动派发由运行入口消费 pending request；显式调用方另行运行
 
 ### 撤销/重做流
 

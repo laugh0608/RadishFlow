@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-09-13
+更新时间：2026-09-15
 
 ## 用途
 
@@ -36,9 +36,9 @@
 | `rf-solver` | 无回路顺序模块执行、步骤快照、诊断 | 环路报错，不代表已有 recycle 收敛器 |
 | `rf-store` | 项目、sidecar、偏好、授权缓存和物性包 DTO 的序列化与文件 IO | 具有版本检查和 staged write；失败恢复限制见 [存储专题](../topics/project-lifecycle-storage.md) |
 | `rf-ffi` | engine 句柄、JSON 输入输出、错误映射与字符串释放 | 对外只暴露窄 C ABI，不向内核引入 COM |
-| `rf-ui` | AppState、草稿、文档命令、历史、运行状态和结果 presentation | 只读消费求解结果，不另算热力学 |
+| `rf-ui` | AppState、草稿、共享输入事务、变量查询、历史与结果 presentation | 只读消费求解结果，不另算热力学 |
 | `rf-canvas` | 当前只有占位函数 | 尚未成为实际独立画布实现 |
-| `apps/radishflow-studio` | 应用组合、平台 IO 编排、GUI 渲染、画布与窗口宿主 | 当前画布代码位于 Studio，而非 `rf-canvas` |
+| `apps/radishflow-studio` | 应用组合、受控动作、CLI 消费者、GUI 渲染与平台 IO | 当前画布代码位于 Studio，而非 `rf-canvas` |
 | `tests/rust-integration` | 示例流程与 Studio / solver 的跨层回归 | 结果传递一致性与独立数值准确性是不同验证目标 |
 | `xtask` | 仓库治理、文本门禁和 Rust 基线检查 | `.sh` / `.ps1` 是平台包装入口 |
 
@@ -57,10 +57,12 @@
 ### 文档、编辑与结果
 
 - `FlowsheetDocument` 是项目语义真相源，字段草稿通过正式 `DocumentCommand` 提交。
-- `CommandHistory` 当前保存 before / after flowsheet 快照用于 undo / redo。
+- `CommandHistory` 当前保存 before / after flowsheet 快照用于 undo / redo；相同有效输入不新增历史或修订。
 - `SolveSnapshot` 与文档分离，按 revision 判断是否过期；UI 和导出不重新计算相态与焓值。
 - 项目使用 `*.rfproj.json`，布局使用 `<project>.rfstudio-layout.json`；授权缓存与 token 不进入项目文件。
 - Studio 已内嵌 Inter / SourceHanSansSC 字体，不依赖固定的系统 CJK 字体名称。
+
+变量查询 / 写入置于 `rf-ui`，受控创建 / 连接 / 运行调用和本地 CLI 置于 Studio 应用层。CLI 复用现有事务与运行链路，不启动窗口；仍链接桌面依赖。接口范围见 [无界面参考](../reference/headless-cli.md)。
 
 详细状态与交互契约见 [App Architecture](app-architecture.md)；字段与结果语义见 [结果参考](../reference/solve-snapshot-results.md)。
 

@@ -31,6 +31,7 @@
 - 右侧 `模块结果` current 态使用紧凑单元、状态、step、执行摘要和消费 / 产出流股 chip。
 - `window.status_summary` 可扫读 run、convergence、steps、diagnostics、snapshot 一致性和 unit result count。
 - 顶部 `结果工具栏` 不再展开所有 result focus command。
+- “工具 → 变量浏览器”可按对象查询输入与结果，旧结果保留快照来源但隐藏数值；应用查询与 [无界面 CLI](../reference/headless-cli.md) 共用变量语义。CLI 运行失败不执行结果读取，返回正式诊断及非零退出码。
 
 已知缺口：
 
