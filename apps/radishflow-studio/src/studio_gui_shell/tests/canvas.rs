@@ -1,3 +1,4 @@
+mod cooler;
 mod mixer;
 
 use super::result_review::{
