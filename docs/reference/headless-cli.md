@@ -10,7 +10,7 @@
 
 ## 规划兼容边界
 
-B3-5 已通过 v2 请求接通受控创建 / 连接和步骤身份引用，v1 请求与响应字段保持兼容。2026-09-16 确认的 [单位系统](../topics/units-and-quantity-system.md) 和 [建模辅助](../topics/modeling-assistance-and-specifications.md) 后续复用本接口的身份、修订、命令与诊断；本文 v1 的 SI 数值、路径与错误契约不变。未来带单位请求须显式版本化或定义兼容扩展，不受 GUI 显示偏好影响。
+B3-5 已通过 v2 请求接通受控创建 / 连接和步骤身份引用，v1 请求与响应字段保持兼容。2026-09-16 确认的 [单位系统](../topics/units-and-quantity-system.md) 和 [建模辅助](../topics/modeling-assistance-and-specifications.md) 后续复用本接口的身份、修订、命令与诊断；本文 v1 的 SI 数值、路径与错误契约不变。U1 已让响应的 unit 标签从公共目录派生，v1 / v2 仍只读写 SI，不接收额外单位字段。未来带单位请求须显式版本化或定义兼容扩展，不受 GUI 显示偏好影响。
 
 ## 命令
 

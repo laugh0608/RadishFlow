@@ -27,7 +27,7 @@
 
 | 模块 | 实际职责 | 说明 |
 | --- | --- | --- |
-| `rf-types` | ID、相标签、错误与诊断上下文、相区容差 | 不承载 UI 或 COM 语义 |
+| `rf-types` | ID、相标签、错误与诊断上下文、相区容差及量 / 单位目录与转换 | 单位基础无 UI、IO 或 COM 语义；规范 SI 不变 |
 | `rf-model` | 组分、流股、单元、端口和 flowsheet 对象模型 | 不负责求解调度 |
 | `rf-thermo` | Antoine、理想 K 值、常热容相焓、泡露点估算、物性 provider | 目前还含缓存包装载，见下方依赖偏移说明 |
 | `rf-flash` | TP Flash、Rachford-Rice、相分率与相组成 | 数值假设与验证边界见 [热力学模型](../thermo/mvp-model.md) |
@@ -63,6 +63,8 @@
 - Studio 已内嵌 Inter / SourceHanSansSC 字体，不依赖固定的系统 CJK 字体名称。
 
 变量查询 / 写入置于 `rf-ui`，受控创建 / 连接 / 运行调用和本地 CLI 置于 Studio 应用层。CLI 复用现有事务与运行链路，不启动窗口；仍链接桌面依赖。接口范围见 [无界面参考](../reference/headless-cli.md)。
+
+U1 的公共单位定义与转换位于 `rf-types::units`；`rf-ui` 变量元数据引用量类型，Studio 浏览和 CLI 只派生规范单位标签。显示偏好设计归项目呈现状态，尚未实现存储或控件切换，见 [单位专题](../topics/units-and-quantity-system.md)。
 
 详细状态与交互契约见 [App Architecture](app-architecture.md)；字段与结果语义见 [结果参考](../reference/solve-snapshot-results.md)。
 

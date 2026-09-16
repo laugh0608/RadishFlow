@@ -151,7 +151,9 @@ impl<'a> VariableBrowser<'a> {
                 if object_matches
                     || format!(
                         "{} {:?} {}",
-                        variable.label, variable.id.field, variable.unit
+                        variable.label,
+                        variable.id.field,
+                        variable.unit_symbol()
                     )
                     .to_lowercase()
                     .contains(&query)

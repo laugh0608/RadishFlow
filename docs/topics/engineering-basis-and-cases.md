@@ -10,7 +10,7 @@
 
 - 层级：一级轨道；上位规划：[模拟平台](../architecture/simulation-platform.md)。
 - 关联：[单位](units-and-quantity-system.md)、[物性](property-basis-and-components.md)、[设备](equipment-design-and-rating.md)、[建模求解](flowsheet-modeling-and-solve.md)、[结果](results-review-diagnostics.md)、[存储](project-lifecycle-storage.md)。
-- 状态：Draft / 2026-09-16 规划已确认 / 尚未实现。优先细化工程设计基础、工况矩阵和输入来源，与单位 / 规格及 UI R0 衔接，B3-5 已接通，下一代码切片为 U1 单位基础。
+- 状态：Draft / 2026-09-16 规划已确认 / 尚未实现。优先细化工程设计基础、工况矩阵和输入来源，与单位 / 规格及 UI R0 衔接，B3-5 已接通，U1 单位基础已接通，后续与 U2 / U3 衔接。
 
 ## 目标与当前基础
 

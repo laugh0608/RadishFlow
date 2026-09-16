@@ -135,6 +135,23 @@ fn headless_process_inspects_writes_runs_and_reads_without_mutating_files() {
     assert_eq!(code, 0, "{result}");
     assert_eq!(result["status"], "ok");
     assert_eq!(result["document"]["revision"], 1);
+    assert_eq!(result["variables"][0]["unit"], "K");
+    assert_eq!(result["variables"][1]["unit"], "mol/s");
+    assert_eq!(result["variables"][2]["unit"], "mol/s");
+    let keys = result["variables"][0]
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        keys,
+        [
+            "target", "label", "unit", "value", "state", "source", "writable"
+        ]
+        .into_iter()
+        .collect()
+    );
     assert_eq!(result["variables"][0]["value"], 330.0);
     assert_eq!(result["variables"][0]["source"]["revision"], 1);
     assert_eq!(result["variables"][1]["value"], 0.0);

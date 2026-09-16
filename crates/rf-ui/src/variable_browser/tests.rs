@@ -193,7 +193,7 @@ fn variable_browser_identity_survives_rename_and_rejects_deleted_or_foreign_obje
         Some(VariableValue::Text("主加热器".into()))
     );
     assert!(browser.search("主加热器").iter().any(|r| r.id == id));
-    assert!(browser.search("Pa").iter().all(|r| r.unit == "Pa"));
+    assert!(browser.search("Pa").iter().all(|r| r.unit_symbol() == "Pa"));
     let mut foreign = id.clone();
     foreign.document = DocumentId::new("other");
     assert_eq!(browser.read(&foreign), Err(BrowseError::DifferentDocument));
@@ -288,5 +288,176 @@ fn variable_browser_describes_existing_actions_without_promising_task_execution(
         browser
             .actions(Some(&ObjectId::Stream(StreamId::new("deleted"))))
             .is_err()
+    );
+}
+
+#[test]
+fn variable_metadata_owns_quantity_and_derives_canonical_units_from_shared_catalog() {
+    use rf_types::units::{MeasurementUnit as U, QuantityKind as Q};
+    let document = document();
+    let snapshot = result(&document);
+    let browser = VariableBrowser::new(&document, Some(&snapshot), None);
+    for (field, expected_quantity, expected_unit, symbol) in [
+        (VariableField::Name, None, None, ""),
+        (
+            VariableField::Temperature,
+            Some(Q::AbsoluteTemperature),
+            Some(U::Kelvin),
+            "K",
+        ),
+        (
+            VariableField::Pressure,
+            Some(Q::AbsolutePressure),
+            Some(U::Pascal),
+            "Pa",
+        ),
+        (
+            VariableField::MolarFlow,
+            Some(Q::MolarFlow),
+            Some(U::MolePerSecond),
+            "mol/s",
+        ),
+        (
+            VariableField::MoleFraction("a".into()),
+            Some(Q::MoleFraction),
+            Some(U::MolePerMole),
+            "mol/mol",
+        ),
+        (
+            VariableField::PhaseFraction("vapor".into()),
+            Some(Q::MolarPhaseFraction),
+            Some(U::MolePerMole),
+            "mol/mol",
+        ),
+        (
+            VariableField::PhaseMoleFraction {
+                phase: "vapor".into(),
+                component: "a".into(),
+            },
+            Some(Q::MoleFraction),
+            Some(U::MolePerMole),
+            "mol/mol",
+        ),
+        (
+            VariableField::PhaseMolarEnthalpy("vapor".into()),
+            Some(Q::MolarEnthalpy),
+            Some(U::JoulePerMole),
+            "J/mol",
+        ),
+    ] {
+        let section = if field == VariableField::Name {
+            VariableSection::Inputs
+        } else {
+            VariableSection::Results
+        };
+        let row = browser
+            .read(&id(&document, ObjectId::Stream("s".into()), section, field))
+            .unwrap();
+        assert_eq!(row.quantity, expected_quantity);
+        assert_eq!(row.canonical_unit(), expected_unit);
+        assert_eq!(row.unit_symbol(), symbol);
+    }
+    for kind in ["feed", "heater", "cooler", "valve", "mixer", "flash_drum"] {
+        for row in browser.variables(&ObjectId::Unit(kind.into())).unwrap() {
+            match row.id.field {
+                VariableField::OutletTemperature => {
+                    assert_eq!(row.quantity, Some(Q::AbsoluteTemperature))
+                }
+                VariableField::OutletPressure => {
+                    assert_eq!(row.quantity, Some(Q::AbsolutePressure))
+                }
+                VariableField::Name => assert_eq!(row.quantity, None),
+                _ => panic!("unexpected unit input"),
+            }
+        }
+    }
+}
+
+#[test]
+fn converting_result_representation_does_not_change_document_or_snapshot_validity() {
+    use rf_types::units::{MeasurementUnit as U, from_canonical};
+    let document = document();
+    let snapshot = result(&document);
+    let before_document = document.clone();
+    let before_snapshot = snapshot.clone();
+    let browser = VariableBrowser::new(&document, Some(&snapshot), None);
+    let target = id(
+        &document,
+        ObjectId::Stream("s".into()),
+        VariableSection::Results,
+        VariableField::Temperature,
+    );
+    let row = browser.read(&target).unwrap();
+    let Some(VariableValue::Number(value)) = row.value else {
+        panic!("expected numeric result")
+    };
+    let displayed = from_canonical(value, row.quantity.unwrap(), U::Celsius).unwrap();
+    assert!((displayed - 36.85).abs() < 1e-10);
+    assert_eq!(browser.read(&target).unwrap(), row);
+    assert_eq!(document, before_document);
+    assert_eq!(snapshot, before_snapshot);
+}
+
+#[test]
+fn converted_inputs_reuse_physical_constraints_and_atomic_variable_writes() {
+    use crate::variable_commands::VariableWriteRequest;
+    use rf_types::units::{MeasurementUnit as U, to_canonical};
+    let mut app = crate::AppState::new(document());
+    let target = id(
+        &app.workspace.document,
+        ObjectId::Stream("s".into()),
+        VariableSection::Inputs,
+        VariableField::Temperature,
+    );
+    let quantity = target.field.quantity().unwrap();
+    let now = std::time::UNIX_EPOCH;
+    // 26.85 °C and 300 K are equivalent and must use the existing no-op transaction.
+    let value = to_canonical(26.85, quantity, U::Celsius).unwrap();
+    let before = app.clone();
+    let receipt = app
+        .write_variable(
+            VariableWriteRequest {
+                variable: target.clone(),
+                expected_revision: 0,
+                value: VariableValue::Number(value),
+            },
+            now,
+        )
+        .unwrap();
+    assert!(receipt.command.is_none());
+    assert_eq!(app, before);
+    // Conversion itself is not a physical validator. Below absolute zero is rejected on write.
+    let invalid = to_canonical(-300.0, quantity, U::Celsius).unwrap();
+    assert!(
+        app.write_variable(
+            VariableWriteRequest {
+                variable: target.clone(),
+                expected_revision: 0,
+                value: VariableValue::Number(invalid)
+            },
+            now
+        )
+        .is_err()
+    );
+    assert_eq!(app, before);
+    let valid = to_canonical(36.85, quantity, U::Celsius).unwrap();
+    app.write_variable(
+        VariableWriteRequest {
+            variable: target,
+            expected_revision: 0,
+            value: VariableValue::Number(valid),
+        },
+        now,
+    )
+    .unwrap();
+    assert_eq!(
+        app.workspace.document.flowsheet.streams[&StreamId::new("s")].temperature_k,
+        310.0
+    );
+    assert_eq!(app.workspace.document.revision, 1);
+    app.undo_document_command(now).unwrap().unwrap();
+    assert_eq!(
+        app.workspace.document.flowsheet.streams[&StreamId::new("s")].temperature_k,
+        300.0
     );
 }

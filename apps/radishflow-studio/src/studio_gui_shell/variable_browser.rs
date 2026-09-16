@@ -220,7 +220,7 @@ fn render_variable(ui: &mut egui::Ui, row: &VariableDescriptor) {
         None => "—".into(),
     };
     ui.label(egui::RichText::new(&row.label).strong());
-    ui.label(format!("{value} {} · {state}", row.unit));
+    ui.label(format!("{value} {} · {state}", row.unit_symbol()));
     ui.small(match row.source {
         ValueSource::DocumentInput => "来源：已提交文档输入",
         ValueSource::StreamTemplate => "来源：流股模板（不是求解结果）",

@@ -251,10 +251,11 @@ pub struct Variable {
 }
 impl From<browser::VariableDescriptor> for Variable {
     fn from(row: browser::VariableDescriptor) -> Self {
+        let unit = row.unit_symbol();
         Self {
             target: row.id.into(),
             label: row.label,
-            unit: row.unit,
+            unit,
             value: row.value.map(|v| match v {
                 browser::VariableValue::Number(n) => Value::Number(n),
                 browser::VariableValue::Text(t) => Value::Text(t),

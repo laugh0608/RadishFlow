@@ -18,7 +18,7 @@
 
 ## 规划衔接（尚未实现）
 
-2026-09-16 已确认 [单位系统](units-and-quantity-system.md)、[规格与辅助](modeling-assistance-and-specifications.md)、[设备工程](equipment-design-and-rating.md)；旧 `.pen` 的功能分区进入 [重新评审](../architecture/studio-ui-topic-plan.md)。本专题继续管理现有工作流；新单位控件、规格提示及独立设备任务按对应专题接入同一状态 / 命令，不强行塞入旧检查器。B3-5 已接通无界面建模，下一步为 U1—U3→A1—A2→首个可信设备任务；单位、辅助和设备规划尚未实现。
+2026-09-16 已确认 [单位系统](units-and-quantity-system.md)、[规格与辅助](modeling-assistance-and-specifications.md)、[设备工程](equipment-design-and-rating.md)；旧 `.pen` 的功能分区进入 [重新评审](../architecture/studio-ui-topic-plan.md)。本专题继续管理现有工作流；新单位控件、规格提示及独立设备任务按对应专题接入同一状态 / 命令，不强行塞入旧检查器。B3-5 已接通无界面建模，U1 目录与转换已接通，下一步为 U2—U3→A1—A2→首个可信设备任务；单位交互、辅助和设备规划尚未实现。
 
 [工程基础与工况](engineering-basis-and-cases.md) 的 G0 同步进入 UI R0，评审共享条件、输入来源、工况、设备和结果的关系；后续目标反算与分层工程检查分别消费正式求解 / 诊断。现有单文档、SI 和 current 快照主路径不因规划改为已支持多案例历史或完整报告。
 

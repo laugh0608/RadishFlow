@@ -17,9 +17,24 @@
 
 ## 单位系统演进边界
 
-2026-09-16 已确认 [单位系统与输入显示](../topics/units-and-quantity-system.md) 规划：量 / 单位定义唯一、单位集只选显示口径、统一转换服务供界面 / 输出 / 报告 / API 复用。该专题拥有设计与切片；本文继续说明当前已实现字段。通用转换、输入单位选择和单位集尚未交付，现有 SI 字段及 CLI v1 数值含义不变。
+2026-09-16 已确认 [单位系统与输入显示](../topics/units-and-quantity-system.md) 规划：量 / 单位定义唯一、单位集只选显示口径、统一转换服务供界面 / 输出 / 报告 / API 复用。该专题拥有设计与切片；本文继续说明当前已实现字段。U1 已交付共享定义与仿射转换，变量浏览 / CLI 单位标签已接入；输入单位选择和单位集尚未交付，现有 SI 字段及 CLI v1 / v2 数值含义不变。
 
 核心 SI 与非 SI 输入 / 显示并不冲突：后者经公共转换边界进入前者。未来纯显示切换不改变物理输入修订或结果有效性；质量 / 摩尔、表压和体积基准等必须声明必要上下文，不以固定系数猜测。
+
+## U1 公共转换入口
+
+实现位于 `rf-types::units`，不依赖 UI 或求解器。例如：
+
+```rust
+use rf_types::units::{MeasurementUnit, QuantityKind, to_canonical};
+let temperature_k = to_canonical(
+    26.85, QuantityKind::AbsoluteTemperature, MeasurementUnit::Celsius,
+)?;
+```
+
+字段元数据给出 QuantityKind，目录给出规范 / 可用单位及稳定 ID，调用者不按标签自行查系数。量与首批单位列表、偏好归属及迁移边界以 [单位专题](../topics/units-and-quantity-system.md#u1-实现范围与调用) 为准。
+
+转换后的值仍需正式输入校验；转换成功不表示组成归一、温压合法或模型就绪。温差使用独立单位身份，表压 / 质量与摩尔 / 标准体积等识别项只提供缺上下文错误，不自动补标准条件。
 
 ## 物理单位
 

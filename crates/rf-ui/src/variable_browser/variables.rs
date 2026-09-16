@@ -5,6 +5,7 @@ use crate::state::unit_inspector::{
 };
 use crate::{SolveSnapshotId, UnitInspectorDraftField};
 use rf_types::ComponentId;
+use rf_types::units::{MeasurementUnit, QuantityKind};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VariableField {
@@ -93,8 +94,8 @@ pub struct VariableDescriptor {
     pub id: VariableId,
     pub label: String,
     pub value_type: VariableType,
-    /// SI unit encodes quantity and basis; composition is mol/mol, not mass fraction.
-    pub unit: &'static str,
+    /// Quantity semantics own canonical units; text fields have no physical quantity.
+    pub quantity: Option<QuantityKind>,
     pub value: Option<VariableValue>,
     pub state: ValueState,
     pub source: ValueSource,
@@ -102,6 +103,19 @@ pub struct VariableDescriptor {
     /// Writes use AppState::write_variable or the Inspector, sharing document transactions.
     pub write_via: Option<ActionKind>,
     pub note: &'static str,
+}
+
+impl VariableDescriptor {
+    pub fn canonical_unit(&self) -> Option<MeasurementUnit> {
+        self.quantity
+            .map(|quantity| quantity.definition().canonical_unit)
+    }
+
+    /// Existing GUI and wire labels remain SI, sourced from the shared catalog.
+    pub fn unit_symbol(&self) -> &'static str {
+        self.canonical_unit()
+            .map_or("", |unit| unit.definition().symbol)
+    }
 }
 
 impl VariableBrowser<'_> {
@@ -237,7 +251,8 @@ impl VariableBrowser<'_> {
         value: Option<VariableValue>,
         source: ValueSource,
     ) -> VariableDescriptor {
-        let (label, unit, constraint) = field.metadata();
+        let (label, constraint) = field.metadata();
+        let quantity = field.quantity();
         let value_type = if field == VariableField::Name {
             VariableType::Text
         } else {
@@ -261,7 +276,7 @@ impl VariableBrowser<'_> {
             },
             label,
             value_type,
-            unit,
+            quantity,
             value,
             state,
             source,
@@ -345,7 +360,21 @@ impl VariableBrowser<'_> {
 }
 
 impl VariableField {
-    fn metadata(&self) -> (String, &'static str, Option<NumericConstraint>) {
+    pub const fn quantity(&self) -> Option<QuantityKind> {
+        match self {
+            Self::Name => None,
+            Self::OutletTemperature | Self::Temperature => Some(QuantityKind::AbsoluteTemperature),
+            Self::OutletPressure | Self::Pressure => Some(QuantityKind::AbsolutePressure),
+            Self::MolarFlow => Some(QuantityKind::MolarFlow),
+            Self::MoleFraction(_) | Self::PhaseMoleFraction { .. } => {
+                Some(QuantityKind::MoleFraction)
+            }
+            Self::PhaseFraction(_) => Some(QuantityKind::MolarPhaseFraction),
+            Self::PhaseMolarEnthalpy(_) => Some(QuantityKind::MolarEnthalpy),
+        }
+    }
+
+    fn metadata(&self) -> (String, Option<NumericConstraint>) {
         let positive = Some(NumericConstraint {
             minimum: 0.,
             minimum_inclusive: false,
@@ -357,28 +386,26 @@ impl VariableField {
             maximum: Some(1.),
         });
         match self {
-            Self::Name => ("名称 / Name".into(), "", None),
-            Self::OutletTemperature => ("出口温度 / Outlet temperature".into(), "K", positive),
-            Self::OutletPressure => ("出口压力 / Outlet pressure".into(), "Pa", positive),
-            Self::Temperature => ("温度 / Temperature".into(), "K", positive),
-            Self::Pressure => ("压力 / Pressure".into(), "Pa", positive),
+            Self::Name => ("名称 / Name".into(), None),
+            Self::OutletTemperature => ("出口温度 / Outlet temperature".into(), positive),
+            Self::OutletPressure => ("出口压力 / Outlet pressure".into(), positive),
+            Self::Temperature => ("温度 / Temperature".into(), positive),
+            Self::Pressure => ("压力 / Pressure".into(), positive),
             Self::MolarFlow => (
                 "摩尔流量 / Molar flow".into(),
-                "mol/s",
                 Some(NumericConstraint {
                     minimum: 0.,
                     minimum_inclusive: true,
                     maximum: None,
                 }),
             ),
-            Self::MoleFraction(c) => (format!("摩尔分数 / Mole fraction {c}"), "mol/mol", fraction),
-            Self::PhaseFraction(p) => (format!("相分率 / Phase fraction {p}"), "mol/mol", fraction),
+            Self::MoleFraction(c) => (format!("摩尔分数 / Mole fraction {c}"), fraction),
+            Self::PhaseFraction(p) => (format!("相分率 / Phase fraction {p}"), fraction),
             Self::PhaseMoleFraction { phase, component } => (
                 format!("相组成 / Phase composition {phase} {component}"),
-                "mol/mol",
                 fraction,
             ),
-            Self::PhaseMolarEnthalpy(p) => (format!("摩尔焓 / Molar enthalpy {p}"), "J/mol", None),
+            Self::PhaseMolarEnthalpy(p) => (format!("摩尔焓 / Molar enthalpy {p}"), None),
         }
     }
 }
