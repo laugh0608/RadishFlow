@@ -1,6 +1,6 @@
 # Flash Drum 闪蒸罐专题
 
-更新时间：2026-09-12
+更新时间：2026-09-16
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../../status/current.md) 为准。
 
@@ -21,6 +21,10 @@
 - 用户能在 `Feed -> Flash Drum` 及下游流程中显式提交 flash temperature / pressure 并运行。
 - `Flash Drum` 是当前 MVP 的核心相平衡单元，负责把 inlet stream 按 `TP Flash` 结果分到 liquid / vapor outlet。
 - 单相情况下的零流量对侧 outlet 缺席语义必须在结果审阅中可判断。
+
+## 规划衔接（尚未实现）
+
+2026-09-16 已将 [气液分离器尺寸与能力校核](../equipment/separator-sizing-and-rating.md) 纳入设备工程规划。本篇继续负责当前 TP Flash 单元；下文尺寸、液位等排除项仅限定现有实现，不是长期非目标。新的独立 / 流程关联计算、准则、几何采纳与动态复用由设备子专题管理，当前相分配回归不构成选型准确性证明。
 
 ## 当前实现快照
 
@@ -80,7 +84,7 @@
 | --- | --- | --- |
 | M1 | 当前 TP Flash 单元冻结 | `Feed -> Flash Drum` 与上游调节单元路径可稳定运行 |
 | M2 | 单相 / 两相审阅复核 | 单相缺席语义和两相 split 结果可明确判断 |
-| M3 | 高级分离器评估 | 若推进设备模型或三相 flash，先开新专题 |
+| M3 | 高级分离器评估 | 设备尺寸按 [分离器专题](../equipment/separator-sizing-and-rating.md) 推进；三相另定范围 |
 
 ## 验收标准
 

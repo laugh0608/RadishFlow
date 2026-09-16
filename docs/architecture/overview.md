@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-09-15
+更新时间：2026-09-16
 
 ## 用途
 
@@ -77,6 +77,12 @@ Bridge 包含 Interop、Adapter、UnitOp.Mvp、Registration、ContractTests、Sm
 历史目标采用 OIDC Authorization Code + PKCE、`.NET 10` 控制面和派生物性资产分发，本地求解热路径不改为远端 RPC。已存在的客户端与缓存编排不表示服务端、身份安全存储集成或真实业务授权已经交付。
 
 [认证授权架构](auth-entitlement-architecture.md) 保留目标契约；[控制面专题](../topics/platform/control-plane-service.md) 记录未实现部分。当前不扩展该方向。
+
+## 已确认的规划扩展
+
+[单位系统](../topics/units-and-quantity-system.md)、[规格与建模辅助](../topics/modeling-assistance-and-specifications.md)、[设备工程](../topics/equipment-design-and-rating.md) 于 2026-09-16 纳入规划。单位和规则由可供非 UI 消费者复用的领域边界拥有，设备独立计算与流程集成共用模型；具体 crate、接口和存储在真实切片决定，本表不登记不存在的模块。未来 Agent 复用同一入口，当前不接入 AI。
+
+[UI 功能分区重评](studio-ui-topic-plan.md) 不改变文档 / 命令 / 结果的单一来源；旧主稿不自动授权新设备页面或全界面代码重写。
 
 ## 维护性观察
 

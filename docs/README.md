@@ -1,6 +1,6 @@
 # RadishFlow Docs
 
-更新时间：2026-09-14
+更新时间：2026-09-16
 
 ## 先读什么
 
@@ -44,6 +44,17 @@ Topics 文档回答“一个功能、能力包或开发目标怎么设计、分�
 | `topics/platform/account-and-federated-login.md` | 参考 Radish / RadishMind 的未来账户与登录规划；未排期、待架构决策 |
 | [公共 API 与访问控制](topics/platform/public-api-and-access-control.md) | 凭据 / API key、资源权限、撤销、计算配额及分阶段验收；规划方向已确认、未排期 |
 
+## 本轮规划导航
+
+2026-09-16 的规划整理保留当前实现边界：总体职责见 [平台规划](architecture/simulation-platform.md)，依赖与顺序见 [路线图](radishflow-mvp-roadmap.md)，下一步见 [当前状态](status/current.md)。
+
+| 主题 | 正式设计入口 | 下钻 |
+| --- | --- | --- |
+| 单位 | [单位系统与输入显示](topics/units-and-quantity-system.md) | [现有字段与 SI 约定](reference/units-and-conventions.md) |
+| 确定性智能辅助 | [规格分析与建模辅助](topics/modeling-assistance-and-specifications.md) | 现有单元、建模和结果专题；未来 Agent 复用统一接口 |
+| 设备工程 | [设备设计与校核](topics/equipment-design-and-rating.md) | [分离器](topics/equipment/separator-sizing-and-rating.md)、[换热器](topics/equipment/heat-exchanger-design-and-rating.md) |
+| UI 重设计 | [专题计划](architecture/studio-ui-topic-plan.md) | [主稿 brief](architecture/designs/studio-client-main-brief.md)；旧 `.pen` 新功能分区待重新评审 |
+
 ## Development And Collaboration
 
 这组文档承载按任务读取的稳定开发与协作规则，不复制当前阶段状态。
@@ -86,7 +97,7 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | `architecture/app-architecture.md` | 桌面 App 的状态、命令与模块边界 |
 | `architecture/canvas-interaction-contract.md` | 画布视图模式、流线状态与 suggestion 契约 |
 | `architecture/studio-ui-topic-plan.md` | Studio UI 专题阶段的端点边界、信息架构、主工作流和 `.pen` 设计稿规则 |
-| `architecture/designs/studio-client-main-brief.md` | 已保留 Studio 主设计稿的文字 brief，设计完成不代表所有界面已实现 |
+| `architecture/designs/studio-client-main-brief.md` | 保留旧主稿范围，定义新功能分区、状态与重设计验收；新稿尚未完成 |
 | `architecture/studio-ui-design-guidelines.md` | Studio 首屏、画布、面板、按钮、文字和结果审阅的 UI 设计规范 |
 | `architecture/studio-visual-system.md` | Studio 视觉定位、token、色彩角色、控件状态和视觉验收口径 |
 | `architecture/ui-inspiration-reference.md` | AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 等优秀产品截图的 UI 设计灵感参考 |

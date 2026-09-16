@@ -1,6 +1,6 @@
 # Mixer 混合器专题
 
-更新时间：2026-09-15
+更新时间：2026-09-16
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../../status/current.md) 为准。
 
@@ -21,6 +21,10 @@
 - 用户能在普通空白项目中搭建 `Feed + Feed -> Mixer -> Flash Drum`。
 - 当前 Mixer 只覆盖 canonical `inlet_a / inlet_b / outlet`，并用显式 outlet pressure 作为必要参数。
 - 连接建议不能在多来源场景中静默猜测入口。
+
+## 规划衔接（尚未实现）
+
+2026-09-16：Mixer 的参数单位与规格提示分别复用 [单位系统](../units-and-quantity-system.md) 和 [建模辅助](../modeling-assistance-and-specifications.md)。当前混合温度近似与已验证主路径保持原边界，后续工程能量模型在 P3 建立，不能因推荐功能增加而声称已完成焓平衡。
 
 ## 当前实现快照
 

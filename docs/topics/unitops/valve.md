@@ -1,6 +1,6 @@
 # Valve 阀门专题
 
-更新时间：2026-09-15
+更新时间：2026-09-16
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../../status/current.md) 为准。
 
@@ -21,6 +21,10 @@
 - 用户能在普通空白项目中搭建 `Feed -> Valve -> Flash Drum`，显式提交 outlet pressure 并运行。
 - 当前 Valve 是受控压力调节单元，不提前实现完整控制阀设备模型。
 - Valve outlet stream 必须作为正式中间结果进入 downstream flash 和结果审阅。
+
+## 规划衔接（尚未实现）
+
+2026-09-16：Valve 的压力显示 / 输入未来复用 [单位系统](../units-and-quantity-system.md)，表压需显式参考上下文；参数与适用性提示复用 [建模辅助](../modeling-assistance-and-specifications.md)。当前温度保持模型不等于等焓节流或阀门 Cv 选型，详细设备能力另定专业切片。
 
 ## 当前实现快照
 

@@ -1,6 +1,6 @@
 # Material Stream 物流股专题
 
-更新时间：2026-09-12
+更新时间：2026-09-16
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../../status/current.md) 为准。
 
@@ -21,6 +21,10 @@
 - Material Stream 是当前 flowsheet 的物料连接和结果审阅基础对象。
 - 用户能显式输入 source stream 的 T/P/F/z，并在运行后审阅 current snapshot 的 stream result。
 - 连接、readiness、结果表和 Inspector 使用同一 stream id / command 口径。
+
+## 规划衔接（尚未实现）
+
+2026-09-16 确认 [单位系统](../units-and-quantity-system.md) 扩展：当前 T/P/F/z 和结果保持 SI / 摩尔基准，未来输入与显示统一换算；质量 / 摩尔及体积基准另需上下文。本篇旧范围描述当前实现，不永久排除单位集，具体切片由单位专题拥有。[设备任务](../equipment-design-and-rating.md) 引用流股时必须携带工况来源与有效性。
 
 ## 当前实现快照
 

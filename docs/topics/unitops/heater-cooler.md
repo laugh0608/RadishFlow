@@ -1,6 +1,6 @@
 # Heater / Cooler 换热器专题
 
-更新时间：2026-09-15
+更新时间：2026-09-16
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../../status/current.md) 为准。
 
@@ -21,6 +21,10 @@
 - 用户能在普通空白项目中搭建 `Feed -> Heater/Cooler -> Flash Drum`，显式提交 outlet temperature / outlet pressure 并运行。
 - `Heater` / `Cooler` 当前作为受控调节单元，只表达目标出口 T/P，不提前变成完整换热器设备模型。
 - 中间 outlet stream 必须作为正式结果对象进入 downstream flash 和结果审阅。
+
+## 规划衔接（尚未实现）
+
+2026-09-16 已将 [换热器设计与性能校核](../equipment/heat-exchanger-design-and-rating.md) 纳入设备工程规划。本篇 Heater / Cooler 仍是目标温压调节单元；双侧热平衡、面积、几何及热力 / 水力设计由新子专题管理，不能将本篇验收视为严格换热器能力。新任务不等待完整动态系统，按焓与所需物性依赖推进。
 
 ## 当前实现快照
 
@@ -80,7 +84,7 @@
 | --- | --- | --- |
 | M1 | 当前 T/P 调节模型冻结 | `Feed -> Heater/Cooler -> Flash Drum` 可运行、保存 / 重开 / rerun |
 | M2 | 结果一致性复核 | outlet stream、unit step produced stream 和 flash consumed stream 同源 |
-| M3 | 严格换热器评估 | 若推进 UA / duty / energy stream，先开新专题 |
+| M3 | 严格换热器评估 | 双侧热工、面积与校核按 [换热器专题](../equipment/heat-exchanger-design-and-rating.md) 推进 |
 
 ## B2-5：Cooler 空白建模与温压结果闭环
 

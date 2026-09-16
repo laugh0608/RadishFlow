@@ -1,6 +1,6 @@
 # 结果审阅、诊断与恢复
 
-更新时间：2026-09-15
+更新时间：2026-09-16
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -21,6 +21,10 @@
 - Material Stream 结果、phase rows、composition 和 stream focus 细节见 `modeling/material-stream.md`。
 - Feed、Heater / Cooler、Flash Drum、Mixer、Valve 的单元结果语义见 `unitops/` 下对应专题。
 - 本专题只保留跨对象的 `SolveSnapshot`、结果表、模块结果、状态汇总、诊断和 recovery 统一口径。
+
+## 规划衔接（尚未实现）
+
+2026-09-16 规划接入 [统一单位系统](units-and-quantity-system.md)，结果表、变量浏览和已有复制 / 导出共用转换，保持快照 SI 原值、身份及 stale / missing 契约；完整报告以后复用。[设备计算](equipment-design-and-rating.md) 新增独立任务结果与方法 / 工况来源时须单独定义结果契约，不将候选几何混入已有流股快照。[建模辅助](modeling-assistance-and-specifications.md) 复用诊断定位，规则依据与求解失败分别标识。
 
 ## 当前实现快照
 

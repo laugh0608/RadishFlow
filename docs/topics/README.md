@@ -1,6 +1,6 @@
 # 开发专题索引
 
-更新时间：2026-09-14
+更新时间：2026-09-16
 
 ## 用途
 
@@ -18,6 +18,8 @@
 后续明确的递归分块、间歇 / 半间歇、变量树式 API、COM 自动化及操作录制 / 回放同样由长期规划承载。gPROMS 为方程建模重点参考；APC 暂按先进过程控制领域规划，尚未指定同名产品。
 
 2026-09-14 补充 [插件系统](../architecture/simulation-platform.md#插件系统)、[许可与授权分层](../architecture/auth-entitlement-architecture.md#软件许可产品授权与操作权限) 和下表公共 API 专题。方向已确认，运行时、具体许可政策与接口仍待实施切片决策，不改变基础功能优先级。
+
+2026-09-16 确认单位系统、规格分析与确定性辅助、设备设计与校核三条主线，以下新专题为 Draft / 规划已确认，尚未实现。UI 旧主稿需重审功能分区，见 [UI 重设计计划](../architecture/studio-ui-topic-plan.md)。近期顺序为 B3-5→单位基础→规格 / 推荐→首个可信设备任务。
 
 ## 组织原则
 
@@ -38,6 +40,11 @@
 | 结果审阅、诊断与恢复 | Active | 让 stream / unit 结果、诊断目标和 recovery action 使用同一套 snapshot / command 口径 | `results-review-diagnostics.md` |
 | 项目生命周期与存储 | Active | 明确打开、保存、另存为、最近项目、sidecar 和脏改确认的长期边界 | `project-lifecycle-storage.md` |
 | CAPE-OPEN PMC 适配层 | Active | 完善 `.NET 10` PMC 生命周期与调用可靠性，保持 COM 注册和 PME 验证基线 | `capeopen-pmc-adapter.md` |
+| 单位系统与输入显示 | Draft | 唯一量 / 单位定义、统一转换、单位集及跨消费者输入输出 | [单位系统](units-and-quantity-system.md) |
+| 规格分析与建模辅助 | Draft | 分层规格 / 自由度检查、可解释规则与固定工作流、未来 Agent 入口 | [建模辅助](modeling-assistance-and-specifications.md) |
+| 设备设计与性能校核 | Draft | 独立设备及流程关联，初步选型、设计、校核与采纳 | [设备工程](equipment-design-and-rating.md) |
+
+UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-plan.md)，承载 R0—R2 功能分区重评与 Pencil 设计验收，不以画稿完成冒充代码实现。
 
 ## 二级功能专题
 
@@ -46,10 +53,17 @@
 | 专题 | 当前状态 | 父专题 | 入口 |
 | --- | --- | --- | --- |
 | Feed / 进料源 | Active | 流程图建模与求解闭环 | `unitops/feed-source.md` |
-| Heater / Cooler 换热器 | Active | 流程图建模与求解闭环 | `unitops/heater-cooler.md` |
+| Heater / Cooler 温压调节单元 | Active | 流程图建模与求解闭环 | `unitops/heater-cooler.md` |
 | Flash Drum 闪蒸罐 | Active | 流程图建模与求解闭环 | `unitops/flash-drum.md` |
 | Mixer 混合器 | Active | 流程图建模与求解闭环 | `unitops/mixer.md` |
 | Valve 阀门 | Active | 流程图建模与求解闭环 | `unitops/valve.md` |
+
+### 设备工程
+
+| 专题 | 当前状态 | 父专题 | 入口 |
+| --- | --- | --- | --- |
+| 气液分离器尺寸与能力校核 | Draft | 设备设计与性能校核 | [分离器](equipment/separator-sizing-and-rating.md) |
+| 换热器设计与性能校核 | Draft | 设备设计与性能校核 | [换热器](equipment/heat-exchanger-design-and-rating.md) |
 
 ### 建模对象
 
@@ -77,7 +91,7 @@
 
 | 状态 | 含义 |
 | --- | --- |
-| Draft | 已建文档但尚未作为近期实现依据 |
+| Draft | 已建文档，具体切片尚未进入实现；可注明方向已确认，须完成切片设计与验收定义 |
 | Active | 当前持续迭代的专题，具体切片由当前优先级确定 |
 | Blocked | 已确认阻塞，等待决策、外部环境或前置专题 |
 | Done | 约定范围内验收完成，后续扩展需更新范围与验收标准 |
