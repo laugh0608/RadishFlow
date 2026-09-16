@@ -10,9 +10,9 @@
 读者：维护 Studio、`rf-ui`、求解桥接和项目生命周期的开发者。
 不包含：新的产品排期、完整商业化界面或逐日验证记录。
 
-本文保留既有应用契约；新单位、规格辅助、设备任务与 UI 分区按 [平台规划](simulation-platform.md#单位辅助与设备工程的协作) 推进。新能力尚未实现，旧主稿需重评；不新增第二套状态。
+单位目录、转换与变量标签已接通；单位交互 / 存储、规格辅助、设备及 UI 重评按 [平台规划](simulation-platform.md#单位辅助与设备工程的协作) 推进，复用既有状态。
 
-长期边界见 [模拟平台规划](simulation-platform.md)：`SimulationMode::Active / Hold` 表示运行触发策略，工程模型、运行任务与数值状态分离。COM / 脚本及录制共用描述和应用命令；`CommandHistory` 只负责文档 Undo / Redo，运行、保存、导出与动态检查点另有契约。自动化现状见 [Studio B3](../topics/studio-main-workflow.md#b3-4首个无界面参数化运行消费者)。
+长期边界见 [模拟平台规划](simulation-platform.md)：`SimulationMode::Active / Hold` 表示运行触发策略，工程模型、运行任务与数值状态分离。COM / 脚本及录制共用描述和应用命令；`CommandHistory` 只负责文档 Undo / Redo，运行、保存、导出与动态检查点另有契约。CLI 已支持参数化运行与有序建模，见 [Studio B3-5](../topics/studio-main-workflow.md#b3-5无界面创建连接与步骤身份引用)。
 
 ## 冻结决策
 

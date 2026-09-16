@@ -209,7 +209,7 @@ Home 的 recent / current / example case tile 显示的是从当前 document / b
 
 在 `工具 → 变量浏览器` 按对象搜索输入、结果和动作说明，并定位检查器编辑。浏览器只读，不展示未提交草稿；缺结果明确标识，旧结果保留来源但隐藏数值，重跑后恢复当前结果。
 
-本地脚本可使用 `radishflow-studio --headless inspect <project>` 查询身份，再以 `--headless run <request.json>` 修改本次内存参数、运行并读取 JSON 结果。需要显式指定已有物性缓存；该入口不保存修改，也不创建单元或连接。命令、示例、路径规则与退出码见 [无界面接口参考](../reference/headless-cli.md)。
+`radishflow-studio --headless inspect <project>` 查询身份；`--headless run <request.json>` 执行 v1 参数写入或 v2 创建 / 连接 / 写入，再求解、读取 JSON。需已有组分 / 物性及缓存路径；使用 SI，只改内存。示例与边界见 [CLI 参考](../reference/headless-cli.md)。
 
 ## 单元参数与连接诊断
 

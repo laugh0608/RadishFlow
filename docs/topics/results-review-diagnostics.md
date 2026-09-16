@@ -24,7 +24,7 @@
 
 ## 规划衔接（尚未实现）
 
-2026-09-16 规划接入 [统一单位系统](units-and-quantity-system.md)，结果表、变量浏览和已有复制 / 导出共用转换，保持快照 SI 原值、身份及 stale / missing 契约；完整报告以后复用。[设备计算](equipment-design-and-rating.md) 新增独立任务结果与方法 / 工况来源时须单独定义结果契约，不将候选几何混入已有流股快照。[建模辅助](modeling-assistance-and-specifications.md) 复用诊断定位，规则依据与求解失败分别标识。
+2026-09-16 [统一单位系统](units-and-quantity-system.md) U1 已接通共享目录 / 转换及变量浏览、CLI 的 SI 标签；结果表和已有复制 / 导出的显示换算仍待 U3，当前输出继续使用 SI。后续保持快照 SI 原值、身份及 stale / missing 契约，完整报告复用同一转换入口。[设备计算](equipment-design-and-rating.md) 新增独立任务结果与方法 / 工况来源时须单独定义结果契约，不将候选几何混入已有流股快照。[建模辅助](modeling-assistance-and-specifications.md) 复用诊断定位，规则依据与求解失败分别标识。
 
 ## 当前实现快照
 
