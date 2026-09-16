@@ -188,7 +188,7 @@ fn headless_process_inspects_writes_runs_and_reads_without_mutating_files() {
 fn headless_process_rejects_protocol_and_document_conflicts() {
     let f = Fixture::new();
     for (key, value, expected) in [
-        ("schema_version", json!(2), "unsupported_version"),
+        ("schema_version", json!(99), "unsupported_version"),
         ("typo", json!(true), "invalid_json"),
         ("expected_revision", json!(1), "revision_conflict"),
         ("document_id", json!("foreign"), "different_document"),
@@ -369,3 +369,6 @@ fn headless_process_returns_json_for_bad_arguments_and_unreadable_files() {
         "invalid_json"
     );
 }
+
+#[path = "headless_cli/workflow.rs"]
+mod workflow;

@@ -1,0 +1,34 @@
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 1,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "binary-hydrocarbon-basis",
+      "thermo": {
+        "property_package_id": "binary-hydrocarbon-lite-v1"
+      },
+      "components": {
+        "methane": {
+          "id": "methane",
+          "name": "Methane",
+          "formula": "CH4"
+        },
+        "ethane": {
+          "id": "ethane",
+          "name": "Ethane",
+          "formula": "C2H6"
+        }
+      },
+      "streams": {},
+      "units": {}
+    },
+    "metadata": {
+      "documentId": "example-binary-hydrocarbon-basis",
+      "title": "Binary Hydrocarbon Modeling Basis",
+      "schemaVersion": 1,
+      "createdAt": "2026-04-14T00:00:00Z",
+      "updatedAt": "2026-04-14T00:00:00Z"
+    }
+  }
+}

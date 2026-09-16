@@ -83,7 +83,7 @@ Reference 文档回答“字段、单位、结果、格式分别是什么”，�
 
 | 文档 | 说明 |
 | --- | --- |
-| `reference/headless-cli.md` | 本地无界面查询、参数化运行的命令、JSON 与错误语义 |
+| `reference/headless-cli.md` | 本地无界面查询、建模与参数化运行的命令、JSON 与错误语义 |
 | `reference/units-and-conventions.md` | 当前稳定的单位、相标签、组成与字段后缀约定 |
 | `reference/solve-snapshot-results.md` | `SolveSnapshot`、step 输入/输出与结果 DTO 的稳定语义 |
 

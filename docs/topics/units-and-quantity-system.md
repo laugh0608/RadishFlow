@@ -10,7 +10,7 @@
 
 - 层级：一级轨道；上位规划：[模拟平台](../architecture/simulation-platform.md)。
 - 关联：[变量与动作](studio-main-workflow.md)、[结果](results-review-diagnostics.md)、[存储](project-lifecycle-storage.md)、[单位参考](../reference/units-and-conventions.md)。
-- 状态：Draft / 规划已确认 / B3-5 后优先切片；尚未实现通用单位转换和单位集。
+- 状态：Draft / 规划已确认 / B3-5 已接通，U1 为下一切片；尚未实现通用单位转换和单位集。
 
 ## 目标与当前基础
 
@@ -83,4 +83,4 @@ API 默认保留现有 SI 契约。未来带单位写入必须同时给出稳定
 
 U2 / U3 做输入→切换→提交→运行→导出→保存重开的主路径和失败路径，覆盖 Undo / Redo、stale / missing、跨消费者结果与偏好独立保存。真实窗口前告知，平台证据按当前状态管理。进入实现时执行相关定向测试和正式仓库基线。
 
-下一步：B3-5 后细化 U1；字段控件与设置入口先通过 [UI 重设计](../architecture/studio-ui-topic-plan.md) 的相应局部评审。完成全部 UI 重设计不是纯转换逻辑实现的前提。
+下一步：细化并实施 U1；字段控件与设置入口先通过 [UI 重设计](../architecture/studio-ui-topic-plan.md) 的相应局部评审。完成全部 UI 重设计不是纯转换逻辑实现的前提。

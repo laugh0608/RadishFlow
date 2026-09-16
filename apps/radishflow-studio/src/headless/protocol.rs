@@ -167,6 +167,8 @@ pub struct Response {
     pub package_id: Option<String>,
     pub writes: Vec<WriteReceipt>,
     pub variables: Vec<Variable>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub steps: Option<Vec<super::workflow::StepReceipt>>,
     pub diagnostic: Option<Diagnostic>,
     pub error: Option<Failure>,
 }
@@ -179,6 +181,7 @@ impl Default for Response {
             package_id: None,
             writes: Vec::new(),
             variables: Vec::new(),
+            steps: None,
             diagnostic: None,
             error: None,
         }

@@ -1,0 +1,320 @@
+{
+  "schema_version": 2,
+  "project": "../flowsheets/binary-hydrocarbon-basis.rfproj.json",
+  "document_id": "example-binary-hydrocarbon-basis",
+  "expected_revision": 0,
+  "cache_root": "./cache",
+  "auth_cache_index": "./auth-index.json",
+  "steps": [
+    {
+      "id": "feed",
+      "action": {
+        "kind": "create_unit",
+        "unit_kind": "feed"
+      }
+    },
+    {
+      "id": "feed_stream",
+      "action": {
+        "kind": "connect",
+        "source": {
+          "unit": {
+            "step": "feed"
+          },
+          "port": "outlet"
+        },
+        "sink": null
+      }
+    },
+    {
+      "id": "feed_temperature",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "feed"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_temperature"
+        },
+        "value": 310.0
+      }
+    },
+    {
+      "id": "feed_pressure",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "feed"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_pressure"
+        },
+        "value": 120000.0
+      }
+    },
+    {
+      "id": "feed_flow",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "stream": {
+              "step": "feed_stream"
+            }
+          },
+          "section": "inputs",
+          "field": "molar_flow"
+        },
+        "value": 5.0
+      }
+    },
+    {
+      "id": "methane_fraction",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "stream": {
+              "step": "feed_stream"
+            }
+          },
+          "section": "inputs",
+          "field": {
+            "mole_fraction": "methane"
+          }
+        },
+        "value": 0.35
+      }
+    },
+    {
+      "id": "ethane_fraction",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "stream": {
+              "step": "feed_stream"
+            }
+          },
+          "section": "inputs",
+          "field": {
+            "mole_fraction": "ethane"
+          }
+        },
+        "value": 0.65
+      }
+    },
+    {
+      "id": "heater",
+      "action": {
+        "kind": "create_unit",
+        "unit_kind": "heater"
+      }
+    },
+    {
+      "id": "feed_to_heater",
+      "action": {
+        "kind": "connect",
+        "source": {
+          "unit": {
+            "step": "feed"
+          },
+          "port": "outlet"
+        },
+        "sink": {
+          "unit": {
+            "step": "heater"
+          },
+          "port": "inlet"
+        },
+        "stream": {
+          "step": "feed_stream"
+        }
+      }
+    },
+    {
+      "id": "heated_stream",
+      "action": {
+        "kind": "connect",
+        "source": {
+          "unit": {
+            "step": "heater"
+          },
+          "port": "outlet"
+        },
+        "sink": null
+      }
+    },
+    {
+      "id": "heater_temperature",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "heater"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_temperature"
+        },
+        "value": 330.0
+      }
+    },
+    {
+      "id": "heater_pressure",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "heater"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_pressure"
+        },
+        "value": 90000.0
+      }
+    },
+    {
+      "id": "flash",
+      "action": {
+        "kind": "create_unit",
+        "unit_kind": "flash_drum"
+      }
+    },
+    {
+      "id": "heater_to_flash",
+      "action": {
+        "kind": "connect",
+        "source": {
+          "unit": {
+            "step": "heater"
+          },
+          "port": "outlet"
+        },
+        "sink": {
+          "unit": {
+            "step": "flash"
+          },
+          "port": "inlet"
+        },
+        "stream": {
+          "step": "heated_stream"
+        }
+      }
+    },
+    {
+      "id": "liquid_stream",
+      "action": {
+        "kind": "connect",
+        "source": {
+          "unit": {
+            "step": "flash"
+          },
+          "port": "liquid"
+        },
+        "sink": null
+      }
+    },
+    {
+      "id": "vapor_stream",
+      "action": {
+        "kind": "connect",
+        "source": {
+          "unit": {
+            "step": "flash"
+          },
+          "port": "vapor"
+        },
+        "sink": null
+      }
+    },
+    {
+      "id": "flash_temperature",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "flash"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_temperature"
+        },
+        "value": 280.0
+      }
+    },
+    {
+      "id": "flash_pressure",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "flash"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_pressure"
+        },
+        "value": 80000.0
+      }
+    }
+  ],
+  "reads": [
+    {
+      "object": {
+        "stream": {
+          "step": "heated_stream"
+        }
+      },
+      "section": "results",
+      "field": "temperature"
+    },
+    {
+      "object": {
+        "stream": {
+          "step": "heated_stream"
+        }
+      },
+      "section": "results",
+      "field": "pressure"
+    },
+    {
+      "object": {
+        "stream": {
+          "step": "heated_stream"
+        }
+      },
+      "section": "results",
+      "field": "molar_flow"
+    },
+    {
+      "object": {
+        "stream": {
+          "step": "liquid_stream"
+        }
+      },
+      "section": "results",
+      "field": "molar_flow"
+    },
+    {
+      "object": {
+        "stream": {
+          "step": "vapor_stream"
+        }
+      },
+      "section": "results",
+      "field": "molar_flow"
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 //! One-shot, local, read-only-on-disk automation. No GUI bootstrap or cache seeding.
 mod protocol;
+mod request;
+mod workflow;
 use crate::modeling_actions::{
     ModelingAction, ModelingActionEffect, ModelingActionRequest, dispatch_modeling_action,
 };
@@ -13,7 +15,7 @@ use rf_ui::variable_commands::{VariableWriteError, VariableWriteRequest};
 use rf_ui::{AppState, RunStatus, latest_snapshot, stale_snapshot};
 use std::{ffi::OsString, io::Write as IoWrite, path::Path, time::SystemTime};
 
-pub const HELP: &str = "Usage: radishflow-studio --headless inspect <project.rfproj.json>\n       radishflow-studio --headless run <request.json>\n       radishflow-studio --headless --help\n\ninspect returns document identity, revision and variables as JSON.\nrun applies SI inputs in memory, solves using the explicit local cache and reads variables.\nPaths in a run request are relative to that request file. No input files are modified.\nExit codes: 0 success, 2 request/load/write/read error, 3 blocked, 4 run failed, 5 output error.\n";
+pub const HELP: &str = "Usage: radishflow-studio --headless inspect <project.rfproj.json>\n       radishflow-studio --headless run <request.json>\n       radishflow-studio --headless --help\n\ninspect returns document identity, revision and variables as JSON.\nrun applies v1 SI writes or v2 create/connect/write steps in memory, solves and reads variables.\nPaths in a run request are relative to that request file. No input files are modified.\nExit codes: 0 success, 2 request/load/step/write/read error, 3 blocked, 4 run failed, 5 output error.\n";
 
 /// Called before the GUI runtime is initialized. stdout contains exactly one JSON response
 /// (or help); diagnostics go to stderr only if writing stdout itself fails.
@@ -102,14 +104,10 @@ fn inspect(path: &Path, response: &mut Response) -> Result<(), Failure> {
 
 fn run_request_file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     let bytes = std::fs::read(path).map_err(|e| failure("request", "request_io", e.to_string()))?;
-    let request: RunRequest = serde_json::from_slice(&bytes)
-        .map_err(|e| failure("request", "invalid_json", e.to_string()))?;
-    if request.schema_version != SCHEMA_VERSION {
-        return Err(failure(
-            "request",
-            "unsupported_version",
-            "supported schema_version is 1",
-        ));
+    let request = request::parse(&bytes)?;
+    response.schema_version = request.schema_version;
+    if request.schema_version == 2 {
+        response.steps = Some(Vec::new());
     }
     for (name, value) in [
         ("project", &request.project),
@@ -149,28 +147,21 @@ fn run_request_file(path: &Path, response: &mut Response) -> Result<(), Failure>
         .map_err(|e| domain_failure("cache", e))?;
     let root = base.join(&request.cache_root);
     let context = StudioAppAuthCacheContext::new(&root, &index);
-    for (index, write) in request.writes.into_iter().enumerate() {
-        let receipt = app
-            .write_variable(
-                VariableWriteRequest {
-                    variable: write
-                        .target
-                        .variable_id(&app.workspace.document.metadata.document_id),
-                    expected_revision: app.workspace.document.revision,
-                    value: match write.value {
-                        Value::Number(n) => VariableValue::Number(n),
-                        Value::Text(t) => VariableValue::Text(t),
-                    },
-                },
-                SystemTime::now(),
-            )
-            .map_err(|error| write_failure(index, error))?;
-        response.writes.push(WriteReceipt {
-            target: write.target,
-            revision: receipt.revision,
-            changed: receipt.command.is_some(),
-        });
-        response.document = Some(document(&app));
+    let mut bindings = workflow::Bindings::default();
+    match request.edits {
+        request::Edits::Writes(writes) => {
+            for (index, write) in writes.into_iter().enumerate() {
+                let receipt = apply_write(&mut app, write).map_err(|mut error| {
+                    error.index = Some(index);
+                    error
+                })?;
+                response.writes.push(receipt);
+                response.document = Some(document(&app));
+            }
+        }
+        request::Edits::Steps(steps) => {
+            workflow::execute(&mut app, &context, steps, &mut bindings, response)?;
+        }
     }
     let action_request = ModelingActionRequest {
         document_id: app.workspace.document.metadata.document_id.clone(),
@@ -279,6 +270,11 @@ fn run_request_file(path: &Path, response: &mut Response) -> Result<(), Failure>
         .into_iter()
         .enumerate()
         .map(|(index, target)| {
+            let target = bindings.resolve_target(target).map_err(|mut error| {
+                error.stage = "read";
+                error.index = Some(index);
+                error
+            })?;
             browser(&app)
                 .read(&target.variable_id(&app.workspace.document.metadata.document_id))
                 .map(Variable::from)
@@ -295,6 +291,29 @@ fn run_request_file(path: &Path, response: &mut Response) -> Result<(), Failure>
     Ok(())
 }
 
+fn apply_write(app: &mut AppState, write: Write) -> Result<WriteReceipt, Failure> {
+    let receipt = app
+        .write_variable(
+            VariableWriteRequest {
+                variable: write
+                    .target
+                    .variable_id(&app.workspace.document.metadata.document_id),
+                expected_revision: app.workspace.document.revision,
+                value: match write.value {
+                    Value::Number(n) => VariableValue::Number(n),
+                    Value::Text(t) => VariableValue::Text(t),
+                },
+            },
+            SystemTime::now(),
+        )
+        .map_err(write_failure)?;
+    Ok(WriteReceipt {
+        target: write.target,
+        revision: receipt.revision,
+        changed: receipt.command.is_some(),
+    })
+}
+
 fn browse_code(error: &BrowseError) -> &'static str {
     match error {
         BrowseError::DifferentDocument => "different_document",
@@ -302,7 +321,7 @@ fn browse_code(error: &BrowseError) -> &'static str {
         BrowseError::VariableMissing(_) => "variable_missing",
     }
 }
-fn write_failure(index: usize, error: VariableWriteError) -> Failure {
+fn write_failure(error: VariableWriteError) -> Failure {
     let code = match &error {
         VariableWriteError::Lookup(e) => browse_code(e),
         VariableWriteError::ReadOnly => "read_only",
@@ -311,10 +330,7 @@ fn write_failure(index: usize, error: VariableWriteError) -> Failure {
         VariableWriteError::TypeMismatch { .. } => "type_mismatch",
         VariableWriteError::Rejected(e) => e.code().as_str(),
     };
-    Failure {
-        index: Some(index),
-        ..failure("write", code, error.to_string())
-    }
+    failure("write", code, error.to_string())
 }
 fn blocked_code(reason: crate::StudioWorkspaceRunBlockedReason) -> &'static str {
     use crate::StudioWorkspaceRunBlockedReason::*;
