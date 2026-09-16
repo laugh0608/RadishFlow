@@ -21,6 +21,8 @@
 
 2026-09-16 确认单位系统、规格分析与确定性辅助、设备设计与校核三条主线，以下新专题为 Draft / 规划已确认，尚未实现。UI 旧主稿需重审功能分区，见 [UI 重设计计划](../architecture/studio-ui-topic-plan.md)。近期顺序为 B3-5→单位基础→规格 / 推荐→首个可信设备任务。
 
+本轮后续补充 [工程设计基础、工况与数据来源](engineering-basis-and-cases.md)。目标反算归建模求解，压力 / 公用工程与候选权衡归设备专题，工程检查 / 交付归结果专题；各切片见路线图，均未改变已实现能力声明。
+
 ## 组织原则
 
 - `docs/status/current.md` 只回答当前维护状态、优先级、临时门禁、验证基线和下一步。
@@ -40,6 +42,7 @@
 | 结果审阅、诊断与恢复 | Active | 让 stream / unit 结果、诊断目标和 recovery action 使用同一套 snapshot / command 口径 | `results-review-diagnostics.md` |
 | 项目生命周期与存储 | Active | 明确打开、保存、另存为、最近项目、sidecar 和脏改确认的长期边界 | `project-lifecycle-storage.md` |
 | CAPE-OPEN PMC 适配层 | Active | 完善 `.NET 10` PMC 生命周期与调用可靠性，保持 COM 注册和 PME 验证基线 | `capeopen-pmc-adapter.md` |
+| 工程设计基础、工况与数据来源 | Draft | 共享工程条件、来源 / 假设、工况矩阵、位号与复现依据 | [工程基础](engineering-basis-and-cases.md) |
 | 单位系统与输入显示 | Draft | 唯一量 / 单位定义、统一转换、单位集及跨消费者输入输出 | [单位系统](units-and-quantity-system.md) |
 | 规格分析与建模辅助 | Draft | 分层规格 / 自由度检查、可解释规则与固定工作流、未来 Agent 入口 | [建模辅助](modeling-assistance-and-specifications.md) |
 | 设备设计与性能校核 | Draft | 独立设备及流程关联，初步选型、设计、校核与采纳 | [设备工程](equipment-design-and-rating.md) |
