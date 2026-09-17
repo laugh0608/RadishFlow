@@ -1,6 +1,6 @@
 # 开发专题索引
 
-更新时间：2026-09-16
+更新时间：2026-09-17
 
 ## 用途
 
@@ -39,11 +39,11 @@
 | Studio 主工作台与空白项目建模主路径 | Active | 把普通空白项目从物性配置、建模、运行、结果审阅和保存 / 重开收束成可复现主路径 | `studio-main-workflow.md` |
 | 项目物性基础与组分选择 | Active | 稳定内置 package、项目组分、保存 / 重开和运行请求之间的同一事实源 | `property-basis-and-components.md` |
 | 流程图建模与求解闭环 | Active | 维护受控单元、连接、readiness、Run Panel 和 solver 之间的边界 | `flowsheet-modeling-and-solve.md` |
-| 结果审阅、诊断与恢复 | Active | 让 stream / unit 结果、诊断目标和 recovery action 使用同一套 snapshot / command 口径 | `results-review-diagnostics.md` |
+| 结果审阅、诊断与恢复 | Active | 结果与恢复保持同源；V1—V4 流向、着色、设备三维和回放为新增规划 | [结果与可视化](results-review-diagnostics.md) |
 | 项目生命周期与存储 | Active | 明确打开、保存、另存为、最近项目、sidecar 和脏改确认的长期边界 | `project-lifecycle-storage.md` |
 | CAPE-OPEN PMC 适配层 | Active | 完善 `.NET 10` PMC 生命周期与调用可靠性，保持 COM 注册和 PME 验证基线 | `capeopen-pmc-adapter.md` |
 | 工程设计基础、工况与数据来源 | Draft | 共享工程条件、来源 / 假设、工况矩阵、位号与复现依据 | [工程基础](engineering-basis-and-cases.md) |
-| 单位系统与输入显示 | Active | U1 量 / 单位目录与转换已接通；U2 / U3 单位集及输入输出待实现 | [单位系统](units-and-quantity-system.md) |
+| 单位系统与输入显示 | Active | U1 已接通；U2 / U3 输入输出待实现，颜色状态 V0 同步设计 | [单位系统](units-and-quantity-system.md) |
 | 规格分析与建模辅助 | Draft | 分层规格 / 自由度检查、可解释规则与固定工作流、未来 Agent 入口 | [建模辅助](modeling-assistance-and-specifications.md) |
 | 设备设计与性能校核 | Draft | 独立设备及流程关联，初步选型、设计、校核与采纳 | [设备工程](equipment-design-and-rating.md) |
 

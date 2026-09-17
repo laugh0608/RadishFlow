@@ -1,6 +1,6 @@
 # RadishFlow Docs
 
-更新时间：2026-09-16
+更新时间：2026-09-17
 
 ## 先读什么
 
@@ -35,7 +35,7 @@ Topics 文档回答“一个功能、能力包或开发目标怎么设计、分�
 | `topics/studio-main-workflow.md` | Studio 主工作台与空白项目建模主路径 |
 | `topics/property-basis-and-components.md` | 项目物性基础、内置 package 和组分选择 |
 | `topics/flowsheet-modeling-and-solve.md` | 流程图建模、连接、readiness、Run Panel 和 solver 闭环 |
-| `topics/results-review-diagnostics.md` | 结果审阅、诊断定位和 recovery action |
+| `topics/results-review-diagnostics.md` | 结果审阅、诊断恢复与 V1—V4 流程可视化规划 |
 | `topics/project-lifecycle-storage.md` | 项目打开、保存、另存为、最近项目、sidecar 和脏改确认 |
 | `topics/capeopen-pmc-adapter.md` | `.NET 10` CAPE-OPEN / COM PMC 适配层和 PME 验证基线 |
 | `topics/unitops/` | Feed、Heater / Cooler、Flash Drum、Mixer、Valve 等单元模块专题 |
@@ -100,7 +100,7 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | `architecture/studio-ui-topic-plan.md` | Studio UI 专题阶段的端点边界、信息架构、主工作流和 `.pen` 设计稿规则 |
 | `architecture/designs/studio-client-main-brief.md` | 保留旧主稿范围，定义新功能分区、状态与重设计验收；新稿尚未完成 |
 | `architecture/studio-ui-design-guidelines.md` | Studio 首屏、画布、面板、按钮、文字和结果审阅的 UI 设计规范 |
-| `architecture/studio-visual-system.md` | Studio 视觉定位、token、色彩角色、控件状态和视觉验收口径 |
+| `architecture/studio-visual-system.md` | Studio 视觉、token、V0 工程颜色 / 状态语义及验收 |
 | `architecture/ui-inspiration-reference.md` | AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 等优秀产品截图的 UI 设计灵感参考 |
 | `architecture/auth-entitlement-architecture.md` | 软件许可 / 产品授权 / 操作权限分层、桌面登录、控制面与本地求解边界 |
 | `architecture/versioning.md` | 版本命名、 tag 与发布轨道约定 |
