@@ -45,6 +45,7 @@
 | CAPE-OPEN PMC 适配层 | Active | 完善 `.NET 10` PMC 生命周期与调用可靠性，保持 COM 注册和 PME 验证基线 | `capeopen-pmc-adapter.md` |
 | 工程设计基础、工况与数据来源 | Draft | 共享工程条件、来源 / 假设、工况矩阵、位号与复现依据 | [工程基础](engineering-basis-and-cases.md) |
 | 单位系统与输入显示 | Active | U1 已接通；U2 / U3 输入输出待实现，颜色状态 V0 同步设计 | [单位系统](units-and-quantity-system.md) |
+| 颜色与状态系统 | Draft | V0 事实来源、状态叠加、控件映射、主题和迁移验收；未完成统一迁移 | [颜色与状态](color-and-state-system.md) |
 | 规格分析与建模辅助 | Draft | 分层规格 / 自由度检查、可解释规则与固定工作流、未来 Agent 入口 | [建模辅助](modeling-assistance-and-specifications.md) |
 | 设备设计与性能校核 | Draft | 独立设备及流程关联，初步选型、设计、校核与采纳 | [设备工程](equipment-design-and-rating.md) |
 
@@ -64,6 +65,15 @@ UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-p
 | 诊断工作台与多处联动 | 双区、定位、草稿、焦点与可访问性 | [工作台](runtime-messages/diagnostic-workbench-and-navigation.md) |
 | 记录存储与跨端消费 | 证据、规则、偏好及协议兼容 | [记录与消费者](runtime-messages/records-storage-and-consumers.md) |
 | 场景与验收矩阵 | 可观察预期与分阶段验证 | [验收矩阵](runtime-messages/scenarios-and-acceptance.md) |
+
+### 单位与颜色状态
+
+[单位总纲](units-and-quantity-system.md) 下按四项职责维护，U1 已实现，其余按追踪表标注；[颜色总纲](color-and-state-system.md) 下四个子专题均为 Draft。需求 / 场景 / 决策与证据分别由 [单位追踪](units/requirements-traceability.md) 和 [颜色追踪](color-state/requirements-traceability.md) 维护。
+
+| 一级专题 | 二级职责入口 |
+| --- | --- |
+| 单位 | [目录与转换](units/catalog-and-conversion.md)、[单位集与保存](units/unit-sets-and-persistence.md)、[输入草稿与交互](units/input-drafts-and-interactions.md)、[输出与跨端一致性](units/output-and-consumer-consistency.md) |
+| 颜色 / 状态 | [语义与组合](color-state/semantics-and-composition.md)、[控件 / 画布映射](color-state/control-and-canvas-mapping.md)、[主题与可访问性](color-state/theme-and-accessibility.md)、[迁移与验收](color-state/migration-and-acceptance.md) |
 
 ### 单元模块
 

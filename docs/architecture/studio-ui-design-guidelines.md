@@ -18,7 +18,7 @@ RadishFlow Studio 继续走轻量、清晰、工程化的浅色桌面应用风�
 
 核心原则：
 
-- 画布是主舞台，其他区域为画布建模、求解运行和结果审阅服务。
+- 流程建模任务以画布为主区域；设备、物性与结果任务以各自主要内容为主，具体分区由新 UI 计划评审。
 - 顶部只放全局身份、主路径命令和运行状态，不堆调试计数、窗口控制或完整命令清单。
 - 左右侧栏各有稳定职责，不把对象库、属性编辑、日志、授权、结果和调试信息混在同一列里。
 - 结果展示只读消费当前 revision 的最新 `SolveSnapshot`，不新增 Studio shell 私有结果缓存或第二套求解解释；文档编辑后旧快照只用于过期提示，不继续驱动结果审阅、结果表或导出。
@@ -30,7 +30,7 @@ UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baselin
 
 | 素材 | 路径 | 用途 |
 | --- | --- | --- |
-| Studio 视觉系统规范 | [studio-visual-system.md](studio-visual-system.md) | RadishFlow Studio 的视觉定位、token、色彩角色、控件状态和视觉验收口径 |
+| Studio 视觉系统规范 | [studio-visual-system.md](studio-visual-system.md) | RadishFlow Studio 的视觉定位、排版密度、控件结构和按任务验收口径 |
 | 外部优秀产品灵感参考 | [ui-inspiration-reference.md](ui-inspiration-reference.md) | AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 截图的设计语言提炼，用于后续 UI 专题的视觉、排版和信息密度参考 |
 | 当前 RadishFlow UI | [radishflow-current-workbench-20260516.png](assets/studio-ui/radishflow-current-workbench-20260516.png) | 2026-05-16 当前真实 Studio 截图，用于识别首页 / 工作台重排前的混乱分区和测试痛点 |
 | RadishFlow 工作台视觉基线 | [radishflow-workbench-concept.png](assets/studio-ui/baseline/radishflow-workbench-concept.png) | 进入项目后的工作台基线图，状态、SI 单位、单文档标题和结果区关系更符合当前规范 |
@@ -126,7 +126,7 @@ UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baselin
 
 ## 后续 UI 专题与设计稿资产
 
-当前文档记录的是 MVP α / β 阶段已经形成的 Studio UI 规范、真实 UI 收口经验和下一轮主设计稿约束，不等同于完整产品 UI 设计系统。长期视觉系统、token、色彩角色、控件状态和视觉验收口径见 `studio-visual-system.md`。Studio UI 专题阶段的端点边界、主工作流、状态模型和 `.pen` 设计稿规则见 `studio-ui-topic-plan.md`；保留的 Studio 主设计稿见 `docs/architecture/designs/studio-client-main.pen`（新增功能分区待重评），文字 brief 见 `docs/architecture/designs/studio-client-main-brief.md`。本文继续承担设计规范职责，不承载阶段推进流水。
+当前文档记录的是 MVP α / β 阶段已经形成的 Studio UI 规范、真实 UI 收口经验和下一轮主设计稿约束，不等同于完整产品 UI 设计系统。长期视觉定位、排版与控件结构见 `studio-visual-system.md`；状态映射、token 与迁移验收归 [颜色与状态专题](../topics/color-and-state-system.md)。Studio UI 专题阶段的端点边界、主工作流、状态模型和 `.pen` 设计稿规则见 `studio-ui-topic-plan.md`；保留的 Studio 主设计稿见 `docs/architecture/designs/studio-client-main.pen`（新增功能分区待重评），文字 brief 见 `docs/architecture/designs/studio-client-main-brief.md`。本文继续承担设计规范职责，不承载阶段推进流水。
 
 旧版 P0 设计稿口径（保留历史范围，新增功能分区待重评）：
 
@@ -300,7 +300,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 
 规则：
 
-- 画布默认占窗口最大面积，左右侧栏和底部面板不得压缩到只剩小预览。
+- 在流程建模任务中，画布默认占主要面积，左右侧栏和底部面板不得将其压缩到只剩小预览；此约束不扩展到设备、物性和结果任务。
 - 打开示例或项目后，Canvas viewport 应根据当前单元与流股 bounds 做初始 fit-to-content / center；小流程不应固定在左上角。用户拖动空白画布后的 viewport offset 可写入 layout sidecar，但仍只属于呈现状态，不引入自动布线、自由连线或完整视图持久化。
 - 画布工具条应以图标或短标签表达选择、放置、suggestion 接受 / 拒绝、平移、缩放、适配视图和受控恢复动作；不要把当前 MVP 误设计成自由连线工具条。
 - 本地建模 suggestion 的接受动作应使用明确的 `连接流股` / `Connect stream` 或 `创建流股` / `Create stream`，不用泛化的 `Apply` 让用户猜测会改写什么。
@@ -428,28 +428,11 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 
 ## 视觉语言
 
-本节只保留 Studio UI 信息架构层面的视觉底线，避免后续页面重排偏离当前浅色工程工具定位。更完整的视觉系统、设计 token、控件状态、Canvas 图元和 i18n 长度规则见 `studio-visual-system.md`。
+本节只保留 Studio UI 信息架构层面的视觉底线，避免后续页面重排偏离当前浅色工程工具定位。视觉定位、Canvas 绘制和 i18n 长度规则见 `studio-visual-system.md`；状态角色与 token 规则见 [颜色专题](../topics/color-and-state-system.md)。
 
 ### 色彩
 
-RadishFlow 默认浅色中性底，搭配少量语义色。
-
-建议：
-
-- 背景：白色 / 极浅灰。
-- 主强调：克制蓝色，用于当前选择、主按钮和链接。
-- 已就绪 / 已求解：绿色标记配准确文字，两者不可互相推导。
-- 警告：琥珀色；主动 hold / 暂停使用中性状态。
-- 错误 / 阻断：红色。
-- 未配置 / 草稿 / 未保存：中性灰或淡蓝灰。
-
-字段的可编辑性、数值来源、草稿、结果时效及诊断按 [视觉系统 V0](studio-visual-system.md#工程字段与状态语义v0-规划) 分别组合；蓝色指定值不等于已就绪，黑色计算值不等于全流程收敛。此规范随 U2 / U3 迁移，当前不声称已全部实现。
-
-限制：
-
-- 不做大面积单一蓝色、紫色、棕色或深色主题。
-- 不用渐变球、装饰 blob、营销式 hero 背景。
-- 状态色只表达状态，不做装饰。
+保持浅色中性底与克制的工程工具语言；具体默认配色、token 和非颜色表达只在 [主题与可访问性](../topics/color-state/theme-and-accessibility.md) 维护。状态如何叠加见 [V0 组合](../topics/color-state/semantics-and-composition.md)，迁移随 U2 / U3 和后续消费者推进，当前不声称全部实现。
 
 ### 字体层级
 

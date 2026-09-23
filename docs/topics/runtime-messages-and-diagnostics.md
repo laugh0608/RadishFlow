@@ -10,7 +10,7 @@
 
 - 层级：一级轨道；上位为 [平台规划](../architecture/simulation-platform.md)，阶段顺序见 [路线图](../radishflow-mvp-roadmap.md#运行消息与诊断的配套切片)。
 - 状态：Draft / 2026-09-23 方案已确认；N0 设计衔接 U2 / V0 / R0—R1，新增运行能力尚未实现。
-- 本专题拥有消息生命周期、执行追踪、停止语义与跨消费者一致性；[结果专题](results-review-diagnostics.md) 拥有结果有效性、工程检查与输出，[辅助专题](modeling-assistance-and-specifications.md) 拥有规则 / 建议，[视觉系统](../architecture/studio-visual-system.md) 拥有颜色，[UI 计划](../architecture/studio-ui-topic-plan.md) 拥有布局与画板。
+- 本专题拥有消息生命周期、执行追踪、停止语义与跨消费者一致性；[结果专题](results-review-diagnostics.md) 拥有结果有效性、工程检查与输出，[辅助专题](modeling-assistance-and-specifications.md) 拥有规则 / 建议，[颜色与状态专题](color-and-state-system.md) 拥有呈现映射，[UI 计划](../architecture/studio-ui-topic-plan.md) 拥有布局与画板。
 
 ## 目标与当前基础
 
@@ -35,7 +35,7 @@
 
 用户主路径为：发现缺项→定位修正→重检运行→观察过程→审阅结果；未来增加条件命中→安全暂停→检查→继续 / 取消。当前问题与历史事件、暂停请求与已暂停、观察值与正式结果分别表达。监视只观察和请求控制，不暗改物理模型。
 
-单位系数与量语义归单位专题；颜色 token 归视觉系统；结果有效性归结果专题；规则算法归辅助与工程领域。运行层提供事实和能力，UI、CLI 和未来 Agent 共用语义。现有同步求解、CLI SI 与最终响应保持，Rust Core 不引入 COM。
+单位系数与量语义归单位专题；颜色 token 归颜色与状态专题；结果有效性归结果专题；规则算法归辅助与工程领域。运行层提供事实和能力，UI、CLI 和未来 Agent 共用语义。现有同步求解、CLI SI 与最终响应保持，Rust Core 不引入 COM。
 
 ## 切片与退出标准
 

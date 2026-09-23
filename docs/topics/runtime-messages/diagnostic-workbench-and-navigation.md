@@ -14,7 +14,7 @@
 
 ## 当前基础与范围
 
-现有诊断定位、RunPanel 和底部标签仍可用；双区工作台及全局统一投影尚待设计 / 实现。语义来自 [消息模型](message-model-and-lifecycle.md)，颜色来自 [视觉系统](../../architecture/studio-visual-system.md)，画板与布局评审归 [UI 计划](../../architecture/studio-ui-topic-plan.md)。
+现有诊断定位、RunPanel 和底部标签仍可用；双区工作台及全局统一投影尚待设计 / 实现。语义来自 [消息模型](message-model-and-lifecycle.md)，颜色来自 [颜色与状态专题](../color-and-state-system.md)，画板与布局评审归 [UI 计划](../../architecture/studio-ui-topic-plan.md)。
 
 ## 用户路径与工作台
 

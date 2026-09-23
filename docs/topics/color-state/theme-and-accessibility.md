@@ -1,0 +1,73 @@
+# 主题与可访问性
+
+更新时间：2026-09-23
+
+## 用途与状态
+
+用途：维护语义 token、默认配色方向、非颜色表达及主题验收。
+读者：领域状态、Studio、主题、设计与验证维护者。
+不包含：领域状态机、页面布局或已完成的主题实现。
+
+父专题：[颜色与状态系统](../color-and-state-system.md)。状态：Draft / V0 待实施；具体色值、接口与画板未冻结。实施与证据见 [需求追踪表](requirements-traceability.md)。
+
+## 设计 Token
+
+后续实现若引入统一主题或样式层，应优先采用语义 token，而不是在组件里散落具体颜色、阴影和圆角。
+
+建议 token 分层：
+
+| 类型 | 示例 | 用途 |
+| --- | --- | --- |
+| 背景 | `studio-bg-app`、`studio-bg-surface`、`studio-bg-muted`、`studio-bg-canvas` | 应用底、面板、弱背景和画布 |
+| 文本 | `studio-text-primary`、`studio-text-secondary`、`studio-text-muted`、`studio-text-on-accent` | 标题、正文、辅助文字和强调面文字 |
+| 边框 | `studio-border-subtle`、`studio-border-strong`、`studio-border-focus` | 面板、表格、输入和焦点态 |
+| 品牌 | `studio-accent-primary`、`studio-accent-soft`、`studio-accent-hover` | 主按钮、链接、选中态和轻强调底 |
+| 状态 | `studio-success`、`studio-warning`、`studio-error`、`studio-info`、`studio-draft` | 运行、阻断、诊断、提示和草稿 |
+| 画布 | `studio-canvas-grid`、`studio-canvas-unit`、`studio-canvas-stream`、`studio-canvas-port`、`studio-canvas-attention` | 网格、单元、流股、端口和注意态 |
+| 尺寸 | `studio-radius-panel`、`studio-radius-control`、`studio-spacing-sm`、`studio-spacing-md` | 圆角、间距和控件密度 |
+| 阴影 | `studio-shadow-panel`、`studio-shadow-popover`、`studio-shadow-focus` | 浮层、面板层级和焦点强调 |
+
+命名规则：
+
+- 使用角色命名，不使用 `blue-500`、`gray-card` 这类把实现绑死的名字。
+- token 应表达 RadishFlow Studio 语义，不复用其他项目的品牌 token 名称。
+- 组件只能消费 token；新增 token 必须先说明角色和使用范围。
+- 暂未建立统一 token 层前，新增样式仍应按这些角色组织，避免硬编码值散落。
+
+## 色彩系统
+
+默认基线：
+
+- 应用背景：白色到极浅中性灰。
+- 面板底色：白色或轻微灰底。
+- 画布底色：浅色中性底，可有低对比网格。
+- 主强调：克制蓝色，用于主按钮、选中、链接和焦点。
+- 成功：绿色标记，须注明是输入就绪、求解完成还是某项检查通过，不能相互推导。
+- 警告：琥珀色，仅表达有依据的风险或需处理问题；主动 hold / 暂停用中性状态，不自动视为警告。
+- 错误：红色，仅表达阻断、失败、无效输入或不可恢复错误。
+- 信息：蓝灰或中性蓝，用于说明、定位和辅助提示。
+- 草稿 / 未保存：淡蓝灰或中性灰，不与错误混淆。
+
+使用规则：
+
+- 非诊断性强强调色原则上不超过 2 组；不得为满足配色数量限制而隐藏真实警告或错误。
+- 状态色必须有明确语义，不用于装饰性图标、背景花纹或无状态按钮。
+- 高密度表格和 Inspector 字段优先用文字、边框、图标和短状态 chip 表达层级，不用整块高饱和背景。
+- 禁止把单一蓝色、紫色、棕色、深色或高饱和主题铺满主界面。
+- 外部参考图的品牌色、图标色和具体配色不得复制到 RadishFlow。
+
+## 非颜色表达与主题切换
+
+颜色不是唯一信息载体：错误、警告、来源、时效、草稿与只读原因需要文字、图标或线型配合；状态图标有可读名称，不只依赖 tooltip 或 hover。淡蓝用于背景 / 边框，不用难辨认的浅色数值承载主要数据。状态细节和操作应可通过键盘到达，焦点不能被诊断边框或选中态吞掉。
+
+浅色是当前默认方向，不在本轮承诺暗色或高对比主题已经交付。后续主题通过同一语义映射改变色值，不改变来源、严重程度、门禁或检查结论；切换主题、灰度输出或色觉差异模拟后仍能分辨状态。界面灰化不能把可用的错误原因、单位或数值解释变成不可读。
+
+R1 需要记录正文 / 数值 / 单位、禁用说明、边框 / 图标 / 焦点在实际背景上的对比结果，并检查选中、hover、只读与诊断组合。具体对比度目标、测量方法、字体缩放、支持主题和原生可访问性映射由 VD-03 审定；本轮不新增未核实的合规认证或固定色值。
+
+后续动画遵循减少动画偏好，状态变化不靠闪烁传达；[结果可视化](../results-review-diagnostics.md#流程可视化与回放规划尚未实现) 拥有流向 / 数据色带 / 回放行为，颜色专题只规定其状态呈现和可访问性衔接。
+
+## 参考与证据边界
+
+保留既有设计参考：[AspenTech HYSYS 示例](https://esupport.aspentech.com/S_Article?id=000101753) 的蓝色指定值 / 黑色计算值仅用于理解来源维度；[历史 HYSYS 指南](https://sites.ualberta.ca/CMENG/che312/F06ChE416/HysysDocs/AspenHYSYSUserGuide.pdf) 的流股颜色仅为历史交互背景。本轮未重新调研或实测外部产品，不据此冻结当前软件布局、色值或资产。
+
+验收归 [VA-08—10](migration-and-acceptance.md#验收场景)，须记录实际测量与键盘 / 非彩色结果，不能仅因使用语义 token 就宣布可访问性通过。
