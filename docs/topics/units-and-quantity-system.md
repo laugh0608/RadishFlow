@@ -42,6 +42,6 @@
 
 ## 实施与验收入口
 
-当前已形成 [交互候选](units/input-drafts-and-interactions.md#u2-交互候选方案待审定) 与 [保存候选](units/unit-sets-and-persistence.md#u2-单位集与保存候选方案待审定)，待审定后再合入正式规则。下一步评审 U2 的 [事件表](units/input-drafts-and-interactions.md#u2-事件表) 与局部 R0 / R1 评审，同时核对 V0 状态叠加和 N0 消息定位。设计材料完成不等于 `.pen` 或产品验收通过。
+2026-09-23 项目所有者接受 [交互方案](units/input-drafts-and-interactions.md#u2-交互方案已接受) 与 [保存兼容方案](units/unit-sets-and-persistence.md#u2-单位集与保存方案已接受)，行为已合入 U2 事件表。[五张局部画板](../architecture/designs/studio-client-main-brief.md#本轮画板与静态复核) 已完成 Pencil 原生静态复核，待项目所有者审阅，同时覆盖 V0 叠加和 N0 对象定位；具体接口待适用 UD 决策，产品仍未实施。
 
 主线保持 U2→U3→规格辅助→设备工程；完整 UI 重绘、U4 和 V1—V4 不成为 U2 的统一前置。实施前处理追踪表中适用的待决策项，实施后逐项回填证据；U1 历史验证不能代替 U2 / U3 或跨平台实窗验证。

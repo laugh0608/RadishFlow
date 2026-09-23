@@ -57,7 +57,7 @@ Topics 文档回答“一个功能、能力包或开发目标怎么设计、分�
 | 颜色 / 状态 | [颜色总纲与四个子专题](topics/color-and-state-system.md) | [需求 / 验收追踪](topics/color-state/requirements-traceability.md) |
 | 确定性智能辅助 | [规格分析与建模辅助](topics/modeling-assistance-and-specifications.md) | [目标反算](topics/flowsheet-modeling-and-solve.md#设计规格求解规划尚未实现)、[工程检查与交付](topics/results-review-diagnostics.md#工程检查与交付规划尚未实现)；未来 Agent 复用统一接口 |
 | 设备工程 | [设备设计与校核](topics/equipment-design-and-rating.md) | [分离器](topics/equipment/separator-sizing-and-rating.md)、[换热器](topics/equipment/heat-exchanger-design-and-rating.md) |
-| UI 重设计 | [专题计划](architecture/studio-ui-topic-plan.md) | [主稿 brief](architecture/designs/studio-client-main-brief.md)；旧 `.pen` 新功能分区待重新评审 |
+| UI 重设计 | [专题计划](architecture/studio-ui-topic-plan.md) | [主稿 brief](architecture/designs/studio-client-main-brief.md)；U2 / V0 局部画板待审阅，全局新功能分区仍待评审 |
 
 ## Development And Collaboration
 
@@ -101,7 +101,7 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | `architecture/app-architecture.md` | 桌面 App 的状态、命令与模块边界 |
 | `architecture/canvas-interaction-contract.md` | 画布视图模式、流线状态与 suggestion 契约 |
 | `architecture/studio-ui-topic-plan.md` | Studio UI 专题阶段的端点边界、信息架构、主工作流和 `.pen` 设计稿规则 |
-| `architecture/designs/studio-client-main-brief.md` | 保留旧主稿范围，定义新功能分区、状态与重设计验收；新稿尚未完成 |
+| `architecture/designs/studio-client-main-brief.md` | 旧稿保留与新功能设计输入；U2 / V0 局部节点、截图及待审阅项 |
 | `architecture/studio-ui-design-guidelines.md` | Studio 首屏、画布、面板、按钮、文字和结果审阅的 UI 设计规范 |
 | `architecture/studio-visual-system.md` | Studio 视觉定位、排版密度、控件结构与按任务验收；颜色规则归一级专题 |
 | `architecture/ui-inspiration-reference.md` | AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 等优秀产品截图的 UI 设计灵感参考 |
