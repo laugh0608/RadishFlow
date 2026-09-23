@@ -22,7 +22,7 @@
 - 2026-09-14 确认补入插件系统、参考 RadishNexus 的分层许可与公共 API 授权 / 配额规划；基础功能优先级不变，插件运行时、具体许可政策、接口和部署仍待切片决策，见 [路线图](../radishflow-mvp-roadmap.md#插件与公共-api-的实施切片)。
 - 2026-09-16 确认 [单位系统](../topics/units-and-quantity-system.md)、[规格分析与确定性辅助](../topics/modeling-assistance-and-specifications.md)、[设备设计与校核](../topics/equipment-design-and-rating.md) 规划。B3-5 后优先单位与规格基础；设备工程不等待完整动态；未来 Agent 复用统一入口，当前不接入 AI。
 - 同日补充 [工程基础、工况与来源](../topics/engineering-basis-and-cases.md)、目标反算、工程检查、压力 / 公用工程、候选权衡与交付。G0 优先纳入近期设计，G1 / G2 随单位、规格和设备推进，详见 [配套切片](../radishflow-mvp-roadmap.md#工程工作流的配套切片)。
-- Studio 旧 `.pen` 保留，新增功能分区按 [UI 计划](../architecture/studio-ui-topic-plan.md) 评审；U2 / V0 局部画板已静态复核，待审阅。
+- Studio 旧 `.pen` 保留，新增功能分区按 [UI 计划](../architecture/studio-ui-topic-plan.md) 评审；U2 / V0 局部画板已获认可。
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
 ## 当前开发范围与优先级
@@ -58,17 +58,17 @@
 
 ### 下一步
 
-- [ ] 当前优先 U2：审阅局部 R1 画板、细化剩余 UD / VD 接口，再实现单位集、临时输入、草稿转换与保存恢复；呈现保存独立于求解修订。
+- [ ] 当前优先 U2：审定 [接口与实施切片](../topics/units-and-quantity-system.md#u2-实施切片提案待审定)，从单位集 / 存储开始；呈现保存独立于求解修订。
 - [ ] 再按 U3、A1—A2 推进结果 / 输出与规格基础；E0 / S0 / H0 明确首个设备工况与独立基准。具体接口、存储及依赖按切片审定。
 - [ ] G0 优先明确设计基础、工况矩阵和输入来源，并纳入 R0 的项目 / 工况 / 设备 / 结果关系；代码切片顺序保持。
-- [ ] R0 全局功能分区待评审；R1 单位局部稿待审阅，后续规格与设备工作区未绘制，相关代码未完成。
+- [ ] R0 全局功能分区待评审；R1 单位局部稿已获认可，后续规格与设备工作区未绘制，相关代码未完成。
 - [ ] 2026-09-17 已确认 [可视化 V1—V4](../radishflow-mvp-roadmap.md#颜色与流程可视化的配套切片)：U3 后二维流向 / 数据着色，设备几何就绪后局部三维，真实时间结果后动态回放。均未实现，不阻塞 U2；整厂三维另评估。
 
 ### 最新规划（2026-09-23）
 
 - [运行与诊断 N0—N5](../topics/runtime-messages-and-diagnostics.md) 已确认，补入开发者诊断与模型验证。N0 随 U2 / V0，N1 衔接 A1 / A2，其余按能力推进；后台、暂停和开发工作台未实现。详见 [W39](../devlogs/2026-09/2026-W39.md)，保持 U2 优先与结果门禁。
 
-- U2 交互 / 保存兼容及 [V0](../topics/color-and-state-system.md) 候选已接受；五张局部画板已静态复核、待项目所有者审阅，代码未实施。
+- U2 交互 / 保存兼容及 [V0](../topics/color-and-state-system.md) 方向与局部画板已接受；接口提案待审定，代码未实施。
 
 ### 后续事项
 

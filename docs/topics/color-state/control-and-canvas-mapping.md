@@ -8,7 +8,7 @@
 读者：领域状态、Studio、主题、设计与验证维护者。
 不包含：事实判定、求解门禁、主题色值或完整页面布局。
 
-父专题：[颜色与状态系统](../color-and-state-system.md)。状态：Draft / V0 待实施；具体色值、接口与画板未冻结。实施与证据见 [需求追踪表](requirements-traceability.md)。
+父专题：[颜色与状态系统](../color-and-state-system.md)。状态：V0 局部画板已获认可，接口提案待审定，产品待实施。实施与证据见 [需求追踪表](requirements-traceability.md)。
 
 ## 字段与状态角色
 
@@ -51,7 +51,7 @@
 
 ## U2 首批映射方案（已接受）
 
-2026-09-23 项目所有者接受以下 VD-01 / VD-02 / VD-04 映射和首批迁移方向；局部画板待评审，presentation 类型与控件 API 未冻结。现有 [Inspector 渲染](../../../apps/radishflow-studio/src/studio_gui_shell/panels/runtime/inspector.rs) 读取 status_label / value_kind_label，[颜色 helper](../../../apps/radishflow-studio/src/studio_gui_shell/utils.rs) 仍按 `Draft`、`Invalid`、`Valid` 等字符串映射颜色，`Draft` 与 `Unnormalized` 共用警告色。该实现只能作为迁移起点，不能把标签解析当 V0 的统一状态来源。
+2026-09-23 项目所有者接受以下 VD-01 / VD-02 / VD-04 映射、首批迁移方向及局部画板；presentation 类型与控件 API 未冻结。现有 [Inspector 渲染](../../../apps/radishflow-studio/src/studio_gui_shell/panels/runtime/inspector.rs) 读取 status_label / value_kind_label，[颜色 helper](../../../apps/radishflow-studio/src/studio_gui_shell/utils.rs) 仍按 `Draft`、`Invalid`、`Valid` 等字符串映射颜色，`Draft` 与 `Unnormalized` 共用警告色。该实现只能作为迁移起点，不能把标签解析当 V0 的统一状态来源。
 
 共享呈现映射应接收领域事实和草稿状态，各视图只布局；字段标签、颜色 token 与可读文案都由同一映射派生，禁止将 `Valid` 字符串当“已求解”。当前变量元数据可以提供量与写入能力，来源不足时明确未知，不在 U2 虚构尚未具备的工程来源链。
 
@@ -67,3 +67,25 @@
 窄面板将来源移到标题后、目标显示单位与诊断另起行；先换行再进入可键盘访问的详情，不压缩数值 / 输入单位到不可读。长单位别名、中文原因和高精度数值需允许足够宽的编辑区或横向文本滚动，不截掉实际编辑文本后提交不可见数字。
 
 首批迁移只覆盖上述字段与单位设置、保存提示的共享状态角色；画布沿用已有诊断事实和入口，N0 在代表画板核对同一对象身份，N1 再完成统一问题计数。U3 迁移变量浏览 / 正式结果输出；不得因首批字段通过而把全局 VIS-05—07 标已完成。
+
+## V0 呈现接口提案（待审定）
+
+本节细化 VD-01 / VD-03 / VD-04，建议在 `rf-ui` 生成带类型的 `FieldPresentation`，Studio 原生壳层只消费槽位与交互能力；不把完整 V0 状态机放进渲染 helper。类型名为提案，领域事实仍以所属模块为准。
+
+| 输入事实 / 建议槽位 | 来源与身份 | 接线约束 |
+| --- | --- | --- |
+| `identity` / `revision` | 现有 VariableId 与当前文档 revision；结果附已有快照资格 | 一次投影使用同一工作区视图；过期领域载荷不并入当前字段，编辑会话冲突单列 |
+| `source` / `editability` / `completeness` | 变量描述、显式参数及字段约束 | 缺来源元数据用 Unknown；Unknown 与 NotApplicable 分开，不从数值、颜色或可编辑性猜指定 / 计算 |
+| `draft` / `input_unit` / `display_unit` | 单位编辑会话及显示选择解析 | 原文保留；解析有效不推导求解成功；冲突和未完成分别有可读说明 |
+| `diagnostics` | 当前领域校验 / readiness / 运行诊断 | 保留现有对象 / 字段定位；已有问题 ID 则透传，没有统一 ID 不伪造 N1 计数；草稿解析错误不包装成求解失败 |
+| `freshness` / `value` | 现有结果门禁与允许展示的数据 | stale / missing 的数字在投影前即被资格判断排除，渲染层不能靠灰色放回旧值 |
+| `interaction` | 原生壳层的焦点、悬停、选中与菜单状态 | 仅影响对应图层；不修改领域事实，不进入文件或求解历史 |
+| 工作区保存摘要 | 单位专题的 ProjectSaveState | 工程脏、呈现脏、草稿数量分别投影，保存成功通知不覆盖草稿事实 |
+
+推荐将输入事实映射为独立的来源文字、草稿提示、诊断列表、交互能力和语义样式角色；保留结构化事实供测试。不要合成单个 `FieldStatus = Error / Draft / Focused` 互斥枚举。文本本地化发生在壳层，角色选择不解析翻译结果；提交能力取会话 / 正式命令预检，颜色映射只转述原因。来源与诊断可同时呈现，未知身份 / 修订不一致明确报告并拒绝写入，不通过隐藏标记掩盖问题。
+
+建议原生壳层集中定义 `StudioStateTokens`，以来源、编辑背景、边界、诊断、焦点、禁用等角色取色；`rf-ui` 不接收 egui `Color32`，领域库不依赖主题。首批浅色色值与相邻背景沿用 [主题方案](theme-and-accessibility.md#v0-首批主题方案已接受)，不在本节复制数值。旧字符串颜色 helper 在尚未迁移的消费者继续保留，首批数字字段不得同时经过新映射与旧 helper 二次染色。
+
+可访问性提案由同一 FieldPresentation 派生名称（字段与单位）、只读 / 禁用原因、未提交状态、错误描述及关联定位；原生壳层将这些信息接到控件的可访问性输出。焦点仍用独立外环和中性间隔；窄栏按已认可画板换行。先核对现有控件可访问性能力，若所需关联无法表达，记录具体缺口再审定适配方式，不以 tooltip 或灰度截图替代读屏证据，也不默认增加依赖。
+
+验证归 VA-01—05 / 08—11：固定同变量同 revision 的领域输入分别检查来源、错误、草稿、焦点槽位；有效草稿不得产生求解成功角色，未知来源不得变指定，保存 / 呈现变化不更改结果资格。通过原生控件核对 Enter / Escape / Tab、菜单焦点恢复、文本缩放和读屏描述；共享投影测试不能代替原生运行。首批实际接线与测试尚未开始，后续消费者继续按迁移专题单独退出。
