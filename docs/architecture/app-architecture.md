@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-09-16
+更新时间：2026-09-23
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -872,11 +872,11 @@ App 不应直接操作底层求解细节，而应通过稳定的数据结构与�
 
 ## 维护性与同步执行现状
 
-`WorkspaceSolveService` 在 dispatch 中同步调用求解桥接并回写 AppState；GUI event dispatch 也沿现有 host / driver 路径同步执行。当前运行状态名称和 timer 状态机不代表已有后台求解、取消或并行执行能力。本次未测量 GUI 帧耗时、复杂流程延迟或快照内存，不能据此声称已出现性能回归。
+`WorkspaceSolveService` 同步调用求解桥接并回写 AppState，GUI dispatch 沿 host / driver 同步执行。运行状态和 timer 不代表已有后台、取消或并行能力；GUI 帧耗时、复杂流程延迟及快照内存尚未测量。
 
 若以后获准处理复杂度，应按用户行为追踪命令链，保留承担独立状态、平台隔离和共享契约的层，评估纯转发与重复投影。大型文件按项目生命周期、建模命令、结果审阅或平台 IO 等职责划分，测试按行为和失败模式组织，不为缩短文件机械切片。现有 snapshot-backed undo 与结果快照在更大负载下的成本也应先测量。
 
-较重求解若进入范围，再确认后台执行、取消与旧 revision 结果丢弃的正式边界；不得把本段建议当作已经批准的架构改动。
+运行控制按 [N3](../topics/runtime-messages-and-diagnostics.md) 审定；N0 / N1 先统一诊断，当前同步执行不变。
 
 ## 未排期事项
 

@@ -1,6 +1,6 @@
 # RadishFlow Docs
 
-更新时间：2026-09-17
+更新时间：2026-09-23
 
 ## 先读什么
 
@@ -36,6 +36,8 @@ Topics 文档回答“一个功能、能力包或开发目标怎么设计、分�
 | `topics/property-basis-and-components.md` | 项目物性基础、内置 package 和组分选择 |
 | `topics/flowsheet-modeling-and-solve.md` | 流程图建模、连接、readiness、Run Panel 和 solver 闭环 |
 | `topics/results-review-diagnostics.md` | 结果审阅、诊断恢复与 V1—V4 流程可视化规划 |
+| [运行、消息与诊断](topics/runtime-messages-and-diagnostics.md) | N0—N5 大专题总纲及六个子专题导航 |
+| [消息需求追踪](topics/runtime-messages/requirements-traceability.md) | MSG 要求、S 场景、D 待决策与实现 / 验证证据 |
 | `topics/project-lifecycle-storage.md` | 项目打开、保存、另存为、最近项目、sidecar 和脏改确认 |
 | `topics/capeopen-pmc-adapter.md` | `.NET 10` CAPE-OPEN / COM PMC 适配层和 PME 验证基线 |
 | `topics/unitops/` | Feed、Heater / Cooler、Flash Drum、Mixer、Valve 等单元模块专题 |

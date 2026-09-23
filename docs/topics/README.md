@@ -1,6 +1,6 @@
 # 开发专题索引
 
-更新时间：2026-09-17
+更新时间：2026-09-23
 
 ## 用途
 
@@ -40,6 +40,7 @@
 | 项目物性基础与组分选择 | Active | 稳定内置 package、项目组分、保存 / 重开和运行请求之间的同一事实源 | `property-basis-and-components.md` |
 | 流程图建模与求解闭环 | Active | 维护受控单元、连接、readiness、Run Panel 和 solver 之间的边界 | `flowsheet-modeling-and-solve.md` |
 | 结果审阅、诊断与恢复 | Active | 结果与恢复保持同源；V1—V4 流向、着色、设备三维和回放为新增规划 | [结果与可视化](results-review-diagnostics.md) |
+| 运行、消息与诊断 | Draft | 当前问题、执行事件、状态联动及 N0—N5 运行控制规划；已有恢复保持 | [运行与诊断](runtime-messages-and-diagnostics.md) |
 | 项目生命周期与存储 | Active | 明确打开、保存、另存为、最近项目、sidecar 和脏改确认的长期边界 | `project-lifecycle-storage.md` |
 | CAPE-OPEN PMC 适配层 | Active | 完善 `.NET 10` PMC 生命周期与调用可靠性，保持 COM 注册和 PME 验证基线 | `capeopen-pmc-adapter.md` |
 | 工程设计基础、工况与数据来源 | Draft | 共享工程条件、来源 / 假设、工况矩阵、位号与复现依据 | [工程基础](engineering-basis-and-cases.md) |
@@ -50,6 +51,19 @@
 UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-plan.md)，承载 R0—R2 功能分区重评与 Pencil 设计验收，不以画稿完成冒充代码实现。
 
 ## 二级功能专题
+
+### 运行、消息与诊断
+
+父专题为 [运行、消息与诊断](runtime-messages-and-diagnostics.md)，下列均为 Draft / 待实施。详细规则按职责归位，需求与验证状态只在 [追踪表](runtime-messages/requirements-traceability.md) 维护。
+
+| 二级专题 | 范围 | 入口 |
+| --- | --- | --- |
+| 消息模型与问题生命周期 | 分类、身份、重检 / 恢复、状态维度 | [消息模型](runtime-messages/message-model-and-lifecycle.md) |
+| 执行追踪与收敛诊断 | 真实步骤、循环、观察与采集 | [执行追踪](runtime-messages/execution-trace-and-convergence.md) |
+| 运行控制与条件监视 | 暂停、单步、取消、条件求值 | [运行控制](runtime-messages/run-control-and-watch-conditions.md) |
+| 诊断工作台与多处联动 | 双区、定位、草稿、焦点与可访问性 | [工作台](runtime-messages/diagnostic-workbench-and-navigation.md) |
+| 记录存储与跨端消费 | 证据、规则、偏好及协议兼容 | [记录与消费者](runtime-messages/records-storage-and-consumers.md) |
+| 场景与验收矩阵 | 可观察预期与分阶段验证 | [验收矩阵](runtime-messages/scenarios-and-acceptance.md) |
 
 ### 单元模块
 
