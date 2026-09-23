@@ -48,7 +48,7 @@
 
 ## U2 实施切片与状态
 
-以下为 U2 内部依赖顺序，I1 已实现，其余未实施；不另建需求编号，不改变 U2→U3 的阶段关系。接口正文分别见 [存储提案](units/unit-sets-and-persistence.md#u2-存储接口)、[编辑提案](units/input-drafts-and-interactions.md#u2-编辑接口提案待审定) 和 [V0 提案](color-state/control-and-canvas-mapping.md#v0-呈现接口提案待审定)。
+以下为 U2 内部依赖顺序，I1 已实现，其余未实施；不另建需求编号，不改变 U2→U3 的阶段关系。接口正文分别见 [存储接口](units/unit-sets-and-persistence.md#u2-存储接口)、[编辑提案](units/input-drafts-and-interactions.md#u2-编辑接口提案待审定) 和 [V0 提案](color-state/control-and-canvas-mapping.md#v0-呈现接口提案待审定)。
 
 | 切片 | 交付与改动边界 | 进入条件 / 退出检查 |
 | --- | --- | --- |

@@ -52,7 +52,7 @@ RadishFlow Studio 从稳态流程起步，逐步覆盖物性、设备工程与�
 
 ### 工程字段与状态语义（V0 规划）
 
-旧入口保留为导航。V0 规则正文见 [状态语义与叠加](../topics/color-state/semantics-and-composition.md)、[控件与画布映射](../topics/color-state/control-and-canvas-mapping.md)；实现与验收状态见 [追踪表](../topics/color-state/requirements-traceability.md)。当前仍为规划，未完成控件统一迁移或新画板验收。
+旧入口保留为导航。V0 规则正文见 [状态语义与叠加](../topics/color-state/semantics-and-composition.md)、[控件与画布映射](../topics/color-state/control-and-canvas-mapping.md)；实现与验收状态见 [追踪表](../topics/color-state/requirements-traceability.md)。U2 / V0 局部画板已获认可，控件统一迁移与产品验收仍待实施。
 
 ## 字体与排版
 

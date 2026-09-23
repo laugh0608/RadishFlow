@@ -241,6 +241,7 @@ egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、�
 - `document: FlowsheetDocument`
 - `document_path: Option<PathBuf>`
 - `last_saved_revision: Option<u64>`
+- `project_presentation: ProjectPresentationState`
 - `selection: SelectionState`
 - `panels: UiPanelsState`
 - `drafts: InspectorDraftState`
@@ -256,9 +257,8 @@ egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、�
 - `selection`、`panels`、`drafts` 都是瞬时 UI 状态，不能污染文档真相源
 - `command_history`、`solve_session`、`snapshot_history` 并列存在，互不吞并
 - `snapshot_history` 负责持有不可变快照实体，`SolveSessionState` 只保留引用
-- `run_panel` 只持有面向运行栏的已派生摘要，不反向取代 `solve_session`、`snapshot_history` 或 `log_feed`
-- `run_panel` 当前也负责持有最小按钮/命令模型，不让按钮启用判断散落到 Studio 或最终视图层
-- 运行栏最终最小视图入口当前应消费 `RunPanelViewModel`，而不是重新拼装 `can_run_manual` / `can_resume` 之类摘要布尔值
+- `run_panel` 派生摘要与命令，不替代会话、快照或日志；视图消费 `RunPanelViewModel`
+- `project_presentation` 只读持有单位集与来源版本；保存基线、历史及设置待 I2，见 [存储接口](../topics/units/unit-sets-and-persistence.md#u2-存储接口)
 
 ### `FlowsheetDocument`
 
@@ -762,7 +762,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - 失败详情只消费 `latest_diagnostic`，显示 primary code、revision、severity、count 与相关 target；GUI 不从 message 文本反解析或私造端口级 command。Run Panel recovery action 必须区分聚焦与修复，用户主动选中流股后的恢复动作走对应 `canvas.*selected_stream*` 命令，不复用 failure-only recovery command。
 - `StudioAppHostController` 对 `DispatchCanvasInteraction` 不应无条件 `refresh_local_canvas_suggestions()`；local-rules refresh 只应发生在真正改写文档或显式要求重算 suggestion 的路径上，避免破坏 GUI 命令面的连续交互语义。
 - `studio_gui_shell` 已通过 shell 级等价回归锁定 run panel、canvas suggestion、layout nudge、选中流股恢复和 disabled gate 在菜单、工具栏、命令面板、Canvas / Inspector 入口之间的共享派发语义；后续提示应停留在 presentation 层，不越过 disabled gate 改状态。
-- 文本焦点拥有 Undo / Redo，其他适用焦点派发文档历史；Inspector 当前 Enter 提交有效字段、Escape 保留草稿；[U2 提案](../topics/units/input-drafts-and-interactions.md) 待实施。键位以 `Primary` 表达平台主修饰键、`Ctrl` 表达物理 Control，绑定与标签同源；macOS 使用 ⌘S / ⌘Z / ⇧⌘Z，保留 ⌘Y 别名，Windows / Linux 使用 Ctrl+S / Ctrl+Z / Ctrl+Y。输入使用事件自身修饰键，文档确认状态优先阻断快捷键；平台证据见 [B1-4](../topics/flowsheet-modeling-and-solve.md#b1-4平台快捷键展示与文档重做)。
+- 文本焦点拥有 Undo / Redo，其他适用焦点派发文档历史；Inspector 当前 Enter 提交有效字段、Escape 保留草稿；[U2 交互](../topics/units/input-drafts-and-interactions.md) 待实施。键位以 `Primary` 表达平台主修饰键、`Ctrl` 表达物理 Control，绑定与标签同源；macOS 使用 ⌘S / ⌘Z / ⇧⌘Z，保留 ⌘Y 别名，Windows / Linux 使用 Ctrl+S / Ctrl+Z / Ctrl+Y。输入使用事件自身修饰键，文档确认状态优先阻断快捷键；平台证据见 [B1-4](../topics/flowsheet-modeling-and-solve.md#b1-4平台快捷键展示与文档重做)。
 - Studio 源码按领域职责组织浅层模块；新增实现并入同域目录，避免继续扩大入口文件。
 
 ## 结果快照模型
