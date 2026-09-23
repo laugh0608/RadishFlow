@@ -64,6 +64,7 @@ UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-p
 | 运行控制与条件监视 | 暂停、单步、取消、条件求值 | [运行控制](runtime-messages/run-control-and-watch-conditions.md) |
 | 诊断工作台与多处联动 | 双区、定位、草稿、焦点与可访问性 | [工作台](runtime-messages/diagnostic-workbench-and-navigation.md) |
 | 记录存储与跨端消费 | 证据、规则、偏好及协议兼容 | [记录与消费者](runtime-messages/records-storage-and-consumers.md) |
+| 开发者诊断与模型验证 | 算法 / 模块 / 物性证据、对照实验与诊断包 | [开发者诊断](runtime-messages/developer-diagnostics-and-model-validation.md) |
 | 场景与验收矩阵 | 可观察预期与分阶段验证 | [验收矩阵](runtime-messages/scenarios-and-acceptance.md) |
 
 ### 单位与颜色状态

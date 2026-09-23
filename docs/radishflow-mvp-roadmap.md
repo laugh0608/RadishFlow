@@ -75,7 +75,7 @@ P2 的自动化按可交付切片展开：先做变量 / 动作描述和只读�
 
 ### 运行、消息与诊断的配套切片
 
-2026-09-23 确认 [运行与诊断大专题](topics/runtime-messages-and-diagnostics.md)，由六个子专题及 [需求追踪表](topics/runtime-messages/requirements-traceability.md) 承接细节、待决策和验收；新增 N0—N5 尚未实现，现有问题定位、恢复和 current 快照门禁继续维护。
+2026-09-23 确认 [运行与诊断大专题](topics/runtime-messages-and-diagnostics.md)，由七个子专题及 [需求追踪表](topics/runtime-messages/requirements-traceability.md) 承接细节、待决策和验收；新增 N0—N5 尚未实现，现有问题定位、恢复和 current 快照门禁继续维护。
 
 | 切片 | 进入时机 | 核心退出依据 |
 | --- | --- | --- |
@@ -87,6 +87,8 @@ P2 的自动化按可交付切片展开：先做变量 / 动作描述和只读�
 | N5 动态与高级调试 | P5 / P6 提供时间、事件及恢复能力后 | 运行 / 回放 / 检查点分开，黑箱粒度明确，各自验证 |
 
 主线仍为 U2→U3→规格 / 推荐→可信设备；N0 进入当前设计，N1 随规格基础，后续按运行依赖推进。消息布局不自行推动求解器改造，现有 CLI v1 / v2 的最终 JSON 与 SI 契约保持；完整暂停调试不阻塞 U2，具体接口、存储和依赖按专题切片审定。
+
+[开发者诊断与模型验证](topics/runtime-messages/developer-diagnostics-and-model-validation.md) 随 N0 / N1 补消费者维度与契约问题，N2 补真实调用 / 版本 / 诊断包，N4 按模型能力补数值详情和参数对照。独立模型实验不等待暂停；实时控制仍依赖 N3。需求 MSG-28—33 与 D-11—12 不改变主线顺序。
 
 ### 颜色与流程可视化的配套切片
 

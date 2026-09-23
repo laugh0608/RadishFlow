@@ -66,7 +66,7 @@
 
 ### 最新规划（2026-09-23）
 
-- 已确认 [运行、消息与诊断 N0—N5](../topics/runtime-messages-and-diagnostics.md)：N0 随 U2 / V0 设计，N1 与 A1 / A2 衔接，追踪及条件停止按运行能力推进。统一问题、事件及多处状态；后台、断点和新 UI 未实现。记录见 [W39](../devlogs/2026-09/2026-W39.md)，不改变 U2 优先级或现有结果门禁。
+- [运行与诊断 N0—N5](../topics/runtime-messages-and-diagnostics.md) 已确认，补入开发者诊断与模型验证。N0 随 U2 / V0，N1 衔接 A1 / A2，其余按能力推进；后台、暂停和开发工作台未实现。详见 [W39](../devlogs/2026-09/2026-W39.md)，保持 U2 优先与结果门禁。
 
 - U2 交互 / 保存及 [V0](../topics/color-and-state-system.md) 已形成候选，待审定；代码 / 画板未完成。
 

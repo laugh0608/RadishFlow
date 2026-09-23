@@ -29,6 +29,7 @@
 | [运行控制与条件监视](runtime-messages/run-control-and-watch-conditions.md) | 暂停、单步、取消、阈值与安全边界 | N3—N5 |
 | [诊断工作台与多处联动](runtime-messages/diagnostic-workbench-and-navigation.md) | 用户路径、定位、草稿、滚动与可访问性 | N0—N4 随能力 |
 | [记录存储与跨端消费](runtime-messages/records-storage-and-consumers.md) | 配置、证据、呈现偏好、保存与接口兼容 | N1—N5 随能力 |
+| [开发者诊断与模型验证](runtime-messages/developer-diagnostics-and-model-validation.md) | 算法 / 模块 / 物性 / 插件证据、模型实验与诊断包 | N0 / N1 / N2 / N4 随模型能力 |
 | [场景与验收矩阵](runtime-messages/scenarios-and-acceptance.md) | 独立预期、回归与验收方法 | 所有切片 |
 
 [需求追踪表](runtime-messages/requirements-traceability.md) 是实施与验证状态的唯一清单，关联 MSG 要求、所属专题、N 切片、S 场景和证据；D 项标明细化决策的最后进入时机。它不另写一份规范正文。
@@ -49,6 +50,8 @@
 | N5 动态与高级调试 | P5 / P6 提供真实时间、事件和相应恢复能力后 | 仿真时间、播放与运行控制分离，事件 / 检查点兼容验证，黑箱粒度明确 |
 
 工程顺序保持 U2→U3→规格 / 推荐→可信设备；N0 当前纳入设计，N1 随规格基础，N2—N5 按运行与模型依赖安排。完整 N 轨道不阻塞单位与设备基础交付，也不以统一 UI 为理由提前改变求解器。
+
+开发者诊断与工程视图共享事实；按任务展开模型、数值及技术详情，不因隐藏详情解除工程阻断。独立模型 / 物性实验和调用证据可先于后台调试，参数对照与导数检查随模型能力建设；MSG-28—33 的字段与载荷由 D-11 / D-12 衔接既有采集、数值及存储决策。
 
 ## 实施与验收入口
 

@@ -8,7 +8,7 @@
 读者：规划、实现、评审与测试维护者。
 不包含：规则正文的副本、冻结接口或本轮产品能力交付声明。
 
-父专题：[运行、消息与诊断](../runtime-messages-and-diagnostics.md)。本表为配套追踪，不是第七个功能子专题；场景正文见 [验收矩阵](scenarios-and-acceptance.md)。
+父专题：[运行、消息与诊断](../runtime-messages-and-diagnostics.md)。本表为配套追踪，不另立功能规范；场景正文见 [验收矩阵](scenarios-and-acceptance.md)。
 
 MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留来源。此处是实施 / 验证状态唯一真相，子专题维护规范，周志记录历史。新增代码或测试时关联要求与场景编号，可用测试名称 / 链接及提交证据，不要求在每个源文件散布编号。
 
@@ -50,6 +50,12 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 | MSG-25 | [重开、保留与损坏记录](records-storage-and-consumers.md) | N2 / N3 | S-25 | 待实现 / 待验证；— |
 | MSG-26 | [CLI 与跨端语义](records-storage-and-consumers.md) | N1 / N2 / 后续协议 | S-26 | 待实现 / 待验证；— |
 | MSG-27 | [导出范围与复现依据](records-storage-and-consumers.md) | N2 / 后续导出 | S-27 | 待实现 / 待验证；— |
+| MSG-28 | [消费者深度与工程影响](developer-diagnostics-and-model-validation.md) | N0 / N1 | S-28 | 待实现 / 待验证；— |
+| MSG-29 | [调用身份与模型契约](developer-diagnostics-and-model-validation.md) | N1 / N2 | S-29 | 待实现 / 待验证；— |
+| MSG-30 | [数值探针与按需载荷](developer-diagnostics-and-model-validation.md) | N2 / N4 | S-30 | 待实现 / 待验证；— |
+| MSG-31 | [物性方法与参数上下文](developer-diagnostics-and-model-validation.md) | N2 / N4 | S-31 | 待实现 / 待验证；— |
+| MSG-32 | [可比实验与独立验证](developer-diagnostics-and-model-validation.md) | N4 / 模型能力 | S-32 | 待实现 / 待验证；— |
+| MSG-33 | [开发诊断包与复现限制](developer-diagnostics-and-model-validation.md) | N2 / 后续导出 | S-33 | 待实现 / 待验证；— |
 
 ## 待决策清单
 
@@ -67,10 +73,12 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 | D-08 | [记录持久化与规则兼容](records-storage-and-consumers.md#切片待决策与最小验证) | MSG-23—25、27 | N2 持久化前，N3 / N4 规则保存前 / 存储与运行记录 |
 | D-09 | [外部协议与能力版本](records-storage-and-consumers.md#切片待决策与最小验证) | MSG-26—27 | 新协议实施前 / API 与适配层 |
 | D-10 | [验证载荷、指标与平台](scenarios-and-acceptance.md#切片评审与退出) | 全部，尤其 MSG-10、20—21 | 各切片实施前 / 实现与验证 |
+| D-11 | [开发诊断上下文、能力与采集策略](developer-diagnostics-and-model-validation.md#分期待决策与验收) | MSG-28—31 | N1 新契约诊断 / N2 首批探针前 / 模型、数值与运行记录 |
+| D-12 | [对照指标、独立预期与诊断包](developer-diagnostics-and-model-validation.md#分期待决策与验收) | MSG-32—33 | 首个比较 / 诊断包实现前 / 模型验证、物性与存储；衔接 D-03 / D-08 / D-09 |
 
 ## 覆盖维护与检查
 
 - 每项 MSG 必须有一个规范归属、实施切片和至少一个 S 场景；新失败模式先补场景，再决定是否需要新增要求。
 - 每个待决策 D 都应有负责领域、受影响要求和最迟进入时机；结论形成后保留编号与出处，不删去决定过程的索引。
 - 提交前核对编号唯一、场景双向对应、规范及证据链接有效，并检查父专题和路线图的阶段一致性。
-- 当前 N0 对应的语义与设计场景为 S-01、S-06、S-18、S-21、S-22；这些仅做设计评审，产品行为仍在所属阶段验证。
+- 当前 N0 对应的语义与设计场景为 S-01、S-06、S-18、S-21、S-22、S-28；这些仅做设计评审，产品行为仍在所属阶段验证。
