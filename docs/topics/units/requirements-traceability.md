@@ -37,16 +37,16 @@ U1 证据为 [W38 的 U1 记录](../../devlogs/2026-09/2026-W38.md) 与现有代
 
 ## 待决策清单
 
-以下均为细化待决策；确认后回写所属规范并保留决策编号和依据，不在实现时自行选定。
+以下均为细化待决策。2026-09-23 已基于现有代码为 UD-01—06 形成推荐候选，具体入口见各行；尚未获方案批准、接口冻结或产品验证。UD-07 / UD-08 保持后续切片决策。确认后回写所属规范并保留决策编号和依据，不在实现时自行选定。
 
 | 编号 | 决策 / 规范归属 | 关联要求 | 最迟时机 / 负责领域 |
 | --- | --- | --- | --- |
-| UD-01 | [内置集、自定义范围、格式、视图覆盖生命周期与目录扩充](unit-sets-and-persistence.md) | UNIT-01、05、08、09 | U2 单位集 / 菜单实施前；单位与 Studio |
-| UD-02 | [呈现 DTO、版本、未知 ID 保留、旧版本往返与草稿保存范围](unit-sets-and-persistence.md) | UNIT-06、07、11 | U2 文件格式变更前；存储与单位 |
-| UD-03 | [显示切换期间的草稿策略、失焦 / 跨对象 / 保存触发及事务重验](input-drafts-and-interactions.md#u2-事件表) | UNIT-09、10、11 | U2 局部交互评审与接线前；Studio 与应用事务 |
-| UD-04 | [文本 / 工程 / 呈现历史的快捷键路由与分组](input-drafts-and-interactions.md#u2-事件表) | UNIT-06、11 | U2 撤销交互实施前；编辑历史与 Studio |
-| UD-05 | [数值语法、本地化、粘贴单位、空值 / 清除与校验时机](input-drafts-and-interactions.md#值与草稿的边界) | UNIT-08、10、11 | U2 字段解析实施前；字段与单位 |
-| UD-06 | [实际编辑后的等价值判定、容差及独立数值 / 平台用例](input-drafts-and-interactions.md#精度事务与状态叠加) | UNIT-03、10、12 | U2 精度与提交实施前；事务、单位与验证 |
+| UD-01 | [内置集、自定义范围、格式、视图覆盖生命周期与目录扩充](unit-sets-and-persistence.md#首版单位集与适用范围) | UNIT-01、05、08、09 | U2 单位集 / 菜单实施前；单位与 Studio |
+| UD-02 | [呈现 DTO、版本、未知 ID 保留、旧版本往返与草稿保存范围](unit-sets-and-persistence.md#保存基线与格式建议) | UNIT-06、07、11 | U2 文件格式变更前；存储与单位 |
+| UD-03 | [显示切换期间的草稿策略、失焦 / 跨对象 / 保存触发及事务重验](input-drafts-and-interactions.md#推荐的事件选择) | UNIT-09、10、11 | U2 局部交互评审与接线前；Studio 与应用事务 |
+| UD-04 | [文本 / 工程 / 呈现历史的快捷键路由与分组](input-drafts-and-interactions.md#推荐的事件选择) | UNIT-06、11 | U2 撤销交互实施前；编辑历史与 Studio |
+| UD-05 | [数值语法、本地化、粘贴单位、空值 / 清除与校验时机](input-drafts-and-interactions.md#解析与精度候选) | UNIT-08、10、11 | U2 字段解析实施前；字段与单位 |
+| UD-06 | [实际编辑后的等价值判定、容差及独立数值 / 平台用例](input-drafts-and-interactions.md#解析与精度候选) | UNIT-03、10、12 | U2 精度与提交实施前；事务、单位与验证 |
 | UD-07 | [输出捕获时点、格式、覆盖选择和对外协议兼容](output-and-consumer-consistency.md) | UNIT-13、14、15 | U3 输出接入前；新协议 / 回放 / N4 各自实施前另审；输出与 API |
 | UD-08 | [上下文来源 / 有效性、定义版本与独立工程依据](catalog-and-conversion.md) | UNIT-16 | U4 各基准转换实施前；单位、物性与工程基础 |
 
