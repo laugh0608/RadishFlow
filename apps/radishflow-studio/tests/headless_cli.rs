@@ -389,3 +389,30 @@ fn headless_process_returns_json_for_bad_arguments_and_unreadable_files() {
 
 #[path = "headless_cli/workflow.rs"]
 mod workflow;
+
+#[test]
+fn headless_v2_project_keeps_si_protocol_and_rejects_invalid_presentation() {
+    let f = Fixture::new();
+    let path = f.root.join("工程 example.rfproj.json");
+    let mut file = rf_store::read_project_file(&path).unwrap();
+    file.schema_version = 2;
+    file.presentation.display_units = rf_types::units::DisplayUnitSet::engineering();
+    rf_store::write_project_file(&path, &file).unwrap();
+    let original = fs::read(&path).unwrap();
+    let (code, inspected) = f.command("inspect", &path);
+    assert_eq!(code, 0, "{inspected}");
+    let (code, result) = f.run(&f.request());
+    assert_eq!(code, 0, "{result}");
+    assert_eq!(result["variables"][0]["unit"], "K");
+    assert_eq!(result["variables"][0]["value"], 330.0);
+    assert_eq!(result["variables"][1]["unit"], "mol/s");
+    assert_eq!(fs::read(&path).unwrap(), original);
+    let invalid = String::from_utf8(original)
+        .unwrap()
+        .replace("\"celsius\"", "\"unknown-unit\"");
+    fs::write(&path, &invalid).unwrap();
+    let (code, result) = f.command("inspect", &path);
+    assert_ne!(code, 0);
+    assert!(result.to_string().contains("unknown unit ID"), "{result}");
+    assert_eq!(fs::read_to_string(&path).unwrap(), invalid);
+}

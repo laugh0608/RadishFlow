@@ -1,10 +1,12 @@
 //! Shared quantity semantics and measurement units. Engineering values remain canonical SI.
 //! Equipment identity is `crate::UnitId`; `MeasurementUnit` is a different domain concept.
 mod catalog;
+mod display_set;
 pub use catalog::{
     ALL_QUANTITIES, ALL_UNITS, ConversionRule, Dimension, MeasurementUnit, QuantityDefinition,
     QuantityKind, UnitDefinition,
 };
+pub use display_set::{DisplayUnitSet, DisplayUnitSetError};
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -53,11 +53,11 @@ Topics 文档回答“一个功能、能力包或开发目标怎么设计、分�
 | 主题 | 正式设计入口 | 下钻 |
 | --- | --- | --- |
 | 工程基础 | [设计基础、工况与数据来源](topics/engineering-basis-and-cases.md) | 共同条件、来源 / 假设、工况矩阵、位号与复现 |
-| 单位 | [单位总纲与四个子专题](topics/units-and-quantity-system.md) | [需求 / 验收追踪](topics/units/requirements-traceability.md)、[U2 实施切片提案](topics/units-and-quantity-system.md#u2-实施切片提案待审定)、[现有 SI 约定](reference/units-and-conventions.md) |
+| 单位 | [单位总纲与四个子专题](topics/units-and-quantity-system.md) | [需求 / 验收追踪](topics/units/requirements-traceability.md)、[U2 实施切片与状态](topics/units-and-quantity-system.md#u2-实施切片与状态)、[现有 SI 约定](reference/units-and-conventions.md) |
 | 颜色 / 状态 | [颜色总纲与四个子专题](topics/color-and-state-system.md) | [需求 / 验收追踪](topics/color-state/requirements-traceability.md) |
 | 确定性智能辅助 | [规格分析与建模辅助](topics/modeling-assistance-and-specifications.md) | [目标反算](topics/flowsheet-modeling-and-solve.md#设计规格求解规划尚未实现)、[工程检查与交付](topics/results-review-diagnostics.md#工程检查与交付规划尚未实现)；未来 Agent 复用统一接口 |
 | 设备工程 | [设备设计与校核](topics/equipment-design-and-rating.md) | [分离器](topics/equipment/separator-sizing-and-rating.md)、[换热器](topics/equipment/heat-exchanger-design-and-rating.md) |
-| UI 重设计 | [专题计划](architecture/studio-ui-topic-plan.md) | [主稿 brief](architecture/designs/studio-client-main-brief.md)；U2 / V0 局部画板已获认可，接口提案待审定 |
+| UI 重设计 | [专题计划](architecture/studio-ui-topic-plan.md) | [主稿 brief](architecture/designs/studio-client-main-brief.md)；U2 / V0 局部画板已获认可，I1 存储接通，交互待实施 |
 
 ## Development And Collaboration
 

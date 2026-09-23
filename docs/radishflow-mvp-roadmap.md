@@ -71,7 +71,7 @@ P2 的自动化按可交付切片展开：先做变量 / 动作描述和只读�
 
 设备能力是独立稳态工程主线，不排在 P5 / P6 之后；数值依赖按所用方法补齐。单位定义、规格规则与工程结果由领域拥有，UI、脚本和未来 Agent 均作消费者。当前不接入大模型，不为未来预建空模块、聊天占位页或通用框架。
 
-单位细化按 [需求追踪](topics/units/requirements-traceability.md) 与 [U2 事件表](topics/units/input-drafts-and-interactions.md#u2-事件表) 推进；U1 已实现，U2 / U3 待实现。2026-09-23 草稿路由与存储兼容方向已接受，[局部画板](architecture/designs/studio-client-main-brief.md#本轮画板与静态复核) 已获认可；[U2 内部切片与接口提案](topics/units-and-quantity-system.md#u2-实施切片提案待审定) 在实施前审定，不提前冻结。
+单位细化按 [需求追踪](topics/units/requirements-traceability.md) 与 [U2 事件表](topics/units/input-drafts-and-interactions.md#u2-事件表) 推进；U1 与 U2-I1 已实现，U2 后续 / U3 待实现。2026-09-23 草稿路由与存储兼容方向已接受，[局部画板](architecture/designs/studio-client-main-brief.md#本轮画板与静态复核) 已获认可；[U2 内部切片与接口提案](topics/units-and-quantity-system.md#u2-实施切片与状态) 按切片审定；I1 已完成，下一步 I2。
 
 ### 运行、消息与诊断的配套切片
 

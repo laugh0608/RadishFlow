@@ -28,9 +28,14 @@ pub struct DocumentLifecycleOutcome {
     pub has_unsaved_changes: bool,
 }
 
-/// Load only project inputs; runtime, cache and window state belong to the caller.
+/// Load project inputs and presentation; runtime, cache and window state belong to the caller.
 pub fn load_project_app_state(project_path: &Path) -> RfResult<AppState> {
-    let stored = read_project_file(project_path)?.document;
+    let project = read_project_file(project_path)?;
+    let presentation = rf_ui::ProjectPresentationState::from_loaded(
+        project.presentation.display_units,
+        project.schema_version,
+    );
+    let stored = project.document;
     let metadata = stored.metadata;
     let mut document = FlowsheetDocument::new(
         stored.flowsheet,
@@ -41,6 +46,7 @@ pub fn load_project_app_state(project_path: &Path) -> RfResult<AppState> {
     document.metadata.updated_at = metadata.updated_at;
 
     let mut app_state = AppState::new(document);
+    app_state.workspace.project_presentation = presentation;
     app_state.mark_saved(project_path.to_path_buf());
     Ok(app_state)
 }
@@ -67,6 +73,10 @@ pub fn dispatch_document_lifecycle(
 
     let project_file = stored_project_file_from_app_state(app_state);
     write_project_file(&path, &project_file)?;
+    app_state.workspace.project_presentation = rf_ui::ProjectPresentationState::from_loaded(
+        project_file.presentation.display_units,
+        project_file.schema_version,
+    );
     app_state.mark_saved(path.clone());
     app_state.log_feed.push(
         AppLogLevel::Info,
@@ -101,6 +111,18 @@ fn stored_project_file_from_app_state(app_state: &AppState) -> StoredProjectFile
             updated_at: metadata.updated_at,
         },
     );
+    // Until I2 supplies upgrade confirmation, new/legacy GUI projects keep v1 writes.
+    // A loaded v2 project must retain its format and complete presentation on every save.
+    project_file.schema_version = app_state
+        .workspace
+        .project_presentation
+        .source_file_version()
+        .unwrap_or(1);
+    project_file.presentation.display_units = app_state
+        .workspace
+        .project_presentation
+        .display_units()
+        .clone();
     project_file.document.revision = document.revision;
     project_file
 }
@@ -129,23 +151,8 @@ mod tests {
         app_state_from_project_file(path)
     }
 
-    fn app_state_from_project_file(path: &PathBuf) -> AppState {
-        let project_file = read_project_file(path).expect("expected project file");
-        let metadata = &project_file.document.metadata;
-        let mut document = rf_ui::FlowsheetDocument::new(
-            project_file.document.flowsheet,
-            rf_ui::DocumentMetadata::new(
-                metadata.document_id.clone(),
-                metadata.title.clone(),
-                metadata.created_at,
-            ),
-        );
-        document.revision = project_file.document.revision;
-        document.metadata.schema_version = metadata.schema_version;
-        document.metadata.updated_at = metadata.updated_at;
-        let mut app_state = AppState::new(document);
-        app_state.mark_saved(path.clone());
-        app_state
+    fn app_state_from_project_file(path: &Path) -> AppState {
+        load_project_app_state(path).expect("expected project app state")
     }
 
     #[test]
@@ -350,3 +357,6 @@ mod tests {
         let _ = fs::remove_file(source_path);
     }
 }
+
+#[cfg(test)]
+mod presentation_tests;

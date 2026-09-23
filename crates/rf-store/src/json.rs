@@ -41,10 +41,32 @@ pub fn write_project_file(
 }
 
 pub fn parse_project_file_json(contents: &str) -> RfResult<StoredProjectFile> {
-    let raw_value: Value = parse_json(contents, "deserialize stored project file envelope")?;
-    let migrated_value = migrate_project_file_value(raw_value)?;
-    let project_file: StoredProjectFile =
-        parse_json_value(migrated_value, "deserialize stored project file body")?;
+    // Probe the version, then deserialize ORIGINAL text: Value would discard duplicate keys.
+    let envelope: StoredEnvelope =
+        parse_json(contents, "deserialize stored project file envelope")?;
+    if envelope.kind.as_deref() != Some(STORED_PROJECT_FILE_KIND) {
+        return Err(RfError::invalid_input(format!(
+            "unsupported stored project file kind `{}`",
+            envelope.kind.unwrap_or_default()
+        )));
+    }
+    let project_file: StoredProjectFile = match envelope.schema_version {
+        1 | 2 => parse_json(contents, "deserialize stored project file body")?,
+        version if version > STORED_PROJECT_FILE_SCHEMA_VERSION => {
+            return Err(newer_schema_error(
+                "stored project file",
+                version,
+                STORED_PROJECT_FILE_SCHEMA_VERSION,
+            ));
+        }
+        version => {
+            return Err(older_schema_error(
+                "stored project file",
+                version,
+                STORED_PROJECT_FILE_SCHEMA_VERSION,
+            ));
+        }
+    };
     project_file.validate()?;
     Ok(project_file)
 }
@@ -293,31 +315,6 @@ where
         .map_err(|error| RfError::invalid_input(format!("{action}: {error}")))
 }
 
-fn migrate_project_file_value(value: Value) -> RfResult<Value> {
-    let envelope = parse_stored_envelope(&value, "stored project file")?;
-
-    if envelope.kind.as_deref() != Some(STORED_PROJECT_FILE_KIND) {
-        return Err(RfError::invalid_input(format!(
-            "unsupported stored project file kind `{}`",
-            envelope.kind.unwrap_or_default()
-        )));
-    }
-
-    match envelope.schema_version {
-        STORED_PROJECT_FILE_SCHEMA_VERSION => migrate_project_file_v1_to_current(value),
-        version if version > STORED_PROJECT_FILE_SCHEMA_VERSION => Err(newer_schema_error(
-            "stored project file",
-            version,
-            STORED_PROJECT_FILE_SCHEMA_VERSION,
-        )),
-        version => Err(older_schema_error(
-            "stored project file",
-            version,
-            STORED_PROJECT_FILE_SCHEMA_VERSION,
-        )),
-    }
-}
-
 fn migrate_studio_layout_file_value(value: Value) -> RfResult<Value> {
     let envelope = parse_stored_envelope(&value, "stored studio layout file")?;
 
@@ -447,10 +444,6 @@ fn migrate_property_package_payload_value(value: Value) -> RfResult<Value> {
             STORED_PROPERTY_PACKAGE_SCHEMA_VERSION,
         )),
     }
-}
-
-fn migrate_project_file_v1_to_current(value: Value) -> RfResult<Value> {
-    Ok(value)
 }
 
 fn migrate_studio_layout_file_v1_to_current(value: Value) -> RfResult<Value> {

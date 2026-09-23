@@ -1,5 +1,7 @@
 mod actions;
 mod input_commands;
+mod project_presentation;
+pub use project_presentation::ProjectPresentationState;
 mod unit_edit;
 pub use unit_edit::UnitCreateResult;
 pub(crate) mod unit_inspector;
@@ -437,6 +439,7 @@ pub struct WorkspaceState {
     allocated_unit_ids: BTreeSet<UnitId>,
     pub document: FlowsheetDocument,
     pub document_path: Option<PathBuf>,
+    pub project_presentation: ProjectPresentationState,
     pub last_saved_revision: Option<u64>,
     pub canvas_interaction: CanvasInteractionState,
     pub selection: SelectionState,
@@ -458,6 +461,7 @@ impl WorkspaceState {
             allocated_unit_ids: document.flowsheet.units.keys().cloned().collect(),
             document,
             document_path: None,
+            project_presentation: ProjectPresentationState::default(),
             last_saved_revision: None,
             canvas_interaction: CanvasInteractionState::default(),
             selection: SelectionState::default(),

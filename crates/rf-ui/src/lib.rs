@@ -70,7 +70,7 @@ pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, CanvasEditCommitResult, DateTimeUtc,
     DocumentHistoryApplyResult, DocumentHistoryDirection, DocumentMetadata, DraftValidationState,
     DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState, InspectorTarget, LocaleCode,
-    PanelLayoutPreferences, SelectionState, StreamConnectionEditResult,
+    PanelLayoutPreferences, ProjectPresentationState, SelectionState, StreamConnectionEditResult,
     StreamInspectorCompositionComponentAddResult, StreamInspectorCompositionComponentRemoveResult,
     StreamInspectorDraftBatchCommitResult, StreamInspectorDraftBatchDiscardResult,
     StreamInspectorDraftCommitResult, StreamInspectorDraftDiscardResult, StreamInspectorDraftField,
