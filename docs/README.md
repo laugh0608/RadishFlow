@@ -1,6 +1,6 @@
 # RadishFlow Docs
 
-更新时间：2026-09-23
+更新时间：2026-09-26
 
 ## 先读什么
 
@@ -52,6 +52,7 @@ Topics 文档回答“一个功能、能力包或开发目标怎么设计、分�
 
 | 主题 | 正式设计入口 | 下钻 |
 | --- | --- | --- |
+| 装置工程与数字孪生 | [长期愿景与领域关系](architecture/simulation-platform.md#装置工程与数字孪生愿景) | [工程容器](topics/project-lifecycle-storage.md#装置工程容器规划)、[配置与场景](topics/engineering-basis-and-cases.md#装置配置与运行场景规划)、[DT0—DT4 演进](radishflow-mvp-roadmap.md#装置工程与数字孪生的演进切片)；2026-09-26 确认，尚未实现 |
 | 工程基础 | [设计基础、工况与数据来源](topics/engineering-basis-and-cases.md) | 共同条件、来源 / 假设、工况矩阵、位号与复现 |
 | 单位 | [单位总纲与四个子专题](topics/units-and-quantity-system.md) | [需求 / 验收追踪](topics/units/requirements-traceability.md)、[U2 实施切片与状态](topics/units-and-quantity-system.md#u2-实施切片与状态)、[现有 SI 约定](reference/units-and-conventions.md) |
 | 颜色 / 状态 | [颜色总纲与四个子专题](topics/color-and-state-system.md) | [需求 / 验收追踪](topics/color-state/requirements-traceability.md) |
