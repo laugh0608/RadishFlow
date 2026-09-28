@@ -372,6 +372,8 @@ impl StudioRuntimeHostPort {
         window_id: StudioWindowHostId,
     ) -> Option<StudioWindowHostShutdown> {
         let mut state = self.windows.remove(&window_id)?;
+        self.runtime
+            .close_presentation_view(rf_ui::DisplayUnitViewId(window_id));
         if let Some(observer_layout_slot) = state.clear_observer_layout_slot() {
             self.allocated_observer_layout_slots
                 .remove(&observer_layout_slot);

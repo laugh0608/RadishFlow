@@ -537,6 +537,14 @@ impl StudioGuiPlatformHost {
         self.driver.state()
     }
 
+    pub fn numeric_field_presentation(
+        &self,
+        id: &rf_ui::variable_browser::VariableId,
+        view: Option<rf_ui::DisplayUnitViewId>,
+    ) -> Result<rf_ui::NumericFieldPresentation, rf_ui::NumericEditError> {
+        self.driver.host().numeric_field_presentation(id, view)
+    }
+
     pub fn document(&self) -> &rf_ui::FlowsheetDocument {
         self.driver.document()
     }

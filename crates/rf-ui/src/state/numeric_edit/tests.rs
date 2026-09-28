@@ -568,3 +568,59 @@ fn display_projection_keeps_active_input_and_engineering_history_independent() {
     assert!(field.text.starts_with("26.973456"));
     assert_eq!(app.workspace.document.revision, revision);
 }
+
+#[test]
+fn view_display_and_shared_editing_keep_original_si_and_input_units() {
+    let mut app = app();
+    let id = id(&app, VariableField::Temperature);
+    let view = DisplayUnitViewId(1);
+    let original = app.workspace.document.clone();
+    let mut units = ViewDisplayUnits::default();
+    units
+        .set_unit(Q::AbsoluteTemperature, Some(U::Celsius))
+        .unwrap();
+    app.workspace
+        .project_presentation
+        .apply(ProjectPresentationCommand::ApplyView { view, units });
+    let field = app
+        .workspace
+        .numeric_field_presentation_in_view(&id, Some(view))
+        .unwrap();
+    assert_eq!(field.input_unit, U::Celsius);
+    assert_eq!(
+        app.workspace
+            .numeric_field_presentation(&id)
+            .unwrap()
+            .input_unit,
+        U::Kelvin
+    );
+    let generation = app.begin_numeric_edit_in_view(id.clone(), view).unwrap();
+    assert_eq!(
+        app.begin_numeric_edit(id.clone(), None).unwrap(),
+        generation
+    );
+    assert_eq!(
+        app.workspace.numeric_edit(&id).unwrap().precision_source(),
+        NumericPrecisionSource::OriginalSi
+    );
+    let shared = app.workspace.numeric_field_presentation(&id).unwrap();
+    assert_eq!(shared.input_unit, U::Celsius);
+    assert_eq!(shared.display_unit, U::Kelvin);
+    app.workspace.project_presentation.close_view(view);
+    assert_eq!(
+        app.workspace.numeric_edit(&id).unwrap().input_unit(),
+        U::Celsius
+    );
+    let receipt = app
+        .commit_numeric_edit(&id, generation, UNIX_EPOCH)
+        .unwrap();
+    assert!(receipt.command.is_none());
+    assert_eq!(app.workspace.document, original);
+    assert_eq!(
+        app.workspace
+            .numeric_field_presentation_in_view(&id, Some(view))
+            .unwrap()
+            .input_unit,
+        U::Kelvin
+    );
+}

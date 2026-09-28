@@ -602,6 +602,22 @@ impl StudioAppWindowHostManager {
         trigger: &StudioRuntimeTrigger,
     ) -> RfResult<StudioAppWindowHostDispatch> {
         self.ensure_registered_window(window_id)?;
+        let view = match trigger {
+            StudioRuntimeTrigger::ProjectPresentation(
+                rf_ui::ProjectPresentationCommand::ApplyView { view, .. }
+                | rf_ui::ProjectPresentationCommand::CloseView(view),
+            )
+            | StudioRuntimeTrigger::NumericEdit(rf_ui::NumericEditCommand::BeginInView {
+                view,
+                ..
+            }) => Some(*view),
+            _ => None,
+        };
+        if view.is_some_and(|view| view.0 != window_id) {
+            return Err(RfError::invalid_input(
+                "Inspector display scope belongs to another window",
+            ));
+        }
         let dispatch = self.session.dispatch_trigger(window_id, trigger)?;
 
         Ok(StudioAppWindowHostDispatch {

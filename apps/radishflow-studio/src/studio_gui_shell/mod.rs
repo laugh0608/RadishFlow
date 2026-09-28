@@ -49,6 +49,7 @@ mod unit_deletion;
 mod unit_settings;
 mod utils;
 mod variable_browser;
+mod view_units;
 
 #[cfg(test)]
 mod tests;

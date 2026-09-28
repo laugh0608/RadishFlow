@@ -35,7 +35,7 @@ pub(super) fn project_numeric_fields(
             section: VariableSection::Inputs,
             field: parts.1,
         };
-        match controller.numeric_field_presentation(&id) {
+        match controller.numeric_field_presentation(&id, None) {
             Ok(presentation) => {
                 // Preserve legacy command projections for other consumers; native rendering uses
                 // exclusively the typed presentation and generation-checked numeric commands.
@@ -46,5 +46,15 @@ pub(super) fn project_numeric_fields(
                 field.commit_command_id = None;
             }
         }
+    }
+}
+
+impl StudioGuiHost {
+    pub fn numeric_field_presentation(
+        &self,
+        id: &VariableId,
+        view: Option<rf_ui::DisplayUnitViewId>,
+    ) -> Result<rf_ui::NumericFieldPresentation, rf_ui::NumericEditError> {
+        self.controller.numeric_field_presentation(id, view)
     }
 }

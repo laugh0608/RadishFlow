@@ -28,17 +28,17 @@ struct TypingGroup {
 
 impl ReadyAppState {
     fn refresh_numeric_field(&self, field: &mut NumericFieldPresentation) {
-        if let Some(current) = self
+        match self
             .platform_host
-            .snapshot()
-            .runtime
-            .active_inspector_detail
-            .into_iter()
-            .flat_map(|detail| detail.property_fields)
-            .filter_map(|field| field.numeric.and_then(Result::ok))
-            .find(|candidate| candidate.variable == field.variable)
+            .numeric_field_presentation(&field.variable, field.view)
         {
-            *field = current;
+            Ok(current) => *field = current,
+            Err(error) => {
+                field.issue = Some(NumericFieldIssue::Rejected(error.to_string()));
+                field.can_apply = false;
+                field.can_undo = false;
+                field.can_redo = false;
+            }
         }
     }
 
@@ -62,9 +62,17 @@ impl ReadyAppState {
     }
 
     fn begin_numeric_field(&mut self, field: &mut NumericFieldPresentation) -> bool {
-        field.generation.is_some()
-            || self
-                .dispatch_numeric_command(field, NumericEditCommand::Begin(field.variable.clone()))
+        if field.generation.is_some() {
+            return true;
+        }
+        let command = match field.view {
+            Some(view) => NumericEditCommand::BeginInView {
+                variable: field.variable.clone(),
+                view,
+            },
+            None => NumericEditCommand::Begin(field.variable.clone()),
+        };
+        self.dispatch_numeric_command(field, command)
     }
 
     pub(super) fn edit_numeric_field(

@@ -145,6 +145,8 @@ impl ReadyAppState {
                 self.platform_host = platform_host;
                 self.pending_format_upgrade = None;
                 self.unit_settings.draft = None;
+                self.unit_settings.view_draft = None;
+                self.unit_settings.closed_inspectors.clear();
                 self.pending_unit_deletion = None;
                 self.pending_result_export = None;
                 self.platform_timer_executor = EguiPlatformTimerExecutor::default();
@@ -274,6 +276,8 @@ impl ReadyAppState {
                 self.platform_host = platform_host;
                 self.pending_format_upgrade = None;
                 self.unit_settings.draft = None;
+                self.unit_settings.view_draft = None;
+                self.unit_settings.closed_inspectors.clear();
                 self.pending_unit_deletion = None;
                 self.pending_result_export = None;
                 self.platform_timer_executor = EguiPlatformTimerExecutor::default();

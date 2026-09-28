@@ -6,7 +6,8 @@ pub use numeric_edit::*;
 use stream_inspector::apply_stream_specification_value;
 mod project_presentation;
 pub use project_presentation::{
-    ProjectPresentationCommand, ProjectPresentationState, ProjectSaveState,
+    DisplayUnitViewId, ProjectPresentationCommand, ProjectPresentationState, ProjectSaveState,
+    ViewDisplayUnits,
 };
 mod unit_edit;
 pub use unit_edit::UnitCreateResult;

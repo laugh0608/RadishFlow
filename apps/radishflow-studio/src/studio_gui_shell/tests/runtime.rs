@@ -2155,3 +2155,30 @@ fn runtime_command_action_button_click_focuses_latest_result_stream() {
         Some(("Stream", "stream-vapor"))
     );
 }
+
+#[test]
+fn inspector_view_units_render_separately_from_module_settings_and_retire_on_close() {
+    use rf_types::units::{MeasurementUnit as U, QuantityKind as Q};
+    use rf_ui::{DisplayUnitViewId, ProjectPresentationCommand as P, ViewDisplayUnits};
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("inspector.focus_unit:feed-1");
+    let view = DisplayUnitViewId(app.current_window_id().unwrap());
+    let mut units = ViewDisplayUnits::default();
+    units
+        .set_unit(Q::AbsoluteTemperature, Some(U::Celsius))
+        .unwrap();
+    app.apply_presentation_command(P::ApplyView { view, units })
+        .unwrap();
+    let window = app.platform_host.snapshot().window_model();
+    let inspector = render_runtime_inspector_tab_texts(&mut app, &window);
+    let settings = render_runtime_module_settings_tab_texts(&mut app, &window);
+    assert!(inspector.iter().any(|text| text == "°C"));
+    assert!(inspector.iter().any(|text| text.starts_with("26.85")));
+    assert!(settings.iter().any(|text| text == "300"));
+    assert!(settings.iter().any(|text| text == "K"));
+    assert!(!settings.iter().any(|text| text == "°C"));
+    app.close_inspector_view(view).unwrap();
+    let closed = render_runtime_inspector_tab_texts(&mut app, &window);
+    assert!(closed.iter().any(|text| text == "重新打开检查器"));
+    assert!(!closed.iter().any(|text| text == "°C"));
+}

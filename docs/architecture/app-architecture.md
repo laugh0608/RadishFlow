@@ -482,7 +482,7 @@ egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、�
 
 ## 草稿态结构建议
 
-字段草稿集中归工作区；温压流量由 `NumericEditSession` 持有，原生控件消费 `NumericFieldPresentation`、通过带身份 / 代次的 `NumericEditCommand` 写入；组合预览和局部历史不进入工程事务。其他字段沿用原类型。
+字段草稿集中归工作区；温压流量由 `NumericEditSession` 持有，原生控件消费 `NumericFieldPresentation`、通过带身份 / 代次的 `NumericEditCommand` 写入；组合输入和局部历史不进工程事务，其他字段沿用原类型。Inspector 按窗口持有临时单位覆盖，退役清其历史；保存只消费项目单位。
 
 草稿保留原值、当前输入、变更事实和校验状态，供显式提交前验证及面板批量应用复用。数值解析、精度、组合输入和事务边界以 [单位编辑专题](../topics/units/input-drafts-and-interactions.md) 为准。
 

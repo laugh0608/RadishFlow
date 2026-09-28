@@ -500,6 +500,13 @@ impl BootstrapSession {
         &self.host_runtime
     }
 
+    pub(crate) fn close_presentation_view(&mut self, view: rf_ui::DisplayUnitViewId) {
+        self.app_state
+            .workspace
+            .project_presentation
+            .close_view(view);
+    }
+
     pub(crate) fn app_state(&self) -> &AppState {
         &self.app_state
     }

@@ -37,6 +37,9 @@ impl ReadyAppState {
             return;
         }
 
+        if !self.render_inspector_view_controls(ui) {
+            return;
+        }
         ui.label(egui::RichText::new(self.locale.text(ShellText::InspectorProperties)).strong());
         if let Some(target) = window.runtime.active_inspector_target.as_ref() {
             render_wrapped_label(ui, &target.summary);

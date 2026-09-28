@@ -94,3 +94,5 @@ pub use state::{
 pub use state::{
     NumericEditCommand, NumericFieldIssue, NumericFieldPresentation, NumericFieldSource,
 };
+
+pub use state::{DisplayUnitViewId, ViewDisplayUnits};

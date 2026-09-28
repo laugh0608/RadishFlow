@@ -162,6 +162,23 @@ impl AppState {
         id: VariableId,
         input_unit: Option<MeasurementUnit>,
     ) -> Result<u64, NumericEditError> {
+        self.begin_numeric_edit_with_view(id, input_unit, None)
+    }
+
+    pub fn begin_numeric_edit_in_view(
+        &mut self,
+        id: VariableId,
+        view: DisplayUnitViewId,
+    ) -> Result<u64, NumericEditError> {
+        self.begin_numeric_edit_with_view(id, None, Some(view))
+    }
+
+    fn begin_numeric_edit_with_view(
+        &mut self,
+        id: VariableId,
+        input_unit: Option<MeasurementUnit>,
+        view: Option<DisplayUnitViewId>,
+    ) -> Result<u64, NumericEditError> {
         let key = field_key(&id)?;
         let (quantity, baseline) = self.workspace.numeric_field(&id)?;
         if let Ok(session) = self.workspace.numeric_edit(&id) {
@@ -175,8 +192,7 @@ impl AppState {
         let unit = input_unit.unwrap_or_else(|| {
             self.workspace
                 .project_presentation
-                .display_units()
-                .unit_for(quantity)
+                .effective_unit(view, quantity)
         });
         let display = from_canonical(baseline.value.unwrap_or(0.0), quantity, unit)
             .map_err(NumericEditError::Conversion)?;

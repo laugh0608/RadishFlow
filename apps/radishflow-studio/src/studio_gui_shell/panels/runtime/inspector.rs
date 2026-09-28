@@ -163,7 +163,7 @@ impl ReadyAppState {
                 });
             }
             for field in &settings.parameter_fields {
-                self.render_inspector_property_field(ui, field);
+                self.render_inspector_property_field(ui, field, None);
             }
         }
 
@@ -268,6 +268,9 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         detail: &radishflow_studio::StudioGuiWindowInspectorTargetDetailModel,
     ) {
+        if !self.render_inspector_view_controls(ui) {
+            return;
+        }
         ui.horizontal_wrapped(|ui| {
             ui.label(
                 egui::RichText::new(self.locale.text(ShellText::ActiveInspectorTarget)).strong(),
@@ -402,7 +405,11 @@ impl ReadyAppState {
                 });
             }
             for field in &detail.property_fields {
-                self.render_inspector_property_field(ui, field);
+                self.render_inspector_property_field(
+                    ui,
+                    field,
+                    self.current_window_id().map(rf_ui::DisplayUnitViewId),
+                );
             }
         }
 
@@ -524,15 +531,20 @@ impl ReadyAppState {
         &mut self,
         ui: &mut egui::Ui,
         field: &radishflow_studio::StudioGuiWindowInspectorTargetFieldModel,
+        view: Option<rf_ui::DisplayUnitViewId>,
     ) {
         if let Some(numeric) = &field.numeric {
             match numeric {
-                Ok(numeric) => self.render_numeric_property_field(
-                    ui,
-                    &field.key,
-                    &inspector_field_label(self.locale, field),
-                    numeric,
-                ),
+                Ok(numeric) => {
+                    let mut numeric = numeric.clone();
+                    numeric.view = view;
+                    self.render_numeric_property_field(
+                        ui,
+                        &field.key,
+                        &inspector_field_label(self.locale, field),
+                        &numeric,
+                    );
+                }
                 Err(reason) => {
                     ui.label(inspector_field_label(self.locale, field));
                     ui.label(reason);

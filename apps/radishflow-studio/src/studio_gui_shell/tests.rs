@@ -728,3 +728,4 @@ mod unit_rename;
 
 mod numeric_edits;
 mod unit_presentation;
+mod view_units;

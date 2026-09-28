@@ -4,6 +4,8 @@ use rf_ui::ProjectPresentationCommand;
 
 pub(super) struct UnitSettingsState {
     pub draft: Option<(String, DisplayUnitSet)>,
+    pub view_draft: Option<super::view_units::ViewUnitSettingsDraft>,
+    pub closed_inspectors: std::collections::BTreeSet<rf_ui::DisplayUnitViewId>,
     pub default_units: Result<DisplayUnitSet, String>,
     pub pending_new: Option<Option<AuthoringCaseKind>>,
     default_path: PathBuf,
@@ -20,6 +22,8 @@ impl UnitSettingsState {
             .map_err(|error| error.to_string());
         Self {
             draft: None,
+            view_draft: None,
+            closed_inspectors: Default::default(),
             recovery_required: units.is_err(),
             default_units: units,
             pending_new: None,
@@ -30,7 +34,10 @@ impl UnitSettingsState {
     }
 
     pub fn is_open(&self) -> bool {
-        self.draft.is_some() || self.pending_new.is_some() || self.pending_recovery.is_some()
+        self.draft.is_some()
+            || self.view_draft.is_some()
+            || self.pending_new.is_some()
+            || self.pending_recovery.is_some()
     }
 }
 
@@ -46,6 +53,7 @@ impl ReadyAppState {
 
     pub(super) fn open_unit_settings(&mut self) {
         self.command_palette.close();
+        self.unit_settings.view_draft = None;
         let document = self.platform_host.snapshot().runtime.workspace_document;
         self.unit_settings.draft = Some((
             document.document_id,
@@ -118,6 +126,9 @@ impl ReadyAppState {
     }
 
     pub(super) fn render_unit_settings(&mut self, ctx: &egui::Context) -> bool {
+        if self.render_view_unit_settings(ctx) {
+            return true;
+        }
         if let Some(authoring) = self.unit_settings.pending_new {
             let response = egui::Modal::new(egui::Id::new("invalid-unit-default-new-project")).show(ctx, |ui| {
                 ui.heading("个人单位默认不可用");
@@ -159,7 +170,7 @@ impl ReadyAppState {
         let response = egui::Modal::new(egui::Id::new("project-display-units")).show(ctx, |ui| {
             ui.set_min_width(430.0);
             ui.heading("项目显示单位");
-            ui.label("作用范围：当前工程，随工程文件保存。当前输入与结果仍以各自单位标签为准。");
+            ui.label("作用范围：当前工程，随工程文件保存。检查器可单独覆盖；当前输入保持本次输入单位，结果仍以自身标签为准。");
             ui.horizontal(|ui| {
                 if ui.button("完整 SI").clicked() {
                     units = DisplayUnitSet::si();
@@ -227,6 +238,7 @@ impl ReadyAppState {
                     close = true;
                 }
             });
+            ui.label("撤销 / 重做按项目与检查器共用的呈现历史执行；恢复已保存设置只影响项目。");
             ui.horizontal(|ui| {
                 for (label, command, enabled) in [
                     (

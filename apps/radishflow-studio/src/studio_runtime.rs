@@ -355,6 +355,10 @@ impl StudioRuntime {
         self.session.host_runtime()
     }
 
+    pub(crate) fn close_presentation_view(&mut self, view: rf_ui::DisplayUnitViewId) {
+        self.session.close_presentation_view(view);
+    }
+
     pub fn app_state(&self) -> &rf_ui::AppState {
         self.session.app_state()
     }

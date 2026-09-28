@@ -629,6 +629,7 @@ impl StudioAppHost {
     pub fn numeric_field_presentation(
         &self,
         id: &rf_ui::variable_browser::VariableId,
+        view: Option<rf_ui::DisplayUnitViewId>,
     ) -> Result<rf_ui::NumericFieldPresentation, rf_ui::NumericEditError> {
         self.window_host_manager
             .session()
@@ -636,7 +637,7 @@ impl StudioAppHost {
             .runtime()
             .app_state()
             .workspace
-            .numeric_field_presentation(id)
+            .numeric_field_presentation_in_view(id, view)
     }
 
     pub fn inspector_drafts(&self) -> &rf_ui::InspectorDraftState {
@@ -1000,8 +1001,9 @@ impl StudioAppHostController {
     pub fn numeric_field_presentation(
         &self,
         id: &rf_ui::variable_browser::VariableId,
+        view: Option<rf_ui::DisplayUnitViewId>,
     ) -> Result<rf_ui::NumericFieldPresentation, rf_ui::NumericEditError> {
-        self.app_host.numeric_field_presentation(id)
+        self.app_host.numeric_field_presentation(id, view)
     }
 
     pub fn inspector_drafts(&self) -> &rf_ui::InspectorDraftState {

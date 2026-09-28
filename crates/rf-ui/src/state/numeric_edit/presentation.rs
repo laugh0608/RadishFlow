@@ -4,6 +4,7 @@ use super::*;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NumericFieldPresentation {
     pub variable: VariableId,
+    pub view: Option<DisplayUnitViewId>,
     pub quantity: QuantityKind,
     pub source: NumericFieldSource,
     pub display_unit: MeasurementUnit,
@@ -36,6 +37,10 @@ pub enum NumericFieldIssue {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NumericEditCommand {
     Begin(VariableId),
+    BeginInView {
+        variable: VariableId,
+        view: DisplayUnitViewId,
+    },
     Edit {
         variable: VariableId,
         generation: u64,
@@ -56,8 +61,16 @@ impl WorkspaceState {
         &self,
         id: &VariableId,
     ) -> Result<NumericFieldPresentation, NumericEditError> {
+        self.numeric_field_presentation_in_view(id, None)
+    }
+
+    pub fn numeric_field_presentation_in_view(
+        &self,
+        id: &VariableId,
+        view: Option<DisplayUnitViewId>,
+    ) -> Result<NumericFieldPresentation, NumericEditError> {
         let (quantity, baseline) = self.numeric_field(id)?;
-        let display_unit = self.project_presentation.display_units().unit_for(quantity);
+        let display_unit = self.project_presentation.effective_unit(view, quantity);
         let committed_text = baseline
             .value
             .map(|si| {
@@ -80,6 +93,7 @@ impl WorkspaceState {
             });
         Ok(NumericFieldPresentation {
             variable: id.clone(),
+            view,
             quantity,
             source: if baseline.value.is_none() {
                 NumericFieldSource::Missing
@@ -111,6 +125,9 @@ impl AppState {
         changed_at: DateTimeUtc,
     ) -> Result<Option<u64>, NumericEditError> {
         match command {
+            NumericEditCommand::BeginInView { variable, view } => {
+                self.begin_numeric_edit_in_view(variable, view).map(Some)
+            }
             NumericEditCommand::Begin(id) => self.begin_numeric_edit(id, None).map(Some),
             NumericEditCommand::Edit {
                 variable,
