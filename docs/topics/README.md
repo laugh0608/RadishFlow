@@ -46,8 +46,8 @@
 | 项目生命周期与存储 | Active | 明确打开、保存、另存为、最近项目、sidecar 和脏改确认的长期边界 | `project-lifecycle-storage.md` |
 | CAPE-OPEN PMC 适配层 | Active | 完善 `.NET 10` PMC 生命周期与调用可靠性，保持 COM 注册和 PME 验证基线 | `capeopen-pmc-adapter.md` |
 | 工程设计基础、工况与数据来源 | Draft | 共享工程条件、来源 / 假设、工况矩阵、位号与复现依据 | [工程基础](engineering-basis-and-cases.md) |
-| 单位系统与输入显示 | Active | U1 / U2-I1 已接通；U2 后续 / U3 待实现，颜色状态 V0 同步设计 | [单位系统](units-and-quantity-system.md) |
-| 颜色与状态系统 | Draft | V0 事实来源、状态叠加、控件映射、主题和迁移验收；未完成统一迁移 | [颜色与状态](color-and-state-system.md) |
+| 单位系统与输入显示 | Active | U1、U2 保存 / 会话及首批控件 / 视图已接通；剩余交互、验收与 U3 待续 | [单位系统](units-and-quantity-system.md) |
+| 颜色与状态系统 | Active | V0 首批数值字段已接通；设置 / 保存及其他消费者和运行态验收待续 | [颜色与状态](color-and-state-system.md) |
 | 规格分析与建模辅助 | Draft | 分层规格 / 自由度检查、可解释规则与固定工作流、未来 Agent 入口 | [建模辅助](modeling-assistance-and-specifications.md) |
 | 设备设计与性能校核 | Draft | 独立设备及流程关联，初步选型、设计、校核与采纳 | [设备工程](equipment-design-and-rating.md) |
 

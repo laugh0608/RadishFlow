@@ -1,6 +1,6 @@
 # 颜色与状态系统
 
-更新时间：2026-09-23
+更新时间：2026-09-28
 
 ## 用途与状态
 
@@ -9,7 +9,7 @@
 不包含：第二套领域状态机、求解 / 输出门禁、具体色值、已实现的统一主题或产品验收声明。
 
 - 层级：一级轨道；关联 [平台](../architecture/simulation-platform.md)、[单位](units-and-quantity-system.md)、[消息](runtime-messages-and-diagnostics.md)、[结果](results-review-diagnostics.md) 与 [UI 计划](../architecture/studio-ui-topic-plan.md)。
-- 状态：Draft / V0 方向已确认，统一映射、控件迁移与可访问性验收待实施；现有控件与诊断只作为复用基础，不冒充 V0 已验收。
+- 状态：Active / V0 方向已确认，首批数值字段已接通类型化映射与局部浅色角色；设置 / 保存及其他消费者待迁移，原生可访问性与完整 V0 未验收。
 - 时机：V0 随 U2 / N0 / R0—R1 设计，消费者随 U2 / U3 / 规格辅助逐步迁移；不改变 U2→U3→规格辅助→设备工程的顺序。
 
 ## 目标与职责
@@ -29,6 +29,6 @@
 
 ## 阶段与退出
 
-V0 的设计退出要求首批温压流量字段、跨视图代表组合、主题与非颜色表达完成局部评审，并明确适用 VD 决策。消费者的实现退出要求按已审定范围逐项测试 / 实窗验证，设计文档完成不是迁移完成。2026-09-23 首批方案已获接受，[局部画板](../architecture/designs/studio-client-main-brief.md#本轮画板与静态复核) 已静态复核并获项目所有者认可；[呈现接口提案](color-state/control-and-canvas-mapping.md#v0-呈现接口提案待审定) 待审定，产品仍未实施。
+V0 的设计退出要求首批温压流量字段、跨视图代表组合、主题与非颜色表达完成局部评审，并明确适用 VD 决策。消费者的实现退出要求按已审定范围逐项测试 / 实窗验证，设计文档完成不是迁移完成。2026-09-23 首批方案已获接受，[局部画板](../architecture/designs/studio-client-main-brief.md#本轮画板与静态复核) 已静态复核并获项目所有者认可；[呈现接口提案](color-state/control-and-canvas-mapping.md#v0-呈现接口提案待审定) 的通用扩展仍待后续消费者审定；2026-09-28 首批温压流量已按有限接口接通，代码与合成事件证据见 [实施范围](color-state/control-and-canvas-mapping.md#v0-首批数值控件实施)，不代表全部消费者或 VA 产品验收完成。
 
 V1 流向、V2 数据着色、V3 设备三维和 V4 真实动态回放继续归 [结果可视化](results-review-diagnostics.md#流程可视化与回放规划尚未实现)，阶段顺序见 [路线图](../radishflow-mvp-roadmap.md#颜色与流程可视化的配套切片)。后续图层消费本专题的状态叠加与主题规则，不在本轮增设图形引擎、依赖或 schema。

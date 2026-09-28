@@ -602,7 +602,7 @@ pub struct StepSnapshot {
 - Unit Inspector：Feed、Heater / Cooler、Flash Drum 提交出口温压，Mixer、Valve 提交出口压力；`SetUnitParameter` 同步出口模板。Mixer / Heater / Cooler / Valve 出口压力不高于入口；缺显式参数时，同值也须正式提交。
 - 数值会话统一持有原文、单位与全精度候选；提交复用 SI 事务，成功仅清目标会话，其他数值编辑保留并重验。工程历史先保护数值草稿，通用变更不静默丢弃。
 - GUI window-model 必须把“显示值有效但缺显式 unit parameter”的字段暴露为可提交状态，并提供正式 `commit_command_id`；这种状态不是普通已同步字段，也不是控件私有 fallback
-- Unit Inspector 参数字段必须携带 SI 单位和约束 presentation；无效草稿不写文档/历史/模板。已入文档的无效参数由 `solver.step.parameter` 等诊断暴露，并携带 unit / port / stream context
+- Unit Inspector 携带量、输入 / 显示单位及约束，提交保持 SI；无效草稿不写文档/历史/模板。已入文档的无效参数由 `solver.step.parameter` 等诊断暴露，并携带 unit / port / stream context
 - 运行前 readiness 只读取已提交的文档态输入，不读取 Inspector 草稿，也不自动补写默认值；未就绪时 shell 显示“模型输入未完成”并聚焦到对应 stream / unit。缺物性包、缓存缺失或多包歧义继续交给正式 run package resolution 和 Run Panel 诊断
 
 采用这个方案的原因：
@@ -747,7 +747,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - 失败详情只消费 `latest_diagnostic`，显示 primary code、revision、severity、count 与相关 target；GUI 不从 message 文本反解析或私造端口级 command。Run Panel recovery action 必须区分聚焦与修复，用户主动选中流股后的恢复动作走对应 `canvas.*selected_stream*` 命令，不复用 failure-only recovery command。
 - `StudioAppHostController` 对 `DispatchCanvasInteraction` 不应无条件 `refresh_local_canvas_suggestions()`；local-rules refresh 只应发生在真正改写文档或显式要求重算 suggestion 的路径上，避免破坏 GUI 命令面的连续交互语义。
 - `studio_gui_shell` 已通过 shell 级等价回归锁定 run panel、canvas suggestion、layout nudge、选中流股恢复和 disabled gate 在菜单、工具栏、命令面板、Canvas / Inspector 入口之间的共享派发语义；后续提示应停留在 presentation 层，不越过 disabled gate 改状态。
-- 文本焦点拥有 Undo / Redo，其他适用焦点派发文档历史；Inspector 当前 Enter 提交有效字段、Escape 保留草稿；[U2 交互](../topics/units/input-drafts-and-interactions.md) 待实施。键位以 `Primary` 表达平台主修饰键、`Ctrl` 表达物理 Control，绑定与标签同源；macOS 使用 ⌘S / ⌘Z / ⇧⌘Z，保留 ⌘Y 别名，Windows / Linux 使用 Ctrl+S / Ctrl+Z / Ctrl+Y。输入使用事件自身修饰键，文档确认状态优先阻断快捷键；平台证据见 [B1-4](../topics/flowsheet-modeling-and-solve.md#b1-4平台快捷键展示与文档重做)。
+- 数值焦点消费会话历史；Enter 提交、Escape 取消，菜单 / IME 优先，见 [U2](../topics/units/input-drafts-and-interactions.md)。其他文本沿用控件历史；非文本走工程历史并保护数值草稿。键位以 `Primary` 表达平台主修饰键、`Ctrl` 表达物理 Control，绑定与标签同源；macOS 使用 ⌘S / ⌘Z / ⇧⌘Z，保留 ⌘Y 别名，Windows / Linux 使用 Ctrl+S / Ctrl+Z / Ctrl+Y。输入使用事件自身修饰键，文档确认状态优先阻断快捷键；平台证据见 [B1-4](../topics/flowsheet-modeling-and-solve.md#b1-4平台快捷键展示与文档重做)。
 - Studio 源码按领域职责组织浅层模块；新增实现并入同域目录，避免继续扩大入口文件。
 
 ## 结果快照模型

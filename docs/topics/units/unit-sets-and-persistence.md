@@ -114,13 +114,13 @@ I1 格式采用外层项目版本 2 保存与 document 并列的呈现块；块�
 
 ### 呈现状态与保存事务
 
-I2 的 [ProjectPresentationState](../../../crates/rf-ui/src/state/project_presentation.rs) 持有 current / saved、独立 undo / redo 和来源版本。`Apply`、`Undo`、`Redo`、`RestoreSaved` 只改项目呈现；无变化不创建历史，保存不清空历史，保存后的撤销会重新产生呈现脏状态。设置弹层的未应用选择由 shell 持有，个人默认写盘不进历史。I4 已将视图覆盖纳入同一呈现历史，按作用范围保存逆向变更；关闭视图移除其 Undo / Redo 条目，工程历史仍独立。
+[ProjectPresentationState](../../../crates/rf-ui/src/state/project_presentation.rs) 持有项目 current / saved、临时视图覆盖、独立 undo / redo 和来源版本。`Apply` / `RestoreSaved` 只替换项目单位，`ApplyView` 只替换指定视图；Undo / Redo 按作用范围恢复逆向变更。无变化不创建历史，保存不清空历史；保存后撤销项目选择会重新计算呈现脏状态，视图历史不影响保存比较。关闭视图移除其 Undo / Redo 条目，工程历史仍独立。设置弹层未应用选择由 shell 持有，个人默认写盘不进历史。
 
 `WorkspaceState::project_save_state()` 统一返回 `ProjectSaveState { document_dirty, presentation_dirty, pending_input_count }`。前两项合成总体待保存，草稿数量另列；窗口标题、打开 / 新建 / 关闭保护和保存回执消费该摘要。保存不会提交或丢弃草稿；有未提交输入时，“保存并关闭”仍保留窗口，用户须返回处理或明确放弃。
 
 [加载 / 保存驱动](../../../apps/radishflow-studio/src/document_lifecycle_driver.rs) 捕获已提交文档与已应用配置，复用安全写入，成功后才更新路径、来源版本和两项基线。失败 / 取消不动基线、历史、草稿或结果。新建工程保存 v2；v1 普通 Save / SaveAs 明确拒绝，shell 先展示升级 / 另存为 / 取消选择，再派发 `SaveUpgraded { path }`。该命令是应用层显式同意标记，不进入工程模型或 CLI SI 协议。
 
-最小设置入口位于“设置 → 项目显示单位”，提供 SI / 工程预设、七类量逐项选择、应用 / 取消、项目呈现撤销 / 重做 / 恢复和新工程默认。此时只持久化单位选择；I4 首批数值字段按项目 / 视图选择换算；结果等未接入消费者仍以自身 SI 标签为准，按 U3 推进。
+最小设置入口位于“设置 → 项目显示单位”，提供 SI / 工程预设、七类量逐项选择、应用 / 取消、呈现撤销 / 重做、恢复已保存项目选择和新工程默认。此时只持久化单位选择；I4 首批数值字段按项目 / 视图选择换算；结果等未接入消费者仍以自身 SI 标签为准，按 U3 推进。
 
 ### 个人默认的兼容取舍
 
