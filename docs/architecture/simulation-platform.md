@@ -1,6 +1,6 @@
 # 可扩展流程模拟平台长期规划
 
-更新时间：2026-09-26
+更新时间：2026-09-28
 
 ## 用途与决策状态
 
@@ -303,6 +303,8 @@ Manifest 是权限声明，实际安全性需要受控 Host API 与运行时隔�
 Aspen Plus 历史 [User Guide Volume 3 第 38 章](https://sites.chemengr.ucsb.edu/~ceweb/courses/che184b/aspenplus/UserGuideVol3.pdf) 明确介绍通过 Variable Explorer 查看可供 Automation 访问的树结构、变量与属性。该资料为历史版本指南，只用来确认设计机制；RadishFlow 不承诺复刻它或 HYSYS 的具体对象名和接口。
 
 ### 对象、变量与动作树
+
+2026-09-28 确认 [统一变量与对象浏览器专题](../topics/variable-and-object-browser.md)，承接 OLGA 工程分类 / 属性 / 定位与 Aspen Plus 变量树式访问的组合方向。工程视图与变量树是同一领域数据的投影；产品交互、路径 / 身份细化、读写与批量边界、VB0—VB3 和验收归该专题。下述长期架构保持，具体路径协议、存储与画板尚未冻结，B3 既有基础不等于新增工作区已实现。
 
 以下是目标示意，路径、名称和调用签名尚未冻结：
 
