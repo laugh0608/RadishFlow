@@ -44,7 +44,7 @@ fn stream_input_readiness_focuses_composition_then_saves_reopens_and_reruns_offi
         &[("methane", "0.2"), ("ethane", "0.6")],
     );
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     let saved_feed = &saved.document.flowsheet.streams[&rf_types::StreamId::new("stream-feed")];
     assert_close(
@@ -108,7 +108,7 @@ fn unit_parameter_failure_recovery_saves_reopens_and_reruns_official_case() {
         "unit:valve-1:outlet_pressure_pa",
         "650000",
     );
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert_eq!(
         saved.document.flowsheet.units[&UnitId::new("valve-1")]
@@ -191,7 +191,7 @@ fn blank_project_valve_parameter_failure_surfaces_diagnostic_context() {
         "85000",
     );
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let mut saved = read_project_file(&project_path).expect("expected saved blank valve project");
     saved
         .document
@@ -325,7 +325,7 @@ fn unbound_outlet_failure_recovery_saves_reopens_and_reruns_official_case() {
     assert_dirty_after_recovery(&app);
     assert_active_inspector_target(&app, "Unit", "feed-1");
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert_eq!(
         stored_unit_port_stream_id(&saved, "feed-1", "outlet"),
@@ -352,7 +352,7 @@ fn unbound_outlet_failure_recovery_saves_reopens_and_reruns_official_case() {
         "stream-feed-1-outlet",
         &[("methane", "0.2"), ("ethane", "0.6")],
     );
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
 
     reopen_and_assert_clean(&mut app, &project_path);
     run_and_assert_converged(&mut app);
@@ -386,7 +386,7 @@ fn missing_stream_reference_recovery_saves_reopens_and_completes_after_outlet_cr
     assert_dirty_after_recovery(&app);
     assert_active_inspector_target(&app, "Unit", "heater-1");
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert_eq!(
         stored_unit_port_stream_id(&saved, "heater-1", "outlet"),
@@ -408,7 +408,7 @@ fn missing_stream_reference_recovery_saves_reopens_and_completes_after_outlet_cr
     assert_dirty_after_recovery(&app);
     assert_active_inspector_target(&app, "Unit", "heater-1");
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert_eq!(
         stored_unit_port_stream_id(&saved, "heater-1", "outlet"),
@@ -434,7 +434,7 @@ fn missing_stream_reference_recovery_saves_reopens_and_completes_after_outlet_cr
         "unit:heater-1:outlet_pressure_pa",
         "94000",
     );
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
 
     reopen_and_assert_clean(&mut app, &project_path);
     run_and_assert_converged(&mut app);
@@ -468,7 +468,7 @@ fn duplicate_source_recovery_saves_reopens_and_completes_after_outlet_creation()
     assert_dirty_after_recovery(&app);
     assert_active_inspector_target(&app, "Unit", "feed-2");
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert_eq!(stored_unit_port_stream_id(&saved, "feed-2", "outlet"), None);
 
@@ -487,7 +487,7 @@ fn duplicate_source_recovery_saves_reopens_and_completes_after_outlet_creation()
     assert_dirty_after_recovery(&app);
     assert_active_inspector_target(&app, "Unit", "feed-2");
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert_eq!(
         stored_unit_port_stream_id(&saved, "feed-2", "outlet"),
@@ -520,7 +520,7 @@ fn duplicate_source_recovery_saves_reopens_and_completes_after_outlet_creation()
         "unit:mixer-1:outlet_pressure_pa",
         "90000",
     );
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
 
     reopen_and_assert_clean(&mut app, &project_path);
     run_and_assert_converged(&mut app);
@@ -552,7 +552,7 @@ fn orphan_stream_recovery_saves_reopens_and_reruns_official_case() {
     app.dispatch_ui_command("run_panel.recover_failure");
     assert_dirty_after_recovery(&app);
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert!(
         !saved
@@ -587,7 +587,7 @@ fn orphan_stream_recovery_saves_reopens_and_reruns_official_case() {
         "unit:flash-1:outlet_pressure_pa",
         "85000",
     );
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert_eq!(
         saved.document.flowsheet.units[&UnitId::new("heater-1")]
@@ -646,7 +646,7 @@ fn duplicate_sink_recovery_saves_reopens_and_exposes_unbound_inlet_path() {
     assert_dirty_after_recovery(&app);
     assert_active_inspector_target(&app, "Unit", "mixer-1");
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert_eq!(
         stored_unit_port_stream_id(&saved, "mixer-1", "inlet_a"),
@@ -696,7 +696,7 @@ fn missing_upstream_recovery_saves_reopens_and_exposes_unbound_inlet_path() {
     assert_dirty_after_recovery(&app);
     assert_active_inspector_target(&app, "Unit", "mixer-1");
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert_eq!(
         stored_unit_port_stream_id(&saved, "mixer-1", "inlet_a"),
@@ -797,7 +797,7 @@ fn invalid_port_signature_recovery_saves_reopens_and_reruns_official_case() {
     assert_dirty_after_recovery(&app);
     assert_active_inspector_target(&app, "Unit", "feed-1");
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert_eq!(
         stored_unit_port_stream_id(&saved, "feed-1", "outlet"),
@@ -845,7 +845,7 @@ fn self_loop_recovery_saves_reopens_and_exposes_unbound_inlet_path() {
     assert_dirty_after_recovery(&app);
     assert_active_inspector_target(&app, "Unit", "flash-1");
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert_eq!(stored_unit_port_stream_id(&saved, "flash-1", "inlet"), None);
 
@@ -890,7 +890,7 @@ fn two_unit_cycle_recovery_saves_reopens_and_exposes_unbound_inlet_path() {
     assert_dirty_after_recovery(&app);
     assert_active_inspector_target(&app, "Unit", "heater-1");
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert_eq!(
         stored_unit_port_stream_id(&saved, "heater-1", "inlet"),

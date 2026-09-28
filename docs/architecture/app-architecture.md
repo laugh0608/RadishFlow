@@ -258,7 +258,7 @@ egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、�
 - `command_history`、`solve_session`、`snapshot_history` 并列存在，互不吞并
 - `snapshot_history` 负责持有不可变快照实体，`SolveSessionState` 只保留引用
 - `run_panel` 派生摘要与命令，不替代会话、快照或日志；视图消费 `RunPanelViewModel`
-- `project_presentation` 只读持有单位集与来源版本；保存基线、历史及设置待 I2，见 [存储接口](../topics/units/unit-sets-and-persistence.md#u2-存储接口)
+- `project_presentation` 持有单位集、保存基线、来源版本与独立历史；不推进求解修订，见 [存储接口](../topics/units/unit-sets-and-persistence.md#u2-存储接口)
 
 ### `FlowsheetDocument`
 

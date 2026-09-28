@@ -197,6 +197,29 @@ fn dispatch_bootstrap_trigger(
                 "bootstrap run panel recovery action is unavailable in current widget model",
             )
         }),
+        StudioBootstrapTrigger::ProjectPresentation(command) => {
+            let changed = session
+                .app_state
+                .workspace
+                .project_presentation
+                .apply(command.clone());
+            Ok(StudioBootstrapDispatch::ProjectPresentation { changed })
+        }
+        StudioBootstrapTrigger::NewProjectDisplayUnits(units) => {
+            let workspace = &mut session.app_state.workspace;
+            if workspace.document_path.is_some()
+                || workspace.document.revision != 0
+                || workspace.project_presentation.can_undo()
+                || workspace.project_presentation.can_redo()
+            {
+                return Err(RfError::invalid_input(
+                    "unit defaults only initialize a pristine new project",
+                ));
+            }
+            workspace.project_presentation =
+                rf_ui::ProjectPresentationState::for_new_project(units.clone());
+            Ok(StudioBootstrapDispatch::ProjectPresentation { changed: true })
+        }
         StudioBootstrapTrigger::DocumentLifecycle(command) => {
             let outcome = dispatch_document_lifecycle(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::DocumentLifecycle(outcome))

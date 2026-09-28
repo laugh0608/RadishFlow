@@ -1,7 +1,9 @@
 mod actions;
 mod input_commands;
 mod project_presentation;
-pub use project_presentation::ProjectPresentationState;
+pub use project_presentation::{
+    ProjectPresentationCommand, ProjectPresentationState, ProjectSaveState,
+};
 mod unit_edit;
 pub use unit_edit::UnitCreateResult;
 pub(crate) mod unit_inspector;

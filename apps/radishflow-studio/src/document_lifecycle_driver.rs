@@ -10,7 +10,13 @@ pub const FILE_SAVE_AS_COMMAND_ID: &str = "file.save_as";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioDocumentLifecycleCommand {
     Save,
-    SaveAs { path: PathBuf },
+    SaveAs {
+        path: PathBuf,
+    },
+    /// Explicit caller consent to write an older project using the current format.
+    SaveUpgraded {
+        path: PathBuf,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,6 +32,7 @@ pub struct DocumentLifecycleOutcome {
     pub revision: u64,
     pub last_saved_revision: Option<u64>,
     pub has_unsaved_changes: bool,
+    pub save_state: rf_ui::ProjectSaveState,
 }
 
 /// Load project inputs and presentation; runtime, cache and window state belong to the caller.
@@ -55,6 +62,7 @@ pub fn dispatch_document_lifecycle(
     app_state: &mut AppState,
     command: StudioDocumentLifecycleCommand,
 ) -> RfResult<DocumentLifecycleOutcome> {
+    let upgrade_confirmed = matches!(command, StudioDocumentLifecycleCommand::SaveUpgraded { .. });
     let (action, path) = match command {
         StudioDocumentLifecycleCommand::Save => {
             let path =
@@ -63,17 +71,35 @@ pub fn dispatch_document_lifecycle(
                 })?;
             (StudioDocumentLifecycleAction::Save, path)
         }
-        StudioDocumentLifecycleCommand::SaveAs { path } => {
+        StudioDocumentLifecycleCommand::SaveAs { path }
+        | StudioDocumentLifecycleCommand::SaveUpgraded { path } => {
             if path.as_os_str().is_empty() {
                 return Err(RfError::invalid_input("save-as project path is empty"));
             }
-            (StudioDocumentLifecycleAction::SaveAs, path)
+            let action =
+                if upgrade_confirmed && app_state.workspace.document_path.as_ref() == Some(&path) {
+                    StudioDocumentLifecycleAction::Save
+                } else {
+                    StudioDocumentLifecycleAction::SaveAs
+                };
+            (action, path)
         }
     };
 
+    if app_state
+        .workspace
+        .project_presentation
+        .source_file_version()
+        == Some(1)
+        && !upgrade_confirmed
+    {
+        return Err(RfError::invalid_input(
+            "project format upgrade requires confirmation; older versions cannot read the upgraded file",
+        ));
+    }
     let project_file = stored_project_file_from_app_state(app_state);
     write_project_file(&path, &project_file)?;
-    app_state.workspace.project_presentation = rf_ui::ProjectPresentationState::from_loaded(
+    app_state.workspace.project_presentation.record_saved(
         project_file.presentation.display_units,
         project_file.schema_version,
     );
@@ -93,8 +119,11 @@ pub fn dispatch_document_lifecycle(
         path,
         revision: app_state.workspace.document.revision,
         last_saved_revision: app_state.workspace.last_saved_revision,
-        has_unsaved_changes: app_state.workspace.last_saved_revision
-            != Some(app_state.workspace.document.revision),
+        has_unsaved_changes: app_state
+            .workspace
+            .project_save_state()
+            .has_unsaved_changes(),
+        save_state: app_state.workspace.project_save_state(),
     })
 }
 
@@ -111,13 +140,6 @@ fn stored_project_file_from_app_state(app_state: &AppState) -> StoredProjectFile
             updated_at: metadata.updated_at,
         },
     );
-    // Until I2 supplies upgrade confirmation, new/legacy GUI projects keep v1 writes.
-    // A loaded v2 project must retain its format and complete presentation on every save.
-    project_file.schema_version = app_state
-        .workspace
-        .project_presentation
-        .source_file_version()
-        .unwrap_or(1);
     project_file.presentation.display_units = app_state
         .workspace
         .project_presentation
@@ -189,7 +211,11 @@ mod tests {
         .unwrap();
         assert!(rf_ui::latest_snapshot(&app.workspace).is_none());
         assert_eq!(rf_ui::stale_snapshot(&app.workspace), Some(&original));
-        dispatch_document_lifecycle(&mut app, StudioDocumentLifecycleCommand::Save).unwrap();
+        dispatch_document_lifecycle(
+            &mut app,
+            StudioDocumentLifecycleCommand::SaveUpgraded { path: path.clone() },
+        )
+        .unwrap();
         let bytes = fs::read(&path).unwrap();
         let saved = read_project_file(&path).unwrap();
         assert_eq!(saved.document.revision, app.workspace.document.revision);
@@ -247,9 +273,11 @@ mod tests {
             SystemTime::now(),
         );
 
-        let outcome =
-            dispatch_document_lifecycle(&mut app_state, StudioDocumentLifecycleCommand::Save)
-                .expect("expected save outcome");
+        let outcome = dispatch_document_lifecycle(
+            &mut app_state,
+            StudioDocumentLifecycleCommand::SaveUpgraded { path: path.clone() },
+        )
+        .expect("expected save outcome");
 
         assert_eq!(outcome.action, StudioDocumentLifecycleAction::Save);
         assert_eq!(outcome.path, path);
@@ -282,7 +310,7 @@ mod tests {
 
         let outcome = dispatch_document_lifecycle(
             &mut app_state,
-            StudioDocumentLifecycleCommand::SaveAs {
+            StudioDocumentLifecycleCommand::SaveUpgraded {
                 path: target_path.clone(),
             },
         )
@@ -326,7 +354,7 @@ mod tests {
 
         let error = dispatch_document_lifecycle(
             &mut app_state,
-            StudioDocumentLifecycleCommand::SaveAs {
+            StudioDocumentLifecycleCommand::SaveUpgraded {
                 path: target_path.clone(),
             },
         )

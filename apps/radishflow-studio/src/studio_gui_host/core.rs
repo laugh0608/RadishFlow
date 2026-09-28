@@ -1556,6 +1556,8 @@ fn workspace_document_snapshot_from_controller(
         revision: document.revision,
         last_saved_revision: controller.document_last_saved_revision(),
         has_unsaved_changes: controller.document_has_unsaved_changes(),
+        save_state: controller.project_save_state(),
+        presentation: controller.project_presentation().clone(),
         project_path: controller
             .document_path()
             .map(|path| path.display().to_string()),

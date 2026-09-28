@@ -14,6 +14,8 @@ pub struct StudioGuiWorkspaceDocumentSnapshot {
     pub revision: u64,
     pub last_saved_revision: Option<u64>,
     pub has_unsaved_changes: bool,
+    pub save_state: rf_ui::ProjectSaveState,
+    pub presentation: rf_ui::ProjectPresentationState,
     pub project_path: Option<String>,
     pub property_package_id: Option<String>,
     pub property_package_choices: Vec<StudioGuiPropertyPackageChoiceSnapshot>,

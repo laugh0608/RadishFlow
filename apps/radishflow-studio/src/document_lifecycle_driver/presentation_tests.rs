@@ -52,14 +52,18 @@ fn legacy_open_and_save_do_not_silently_upgrade_or_dirty_the_document() {
         Some(app.workspace.document.revision)
     );
     let before = app.workspace.document.clone();
-    let outcome =
-        dispatch_document_lifecycle(&mut app, StudioDocumentLifecycleCommand::Save).unwrap();
+    let state = app.clone();
+    assert!(dispatch_document_lifecycle(&mut app, StudioDocumentLifecycleCommand::Save).is_err());
+    assert_eq!(app, state);
+    assert_eq!(fs::read_to_string(&path).unwrap(), V1);
+    let outcome = dispatch_document_lifecycle(
+        &mut app,
+        StudioDocumentLifecycleCommand::SaveUpgraded { path: path.clone() },
+    )
+    .unwrap();
     assert!(!outcome.has_unsaved_changes);
     assert_eq!(app.workspace.document, before);
-    let written: serde_json::Value =
-        serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
-    assert_eq!(written["schemaVersion"], 1);
-    assert!(written.get("presentation").is_none());
+    assert_eq!(read_project_file(&path).unwrap().schema_version, 2);
 }
 
 #[test]
@@ -121,7 +125,7 @@ fn v2_failed_save_preserves_loaded_configuration_and_saved_path() {
 }
 
 #[test]
-fn new_gui_document_remains_v1_until_upgrade_flow_is_available() {
+fn new_gui_document_writes_v2_without_legacy_upgrade_prompt() {
     let f = Fixture::new();
     let mut app = AppState::new(FlowsheetDocument::new(
         rf_model::Flowsheet::new("new"),
@@ -137,9 +141,65 @@ fn new_gui_document_remains_v1_until_upgrade_flow_is_available() {
         StudioDocumentLifecycleCommand::SaveAs { path: path.clone() },
     )
     .unwrap();
-    assert_eq!(read_project_file(path).unwrap().schema_version, 1);
+    assert_eq!(read_project_file(path).unwrap().schema_version, 2);
     assert_eq!(
         app.workspace.project_presentation.source_file_version(),
-        Some(1)
+        Some(2)
     );
+}
+
+#[test]
+fn presentation_save_failure_and_undo_keep_physics_results_and_drafts_separate() {
+    use rf_ui::ProjectPresentationCommand;
+    let f = Fixture::new();
+    let path = f.path("v2.rfproj.json");
+    fs::write(&path, V2).unwrap();
+    let mut app = load_project_app_state(&path).unwrap();
+    let before = app.workspace.document.clone();
+    let solve = app.workspace.solve_session.clone();
+    app.workspace
+        .project_presentation
+        .apply(ProjectPresentationCommand::Apply(DisplayUnitSet::si()));
+    let save = app.workspace.project_save_state();
+    assert!(!save.document_dirty);
+    assert!(save.presentation_dirty);
+    assert!(save.needs_close_confirmation());
+    let bad = f.path("directory");
+    fs::create_dir(&bad).unwrap();
+    let pending = app.clone();
+    assert!(
+        dispatch_document_lifecycle(
+            &mut app,
+            StudioDocumentLifecycleCommand::SaveAs { path: bad }
+        )
+        .is_err()
+    );
+    assert_eq!(app, pending);
+    let outcome =
+        dispatch_document_lifecycle(&mut app, StudioDocumentLifecycleCommand::Save).unwrap();
+    assert!(!outcome.save_state.has_unsaved_changes());
+    assert_eq!(app.workspace.document, before);
+    assert_eq!(app.workspace.solve_session, solve);
+    assert!(app.workspace.command_history.is_empty());
+    assert_eq!(
+        load_project_app_state(&path)
+            .unwrap()
+            .workspace
+            .project_presentation
+            .display_units(),
+        &DisplayUnitSet::si()
+    );
+    assert!(
+        app.workspace
+            .project_presentation
+            .apply(ProjectPresentationCommand::Undo)
+    );
+    assert!(app.workspace.project_save_state().presentation_dirty);
+    assert_eq!(app.workspace.document, before);
+    assert!(
+        app.workspace
+            .project_presentation
+            .apply(ProjectPresentationCommand::Redo)
+    );
+    assert!(!app.workspace.project_save_state().has_unsaved_changes());
 }

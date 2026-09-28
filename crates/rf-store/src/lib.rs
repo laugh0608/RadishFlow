@@ -1,3 +1,8 @@
+mod unit_defaults;
+pub use unit_defaults::{
+    UNIT_DEFAULTS_FILE_NAME, parse_unit_defaults, read_unit_defaults, recover_unit_defaults,
+    write_unit_defaults,
+};
 mod auth_cache;
 mod integrity;
 mod json;

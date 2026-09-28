@@ -39,10 +39,13 @@ mod home_dashboard;
 mod locale;
 mod modeling_readiness;
 mod panels;
+mod project_close;
 mod project_layout_save;
 mod project_picker;
+mod project_save;
 mod result_export;
 mod unit_deletion;
+mod unit_settings;
 mod utils;
 mod variable_browser;
 
@@ -122,6 +125,8 @@ struct ReadyAppState {
     project_open: ProjectOpenState,
     pending_unit_deletion: Option<unit_deletion::PendingUnitDeletion>,
     pending_result_export: Option<result_export::PendingResultExport>,
+    pending_format_upgrade: Option<project_save::PendingFormatUpgrade>,
+    unit_settings: unit_settings::UnitSettingsState,
     home_workspace_return_available: bool,
     home_selected_current_workspace: bool,
     home_selected_recent_project: Option<PathBuf>,
@@ -434,6 +439,8 @@ impl ReadyAppState {
             command_palette: CommandPaletteState::default(),
             pending_unit_deletion: None,
             pending_result_export: None,
+            pending_format_upgrade: None,
+            unit_settings: unit_settings::UnitSettingsState::load(&preferences_path),
             project_open: ProjectOpenState::from_path_and_recent(
                 &config.project_path,
                 recent_projects,
@@ -468,7 +475,22 @@ impl ReadyAppState {
         if let Some(notice) = preferences_notice {
             ready.project_open.notice = Some(notice);
         }
+        if let Err(error) = &ready.unit_settings.default_units {
+            ready.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Warning,
+                title: "个人单位默认未加载".into(),
+                detail: format!(
+                    "{error}。原文件已保留；新建时可明确选择 SI，或在显示单位设置中恢复默认。"
+                ),
+            });
+        }
         ready.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+        if config.untitled_blank_project.is_some() {
+            match &ready.unit_settings.default_units {
+                Ok(units) => ready.initialize_new_project_units(units.clone()),
+                Err(_) => ready.unit_settings.pending_new = Some(None),
+            }
+        }
         ready.apply_default_hidden_commands_panel_for_current_window()?;
         Ok(ready)
     }

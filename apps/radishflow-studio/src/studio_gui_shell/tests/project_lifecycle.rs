@@ -282,7 +282,7 @@ fn unit_parameter_edits_save_reopen_and_rerun_official_examples() {
             case.name
         );
 
-        app.save_project();
+        save_project_with_upgrade_consent(&mut app);
         let saved = read_project_file(&project_path)
             .unwrap_or_else(|error| panic!("expected {} saved project read: {error}", case.name));
         assert_saved_unit_parameter(&saved, case);
@@ -384,7 +384,7 @@ fn property_package_selection_saves_reopens_and_preferred_run_uses_selection() {
     );
     assert!(selected.runtime.workspace_document.has_unsaved_changes);
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert_eq!(
         saved.document.flowsheet.property_package_id(),
@@ -488,7 +488,7 @@ fn project_component_selection_saves_reopens_and_feeds_composition_choices() {
             .eq(["methane", "ethane"].into_iter())
     );
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert!(
         saved
@@ -584,7 +584,7 @@ fn feed_composition_drafts_normalize_save_reopen_and_rerun_official_case() {
     let normalized = app.platform_host.snapshot().window_model();
     assert!(normalized.runtime.workspace_document.has_unsaved_changes);
 
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     let saved_feed = &saved.document.flowsheet.streams[&rf_types::StreamId::new("stream-feed")];
     assert_close(
@@ -654,7 +654,7 @@ fn selected_stream_reconnect_saves_reopens_and_reruns_official_case() {
     );
 
     app.dispatch_ui_command("canvas.reconnect_selected_stream");
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&project_path).expect("expected saved project read");
     assert_eq!(
         stored_unit_port_stream_id(&saved, "heater-1", "outlet"),
@@ -960,7 +960,7 @@ fn saving_untitled_blank_project_uses_save_as_picker() {
     .expect("expected app state");
 
     app.create_blank_project();
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
 
     let window = app.platform_host.snapshot().window_model();
     assert_eq!(
@@ -1008,7 +1008,7 @@ fn saving_untitled_blank_project_allows_creating_another_blank_project() {
     .expect("expected app state");
 
     app.create_blank_project();
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     assert!(
         !app.platform_host
             .snapshot()
@@ -1055,7 +1055,7 @@ fn saving_untitled_blank_project_allows_opening_example_project() {
     .expect("expected app state");
 
     app.create_blank_project();
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     assert!(
         !app.platform_host
             .snapshot()
@@ -1304,6 +1304,9 @@ fn save_pending_close_writes_existing_dirty_project_before_close() {
     );
     assert!(!app.close_current_window_for_viewport_request());
 
+    assert!(!app.save_pending_close_window());
+    assert!(app.pending_format_upgrade.is_some());
+    app.confirm_format_upgrade();
     assert!(app.save_pending_close_window());
 
     assert_eq!(app.logical_window_count(), 0);
@@ -1336,6 +1339,7 @@ fn save_project_as_from_picker_writes_project_and_records_recent_project() {
     .expect("expected app state");
 
     app.save_project_as_from_picker();
+    app.confirm_format_upgrade();
 
     let window = app.platform_host.snapshot().window_model();
     assert_eq!(
@@ -1402,6 +1406,7 @@ fn save_project_as_from_picker_requires_confirmation_before_overwrite() {
     );
 
     app.confirm_pending_save_as_overwrite();
+    app.confirm_format_upgrade();
 
     let window = app.platform_host.snapshot().window_model();
     assert_eq!(
@@ -1443,6 +1448,7 @@ fn failed_confirmed_save_as_keeps_workspace_state_and_retry_target() {
     );
 
     app.confirm_pending_save_as_overwrite();
+    app.confirm_format_upgrade();
 
     let failed_window = app.platform_host.snapshot().window_model();
     assert_eq!(

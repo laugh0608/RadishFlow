@@ -596,6 +596,14 @@ fn run_command_surfaces_messages_when_solve_fails() {
     assert_eq!(app.bottom_drawer_tab, StudioShellBottomDrawerTab::Messages);
 }
 
+// Existing modeling scenarios explicitly accept the new v1 -> v2 save gate.
+fn save_project_with_upgrade_consent(app: &mut ReadyAppState) {
+    app.save_project();
+    if app.pending_format_upgrade.is_some() {
+        app.confirm_format_upgrade();
+    }
+}
+
 fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
     ReadyAppState::from_config(config, test_preferences_path("default"))
         .expect("expected app state")

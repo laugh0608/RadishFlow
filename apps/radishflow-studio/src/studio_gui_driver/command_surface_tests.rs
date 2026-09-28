@@ -76,6 +76,9 @@ fn gui_driver_routes_ui_command_request_through_single_event_entry() {
 #[test]
 fn gui_driver_saves_current_project_through_command_surface() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut project = read_project_file(&project_path).unwrap();
+    project.schema_version = rf_store::STORED_PROJECT_FILE_SCHEMA_VERSION;
+    rf_store::write_project_file(&project_path, &project).unwrap();
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
     driver
         .dispatch_event(StudioGuiEvent::OpenWindowRequested)
@@ -156,6 +159,9 @@ fn gui_driver_saves_current_project_through_command_surface() {
 #[test]
 fn gui_driver_routes_primary_s_from_text_input_to_save_command() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
+    let mut project = read_project_file(&project_path).unwrap();
+    project.schema_version = rf_store::STORED_PROJECT_FILE_SCHEMA_VERSION;
+    rf_store::write_project_file(&project_path, &project).unwrap();
     let mut driver = StudioGuiDriver::new(&config).expect("expected driver");
     driver
         .dispatch_event(StudioGuiEvent::OpenWindowRequested)

@@ -128,6 +128,7 @@ fn deleting_middle_unit_preserves_external_bindings_saves_reopens_and_undo_rerun
     assert!(snapshot(&app).runtime.latest_solve_snapshot.is_none());
     assert!(snapshot(&app).runtime.stale_solve_snapshot.is_some());
     app.dispatch_ui_command(radishflow_studio::FILE_SAVE_COMMAND_ID);
+    app.confirm_format_upgrade();
     let deleted = read_project_file(&project_path).unwrap();
     assert_eq!(
         deleted.document.flowsheet.streams,
@@ -159,7 +160,7 @@ fn deleting_middle_unit_preserves_external_bindings_saves_reopens_and_undo_rerun
         Some(position)
     );
     assert!(snapshot(&app).runtime.latest_solve_snapshot.is_none());
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     app.open_project(project_path.clone(), "test restored project");
     assert_eq!(
         read_project_file(&project_path).unwrap().document.flowsheet,
@@ -187,7 +188,7 @@ fn deleting_middle_unit_preserves_external_bindings_saves_reopens_and_undo_rerun
 
     request_delete(&mut app, "heater-1");
     app.confirm_unit_deletion();
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     app.open_project(project_path.clone(), "test deleted project");
     assert_eq!(snapshot(&app).runtime.workspace_document.unit_count, 2);
     app.dispatch_ui_command("run_panel.run_manual");
@@ -212,7 +213,7 @@ fn untitled_project_first_save_preserves_only_live_unit_positions() {
     let heater = place(&mut app, "heater", rf_ui::CanvasPoint::new(200.0, 90.0));
     request_delete(&mut app, &heater);
     app.confirm_unit_deletion();
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     assert!(
         !snapshot(&app)
             .runtime
@@ -262,7 +263,7 @@ fn layout_save_failure_reports_saved_project_and_can_be_retried() {
     let mut app = ready_app_state(&config);
     let sidecar = studio_layout_path_for_project(&path);
     fs::create_dir(&sidecar).unwrap();
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     assert!(read_project_file(&path).is_ok());
     assert!(
         !snapshot(&app)
@@ -275,7 +276,7 @@ fn layout_save_failure_reports_saved_project_and_can_be_retried() {
         "项目已保存，布局保存失败"
     );
     fs::remove_dir(&sidecar).unwrap();
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     assert!(read_studio_layout_file(&sidecar).is_ok());
     assert_eq!(
         app.project_open.notice.as_ref().unwrap().title,

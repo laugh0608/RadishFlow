@@ -680,8 +680,29 @@ impl StudioAppHost {
             .last_saved_revision
     }
 
+    pub fn project_save_state(&self) -> rf_ui::ProjectSaveState {
+        self.window_host_manager
+            .session()
+            .host_port()
+            .runtime()
+            .app_state()
+            .workspace
+            .project_save_state()
+    }
+
+    pub fn project_presentation(&self) -> &rf_ui::ProjectPresentationState {
+        &self
+            .window_host_manager
+            .session()
+            .host_port()
+            .runtime()
+            .app_state()
+            .workspace
+            .project_presentation
+    }
+
     pub fn document_has_unsaved_changes(&self) -> bool {
-        self.document_last_saved_revision() != Some(self.document().revision)
+        self.project_save_state().has_unsaved_changes()
     }
 
     pub fn latest_solve_snapshot(&self) -> Option<rf_ui::SolveSnapshot> {
@@ -981,6 +1002,14 @@ impl StudioAppHostController {
 
     pub fn document_last_saved_revision(&self) -> Option<u64> {
         self.app_host.document_last_saved_revision()
+    }
+
+    pub fn project_save_state(&self) -> rf_ui::ProjectSaveState {
+        self.app_host.project_save_state()
+    }
+
+    pub fn project_presentation(&self) -> &rf_ui::ProjectPresentationState {
+        self.app_host.project_presentation()
     }
 
     pub fn document_has_unsaved_changes(&self) -> bool {

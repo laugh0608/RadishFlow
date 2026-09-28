@@ -870,7 +870,8 @@ mod tests {
             StudioRuntimeDispatch::RunPanelRecovery(_) => {
                 panic!("expected entitlement session event dispatch")
             }
-            StudioRuntimeDispatch::DocumentLifecycle(_) => {
+            StudioRuntimeDispatch::ProjectPresentation { .. }
+            | StudioRuntimeDispatch::DocumentLifecycle(_) => {
                 panic!("expected entitlement session event dispatch")
             }
             StudioRuntimeDispatch::InspectorTarget(_) => {

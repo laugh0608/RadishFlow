@@ -409,6 +409,11 @@ impl ReadyAppState {
     }
 
     pub(super) fn render_settings_top_menu_content(&mut self, ui: &mut egui::Ui) {
+        if ui.button("项目显示单位…").clicked() {
+            self.open_unit_settings();
+            ui.close_menu();
+        }
+        ui.separator();
         ui.label(egui::RichText::new(self.locale.text(ShellText::Language)).strong());
         let english = self.locale.text(ShellText::English);
         let chinese = self.locale.text(ShellText::Chinese);

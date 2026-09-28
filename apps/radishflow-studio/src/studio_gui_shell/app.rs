@@ -80,7 +80,8 @@ impl ReadyAppState {
             .snapshot()
             .runtime
             .workspace_document
-            .has_unsaved_changes
+            .save_state
+            .needs_close_confirmation()
         {
             self.project_open.pending_confirmation = None;
             self.project_open.pending_blank_project_confirmation = true;
@@ -122,11 +123,28 @@ impl ReadyAppState {
         &mut self,
         authoring_case: Option<AuthoringCaseKind>,
     ) {
+        let units = match &self.unit_settings.default_units {
+            Ok(units) => units.clone(),
+            Err(_) => {
+                self.unit_settings.pending_new = Some(authoring_case);
+                return;
+            }
+        };
+        self.create_blank_project_with_units(authoring_case, units);
+    }
+
+    pub(super) fn create_blank_project_with_units(
+        &mut self,
+        authoring_case: Option<AuthoringCaseKind>,
+        units: rf_types::units::DisplayUnitSet,
+    ) {
         let config = studio_shell_blank_runtime_config();
 
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
                 self.platform_host = platform_host;
+                self.pending_format_upgrade = None;
+                self.unit_settings.draft = None;
                 self.pending_unit_deletion = None;
                 self.pending_result_export = None;
                 self.platform_timer_executor = EguiPlatformTimerExecutor::default();
@@ -172,6 +190,7 @@ impl ReadyAppState {
                     blank_project_created_activity_line(authoring_case).to_string(),
                 );
                 self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+                self.initialize_new_project_units(units);
                 if let Err(error) = self.apply_default_hidden_commands_panel_for_current_window() {
                     self.platform_host.record_activity_line(format!(
                         "apply default commands panel visibility failed [{}]: {}",
@@ -199,199 +218,14 @@ impl ReadyAppState {
         }
     }
 
-    pub(super) fn save_project(&mut self) {
-        if self
-            .platform_host
-            .snapshot()
-            .runtime
-            .workspace_document
-            .project_path
-            .is_none()
-        {
-            self.save_project_as_from_picker();
-            return;
-        }
-
-        match self.dispatch_event_result(StudioGuiEvent::UiCommandRequested {
-            command_id: radishflow_studio::FILE_SAVE_COMMAND_ID.to_string(),
-        }) {
-            Ok(dispatch) => {
-                let document = &dispatch.dispatch.window.runtime.workspace_document;
-                let Some(path) = document.project_path.as_ref() else {
-                    self.project_open.notice = Some(ProjectOpenNotice {
-                        level: ProjectOpenNoticeLevel::Warning,
-                        title: "Project save skipped".to_string(),
-                        detail: "Current document has no project path; use Save As.".to_string(),
-                    });
-                    return;
-                };
-                let level = if document.has_unsaved_changes {
-                    ProjectOpenNoticeLevel::Warning
-                } else {
-                    ProjectOpenNoticeLevel::Info
-                };
-                self.project_open.notice = Some(ProjectOpenNotice {
-                    level,
-                    title: if document.has_unsaved_changes {
-                        "Project save incomplete".to_string()
-                    } else {
-                        "Project saved".to_string()
-                    },
-                    detail: format!("Saved revision {} to {path}", document.revision),
-                });
-                self.project_open.pending_save_as_overwrite = None;
-                self.persist_saved_canvas_layout();
-            }
-            Err(error) => {
-                self.project_open.notice = Some(ProjectOpenNotice {
-                    level: ProjectOpenNoticeLevel::Error,
-                    title: "Project save failed".to_string(),
-                    detail: format!(
-                        "[{}] {}. Current workspace remains open.",
-                        error.code().as_str(),
-                        error.message()
-                    ),
-                });
-                self.platform_host.record_activity_line(format!(
-                    "save project failed [{}]: {}",
-                    error.code().as_str(),
-                    error.message()
-                ));
-            }
-        }
-    }
-
-    pub(super) fn save_project_as_from_picker(&mut self) {
-        if !self.project_dialogs_available() {
-            return;
-        }
-        let Some(project_path) = self.project_file_picker.pick_save_project_file() else {
-            self.project_open.notice = Some(ProjectOpenNotice {
-                level: ProjectOpenNoticeLevel::Info,
-                title: "Save As canceled".to_string(),
-                detail: "Current workspace remains open.".to_string(),
-            });
-            return;
-        };
-
-        self.request_save_project_as(project_path, true);
-    }
-
-    pub(super) fn request_save_project_as(
-        &mut self,
-        project_path: PathBuf,
-        require_overwrite_confirmation: bool,
-    ) {
-        let Some(window_id) = self.current_window_id() else {
-            self.project_open.notice = Some(ProjectOpenNotice {
-                level: ProjectOpenNoticeLevel::Error,
-                title: "Save As unavailable".to_string(),
-                detail: "Open a Studio window before saving the project.".to_string(),
-            });
-            return;
-        };
-
-        if require_overwrite_confirmation
-            && self.save_as_requires_overwrite_confirmation(&project_path)
-        {
-            self.project_open.pending_save_as_overwrite = Some(project_path.clone());
-            self.project_open.notice = Some(ProjectOpenNotice {
-                level: ProjectOpenNoticeLevel::Warning,
-                title: "Confirm overwrite".to_string(),
-                detail: format!(
-                    "Save As target already exists and will be replaced: {}",
-                    project_path.display()
-                ),
-            });
-            return;
-        }
-
-        let trigger = StudioRuntimeTrigger::DocumentLifecycle(
-            radishflow_studio::StudioDocumentLifecycleCommand::SaveAs {
-                path: project_path.clone(),
-            },
-        );
-        match self
-            .dispatch_event_result(StudioGuiEvent::WindowTriggerRequested { window_id, trigger })
-        {
-            Ok(dispatch) => {
-                let document = &dispatch.dispatch.window.runtime.workspace_document;
-                self.project_open.path_input = project_path.display().to_string();
-                self.project_open.pending_save_as_overwrite = None;
-                let recent_projects_notice =
-                    self.record_and_persist_recent_project(project_path.clone());
-                self.project_open.notice =
-                    Some(recent_projects_notice.unwrap_or(ProjectOpenNotice {
-                        level: ProjectOpenNoticeLevel::Info,
-                        title: "Project saved as".to_string(),
-                        detail: format!(
-                            "Saved revision {} to {}",
-                            document.revision,
-                            project_path.display()
-                        ),
-                    }));
-                self.persist_saved_canvas_layout();
-            }
-            Err(error) => {
-                self.project_open.notice = Some(ProjectOpenNotice {
-                    level: ProjectOpenNoticeLevel::Error,
-                    title: "Save As failed".to_string(),
-                    detail: format!(
-                        "[{}] {} ({}). Current workspace remains open; choose another target or retry.",
-                        error.code().as_str(),
-                        error.message(),
-                        project_path.display()
-                    ),
-                });
-                self.platform_host.record_activity_line(format!(
-                    "save as failed [{}]: {} ({})",
-                    error.code().as_str(),
-                    error.message(),
-                    project_path.display()
-                ));
-            }
-        }
-    }
-
-    pub(super) fn confirm_pending_save_as_overwrite(&mut self) {
-        let Some(project_path) = self.project_open.pending_save_as_overwrite.clone() else {
-            return;
-        };
-        self.request_save_project_as(project_path, false);
-    }
-
-    pub(super) fn cancel_pending_save_as_overwrite(&mut self) {
-        self.project_open.pending_save_as_overwrite = None;
-        self.project_open.notice = Some(ProjectOpenNotice {
-            level: ProjectOpenNoticeLevel::Info,
-            title: "Save As canceled".to_string(),
-            detail: "Existing project file was not overwritten.".to_string(),
-        });
-    }
-
-    fn save_as_requires_overwrite_confirmation(&self, project_path: &std::path::Path) -> bool {
-        if !project_path.exists() {
-            return false;
-        }
-
-        self.platform_host
-            .snapshot()
-            .runtime
-            .workspace_document
-            .project_path
-            .as_deref()
-            .map(std::path::Path::new)
-            .map(|current_path| !paths_match(current_path, project_path))
-            .unwrap_or(true)
-    }
-
     pub(super) fn request_open_project(&mut self, project_path: PathBuf, source_label: &str) {
         if self
             .platform_host
             .snapshot()
             .runtime
             .workspace_document
-            .has_unsaved_changes
+            .save_state
+            .needs_close_confirmation()
         {
             self.project_open.pending_confirmation = Some(ProjectOpenRequest {
                 project_path: project_path.clone(),
@@ -438,6 +272,8 @@ impl ReadyAppState {
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
                 self.platform_host = platform_host;
+                self.pending_format_upgrade = None;
+                self.unit_settings.draft = None;
                 self.pending_unit_deletion = None;
                 self.pending_result_export = None;
                 self.platform_timer_executor = EguiPlatformTimerExecutor::default();
@@ -560,7 +396,12 @@ impl ReadyAppState {
         let snapshot = self.platform_host.snapshot();
         let window = self.window_model_with_shell_home(&snapshot);
         let palette_keyboard_consumed = self.handle_command_palette_keyboard(ctx, &window.commands);
-        if !quit_shortcut_consumed && !toggle_shortcut_consumed && !palette_keyboard_consumed {
+        if !quit_shortcut_consumed
+            && !toggle_shortcut_consumed
+            && !palette_keyboard_consumed
+            && !self.unit_settings.is_open()
+            && self.pending_format_upgrade.is_none()
+        {
             self.dispatch_shortcuts(ctx);
         }
         let mut hovered_drop_target = false;
@@ -1255,135 +1096,6 @@ impl ReadyAppState {
         }
     }
 
-    pub(super) fn sync_viewport_close(&mut self, ctx: &egui::Context) -> bool {
-        if !ctx.input(|input| input.viewport().close_requested()) {
-            return false;
-        }
-
-        let should_stop_rendering = self.close_current_window_for_viewport_request();
-        if !should_stop_rendering {
-            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-        }
-        should_stop_rendering
-    }
-
-    pub(super) fn close_current_window_for_viewport_request(&mut self) -> bool {
-        let Some(window_id) = self.current_window_id() else {
-            return true;
-        };
-
-        if self
-            .platform_host
-            .snapshot()
-            .runtime
-            .workspace_document
-            .has_unsaved_changes
-        {
-            self.request_close_window_confirmation(window_id);
-            return false;
-        }
-
-        self.close_window_without_confirmation(window_id)
-    }
-
-    fn request_close_window_confirmation(&mut self, window_id: StudioWindowHostId) {
-        self.project_open.pending_confirmation = None;
-        self.project_open.pending_blank_project_confirmation = false;
-        self.project_open.pending_authoring_blank_project = None;
-        self.project_open.pending_save_as_overwrite = None;
-        self.project_open.pending_close_window_confirmation = Some(window_id);
-        self.project_open.notice = None;
-        self.platform_host
-            .record_activity_line("close blocked by unsaved workspace changes".to_string());
-    }
-
-    fn render_pending_close_window_dialog(&mut self, ctx: &egui::Context) {
-        if self
-            .project_open
-            .pending_close_window_confirmation
-            .is_none()
-        {
-            return;
-        }
-
-        egui::Window::new(unsaved_changes_notice_title(self.locale))
-            .collapsible(false)
-            .resizable(false)
-            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
-            .show(ctx, |ui| {
-                ui.set_min_width(360.0);
-                render_wrapped_label(ui, close_workspace_discard_notice_detail(self.locale));
-                ui.add_space(8.0);
-                ui.horizontal_wrapped(|ui| {
-                    if ui
-                        .button(self.locale.text(ShellText::SaveAndCloseProject))
-                        .clicked()
-                        && self.save_pending_close_window()
-                    {
-                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-                    }
-                    if ui
-                        .button(self.locale.text(ShellText::DiscardAndCloseProject))
-                        .clicked()
-                        && self.confirm_pending_close_window()
-                    {
-                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
-                    }
-                    if ui
-                        .button(self.locale.text(ShellText::CancelCloseProject))
-                        .clicked()
-                    {
-                        self.cancel_pending_close_window();
-                    }
-                });
-            });
-    }
-
-    pub(super) fn save_pending_close_window(&mut self) -> bool {
-        if self
-            .project_open
-            .pending_close_window_confirmation
-            .is_none()
-        {
-            return false;
-        }
-
-        self.save_project();
-        if self
-            .platform_host
-            .snapshot()
-            .runtime
-            .workspace_document
-            .has_unsaved_changes
-        {
-            return false;
-        }
-
-        self.confirm_pending_close_window()
-    }
-
-    pub(super) fn confirm_pending_close_window(&mut self) -> bool {
-        let Some(window_id) = self.project_open.pending_close_window_confirmation.take() else {
-            return false;
-        };
-        self.close_window_without_confirmation(window_id)
-    }
-
-    pub(super) fn cancel_pending_close_window(&mut self) {
-        self.project_open.pending_close_window_confirmation = None;
-        self.project_open.notice = Some(ProjectOpenNotice {
-            level: ProjectOpenNoticeLevel::Info,
-            title: close_workspace_canceled_notice_title(self.locale).to_string(),
-            detail: current_workspace_remains_open_notice_detail(self.locale).to_string(),
-        });
-    }
-
-    fn close_window_without_confirmation(&mut self, window_id: StudioWindowHostId) -> bool {
-        self.cancel_drag_session(Some(window_id));
-        self.dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id });
-        self.logical_window_count() == 0
-    }
-
     pub(super) fn sync_viewport_lifecycle(&mut self, ctx: &egui::Context) {
         let focused = ctx.input(|input| input.viewport().focused.unwrap_or(input.focused));
         self.last_viewport_focused = Some(focused);
@@ -1403,6 +1115,9 @@ impl ReadyAppState {
     }
 
     pub(super) fn handle_command_palette_toggle_shortcut(&mut self, ctx: &egui::Context) -> bool {
+        if self.unit_settings.is_open() || self.pending_format_upgrade.is_some() {
+            return false;
+        }
         let toggle_requested =
             ctx.input(|input| input.modifiers.command && input.key_pressed(egui::Key::K));
         if toggle_requested {
@@ -1559,7 +1274,7 @@ fn project_opened_notice_detail(
     }
 }
 
-fn unsaved_changes_notice_title(locale: StudioShellLocale) -> &'static str {
+pub(super) fn unsaved_changes_notice_title(locale: StudioShellLocale) -> &'static str {
     match locale {
         StudioShellLocale::En => "Unsaved changes",
         StudioShellLocale::ZhCn => "未保存更改",
@@ -1573,11 +1288,11 @@ fn open_project_discard_notice_detail(
 ) -> String {
     match locale {
         StudioShellLocale::En => format!(
-            "Opening {source_label} will discard changes after the last saved revision: {}",
+            "Opening {source_label} will discard unsaved project content, display settings and unsubmitted input: {}",
             project_path.display()
         ),
         StudioShellLocale::ZhCn => format!(
-            "打开{}会放弃上次保存修订之后的更改: {}",
+            "打开{}会放弃未保存的工程内容、显示设置和未提交输入: {}",
             localized_project_source_label(source_label),
             project_path.display()
         ),
@@ -1587,21 +1302,21 @@ fn open_project_discard_notice_detail(
 fn create_blank_project_discard_notice_detail(locale: StudioShellLocale) -> String {
     match locale {
         StudioShellLocale::En => {
-            "Creating a blank project will discard changes after the last saved revision."
+            "Creating a blank project will discard unsaved project content, display settings and unsubmitted input."
                 .to_string()
         }
-        StudioShellLocale::ZhCn => "新建空白项目会放弃上次保存修订之后的更改。".to_string(),
+        StudioShellLocale::ZhCn => "新建空白项目会放弃未保存的工程内容、显示设置和未提交输入。".to_string(),
     }
 }
 
-fn close_workspace_discard_notice_detail(locale: StudioShellLocale) -> String {
+pub(super) fn close_workspace_discard_notice_detail(locale: StudioShellLocale) -> String {
     match locale {
         StudioShellLocale::En => {
-            "Closing RadishFlow Studio will discard changes after the last saved revision."
+            "Closing RadishFlow Studio will discard unsaved project content, display settings and unsubmitted input."
                 .to_string()
         }
         StudioShellLocale::ZhCn => {
-            "关闭 RadishFlow Studio 会放弃上次保存修订之后的更改。".to_string()
+            "关闭 RadishFlow Studio 会放弃未保存的工程内容、显示设置和未提交输入。".to_string()
         }
     }
 }
@@ -1665,14 +1380,16 @@ fn blank_project_created_activity_line(authoring_case: Option<AuthoringCaseKind>
     }
 }
 
-fn close_workspace_canceled_notice_title(locale: StudioShellLocale) -> &'static str {
+pub(super) fn close_workspace_canceled_notice_title(locale: StudioShellLocale) -> &'static str {
     match locale {
         StudioShellLocale::En => "Close canceled",
         StudioShellLocale::ZhCn => "已取消关闭",
     }
 }
 
-fn current_workspace_remains_open_notice_detail(locale: StudioShellLocale) -> &'static str {
+pub(super) fn current_workspace_remains_open_notice_detail(
+    locale: StudioShellLocale,
+) -> &'static str {
     match locale {
         StudioShellLocale::En => "Current workspace remains open.",
         StudioShellLocale::ZhCn => "当前工作区保持打开。",

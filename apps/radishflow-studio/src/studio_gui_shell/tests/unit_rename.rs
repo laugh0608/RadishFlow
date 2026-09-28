@@ -88,7 +88,7 @@ fn unit_rename_updates_presentations_preserves_topology_and_reopens_for_rerun() 
             .is_none()
     );
     app.dispatch_ui_command("edit.redo");
-    app.save_project();
+    save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&path).unwrap();
     let mut expected = original.document.flowsheet;
     expected
