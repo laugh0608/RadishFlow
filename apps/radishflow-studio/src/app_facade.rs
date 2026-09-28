@@ -555,6 +555,7 @@ fn modeling_readiness_blocked_reason(
 
 fn draft_is_dirty(draft: &DraftValue) -> bool {
     match draft {
+        DraftValue::Numeric(session) => session.is_pending(),
         DraftValue::Text(draft) | DraftValue::Number(draft) | DraftValue::Choice(draft) => {
             draft.is_dirty
         }
@@ -563,6 +564,7 @@ fn draft_is_dirty(draft: &DraftValue) -> bool {
 
 fn draft_validation(draft: &DraftValue) -> rf_ui::DraftValidationState {
     match draft {
+        DraftValue::Numeric(session) => session.draft_validation(),
         DraftValue::Text(draft) | DraftValue::Number(draft) | DraftValue::Choice(draft) => {
             draft.validation
         }

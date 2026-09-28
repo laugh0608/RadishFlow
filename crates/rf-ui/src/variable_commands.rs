@@ -90,7 +90,7 @@ impl AppState {
         if descriptor.write_via.is_none() {
             return Err(ReadOnly);
         }
-        if !self.workspace.drafts.fields.is_empty() {
+        if self.workspace.drafts.pending_count() > 0 {
             return Err(PendingDrafts);
         }
         if !matches!(
@@ -129,7 +129,7 @@ impl AppState {
     }
 }
 
-fn input_command(
+pub(crate) fn input_command(
     id: &VariableId,
     value: VariableValue,
 ) -> Result<DocumentCommand, VariableWriteError> {

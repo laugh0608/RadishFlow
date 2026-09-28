@@ -132,7 +132,7 @@ pub fn dispatch_modeling_action(
             actual: app.workspace.document.revision,
         });
     }
-    if !app.workspace.drafts.fields.is_empty() {
+    if app.workspace.drafts.pending_count() > 0 {
         return Err(PendingDrafts);
     }
     if app.workspace.canvas_interaction.pending_edit.is_some() {

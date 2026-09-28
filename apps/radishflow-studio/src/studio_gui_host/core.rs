@@ -1155,6 +1155,40 @@ fn inspector_number_field(
     original: f64,
 ) -> StudioGuiInspectorTargetFieldSnapshot {
     match drafts.fields.get(&key) {
+        Some(rf_ui::DraftValue::Numeric(session)) => StudioGuiInspectorTargetFieldSnapshot {
+            key: key.clone(),
+            label: label.replace(
+                &format!(
+                    "({})",
+                    session
+                        .quantity()
+                        .definition()
+                        .canonical_unit
+                        .definition()
+                        .symbol
+                ),
+                &format!("({})", session.input_unit().definition().symbol),
+            ),
+            constraint_text: session.validation().as_ref().err().map(ToString::to_string),
+            value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Number,
+            original_value: rf_types::units::from_canonical(
+                original,
+                session.quantity(),
+                session.input_unit(),
+            )
+            .map(format_field_number)
+            .unwrap_or_else(|error| error.to_string()),
+            current_value: session.raw_text().to_string(),
+            is_dirty: session.is_dirty(),
+            validation: inspector_validation_from_ui(session.draft_validation()),
+            draft_update_command_id: crate::inspector_draft_update_command_id(&key),
+            commit_command_id: (session.is_pending() && session.validation().is_ok())
+                .then(|| crate::inspector_draft_commit_command_id(&key)),
+            discard_command_id: session
+                .is_pending()
+                .then(|| crate::inspector_draft_discard_command_id(&key)),
+            remove_command_id: None,
+        },
         Some(rf_ui::DraftValue::Number(draft)) => StudioGuiInspectorTargetFieldSnapshot {
             key: key.clone(),
             label: label.to_string(),
@@ -1558,6 +1592,7 @@ fn workspace_document_snapshot_from_controller(
         has_unsaved_changes: controller.document_has_unsaved_changes(),
         save_state: controller.project_save_state(),
         presentation: controller.project_presentation().clone(),
+        input_edits: controller.inspector_drafts().fields.clone(),
         project_path: controller
             .document_path()
             .map(|path| path.display().to_string()),

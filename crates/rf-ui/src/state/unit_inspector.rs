@@ -69,27 +69,41 @@ impl AppState {
             return None;
         }
         let raw_value = raw_value.into();
-        let key = unit_inspector_draft_key(unit_id, &field);
-        let (draft_value, is_dirty, validation) = if field == UnitInspectorDraftField::Name {
-            let validation = if raw_value.trim().is_empty() {
-                DraftValidationState::Invalid
-            } else {
-                DraftValidationState::Valid
+        if field != UnitInspectorDraftField::Name {
+            let numeric_field = match field {
+                UnitInspectorDraftField::OutletTemperatureK => {
+                    crate::variable_browser::VariableField::OutletTemperature
+                }
+                UnitInspectorDraftField::OutletPressurePa => {
+                    crate::variable_browser::VariableField::OutletPressure
+                }
+                UnitInspectorDraftField::Name => unreachable!(),
             };
-            let is_dirty = raw_value != unit.name;
-            (
-                DraftValue::Text(FieldDraft {
-                    original: unit.name.clone(),
-                    current: raw_value,
-                    is_dirty,
-                    validation,
-                }),
+            let (is_dirty, validation) = self.update_numeric_inspector(
+                crate::variable_browser::ObjectId::Unit(unit_id.clone()),
+                numeric_field,
+                raw_value,
+            )?;
+            return Some(UnitInspectorDraftUpdateResult {
+                key: unit_inspector_draft_key(unit_id, &field),
+                active_target,
                 is_dirty,
                 validation,
-            )
+            });
+        }
+        let key = unit_inspector_draft_key(unit_id, &field);
+        let validation = if raw_value.trim().is_empty() {
+            DraftValidationState::Invalid
         } else {
-            unit_parameter_draft_value(&self.workspace.document.flowsheet, unit, &field, raw_value)?
+            DraftValidationState::Valid
         };
+        let is_dirty = raw_value != unit.name;
+        let draft_value = DraftValue::Text(FieldDraft {
+            original: unit.name.clone(),
+            current: raw_value,
+            is_dirty,
+            validation,
+        });
 
         if !is_dirty && validation != DraftValidationState::Invalid {
             self.workspace.drafts.fields.remove(&key);
@@ -130,6 +144,24 @@ impl AppState {
         }
 
         let key = unit_inspector_draft_key(unit_id, &field);
+        if let Some(DraftValue::Numeric(session)) = self.workspace.drafts.fields.get(&key) {
+            let id = session.variable().clone();
+            let generation = session.generation();
+            if session.validation().is_err() {
+                return Ok(None);
+            }
+            let result = self
+                .commit_numeric_edit(&id, generation, changed_at)
+                .map_err(|error| RfError::invalid_input(error.to_string()))?;
+            return Ok(result
+                .command
+                .map(|command| UnitInspectorDraftCommitResult {
+                    key,
+                    active_target,
+                    command,
+                    revision: result.revision,
+                }));
+        }
         let command_value = if let Some(draft_value) = self.workspace.drafts.fields.get(&key) {
             unit_command_value_from_draft(&field, draft_value)?
         } else {
@@ -253,78 +285,6 @@ pub fn unit_inspector_parameter_is_explicit(
     }
 }
 
-impl WorkspaceState {
-    pub(super) fn refresh_unit_parameter_drafts(&mut self) {
-        let flowsheet = &self.document.flowsheet;
-        self.drafts.fields.retain(|key, value| {
-            let Some((unit_id, field)) = unit_inspector_draft_key_parts(key) else {
-                return true;
-            };
-            let DraftValue::Number(draft) = value else {
-                return true;
-            };
-            let Some(unit) = flowsheet.units.get(&unit_id) else {
-                return false;
-            };
-            let Some((next, is_dirty, validation)) =
-                unit_parameter_draft_value(flowsheet, unit, &field, draft.current.clone())
-            else {
-                return false;
-            };
-            *value = next;
-            is_dirty || validation == DraftValidationState::Invalid
-        });
-    }
-}
-
-fn unit_parameter_draft_value(
-    flowsheet: &Flowsheet,
-    unit: &UnitNode,
-    field: &UnitInspectorDraftField,
-    raw_value: String,
-) -> Option<(DraftValue, bool, DraftValidationState)> {
-    let original = unit_inspector_parameter_value(flowsheet, &unit.id, field)?;
-    let (mut value, mut is_dirty, validation) =
-        unit_number_draft_value(original, raw_value, |number| {
-            is_valid_unit_parameter_value_for_unit(flowsheet, unit, field, number)
-        });
-    if !unit_inspector_parameter_is_explicit(unit, field)
-        && validation == DraftValidationState::Valid
-        && let DraftValue::Number(draft) = &mut value
-    {
-        draft.is_dirty = true;
-        is_dirty = true;
-    }
-    Some((value, is_dirty, validation))
-}
-
-fn unit_number_draft_value<F>(
-    original_number: f64,
-    raw_value: String,
-    is_valid_number: F,
-) -> (DraftValue, bool, DraftValidationState)
-where
-    F: Fn(f64) -> bool,
-{
-    let original = format_edit_number(original_number);
-    let parsed = raw_value.trim().parse::<f64>();
-    let validation = match parsed {
-        Ok(value) if is_valid_number(value) => DraftValidationState::Valid,
-        _ => DraftValidationState::Invalid,
-    };
-    let is_dirty = match parsed {
-        Ok(value) if validation == DraftValidationState::Valid => value != original_number,
-        _ => raw_value != original,
-    };
-    let draft = FieldDraft {
-        original,
-        current: raw_value,
-        is_dirty,
-        validation,
-    };
-    (DraftValue::Number(draft), is_dirty, validation)
-}
-
 fn unit_command_value_from_draft(
     field: &UnitInspectorDraftField,
     draft_value: &DraftValue,
@@ -338,24 +298,6 @@ fn unit_command_value_from_draft(
                 return Ok(None);
             }
             Ok(Some(CommandValue::Text(draft.current.clone())))
-        }
-        (
-            UnitInspectorDraftField::OutletTemperatureK | UnitInspectorDraftField::OutletPressurePa,
-            DraftValue::Number(draft),
-        ) => {
-            if !draft.is_dirty || draft.validation != DraftValidationState::Valid {
-                return Ok(None);
-            }
-            let value = draft.current.trim().parse::<f64>().map_err(|_| {
-                RfError::invalid_input(format!(
-                    "unit inspector draft `{}` is not a valid number",
-                    draft.current
-                ))
-            })?;
-            if !is_valid_unit_parameter_value(field, value) {
-                return Ok(None);
-            }
-            Ok(Some(CommandValue::Number(value)))
         }
         _ => Ok(None),
     }

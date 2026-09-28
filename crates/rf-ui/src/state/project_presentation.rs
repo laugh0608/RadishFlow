@@ -115,7 +115,7 @@ impl super::WorkspaceState {
         ProjectSaveState {
             document_dirty: self.last_saved_revision != Some(self.document.revision),
             presentation_dirty: self.project_presentation.is_dirty(),
-            pending_input_count: self.drafts.fields.len(),
+            pending_input_count: self.drafts.pending_count(),
         }
     }
 }

@@ -80,17 +80,18 @@ fn retained_pressure_drafts_follow_inlet_changes_without_extra_document_commits(
                 let revision = app.workspace.document.revision;
                 let history = app.workspace.command_history.len();
                 update_inlet_pressure(&mut app, pressure, through_feed);
-                let DraftValue::Number(draft) =
+                let DraftValue::Numeric(draft) =
                     &app.workspace.drafts.fields["unit:unit-1:outlet_pressure_pa"]
                 else {
                     panic!("expected numeric draft")
                 };
                 assert_eq!(
-                    draft.validation, validation,
+                    draft.draft_validation(),
+                    validation,
                     "{kind:?}, through_feed={through_feed}"
                 );
-                assert_eq!(draft.current, " 95000 ");
-                assert!(draft.is_dirty);
+                assert_eq!(draft.raw_text(), " 95000 ");
+                assert!(draft.is_dirty());
                 assert_eq!(app.workspace.document.revision, revision + 1);
                 assert_eq!(app.workspace.command_history.len(), history + 1);
                 assert_eq!(
@@ -160,12 +161,12 @@ fn revalidated_default_pressure_still_requires_explicit_commit() {
     app.update_unit_inspector_draft(&id, UnitInspectorDraftField::OutletPressurePa, "90000")
         .unwrap();
     update_inlet_pressure(&mut app, "120000", true);
-    let DraftValue::Number(draft) = &app.workspace.drafts.fields["unit:unit-1:outlet_pressure_pa"]
+    let DraftValue::Numeric(draft) = &app.workspace.drafts.fields["unit:unit-1:outlet_pressure_pa"]
     else {
         panic!("expected numeric draft")
     };
-    assert_eq!(draft.validation, DraftValidationState::Valid);
-    assert!(draft.is_dirty);
+    assert_eq!(draft.draft_validation(), DraftValidationState::Valid);
+    assert!(draft.is_dirty());
     assert_eq!(
         app.workspace.document.flowsheet.units[&id]
             .parameters
@@ -197,13 +198,20 @@ fn inlet_changes_preserve_unparseable_drafts_as_invalid() {
         app.update_unit_inspector_draft(&id, UnitInspectorDraftField::OutletPressurePa, raw)
             .unwrap();
         update_inlet_pressure(&mut app, "120000", true);
-        let DraftValue::Number(draft) =
+        let DraftValue::Numeric(draft) =
             &app.workspace.drafts.fields["unit:unit-1:outlet_pressure_pa"]
         else {
             panic!("expected numeric draft")
         };
-        assert_eq!(draft.validation, DraftValidationState::Invalid);
-        assert_eq!(draft.current, raw);
+        assert_eq!(
+            draft.draft_validation(),
+            if raw.is_empty() {
+                DraftValidationState::Unknown
+            } else {
+                DraftValidationState::Invalid
+            }
+        );
+        assert_eq!(draft.raw_text(), raw);
     }
 }
 
@@ -270,13 +278,17 @@ fn mixer_draft_tracks_both_inlets_when_the_limiting_source_changes() {
         )
         .unwrap()
         .unwrap();
-        let DraftValue::Number(draft) =
+        let DraftValue::Numeric(draft) =
             &app.workspace.drafts.fields["unit:unit-1:outlet_pressure_pa"]
         else {
             panic!("expected pressure draft")
         };
-        assert_eq!(draft.validation, validation, "after {stream} = {pressure}");
-        assert_eq!(draft.current, "110000");
+        assert_eq!(
+            draft.draft_validation(),
+            validation,
+            "after {stream} = {pressure}"
+        );
+        assert_eq!(draft.raw_text(), "110000");
         assert_eq!(app.workspace.document.revision, revision + 1);
         assert_eq!(
             app.workspace.document.flowsheet.units[&id]

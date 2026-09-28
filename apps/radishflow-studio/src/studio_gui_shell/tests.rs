@@ -726,4 +726,5 @@ fn run_with_key_press_and_focus<R>(
 
 mod unit_rename;
 
+mod numeric_edits;
 mod unit_presentation;

@@ -13,8 +13,24 @@ impl WorkspaceState {
         command: DocumentCommand,
         changed_at: DateTimeUtc,
     ) -> RfResult<InputCommandCommit> {
+        let next = self.prepare_input_document_command(&command)?;
+        if next == self.document.flowsheet {
+            return Ok(InputCommandCommit {
+                revision: self.document.revision,
+                changed: false,
+            });
+        }
+        Ok(InputCommandCommit {
+            revision: self.commit_inspector_document_change(command, next, changed_at),
+            changed: true,
+        })
+    }
+    pub(crate) fn prepare_input_document_command(
+        &self,
+        command: &DocumentCommand,
+    ) -> RfResult<Flowsheet> {
         let mut next = self.document.flowsheet.clone();
-        match &command {
+        match command {
             DocumentCommand::RenameUnit { unit_id, new_name } => {
                 unit_inspector::apply_unit_parameter_value(
                     &mut next,
@@ -51,16 +67,7 @@ impl WorkspaceState {
             }
             _ => return Err(RfError::invalid_input("command is not an input edit")),
         }
-        if next == self.document.flowsheet {
-            return Ok(InputCommandCommit {
-                revision: self.document.revision,
-                changed: false,
-            });
-        }
-        Ok(InputCommandCommit {
-            revision: self.commit_inspector_document_change(command, next, changed_at),
-            changed: true,
-        })
+        Ok(next)
     }
 }
 

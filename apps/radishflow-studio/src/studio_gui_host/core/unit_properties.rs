@@ -99,7 +99,11 @@ fn unit_number_property_field(
         property_field.commit_command_id = Some(crate::inspector_draft_commit_command_id(&key));
         property_field.discard_command_id = None;
     }
-    property_field.constraint_text = Some(unit_parameter_constraint_text(flowsheet, unit, &field));
+    let constraint = unit_parameter_constraint_text(flowsheet, unit, &field);
+    property_field.constraint_text = Some(match property_field.constraint_text.take() {
+        Some(error) => format!("{error}; {constraint}"),
+        None => constraint,
+    });
     Some(property_field)
 }
 

@@ -4,6 +4,7 @@ use super::*;
 pub(super) struct PendingUnitDeletion {
     document_id: String,
     revision: u64,
+    input_edits: BTreeMap<String, rf_ui::DraftValue>,
     unit_id: rf_types::UnitId,
     name: String,
     bindings: Vec<(String, String)>,
@@ -22,6 +23,7 @@ impl ReadyAppState {
         self.pending_unit_deletion = Some(PendingUnitDeletion {
             document_id: document.document_id.clone(),
             revision: document.revision,
+            input_edits: document.input_edits.clone(),
             unit_id: unit_id.clone(),
             name: detail.title.clone(),
             bindings: detail
@@ -44,13 +46,14 @@ impl ReadyAppState {
         let document = &snapshot.runtime.workspace_document;
         if document.document_id != pending.document_id
             || document.revision != pending.revision
+            || document.input_edits != pending.input_edits
             || snapshot.runtime.active_inspector_target
                 != Some(rf_ui::InspectorTarget::Unit(pending.unit_id))
         {
             self.project_open.notice = Some(ProjectOpenNotice {
                 level: ProjectOpenNoticeLevel::Warning,
                 title: "删除未执行".to_string(),
-                detail: "文档或选择已变化，请重新选择单元并检查删除影响。".to_string(),
+                detail: "文档、选择或未提交输入已变化，请重新检查删除影响。".to_string(),
             });
             return;
         }
@@ -91,6 +94,9 @@ impl ReadyAppState {
                 ui.label(
                     "删除该单元及其端口绑定；保留关联流股的参数和其他设备的连接。可通过撤销恢复。",
                 );
+                if !pending.input_edits.is_empty() {
+                    ui.label("确认后放弃被删除单元的未提交输入；其他数值编辑保留并重新校验。");
+                }
                 if pending.bindings.is_empty() {
                     ui.label("该单元没有关联流股。");
                 } else {

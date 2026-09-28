@@ -482,7 +482,7 @@ egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、�
 
 ## 草稿态结构建议
 
-字段级草稿态建议不要散落在控件内部，而是集中表达成可检查对象。
+字段草稿集中归工作区；温压流量使用 `NumericEditSession`，其他字段沿用原类型。
 
 当前建议最小结构：
 
@@ -563,7 +563,7 @@ pub struct StepSnapshot {
 3. 应用层读取 `CommandHistory.cursor` 对应的 `before` 或 `after` 快照
 4. `FlowsheetDocument` 替换为目标快照并递增新 `revision`
 5. `CommandHistory.cursor` 前移或后移
-6. 字段草稿清空，仍存在的 inspector target 继续保留，不存在的目标被清理
+6. 工程历史先拒绝待提交数值会话；其他草稿按原规则清理，失效目标清理
 7. `SolveSessionState` 进入 `DocumentRevisionAdvanced / Dirty`
 
 ### 自动求解流
@@ -615,7 +615,7 @@ pub struct StepSnapshot {
 - 项目级物性包和组分选择属于文档语义输入；空白项目不自动补 package / components，Stream Inspector 只能从当前 `Flowsheet.components` 中添加组成条目
 - Stream Inspector 的 `T / P / F / composition` 也采用草稿提交；普通 Studio 运行入口会在缺少 Feed composition 时先走建模输入 readiness，已经进入求解阶段的 stream 输入不一致仍可归类为 `solver.step.stream_input`，并携带 stream / inlet target
 - Unit Inspector：Feed、Heater / Cooler、Flash Drum 提交出口温压，Mixer、Valve 提交出口压力；`SetUnitParameter` 同步出口模板。Mixer / Heater / Cooler / Valve 出口压力不高于入口；缺显式参数时，同值也须正式提交。
-- Inspector 文档提交后统一重验保留的单元数值草稿，按最新参数和入口约束刷新状态、保留原始输入；校验自身不写文档 / 历史。连接与文档 Undo / Redo 沿用草稿清理语义。
+- 数值会话统一持有原文、单位与全精度候选；提交复用 SI 事务，成功仅清目标会话，其他数值编辑保留并重验。工程历史先保护数值草稿，通用变更不静默丢弃。
 - GUI window-model 必须把“显示值有效但缺显式 unit parameter”的字段暴露为可提交状态，并提供正式 `commit_command_id`；这种状态不是普通已同步字段，也不是控件私有 fallback
 - Unit Inspector 参数字段必须携带 SI 单位和约束 presentation；无效草稿不写文档/历史/模板。已入文档的无效参数由 `solver.step.parameter` 等诊断暴露，并携带 unit / port / stream context
 - 运行前 readiness 只读取已提交的文档态输入，不读取 Inspector 草稿，也不自动补写默认值；未就绪时 shell 显示“模型输入未完成”并聚焦到对应 stream / unit。缺物性包、缓存缺失或多包歧义继续交给正式 run package resolution 和 Run Panel 诊断

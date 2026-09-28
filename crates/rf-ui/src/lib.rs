@@ -85,3 +85,8 @@ pub use state::{
 
 #[cfg(test)]
 mod tests;
+
+pub use state::{
+    InputUnitOrigin, NumericEditError, NumericEditEvent, NumericEditReceipt, NumericEditSession,
+    NumericParseError, NumericParseOutcome, NumericPrecisionSource, parse_numeric_input,
+};

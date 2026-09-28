@@ -283,3 +283,30 @@ fn layout_save_failure_reports_saved_project_and_can_be_retried() {
         "Project saved"
     );
 }
+
+#[test]
+fn deletion_confirmation_rejects_new_numeric_edit_generation_without_changing_revision() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("inspector.focus_unit:heater-1");
+    app.dispatch_inspector_field_draft_update(
+        radishflow_studio::inspector_draft_update_command_id("unit:heater-1:outlet_temperature_k"),
+        "-1",
+    );
+    app.dispatch_ui_command("canvas.delete_selected_unit");
+    let revision = snapshot(&app).runtime.workspace_document.revision;
+    app.dispatch_inspector_field_draft_update(
+        radishflow_studio::inspector_draft_update_command_id("unit:heater-1:outlet_temperature_k"),
+        "1e-",
+    );
+    let before = snapshot(&app).runtime.active_inspector_detail;
+    app.confirm_unit_deletion();
+    assert_eq!(snapshot(&app).runtime.workspace_document.revision, revision);
+    assert_eq!(snapshot(&app).runtime.active_inspector_detail, before);
+    assert!(
+        app.platform_host
+            .document()
+            .flowsheet
+            .units
+            .contains_key(&UnitId::new("heater-1"))
+    );
+}

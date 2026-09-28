@@ -52,6 +52,8 @@ impl AppState {
             flowsheet,
             changed_at,
         );
+        self.workspace.drafts.fields.retain(|_, draft| !matches!(draft,
+            DraftValue::Numeric(session) if session.variable().object == crate::variable_browser::ObjectId::Unit(unit_id.clone())));
         self.workspace.prune_focus_against_document();
         Ok(revision)
     }
