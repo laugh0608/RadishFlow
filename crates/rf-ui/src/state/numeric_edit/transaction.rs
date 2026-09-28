@@ -120,6 +120,9 @@ impl WorkspaceState {
         if baseline != session.baseline {
             return Err(NumericEditError::FieldConflict);
         }
+        if session.composition_original.is_some() {
+            return Err(NumericEditError::Incomplete);
+        }
         let value = session.parsed_si()?;
         let command = input_command(&session.variable, VariableValue::Number(value))
             .map_err(|_| NumericEditError::UnsupportedField)?;
@@ -152,8 +155,8 @@ impl WorkspaceState {
 }
 
 impl AppState {
-    /// `None` uses the project's display choice. Legacy SI controls pass their canonical unit
-    /// until I4 supplies quantity-aware display and unit-selection controls.
+    /// Native controls use `None` for the project's display choice. The legacy SI command
+    /// bridge passes its canonical unit explicitly to preserve that calling contract.
     pub fn begin_numeric_edit(
         &mut self,
         id: VariableId,
@@ -202,6 +205,8 @@ impl AppState {
             undo: Vec::new(),
             redo: Vec::new(),
             validation: Ok(()),
+            text_group: None,
+            composition_original: None,
         };
         session.validation = self.workspace.validate_numeric_edit(&session);
         self.workspace
@@ -218,9 +223,34 @@ impl AppState {
         event: NumericEditEvent,
     ) -> Result<u64, NumericEditError> {
         let mut session = self.checked_numeric_session(id, generation)?.clone();
+        let group = match &event {
+            NumericEditEvent::ReplaceTextGrouped { group, .. } => Some(*group),
+            _ => None,
+        };
+        let coalesce = group.is_some() && group == session.text_group;
+        session.text_group = group;
+        let finishing_composition = matches!(event, NumericEditEvent::CommitComposition(_));
+        let event = match event {
+            NumericEditEvent::CommitComposition(raw) => {
+                if let Some(original) = session.composition_original.take() {
+                    session.current = original;
+                }
+                NumericEditEvent::ReplaceText(raw)
+            }
+            event => event,
+        };
+        if session.composition_original.is_some()
+            && !matches!(
+                event,
+                NumericEditEvent::PreviewComposition(_) | NumericEditEvent::CancelComposition
+            )
+        {
+            return Err(NumericEditError::Incomplete);
+        }
         match event {
-            NumericEditEvent::ReplaceText(raw) => {
-                if raw == session.current.raw {
+            NumericEditEvent::ReplaceText(raw)
+            | NumericEditEvent::ReplaceTextGrouped { raw, .. } => {
+                if raw == session.current.raw && !finishing_composition {
                     return Ok(generation);
                 }
                 let parsed = parse_numeric_input(
@@ -233,14 +263,36 @@ impl AppState {
                     NumericParseOutcome::Value { unit, origin, .. } => (*unit, *origin),
                     _ => (session.current.unit, session.current.origin),
                 };
-                session.replace(EditContent {
+                let next = EditContent {
                     raw,
                     unit,
                     origin,
                     parsed,
                     precision: NumericPrecisionSource::ParsedText,
                     pending: true,
-                });
+                };
+                if coalesce {
+                    session.current = next;
+                    session.redo.clear();
+                } else {
+                    session.replace(next);
+                }
+            }
+            NumericEditEvent::PreviewComposition(raw) => {
+                if session.composition_original.is_none() {
+                    session.composition_original = Some(session.current.clone());
+                }
+                session.current.raw = raw;
+                session.current.pending = true;
+                session.current.parsed = NumericParseOutcome::Incomplete;
+            }
+            NumericEditEvent::CancelComposition => {
+                if let Some(original) = session.composition_original.take() {
+                    session.current = original;
+                }
+            }
+            NumericEditEvent::CommitComposition(_) => {
+                unreachable!("composition commit normalized above")
             }
             NumericEditEvent::SelectInputUnit(unit) => {
                 // Reject invalid/incomplete drafts without mutating text, units, history or generation.

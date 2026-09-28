@@ -525,6 +525,27 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         field: &radishflow_studio::StudioGuiWindowInspectorTargetFieldModel,
     ) {
+        if let Some(numeric) = &field.numeric {
+            match numeric {
+                Ok(numeric) => self.render_numeric_property_field(
+                    ui,
+                    &field.key,
+                    &inspector_field_label(self.locale, field),
+                    numeric,
+                ),
+                Err(reason) => {
+                    ui.label(inspector_field_label(self.locale, field));
+                    ui.label(reason);
+                }
+            }
+            if let Some(constraint) = &field.constraint_text {
+                render_wrapped_small(
+                    ui,
+                    localized_inspector_constraint(self.locale, constraint).as_ref(),
+                );
+            }
+            return;
+        }
         ui.add_space(6.0);
         ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(inspector_field_label(self.locale, field)).strong());
@@ -618,16 +639,20 @@ fn inspector_field_label<'a>(
     field: &'a radishflow_studio::StudioGuiWindowInspectorTargetFieldModel,
 ) -> std::borrow::Cow<'a, str> {
     if matches!(locale, StudioShellLocale::ZhCn) {
-        match field.label.as_str() {
-            "Source temperature (K)" => return std::borrow::Cow::Borrowed("源温度"),
-            "Source pressure (Pa)" => return std::borrow::Cow::Borrowed("源压力"),
-            "Outlet temperature (K)" => return std::borrow::Cow::Borrowed("出口温度"),
-            "Outlet pressure (Pa)" => return std::borrow::Cow::Borrowed("出口压力"),
-            "Flash temperature (K)" => return std::borrow::Cow::Borrowed("闪蒸温度"),
-            "Flash pressure (Pa)" => return std::borrow::Cow::Borrowed("闪蒸压力"),
-            "Temperature (K)" => return std::borrow::Cow::Borrowed("温度"),
-            "Pressure (Pa)" => return std::borrow::Cow::Borrowed("压力"),
-            "Total molar flow (mol/s)" => return std::borrow::Cow::Borrowed("总摩尔流量"),
+        match field
+            .label
+            .rsplit_once(" (")
+            .map_or(field.label.as_str(), |(label, _)| label)
+        {
+            "Source temperature" => return std::borrow::Cow::Borrowed("源温度"),
+            "Source pressure" => return std::borrow::Cow::Borrowed("源压力"),
+            "Outlet temperature" => return std::borrow::Cow::Borrowed("出口温度"),
+            "Outlet pressure" => return std::borrow::Cow::Borrowed("出口压力"),
+            "Flash temperature" => return std::borrow::Cow::Borrowed("闪蒸温度"),
+            "Flash pressure" => return std::borrow::Cow::Borrowed("闪蒸压力"),
+            "Temperature" => return std::borrow::Cow::Borrowed("温度"),
+            "Pressure" => return std::borrow::Cow::Borrowed("压力"),
+            "Molar flow" => return std::borrow::Cow::Borrowed("总摩尔流量"),
             "Name" => return std::borrow::Cow::Borrowed("名称"),
             _ => {}
         }

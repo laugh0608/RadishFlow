@@ -1,3 +1,4 @@
+mod numeric_fields;
 mod unit_properties;
 use unit_properties::unit_property_fields;
 
@@ -603,8 +604,9 @@ fn active_inspector_detail_from_controller(
     match &target {
         rf_ui::InspectorTarget::Unit(unit_id) => {
             let unit = flowsheet.units.get(unit_id)?;
-            let property_fields =
+            let mut property_fields =
                 unit_property_fields(flowsheet, unit, controller.inspector_drafts());
+            numeric_fields::project_numeric_fields(controller, &mut property_fields);
             let property_notices = unit_property_notices(unit, &property_fields);
             Some(StudioGuiInspectorTargetDetailSnapshot {
                 target,
@@ -648,7 +650,8 @@ fn active_inspector_detail_from_controller(
         }
         rf_ui::InspectorTarget::Stream(stream_id) => {
             let stream = flowsheet.streams.get(stream_id)?;
-            let property_fields = stream_property_fields(stream, controller.inspector_drafts());
+            let mut property_fields = stream_property_fields(stream, controller.inspector_drafts());
+            numeric_fields::project_numeric_fields(controller, &mut property_fields);
             let property_composition_summary =
                 stream_property_composition_summary(stream, controller.inspector_drafts());
             let property_composition_normalize_command_id =
@@ -1110,6 +1113,7 @@ fn inspector_text_field(
 ) -> StudioGuiInspectorTargetFieldSnapshot {
     match drafts.fields.get(&key) {
         Some(rf_ui::DraftValue::Text(draft)) => StudioGuiInspectorTargetFieldSnapshot {
+            numeric: None,
             key: key.clone(),
             label: label.to_string(),
             constraint_text: None,
@@ -1132,6 +1136,7 @@ fn inspector_text_field(
             remove_command_id: None,
         },
         _ => StudioGuiInspectorTargetFieldSnapshot {
+            numeric: None,
             key: key.clone(),
             label: label.to_string(),
             constraint_text: None,
@@ -1156,6 +1161,7 @@ fn inspector_number_field(
 ) -> StudioGuiInspectorTargetFieldSnapshot {
     match drafts.fields.get(&key) {
         Some(rf_ui::DraftValue::Numeric(session)) => StudioGuiInspectorTargetFieldSnapshot {
+            numeric: None,
             key: key.clone(),
             label: label.replace(
                 &format!(
@@ -1190,6 +1196,7 @@ fn inspector_number_field(
             remove_command_id: None,
         },
         Some(rf_ui::DraftValue::Number(draft)) => StudioGuiInspectorTargetFieldSnapshot {
+            numeric: None,
             key: key.clone(),
             label: label.to_string(),
             constraint_text: None,
@@ -1212,6 +1219,7 @@ fn inspector_number_field(
             remove_command_id: None,
         },
         _ => StudioGuiInspectorTargetFieldSnapshot {
+            numeric: None,
             key: key.clone(),
             label: label.to_string(),
             constraint_text: None,

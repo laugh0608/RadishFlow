@@ -626,6 +626,19 @@ impl StudioAppHost {
             .clone()
     }
 
+    pub fn numeric_field_presentation(
+        &self,
+        id: &rf_ui::variable_browser::VariableId,
+    ) -> Result<rf_ui::NumericFieldPresentation, rf_ui::NumericEditError> {
+        self.window_host_manager
+            .session()
+            .host_port()
+            .runtime()
+            .app_state()
+            .workspace
+            .numeric_field_presentation(id)
+    }
+
     pub fn inspector_drafts(&self) -> &rf_ui::InspectorDraftState {
         &self
             .window_host_manager
@@ -982,6 +995,13 @@ impl StudioAppHostController {
 
     pub fn active_inspector_target(&self) -> Option<rf_ui::InspectorTarget> {
         self.app_host.active_inspector_target()
+    }
+
+    pub fn numeric_field_presentation(
+        &self,
+        id: &rf_ui::variable_browser::VariableId,
+    ) -> Result<rf_ui::NumericFieldPresentation, rf_ui::NumericEditError> {
+        self.app_host.numeric_field_presentation(id)
     }
 
     pub fn inspector_drafts(&self) -> &rf_ui::InspectorDraftState {

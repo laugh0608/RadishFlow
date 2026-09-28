@@ -482,24 +482,9 @@ egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、�
 
 ## 草稿态结构建议
 
-字段草稿集中归工作区；温压流量使用 `NumericEditSession`，其他字段沿用原类型。
+字段草稿集中归工作区；温压流量由 `NumericEditSession` 持有，原生控件消费 `NumericFieldPresentation`、通过带身份 / 代次的 `NumericEditCommand` 写入；组合预览和局部历史不进入工程事务。其他字段沿用原类型。
 
-当前建议最小结构：
-
-```rust
-pub struct FieldDraft<T> {
-    pub original: T,
-    pub current: T,
-    pub is_dirty: bool,
-    pub validation: DraftValidationState,
-}
-```
-
-这样做的好处：
-
-- 输入校验可以发生在提交前
-- 不同控件类型可以共享一套“草稿 -> 提交”语义
-- 后续如果要做“批量应用本面板修改”，也还有扩展空间
+草稿保留原值、当前输入、变更事实和校验状态，供显式提交前验证及面板批量应用复用。数值解析、精度、组合输入和事务边界以 [单位编辑专题](../topics/units/input-drafts-and-interactions.md) 为准。
 
 ## 求解快照草案
 

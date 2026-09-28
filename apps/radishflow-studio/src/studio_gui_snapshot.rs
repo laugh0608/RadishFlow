@@ -114,6 +114,7 @@ pub struct StudioGuiInspectorTargetSummaryRowSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiInspectorTargetFieldSnapshot {
+    pub numeric: Option<Result<rf_ui::NumericFieldPresentation, String>>,
     pub key: String,
     pub label: String,
     pub constraint_text: Option<String>,

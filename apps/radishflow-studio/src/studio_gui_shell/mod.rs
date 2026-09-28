@@ -38,6 +38,7 @@ mod fonts;
 mod home_dashboard;
 mod locale;
 mod modeling_readiness;
+mod numeric_input;
 mod panels;
 mod project_close;
 mod project_layout_save;

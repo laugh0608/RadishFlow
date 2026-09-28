@@ -437,3 +437,134 @@ fn readonly_foreign_and_removed_fields_never_commit_or_drop_the_original_session
     app.cancel_numeric_edit(&variable, generation).unwrap();
     assert_eq!(app.workspace.drafts.pending_count(), 0);
 }
+
+#[test]
+fn typing_groups_keep_units_and_precision_in_one_undo_owner() {
+    let mut app = app();
+    let id = id(&app, VariableField::Temperature);
+    app.begin_numeric_edit(id.clone(), None).unwrap();
+    for raw in ["3", "31", "315"] {
+        edit(
+            &mut app,
+            &id,
+            NumericEditEvent::ReplaceTextGrouped {
+                raw: raw.into(),
+                group: (10, 1),
+            },
+        );
+    }
+    edit(&mut app, &id, NumericEditEvent::SelectInputUnit(U::Celsius));
+    edit(&mut app, &id, NumericEditEvent::Undo);
+    let session = app.workspace.numeric_edit(&id).unwrap();
+    assert_eq!(session.raw_text(), "315");
+    assert_eq!(session.input_unit(), U::Kelvin);
+    edit(&mut app, &id, NumericEditEvent::Undo);
+    let session = app.workspace.numeric_edit(&id).unwrap();
+    assert!(!session.is_pending());
+    assert_eq!(
+        session.precision_source(),
+        NumericPrecisionSource::OriginalSi
+    );
+    assert_eq!(session.candidate_si().unwrap(), 300.1234567890123);
+    edit(&mut app, &id, NumericEditEvent::Redo);
+    assert_eq!(app.workspace.numeric_edit(&id).unwrap().raw_text(), "315");
+}
+
+#[test]
+fn ime_preedit_cannot_commit_or_switch_and_confirmation_is_one_edit() {
+    let mut app = app();
+    let id = id(&app, VariableField::Temperature);
+    app.begin_numeric_edit(id.clone(), None).unwrap();
+    for raw in ["3", "31", "315"] {
+        let generation = edit(
+            &mut app,
+            &id,
+            NumericEditEvent::PreviewComposition(raw.into()),
+        );
+        assert_eq!(
+            app.commit_numeric_edit(&id, generation, UNIX_EPOCH),
+            Err(NumericEditError::Incomplete)
+        );
+        assert_eq!(
+            app.edit_numeric(
+                &id,
+                generation,
+                NumericEditEvent::SelectInputUnit(U::Celsius)
+            ),
+            Err(NumericEditError::Incomplete)
+        );
+        assert!(
+            app.workspace
+                .numeric_field_presentation(&id)
+                .unwrap()
+                .composing
+        );
+        assert_eq!(app.workspace.drafts.pending_count(), 1);
+    }
+    edit(
+        &mut app,
+        &id,
+        NumericEditEvent::CommitComposition("315".into()),
+    );
+    assert!(
+        !app.workspace
+            .numeric_field_presentation(&id)
+            .unwrap()
+            .composing
+    );
+    assert_eq!(app.workspace.document.revision, 0);
+    edit(&mut app, &id, NumericEditEvent::Undo);
+    assert!(!app.workspace.numeric_edit(&id).unwrap().is_pending());
+    let original = app
+        .workspace
+        .numeric_edit(&id)
+        .unwrap()
+        .raw_text()
+        .to_owned();
+    edit(
+        &mut app,
+        &id,
+        NumericEditEvent::PreviewComposition("pending".into()),
+    );
+    edit(&mut app, &id, NumericEditEvent::CommitComposition(original));
+    assert!(
+        !app.workspace
+            .numeric_field_presentation(&id)
+            .unwrap()
+            .composing
+    );
+    text(&mut app, &id, "320");
+    edit(
+        &mut app,
+        &id,
+        NumericEditEvent::PreviewComposition("pending".into()),
+    );
+    edit(&mut app, &id, NumericEditEvent::CancelComposition);
+    assert_eq!(app.workspace.numeric_edit(&id).unwrap().raw_text(), "320");
+}
+
+#[test]
+fn display_projection_keeps_active_input_and_engineering_history_independent() {
+    let mut app = app();
+    let id = id(&app, VariableField::Temperature);
+    let revision = app.workspace.document.revision;
+    app.begin_numeric_edit(id.clone(), None).unwrap();
+    text(&mut app, &id, "1e-");
+    app.workspace
+        .project_presentation
+        .apply(ProjectPresentationCommand::Apply(
+            rf_types::units::DisplayUnitSet::engineering(),
+        ));
+    let field = app.workspace.numeric_field_presentation(&id).unwrap();
+    assert_eq!(field.input_unit, U::Kelvin);
+    assert_eq!(field.display_unit, U::Celsius);
+    assert_eq!(field.text, "1e-");
+    assert_eq!(field.issue, Some(NumericFieldIssue::Incomplete));
+    assert!(!field.can_apply);
+    app.cancel_numeric_edit(&id, field.generation.unwrap())
+        .unwrap();
+    let field = app.workspace.numeric_field_presentation(&id).unwrap();
+    assert_eq!(field.input_unit, U::Celsius);
+    assert!(field.text.starts_with("26.973456"));
+    assert_eq!(app.workspace.document.revision, revision);
+}

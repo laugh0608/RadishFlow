@@ -1,4 +1,4 @@
-//! Transitional Inspector bridge: existing controls are explicitly SI until I4.
+//! Legacy Inspector command bridge: SI command semantics stay explicit.
 use super::*;
 use crate::variable_browser::{ObjectId, VariableField, VariableSection};
 

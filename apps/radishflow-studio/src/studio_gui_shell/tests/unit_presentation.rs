@@ -258,8 +258,8 @@ fn saving_presentation_retains_unsubmitted_input_and_current_solve_snapshot() {
         before.runtime.latest_solve_snapshot
     );
     assert_eq!(
-        after.runtime.active_inspector_detail,
-        before.runtime.active_inspector_detail
+        after.runtime.workspace_document.input_edits,
+        before.runtime.workspace_document.input_edits
     );
     assert_eq!(
         after.runtime.workspace_document.revision,

@@ -1,5 +1,7 @@
 mod inspector;
 mod parse;
+mod presentation;
+pub use presentation::*;
 mod transaction;
 pub use parse::*;
 pub use transaction::NumericEditReceipt;
@@ -77,6 +79,8 @@ pub struct NumericEditSession {
     undo: Vec<EditContent>,
     redo: Vec<EditContent>,
     validation: Result<(), NumericEditError>,
+    text_group: Option<(u64, u64)>,
+    composition_original: Option<EditContent>,
 }
 impl NumericEditSession {
     pub fn variable(&self) -> &VariableId {
@@ -141,10 +145,18 @@ impl NumericEditSession {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NumericEditEvent {
     /// One atomic edit. Native typing coalescing and IME boundaries belong to the consumer.
     ReplaceText(String),
+    /// The consumer supplies a stable widget/session group only for contiguous plain typing.
+    ReplaceTextGrouped {
+        raw: String,
+        group: (u64, u64),
+    },
+    PreviewComposition(String),
+    CommitComposition(String),
+    CancelComposition,
     SelectInputUnit(MeasurementUnit),
     Undo,
     Redo,

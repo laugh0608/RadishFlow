@@ -1206,7 +1206,7 @@ impl ReadyAppState {
             StudioGuiFocusContext::ModalDialog
         } else if self.command_palette.open {
             StudioGuiFocusContext::CommandPalette
-        } else if ctx.wants_keyboard_input() {
+        } else if ctx.wants_keyboard_input() || numeric_input::owns_keyboard(ctx) {
             StudioGuiFocusContext::TextInput
         } else if self
             .platform_host

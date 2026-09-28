@@ -197,6 +197,13 @@ fn dispatch_bootstrap_trigger(
                 "bootstrap run panel recovery action is unavailable in current widget model",
             )
         }),
+        StudioBootstrapTrigger::NumericEdit(command) => {
+            let generation = session
+                .app_state
+                .dispatch_numeric_edit(command.clone(), normalized_system_time_now()?)
+                .map_err(|error| RfError::invalid_input(error.to_string()))?;
+            Ok(StudioBootstrapDispatch::NumericEdit { generation })
+        }
         StudioBootstrapTrigger::ProjectPresentation(command) => {
             let changed = session
                 .app_state
