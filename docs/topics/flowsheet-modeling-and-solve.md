@@ -1,6 +1,6 @@
 # 流程图建模与求解闭环
 
-更新时间：2026-09-28
+更新时间：2026-09-29
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -32,10 +32,13 @@
 | Mixer 混合器 | Active | `unitops/mixer.md` |
 | Valve 阀门 | Active | `unitops/valve.md` |
 | Material Stream 物流股 | Active | `modeling/material-stream.md` |
+| 模型目录、发现与运行实例 | Draft / 方向已确认 | [模型装配专题](modeling/model-catalog-and-runtime.md) |
 
 后续涉及具体单元行为、参数、端口、结果或诊断时，应优先更新对应子专题；本文件只保留跨单元的建模 / 求解边界。
 
 ## 规划衔接（尚未实现）
+
+2026-09-29 明确模型定义、工程实例和运行实例的分离，以及内建目录 / 工厂先行、外部加载后续的 [MC0—MC3](modeling/model-catalog-and-runtime.md#分阶段切片)。当前仍以固定 kind 构造六类单元；后续将模型专属构造和参数解释归于模型领域，求解器拥有拓扑、执行计划、循环收敛和结果汇总。目录发现不等于设备已实例化，设备创建也不等于具备所选求解策略能力；此规划不改变当前连接、项目格式或 U2 优先级。
 
 2026-09-16 确认后续 [规格分析与建模辅助](modeling-assistance-and-specifications.md) 复用本专题的 readiness、连接诊断与正式命令。就绪、规格完整性、结构自由度和数值诊断分层，未分析不返回伪零自由度。[设备工程](equipment-design-and-rating.md) 只读引用与实际回写流程分别处理；影响出口 / 压降的采纳经正式重算，不能把一次单向回填视为收敛。
 

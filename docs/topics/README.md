@@ -1,6 +1,6 @@
 # 开发专题索引
 
-更新时间：2026-09-28
+更新时间：2026-09-29
 
 ## 用途
 
@@ -106,6 +106,7 @@ UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-p
 | 专题 | 当前状态 | 父专题 | 入口 |
 | --- | --- | --- | --- |
 | Material Stream 物流股 | Active | 流程图建模与求解闭环 / 结果审阅、诊断与恢复 | `modeling/material-stream.md` |
+| 模型目录、发现与运行实例 | Draft / 2026-09-29 方向已确认 | 流程图建模与求解闭环 / 项目物性基础；MC0—MC3 待实施 | [模型装配](modeling/model-catalog-and-runtime.md) |
 
 ### 平台与服务
 

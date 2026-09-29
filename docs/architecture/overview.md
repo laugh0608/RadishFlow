@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-09-16
+更新时间：2026-09-29
 
 ## 用途
 
@@ -23,6 +23,33 @@
 
 已有小流程覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`。用户路径和验收证据分别见 [Studio 主路径](../topics/studio-main-workflow.md) 与 [MVP β 验收记录](../mvp/beta-acceptance-checklist.md)。
 
+## 用户入口与计算关系
+
+用户通过 Studio 或 CLI 提交操作；应用编排负责命令、工程修订、运行和存储，工程模型描述单元与流股，流程求解器负责依赖和执行，单元调用热力学服务。单位、错误、诊断和存储是横向能力，不必组成只能逐层向下调用的阶梯。账户 / 授权控制能力访问，不拥有物流或设备方程。
+
+```mermaid
+flowchart TD
+    User[用户] --> UI[Studio 界面]
+    UI --> App[共享命令与应用编排]
+    CLI[CLI] --> App
+    App --> Model[工程对象 rf-model]
+    App --> Store[存储 rf-store]
+    App --> Solver[流程求解 rf-solver]
+    Model --> Solver
+    Solver --> Graph[连接校验 rf-flowsheet]
+    Solver --> Unit[单元计算 rf-unitops]
+    Unit --> Flash[相平衡 rf-flash]
+    Unit --> Thermo[物性 rf-thermo]
+    Flash --> Thermo
+    Solver --> Results[结果快照与诊断]
+    Results --> UI
+    PME[外部 PME] --> Bridge[.NET CAPE-OPEN 适配]
+    Bridge --> FFI[rf-ffi C ABI]
+    FFI --> Solver
+```
+
+图为主要职责 / 数据关系，不是完整依赖图。当前命令和查询分布于 `rf-ui` 与 Studio，尚非独立应用服务包；现有 FFI 求解入口也不代表全部 Studio 编辑动作已对外开放。画布图元、工程中的 `UnitNode`、执行 `UnitOperation` 的计算对象分别承担呈现、持久配置和计算职责。
+
 ## Rust 模块职责
 
 | 模块 | 实际职责 | 说明 |
@@ -44,6 +71,17 @@
 
 典型计算调用方向为 `Studio 或 rf-ffi -> rf-solver -> rf-unitops -> rf-flash / rf-thermo`；`rf-flowsheet` 提供连接校验，`rf-model / rf-types` 提供领域数据。该描述是职责路径，不是完整 Cargo 依赖图。
 
+## 模型发现与装配现状
+
+| 方向 | 当前实现 | 限制 |
+| --- | --- | --- |
+| 内建单元 | `BuiltinUnitKind / UnitOperationSpec` 静态定义，solver 的 `instantiate_operation` 按 kind 构造 | 六类固定模型，不扫描插件或加载第三方库 |
+| 物性包 | `PropertyPackageProvider` 枚举 manifest 并装载 `ThermoSystem` | 当前 Studio 仍构造固定物性 / TP Flash 实现；数据包不是通用可执行插件 |
+| 物性绑定 | 流程保存一个 package ID，单次求解注入一套服务 | 尚无完整工段 / 单元多物性绑定 |
+| 对外 CAPE-OPEN | 外部 PME 发现和调用自有 Unit Operation PMC | 与 RadishFlow 加载外部 PMC 的宿主方向不同，后者未实现 |
+
+模型定义、工程实例、运行实例及目录 / 工厂的演进和验收见 [模型目录专题](../topics/modeling/model-catalog-and-runtime.md)。静态装配是当前合理起点，但 `UnitOperation` 的固定枚举和温压参数结构尚不是开放模型协议。
+
 ## 稳定边界与实现偏移
 
 ### Core 与持久化
@@ -52,7 +90,7 @@
 
 实际 [CachedPropertyPackageProvider](../../crates/rf-thermo/src/lib.rs) 位于 `rf-thermo`，直接依赖 `rf-store`，读取授权缓存记录、判断到期时间并装载 manifest / payload。这是尚未消除的目标与实现偏移，不应表述为纯计算层隔离已经完成。
 
-若以后获准处理该边界，可评估将装载与 DTO 转换移到应用组合层或明确的包加载模块，让计算层接收已装载的数据。本次文档校准不改变依赖，也不自动批准新增 crate 或重构。
+该边界按 [MC2](../topics/modeling/model-catalog-and-runtime.md#分阶段切片) 规划将装载与 DTO 转换归于应用装配或明确的加载职责，让计算层接收已解析数据。方向已确认，具体模块拆分仍在实施切片决定，当前依赖未改变。
 
 ### 文档、编辑与结果
 
@@ -64,7 +102,7 @@
 
 变量查询 / 写入置于 `rf-ui`，受控创建 / 连接 / 运行调用和本地 CLI 置于 Studio 应用层。CLI 复用现有事务与运行链路，不启动窗口；仍链接桌面依赖。接口范围见 [无界面参考](../reference/headless-cli.md)。
 
-U1 的公共单位定义与转换位于 `rf-types::units`；`rf-ui` 变量元数据引用量类型，Studio 浏览和 CLI 只派生规范单位标签。显示偏好设计归项目呈现状态，尚未实现存储或控件切换，见 [单位专题](../topics/units-and-quantity-system.md)。
+U1 的公共单位定义与转换位于 `rf-types::units`；`rf-ui` 变量元数据引用量类型。U2 已接通项目呈现保存、个人默认、数值会话及首批控件 / 视图覆盖，剩余交互与验收见 [单位专题](../topics/units-and-quantity-system.md)；CLI 保持规范 SI 契约。
 
 详细状态与交互契约见 [App Architecture](app-architecture.md)；字段与结果语义见 [结果参考](../reference/solve-snapshot-results.md)。
 

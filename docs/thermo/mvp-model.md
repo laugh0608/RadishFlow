@@ -1,6 +1,6 @@
 # Thermo MVP Model
 
-更新时间：2026-09-16
+更新时间：2026-09-29
 
 ## 用途与维护状态
 
@@ -17,7 +17,9 @@
 - `rf-model` 承载 `MaterialStreamState / PhaseState / BubbleDewWindow`，供单元、solver 和 UI 传递。
 - `rf-types` 是相区 pressure / temperature tolerance 的真相源；flash 复用该容差调和边界附近的分类差异，远离边界的真实冲突仍报错。
 
-目标上计算与 provider 接口不承担文件缓存、授权索引或网络编排。当前 `rf-thermo::CachedPropertyPackageProvider` 实际直接依赖 `rf-store` 并执行缓存装载与过期过滤，尚不满足完整的纯计算隔离；详见 [架构总览](../architecture/overview.md#core-与持久化)。本次不移动代码，也不把既有偏移改写成新的目标边界。
+目标上计算与 provider 接口不承担文件缓存、授权索引或网络编排。当前 `rf-thermo::CachedPropertyPackageProvider` 实际直接依赖 `rf-store` 并执行缓存装载与过期过滤，尚不满足完整的纯计算隔离；详见 [架构总览](../architecture/overview.md#core-与持久化)。2026-09-29 将职责分离纳入 [MC2](../topics/modeling/model-catalog-and-runtime.md#分阶段切片)，代码尚未迁移。
+
+物性配置、包数据与运行上下文的规划归 [物性专题](../topics/property-basis-and-components.md#物性配置与运行上下文规划)。本篇继续拥有公式、近似和物理验证事实；替换装载器、建立工厂或通过 CAPE-OPEN 接口验收不会自动改善数值准确性。后续 PH / PS、焓基准、真实物性和守恒按 P3 的具体单元工况实施，不以先完成通用插件系统为前置。
 
 现有具体实现仍命名为 `PlaceholderThermoProvider` 与 `PlaceholderTpFlashSolver`，但已执行以下算法；名称既不表示完全未实现，也不表示通用物性实现已经完成。
 

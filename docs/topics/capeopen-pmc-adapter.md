@@ -1,6 +1,6 @@
 # CAPE-OPEN PMC 适配层
 
-更新时间：2026-09-13
+更新时间：2026-09-29
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -34,6 +34,12 @@
 - 不推进完整 Thermodynamics PMC。
 - Windows `.NET` / PME 验证需在真实 Windows 或 GitHub Windows runner 完成。
 - 当前不做正式发布、安装器或自动 COM 注册。
+
+## 宿主侧加载的规划关系
+
+当前链路是外部 PME 发现和调用 RadishFlow 自有 PMC；未来 RadishFlow 发现、激活并使用第三方单元 / 物性包是反向宿主能力，尚未实现。`SampleHost` 和既有 DWSIM / COFE 验证不能替代该方向的验收，也不能证明完整 Thermodynamics PMC 已交付。
+
+2026-09-29 将模型发现与装配归入 [MC0—MC3](modeling/model-catalog-and-runtime.md#分阶段切片)；若首个外部模型选择 CAPE-OPEN，先明确 Windows 位数、接口版本、Material Object 服务、组分 / 相态映射、焓基准、线程、引用释放和保存恢复，再建立独立宿主实施专题。对应概念与三类符合性证据见 [边界说明](../capeopen/boundary.md#互操作方向与符合性证据)。这不扩大本专题的当前 PMC 实现范围或默认注册权限。
 
 ## Native engine 生命周期
 
