@@ -107,6 +107,7 @@ UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-p
 | --- | --- | --- | --- |
 | Material Stream 物流股 | Active | 流程图建模与求解闭环 / 结果审阅、诊断与恢复 | `modeling/material-stream.md` |
 | 模型目录、发现与运行实例 | Draft / 2026-09-29 方向已确认 | 流程图建模与求解闭环 / 项目物性基础；MC0—MC3 待实施 | [模型装配](modeling/model-catalog-and-runtime.md) |
+| 多策略求解与问题装配 | Draft / 2026-09-29 方向已确认 | 流程图建模与求解闭环；SM、联立模块、EO、混合分区与 QS0—QS4 待实施 | [多策略求解](modeling/solver-strategies-and-assembly.md) |
 
 ### 平台与服务
 

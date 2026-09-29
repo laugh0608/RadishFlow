@@ -41,7 +41,7 @@ Topics 文档回答“一个功能、能力包或开发目标怎么设计、分�
 | `topics/project-lifecycle-storage.md` | 项目打开、保存、另存为、最近项目、sidecar 和脏改确认 |
 | `topics/capeopen-pmc-adapter.md` | `.NET 10` CAPE-OPEN / COM PMC 适配层和 PME 验证基线 |
 | `topics/unitops/` | Feed、Heater / Cooler、Flash Drum、Mixer、Valve 等单元模块专题 |
-| `topics/modeling/` | Material Stream 与模型目录 / 运行装配专题 |
+| `topics/modeling/` | Material Stream、模型目录 / 运行实例与多策略求解 / 问题装配专题 |
 | `topics/platform/` | Control Plane 后端服务、后端 Web UI、账户联合登录与公共 API 访问控制专题 |
 | `topics/platform/account-and-federated-login.md` | 参考 Radish / RadishMind 的未来账户与登录规划；未排期、待架构决策 |
 | [公共 API 与访问控制](topics/platform/public-api-and-access-control.md) | 凭据 / API key、资源权限、撤销、计算配额及分阶段验收；规划方向已确认、未排期 |
@@ -53,6 +53,7 @@ Topics 文档回答“一个功能、能力包或开发目标怎么设计、分�
 | 主题 | 正式设计入口 | 下钻 |
 | --- | --- | --- |
 | 模型发现与装配 | [模型目录、发现与运行实例](topics/modeling/model-catalog-and-runtime.md) | [当前分层](architecture/overview.md)、[CAPE-OPEN 方向与证据](capeopen/boundary.md#互操作方向与符合性证据)、[MC0—MC3](radishflow-mvp-roadmap.md#模型装配与物性上下文的配套切片)；2026-09-29 确认，新增能力待实施 |
+| 多策略求解 | [问题装配与模型能力](topics/modeling/solver-strategies-and-assembly.md) | [QS0—QS4](radishflow-mvp-roadmap.md#多策略求解的配套切片)、[物性要求](thermo/mvp-model.md#多策略求解的热力学要求规划)、[黑箱边界](capeopen/boundary.md#黑箱组件与多策略求解)；方向已确认，新增能力待实施 |
 | 装置工程与数字孪生 | [长期愿景与领域关系](architecture/simulation-platform.md#装置工程与数字孪生愿景) | [工程容器](topics/project-lifecycle-storage.md#装置工程容器规划)、[配置与场景](topics/engineering-basis-and-cases.md#装置配置与运行场景规划)、[DT0—DT4 演进](radishflow-mvp-roadmap.md#装置工程与数字孪生的演进切片)；2026-09-26 确认，尚未实现 |
 | 工程基础 | [设计基础、工况与数据来源](topics/engineering-basis-and-cases.md) | 共同条件、来源 / 假设、工况矩阵、位号与复现 |
 | 变量与对象浏览器 | [产品、身份与读写专题](topics/variable-and-object-browser.md) | 工程视图 / 变量树、路径引用、表格 / 关注及受控编辑；[VB0—VB3 衔接](radishflow-mvp-roadmap.md#变量与对象浏览器的配套切片)，方向已确认、新增能力待实施 |

@@ -33,10 +33,13 @@
 | Valve 阀门 | Active | `unitops/valve.md` |
 | Material Stream 物流股 | Active | `modeling/material-stream.md` |
 | 模型目录、发现与运行实例 | Draft / 方向已确认 | [模型装配专题](modeling/model-catalog-and-runtime.md) |
+| 多策略求解与问题装配 | Draft / 方向已确认 | [多策略专题](modeling/solver-strategies-and-assembly.md) |
 
 后续涉及具体单元行为、参数、端口、结果或诊断时，应优先更新对应子专题；本文件只保留跨单元的建模 / 求解边界。
 
 ## 规划衔接（尚未实现）
+
+2026-09-29 确认 [QS0—QS4](modeling/solver-strategies-and-assembly.md#分阶段切片)，细化 P3 的分块 SM / 循环和 P4 的联立模块、EO 与混合分区。工程模型保持同源，计算任务明确固定量、未知量和规格，运行装配拥有方程映射与数值工作区；切换策略重验能力和规格。与下述 DS 设计规格求解共用残差及诊断语义，但不把完整 EO 作为单目标反算前置。
 
 2026-09-29 明确模型定义、工程实例和运行实例的分离，以及内建目录 / 工厂先行、外部加载后续的 [MC0—MC3](modeling/model-catalog-and-runtime.md#分阶段切片)。当前仍以固定 kind 构造六类单元；后续将模型专属构造和参数解释归于模型领域，求解器拥有拓扑、执行计划、循环收敛和结果汇总。目录发现不等于设备已实例化，设备创建也不等于具备所选求解策略能力；此规划不改变当前连接、项目格式或 U2 优先级。
 
