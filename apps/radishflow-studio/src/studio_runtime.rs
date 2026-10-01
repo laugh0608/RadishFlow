@@ -355,6 +355,10 @@ impl StudioRuntime {
         self.session.host_runtime()
     }
 
+    pub(crate) fn close_presentation_view(&mut self, view: rf_ui::DisplayUnitViewId) {
+        self.session.close_presentation_view(view);
+    }
+
     pub fn app_state(&self) -> &rf_ui::AppState {
         self.session.app_state()
     }
@@ -433,6 +437,10 @@ impl StudioRuntime {
     ) -> RfResult<Option<rf_ui::StreamReconnectEditResult>> {
         self.session
             .reconnect_selected_stream_to_unique_available_endpoint()
+    }
+
+    pub fn delete_selected_unit(&mut self) -> RfResult<Option<u64>> {
+        self.session.delete_selected_unit()
     }
 
     pub fn delete_selected_stream_and_connections(
@@ -866,7 +874,9 @@ mod tests {
             StudioRuntimeDispatch::RunPanelRecovery(_) => {
                 panic!("expected entitlement session event dispatch")
             }
-            StudioRuntimeDispatch::DocumentLifecycle(_) => {
+            StudioRuntimeDispatch::NumericEdit { .. }
+            | StudioRuntimeDispatch::ProjectPresentation { .. }
+            | StudioRuntimeDispatch::DocumentLifecycle(_) => {
                 panic!("expected entitlement session event dispatch")
             }
             StudioRuntimeDispatch::InspectorTarget(_) => {

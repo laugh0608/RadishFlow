@@ -5,30 +5,10 @@ use crate::{
     StudioGuiCanvasObjectListItemViewModel, StudioGuiCanvasState, StudioWindowHostId,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum StudioGuiShortcutModifier {
-    Ctrl,
-    Shift,
-    Alt,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum StudioGuiShortcutKey {
-    S,
-    Z,
-    Y,
-    F5,
-    F6,
-    F8,
-    Tab,
-    Escape,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct StudioGuiShortcut {
-    pub modifiers: Vec<StudioGuiShortcutModifier>,
-    pub key: StudioGuiShortcutKey,
-}
+mod shortcuts;
+pub use shortcuts::{
+    StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier, StudioGuiShortcutPlatform,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiCommandEntry {
@@ -41,6 +21,7 @@ pub struct StudioGuiCommandEntry {
     pub menu_path: Vec<String>,
     pub search_terms: Vec<String>,
     pub shortcut: Option<StudioGuiShortcut>,
+    pub shortcut_aliases: Vec<StudioGuiShortcut>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -75,7 +56,17 @@ impl StudioGuiCommandEntry {
     }
 
     pub fn presentation(&self) -> StudioGuiCommandPresentation {
-        let shortcut_label = self.shortcut.as_ref().map(format_shortcut);
+        self.presentation_for_platform(StudioGuiShortcutPlatform::current())
+    }
+
+    pub fn presentation_for_platform(
+        &self,
+        platform: StudioGuiShortcutPlatform,
+    ) -> StudioGuiCommandPresentation {
+        let shortcut_label = self
+            .shortcut
+            .as_ref()
+            .map(|shortcut| shortcut.format(platform));
         let label_with_shortcut = match shortcut_label.as_ref() {
             Some(shortcut) => format!("{} ({shortcut})", self.label),
             None => self.label.clone(),
@@ -162,6 +153,22 @@ impl StudioGuiCommandRegistry {
         canvas_target_window_id: Option<StudioWindowHostId>,
         latest_solve_snapshot: Option<&rf_ui::SolveSnapshot>,
     ) -> Self {
+        Self::from_surfaces_with_results_for_platform(
+            model,
+            canvas,
+            canvas_target_window_id,
+            latest_solve_snapshot,
+            StudioGuiShortcutPlatform::current(),
+        )
+    }
+
+    pub fn from_surfaces_with_results_for_platform(
+        model: &StudioAppHostUiCommandModel,
+        canvas: &StudioGuiCanvasState,
+        canvas_target_window_id: Option<StudioWindowHostId>,
+        latest_solve_snapshot: Option<&rf_ui::SolveSnapshot>,
+        platform: StudioGuiShortcutPlatform,
+    ) -> Self {
         let mut run_panel = Vec::new();
         let mut file = Vec::new();
         let mut edit = Vec::new();
@@ -171,7 +178,7 @@ impl StudioGuiCommandRegistry {
         let mut canvas_commands = Vec::new();
 
         for action in &model.actions {
-            let defaults = command_defaults(action.command_id);
+            let defaults = command_defaults(action.command_id, platform);
             let entry = StudioGuiCommandEntry {
                 command_id: action.command_id.to_string(),
                 label: action.label.to_string(),
@@ -190,6 +197,7 @@ impl StudioGuiCommandRegistry {
                     .map(|term| (*term).to_string())
                     .collect(),
                 shortcut: defaults.shortcut,
+                shortcut_aliases: shortcut_aliases(action.command_id, platform),
             };
             match action.group {
                 StudioAppHostUiCommandGroup::File => file.push(entry),
@@ -203,7 +211,11 @@ impl StudioGuiCommandRegistry {
         let widget = canvas.widget();
         for action in &widget.actions {
             let is_place_unit = matches!(action.id, StudioGuiCanvasActionId::BeginPlaceUnit(_));
-            let is_layout_nudge = matches!(action.id, StudioGuiCanvasActionId::MoveSelectedUnit(_));
+            let is_unit_edit = matches!(
+                action.id,
+                StudioGuiCanvasActionId::MoveSelectedUnit(_)
+                    | StudioGuiCanvasActionId::DeleteSelectedUnit
+            );
             let is_stream_edit = matches!(
                 action.id,
                 StudioGuiCanvasActionId::DisconnectSelectedStream
@@ -214,13 +226,13 @@ impl StudioGuiCommandRegistry {
             );
             let should_include = if is_place_unit {
                 canvas_target_window_id.is_some()
-            } else if is_layout_nudge || is_stream_edit {
+            } else if is_unit_edit || is_stream_edit {
                 canvas_target_window_id.is_some() && action.enabled
             } else {
                 !canvas.suggestions.is_empty() || canvas.pending_edit.is_some()
             };
             if should_include {
-                let defaults = command_defaults(action.command_id.as_str());
+                let defaults = command_defaults(action.command_id.as_str(), platform);
                 canvas_commands.push(StudioGuiCommandEntry {
                     command_id: action.command_id.to_string(),
                     label: action.label.to_string(),
@@ -239,6 +251,7 @@ impl StudioGuiCommandRegistry {
                         .map(|term| (*term).to_string())
                         .collect(),
                     shortcut: defaults.shortcut,
+                    shortcut_aliases: shortcut_aliases(action.command_id.as_ref(), platform),
                 });
             }
         }
@@ -321,7 +334,10 @@ impl StudioGuiCommandRegistry {
         self.sections
             .iter()
             .flat_map(|section| section.commands.iter())
-            .find(|entry| entry.shortcut.as_ref() == Some(shortcut))
+            .find(|entry| {
+                entry.shortcut.as_ref() == Some(shortcut)
+                    || entry.shortcut_aliases.contains(shortcut)
+            })
     }
 
     pub fn command(&self, command_id: &str) -> Option<&StudioGuiCommandEntry> {
@@ -429,6 +445,7 @@ fn result_stream_command_entry(
             summary,
         ],
         shortcut: None,
+        shortcut_aliases: Vec::new(),
     }
 }
 
@@ -470,6 +487,7 @@ fn result_unit_command_entry(
             step.summary.clone(),
         ],
         shortcut: None,
+        shortcut_aliases: Vec::new(),
     }
 }
 
@@ -505,13 +523,16 @@ struct StudioGuiCommandDefaults {
     shortcut: Option<StudioGuiShortcut>,
 }
 
-fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
+fn command_defaults(
+    command_id: &str,
+    platform: StudioGuiShortcutPlatform,
+) -> StudioGuiCommandDefaults {
     match command_id {
         "file.save" => StudioGuiCommandDefaults {
             menu_path: &["File", "Save"],
             search_terms: &["file", "save", "project"],
             shortcut: Some(StudioGuiShortcut {
-                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                modifiers: vec![StudioGuiShortcutModifier::Primary],
                 key: StudioGuiShortcutKey::S,
             }),
         },
@@ -519,17 +540,14 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
             menu_path: &["Edit", "Undo"],
             search_terms: &["edit", "undo", "history"],
             shortcut: Some(StudioGuiShortcut {
-                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                modifiers: vec![StudioGuiShortcutModifier::Primary],
                 key: StudioGuiShortcutKey::Z,
             }),
         },
         "edit.redo" => StudioGuiCommandDefaults {
             menu_path: &["Edit", "Redo"],
             search_terms: &["edit", "redo", "history"],
-            shortcut: Some(StudioGuiShortcut {
-                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
-                key: StudioGuiShortcutKey::Y,
-            }),
+            shortcut: Some(platform.redo_shortcut()),
         },
         "run_panel.run_manual" => StudioGuiCommandDefaults {
             menu_path: &["Run", "Run Workspace"],
@@ -723,6 +741,11 @@ fn command_defaults(command_id: &str) -> StudioGuiCommandDefaults {
             ],
             shortcut: None,
         },
+        "canvas.delete_selected_unit" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Unit", "Delete Selected Unit"],
+            search_terms: &["unit", "delete", "remove", "删除", "单元"],
+            shortcut: None,
+        },
         "canvas.delete_selected_stream" => StudioGuiCommandDefaults {
             menu_path: &["Canvas", "Stream", "Delete Selected Stream"],
             search_terms: &[
@@ -762,6 +785,7 @@ fn canvas_sort_order(action_id: StudioGuiCanvasActionId) -> u16 {
         StudioGuiCanvasActionId::DisconnectSelectedStreamSink => 394,
         StudioGuiCanvasActionId::ReconnectSelectedStream => 400,
         StudioGuiCanvasActionId::DeleteSelectedStream => 410,
+        StudioGuiCanvasActionId::DeleteSelectedUnit => 420,
     }
 }
 
@@ -806,6 +830,7 @@ fn canvas_object_navigation_command_entry(
             anchor.to_string(),
         ],
         shortcut: None,
+        shortcut_aliases: Vec::new(),
     }
 }
 
@@ -875,28 +900,18 @@ fn normalize_palette_query_field(value: &str) -> String {
     value.trim().to_lowercase()
 }
 
-fn format_shortcut(shortcut: &StudioGuiShortcut) -> String {
-    let mut parts = Vec::new();
-    for modifier in &shortcut.modifiers {
-        let label = match modifier {
-            StudioGuiShortcutModifier::Ctrl => "Ctrl",
-            StudioGuiShortcutModifier::Shift => "Shift",
-            StudioGuiShortcutModifier::Alt => "Alt",
-        };
-        parts.push(label);
+fn shortcut_aliases(
+    command_id: &str,
+    platform: StudioGuiShortcutPlatform,
+) -> Vec<StudioGuiShortcut> {
+    if command_id == crate::EDIT_REDO_COMMAND_ID && platform == StudioGuiShortcutPlatform::MacOs {
+        vec![StudioGuiShortcut {
+            modifiers: vec![StudioGuiShortcutModifier::Primary],
+            key: StudioGuiShortcutKey::Y,
+        }]
+    } else {
+        Vec::new()
     }
-    let key = match shortcut.key {
-        StudioGuiShortcutKey::S => "S",
-        StudioGuiShortcutKey::Z => "Z",
-        StudioGuiShortcutKey::Y => "Y",
-        StudioGuiShortcutKey::F5 => "F5",
-        StudioGuiShortcutKey::F6 => "F6",
-        StudioGuiShortcutKey::F8 => "F8",
-        StudioGuiShortcutKey::Tab => "Tab",
-        StudioGuiShortcutKey::Escape => "Escape",
-    };
-    parts.push(key);
-    parts.join("+")
 }
 
 #[cfg(test)]

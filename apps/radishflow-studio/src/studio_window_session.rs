@@ -129,6 +129,10 @@ impl StudioWindowSession {
             .reconnect_selected_stream_to_unique_available_endpoint()
     }
 
+    pub fn delete_selected_unit(&mut self) -> RfResult<Option<u64>> {
+        self.host_port.delete_selected_unit()
+    }
+
     pub fn delete_selected_stream_and_connections(
         &mut self,
     ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {

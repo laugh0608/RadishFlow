@@ -14,12 +14,12 @@ internal static partial class RfNativeMethods
 
     [LibraryImport(LibraryName, EntryPoint = "engine_last_error_message")]
     internal static partial RfFfiStatus EngineLastErrorMessage(
-        nint engine,
+        RfNativeEngineHandle engine,
         out nint message);
 
     [LibraryImport(LibraryName, EntryPoint = "engine_last_error_json")]
     internal static partial RfFfiStatus EngineLastErrorJson(
-        nint engine,
+        RfNativeEngineHandle engine,
         out nint message);
 
     [LibraryImport(LibraryName, EntryPoint = "rf_string_free")]
@@ -27,13 +27,13 @@ internal static partial class RfNativeMethods
 
     [LibraryImport(LibraryName, EntryPoint = "flowsheet_load_json")]
     internal static partial RfFfiStatus FlowsheetLoadJson(
-        nint engine,
+        RfNativeEngineHandle engine,
         byte[] jsonUtf8,
         nuint jsonLength);
 
     [LibraryImport(LibraryName, EntryPoint = "property_package_load_from_files")]
     internal static partial RfFfiStatus PropertyPackageLoadFromFiles(
-        nint engine,
+        RfNativeEngineHandle engine,
         byte[] manifestPathUtf8,
         nuint manifestPathLength,
         byte[] payloadPathUtf8,
@@ -41,23 +41,23 @@ internal static partial class RfNativeMethods
 
     [LibraryImport(LibraryName, EntryPoint = "property_package_list_json")]
     internal static partial RfFfiStatus PropertyPackageListJson(
-        nint engine,
+        RfNativeEngineHandle engine,
         out nint json);
 
     [LibraryImport(LibraryName, EntryPoint = "flowsheet_solve")]
     internal static partial RfFfiStatus FlowsheetSolve(
-        nint engine,
+        RfNativeEngineHandle engine,
         byte[] packageIdUtf8,
         nuint packageIdLength);
 
     [LibraryImport(LibraryName, EntryPoint = "flowsheet_get_snapshot_json")]
     internal static partial RfFfiStatus FlowsheetGetSnapshotJson(
-        nint engine,
+        RfNativeEngineHandle engine,
         out nint json);
 
     [LibraryImport(LibraryName, EntryPoint = "stream_get_snapshot_json")]
     internal static partial RfFfiStatus StreamGetSnapshotJson(
-        nint engine,
+        RfNativeEngineHandle engine,
         byte[] streamIdUtf8,
         nuint streamIdLength,
         out nint json);

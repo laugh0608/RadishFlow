@@ -66,6 +66,10 @@ impl ReadyAppState {
                 ui.separator();
                 self.render_context_toolbar(ui, context_toolbar);
             }
+            if self.screen == StudioShellScreen::Results {
+                self.render_result_output_actions(ui, window);
+            }
+            self.render_failure_recovery_action(ui, window);
             self.render_project_operation_strip(ui);
             if !window.commands.menu_tree.is_empty()
                 && window
@@ -105,14 +109,14 @@ impl ReadyAppState {
                     }
                 });
             }
-            if self.drag_session.is_none() {
-                if let Some(preview) = window.drop_preview.as_ref() {
-                    ui.separator();
-                    ui.small(
-                        egui::RichText::new(format_compact_drop_preview_status(preview))
-                            .color(egui::Color32::from_rgb(92, 104, 117)),
-                    );
-                }
+            if self.drag_session.is_none()
+                && let Some(preview) = window.drop_preview.as_ref()
+            {
+                ui.separator();
+                ui.small(
+                    egui::RichText::new(format_compact_drop_preview_status(preview))
+                        .color(egui::Color32::from_rgb(92, 104, 117)),
+                );
             }
             if let Some(error) = self.platform_host.latest_gui_error_line() {
                 ui.separator();
@@ -363,6 +367,12 @@ impl ReadyAppState {
             ui.close_menu();
         }
 
+        if ui.button("变量浏览器 / Variable Browser").clicked() {
+            self.command_palette.close();
+            self.variable_browser.open = true;
+            ui.close_menu();
+        }
+
         let commands_visible = window
             .layout_state
             .panel(StudioGuiWindowAreaId::Commands)
@@ -399,6 +409,11 @@ impl ReadyAppState {
     }
 
     pub(super) fn render_settings_top_menu_content(&mut self, ui: &mut egui::Ui) {
+        if ui.button("项目显示单位…").clicked() {
+            self.open_unit_settings();
+            ui.close_menu();
+        }
+        ui.separator();
         ui.label(egui::RichText::new(self.locale.text(ShellText::Language)).strong());
         let english = self.locale.text(ShellText::English);
         let chinese = self.locale.text(ShellText::Chinese);
@@ -1810,15 +1825,15 @@ impl ReadyAppState {
 
         let new_stack_insert_group_index = new_stack_preview_group_index(region_preview);
         for (group_index, group) in groups.iter().enumerate() {
-            if new_stack_insert_group_index == Some(group_index) {
-                if let Some(preview) = region_preview {
-                    let rect = render_new_stack_insert_overlay(ui, preview);
-                    self.record_drop_preview_overlay_anchor(
-                        rect,
-                        drop_preview_anchor_priority_new_stack(),
-                    );
-                    ui.add_space(8.0);
-                }
+            if new_stack_insert_group_index == Some(group_index)
+                && let Some(preview) = region_preview
+            {
+                let rect = render_new_stack_insert_overlay(ui, preview);
+                self.record_drop_preview_overlay_anchor(
+                    rect,
+                    drop_preview_anchor_priority_new_stack(),
+                );
+                ui.add_space(8.0);
             }
 
             let visible_tabs = group
@@ -1842,22 +1857,21 @@ impl ReadyAppState {
                 .stroke(stack_preview_stroke(is_target_stack))
                 .show(ui, |ui| {
                     if group.tabbed {
-                        if let Some(drag_session) = drag_session {
-                            if let Some(query) =
+                        if let Some(drag_session) = drag_session
+                            && let Some(query) =
                                 stack_group_drop_target_query(&layout, drag_session, group)
-                            {
-                                self.render_drop_target_lane(
-                                    ui,
-                                    window_id,
-                                    query,
-                                    &format!(
-                                        "Append {} to current stack",
-                                        area_label(drag_session.area_id)
-                                    ),
-                                    hovered_drop_target,
-                                );
-                                ui.add_space(4.0);
-                            }
+                        {
+                            self.render_drop_target_lane(
+                                ui,
+                                window_id,
+                                query,
+                                &format!(
+                                    "Append {} to current stack",
+                                    area_label(drag_session.area_id)
+                                ),
+                                hovered_drop_target,
+                            );
+                            ui.add_space(4.0);
                         }
                         let mut tab_rects = Vec::new();
                         let tab_strip = ui.horizontal_wrapped(|ui| {
@@ -1921,15 +1935,12 @@ impl ReadyAppState {
             ui.add_space(8.0);
         }
 
-        if new_stack_insert_group_index == Some(groups.len()) {
-            if let Some(preview) = region_preview {
-                let rect = render_new_stack_insert_overlay(ui, preview);
-                self.record_drop_preview_overlay_anchor(
-                    rect,
-                    drop_preview_anchor_priority_new_stack(),
-                );
-                ui.add_space(8.0);
-            }
+        if new_stack_insert_group_index == Some(groups.len())
+            && let Some(preview) = region_preview
+        {
+            let rect = render_new_stack_insert_overlay(ui, preview);
+            self.record_drop_preview_overlay_anchor(rect, drop_preview_anchor_priority_new_stack());
+            ui.add_space(8.0);
         }
     }
 

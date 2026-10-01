@@ -1004,14 +1004,15 @@ fn updating_stream_inspector_draft_keeps_document_unchanged() {
         app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")].temperature_k,
         298.15
     );
+    let crate::DraftValue::Numeric(session) = &app_state.workspace.drafts.fields[&outcome.key]
+    else {
+        panic!("expected numeric session");
+    };
+    assert_eq!(session.raw_text(), "333.5");
+    assert!(session.is_dirty());
     assert_eq!(
-        app_state.workspace.drafts.fields.get(&outcome.key),
-        Some(&crate::DraftValue::Number(crate::FieldDraft {
-            original: "298.15".to_string(),
-            current: "333.5".to_string(),
-            is_dirty: true,
-            validation: crate::DraftValidationState::Valid,
-        }))
+        session.draft_validation(),
+        crate::DraftValidationState::Valid
     );
 }
 
@@ -1030,14 +1031,15 @@ fn updating_stream_inspector_draft_preserves_invalid_raw_number() {
         .expect("expected draft update");
 
     assert_eq!(outcome.validation, crate::DraftValidationState::Invalid);
+    let crate::DraftValue::Numeric(session) = &app_state.workspace.drafts.fields[&outcome.key]
+    else {
+        panic!("expected numeric session");
+    };
+    assert_eq!(session.raw_text(), "not-a-pressure");
+    assert!(session.is_dirty());
     assert_eq!(
-        app_state.workspace.drafts.fields.get(&outcome.key),
-        Some(&crate::DraftValue::Number(crate::FieldDraft {
-            original: "101325".to_string(),
-            current: "not-a-pressure".to_string(),
-            is_dirty: true,
-            validation: crate::DraftValidationState::Invalid,
-        }))
+        session.draft_validation(),
+        crate::DraftValidationState::Invalid
     );
     assert_eq!(app_state.workspace.document.revision, 0);
     assert!(app_state.workspace.command_history.is_empty());

@@ -1,28 +1,28 @@
 # Studio Visual System
 
-更新时间：2026-05-23
+更新时间：2026-09-23
 
 ## 用途
 
-用途：定义 RadishFlow Studio 的长期视觉系统、设计 token、色彩角色、控件状态和视觉验收口径，作为后续 UI 专题、设计稿和实现收敛的共同依据。
+用途：定义 RadishFlow Studio 的视觉定位、排版密度、控件结构和按任务验收口径，作为后续 UI 专题、设计稿和实现收敛的共同依据。
 读者：负责 Studio shell、Canvas、Inspector、Result、Package / Auth、单元模块 UI 和未来控制面 UI 的开发者与设计协作者。
 不包含：具体页面信息架构、完整 `.pen` 设计稿、品牌营销页面、图标资产、自由连线编辑器、完整报表系统、商业化多文档工作台或求解 / 物性模型设计。
 
 ## 文档边界
 
-`studio-ui-design-guidelines.md` 继续负责 Home、Workbench、Canvas、Inspector、Result 和底部 drawer 的信息架构与交互路径。本文件负责更稳定的视觉系统规则，包括：
+新增单位、规格辅助与设备功能分区由 [UI 专题计划](studio-ui-topic-plan.md) 和 [主稿 brief](designs/studio-client-main-brief.md) 重评；`studio-ui-design-guidelines.md` 保留既有工作台交互与视觉约束。本文件负责更稳定的视觉系统规则，包括：
 
 - 视觉定位和避免方向。
-- 色彩角色、状态色和 token 命名。
+- 颜色 / 状态一级专题的导航；色彩与 token 规则只在该专题维护。
 - 字体、间距、圆角、阴影和密度。
 - 按钮、输入、面板、表格、状态 chip、弹窗、Canvas 图元等控件外观。
-- i18n 长度、可访问性、视觉验收和维护规则。
+- i18n 长度、结构可读性、视觉验收和维护规则；状态可访问性见颜色专题。
 
 `ui-inspiration-reference.md` 只提供外部优秀产品的灵感提炼，不作为 RadishFlow 的视觉规范或可直接照抄的设计稿。
 
 ## 视觉定位
 
-RadishFlow Studio 是面向稳态流程模拟的工程桌面软件。默认视觉方向应是浅色、克制、清晰、可信、长时间可读的专业工具，而不是营销页、暗色监控大屏、传统厚重 ribbon、游戏化界面或单一品牌色堆叠。
+RadishFlow Studio 从稳态流程起步，逐步覆盖物性、设备工程与时间相关模拟任务。默认视觉方向应是浅色、克制、清晰、可信、长时间可读的专业工具，而不是营销页、暗色监控大屏、传统厚重 ribbon、游戏化界面或单一品牌色堆叠。
 
 关键词：
 
@@ -32,7 +32,7 @@ RadishFlow Studio 是面向稳态流程模拟的工程桌面软件。默认视�
 - 可扫读
 - 高密度但不拥挤
 - 状态明确
-- 画布优先
+- 当前工程任务优先；流程建模时画布优先
 
 避免方向：
 
@@ -44,49 +44,15 @@ RadishFlow Studio 是面向稳态流程模拟的工程桌面软件。默认视�
 
 ## 设计 Token
 
-后续实现若引入统一主题或样式层，应优先采用语义 token，而不是在组件里散落具体颜色、阴影和圆角。
-
-建议 token 分层：
-
-| 类型 | 示例 | 用途 |
-| --- | --- | --- |
-| 背景 | `studio-bg-app`、`studio-bg-surface`、`studio-bg-muted`、`studio-bg-canvas` | 应用底、面板、弱背景和画布 |
-| 文本 | `studio-text-primary`、`studio-text-secondary`、`studio-text-muted`、`studio-text-on-accent` | 标题、正文、辅助文字和强调面文字 |
-| 边框 | `studio-border-subtle`、`studio-border-strong`、`studio-border-focus` | 面板、表格、输入和焦点态 |
-| 品牌 | `studio-accent-primary`、`studio-accent-soft`、`studio-accent-hover` | 主按钮、链接、选中态和轻强调底 |
-| 状态 | `studio-success`、`studio-warning`、`studio-error`、`studio-info`、`studio-draft` | 运行、阻断、诊断、提示和草稿 |
-| 画布 | `studio-canvas-grid`、`studio-canvas-unit`、`studio-canvas-stream`、`studio-canvas-port`、`studio-canvas-attention` | 网格、单元、流股、端口和注意态 |
-| 尺寸 | `studio-radius-panel`、`studio-radius-control`、`studio-spacing-sm`、`studio-spacing-md` | 圆角、间距和控件密度 |
-| 阴影 | `studio-shadow-panel`、`studio-shadow-popover`、`studio-shadow-focus` | 浮层、面板层级和焦点强调 |
-
-命名规则：
-
-- 使用角色命名，不使用 `blue-500`、`gray-card` 这类把实现绑死的名字。
-- token 应表达 RadishFlow Studio 语义，不复用其他项目的品牌 token 名称。
-- 组件只能消费 token；新增 token 必须先说明角色和使用范围。
-- 暂未建立统一 token 层前，新增样式仍应按这些角色组织，避免硬编码值散落。
+语义 token 分层、命名和维护规则移至 [主题与可访问性](../topics/color-state/theme-and-accessibility.md#设计-token)。本文继续维护字体、间距、控件结构和画布绘制风格，不另存一套 token 目录。
 
 ## 色彩系统
 
-默认基线：
+一级专题 [颜色与状态系统](../topics/color-and-state-system.md) 拥有颜色角色、状态映射、主题和迁移验收；实际状态事实由所属领域提供。默认保持浅色、克制、工程化方向。
 
-- 应用背景：白色到极浅中性灰。
-- 面板底色：白色或轻微灰底。
-- 画布底色：浅色中性底，可有低对比网格。
-- 主强调：克制蓝色，用于主按钮、选中、链接和焦点。
-- 成功：绿色，仅表达可运行、完成、收敛。
-- 警告：琥珀色，仅表达待处理、hold、风险或非阻断提醒。
-- 错误：红色，仅表达阻断、失败、无效输入或不可恢复错误。
-- 信息：蓝灰或中性蓝，用于说明、定位和辅助提示。
-- 草稿 / 未保存：淡蓝灰或中性灰，不与错误混淆。
+### 工程字段与状态语义（V0 规划）
 
-使用规则：
-
-- 同一视图内强强调色不超过 2 组。
-- 状态色必须有明确语义，不用于装饰性图标、背景花纹或无状态按钮。
-- 高密度表格和 Inspector 字段优先用文字、边框、图标和短状态 chip 表达层级，不用整块高饱和背景。
-- 禁止把单一蓝色、紫色、棕色、深色或高饱和主题铺满主界面。
-- 外部参考图的品牌色、图标色和具体配色不得复制到 RadishFlow。
+旧入口保留为导航。V0 规则正文见 [状态语义与叠加](../topics/color-state/semantics-and-composition.md)、[控件与画布映射](../topics/color-state/control-and-canvas-mapping.md)；实现与验收状态见 [追踪表](../topics/color-state/requirements-traceability.md)。U2 / V0 局部画板已获认可，控件统一迁移与产品验收仍待实施。
 
 ## 字体与排版
 
@@ -140,7 +106,7 @@ RadishFlow Studio 是面向稳态流程模拟的工程桌面软件。默认视�
 ### 输入与表单
 
 - 字段采用 label + input + unit + validation 的稳定结构。
-- 数值字段必须显示 SI 单位或单位集来源。
+- 数值字段的单位标签和可选项来自统一量 / 单位元数据；当前为 SI，未来显示单位集与临时输入单位明确区分。控件不私存转换系数。
 - 草稿、无效、阻断和只读状态应可区分。
 - 不吞掉无效输入原因；错误信息应尽量定位到字段或相关端口 / 流股。
 - 密集参数区优先使用分组、短标题和折叠低频项，不堆长说明。
@@ -163,7 +129,7 @@ RadishFlow Studio 是面向稳态流程模拟的工程桌面软件。默认视�
 
 - chip 用于项目状态、运行状态、示例状态、授权 / package 状态和短诊断。
 - chip 文案保持 1-3 个词或短中文词组。
-- chip 颜色必须来自状态语义，不因位置不同重新定义含义。
+- chip 状态角色与组合按 [控件映射](../topics/color-state/control-and-canvas-mapping.md)，不在此另定色彩含义。
 - 同一行 chip 数量建议控制在 3-5 个。
 
 ### 弹窗与浮层
@@ -175,7 +141,7 @@ RadishFlow Studio 是面向稳态流程模拟的工程桌面软件。默认视�
 
 ## Canvas 图元
 
-Canvas 是 Studio 主舞台，视觉系统必须优先保护画布可读性。
+流程建模任务以 Canvas 为主区域并优先保护其可读性；设备、物性和结果任务以各自主要内容为主，不要求画布始终最大。
 
 规则：
 
@@ -185,7 +151,7 @@ Canvas 是 Studio 主舞台，视觉系统必须优先保护画布可读性。
 - 运行后关键结果标签只在不会遮挡单元、端口和主路径时出现。
 - attention / error outline 应统一，不用整块高饱和背景覆盖设备。
 - 网格线必须低对比，不抢过设备和流股。
-- 选中态、hover 态、运行态和诊断态不能互相掩盖。
+- 选中、hover、运行与诊断的叠加按 [V0 组合](../topics/color-state/semantics-and-composition.md)，画布需提供相应空间。
 
 ## i18n 与文本长度
 
@@ -204,7 +170,7 @@ RadishFlow Studio 默认中文界面，但工程术语、类型名、包名、�
 每轮 UI 或样式改动完成后，至少检查：
 
 - 主路径是否仍可在 5 秒内识别：打开示例、新建、运行、查看结果、保存。
-- 画布是否仍是工作台最大且最清晰区域。
+- 流程建模任务的画布是否保持主要且清晰；设备、物性和结果任务是否让当前主内容获得主要空间。
 - 顶部、左侧、右侧、底部是否各自职责稳定。
 - 状态色是否只用于状态语义，没有退化成装饰。
 - 字段、单位、错误原因和结果摘要是否可扫读。

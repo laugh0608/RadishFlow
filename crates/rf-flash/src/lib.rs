@@ -249,9 +249,9 @@ impl TpFlashSolver for PlaceholderTpFlashSolver {
         let state = input.thermo_state();
         thermo.system().validate_state(&state)?;
 
-        if input.total_molar_flow_mol_s < 0.0 {
+        if !input.total_molar_flow_mol_s.is_finite() || input.total_molar_flow_mol_s < 0.0 {
             return Err(RfError::invalid_input(
-                "total molar flow must be non-negative",
+                "total molar flow must be a finite non-negative value",
             ));
         }
 
@@ -389,6 +389,7 @@ fn phase_weighted_enthalpy(
 
 #[cfg(test)]
 mod tests {
+    mod flow_input;
     use super::{
         FlashPhaseRegion, FlashStatus, PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver,
         estimate_bubble_dew_window,

@@ -1,8 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use rf_store::{StoredDocumentMetadata, StoredProjectFile, write_project_file};
+use rf_store::{StoredDocumentMetadata, StoredProjectFile, read_project_file, write_project_file};
 use rf_types::{RfError, RfResult};
-use rf_ui::{AppLogLevel, AppState};
+use rf_ui::{AppLogLevel, AppState, DocumentMetadata, FlowsheetDocument};
 
 pub const FILE_SAVE_COMMAND_ID: &str = "file.save";
 pub const FILE_SAVE_AS_COMMAND_ID: &str = "file.save_as";
@@ -10,7 +10,13 @@ pub const FILE_SAVE_AS_COMMAND_ID: &str = "file.save_as";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioDocumentLifecycleCommand {
     Save,
-    SaveAs { path: PathBuf },
+    SaveAs {
+        path: PathBuf,
+    },
+    /// Explicit caller consent to write an older project using the current format.
+    SaveUpgraded {
+        path: PathBuf,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,12 +32,37 @@ pub struct DocumentLifecycleOutcome {
     pub revision: u64,
     pub last_saved_revision: Option<u64>,
     pub has_unsaved_changes: bool,
+    pub save_state: rf_ui::ProjectSaveState,
+}
+
+/// Load project inputs and presentation; runtime, cache and window state belong to the caller.
+pub fn load_project_app_state(project_path: &Path) -> RfResult<AppState> {
+    let project = read_project_file(project_path)?;
+    let presentation = rf_ui::ProjectPresentationState::from_loaded(
+        project.presentation.display_units,
+        project.schema_version,
+    );
+    let stored = project.document;
+    let metadata = stored.metadata;
+    let mut document = FlowsheetDocument::new(
+        stored.flowsheet,
+        DocumentMetadata::new(metadata.document_id, metadata.title, metadata.created_at),
+    );
+    document.revision = stored.revision;
+    document.metadata.schema_version = metadata.schema_version;
+    document.metadata.updated_at = metadata.updated_at;
+
+    let mut app_state = AppState::new(document);
+    app_state.workspace.project_presentation = presentation;
+    app_state.mark_saved(project_path.to_path_buf());
+    Ok(app_state)
 }
 
 pub fn dispatch_document_lifecycle(
     app_state: &mut AppState,
     command: StudioDocumentLifecycleCommand,
 ) -> RfResult<DocumentLifecycleOutcome> {
+    let upgrade_confirmed = matches!(command, StudioDocumentLifecycleCommand::SaveUpgraded { .. });
     let (action, path) = match command {
         StudioDocumentLifecycleCommand::Save => {
             let path =
@@ -40,16 +71,38 @@ pub fn dispatch_document_lifecycle(
                 })?;
             (StudioDocumentLifecycleAction::Save, path)
         }
-        StudioDocumentLifecycleCommand::SaveAs { path } => {
+        StudioDocumentLifecycleCommand::SaveAs { path }
+        | StudioDocumentLifecycleCommand::SaveUpgraded { path } => {
             if path.as_os_str().is_empty() {
                 return Err(RfError::invalid_input("save-as project path is empty"));
             }
-            (StudioDocumentLifecycleAction::SaveAs, path)
+            let action =
+                if upgrade_confirmed && app_state.workspace.document_path.as_ref() == Some(&path) {
+                    StudioDocumentLifecycleAction::Save
+                } else {
+                    StudioDocumentLifecycleAction::SaveAs
+                };
+            (action, path)
         }
     };
 
+    if app_state
+        .workspace
+        .project_presentation
+        .source_file_version()
+        == Some(1)
+        && !upgrade_confirmed
+    {
+        return Err(RfError::invalid_input(
+            "project format upgrade requires confirmation; older versions cannot read the upgraded file",
+        ));
+    }
     let project_file = stored_project_file_from_app_state(app_state);
     write_project_file(&path, &project_file)?;
+    app_state.workspace.project_presentation.record_saved(
+        project_file.presentation.display_units,
+        project_file.schema_version,
+    );
     app_state.mark_saved(path.clone());
     app_state.log_feed.push(
         AppLogLevel::Info,
@@ -66,8 +119,11 @@ pub fn dispatch_document_lifecycle(
         path,
         revision: app_state.workspace.document.revision,
         last_saved_revision: app_state.workspace.last_saved_revision,
-        has_unsaved_changes: app_state.workspace.last_saved_revision
-            != Some(app_state.workspace.document.revision),
+        has_unsaved_changes: app_state
+            .workspace
+            .project_save_state()
+            .has_unsaved_changes(),
+        save_state: app_state.workspace.project_save_state(),
     })
 }
 
@@ -84,6 +140,11 @@ fn stored_project_file_from_app_state(app_state: &AppState) -> StoredProjectFile
             updated_at: metadata.updated_at,
         },
     );
+    project_file.presentation.display_units = app_state
+        .workspace
+        .project_presentation
+        .display_units()
+        .clone();
     project_file.document.revision = document.revision;
     project_file
 }
@@ -109,22 +170,87 @@ mod tests {
     fn app_state_from_example(path: &PathBuf) -> AppState {
         let project_json = crate::test_support::official_heater_binary_hydrocarbon_project_json();
         fs::write(path, project_json).expect("expected temporary project file");
-        let project_file = read_project_file(path).expect("expected project file");
-        let metadata = &project_file.document.metadata;
-        let mut document = rf_ui::FlowsheetDocument::new(
-            project_file.document.flowsheet,
-            rf_ui::DocumentMetadata::new(
-                metadata.document_id.clone(),
-                metadata.title.clone(),
-                metadata.created_at,
-            ),
+        app_state_from_project_file(path)
+    }
+
+    fn app_state_from_project_file(path: &Path) -> AppState {
+        load_project_app_state(path).expect("expected project app state")
+    }
+
+    #[test]
+    fn variable_write_saves_reopens_with_stable_identity_and_resolves_new_results() {
+        use rf_ui::variable_browser::{
+            ObjectId, VariableBrowser, VariableField, VariableId, VariableSection, VariableValue,
+        };
+        use rf_ui::variable_commands::VariableWriteRequest;
+        let path = temp_project_path("variable-write");
+        let mut app = app_state_from_example(&path);
+        let provider = crate::test_support::build_official_binary_hydrocarbon_in_memory_provider(
+            crate::test_support::OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
         );
-        document.revision = project_file.document.revision;
-        document.metadata.schema_version = metadata.schema_version;
-        document.metadata.updated_at = metadata.updated_at;
-        let mut app_state = AppState::new(document);
-        app_state.mark_saved(path.clone());
-        app_state
+        let service = crate::WorkspaceSolveService::new();
+        let package = crate::test_support::OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID;
+        service
+            .run_with_property_package(&mut app, &provider, package)
+            .unwrap();
+        let original = rf_ui::latest_snapshot(&app.workspace).unwrap().clone();
+        let id = VariableId {
+            document: app.workspace.document.metadata.document_id.clone(),
+            object: ObjectId::Unit(rf_types::UnitId::new("heater-1")),
+            section: VariableSection::Inputs,
+            field: VariableField::OutletTemperature,
+        };
+        app.write_variable(
+            VariableWriteRequest {
+                variable: id.clone(),
+                expected_revision: app.workspace.document.revision,
+                value: VariableValue::Number(330.),
+            },
+            SystemTime::now(),
+        )
+        .unwrap();
+        assert!(rf_ui::latest_snapshot(&app.workspace).is_none());
+        assert_eq!(rf_ui::stale_snapshot(&app.workspace), Some(&original));
+        dispatch_document_lifecycle(
+            &mut app,
+            StudioDocumentLifecycleCommand::SaveUpgraded { path: path.clone() },
+        )
+        .unwrap();
+        let bytes = fs::read(&path).unwrap();
+        let saved = read_project_file(&path).unwrap();
+        assert_eq!(saved.document.revision, app.workspace.document.revision);
+        let mut reopened = app_state_from_project_file(&path);
+        assert!(rf_ui::latest_snapshot(&reopened.workspace).is_none());
+        assert_eq!(
+            VariableBrowser::new(&reopened.workspace.document, None, None)
+                .read(&id)
+                .unwrap()
+                .value,
+            Some(VariableValue::Number(330.))
+        );
+        service
+            .run_with_property_package(&mut reopened, &provider, package)
+            .unwrap();
+        let result = rf_ui::latest_snapshot(&reopened.workspace).unwrap();
+        assert_eq!(result.document_revision, saved.document.revision);
+        let heater = result
+            .steps
+            .iter()
+            .find(|s| s.unit_id.as_str() == "heater-1")
+            .unwrap();
+        assert_eq!(heater.streams[0].temperature_k, 330.);
+        let flash = result
+            .steps
+            .iter()
+            .find(|s| s.unit_id.as_str() == "flash-1")
+            .unwrap();
+        assert_eq!(heater.streams, flash.consumed_streams);
+        assert_eq!(fs::read(&path).unwrap(), bytes);
+        assert_eq!(
+            reopened.workspace.last_saved_revision,
+            Some(result.document_revision)
+        );
+        fs::remove_file(path).unwrap();
     }
 
     #[test]
@@ -147,9 +273,11 @@ mod tests {
             SystemTime::now(),
         );
 
-        let outcome =
-            dispatch_document_lifecycle(&mut app_state, StudioDocumentLifecycleCommand::Save)
-                .expect("expected save outcome");
+        let outcome = dispatch_document_lifecycle(
+            &mut app_state,
+            StudioDocumentLifecycleCommand::SaveUpgraded { path: path.clone() },
+        )
+        .expect("expected save outcome");
 
         assert_eq!(outcome.action, StudioDocumentLifecycleAction::Save);
         assert_eq!(outcome.path, path);
@@ -182,7 +310,7 @@ mod tests {
 
         let outcome = dispatch_document_lifecycle(
             &mut app_state,
-            StudioDocumentLifecycleCommand::SaveAs {
+            StudioDocumentLifecycleCommand::SaveUpgraded {
                 path: target_path.clone(),
             },
         )
@@ -226,7 +354,7 @@ mod tests {
 
         let error = dispatch_document_lifecycle(
             &mut app_state,
-            StudioDocumentLifecycleCommand::SaveAs {
+            StudioDocumentLifecycleCommand::SaveUpgraded {
                 path: target_path.clone(),
             },
         )
@@ -257,3 +385,6 @@ mod tests {
         let _ = fs::remove_file(source_path);
     }
 }
+
+#[cfg(test)]
+mod presentation_tests;

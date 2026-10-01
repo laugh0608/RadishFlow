@@ -17,12 +17,12 @@ use crate::{
     select_property_package, snapshot_entitlement_session_driver_state,
     snapshot_entitlement_session_schedule, snapshot_run_panel_driver_state, update_inspector_draft,
 };
-use rf_store::{StoredAuthCacheIndex, read_project_file};
+use rf_store::StoredAuthCacheIndex;
 use rf_types::{RfError, RfResult};
 use rf_ui::AppState;
 
 use super::seed::{
-    BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID, BootstrapControlPlaneClient, app_state_from_project_file,
+    BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID, BootstrapControlPlaneClient,
     app_state_from_untitled_blank_project, normalized_system_time_now,
     seed_bootstrap_runtime_state, seed_sample_auth_cache,
 };
@@ -197,6 +197,36 @@ fn dispatch_bootstrap_trigger(
                 "bootstrap run panel recovery action is unavailable in current widget model",
             )
         }),
+        StudioBootstrapTrigger::NumericEdit(command) => {
+            let generation = session
+                .app_state
+                .dispatch_numeric_edit(command.clone(), normalized_system_time_now()?)
+                .map_err(|error| RfError::invalid_input(error.to_string()))?;
+            Ok(StudioBootstrapDispatch::NumericEdit { generation })
+        }
+        StudioBootstrapTrigger::ProjectPresentation(command) => {
+            let changed = session
+                .app_state
+                .workspace
+                .project_presentation
+                .apply(command.clone());
+            Ok(StudioBootstrapDispatch::ProjectPresentation { changed })
+        }
+        StudioBootstrapTrigger::NewProjectDisplayUnits(units) => {
+            let workspace = &mut session.app_state.workspace;
+            if workspace.document_path.is_some()
+                || workspace.document.revision != 0
+                || workspace.project_presentation.can_undo()
+                || workspace.project_presentation.can_redo()
+            {
+                return Err(RfError::invalid_input(
+                    "unit defaults only initialize a pristine new project",
+                ));
+            }
+            workspace.project_presentation =
+                rf_ui::ProjectPresentationState::for_new_project(units.clone());
+            Ok(StudioBootstrapDispatch::ProjectPresentation { changed: true })
+        }
         StudioBootstrapTrigger::DocumentLifecycle(command) => {
             let outcome = dispatch_document_lifecycle(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::DocumentLifecycle(outcome))
@@ -371,10 +401,7 @@ impl BootstrapSession {
                 &untitled.title,
                 untitled.created_at,
             ),
-            None => {
-                let project_file = read_project_file(&config.project_path)?;
-                app_state_from_project_file(&project_file, &config.project_path)
-            }
+            None => crate::load_project_app_state(&config.project_path)?,
         };
         let cache_root = TemporaryCacheRoot::new("studio-bootstrap")?;
         let seeded_auth_cache = seed_sample_auth_cache(
@@ -471,6 +498,13 @@ impl BootstrapSession {
 
     pub(crate) fn host_runtime(&self) -> &EntitlementSessionHostRuntime {
         &self.host_runtime
+    }
+
+    pub(crate) fn close_presentation_view(&mut self, view: rf_ui::DisplayUnitViewId) {
+        self.app_state
+            .workspace
+            .project_presentation
+            .close_view(view);
     }
 
     pub(crate) fn app_state(&self) -> &AppState {
@@ -626,6 +660,18 @@ impl BootstrapSession {
             self.dispatch_automatic_run_after_canvas_write_if_needed()?;
         }
         Ok(result)
+    }
+
+    pub(crate) fn delete_selected_unit(&mut self) -> RfResult<Option<u64>> {
+        let Some(rf_ui::InspectorTarget::Unit(unit_id)) =
+            self.app_state.workspace.drafts.active_target.clone()
+        else {
+            return Ok(None);
+        };
+        let revision = self.app_state.delete_unit(&unit_id, SystemTime::now())?;
+        self.refresh_local_canvas_suggestions();
+        self.dispatch_automatic_run_after_canvas_write_if_needed()?;
+        Ok(Some(revision))
     }
 
     pub(crate) fn delete_selected_stream_and_connections(

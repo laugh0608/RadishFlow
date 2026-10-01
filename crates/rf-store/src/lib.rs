@@ -1,9 +1,17 @@
+mod unit_defaults;
+pub use unit_defaults::{
+    UNIT_DEFAULTS_FILE_NAME, parse_unit_defaults, read_unit_defaults, recover_unit_defaults,
+    write_unit_defaults,
+};
 mod auth_cache;
 mod integrity;
 mod json;
 mod layout;
 mod package_cache;
 mod project;
+mod project_presentation;
+pub use project_presentation::StoredProjectPresentation;
+mod staged_file;
 mod studio_layout;
 mod studio_preferences;
 
@@ -39,9 +47,11 @@ pub use package_cache::{
     StoredPropertyPackagePayload, StoredThermoComponent, StoredThermoMethod, StoredVaporPhaseModel,
 };
 pub use project::{
-    DateTimeUtc, STORED_PROJECT_FILE_EXTENSION, StoredDocumentMetadata, StoredProjectDocument,
+    DateTimeUtc, STORED_DOCUMENT_SCHEMA_VERSION, STORED_PROJECT_FILE_EXTENSION,
+    STORED_PROJECT_FILE_SCHEMA_VERSION, StoredDocumentMetadata, StoredProjectDocument,
     StoredProjectFile,
 };
+pub use staged_file::{FileOverwritePolicy, write_text_file};
 pub use studio_layout::{
     STORED_STUDIO_LAYOUT_FILE_KIND, STORED_STUDIO_LAYOUT_FILE_SUFFIX,
     STORED_STUDIO_LAYOUT_SCHEMA_VERSION, StoredStudioCanvasUnitPosition,
@@ -113,7 +123,8 @@ mod tests {
         );
 
         assert_eq!(project.kind, "radishflow.project-file");
-        assert_eq!(project.schema_version, 1);
+        assert_eq!(project.schema_version, 2);
+        assert_eq!(project.document.metadata.schema_version, 1);
         assert_eq!(project.document.metadata.document_id, "doc-1");
         assert_eq!(STORED_PROJECT_FILE_EXTENSION, ".rfproj.json");
         assert_eq!(auth_cache.kind, "radishflow.auth-cache-index");
@@ -496,7 +507,7 @@ mod tests {
     fn parse_rejects_newer_project_file_schema_with_migration_hint() {
         let json = r#"{
   "kind": "radishflow.project-file",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "document": {
     "revision": 0,
     "flowsheet": {

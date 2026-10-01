@@ -327,6 +327,7 @@ pub struct StudioGuiWindowInspectorTargetSummaryRowModel {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowInspectorTargetFieldModel {
+    pub numeric: Option<Result<rf_ui::NumericFieldPresentation, String>>,
     pub key: String,
     pub label: String,
     pub constraint_text: Option<String>,
@@ -1919,6 +1920,7 @@ fn inspector_field_model_from_snapshot(
     field: &crate::StudioGuiInspectorTargetFieldSnapshot,
 ) -> StudioGuiWindowInspectorTargetFieldModel {
     StudioGuiWindowInspectorTargetFieldModel {
+        numeric: field.numeric.clone(),
         key: field.key.clone(),
         label: field.label.clone(),
         constraint_text: field.constraint_text.clone(),

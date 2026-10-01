@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "project": "../flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json",
+  "document_id": "example-feed-heater-flash-binary-hydrocarbon",
+  "expected_revision": 0,
+  "cache_root": "./cache",
+  "auth_cache_index": "./auth-index.json",
+  "writes": [
+    {
+      "target": {
+        "object": { "unit": "heater-1" },
+        "section": "inputs",
+        "field": "outlet_temperature"
+      },
+      "value": 330.0
+    }
+  ],
+  "reads": [
+    {
+      "object": { "stream": "stream-heated" },
+      "section": "results",
+      "field": "temperature"
+    },
+    {
+      "object": { "stream": "stream-heated" },
+      "section": "inputs",
+      "field": "molar_flow"
+    },
+    {
+      "object": { "stream": "stream-heated" },
+      "section": "results",
+      "field": "molar_flow"
+    }
+  ]
+}

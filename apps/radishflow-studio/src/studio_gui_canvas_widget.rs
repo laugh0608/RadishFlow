@@ -22,6 +22,7 @@ pub enum StudioGuiCanvasActionId {
     DisconnectSelectedStreamSink,
     ReconnectSelectedStream,
     DeleteSelectedStream,
+    DeleteSelectedUnit,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -258,6 +259,15 @@ impl StudioGuiCanvasWidgetModel {
                 }
             },
         ));
+        actions.push(StudioGuiCanvasRenderableAction {
+            id: StudioGuiCanvasActionId::DeleteSelectedUnit,
+            command_id: "canvas.delete_selected_unit".to_string(),
+            label: "Delete unit".to_string(),
+            detail: "Delete the selected unit, preserving streams and other units' bindings."
+                .to_string(),
+            enabled: selected_unit.is_some(),
+            shortcut: None,
+        });
         let stream_detail =
             stream_disconnect_detail(selected_stream, selected_stream_disconnect.as_ref());
         actions.push(StudioGuiCanvasRenderableAction {
@@ -442,6 +452,7 @@ pub(crate) fn canvas_command_id(action_id: StudioGuiCanvasActionId) -> &'static 
         }
         StudioGuiCanvasActionId::ReconnectSelectedStream => "canvas.reconnect_selected_stream",
         StudioGuiCanvasActionId::DeleteSelectedStream => "canvas.delete_selected_stream",
+        StudioGuiCanvasActionId::DeleteSelectedUnit => "canvas.delete_selected_unit",
     }
 }
 
@@ -483,6 +494,7 @@ pub(crate) fn canvas_action_id_from_command_id(
             Some(StudioGuiCanvasActionId::ReconnectSelectedStream)
         }
         "canvas.delete_selected_stream" => Some(StudioGuiCanvasActionId::DeleteSelectedStream),
+        "canvas.delete_selected_unit" => Some(StudioGuiCanvasActionId::DeleteSelectedUnit),
         _ => None,
     }
 }

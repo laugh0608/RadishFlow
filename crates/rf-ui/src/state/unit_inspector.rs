@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnitInspectorDraftField {
+    Name,
     OutletTemperatureK,
     OutletPressurePa,
 }
@@ -9,6 +10,7 @@ pub enum UnitInspectorDraftField {
 impl UnitInspectorDraftField {
     pub fn key_segment(&self) -> &'static str {
         match self {
+            Self::Name => "name",
             Self::OutletTemperatureK => "outlet_temperature_k",
             Self::OutletPressurePa => "outlet_pressure_pa",
         }
@@ -20,6 +22,7 @@ impl UnitInspectorDraftField {
 
     pub fn from_static_key_segment(value: &str) -> Option<Self> {
         match value {
+            "name" => Some(Self::Name),
             "outlet_temperature_k" => Some(Self::OutletTemperatureK),
             "outlet_pressure_pa" => Some(Self::OutletPressurePa),
             _ => None,
@@ -65,28 +68,42 @@ impl AppState {
         if !unit_inspector_draft_fields(unit).contains(&field) {
             return None;
         }
-        let original_value =
-            unit_inspector_parameter_value(&self.workspace.document.flowsheet, unit_id, &field)?;
-        let missing_explicit_parameter = !unit_inspector_parameter_is_explicit(unit, &field);
         let raw_value = raw_value.into();
-        let key = unit_inspector_draft_key(unit_id, &field);
-        let (mut draft_value, mut is_dirty, validation) =
-            unit_draft_value_from_raw(original_value, raw_value, |value| {
-                is_valid_unit_parameter_value_for_unit(
-                    &self.workspace.document.flowsheet,
-                    unit,
-                    &field,
-                    value,
-                )
-            });
-        if missing_explicit_parameter && validation == DraftValidationState::Valid {
-            if let DraftValue::Number(draft) = &mut draft_value {
-                if !draft.is_dirty {
-                    draft.is_dirty = true;
-                    is_dirty = true;
+        if field != UnitInspectorDraftField::Name {
+            let numeric_field = match field {
+                UnitInspectorDraftField::OutletTemperatureK => {
+                    crate::variable_browser::VariableField::OutletTemperature
                 }
-            }
+                UnitInspectorDraftField::OutletPressurePa => {
+                    crate::variable_browser::VariableField::OutletPressure
+                }
+                UnitInspectorDraftField::Name => unreachable!(),
+            };
+            let (is_dirty, validation) = self.update_numeric_inspector(
+                crate::variable_browser::ObjectId::Unit(unit_id.clone()),
+                numeric_field,
+                raw_value,
+            )?;
+            return Some(UnitInspectorDraftUpdateResult {
+                key: unit_inspector_draft_key(unit_id, &field),
+                active_target,
+                is_dirty,
+                validation,
+            });
         }
+        let key = unit_inspector_draft_key(unit_id, &field);
+        let validation = if raw_value.trim().is_empty() {
+            DraftValidationState::Invalid
+        } else {
+            DraftValidationState::Valid
+        };
+        let is_dirty = raw_value != unit.name;
+        let draft_value = DraftValue::Text(FieldDraft {
+            original: unit.name.clone(),
+            current: raw_value,
+            is_dirty,
+            validation,
+        });
 
         if !is_dirty && validation != DraftValidationState::Invalid {
             self.workspace.drafts.fields.remove(&key);
@@ -127,6 +144,24 @@ impl AppState {
         }
 
         let key = unit_inspector_draft_key(unit_id, &field);
+        if let Some(DraftValue::Numeric(session)) = self.workspace.drafts.fields.get(&key) {
+            let id = session.variable().clone();
+            let generation = session.generation();
+            if session.validation().is_err() {
+                return Ok(None);
+            }
+            let result = self
+                .commit_numeric_edit(&id, generation, changed_at)
+                .map_err(|error| RfError::invalid_input(error.to_string()))?;
+            return Ok(result
+                .command
+                .map(|command| UnitInspectorDraftCommitResult {
+                    key,
+                    active_target,
+                    command,
+                    revision: result.revision,
+                }));
+        }
         let command_value = if let Some(draft_value) = self.workspace.drafts.fields.get(&key) {
             unit_command_value_from_draft(&field, draft_value)?
         } else {
@@ -150,19 +185,23 @@ impl AppState {
             return Ok(None);
         };
 
-        let mut next_flowsheet = self.workspace.document.flowsheet.clone();
-        apply_unit_parameter_value(&mut next_flowsheet, unit_id, &field, &command_value)?;
-
-        let command = DocumentCommand::SetUnitParameter {
-            unit_id: unit_id.clone(),
-            parameter: field.command_parameter(),
-            value: command_value,
+        let command = match (&field, command_value) {
+            (UnitInspectorDraftField::Name, CommandValue::Text(new_name)) => {
+                DocumentCommand::RenameUnit {
+                    unit_id: unit_id.clone(),
+                    new_name,
+                }
+            }
+            (_, value) => DocumentCommand::SetUnitParameter {
+                unit_id: unit_id.clone(),
+                parameter: field.command_parameter(),
+                value,
+            },
         };
-        let revision = self.workspace.commit_inspector_document_change(
-            command.clone(),
-            next_flowsheet,
-            changed_at,
-        );
+        let revision = self
+            .workspace
+            .commit_input_document_command(command.clone(), changed_at)?
+            .revision;
         self.workspace.drafts.fields.remove(&key);
         self.refresh_run_panel_state();
 
@@ -219,6 +258,7 @@ pub fn unit_inspector_parameter_value(
 ) -> Option<f64> {
     let unit = flowsheet.units.get(unit_id)?;
     match field {
+        UnitInspectorDraftField::Name => None,
         UnitInspectorDraftField::OutletTemperatureK => unit
             .parameters
             .outlet_temperature_k
@@ -237,6 +277,7 @@ pub fn unit_inspector_parameter_is_explicit(
     field: &UnitInspectorDraftField,
 ) -> bool {
     match field {
+        UnitInspectorDraftField::Name => true,
         UnitInspectorDraftField::OutletTemperatureK => {
             unit.parameters.outlet_temperature_k.is_some()
         }
@@ -244,70 +285,26 @@ pub fn unit_inspector_parameter_is_explicit(
     }
 }
 
-fn unit_draft_value_from_raw(
-    original_value: f64,
-    raw_value: String,
-    is_valid_number: impl Fn(f64) -> bool,
-) -> (DraftValue, bool, DraftValidationState) {
-    unit_number_draft_value(original_value, raw_value, is_valid_number)
-}
-
-fn unit_number_draft_value<F>(
-    original_number: f64,
-    raw_value: String,
-    is_valid_number: F,
-) -> (DraftValue, bool, DraftValidationState)
-where
-    F: Fn(f64) -> bool,
-{
-    let original = format_edit_number(original_number);
-    let parsed = raw_value.trim().parse::<f64>();
-    let validation = match parsed {
-        Ok(value) if is_valid_number(value) => DraftValidationState::Valid,
-        _ => DraftValidationState::Invalid,
-    };
-    let is_dirty = match parsed {
-        Ok(value) if validation == DraftValidationState::Valid => value != original_number,
-        _ => raw_value != original,
-    };
-    let draft = FieldDraft {
-        original,
-        current: raw_value,
-        is_dirty,
-        validation,
-    };
-    (DraftValue::Number(draft), is_dirty, validation)
-}
-
 fn unit_command_value_from_draft(
     field: &UnitInspectorDraftField,
     draft_value: &DraftValue,
 ) -> RfResult<Option<CommandValue>> {
     match (field, draft_value) {
-        (
-            UnitInspectorDraftField::OutletTemperatureK | UnitInspectorDraftField::OutletPressurePa,
-            DraftValue::Number(draft),
-        ) => {
-            if !draft.is_dirty || draft.validation != DraftValidationState::Valid {
+        (UnitInspectorDraftField::Name, DraftValue::Text(draft)) => {
+            if !draft.is_dirty
+                || draft.validation != DraftValidationState::Valid
+                || draft.current.trim().is_empty()
+            {
                 return Ok(None);
             }
-            let value = draft.current.trim().parse::<f64>().map_err(|_| {
-                RfError::invalid_input(format!(
-                    "unit inspector draft `{}` is not a valid number",
-                    draft.current
-                ))
-            })?;
-            if !is_valid_unit_parameter_value(field, value) {
-                return Ok(None);
-            }
-            Ok(Some(CommandValue::Number(value)))
+            Ok(Some(CommandValue::Text(draft.current.clone())))
         }
         _ => Ok(None),
     }
 }
 
-fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorDraftField> {
-    match unit.kind.as_str() {
+pub(crate) fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorDraftField> {
+    let mut fields = match unit.kind.as_str() {
         rf_unitops::FEED_KIND => {
             vec![
                 UnitInspectorDraftField::OutletTemperatureK,
@@ -330,15 +327,31 @@ fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorDraftField> 
             ]
         }
         _ => Vec::new(),
-    }
+    };
+    fields.insert(0, UnitInspectorDraftField::Name);
+    fields
 }
 
-fn apply_unit_parameter_value(
+pub(super) fn apply_unit_parameter_value(
     flowsheet: &mut Flowsheet,
     unit_id: &UnitId,
     field: &UnitInspectorDraftField,
     value: &CommandValue,
 ) -> RfResult<()> {
+    if field == &UnitInspectorDraftField::Name {
+        let CommandValue::Text(name) = value else {
+            return Err(RfError::invalid_input("unit name requires text"));
+        };
+        if name.trim().is_empty() {
+            return Err(RfError::invalid_input("unit name cannot be empty"));
+        }
+        flowsheet
+            .units
+            .get_mut(unit_id)
+            .ok_or_else(|| RfError::missing_entity("unit", unit_id))?
+            .name = name.clone();
+        return Ok(());
+    }
     let outlet_stream_ids = {
         let unit = flowsheet
             .units
@@ -377,6 +390,9 @@ fn apply_unit_parameter_value(
         .get_mut(unit_id)
         .ok_or_else(|| RfError::missing_entity("unit", unit_id))?;
     match field {
+        UnitInspectorDraftField::Name => {
+            unreachable!("name edit returns before numeric assignment")
+        }
         UnitInspectorDraftField::OutletTemperatureK => {
             unit.parameters.outlet_temperature_k = Some(*value);
         }
@@ -388,6 +404,7 @@ fn apply_unit_parameter_value(
     for stream_id in outlet_stream_ids {
         if let Some(stream) = flowsheet.streams.get_mut(&stream_id) {
             match field {
+                UnitInspectorDraftField::Name => unreachable!("name edits never change streams"),
                 UnitInspectorDraftField::OutletTemperatureK => {
                     stream.temperature_k = *value;
                 }
@@ -405,7 +422,7 @@ fn is_valid_unit_parameter_value(_field: &UnitInspectorDraftField, value: f64) -
     value.is_finite() && value > 0.0
 }
 
-fn is_valid_unit_parameter_value_for_unit(
+pub(crate) fn is_valid_unit_parameter_value_for_unit(
     flowsheet: &Flowsheet,
     unit: &UnitNode,
     field: &UnitInspectorDraftField,
@@ -426,7 +443,7 @@ fn is_valid_unit_parameter_value_for_unit(
     true
 }
 
-fn unit_outlet_pressure_cannot_exceed_inlet(unit: &UnitNode) -> bool {
+pub(crate) fn unit_outlet_pressure_cannot_exceed_inlet(unit: &UnitNode) -> bool {
     matches!(
         unit.kind.as_str(),
         rf_unitops::MIXER_KIND
@@ -436,7 +453,7 @@ fn unit_outlet_pressure_cannot_exceed_inlet(unit: &UnitNode) -> bool {
     )
 }
 
-fn inlet_pressure_limit(flowsheet: &Flowsheet, unit: &UnitNode) -> Option<f64> {
+pub(crate) fn inlet_pressure_limit(flowsheet: &Flowsheet, unit: &UnitNode) -> Option<f64> {
     unit.ports
         .iter()
         .filter(|port| port.direction == PortDirection::Inlet && port.kind == PortKind::Material)

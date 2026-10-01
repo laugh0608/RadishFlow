@@ -37,6 +37,9 @@ impl ReadyAppState {
             return;
         }
 
+        if !self.render_inspector_view_controls(ui) {
+            return;
+        }
         ui.label(egui::RichText::new(self.locale.text(ShellText::InspectorProperties)).strong());
         if let Some(target) = window.runtime.active_inspector_target.as_ref() {
             render_wrapped_label(ui, &target.summary);
@@ -253,27 +256,6 @@ impl ReadyAppState {
         });
     }
 
-    fn render_solve_snapshot_transfer_actions(
-        &mut self,
-        ui: &mut egui::Ui,
-        snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
-    ) {
-        ui.horizontal_wrapped(|ui| {
-            if ui
-                .small_button(self.locale.text(ShellText::CopySnapshot))
-                .clicked()
-            {
-                self.copy_solve_snapshot_to_clipboard(ui.ctx(), snapshot);
-            }
-            if ui
-                .small_button(self.locale.text(ShellText::ExportSnapshot))
-                .clicked()
-            {
-                self.export_solve_snapshot_from_picker(snapshot);
-            }
-        });
-    }
-
     pub(in crate::studio_gui_shell) fn render_latest_failure_summary(
         &mut self,
         ui: &mut egui::Ui,
@@ -294,6 +276,18 @@ impl ReadyAppState {
             &failure.title,
         );
         render_wrapped_label(ui, &failure.message);
+        if let Some(recovery_detail) = failure.recovery_detail {
+            ui.add_space(4.0);
+            let title = failure
+                .recovery_title
+                .unwrap_or(self.locale.text(ShellText::SuggestedRecovery));
+            if let Some(action) = failure.recovery_action.as_ref() {
+                let _ = self.render_small_command_action(ui, action);
+            } else {
+                ui.small(egui::RichText::new(title).strong());
+            }
+            render_wrapped_small(ui, recovery_detail);
+        }
         if let Some(detail) = failure.diagnostic_detail.as_ref() {
             self.render_failure_diagnostic_detail(ui, detail);
         }
@@ -303,16 +297,19 @@ impl ReadyAppState {
                 format!("{}: {message}", self.locale.text(ShellText::LatestLog)),
             );
         }
-        if let Some(recovery_detail) = failure.recovery_detail {
-            ui.add_space(4.0);
-            let title = failure
-                .recovery_title
-                .unwrap_or(self.locale.text(ShellText::SuggestedRecovery));
-            ui.small(egui::RichText::new(title).strong());
-            render_wrapped_small(ui, recovery_detail);
-        }
-        if !failure.diagnostic_actions.is_empty() {
-            self.render_diagnostic_target_actions(ui, &failure.diagnostic_actions);
+        let focus_actions = failure
+            .diagnostic_actions
+            .iter()
+            .filter(|action| {
+                failure
+                    .recovery_action
+                    .as_ref()
+                    .is_none_or(|recovery| action.action.command_id != recovery.command_id)
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        if !focus_actions.is_empty() {
+            self.render_diagnostic_target_actions(ui, &focus_actions);
         }
     }
 
@@ -541,14 +538,13 @@ impl ReadyAppState {
                     {
                         self.open_project_from_picker();
                     }
-                    if let Some(path) = document.project_path.as_ref() {
-                        if ui
+                    if let Some(path) = document.project_path.as_ref()
+                        && ui
                             .button(self.locale.text(ShellText::UseCurrentPath))
                             .clicked()
-                        {
-                            self.project_open.path_input = path.clone();
-                            self.project_open.notice = None;
-                        }
+                    {
+                        self.project_open.path_input = path.clone();
+                        self.project_open.notice = None;
                     }
                 });
             });
@@ -696,7 +692,7 @@ impl ReadyAppState {
                         snapshot.stream_count,
                     ),
                 );
-                self.render_solve_snapshot_transfer_actions(ui, snapshot);
+                self.render_result_output_actions(ui, window);
                 ui.separator();
                 if snapshot.streams.is_empty() {
                     ui.small(self.locale.text(ShellText::NoStreamResults));

@@ -1,177 +1,133 @@
-# Studio Client Main Design Brief
+# Studio 主设计稿：范围重评与设计输入
 
-更新时间：2026-06-10
+更新时间：2026-09-28
 
-## 用途
+## 用途与状态
 
-用途：为 `docs/architecture/designs/studio-client-main.pen` 提供 Studio 主界面设计输入和评审索引，统一 Home、独立物性页、流程图工作台、模块设置 / 模块结果、运行信息和状态汇总。
-读者：准备绘制、评审或实现 RadishFlow Studio 主界面的设计协作者和开发者。
-不包含：`.pen` 文件本体、视觉 token、实现代码、完整控件规格、完整物性数据库设计或完整交互动画。
+用途：为 `studio-client-main.pen` 记录保留范围、新功能任务、候选画板和评审检查。
+读者：准备绘制、评审或实现 Studio 的设计协作者与开发者。
+不包含：全局画板批准、具体产品 token / 接口、产品代码或完整模型规格。
 
-本 brief 对应 `docs/architecture/studio-ui-topic-plan.md` 中的 P0 Studio 客户端本体端点。`.pen` 文件必须继续通过 Pencil MCP 工具创建、维护和验证；本文件只记录设计口径、页面职责和实现前检查。
+2026-09-16 确认重评功能分区；2026-09-23 项目所有者接受 U2 / V0 候选并授权进入 Pencil 局部评审。本轮通过 Pencil MCP 核对原主稿、保留四张旧画板，新增五张局部评审画板并完成截图 / 布局静态复核。项目所有者随后反馈“画板暂时没啥问题”，认可本轮局部方案并授权进入下一步；全局 R0、规格辅助与设备任务未定稿，U2-I1 / I2 保存与默认、I3 会话及 I4 首批控件 / 视图已接通，其余交互和产品验收待推进。阶段边界见 [UI 专题计划](../studio-ui-topic-plan.md)。
 
-## 当前结论
+## 旧主稿范围与重评清单
 
-`studio-client-main.pen` 是当前唯一活跃的 Studio 主设计稿。它负责承载：
+2026-09-23 原生读取确认四张旧画板均为 1440 × 960，无 reusable 组件。本轮保留原节点；仅复制流程画布到新增局部上下文，不改写旧画板。
 
-- 启动后的高密度 Home / 首页。
-- 顶部导航下的独立 `物性` 页面。
-- `流程图` 工作台的画布、模块库、项目树、检查器、模块设置、模块结果、底部运行信息和状态汇总。
-- 模块设置 / 模块结果在右侧栏或画布标签页中的主结构。
-
-`unit-module-panel.pen` 不再作为独立完整 Workbench 复制稿维护。后续如果确实需要细化单元模块详情，应新建窄口径 `module-settings-panel.pen`，只聚焦右侧栏、弹窗或画布标签页内的模块设置 / 结果结构，不重复整套 Home / Workbench 壳。
-
-## 当前实现映射
-
-当前已经允许从 presentation / window model 小切片进入代码实现，但仍不做 egui 大布局重排。首批实现只把设计稿中稳定的信息结构投影到 `StudioGuiWindowModel`：
-
-| 设计区域 | 当前实现映射 | 仍未完成 |
+| 旧 frame | 可保留的职责 | 必须重评的部分 |
 | --- | --- | --- |
-| Home 示例 / 最近 tile | `StudioGuiWindowHomeModel` / `StudioGuiWindowHomeCaseTileModel` 已统一承载示例项目、最近项目和当前 workspace 返回 tile；示例项目从 `runtime.example_projects` 派生，最近项目仍由 shell preferences / `project_open` 持有并映射为同一 DTO，未保存当前项目只从当前 `workspace_document` 派生 `Current` tile，不写入 recent projects；egui Home Dashboard 已消费统一 tile presentation，并在本次会话已打开或新建 case 后于左侧开始区提供显式 `返回工作区` 操作 | 最近项目尚未上提到 `StudioGuiSnapshot`；Home 仍未按设计稿重排为完整 tile gallery 或工作区历史管理 |
-| 顶部导航 / 流程图 / 运行 / 结果上下文 / 工具设置菜单 | Studio shell 顶部已从旧 `快速操作` 横排按钮收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；打开 / 新建 / 保存 / 示例归入 `文件`；`流程图` screen 顶部导航下方已新增 `window.flowsheet_context_toolbar`，Canvas 段只消费当前可用 suggestion / pending-edit command，不再重复左侧 `模块` 放置 palette 或中央 `画布操作` 选中对象动作，Run 只消费已启用 Run Panel command，Review 只消费 Module Results、结果表和 snapshot 状态；`物性` screen 的 `window.property_context_toolbar` 继续消费 package / component command 和 Property page 状态，并已增加同源进入流程图建模 readiness；`运行` 已从下拉菜单收敛为 screen，`window.run_context_toolbar` 只消费 Run Panel command / state、status summary、canvas suggestion count 和运行日志，顶部 Monitor 入口不在按钮旁重复展示状态 chip；`结果` 已从下拉菜单收敛为 screen，`window.result_context_toolbar` 顶部只展示 Module Results、底部结果表、当前 / stale / missing `SolveSnapshot` 状态和结果数量扫读，不把所有 Result focus command 展开成长按钮；具体 stream / unit 定位继续由结果表、右侧相关 action、项目树和命令面板派发正式 focus command；`工具 / 设置` 菜单内容已拆成可测试分组，分别消费 command palette shell state、Commands panel layout visibility、AppHost logical windows 和当前 shell locale | 厚重 ribbon、完整多页上下文工具栏、单位集设置、偏好页、help command、插件管理、账号 / 授权 / 服务器设置、完整运行控制台、完整日志系统、批量运行、完整报表、跨快照报表、模板、打印和批量导出尚未进入范围 |
-| 左侧模块 / 项目 | Studio shell 左侧顶层入口已从 `项目 / 示例项目 / 放置` 收敛为 `模块 / 项目`；`模块` 继续消费既有 Canvas place-unit palette、authoring checklist 和 suggestion action，并已按 `流股源 / 调节单元 / 汇合与分离` 分类现有受控单元，支持本地筛选，是当前受控单元的放置入口；模块分类和选项 detail 保留在 hover / DTO，不再作为首屏常驻说明挤占纵向空间；`项目` 已整理为 `项目输入 / 示例入口 / 对象树 / 审阅状态`，继续消费项目对象树、项目物性包 / 组分扫读、示例入口和当前 run / snapshot 状态；official hydrocarbon 示例项目文件已持久化 `binary-hydrocarbon-lite-v1`，项目输入的物性包显示直接读取当前 document / choice 状态，不从已收敛结果反推 | 完整模块库、完整项目浏览器、自由连线、自动布线和完整拖拽布局尚未进入范围 |
-| 中央 Canvas | 中央 Canvas 已移除重复的对象树副本，改为从既有 canvas presentation 派生 `画布状态` 数量概览；首屏已从独立 `选择 / 视口` 详情行收束为 `画布工具`、`画布状态` 与 `画布操作`：工具区只承接 `适应内容` 视图命令和当前建议命令，不再重复左侧 `模块` 面板的放置 palette；状态行承接对象数量、运行状态、视口模式和布局状态；操作条承接选中对象的聚焦、移动、断开、重连和删除命令，且这些选中对象动作不再被顶部 `流程图工具栏` 重复渲染；画布主体继续渲染图例、单元 / 物料线实体和受控建议，流股 / 单元对象导航由左侧 `项目` 面板和画布实体点击承担，选择语义详情由右侧栏承接；普通空白项目进入空 Workbench 后的首屏职责已由 focused test 锁定，中央不重复 palette、对象树、右侧栏或结果表 | 自由连线、自动布线、完整项目浏览器、完整拖拽布局、完整工具条体系、shell 私有对象状态和第二套对象树尚未进入范围 |
-| 独立物性页 | `StudioGuiWindowPropertyPageModel` 从 `workspace_document.property_package_choices`、`project_component_choices` 和已选 package / components 派生 package、component、metric、future section 和进入流程图建模 readiness；Studio shell 已新增顶部 `主页 / 物性 / 流程图` 导航，独立 `物性` screen 消费同一 DTO；普通空白项目创建后先进入 `物性`，Property 页摘要入口、顶部 `流程图` 导航、Home 当前 workspace 返回入口和内部进入 Workbench 行为共用同一 `flowsheet_modeling_enabled` 判断；缺 package / 项目组分 readiness 也聚焦该页面；命令仍走既有 package / component command id；右侧栏已移除 Package 主入口；顶部导航下方已新增 `window.property_context_toolbar`，只渲染当前可用 package / component 命令、进入建模入口和 package / component / modeling / source 状态；当前 egui MVP 页面不渲染无操作价值的左侧二级导航，只保留 package / 项目组分选择区和摘要区 | 物性页长期分析控件、更完整视觉重排、完整组分数据库、第三方物性包加载、完整 Thermodynamics PMC 和完整参数表尚未进入范围 |
-| 底部运行信息 / 状态汇总 | `StudioGuiWindowStatusSummaryModel` 从 document saved/revision、run panel view、latest current-revision `SolveSnapshot`、stale snapshot 或 latest failure 派生；底部抽屉已收敛为左侧 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 与右侧 `状态汇总` 分栏，其中 `收敛` 消费 status summary 与 snapshot 状态，`建议` 消费 Run Panel notice 和 canvas suggestions，`结果表` 的单元区消费 `snapshot.review_summary.unit_results` 而不是在 shell 内重新扫描 steps；结果表 stream / unit 点击派发正式 `inspector.focus_stream:*` / `inspector.focus_unit:*`，stream 定位到右侧 `检查器`，unit 定位到右侧 `模块结果`，底部保持 `结果表`；右侧状态汇总只消费同一 DTO 的 case、run、convergence、steps、unit result count、diagnostics 和 snapshot 一致性，snapshot 一致性放在标题行扫读以压紧低高度抽屉；底部薄状态栏只展示 run、snapshot、SI 单位、求解器、流程图模式和当前选择扫读，不再重复完整状态汇总 | 完整收敛曲线、完整建议系统、完整报表和跨快照报表尚未进入范围 |
-| 右侧 Inspector / Module Settings | 右侧栏主入口已收敛为 `检查器 / 模块设置 / 模块结果`，并在三入口正文前用同一 `画布选择` 上下文头消费 Canvas current selection / command presentation；`检查器` 继续消费 active inspector detail；`StudioGuiWindowModuleSettingsModel` 已从 active unit Inspector detail 派生参数摘要、参数字段、端口、连接动作、诊断动作和空帮助状态，并由右侧 `模块设置` tab 消费；参数摘要只统计现有字段、notice 和 batch command，不新增第二套参数状态；流股选择时模块设置保持已有 unit-only 空状态 | help command 还没有正式 command surface；完整视觉重排、完整参数表和第二套对象状态尚未进入范围 |
-| Module Results | `StudioGuiWindowModuleResultsModel` 已从 current-revision `SolveSnapshot` 派生 selected unit result、consumed / produced stream chips、related steps、diagnostics 和 diagnostic actions；右侧 `模块结果` tab 已消费该 DTO，且其 latest unit step 与底部 `结果表` 使用的 `review_summary.unit_results` 保持同源；current 结果态使用紧凑单元、状态、step、短执行摘要和消费 / 产出流股 chip，不在首屏展开长 snapshot id 或完整执行句；stale snapshot 不渲染旧 unit result；右侧 `画布选择` 上下文只说明当前 Canvas 选择，流股选择不伪造单元结果；旧 `Run` 不在右侧栏继续扩展，运行日志 / 消息 / 结果表继续由底部区域承接 | 尚未新增独立模块结果页或画布模块详情标签页；完整报表、跨快照结果和第二套结果状态仍不进入范围 |
+| Home - Ready（`eZ8cb`） | 新建 / 打开、最近项目、返回工作区 | 从独立物性、设备或流程开始的任务入口，不能只围绕流程缩略图组织 |
+| Property - Components and Methods（`tUTaT`） | 物性独立工作区、数据 / 方法 / 来源 | 独立分析与设备 / 流程共享物性上下文，当前可用与未来能力的分层 |
+| Flowsheet - Modeling（`K4V9nx`） | 流程画布、对象导航、上下文编辑 | 单位集、规格状态、可执行建议、进入设备任务的关联路径 |
+| Module - Settings and Results（`p0mTBu`） | 当前对象输入 / 结果的同源审阅 | 复杂设备的双侧参数、结构与校核不强制塞在窄右栏；候选与采纳分开 |
 
-这些 DTO 只服务展示和命令绑定，不是第二套项目、物性、运行、结果或诊断真相源。后续实现必须继续先确认状态来源，再补 presentation 字段和 focused 回归，最后才调整 egui 布局。若没有正式 command surface，例如当前模块帮助入口，就只能在 DTO 中显式表达为空状态，不能临时伪造按钮。
+旧“八个顶层导航”“设备不作一级入口”“四个主 frame 足够”“右侧三 tab 固定”等不再约束新能力。原代码路径继续维护；旧稿可作为未受影响区域的参考，不能自动作为新增功能的实现许可。
 
-## 设计目标
+## 任务入口与内容层级
 
-`studio-client-main.pen` 当前版本解决 Studio 客户端主信息架构，并作为上述小切片实现的设计依据：
+候选功能域为项目 / 开始、物性、流程、设备、运行 / 研究、结果 / 输出、工具 / 设置。最终导航命名和层数在 R0 评审，不按候选清单机械增加同等权重的菜单。
 
-- Home 信息密度、风格和工作台保持一致，不再像低密度欢迎页。
-- 物性作为流程模拟核心能力，成为顶部导航下的独立页面，而不是塞进左侧栏或右侧栏。
-- 工作台顶部采用窄导航栏 + 上下文工具栏，学习成熟流程模拟软件的信息分层，但不直接照抄厚重 ribbon。
-- 左侧栏稳定为 `模块 / 项目`：模块页中物料流在上方，单元操作按分类折叠；项目页负责项目输入、示例入口、对象树和审阅状态。
-- 中央画布采用类似 IDE 的可切换标签页，保留轻量画布状态条和工具区，项目对象树留在左侧 `项目` 面板，受控单元放置入口留在左侧 `模块` 面板。
-- 右侧栏稳定为 `检查器 / 模块设置 / 模块结果`，不保留独立 `运行` 或 `物性` tab。
-- 底部拆成左右两栏：左侧为运行日志、收敛、建议、诊断等 tabs；右侧为当前案例状态汇总；薄状态栏只做窗口级扫读。
-- 所有状态必须能映射到既有 presentation / command / state 模型，不新增第二套 UI 真相源。
+- 工程设计基础与工况矩阵优先纳入 R0：公共条件、来源、假设和覆盖由项目上下文管理，设备结果关联具体工况。
+- Home 让用户选择任务，也能返回已有工程上下文。独立设备任务不要求先建流程图；是否作为项目内案例持久化由设备与存储专题决定。
+- 物性工作区拥有数据与方法入口，流程和设备引用同一上下文；不复制两套组分选择器状态。
+- 流程工作区以画布为中心，对象详情可跳入相关设备任务，再回到原对象。
+- 设备工作区区分初步尺寸、设计和校核；显示工况来源、规格、几何、候选与计算依据，主内容可用表格和结构示意。
+- 运行 / 研究与结果空间按能力渐进展开，当前同步计算不显示不存在的后台能力，未来动态实验和多工况不混成普通日志。
+- 设置提供单位集和显示偏好的入口；字段附近允许临时输入单位。当前没有 AI 功能，不设计聊天占位主入口。
 
-## 顶部导航
+## 候选画板与状态覆盖
 
-进入工作区后的顶部不再常驻 `打开项目`、`打开示例` 作为主按钮；这些命令属于 `文件` 或 Home。当前 egui shell 已完成窄导航栏入口收敛，并已从 `流程图`、`物性`、`运行` 和 `结果` screen 完成上下文工具栏第一刀；`工具 / 设置` 保持顶层菜单形态，只组织既有 shell / window 状态。顶部结构分两层：
+以下为完整任务规划，不表示全已绘制；本轮只完成后文所列 U2 / V0 局部画板，其余继续按切片评审。
 
-| 层级 | 内容 | 说明 |
+| 任务画板 | 必须覆盖的交互 / 状态 | 依赖专题 |
 | --- | --- | --- |
-| 窄导航栏 | `文件`、`主页`、`物性`、`流程图`、`运行`、`结果`、`工具`、`设置` | `物性` 前置；取消意义不清的 `设备`；当前 `工具` 只承接命令面板、Commands panel 和逻辑窗口；当前 `设置` 只承接语言选择，单位集和偏好保留为未来空间 |
-| 上下文工具栏 | 随当前导航变化 | 当前 `流程图` 工具栏显示 Canvas suggestion / pending-edit command、Run 可用命令、Module Results / 结果表入口和状态摘要，不承接放置 palette 或选中对象移动 / 连接动作；`物性` 工具栏显示既有 package / component 命令、Property page 状态和进入流程图建模 readiness；`运行` 工具栏显示既有 Run Panel command 与运行信息入口，Monitor 状态只在状态行扫读，不在按钮旁重复展示；`结果` 工具栏只显示 Module Results / 结果表入口和 snapshot / result count 状态，不把所有 Result focus command 展开成长按钮 |
+| 开始与任务选择 | 空项目、返回工程、从物性 / 流程 / 设备开始、缺数据 | Studio / 生命周期 |
+| 工程基础与工况 | 公共条件 / 来源、显式覆盖、关联设备、条件变更影响、失败 / 未运行工况 | [工程基础](../../topics/engineering-basis-and-cases.md) |
+| 单位集与字段编辑 | 固定显示、临时输入单位、切换换算、合法 / 非法草稿、温差与温度 | [单位系统](../../topics/units-and-quantity-system.md) |
+| 规格与推荐 | 缺项、冲突、未分析、不支持、规则依据、定位 / 执行、过期建议 | [建模辅助](../../topics/modeling-assistance-and-specifications.md) |
+| 流程与设备关联 | 从选中对象进入设备任务、工况来源、返回流程、上游变更后失效 | [设备工程](../../topics/equipment-design-and-rating.md) |
+| 分离器尺寸与校核 | 准则 / 几何、候选、控制条件、采纳 / 撤销、不适用与缺物性 | [分离器](../../topics/equipment/separator-sizing-and-rating.md) |
+| 换热器热工与校核 | 冷热侧输入、规格切换、面积 / 几何、热负荷 / 压降、不满足项 | [换热器](../../topics/equipment/heat-exchanger-design-and-rating.md) |
+| 目标反算 | 目标 / 可调量、范围、试算、残差、失败与候选采纳 | [建模求解](../../topics/flowsheet-modeling-and-solve.md#设计规格求解规划尚未实现) |
+| 结果与依据 | 当前 / 过期 / 缺失、分层检查、控制工况、来源 / 版本、计算表与未来报告范围 | [工程交付](../../topics/results-review-diagnostics.md#工程检查与交付规划尚未实现) |
 
-项目名称放在最顶部窗口标题栏；保存状态仍使用右侧状态 chip，例如 `已保存`、`有未保存更改`、`旧结果`。
+## 字段交互的评审样例
 
-## 设计画板
+首批温压流量画板以 [UA-08—12 交互场景](../../topics/units/input-drafts-and-interactions.md#交互验收场景) 为输入，逐项标注 [UE-01—13 事件](../../topics/units/input-drafts-and-interactions.md#u2-事件表)：本次输入单位与有效显示单位的作用范围、四类草稿状态、提交 / 取消 / 撤销、焦点及保存。以输入 `300 K`、显示 `26.85 °C` 为代表，但不能只画成功路径。
 
-当前 `.pen` 包含 4 个主 frame：
+偏好归属见 [单位集与呈现保存](../../topics/units/unit-sets-and-persistence.md)。已接受的触发 / 历史规则以 UE 表为准，具体接口和剩余决策见 [UD 追踪](../../topics/units/requirements-traceability.md#待决策清单)；画板只表达行为，不反向冻结 Rust API 或项目 schema。
 
-| Frame | 目的 |
-| --- | --- |
-| `Home - Ready` | 启动首页，展示开始入口、最近项目、示例项目、环境状态和可行动消息 |
-| `Property - Components and Methods` | 独立物性页，展示组分、项目组分表、物性方法、交互参数、数据来源和分析入口 |
-| `Flowsheet - Modeling` | 流程图工作台，展示模块库、项目树、画布标签页、画布工具条、检查器和底部状态 |
-| `Module - Settings and Results` | 模块设置 / 模块结果变体，展示右侧栏或画布标签页中的字段、端口、结果和诊断结构 |
+规格提示先解释“缺少什么 / 为何冲突”，再给定位或正式动作；分析未支持时显示未分析 / 不支持，不能画成零自由度。建议尚未执行、执行成功、执行条件已变化分别呈现。
 
-P0 不画移动端 frame，不画控制面后台 frame，不画完整物性数据库或完整报表系统。
+设备候选与已采纳几何有不同状态。推荐结果显示工况与方法，采纳操作说明改动；源工况过期后显示重新计算入口，不能保留可直接应用的旧建议。尺寸估算与详细设计级别在结果中可辨识。
 
-四个主 frame 应使用同一套浅色工作台语言：顶部标题栏、窄导航、上下文工具栏、左侧 card navigation / palette、中央主内容、右侧 summary / inspector cards、底部 status cards 的视觉节奏保持一致。不要让某一页退回表格堆叠或松散文字说明风格。
+工程工况的评审样例：共同冷却水条件被多个设备引用，用户修改后能看到受影响案例；显式覆盖的值与公共值可区分。同一换热器几何在一个工况满足、另一个工况失败时，汇总必须显示失败及控制条件，不能只保留成功行。设备位号与内部 ID 分开，更改位号不破坏案例 / 结果引用。
 
-## Home
+## 视觉与验收
 
-Home 不是营销页，也不是低密度欢迎页。它应使用与工作台一致的顶栏、分隔、状态 chip 和信息密度。最近项目和示例项目优先采用流程缩影 tile gallery：用 RadishFlow 自己的浅色 flowsheet thumbnail 表达案例结构，再配合项目名称、更新时间、路径 / 来源和状态 chip；不照抄 HYSYS 的深蓝文件图标、左侧文件菜单或视觉资产。
+### U2 局部 R0／R1 评审包
 
-| 区域 | 内容 |
-| --- | --- |
-| 顶部 | 应用名、当前页、环境状态、登录状态、保存 / 服务状态 |
-| 左侧开始区 | 本次会话已打开或新建 case 后显示 `返回工作区`；`新建项目`、`打开项目`、`打开示例项目`，小案例作者入口降级为次级链接 |
-| 中央 | 最近项目、示例项目，使用可扫读的流程缩影 tile gallery，不使用通用文件图标或营销型大卡片 |
-| 右侧 | 客户端、服务端、设备 / 缓存状态 |
-| 底部 | 可行动消息，例如登录、示例、缓存、物性包状态 |
+2026-09-23 交互、保存兼容与 V0 方向已获接受。下列 R1-U2 编号仍为稳定场景编号，真实节点见后文映射；本轮局部 R1 已获项目所有者认可，可进入实施设计，不代表产品验收通过。交互、存储和视觉规则分别只在 [U2 交互方案](../../topics/units/input-drafts-and-interactions.md#u2-交互方案已接受)、[单位集与保存方案](../../topics/units/unit-sets-and-persistence.md#u2-单位集与保存方案已接受)、[V0 映射方案](../../topics/color-state/control-and-canvas-mapping.md#u2-首批映射方案已接受) 维护。
 
-案例 tile 结构：
+U2 局部入口：项目上下文内的“显示单位”设置负责整个项目；字段紧邻数值的单位菜单只负责本次输入，另提供明确的“本视图显示单位 / 跟随项目”入口。项目与视图范围写入文案，不能共用一个无范围的下拉框。项目层设置跨对象生效，当前字段保留所属对象身份；不由 U2 新建工况、设备任务或来源 schema。
 
-| 区域 | 内容 |
-| --- | --- |
-| 缩影 | 轻量 flowsheet thumbnail，例如 `Feed -> Flash Drum`、`Feed -> Cooler -> Flash Drum` 或 `Feed + Feed -> Mixer -> Flash Drum`；缩影只表达流程拓扑和关键单元，不承担完整画布预览 |
-| 标题 | 项目名或示例名，最多两行，文件扩展名可保留 |
-| 元信息 | 最近打开时间、路径 / 来源、物性包或组分摘要 |
-| 状态 | `Ready`、`Modified`、`Missing package`、`Missing file`、`Version warning`、`Error` 等小型 chip |
-| 操作 | 单击选择，双击打开；缺失文件或缺包时不静默失败，进入对应状态和 Messages |
+设置页以量 / 当前单位表呈现，选择内置集或逐量调整，显示作用范围；“应用显示设置”与“取消”分别应用或丢弃设置草稿。另列“设为新工程默认”与独立呈现历史入口，不能让勾选个人默认暗改所有已打开工程。设置页应用尚未写盘时在项目状态区提示呈现待保存。
 
-tile gallery 的目标是让流程模拟用户能通过缩影快速识别案例类型，而不是只靠文件名和路径判断。缩影应使用项目自己的浅色画布语言、SI 单位和简化单元符号；如果暂时没有真实项目缩略图，可由内置流程摘要生成稳定的简化图，不新增第二套项目真相源。
-
-Home recent / current / example case tile 的物性包摘要应从当前 document / builtin package choice 状态映射为可读 label；中文界面显示“二元烃 Lite”，空白项目显示“未选择”。稳定 package id 仍只属于项目文件、command id、运行请求和内部状态边界，不作为 Home 主展示文本，也不从运行结果反推第二套物性状态。
-
-## 独立物性页
-
-物性页面是长期大工程，不能用一个侧栏 tab 承载。当前只画信息架构，为未来扩展留空间，不表示完整物性系统已实现。
-
-物性页长期需要承载：
-
-- 组分查询与选择。
-- 项目组分列表。
-- 组分物性编辑。
-- 物性方法选择。
-- 物性方法参数调整。
-- 二元 / 交互参数预览。
-- 自定义组分、方法或参数。
-- 物性数据参考文献 / 来源。
-- 计算公式展示。
-- 物性分析，例如纯组分物性曲线、混合组分 Txy / Pxy 相图等。
-
-长期线框建议采用三层组织：
-
-| 区域 | 当前内容 | 长期扩展 |
+| 评审场景 | 内容与交互路径 | 需求 / 验收 |
 | --- | --- | --- |
-| 左侧导航 | `组分`、`方法`、`参数`、`分析`、`来源` | 可扩展为物性工作区内的二级导航 |
-| 主区域 | 组分查询、项目组分表、方法选择、参数预览 | 后续可切换到组分详情、方法表、曲线分析、相图分析 |
-| 右侧摘要 | 当前 package、方法、组分数、数据来源、适用范围 | 后续放 warning、适用性、版本、引用、缓存状态 |
+| R1-U2-01 单位设置 | 完整 SI / 工程集、逐量选择、项目与个人默认、视图覆盖及恢复跟随项目；取消和独立呈现撤销 | UNIT-05—07；UA-05—07 |
+| R1-U2-02 正常输入 | 指定 `300 K` → 本次输入改 °C → 保持同一候选 → 应用 → 当前显示值；相邻显示来源和单位 | UNIT-08—10、12；UA-08—10、12 |
+| R1-U2-03 草稿保护 | `1e- K` / 非法文本时项目显示改 °C，保持草稿解释；Tab / 单位菜单 / 跨对象定位 / 返回；拒绝提交与取消 | UNIT-08—11；UA-08—11；VA-02、04 |
+| R1-U2-04 历史与冲突 | 草稿文字与单位一起 Undo / Redo；有草稿时工程历史先处理；同字段来源修订变更、继承值显式采用 | UNIT-10—12；UA-10—12；VA-01 |
+| R1-U2-05 保存与关闭 | 仅呈现待保存、工程和呈现同时待保存、保存后仍有草稿；失败重试；关闭处理草稿；旧工程首次新版保存的兼容提示 | UNIT-06、07、11；UA-06、07、11；VA-02、07 |
+| R1-U2-06 状态叠加 | 指定 + 错误 + 焦点，继承 / 默认与可编辑性，当前结果 + 呈现待保存，只读 / 过期；灰度与键盘路径 | VIS-01—05、08—10；VA-01—05、08—10 |
+| R1-U2-07 消息衔接 | 从现有对象诊断定位字段且不提交 / 丢草稿；模块与画布标明同一对象；统一问题计数标 N1 待实现 | VIS-07；VA-07；不提前交付完整消息工作台 |
 
-当前 MVP 仍只支持受控内置 package 和 methane / ethane 等小型目录；设计稿不能暗示第三方物性包加载、完整组分数据库或完整 Thermodynamics PMC 已进入当前实现范围。
+R1-U2-03 的信息层次如下；实际局部画板见 `d0OFkq` / `wDgw3`：
 
-当前 egui MVP 实现不渲染只有未来含义的左侧二级导航，而是使用两列结构：左侧承接 package 和项目组分选择，右侧承接当前 package、组分数、来源和进入流程图建模 readiness。Property toolbar、摘要和 package 选择卡只展示可读 package label，不把 raw package id 作为主界面文本；entitlement schedule notice 只展示用户可判断的授权检查摘要，不外露 timer event 或 `SystemTime` 调度结构。长期设计稿仍可保留物性工作区导航空间，但只有当对应组分详情、方法、参数、来源或分析视图进入实现范围时才落到可见 UI。
+```text
+出口温度                     来源：指定
+[ 1e-               ] [ K ▾ ]  未提交
+输入未完成 · 本次输入 K · 提交后显示 °C
+[应用（不可用，显示原因）] [取消编辑]
+项目状态：显示设置待保存 · 未提交输入 1 项
+```
 
-## Flowsheet Workbench
+浅色、非颜色识别、键盘及窄宽度的评审目标见 [V0 主题方案](../../topics/color-state/theme-and-accessibility.md#v0-首批主题方案已接受)。本轮已原生读取旧主稿，七项场景合并为以下五张画板与状态变体。
 
-工作台是建模主界面。
+### 本轮画板与静态复核
 
-| 区域 | 职责 | 不承担 |
+主文件为 [studio-client-main.pen](studio-client-main.pen)，所有新增画板位于旧稿下方，标题保留导出时的“待评审”标记；随后本轮局部 R1 已获认可，评审状态以本文日期记录为准，本轮不为更新标题重写主稿或截图。PNG 为 Pencil MCP 从下列节点导出的静态快照；后续修改以主稿为准，截图不能另立行为规则。
+
+| 原生节点 / 画板 | 场景映射 | 静态快照与覆盖 |
 | --- | --- | --- |
-| 左侧 `模块` | 搜索、物料流、能量流、信号流、按分类折叠的单元操作；用 palette item 和 category card 呈现，不做纯文字清单 | 项目级物性配置、检查器字段编辑 |
-| 左侧 `项目` | 当前项目流股、单元、结果、诊断对象导航 | 模块放置库 |
-| 中央画布 | 流程图、单元、流股、端口、标签、画布状态概览、受控 suggestion、当前选择的轻量操作 | 对象树副本、当前选择详情面板、自由连线编辑器、完整自动布线系统 |
-| 画布标签页 | 类似 IDE 的 flowsheet / 分析 / 模块详情标签 | 多文档复杂工作区管理 |
-| 画布浮动工具条 | 选择、框选、平移、放大、缩小、适应流程、网格；浅色面板、轻描边、当前工具浅蓝高亮 | 大量低频命令、深色高对比悬浮条 |
-| 右侧 `检查器` | 当前对象概览、关键字段、端口、关联诊断；用对象摘要卡、metric card、端口连接卡和状态 chip 组织 | 完整参数表、松散 label/value 文字堆叠 |
-| 右侧 `模块设置` | 当前模块可编辑参数、单位、约束、提交动作 | 高级模型配置全集 |
-| 右侧 `模块结果` | 当前模块和相关流股的 latest snapshot 结果 | 跨快照报表 |
-| 底部左侧 | `消息`、`运行日志`、`收敛`、`建议`、`诊断` | 原始 trace 常驻墙 |
-| 底部右侧 | `状态汇总`：案例状态、运行状态、收敛、执行步数、诊断数、snapshot / revision 一致性 | 完整报表 |
+| `nd3WX` / 01 显示单位与作用范围 | R1-U2-01 | [单位设置](reviews/2026-09-23-u2-v0/nd3WX.png)：七类量、预设、逐量选择、视图覆盖 / 跟随、个人默认、独立呈现历史及菜单悬停样例 |
+| `d0OFkq` / 02 本次输入与项目显示 | R1-U2-02、03；06 字段叠加 | [字段状态](reviews/2026-09-23-u2-v0/d0OFkq.png)：300 K → 26.85 °C、已提交显示、未完成、非法、后缀冲突；取消与拒绝切换的说明 |
+| `NcFqI` / 03 保留编辑与保存 | R1-U2-04、05 | [历史与保存](reviews/2026-09-23-u2-v0/NcFqI.png)：三类保存状态、关闭草稿保护、同字段冲突、格式升级、失败重试；文本 / 工程 / 呈现历史以路由说明呈现 |
+| `wDgw3` / 04 诊断定位与草稿保持 | R1-U2-03、07 | [流程上下文](reviews/2026-09-23-u2-v0/wDgw3.png)：复制旧 `Kxi7Z` 画布为 `p4Lebj`；H-101 出口压力诊断、焦点与未完成温度草稿共存；不展示 N1 统一计数 |
+| `sxshe` / 05 窄栏与可访问性 | R1-U2-06；04 来源变化 | [状态与可访问性](reviews/2026-09-23-u2-v0/sxshe.png)：400 / 280 px、灰度、英文高精度、150% / 200% 字体、继承值显式采用、当前 / 过期 / 缺失只读状态 |
 
-若当前求解器没有真实迭代次数，状态汇总显示 `N/A` 或 `Sequential steps`，不得伪造迭代数据。
+静态复核清单：
 
-## 模块设置和结果
+- 已通过 Pencil `Get` 的 bounds / problems 检查，五张画板无局部越界；已逐张截图并放大核对字段、窄栏、灰度、200% 字体和关键对话框。最终 `placeholder` 均清除，主稿已保存。
+- 错误内边框、白色间隔、焦点外环分别可见；来源、输入 / 显示单位和未提交文字独立。呈现待保存不染成求解状态，过期 / 缺失样例不展示旧数值。
+- 画板实际色对静态测量满足所选文字 / 必要边界目标，规则与证据边界归 [主题专题](../../topics/color-state/theme-and-accessibility.md#本轮静态测量范围)，数值记录归 W39。
+- 原生控件、真实键盘 / 菜单事件、读屏、系统缩放及色觉差异模拟未验；字体放大和灰度样例仅为静态设计。历史路由、取消、保存失败等画板不能作为已执行产品事务的证据。
 
-模块设置不应该被设计成每个单元独占一整页的孤立界面。优先顺序：
+2026-09-23 局部 R1 结论：项目所有者认可上述五张画板，暂未提出修改意见，允许继续实施设计。认可范围为本轮单位设置、字段状态、历史 / 保存、定位和可访问性静态样例；运行态与全局 R0 不在本次结论内。截至 2026-09-28，项目保存、草稿重验及首批数值状态映射已接通；剩余范围见 [U2 实施切片](../../topics/units-and-quantity-system.md#u2-实施切片与状态)，不以静态认可代替产品验收。
 
-1. 默认放在右侧栏 `模块设置 / 模块结果`。
-2. 当字段量较大时，可在中央画布区域打开类似 IDE 的模块详情标签页。
-3. 后续确有必要时，再评估 HYSYS 式弹窗或 Aspen 式画布内窗口。
+### 跨专题状态验收
 
-当前覆盖对象仍是 Feed、Mixer、Heater / Cooler、Valve、Flash Drum。字段必须显示单位、来源、草稿状态、提交动作和约束提示；结果只读消费当前 revision 的 latest `SolveSnapshot`。
+2026-09-23 增补 [运行与诊断 N0](../../topics/runtime-messages-and-diagnostics.md) 设计输入：双区“当前问题 / 计算过程”与全局、画布、模块联动，宽屏分栏、窄屏切页。首批画板覆盖缺项定位、指定值带错误、已求解带警告、历史恢复、过期、无当前完整结果和导出失败；消息更新时焦点 / 草稿保持、翻历史不自动拉回底部。数据源及同一问题计数必须标明，不能各画一份独立状态。
 
-模块结果、环境摘要和状态摘要不应退化为多行 label/value 文字直排。默认使用紧凑信息块：状态 chip 表示收敛、登录、缓存和诊断状态；metric card 表示 `Duty`、`Outlet T`、诊断数等关键数值；stream chip 表示 produced / consumed streams。文字说明只用于补充语义，不作为主要视觉结构。
+计算执行树先按真实顺序步骤设计；循环、后台、暂停 / 单步和条件编辑作为 N3 / N4 后续能力标注。不得把“暂停跟随日志”画成“暂停计算”，或把中间值画成完整结果。该完整消息工作台仍是后续设计输入；本轮只覆盖对象诊断定位，不表示完整 N0 / N1 已验收。
 
-## 实现前检查
+U2 首批温压流量字段同时评审 [V0 叠加规则](../../topics/color-state/semantics-and-composition.md#v0-状态叠加规则) 和 [VA 验收场景](../../topics/color-state/migration-and-acceptance.md#验收场景)。画板需标明事实来源、诊断 / 来源 / 草稿 / 时效 / 焦点的呈现通道及可访问性证据；色值方向已接受，图标、布局与接口按 VD 剩余项评审，不在 brief 重复定义一套颜色规则。
 
-任何 UI 代码实现前必须确认：
+后续画板按 [V1—V4](../../topics/results-review-diagnostics.md#流程可视化与回放规划尚未实现) 展示流股路径 / 动画开关、带图例数据层、同源设备三维和真实时间回放。V3 须区分非比例示意、候选与已采纳几何；V4 须区分播放时间与求解运行。二维主建模入口保持，三维和整厂布局不挤入本轮 U2 必做画板；V1—V4 本轮未绘制。
 
-- `studio-client-main.pen` 已完成评审并保存到仓库。
-- 物性页仍是独立页面，未退回右侧栏或左侧栏 tab。
-- 顶部导航、左侧栏、右侧栏、底部分栏与本 brief 一致。
-- UI 状态能映射到既有 presentation / command / state 模型。
-- 不引入自由连线、完整拖拽布局、自动布线、完整参数表、完整报表或第三方物性包加载。
-- 需要新增 presentation 字段时，字段职责明确，不是 shell 私有补丁。
-- 需要新增命令时，命令进入正式 command surface。
-- 文档和周志随实现同步更新。
+沿用浅色工程工具语言、清晰的状态与相邻单位标签，见 [视觉系统](../studio-visual-system.md)。画布优先仅适用于流程建模任务，设备任务允许以结构、参数和结果表为主；不机械复刻旧 Workbench，也不因追求统一而把所有信息卡片化。
+
+R0 验收任务入口、上下文切换和状态来源；R1 通过 Pencil 原生画板 / 截图 / 布局复核正常、空白、非法、失败、过期与未支持状态；R2 再按真实能力映射命令与代码。需记录评审画板、范围和证据，截图不得作为设备数值准确性的证明。
+
+当前状态：U2 / V0 方案已接受，五张 Pencil 局部画板已完成静态复核并获项目所有者认可；全局信息架构、规格与设备画板仍待推进，U2-I1 / I2 / I3 与 I4 首批控件 / 视图已接通，完整 U2 / V0 及 U3 未完成。下一步完成 I4 离开确认、设置 / 保存迁移和 I5 验收，不跳过 U2→U3→规格辅助→设备工程。

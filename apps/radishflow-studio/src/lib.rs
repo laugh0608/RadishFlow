@@ -12,8 +12,10 @@ mod entitlement_session_driver;
 mod entitlement_session_host;
 mod entitlement_session_host_presentation;
 mod entitlement_session_host_runtime;
+pub mod headless;
 mod inspector_draft_driver;
 mod inspector_target_driver;
+pub mod modeling_actions;
 mod property_package_download;
 mod property_package_download_client;
 mod run_panel_driver;
@@ -84,6 +86,7 @@ pub use document_history_driver::{
 pub use document_lifecycle_driver::{
     DocumentLifecycleOutcome, FILE_SAVE_AS_COMMAND_ID, FILE_SAVE_COMMAND_ID,
     StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand, dispatch_document_lifecycle,
+    load_project_app_state,
 };
 pub use entitlement_control::{
     StudioEntitlementAction, StudioEntitlementActionOutcome, StudioEntitlementFailure,
@@ -220,6 +223,7 @@ pub use studio_gui_command_registry::{
     StudioGuiCommandEntry, StudioGuiCommandGroup, StudioGuiCommandMenuCommandModel,
     StudioGuiCommandMenuNode, StudioGuiCommandPresentation, StudioGuiCommandRegistry,
     StudioGuiCommandSection, StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier,
+    StudioGuiShortcutPlatform,
 };
 pub use studio_gui_driver::{
     StudioGuiDriver, StudioGuiDriverDispatch, StudioGuiDriverOutcome, StudioGuiEvent,
@@ -236,7 +240,10 @@ pub use studio_gui_host::{
     StudioGuiHostWindowDropTargetQueryResult, StudioGuiHostWindowLayoutUpdateResult,
     StudioGuiHostWindowOpened,
 };
-pub use studio_gui_layout_store::{load_persisted_canvas_viewport, save_persisted_canvas_viewport};
+pub use studio_gui_layout_store::{
+    load_persisted_canvas_viewport, save_persisted_canvas_unit_positions,
+    save_persisted_canvas_viewport,
+};
 pub use studio_gui_platform_host::{
     StudioGuiPlatformAsyncRound, StudioGuiPlatformAsyncRoundAction,
     StudioGuiPlatformAsyncRoundInput, StudioGuiPlatformDispatch, StudioGuiPlatformDueTimerDrain,

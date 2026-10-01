@@ -1,3 +1,7 @@
+mod numeric_fields;
+mod unit_properties;
+use unit_properties::unit_property_fields;
+
 use super::helpers::{
     dispatch_from_controller, global_event_from_controller, ui_commands_from_projection,
 };
@@ -600,8 +604,9 @@ fn active_inspector_detail_from_controller(
     match &target {
         rf_ui::InspectorTarget::Unit(unit_id) => {
             let unit = flowsheet.units.get(unit_id)?;
-            let property_fields =
+            let mut property_fields =
                 unit_property_fields(flowsheet, unit, controller.inspector_drafts());
+            numeric_fields::project_numeric_fields(controller, &mut property_fields);
             let property_notices = unit_property_notices(unit, &property_fields);
             Some(StudioGuiInspectorTargetDetailSnapshot {
                 target,
@@ -645,7 +650,8 @@ fn active_inspector_detail_from_controller(
         }
         rf_ui::InspectorTarget::Stream(stream_id) => {
             let stream = flowsheet.streams.get(stream_id)?;
-            let property_fields = stream_property_fields(stream, controller.inspector_drafts());
+            let mut property_fields = stream_property_fields(stream, controller.inspector_drafts());
+            numeric_fields::project_numeric_fields(controller, &mut property_fields);
             let property_composition_summary =
                 stream_property_composition_summary(stream, controller.inspector_drafts());
             let property_composition_normalize_command_id =
@@ -1010,125 +1016,6 @@ fn would_create_unit_dependency_cycle(
     false
 }
 
-fn unit_property_fields(
-    flowsheet: &rf_model::Flowsheet,
-    unit: &rf_model::UnitNode,
-    drafts: &rf_ui::InspectorDraftState,
-) -> Vec<StudioGuiInspectorTargetFieldSnapshot> {
-    match unit.kind.as_str() {
-        "feed" => [
-            (
-                rf_ui::UnitInspectorDraftField::OutletTemperatureK,
-                "Source temperature (K)",
-            ),
-            (
-                rf_ui::UnitInspectorDraftField::OutletPressurePa,
-                "Source pressure (Pa)",
-            ),
-        ]
-        .into_iter()
-        .filter_map(|(field, label)| {
-            unit_number_property_field(flowsheet, unit, drafts, field, label)
-        })
-        .collect(),
-        "heater" | "cooler" => [
-            (
-                rf_ui::UnitInspectorDraftField::OutletTemperatureK,
-                "Outlet temperature (K)",
-            ),
-            (
-                rf_ui::UnitInspectorDraftField::OutletPressurePa,
-                "Outlet pressure (Pa)",
-            ),
-        ]
-        .into_iter()
-        .filter_map(|(field, label)| {
-            unit_number_property_field(flowsheet, unit, drafts, field, label)
-        })
-        .collect(),
-        "valve" => unit_number_property_field(
-            flowsheet,
-            unit,
-            drafts,
-            rf_ui::UnitInspectorDraftField::OutletPressurePa,
-            "Outlet pressure (Pa)",
-        )
-        .into_iter()
-        .collect(),
-        "mixer" => unit_number_property_field(
-            flowsheet,
-            unit,
-            drafts,
-            rf_ui::UnitInspectorDraftField::OutletPressurePa,
-            "Outlet pressure (Pa)",
-        )
-        .into_iter()
-        .collect(),
-        "flash_drum" => [
-            (
-                rf_ui::UnitInspectorDraftField::OutletTemperatureK,
-                "Flash temperature (K)",
-            ),
-            (
-                rf_ui::UnitInspectorDraftField::OutletPressurePa,
-                "Flash pressure (Pa)",
-            ),
-        ]
-        .into_iter()
-        .filter_map(|(field, label)| {
-            unit_number_property_field(flowsheet, unit, drafts, field, label)
-        })
-        .collect(),
-        _ => Vec::new(),
-    }
-}
-
-fn unit_number_property_field(
-    flowsheet: &rf_model::Flowsheet,
-    unit: &rf_model::UnitNode,
-    drafts: &rf_ui::InspectorDraftState,
-    field: rf_ui::UnitInspectorDraftField,
-    label: &str,
-) -> Option<StudioGuiInspectorTargetFieldSnapshot> {
-    let original = rf_ui::unit_inspector_parameter_value(flowsheet, &unit.id, &field)?;
-    let key = rf_ui::unit_inspector_draft_key(&unit.id, &field);
-    let mut property_field = inspector_number_field(drafts, key.clone(), label, original);
-    if unit_parameter_display_value_needs_explicit_commit(flowsheet, unit, drafts, &field, original)
-    {
-        property_field.is_dirty = true;
-        property_field.validation = StudioGuiInspectorTargetFieldValidationSnapshot::Valid;
-        property_field.commit_command_id = Some(crate::inspector_draft_commit_command_id(&key));
-        property_field.discard_command_id = None;
-    }
-    property_field.constraint_text = Some(unit_parameter_constraint_text(flowsheet, unit, &field));
-    Some(property_field)
-}
-
-fn unit_parameter_display_value_needs_explicit_commit(
-    flowsheet: &rf_model::Flowsheet,
-    unit: &rf_model::UnitNode,
-    drafts: &rf_ui::InspectorDraftState,
-    field: &rf_ui::UnitInspectorDraftField,
-    value: f64,
-) -> bool {
-    let key = rf_ui::unit_inspector_draft_key(&unit.id, field);
-    if drafts.fields.contains_key(&key) || rf_ui::unit_inspector_parameter_is_explicit(unit, field)
-    {
-        return false;
-    }
-    if !value.is_finite() || value <= 0.0 {
-        return false;
-    }
-    if matches!(field, rf_ui::UnitInspectorDraftField::OutletPressurePa)
-        && unit_outlet_pressure_cannot_exceed_inlet(unit)
-    {
-        return connected_inlet_pressure_limit(flowsheet, unit)
-            .map(|pressure_pa| value <= pressure_pa)
-            .unwrap_or(true);
-    }
-    true
-}
-
 fn stream_property_fields(
     stream: &rf_model::MaterialStreamState,
     drafts: &rf_ui::InspectorDraftState,
@@ -1226,6 +1113,7 @@ fn inspector_text_field(
 ) -> StudioGuiInspectorTargetFieldSnapshot {
     match drafts.fields.get(&key) {
         Some(rf_ui::DraftValue::Text(draft)) => StudioGuiInspectorTargetFieldSnapshot {
+            numeric: None,
             key: key.clone(),
             label: label.to_string(),
             constraint_text: None,
@@ -1248,6 +1136,7 @@ fn inspector_text_field(
             remove_command_id: None,
         },
         _ => StudioGuiInspectorTargetFieldSnapshot {
+            numeric: None,
             key: key.clone(),
             label: label.to_string(),
             constraint_text: None,
@@ -1271,7 +1160,43 @@ fn inspector_number_field(
     original: f64,
 ) -> StudioGuiInspectorTargetFieldSnapshot {
     match drafts.fields.get(&key) {
+        Some(rf_ui::DraftValue::Numeric(session)) => StudioGuiInspectorTargetFieldSnapshot {
+            numeric: None,
+            key: key.clone(),
+            label: label.replace(
+                &format!(
+                    "({})",
+                    session
+                        .quantity()
+                        .definition()
+                        .canonical_unit
+                        .definition()
+                        .symbol
+                ),
+                &format!("({})", session.input_unit().definition().symbol),
+            ),
+            constraint_text: session.validation().as_ref().err().map(ToString::to_string),
+            value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Number,
+            original_value: rf_types::units::from_canonical(
+                original,
+                session.quantity(),
+                session.input_unit(),
+            )
+            .map(format_field_number)
+            .unwrap_or_else(|error| error.to_string()),
+            current_value: session.raw_text().to_string(),
+            is_dirty: session.is_dirty(),
+            validation: inspector_validation_from_ui(session.draft_validation()),
+            draft_update_command_id: crate::inspector_draft_update_command_id(&key),
+            commit_command_id: (session.is_pending() && session.validation().is_ok())
+                .then(|| crate::inspector_draft_commit_command_id(&key)),
+            discard_command_id: session
+                .is_pending()
+                .then(|| crate::inspector_draft_discard_command_id(&key)),
+            remove_command_id: None,
+        },
         Some(rf_ui::DraftValue::Number(draft)) => StudioGuiInspectorTargetFieldSnapshot {
+            numeric: None,
             key: key.clone(),
             label: label.to_string(),
             constraint_text: None,
@@ -1294,6 +1219,7 @@ fn inspector_number_field(
             remove_command_id: None,
         },
         _ => StudioGuiInspectorTargetFieldSnapshot {
+            numeric: None,
             key: key.clone(),
             label: label.to_string(),
             constraint_text: None,
@@ -1410,6 +1336,9 @@ fn unit_parameter_invalid_notice(
     unit: &rf_model::UnitNode,
     field: &StudioGuiInspectorTargetFieldSnapshot,
 ) -> String {
+    if field.key.ends_with(":name") {
+        return "Name cannot be blank.".to_string();
+    }
     if field.key.ends_with(":outlet_temperature_k") {
         return format!(
             "{} must be a positive finite outlet temperature in K.",
@@ -1431,40 +1360,6 @@ fn unit_parameter_invalid_notice(
     }
 
     "Fix invalid property drafts before applying changes; invalid drafts are preserved and are not committed.".to_string()
-}
-
-fn unit_parameter_constraint_text(
-    flowsheet: &rf_model::Flowsheet,
-    unit: &rf_model::UnitNode,
-    field: &rf_ui::UnitInspectorDraftField,
-) -> String {
-    match field {
-        rf_ui::UnitInspectorDraftField::OutletTemperatureK => {
-            if unit.kind == "feed" {
-                return "Unit K; positive finite source outlet temperature; commit syncs the Feed outlet template.".to_string();
-            }
-            if unit.kind == "flash_drum" {
-                return "Unit K; positive finite flash temperature; commit syncs liquid/vapor outlet templates.".to_string();
-            }
-            "Unit K; positive finite outlet temperature; commit syncs the outlet stream template."
-                .to_string()
-        }
-        rf_ui::UnitInspectorDraftField::OutletPressurePa => {
-            if unit_outlet_pressure_cannot_exceed_inlet(unit) {
-                let inlet_limit = connected_inlet_pressure_limit(flowsheet, unit)
-                    .map(|pressure_pa| format!(" Inlet limit: {pressure_pa:.0} Pa."));
-                return format!(
-                    "Unit Pa; positive finite outlet pressure; cannot exceed connected inlet pressure.{}",
-                    inlet_limit.unwrap_or_default()
-                );
-            }
-            if unit.kind == "feed" {
-                return "Unit Pa; positive finite source outlet pressure; commit syncs the Feed outlet template.".to_string();
-            }
-            "Unit Pa; positive finite flash pressure; commit syncs liquid/vapor outlet templates."
-                .to_string()
-        }
-    }
 }
 
 fn unit_outlet_pressure_cannot_exceed_inlet(unit: &rf_model::UnitNode) -> bool {
@@ -1703,6 +1598,9 @@ fn workspace_document_snapshot_from_controller(
         revision: document.revision,
         last_saved_revision: controller.document_last_saved_revision(),
         has_unsaved_changes: controller.document_has_unsaved_changes(),
+        save_state: controller.project_save_state(),
+        presentation: controller.project_presentation().clone(),
+        input_edits: controller.inspector_drafts().fields.clone(),
         project_path: controller
             .document_path()
             .map(|path| path.display().to_string()),

@@ -8,7 +8,7 @@ use crate::{
 };
 use rf_model::Flowsheet;
 use rf_store::{
-    StoredAuthCacheIndex, StoredCredentialReference, StoredEntitlementCache, StoredProjectFile,
+    StoredAuthCacheIndex, StoredCredentialReference, StoredEntitlementCache,
     StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
     StoredPropertyPackageSource, property_package_payload_integrity, write_auth_cache_index,
     write_property_package_manifest, write_property_package_payload,
@@ -135,28 +135,6 @@ impl RadishFlowControlPlaneClient for BootstrapControlPlaneClient {
             self.refresh_received_at,
         ))
     }
-}
-
-pub(super) fn app_state_from_project_file(
-    project_file: &StoredProjectFile,
-    project_path: &Path,
-) -> AppState {
-    let metadata = &project_file.document.metadata;
-    let mut document = FlowsheetDocument::new(
-        project_file.document.flowsheet.clone(),
-        DocumentMetadata::new(
-            metadata.document_id.clone(),
-            metadata.title.clone(),
-            metadata.created_at,
-        ),
-    );
-    document.revision = project_file.document.revision;
-    document.metadata.schema_version = metadata.schema_version;
-    document.metadata.updated_at = metadata.updated_at;
-
-    let mut app_state = AppState::new(document);
-    app_state.mark_saved(project_path.to_path_buf());
-    app_state
 }
 
 pub(super) fn app_state_from_untitled_blank_project(

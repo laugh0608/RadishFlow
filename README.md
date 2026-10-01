@@ -1,42 +1,41 @@
 # RadishFlow
 
-> [!IMPORTANT]
-> ## 项目业务功能停止公开维护公告
->
-> 自 2026-06-12 起，RadishFlow 停止公开业务功能开发、产品问题处理、外部 PR 合并、发布打包和对外推广。本仓库继续作为历史代码与个人学习记录保留；现有内容不再代表持续维护的产品路线，也不构成任何交付、支持或继续开发承诺。作者仍可按需维护不扩张产品能力的仓库外围基础设施，例如文档治理、CI、ruleset、安全基线、仓库元数据和工具链兼容性。
->
-> 停更原因是作者基于当前职业合规、保密义务和知识产权边界作出的审慎决定。作者近期需要遵守任职单位关于保密资料、职务开发成果、非职务开发成果及相关知识产权归属的更明确要求。本项目虽为个人业余项目，技术栈、实现路径和代码来源均与任职单位内部实现不同，但其功能方向与化工工艺流程模拟软件高度接近。继续公开迭代、接受外部贡献或推进产品化，可能造成外界对利益冲突、保密义务、职务成果归属或不当竞争边界的误解，也可能给作者本人、任职单位和潜在使用者带来不必要的合规风险。
->
-> 为尊重任职单位的制度要求，并尽量避免任何潜在争议，作者决定主动停止本项目的后续业务功能维护。后续不会继续添加模拟功能、物性模型、CAPE-OPEN / COM 适配、商业化能力、发布包或路线图内容；仓库外围基础设施维护不得被解释为恢复产品开发。也不建议任何人基于本仓库开展与作者任职单位业务存在直接竞争关系的公开协作。
->
-> 本公告仅说明项目维护状态和作者的风险回避立场，不用于披露、确认或评价任何第三方商业秘密、技术秘密、产品实现或权利归属；也不构成法律意见或对既有代码权属的扩张性声明。既有代码的阅读和使用边界仍以仓库根目录 `LICENSE` 文件为准，本公告不新增任何授权。
+> RadishFlow 自 2026-09-12 起恢复正常开发和迭代。当前阶段与优先级见 [当前状态](docs/status/current.md)，具体范围与验收要求见对应开发专题。
 
-RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 `.NET 10` 负责 CAPE-OPEN / COM 适配的稳态流程模拟软件。
+RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 `.NET 10` 负责 CAPE-OPEN / COM 适配的可扩展流程模拟平台。当前从稳态流程起步，长期覆盖设备设计与校核、动态、瞬态及多种求解组织方式。
 
 ## 当前定位
 
-当前第一阶段保持以下稳定边界：
+项目以已完成的第一阶段 MVP 为基础继续迭代，保持以下架构边界：
 
-- Rust 实现稳态模拟核心
+- Rust 实现计算核心，当前为受控稳态流程，长期按领域能力扩展
 - Rust 实现桌面 UI
 - `.NET 10` 暴露自有 CAPE-OPEN Unit Operation PMC
 - 当前不加载第三方 CAPE-OPEN 模型
 - Rust 不直接处理 COM；Rust 与 `.NET` 边界只允许句柄、基础数值、UTF-8 字符串和 JSON
 
-更具体的阶段目标、冻结范围和非目标，以 `docs/status/current.md`、`docs/mvp/scope.md` 和 `docs/capeopen/boundary.md` 为准。
+更具体的开发状态、已有能力与限制，见 [当前状态](docs/status/current.md)、[MVP 范围](docs/mvp/scope.md) 和 [CAPE-OPEN 边界](docs/capeopen/boundary.md)。
+
+近期先完善基础功能与使用闭环；长期建设可独立组合的组分、物性与分析、画布、单元与反应、模拟、算法、报告及对外 API 系统，包含递归分块求解、间歇操作、变量浏览树、COM 自动化和脚本录制 / 回放。领域边界见 [模拟平台长期规划](docs/architecture/simulation-platform.md)，阶段与验收见 [开发路线图](docs/radishflow-mvp-roadmap.md)。目标能力按阶段实现，不代表现有产品已具备。
+
+单位元数据与统一转换、规格检查与确定性建模辅助是近期基础能力方向；设备工程支持独立计算和流程关联。未来 AI Agent 复用统一变量 / 动作 / 诊断接口，当前不接入大模型。Studio 功能分区进入重新设计评审，旧 `.pen` 保留为既有设计基线，不代表新增功能已定稿。
+
+现有模型使用简化物性与单元假设，内置样例用于演示和软件回归；求解收敛、α / β 验收和跨层一致性不构成工程工况准确性证明。模型假设、样例来源限制及独立验证缺口统一见 [热力学 MVP 模型](docs/thermo/mvp-model.md)。
 
 ## 当前状态入口
 
 - [当前阶段、当前重点、当前验证基线和下一步建议](docs/status/current.md)
 - [文档总索引](docs/README.md)
 - 协作规则入口：[AGENTS.md](AGENTS.md)、[CLAUDE.md](CLAUDE.md)
-- [维护与潜在贡献边界](CONTRIBUTING.md)
+- [开发与贡献指南](CONTRIBUTING.md)
 - [社区交流规范](CODE_OF_CONDUCT.md)
 - [漏洞私下报告与处理边界](SECURITY.md)
 
 根 `README.md` 只保留稳定入口信息，不再重复维护易过期的阶段进度。
 
 ## 快速开始
+
+仓库通过 `rust-toolchain.toml` 固定 Rust 工具链，通过 `Cargo.lock` 与 `--locked` 保持正式检查的依赖组合；支持版本见 [当前状态](docs/status/current.md)，升级与兼容性检查方式见 [工具链维护规则](docs/development/agent-collaboration.md#rust-工具链与锁定依赖)。
 
 默认仓库级验证入口：
 
@@ -59,7 +58,7 @@ pwsh ./scripts/normalize-text-files.ps1
 ./scripts/check-text-files.sh
 ```
 
-`check-repo` 会统一执行仓库治理与文本门禁、`cargo fmt --all --check`、`cargo check --workspace`、`cargo test --workspace` 与 `cargo clippy --workspace --all-targets -- -D warnings`。治理门禁覆盖必需文件、Markdown 相对链接、JSON、协作文件同步、GitHub 配置契约和 `git diff --check`。
+`check-repo` 会统一执行仓库治理与文本门禁、`cargo fmt --all --check`、`cargo check --locked --workspace`、`cargo test --locked --workspace` 与 `cargo clippy --locked --workspace --all-targets -- -D warnings`。治理门禁覆盖必需文件、Markdown 相对链接、JSON、协作文件同步、GitHub 配置契约和 `git diff --check`。
 
 ## 文本与格式约束
 
@@ -89,7 +88,7 @@ pwsh ./scripts/normalize-text-files.ps1
 - `docs/architecture/overview.md`: 当前仓库分层与模块边界
 - `docs/architecture/app-architecture.md`: 桌面 App 架构规划
 - `docs/architecture/auth-entitlement-architecture.md`: 桌面登录、授权与远端物性资产架构
-- `docs/mvp/scope.md`: MVP 范围、非目标与近期开发节奏
+- `docs/mvp/scope.md`: 已保留的 MVP 范围、模型限制与验收含义
 - `docs/thermo/mvp-model.md`: 热力学与闪蒸的当前契约
 - `docs/capeopen/boundary.md`: Rust 与 `.NET 10` 的 CAPE-OPEN 边界
 - `docs/adr/0001-branch-and-pr-governance.md`: 分支与 PR 治理策略
@@ -102,7 +101,7 @@ pwsh ./scripts/normalize-text-files.ps1
 
 完整条款见 [LICENSE](LICENSE) 文件。
 
-项目当前不接受外部业务功能贡献；维护状态、潜在贡献授权和合规边界见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+产品问题、功能建议与代码贡献按项目流程评审；贡献授权和材料边界见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 参考仓库
 

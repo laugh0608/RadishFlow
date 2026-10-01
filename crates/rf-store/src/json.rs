@@ -1,8 +1,5 @@
-use std::fs::{self, File, OpenOptions};
-use std::io::Write;
+use std::fs;
 use std::path::Path;
-use std::path::PathBuf;
-use std::process;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rf_types::{RfError, RfResult};
@@ -26,6 +23,8 @@ use crate::{
     StoredPropertyPackagePayload, StoredStudioLayoutFile, StoredStudioPreferencesFile,
 };
 
+use crate::staged_file::{FileOverwritePolicy, map_io_error, write_staged_file};
+
 pub fn read_project_file(path: impl AsRef<Path>) -> RfResult<StoredProjectFile> {
     let path = path.as_ref();
     let contents = fs::read_to_string(path)
@@ -42,10 +41,32 @@ pub fn write_project_file(
 }
 
 pub fn parse_project_file_json(contents: &str) -> RfResult<StoredProjectFile> {
-    let raw_value: Value = parse_json(contents, "deserialize stored project file envelope")?;
-    let migrated_value = migrate_project_file_value(raw_value)?;
-    let project_file: StoredProjectFile =
-        parse_json_value(migrated_value, "deserialize stored project file body")?;
+    // Probe the version, then deserialize ORIGINAL text: Value would discard duplicate keys.
+    let envelope: StoredEnvelope =
+        parse_json(contents, "deserialize stored project file envelope")?;
+    if envelope.kind.as_deref() != Some(STORED_PROJECT_FILE_KIND) {
+        return Err(RfError::invalid_input(format!(
+            "unsupported stored project file kind `{}`",
+            envelope.kind.unwrap_or_default()
+        )));
+    }
+    let project_file: StoredProjectFile = match envelope.schema_version {
+        1 | 2 => parse_json(contents, "deserialize stored project file body")?,
+        version if version > STORED_PROJECT_FILE_SCHEMA_VERSION => {
+            return Err(newer_schema_error(
+                "stored project file",
+                version,
+                STORED_PROJECT_FILE_SCHEMA_VERSION,
+            ));
+        }
+        version => {
+            return Err(older_schema_error(
+                "stored project file",
+                version,
+                STORED_PROJECT_FILE_SCHEMA_VERSION,
+            ));
+        }
+    };
     project_file.validate()?;
     Ok(project_file)
 }
@@ -262,124 +283,12 @@ where
         fs::create_dir_all(parent)
             .map_err(|error| map_io_error("create parent directories", parent, &error))?;
     }
-    write_staged_json_file(path, contents.as_bytes(), action)
-}
-
-fn write_staged_json_file(path: &Path, contents: &[u8], action: &str) -> RfResult<()> {
-    if path.exists() && !path.is_file() {
-        return Err(RfError::invalid_input(format!(
-            "{action} `{}`: target path exists and is not a file",
-            path.display()
-        )));
-    }
-
-    let temp_path = create_unique_temp_sibling(path)?;
-    let write_result = write_all_and_sync(&temp_path, contents, action)
-        .and_then(|_| replace_with_staged_file(&temp_path, path, action));
-
-    if write_result.is_err() {
-        let _ = fs::remove_file(&temp_path);
-    }
-
-    write_result
-}
-
-fn write_all_and_sync(path: &Path, contents: &[u8], action: &str) -> RfResult<()> {
-    let mut file = File::create(path).map_err(|error| map_io_error(action, path, &error))?;
-    file.write_all(contents)
-        .map_err(|error| map_io_error(action, path, &error))?;
-    file.sync_all()
-        .map_err(|error| map_io_error(action, path, &error))
-}
-
-#[cfg(not(windows))]
-fn replace_with_staged_file(temp_path: &Path, path: &Path, action: &str) -> RfResult<()> {
-    fs::rename(temp_path, path).map_err(|error| map_io_error(action, path, &error))
-}
-
-#[cfg(windows)]
-fn replace_with_staged_file(temp_path: &Path, path: &Path, action: &str) -> RfResult<()> {
-    if !path.exists() {
-        return fs::rename(temp_path, path).map_err(|error| map_io_error(action, path, &error));
-    }
-
-    let backup_path = create_unique_backup_sibling(path)?;
-    fs::rename(path, &backup_path).map_err(|error| map_io_error(action, path, &error))?;
-
-    match fs::rename(temp_path, path) {
-        Ok(()) => {
-            let _ = fs::remove_file(&backup_path);
-            Ok(())
-        }
-        Err(error) => {
-            let _ = fs::rename(&backup_path, path);
-            Err(map_io_error(action, path, &error))
-        }
-    }
-}
-
-fn create_unique_temp_sibling(path: &Path) -> RfResult<PathBuf> {
-    create_unique_sibling(path, "tmp")
-}
-
-#[cfg(windows)]
-fn create_unique_backup_sibling(path: &Path) -> RfResult<PathBuf> {
-    let directory = path.parent().unwrap_or_else(|| Path::new("."));
-    let file_name = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("radishflow");
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    let pid = process::id();
-
-    for attempt in 0..32 {
-        let candidate = directory.join(format!(".{file_name}.{pid}.{timestamp}.{attempt}.bak"));
-        if !candidate.exists() {
-            return Ok(candidate);
-        }
-    }
-
-    Err(RfError::invalid_input(format!(
-        "create staged backup file `{}`: could not allocate a unique sibling path",
-        path.display()
-    )))
-}
-
-fn create_unique_sibling(path: &Path, suffix: &str) -> RfResult<PathBuf> {
-    let directory = path.parent().unwrap_or_else(|| Path::new("."));
-    let file_name = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("radishflow");
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    let pid = process::id();
-
-    for attempt in 0..32 {
-        let candidate =
-            directory.join(format!(".{file_name}.{pid}.{timestamp}.{attempt}.{suffix}"));
-        match OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&candidate)
-        {
-            Ok(_) => return Ok(candidate),
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
-            Err(error) => {
-                return Err(map_io_error("create staged json file", &candidate, &error));
-            }
-        }
-    }
-
-    Err(RfError::invalid_input(format!(
-        "create staged json file `{}`: could not allocate a unique sibling path",
-        path.display()
-    )))
+    write_staged_file(
+        path,
+        contents.as_bytes(),
+        action,
+        FileOverwritePolicy::Allow,
+    )
 }
 
 fn parse_json<T>(contents: &str, action: &str) -> RfResult<T>
@@ -404,35 +313,6 @@ where
 {
     serde_json::to_string_pretty(value)
         .map_err(|error| RfError::invalid_input(format!("{action}: {error}")))
-}
-
-fn map_io_error(action: &str, path: &Path, error: &std::io::Error) -> RfError {
-    RfError::invalid_input(format!("{action} `{}`: {error}", path.display()))
-}
-
-fn migrate_project_file_value(value: Value) -> RfResult<Value> {
-    let envelope = parse_stored_envelope(&value, "stored project file")?;
-
-    if envelope.kind.as_deref() != Some(STORED_PROJECT_FILE_KIND) {
-        return Err(RfError::invalid_input(format!(
-            "unsupported stored project file kind `{}`",
-            envelope.kind.unwrap_or_default()
-        )));
-    }
-
-    match envelope.schema_version {
-        STORED_PROJECT_FILE_SCHEMA_VERSION => migrate_project_file_v1_to_current(value),
-        version if version > STORED_PROJECT_FILE_SCHEMA_VERSION => Err(newer_schema_error(
-            "stored project file",
-            version,
-            STORED_PROJECT_FILE_SCHEMA_VERSION,
-        )),
-        version => Err(older_schema_error(
-            "stored project file",
-            version,
-            STORED_PROJECT_FILE_SCHEMA_VERSION,
-        )),
-    }
 }
 
 fn migrate_studio_layout_file_value(value: Value) -> RfResult<Value> {
@@ -564,10 +444,6 @@ fn migrate_property_package_payload_value(value: Value) -> RfResult<Value> {
             STORED_PROPERTY_PACKAGE_SCHEMA_VERSION,
         )),
     }
-}
-
-fn migrate_project_file_v1_to_current(value: Value) -> RfResult<Value> {
-    Ok(value)
 }
 
 fn migrate_studio_layout_file_v1_to_current(value: Value) -> RfResult<Value> {

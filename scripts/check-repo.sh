@@ -4,7 +4,7 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "${script_dir}/.." && pwd)"
 
-args=(run --quiet -p xtask -- check-repo)
+args=(run --locked --quiet -p xtask -- check-repo)
 
 while (($# > 0)); do
   case "$1" in

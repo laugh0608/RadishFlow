@@ -80,45 +80,45 @@ fn generate_local_canvas_suggestions_for_flowsheet(flowsheet: &Flowsheet) -> Vec
             .ports
             .iter()
             .find(|port| port.name == FLASH_DRUM_INLET_PORT);
-        if let Some(inlet) = inlet.filter(|port| port.stream_id.is_none()) {
-            if connectable_source_only_streams.len() == 1 {
-                let stream_id = connectable_source_only_streams[0].clone();
-                if let Some((source_unit_id, source_port)) = endpoints
-                    .get(&stream_id)
-                    .and_then(|endpoint| endpoint.source.clone())
-                {
-                    suggestions.push(
-                        CanvasSuggestion::new(
-                            CanvasSuggestionId::new(format!(
-                                "local.flash_drum.connect_inlet.{}.{}",
-                                unit.id, stream_id
-                            )),
-                            SuggestionSource::LocalRules,
-                            0.97,
-                            GhostElement {
-                                kind: GhostElementKind::Connection,
-                                target_unit_id: unit.id.clone(),
-                                visual_kind: StreamVisualKind::Material,
-                                visual_state: StreamVisualState::Suggested,
-                            },
-                            format!(
-                                "Connect stream `{}` to flash drum inlet `{}`",
-                                stream_id, inlet.name
-                            ),
-                        )
-                        .with_acceptance(
-                            CanvasSuggestionAcceptance::MaterialConnection(
-                                CanvasSuggestedMaterialConnection {
-                                    stream: CanvasSuggestedStreamBinding::Existing { stream_id },
-                                    source_unit_id,
-                                    source_port,
-                                    sink_unit_id: Some(unit.id.clone()),
-                                    sink_port: Some(inlet.name.clone()),
-                                },
-                            ),
+        if let Some(inlet) = inlet.filter(|port| port.stream_id.is_none())
+            && connectable_source_only_streams.len() == 1
+        {
+            let stream_id = connectable_source_only_streams[0].clone();
+            if let Some((source_unit_id, source_port)) = endpoints
+                .get(&stream_id)
+                .and_then(|endpoint| endpoint.source.clone())
+            {
+                suggestions.push(
+                    CanvasSuggestion::new(
+                        CanvasSuggestionId::new(format!(
+                            "local.flash_drum.connect_inlet.{}.{}",
+                            unit.id, stream_id
+                        )),
+                        SuggestionSource::LocalRules,
+                        0.97,
+                        GhostElement {
+                            kind: GhostElementKind::Connection,
+                            target_unit_id: unit.id.clone(),
+                            visual_kind: StreamVisualKind::Material,
+                            visual_state: StreamVisualState::Suggested,
+                        },
+                        format!(
+                            "Connect stream `{}` to flash drum inlet `{}`",
+                            stream_id, inlet.name
                         ),
-                    );
-                }
+                    )
+                    .with_acceptance(
+                        CanvasSuggestionAcceptance::MaterialConnection(
+                            CanvasSuggestedMaterialConnection {
+                                stream: CanvasSuggestedStreamBinding::Existing { stream_id },
+                                source_unit_id,
+                                source_port,
+                                sink_unit_id: Some(unit.id.clone()),
+                                sink_port: Some(inlet.name.clone()),
+                            },
+                        ),
+                    ),
+                );
             }
         }
 
@@ -197,66 +197,22 @@ fn build_single_inlet_outlet_unit_suggestions(
     let inlet = ports
         .iter()
         .find(|candidate| candidate.name == SINGLE_INLET_PORT);
-    if let Some(inlet) = inlet.filter(|port| port.stream_id.is_none()) {
-        if connectable_source_only_streams.len() == 1 {
-            let stream_id = connectable_source_only_streams[0].clone();
-            if let Some((source_unit_id, source_port)) = endpoints
-                .get(&stream_id)
-                .and_then(|endpoint| endpoint.source.clone())
-            {
-                suggestions.push(
-                    CanvasSuggestion::new(
-                        CanvasSuggestionId::new(format!(
-                            "local.{}.connect_inlet.{}.{}",
-                            unit_kind, unit_id, stream_id
-                        )),
-                        SuggestionSource::LocalRules,
-                        0.965,
-                        GhostElement {
-                            kind: GhostElementKind::Connection,
-                            target_unit_id: unit_id.clone(),
-                            visual_kind: StreamVisualKind::Material,
-                            visual_state: StreamVisualState::Suggested,
-                        },
-                        format!(
-                            "Connect stream `{}` to {} inlet `{}`",
-                            stream_id,
-                            unit_display_name(unit_kind),
-                            inlet.name
-                        ),
-                    )
-                    .with_acceptance(
-                        CanvasSuggestionAcceptance::MaterialConnection(
-                            CanvasSuggestedMaterialConnection {
-                                stream: CanvasSuggestedStreamBinding::Existing { stream_id },
-                                source_unit_id,
-                                source_port,
-                                sink_unit_id: Some(unit_id.clone()),
-                                sink_port: Some(inlet.name.clone()),
-                            },
-                        ),
-                    ),
-                );
-            }
-        }
-    }
-
-    let inlet_is_bound = inlet.is_some_and(|port| port.stream_id.is_some());
-    let outlet = ports
-        .iter()
-        .find(|candidate| candidate.name == SINGLE_OUTLET_PORT);
-    if inlet_is_bound {
-        if let Some(outlet) = outlet.filter(|port| port.stream_id.is_none()) {
-            let stream_id = unique_stream_id(flowsheet, &unit_id, SINGLE_OUTLET_PORT);
-            let stream_name = format!("{} Outlet", unit_name);
+    if let Some(inlet) = inlet.filter(|port| port.stream_id.is_none())
+        && connectable_source_only_streams.len() == 1
+    {
+        let stream_id = connectable_source_only_streams[0].clone();
+        if let Some((source_unit_id, source_port)) = endpoints
+            .get(&stream_id)
+            .and_then(|endpoint| endpoint.source.clone())
+        {
             suggestions.push(
                 CanvasSuggestion::new(
                     CanvasSuggestionId::new(format!(
-                        "local.{}.create_outlet.{}",
-                        unit_kind, unit_id
+                        "local.{}.connect_inlet.{}.{}",
+                        unit_kind, unit_id, stream_id
                     )),
                     SuggestionSource::LocalRules,
-                    0.94,
+                    0.965,
                     GhostElement {
                         kind: GhostElementKind::Connection,
                         target_unit_id: unit_id.clone(),
@@ -264,29 +220,66 @@ fn build_single_inlet_outlet_unit_suggestions(
                         visual_state: StreamVisualState::Suggested,
                     },
                     format!(
-                        "Create source stream `{}` for {} outlet `{}`",
-                        stream_name,
+                        "Connect stream `{}` to {} inlet `{}`",
+                        stream_id,
                         unit_display_name(unit_kind),
-                        outlet.name
+                        inlet.name
                     ),
                 )
                 .with_acceptance(CanvasSuggestionAcceptance::MaterialConnection(
                     CanvasSuggestedMaterialConnection {
-                        stream: CanvasSuggestedStreamBinding::Create {
-                            stream: default_single_inlet_outlet_stream(
-                                unit_kind,
-                                stream_id,
-                                stream_name,
-                            ),
-                        },
-                        source_unit_id: unit_id,
-                        source_port: outlet.name.clone(),
-                        sink_unit_id: None,
-                        sink_port: None,
+                        stream: CanvasSuggestedStreamBinding::Existing { stream_id },
+                        source_unit_id,
+                        source_port,
+                        sink_unit_id: Some(unit_id.clone()),
+                        sink_port: Some(inlet.name.clone()),
                     },
                 )),
             );
         }
+    }
+
+    let inlet_is_bound = inlet.is_some_and(|port| port.stream_id.is_some());
+    let outlet = ports
+        .iter()
+        .find(|candidate| candidate.name == SINGLE_OUTLET_PORT);
+    if inlet_is_bound && let Some(outlet) = outlet.filter(|port| port.stream_id.is_none()) {
+        let stream_id = unique_stream_id(flowsheet, &unit_id, SINGLE_OUTLET_PORT);
+        let stream_name = format!("{} Outlet", unit_name);
+        suggestions.push(
+            CanvasSuggestion::new(
+                CanvasSuggestionId::new(format!("local.{}.create_outlet.{}", unit_kind, unit_id)),
+                SuggestionSource::LocalRules,
+                0.94,
+                GhostElement {
+                    kind: GhostElementKind::Connection,
+                    target_unit_id: unit_id.clone(),
+                    visual_kind: StreamVisualKind::Material,
+                    visual_state: StreamVisualState::Suggested,
+                },
+                format!(
+                    "Create source stream `{}` for {} outlet `{}`",
+                    stream_name,
+                    unit_display_name(unit_kind),
+                    outlet.name
+                ),
+            )
+            .with_acceptance(CanvasSuggestionAcceptance::MaterialConnection(
+                CanvasSuggestedMaterialConnection {
+                    stream: CanvasSuggestedStreamBinding::Create {
+                        stream: default_single_inlet_outlet_stream(
+                            unit_kind,
+                            stream_id,
+                            stream_name,
+                        ),
+                    },
+                    source_unit_id: unit_id,
+                    source_port: outlet.name.clone(),
+                    sink_unit_id: None,
+                    sink_port: None,
+                },
+            )),
+        );
     }
 
     suggestions
@@ -369,39 +362,37 @@ fn build_mixer_suggestions(
     let outlet = ports
         .iter()
         .find(|candidate| candidate.name == MIXER_OUTLET_PORT);
-    if all_inlets_are_bound {
-        if let Some(outlet) = outlet.filter(|port| port.stream_id.is_none()) {
-            let stream_id = unique_stream_id(flowsheet, &unit_id, MIXER_OUTLET_PORT);
-            let stream_name = format!("{unit_name} Outlet");
-            suggestions.push(
-                CanvasSuggestion::new(
-                    CanvasSuggestionId::new(format!("local.mixer.create_outlet.{}", unit_id)),
-                    SuggestionSource::LocalRules,
-                    0.94,
-                    GhostElement {
-                        kind: GhostElementKind::Connection,
-                        target_unit_id: unit_id.clone(),
-                        visual_kind: StreamVisualKind::Material,
-                        visual_state: StreamVisualState::Suggested,
+    if all_inlets_are_bound && let Some(outlet) = outlet.filter(|port| port.stream_id.is_none()) {
+        let stream_id = unique_stream_id(flowsheet, &unit_id, MIXER_OUTLET_PORT);
+        let stream_name = format!("{unit_name} Outlet");
+        suggestions.push(
+            CanvasSuggestion::new(
+                CanvasSuggestionId::new(format!("local.mixer.create_outlet.{}", unit_id)),
+                SuggestionSource::LocalRules,
+                0.94,
+                GhostElement {
+                    kind: GhostElementKind::Connection,
+                    target_unit_id: unit_id.clone(),
+                    visual_kind: StreamVisualKind::Material,
+                    visual_state: StreamVisualState::Suggested,
+                },
+                format!(
+                    "Create source stream `{}` for mixer outlet `{}`",
+                    stream_name, outlet.name
+                ),
+            )
+            .with_acceptance(CanvasSuggestionAcceptance::MaterialConnection(
+                CanvasSuggestedMaterialConnection {
+                    stream: CanvasSuggestedStreamBinding::Create {
+                        stream: MaterialStreamState::new(stream_id, stream_name),
                     },
-                    format!(
-                        "Create source stream `{}` for mixer outlet `{}`",
-                        stream_name, outlet.name
-                    ),
-                )
-                .with_acceptance(CanvasSuggestionAcceptance::MaterialConnection(
-                    CanvasSuggestedMaterialConnection {
-                        stream: CanvasSuggestedStreamBinding::Create {
-                            stream: MaterialStreamState::new(stream_id, stream_name),
-                        },
-                        source_unit_id: unit_id,
-                        source_port: outlet.name.clone(),
-                        sink_unit_id: None,
-                        sink_port: None,
-                    },
-                )),
-            );
-        }
+                    source_unit_id: unit_id,
+                    source_port: outlet.name.clone(),
+                    sink_unit_id: None,
+                    sink_port: None,
+                },
+            )),
+        );
     }
 
     suggestions

@@ -108,6 +108,7 @@ pub enum StudioCanvasInteractionAction {
     DisconnectSelectedStreamSink,
     ReconnectSelectedStream,
     DeleteSelectedStream,
+    DeleteSelectedUnit,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -263,6 +264,10 @@ impl StudioAppWindowHostManager {
             .reconnect_selected_stream_to_unique_available_endpoint()
     }
 
+    pub fn delete_selected_unit(&mut self) -> RfResult<Option<u64>> {
+        self.session.delete_selected_unit()
+    }
+
     pub fn delete_selected_stream_and_connections(
         &mut self,
     ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
@@ -341,6 +346,10 @@ impl StudioAppWindowHostManager {
             }
             StudioCanvasInteractionAction::ReconnectSelectedStream => {
                 self.reconnect_selected_stream_to_unique_available_endpoint()?;
+                (None, None, None, None)
+            }
+            StudioCanvasInteractionAction::DeleteSelectedUnit => {
+                self.delete_selected_unit()?;
                 (None, None, None, None)
             }
             StudioCanvasInteractionAction::DeleteSelectedStream => {
@@ -593,6 +602,22 @@ impl StudioAppWindowHostManager {
         trigger: &StudioRuntimeTrigger,
     ) -> RfResult<StudioAppWindowHostDispatch> {
         self.ensure_registered_window(window_id)?;
+        let view = match trigger {
+            StudioRuntimeTrigger::ProjectPresentation(
+                rf_ui::ProjectPresentationCommand::ApplyView { view, .. }
+                | rf_ui::ProjectPresentationCommand::CloseView(view),
+            )
+            | StudioRuntimeTrigger::NumericEdit(rf_ui::NumericEditCommand::BeginInView {
+                view,
+                ..
+            }) => Some(*view),
+            _ => None,
+        };
+        if view.is_some_and(|view| view.0 != window_id) {
+            return Err(RfError::invalid_input(
+                "Inspector display scope belongs to another window",
+            ));
+        }
         let dispatch = self.session.dispatch_trigger(window_id, trigger)?;
 
         Ok(StudioAppWindowHostDispatch {

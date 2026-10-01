@@ -137,21 +137,19 @@ impl ReadyAppState {
             ui.small(
                 egui::RichText::new(self.locale.text(ShellText::InspectorProperties)).strong(),
             );
-            if let Some(command_id) = settings.parameter_batch_commit_command_id.as_ref() {
-                if ui
+            if let Some(command_id) = settings.parameter_batch_commit_command_id.as_ref()
+                && ui
                     .small_button(self.locale.text(ShellText::InspectorFieldApplyAll))
                     .clicked()
-                {
-                    self.dispatch_inspector_field_draft_batch_commit(command_id.clone());
-                }
+            {
+                self.dispatch_inspector_field_draft_batch_commit(command_id.clone());
             }
-            if let Some(command_id) = settings.parameter_batch_discard_command_id.as_ref() {
-                if ui
+            if let Some(command_id) = settings.parameter_batch_discard_command_id.as_ref()
+                && ui
                     .small_button(self.locale.text(ShellText::InspectorFieldDiscardAll))
                     .clicked()
-                {
-                    self.dispatch_inspector_field_draft_batch_discard(command_id.clone());
-                }
+            {
+                self.dispatch_inspector_field_draft_batch_discard(command_id.clone());
             }
             for notice in &settings.parameter_notices {
                 ui.add_space(4.0);
@@ -161,11 +159,11 @@ impl ReadyAppState {
                         self.locale.runtime_label(notice.status_label).as_ref(),
                         inspector_field_status_color(notice.status_label),
                     );
-                    render_wrapped_small(ui, &notice.message);
+                    render_wrapped_small(ui, self.locale.runtime_label(&notice.message).as_ref());
                 });
             }
             for field in &settings.parameter_fields {
-                self.render_inspector_property_field(ui, field);
+                self.render_inspector_property_field(ui, field, None);
             }
         }
 
@@ -270,6 +268,9 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         detail: &radishflow_studio::StudioGuiWindowInspectorTargetDetailModel,
     ) {
+        if !self.render_inspector_view_controls(ui) {
+            return;
+        }
         ui.horizontal_wrapped(|ui| {
             ui.label(
                 egui::RichText::new(self.locale.text(ShellText::ActiveInspectorTarget)).strong(),
@@ -325,29 +326,26 @@ impl ReadyAppState {
             ui.small(
                 egui::RichText::new(self.locale.text(ShellText::InspectorProperties)).strong(),
             );
-            if let Some(command_id) = detail.property_batch_commit_command_id.as_ref() {
-                if ui
+            if let Some(command_id) = detail.property_batch_commit_command_id.as_ref()
+                && ui
                     .small_button(self.locale.text(ShellText::InspectorFieldApplyAll))
                     .clicked()
-                {
-                    self.dispatch_inspector_field_draft_batch_commit(command_id.clone());
-                }
+            {
+                self.dispatch_inspector_field_draft_batch_commit(command_id.clone());
             }
-            if let Some(command_id) = detail.property_batch_discard_command_id.as_ref() {
-                if ui
+            if let Some(command_id) = detail.property_batch_discard_command_id.as_ref()
+                && ui
                     .small_button(self.locale.text(ShellText::InspectorFieldDiscardAll))
                     .clicked()
-                {
-                    self.dispatch_inspector_field_draft_batch_discard(command_id.clone());
-                }
+            {
+                self.dispatch_inspector_field_draft_batch_discard(command_id.clone());
             }
-            if let Some(command_id) = detail.property_composition_normalize_command_id.as_ref() {
-                if ui
+            if let Some(command_id) = detail.property_composition_normalize_command_id.as_ref()
+                && ui
                     .small_button(self.locale.text(ShellText::InspectorNormalizeComposition))
                     .clicked()
-                {
-                    self.dispatch_inspector_composition_normalize(command_id.clone());
-                }
+            {
+                self.dispatch_inspector_composition_normalize(command_id.clone());
             }
             for notice in &detail.property_notices {
                 ui.add_space(4.0);
@@ -357,7 +355,7 @@ impl ReadyAppState {
                         self.locale.runtime_label(notice.status_label).as_ref(),
                         inspector_field_status_color(notice.status_label),
                     );
-                    render_wrapped_small(ui, &notice.message);
+                    render_wrapped_small(ui, self.locale.runtime_label(&notice.message).as_ref());
                 });
             }
             if let Some(summary) = detail.property_composition_summary.as_ref() {
@@ -407,7 +405,11 @@ impl ReadyAppState {
                 });
             }
             for field in &detail.property_fields {
-                self.render_inspector_property_field(ui, field);
+                self.render_inspector_property_field(
+                    ui,
+                    field,
+                    self.current_window_id().map(rf_ui::DisplayUnitViewId),
+                );
             }
         }
 
@@ -529,7 +531,33 @@ impl ReadyAppState {
         &mut self,
         ui: &mut egui::Ui,
         field: &radishflow_studio::StudioGuiWindowInspectorTargetFieldModel,
+        view: Option<rf_ui::DisplayUnitViewId>,
     ) {
+        if let Some(numeric) = &field.numeric {
+            match numeric {
+                Ok(numeric) => {
+                    let mut numeric = numeric.clone();
+                    numeric.view = view;
+                    self.render_numeric_property_field(
+                        ui,
+                        &field.key,
+                        &inspector_field_label(self.locale, field),
+                        &numeric,
+                    );
+                }
+                Err(reason) => {
+                    ui.label(inspector_field_label(self.locale, field));
+                    ui.label(reason);
+                }
+            }
+            if let Some(constraint) = &field.constraint_text {
+                render_wrapped_small(
+                    ui,
+                    localized_inspector_constraint(self.locale, constraint).as_ref(),
+                );
+            }
+            return;
+        }
         ui.add_space(6.0);
         ui.horizontal_wrapped(|ui| {
             ui.label(egui::RichText::new(inspector_field_label(self.locale, field)).strong());
@@ -563,33 +591,30 @@ impl ReadyAppState {
                 ui.small(egui::RichText::new(unit_label).strong());
             }
 
-            if let Some(command_id) = field.commit_command_id.as_ref() {
-                if submit_on_enter
+            if let Some(command_id) = field.commit_command_id.as_ref()
+                && (submit_on_enter
                     || ui
                         .small_button(self.locale.text(ShellText::InspectorFieldApply))
-                        .clicked()
-                {
-                    self.dispatch_inspector_field_draft_commit(command_id.clone());
-                }
+                        .clicked())
+            {
+                self.dispatch_inspector_field_draft_commit(command_id.clone());
             }
-            if let Some(command_id) = field.discard_command_id.as_ref() {
-                if ui
+            if let Some(command_id) = field.discard_command_id.as_ref()
+                && ui
                     .small_button(self.locale.text(ShellText::InspectorFieldDiscard))
                     .clicked()
-                {
-                    self.dispatch_inspector_field_draft_discard(command_id.clone());
-                }
+            {
+                self.dispatch_inspector_field_draft_discard(command_id.clone());
             }
-            if let Some(remove_command_id) = field.remove_command_id.as_ref() {
-                if ui
+            if let Some(remove_command_id) = field.remove_command_id.as_ref()
+                && ui
                     .small_button(
                         self.locale
                             .text(ShellText::InspectorRemoveCompositionComponent),
                     )
                     .clicked()
-                {
-                    self.dispatch_inspector_composition_component_remove(remove_command_id.clone());
-                }
+            {
+                self.dispatch_inspector_composition_component_remove(remove_command_id.clone());
             }
         });
 
@@ -626,16 +651,20 @@ fn inspector_field_label<'a>(
     field: &'a radishflow_studio::StudioGuiWindowInspectorTargetFieldModel,
 ) -> std::borrow::Cow<'a, str> {
     if matches!(locale, StudioShellLocale::ZhCn) {
-        match field.label.as_str() {
-            "Source temperature (K)" => return std::borrow::Cow::Borrowed("源温度"),
-            "Source pressure (Pa)" => return std::borrow::Cow::Borrowed("源压力"),
-            "Outlet temperature (K)" => return std::borrow::Cow::Borrowed("出口温度"),
-            "Outlet pressure (Pa)" => return std::borrow::Cow::Borrowed("出口压力"),
-            "Flash temperature (K)" => return std::borrow::Cow::Borrowed("闪蒸温度"),
-            "Flash pressure (Pa)" => return std::borrow::Cow::Borrowed("闪蒸压力"),
-            "Temperature (K)" => return std::borrow::Cow::Borrowed("温度"),
-            "Pressure (Pa)" => return std::borrow::Cow::Borrowed("压力"),
-            "Total molar flow (mol/s)" => return std::borrow::Cow::Borrowed("总摩尔流量"),
+        match field
+            .label
+            .rsplit_once(" (")
+            .map_or(field.label.as_str(), |(label, _)| label)
+        {
+            "Source temperature" => return std::borrow::Cow::Borrowed("源温度"),
+            "Source pressure" => return std::borrow::Cow::Borrowed("源压力"),
+            "Outlet temperature" => return std::borrow::Cow::Borrowed("出口温度"),
+            "Outlet pressure" => return std::borrow::Cow::Borrowed("出口压力"),
+            "Flash temperature" => return std::borrow::Cow::Borrowed("闪蒸温度"),
+            "Flash pressure" => return std::borrow::Cow::Borrowed("闪蒸压力"),
+            "Temperature" => return std::borrow::Cow::Borrowed("温度"),
+            "Pressure" => return std::borrow::Cow::Borrowed("压力"),
+            "Molar flow" => return std::borrow::Cow::Borrowed("总摩尔流量"),
             "Name" => return std::borrow::Cow::Borrowed("名称"),
             _ => {}
         }
@@ -693,7 +722,7 @@ fn localized_inspector_constraint<'a>(
             {
                 return std::borrow::Cow::Borrowed("单位 Pa；输入正数，不能高于已连接入口压力。");
             }
-            std::borrow::Cow::Borrowed(text)
+            locale.runtime_label(text)
         }
     }
 }

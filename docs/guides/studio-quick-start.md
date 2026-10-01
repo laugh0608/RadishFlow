@@ -1,38 +1,35 @@
 # Studio Quick Start
 
-更新时间：2026-06-10
+更新时间：2026-09-15
+
+> 本文用于运行与验证当前 MVP 用户路径。内置样例与历史 `official` 称谓表示仓库演示 / 回归案例，运行成功不构成工程精度验证；解释结果前请阅读 [模型与样例边界](../thermo/mvp-model.md)。
 
 ## 目的
 
 本文档面向第一次进入仓库、想直接体验 `RadishFlow Studio` 当前主工作台流程的读者。
 
-它回答的是：
-
-- 当前 Studio 已经能做什么
-- 如何从历史便携 staging 或开发态启动 Studio
-- 第一次建议打开哪个示例
-- 接下来应该看哪些文档
+内容覆盖现有能力、开发态 / 历史 staging 启动、首个示例和后续阅读。
 
 它不替代架构文档，也不展开未来规划。
 
 ## 当前能做什么
 
-截至 2026-06-10，Studio 当前已经具备以下主路径能力：
+截至 2026-09-15，当前源码具备以下主路径能力；历史 staging 产物不自动包含后续新增功能，逐平台验证以专题记录为准：
 
 - 启动后默认进入中文 Home Dashboard，可从 `开始 / 最近项目 / 示例项目 / 环境 / 消息` 分区判断从哪里开始
 - 新建未命名空白项目后先进入独立 `物性` 页，并从受控内置列表显式选择 `二元烃 Lite` 与 `methane / ethane`，再进入最短建模路径；项目文件仍保存稳定 id `binary-hydrocarbon-lite-v1`
-- 打开已有 `*.rfproj.json` 项目
+- 打开已有 `*.rfproj.json` 项目；原生项目选择器已接入 Windows / macOS，Linux 尚未接入
 - 通过首页 `新建项目`、`打开项目`、`打开示例项目` 或进入工作台后的 `文件` 菜单切换项目；本次会话已有当前工作区时，Home 左侧开始区会显示 `返回工作区`
 - 通过首页 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例` 从空白项目进入对应作者路径，并在左侧 `模块` 面板查看任务清单
-- 最近项目、当前工作区和示例项目使用统一 case tile 展示：tile 包含轻量流程缩影、路径 / 来源、可读物性包 label、组分摘要和 `Ready / Current / Missing file` 状态；当前工作区 tile 只从当前 `workspace_document` 派生，不把未保存项目写入 recent projects；单击选择，双击打开，文件缺失时只降级对应 tile 状态，不阻断首页
+- 最近项目、当前工作区与示例项目用统一卡片展示流程缩影、来源、物性包、组分和状态；单击选择、双击打开，文件缺失只影响对应卡片。当前工作区信息来自文档，未保存项目不进入最近项目
 - 进入项目后顶部导航收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`；新建、打开、保存和另存为进入 `文件`，命令面板、Commands 面板和逻辑窗口进入 `工具`，语言进入 `设置`
 - 运行仓库内或便携 staging 内的 official hydrocarbon 正向示例 flowsheet
-- 在独立 `物性` 页维护当前受控物性包和项目组分；进入 `流程图` 后使用左侧 `模块 / 项目`、中央 `Canvas`、右侧 `检查器 / 模块设置 / 模块结果` 和底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 完成当前 MVP 建模与结果核对工作流；`模块` 面板已按 `流股源 / 调节单元 / 汇合与分离` 组织受控单元并支持本地筛选，`项目` 面板已按 `项目输入 / 示例入口 / 对象树 / 审阅状态` 分区，中央 Canvas 保留 `画布状态`、工具条、选择、视口、图例、画布实体和受控建议，不再重复项目对象树
+- `物性` 页维护包与组分；`流程图` 使用左侧 `模块 / 项目`、中央 Canvas、右侧 `检查器 / 模块设置 / 模块结果` 和底部运行信息。模块按 `流股源 / 调节单元 / 汇合与分离` 分类筛选；项目树扫读输入和对象；Canvas 负责画布状态、视口、实体与受控建议，结果在右侧和底部审阅
 - `物性 / 流程图 / 运行 / 结果` screen 会在顶部导航下方显示上下文工具栏，只渲染已有 presentation / command / state 中可用的入口和状态；`物性` 工具栏会用同一 Property page DTO 显示可读 package label、项目组分和进入流程图建模 readiness
 - 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
 - 选中单元时，右侧 `检查器` 的单元区域窄口径消费 `Module Settings` presentation：只显示正式 active inspector 来源的参数字段、端口、连接动作、诊断动作和帮助空状态
 - 选中单元并存在当前 revision 的最新结果时，右侧 `模块结果` 窄口径消费 `Module Results` presentation：显示该单元 latest result、consumed / produced stream、关联步骤和诊断；若结果过期，不继续渲染旧单元结果
-- 复制当前 `SolveSnapshot` 文本，或导出当前快照为轻量 `.txt`；导出文本包含 `Streams / Review / Units / Steps / Diagnostics`
+- 复制当前 `SolveSnapshot` 文本，或导出当前快照为轻量 `.txt`；导出文本包含快照 ID、文档 revision、SI 单位与 `Streams / Review / Units / Steps / Diagnostics`
 - 通过 `检查`、`诊断目标`、结果选择项和命令入口在流股、单元、步骤和当前检查器之间定位同一份结果
 - 在流股检查器中编辑流股基础字段与组成草稿，并显式提交、归一化或丢弃
 - 在单元检查器 / Module Settings 中编辑首批关键单元参数：`Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 和 `Flash Drum` 的 flash temperature / flash pressure
@@ -132,7 +129,7 @@ cargo run -p radishflow-studio
 
 - `docs/guides/run-first-flowsheet.md`
 
-如果内置示例已经跑通，下一步建议从首页点击 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例`，按 `docs/guides/author-small-cases.md` 从空白项目复现小案例：放置单元、接受 suggestion、提交单元参数、运行、保存重开、重跑并导出当前结果。这些作者入口只打开空白项目和任务清单，不是自由连线、自动布线或完整项目向导。
+如果内置示例已经跑通，下一步建议从首页点击 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例`，按 `docs/guides/author-small-cases.md` 从空白项目复现小案例：放置单元、接受 suggestion、提交单元参数、运行、保存重开、重跑并导出当前结果。这些作者入口只打开空白项目和任务清单，不是自由连线、自动布线或完整项目向导。运行后进入顶部“结果”页，可点击“复制当前结果”或“导出当前结果”。macOS / Windows 提供文本保存选择器；Linux 暂用复制，文件导出会明确提示不支持。未运行或编辑导致结果过期时，输出入口禁用。路径自动补 `.txt`，已有目标需确认覆盖；取消或失败会在结果页显示原因，不改变工程保存路径，具体边界见 [B2-1](../topics/results-review-diagnostics.md#b2-1轻量结果输出闭环)。
 
 ## 启动首页
 
@@ -198,6 +195,22 @@ Home 的 recent / current / example case tile 显示的是从当前 document / b
 
 当前连接仍通过本地 suggestion 和正式 `DocumentCommand` 完成，不是自由拉线编辑器；单元参数编辑也仍限制在上述 MVP 已暴露字段，不等同于完整单元参数表。Module Settings 的帮助区目前只表达“暂无正式模块帮助命令”，不会临时伪造 help action。
 
+## 修改、撤销和保存
+
+选中单元后，在右侧 `检查器 / 模块设置` 的“名称”输入显示名称，用“应用”或 Enter 提交。名称不能为空白，允许重名，中文和空格按输入保留；对象 ID、流股名称和连接保持不变。
+
+删除单元时，先在画布操作区点击“删除单元”，检查名称、ID 和关联流股，再确认。只移除该设备及自身端口绑定，流股和相邻设备保留；缺源或缺输入由运行诊断指出，不会自动重接。
+
+名称和数值输入中的 Undo / Redo 只影响文本草稿；Enter 提交有效字段，Escape 退出文本焦点但保留草稿，需放弃时点击“丢弃”。macOS 文档撤销 / 重做使用 `⌘Z / ⇧⌘Z`，保留 `⌘Y` 兼容重做；Windows / Linux 使用 `Ctrl+Z / Ctrl+Y`。提示随平台显示，文本框内的组合由文本编辑处理，待确认对话框阻止文档历史快捷键。也可从 `工具` 命令面板执行文档 Undo / Redo。
+
+实际输入变更、文档 Undo / Redo 后需重新运行才能获得当前结果；相同有效输入不增加修订，也不使当前结果过期。`文件 → 保存 / 另存为` 只保存已提交值，不自动应用草稿；macOS 保存快捷键为 `⌘S`。首次保存同步布局 sidecar；若提示“项目已保存，布局保存失败”，工程数据已保存，可重试保存布局。重开保留工程和已保存布局，Undo / Redo 历史不跨会话保留。
+
+## 变量浏览与无界面运行
+
+在 `工具 → 变量浏览器` 按对象搜索输入、结果和动作说明，并定位检查器编辑。浏览器只读，不展示未提交草稿；缺结果明确标识，旧结果保留来源但隐藏数值，重跑后恢复当前结果。
+
+`radishflow-studio --headless inspect <project>` 查询身份；`--headless run <request.json>` 执行 v1 参数写入或 v2 创建 / 连接 / 写入，再求解、读取 JSON。需已有组分 / 物性及缓存路径；使用 SI，只改内存。示例与边界见 [CLI 参考](../reference/headless-cli.md)。
+
 ## 单元参数与连接诊断
 
 当前首批单元参数字段只覆盖最短建模路径中的高频项：
@@ -252,7 +265,7 @@ Canvas 中的单元位置和 viewport offset 保存到项目同目录的 `<proje
 - `诊断目标` 中可直接定位的流股 / 单元结果目标
 - 当前快照导出中的 `Review` 摘要：按 source / intermediate / terminal streams 与 latest unit results 快速核对同一条结果链路
 
-如果运行成功，Studio 会把结果入口聚焦到顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表`。选中单元时，`模块结果` 会先展示当前单元的 Module Results 摘要，再展示同一份快照的流股 / 步骤 / 诊断结果。`Flash Drum` 相关结果当前应能进一步展示：
+如果运行成功，Studio 会切至右侧 `模块结果` 和底部 `结果表`，顶部页面保持当前选择；需要完整审阅或输出时点击顶部 `结果`。选中单元时，`模块结果` 会先展示当前单元的 Module Results 摘要，再展示同一份快照的流股 / 步骤 / 诊断结果。`Flash Drum` 相关结果当前应能进一步展示：
 
 - `phase_region`
 - `bubble_dew_window`
@@ -274,6 +287,8 @@ Canvas 中的单元位置和 viewport offset 保存到项目同目录的 `<proje
 开发态启动时，Studio 会向 stderr 输出带 `[radishflow-studio]` 前缀的用户操作与求解审计线。这些输出服务 smoke 和排查，不代表正式 telemetry 或长期审计接口。
 
 如果 GUI 回调发生内部 panic，当前壳层会降级到错误页，并提示查看 stderr。若只是关闭最后一个 Studio 窗口，当前预期是自然退出进程，不应短暂闪回默认 Commands 左栏，也不应留下黑屏但进程不退出的状态。macOS `Cmd+Q` 与窗口关闭按钮走同一条退出确认路径：脏工作区先选择保存并关闭、舍弃并关闭或取消关闭；取消、保存失败或另存为取消都会让当前窗口保持打开。
+
+运行失败后，顶部会出现当前建议操作，并标注“定位问题（不修改模型）”或“修复模型（可撤销）”。点击按钮或按 F8 会执行同一恢复命令，并把已返回的目标带到画布和检查器；仅定位后仍需自行修正参数或连接。修复后点击“运行当前流程”或按 F5：失败进入消息区，成功进入模块结果与结果表。操作边界与验收见 [B2-2](../topics/results-review-diagnostics.md#b2-2运行失败诊断与恢复)。
 
 如果你接下来更关心“这些结果分别代表什么”，而不是只看字段名字，直接继续读：
 

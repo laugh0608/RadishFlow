@@ -56,13 +56,13 @@
 | 命名、抽象和实现风格 | `docs/development/code-style.md` |
 | Agent 协作、操作授权、验证与文档归位 | `docs/development/agent-collaboration.md` |
 | CAPE-OPEN / COM 边界与验证 | `docs/capeopen/boundary.md`、`docs/capeopen/pme-validation.md` |
-| 分支、PR 和合并治理 | `docs/adr/0001-branch-and-pr-governance.md` |
+| 分支、PR、合并与回灌治理 | `docs/adr/0001-branch-and-pr-governance.md` |
 | 文档分类、索引和篇幅 | `docs/README.md` |
 | 外部参考与许可边界 | `docs/architecture/open-source-references.md`、根 `LICENSE` |
 
 ## 项目长期边界
 
-- 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN / COM 适配层构建稳态流程模拟软件。
+- 产品定位：以 Rust Core + Rust UI + `.NET 10` CAPE-OPEN / COM 适配层构建可扩展流程模拟平台；从稳态起步，长期覆盖动态与瞬态，目标边界见 `docs/architecture/simulation-platform.md`。
 - 单位统一使用 SI 基本单位；温度使用 K，压力使用 Pa，摩尔流量使用 mol/s。
 - Rust 不直接处理 COM；CAPE-OPEN / COM 语义只留在 `.NET` 适配层。
 - `rf-model` 只承载对象模型，不提前承载求解策略或 COM 语义。
@@ -80,9 +80,16 @@
 
 ## Git 与文档约束
 
+- `dev` 是常态开发与集成分支；串行推进的普通维护直接在 `dev` 开发和提交，不要求主题分支、Pull Request 或额外 worktree。
+- 只有项目所有者明确要求、外部贡献、并行写入、确有隔离价值的高风险改动或 hotfix 才创建主题分支；Agent 不自动创建 `codex/*` 等临时分支。
+- `dev` 当前不启用 branch protection，普通 push 不自动触发 CI；直接维护按改动范围完成本地验证，需要评审或隔离时再通过 Pull Request 合入 `dev`。
+- `master` / `main` 是稳定主线，只通过 Pull Request 合并。
+- 稳定主线允许 merge commit 与 rebase merge，禁用 squash merge；`dev -> master/main` 优先使用 merge commit，以便合并结果直接 fast-forward 回灌 `dev`。
+- 任何 PR 合并到 `master` / `main` 后，都必须先把最新 `origin/master` / `origin/main` 回灌并推送到 `dev`，再开始下一轮开发；可快进时优先 fast-forward，否则使用普通 merge。
+- 回灌禁止使用 rebase、reset、force push 或重写既有提交伪造同步，也不会自动触发 tag、发布或部署。
 - 提交信息使用简洁明确的 Conventional Commits；复杂提交补充 `3-6` 条简短说明。
 - 代码、文档和治理改动按主题组织，提交前确认最小验证已完成；不添加 AI 协作者署名。
-- 分支角色、PR 门禁和合并策略只在对应 ADR 与仓库配置中维护，不复制到本文件。
+- 更完整的分支角色、PR 门禁、回灌步骤和异常分支处理只在对应 ADR 与仓库配置中维护。
 - 优先更新已有文档，不为一次性讨论创建散文档；历史过程和验证流水进入周志、记录或归档，不堆入入口文档。
 
 ## 入口文件维护

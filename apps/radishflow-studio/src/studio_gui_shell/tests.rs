@@ -175,13 +175,18 @@ fn test_preferences_path(name: &str) -> PathBuf {
 
 mod basic;
 mod canvas;
+mod canvas_navigation;
 mod command_palette;
 mod command_surface;
 mod failure_recovery_lifecycle;
+mod failure_recovery_navigation;
+mod platform_shortcuts;
 mod project_lifecycle;
+mod result_export;
 mod result_review;
 mod runtime;
 mod runtime_synthetic_flash_inlet_boundary;
+mod unit_deletion;
 
 fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGuiCommandEntry> {
     commands
@@ -197,6 +202,7 @@ fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGu
                 menu_path: vec!["Commands".to_string()],
                 search_terms: Vec::new(),
                 shortcut: None,
+                shortcut_aliases: Vec::new(),
             }));
             &*entry
         })
@@ -413,10 +419,10 @@ fn find_menu_command<'a>(
     command_id: &str,
 ) -> Option<&'a StudioGuiCommandMenuCommandModel> {
     for node in nodes {
-        if let Some(command) = node.command.as_ref() {
-            if command.command_id == command_id {
-                return Some(command);
-            }
+        if let Some(command) = node.command.as_ref()
+            && command.command_id == command_id
+        {
+            return Some(command);
         }
         if let Some(command) = find_menu_command(&node.children, command_id) {
             return Some(command);
@@ -590,6 +596,14 @@ fn run_command_surfaces_messages_when_solve_fails() {
     assert_eq!(app.bottom_drawer_tab, StudioShellBottomDrawerTab::Messages);
 }
 
+// Existing modeling scenarios explicitly accept the new v1 -> v2 save gate.
+fn save_project_with_upgrade_consent(app: &mut ReadyAppState) {
+    app.save_project();
+    if app.pending_format_upgrade.is_some() {
+        app.confirm_format_upgrade();
+    }
+}
+
 fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
     ReadyAppState::from_config(config, test_preferences_path("default"))
         .expect("expected app state")
@@ -709,3 +723,9 @@ fn run_with_key_press_and_focus<R>(
     let _ = ctx.end_pass();
     output
 }
+
+mod unit_rename;
+
+mod numeric_edits;
+mod unit_presentation;
+mod view_units;

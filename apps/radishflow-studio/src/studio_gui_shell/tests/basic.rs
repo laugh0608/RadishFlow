@@ -7,7 +7,7 @@ use radishflow_studio::test_support::{
     solve_snapshot_model_from_project_with_provider_and_edit,
 };
 
-fn render_top_bar_texts(app: &mut ReadyAppState) -> Vec<String> {
+pub(super) fn render_top_bar_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
     let window = snapshot.window_model();
     let windows = snapshot.app_host_state.windows.clone();
@@ -952,6 +952,8 @@ fn result_context_toolbar_renders_existing_result_commands_and_state() {
 
     for expected in [
         "结果工具栏",
+        "复制当前结果",
+        "导出当前结果",
         "审阅",
         "模块结果",
         "结果表",

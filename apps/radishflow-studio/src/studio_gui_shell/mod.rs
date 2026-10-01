@@ -31,14 +31,25 @@ use rf_ui::{
 
 mod app;
 mod authoring;
+mod canvas_navigation;
 mod chrome;
+mod failure_recovery;
 mod fonts;
 mod home_dashboard;
 mod locale;
 mod modeling_readiness;
+mod numeric_input;
 mod panels;
+mod project_close;
+mod project_layout_save;
 mod project_picker;
+mod project_save;
+mod result_export;
+mod unit_deletion;
+mod unit_settings;
 mod utils;
+mod variable_browser;
+mod view_units;
 
 #[cfg(test)]
 mod tests;
@@ -114,6 +125,10 @@ struct ReadyAppState {
     platform_timer_executor: EguiPlatformTimerExecutor,
     command_palette: CommandPaletteState,
     project_open: ProjectOpenState,
+    pending_unit_deletion: Option<unit_deletion::PendingUnitDeletion>,
+    pending_result_export: Option<result_export::PendingResultExport>,
+    pending_format_upgrade: Option<project_save::PendingFormatUpgrade>,
+    unit_settings: unit_settings::UnitSettingsState,
     home_workspace_return_available: bool,
     home_selected_current_workspace: bool,
     home_selected_recent_project: Option<PathBuf>,
@@ -125,6 +140,7 @@ struct ReadyAppState {
     right_sidebar_tab: StudioShellRightSidebarTab,
     bottom_drawer_tab: StudioShellBottomDrawerTab,
     module_palette_filter: String,
+    variable_browser: variable_browser::VariableBrowserState,
     canvas_viewport_navigation: CanvasViewportNavigationState,
     canvas_initial_viewport_fit: CanvasInitialViewportFitState,
     canvas_viewport_fit_to_content_requested: bool,
@@ -423,6 +439,10 @@ impl ReadyAppState {
             platform_host: StudioGuiPlatformHost::new(config)?,
             platform_timer_executor: EguiPlatformTimerExecutor::default(),
             command_palette: CommandPaletteState::default(),
+            pending_unit_deletion: None,
+            pending_result_export: None,
+            pending_format_upgrade: None,
+            unit_settings: unit_settings::UnitSettingsState::load(&preferences_path),
             project_open: ProjectOpenState::from_path_and_recent(
                 &config.project_path,
                 recent_projects,
@@ -438,6 +458,7 @@ impl ReadyAppState {
             right_sidebar_tab: StudioShellRightSidebarTab::default(),
             bottom_drawer_tab: StudioShellBottomDrawerTab::default(),
             module_palette_filter: String::new(),
+            variable_browser: variable_browser::VariableBrowserState::default(),
             canvas_viewport_navigation: CanvasViewportNavigationState::default(),
             canvas_initial_viewport_fit: canvas_initial_viewport_fit_from_config(config),
             canvas_viewport_fit_to_content_requested: false,
@@ -456,7 +477,22 @@ impl ReadyAppState {
         if let Some(notice) = preferences_notice {
             ready.project_open.notice = Some(notice);
         }
+        if let Err(error) = &ready.unit_settings.default_units {
+            ready.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Warning,
+                title: "个人单位默认未加载".into(),
+                detail: format!(
+                    "{error}。原文件已保留；新建时可明确选择 SI，或在显示单位设置中恢复默认。"
+                ),
+            });
+        }
         ready.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+        if config.untitled_blank_project.is_some() {
+            match &ready.unit_settings.default_units {
+                Ok(units) => ready.initialize_new_project_units(units.clone()),
+                Err(_) => ready.unit_settings.pending_new = Some(None),
+            }
+        }
         ready.apply_default_hidden_commands_panel_for_current_window()?;
         Ok(ready)
     }
@@ -607,22 +643,6 @@ impl CanvasViewportNavigationState {
             pending_scroll: true,
         });
         Some(focus.anchor_label.clone())
-    }
-
-    fn reconcile(
-        &mut self,
-        focus: Option<&radishflow_studio::StudioGuiCanvasViewportFocusViewModel>,
-    ) -> Option<String> {
-        let active = self.active_anchor.as_ref()?;
-        let still_current = focus
-            .map(|focus| focus.anchor_label == active.anchor_label)
-            .unwrap_or(false);
-        if !still_current {
-            let anchor_label = active.anchor_label.clone();
-            self.active_anchor = None;
-            return Some(anchor_label);
-        }
-        None
     }
 
     fn is_active_anchor(&self, anchor_label: &str) -> bool {

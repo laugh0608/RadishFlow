@@ -91,12 +91,12 @@ fn resolve_studio_examples_root(
         return PathBuf::from(path);
     }
 
-    if let Some(exe_path) = exe_path {
-        if let Some(exe_dir) = exe_path.parent() {
-            let packaged_examples = exe_dir.join("examples").join("flowsheets");
-            if packaged_examples.exists() {
-                return packaged_examples;
-            }
+    if let Some(exe_path) = exe_path
+        && let Some(exe_dir) = exe_path.parent()
+    {
+        let packaged_examples = exe_dir.join("examples").join("flowsheets");
+        if packaged_examples.exists() {
+            return packaged_examples;
         }
     }
 

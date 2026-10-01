@@ -15,6 +15,11 @@ mod run_panel_text;
 mod run_panel_view;
 mod run_panel_widget;
 mod state;
+pub mod variable_browser;
+pub mod variable_commands;
+
+// Public input type for canonical unit creation; re-export avoids an extra caller dependency.
+pub use rf_unitops::BuiltinUnitKind;
 
 pub use auth::{
     AuditUsageAck, AuditUsageRequest, AuthSessionState, AuthSessionStatus, AuthenticatedUser,
@@ -65,17 +70,29 @@ pub use state::{
     AppLogEntry, AppLogFeed, AppLogLevel, AppState, AppTheme, CanvasEditCommitResult, DateTimeUtc,
     DocumentHistoryApplyResult, DocumentHistoryDirection, DocumentMetadata, DraftValidationState,
     DraftValue, FieldDraft, FlowsheetDocument, InspectorDraftState, InspectorTarget, LocaleCode,
-    PanelLayoutPreferences, SelectionState, StreamConnectionEditResult,
-    StreamInspectorCompositionComponentAddResult, StreamInspectorCompositionComponentRemoveResult,
-    StreamInspectorDraftBatchCommitResult, StreamInspectorDraftBatchDiscardResult,
-    StreamInspectorDraftCommitResult, StreamInspectorDraftDiscardResult, StreamInspectorDraftField,
-    StreamInspectorDraftUpdateResult, StreamReconnectEditResult, UiPanelsState,
-    UnitInspectorDraftCommitResult, UnitInspectorDraftDiscardResult, UnitInspectorDraftField,
-    UnitInspectorDraftUpdateResult, UserPreferences, WorkspaceState, latest_snapshot,
-    latest_snapshot_id, stale_snapshot, stream_inspector_draft_key,
-    stream_inspector_draft_key_parts, unit_inspector_draft_key, unit_inspector_draft_key_parts,
-    unit_inspector_parameter_is_explicit, unit_inspector_parameter_value,
+    PanelLayoutPreferences, ProjectPresentationCommand, ProjectPresentationState, ProjectSaveState,
+    SelectionState, StreamConnectionEditResult, StreamInspectorCompositionComponentAddResult,
+    StreamInspectorCompositionComponentRemoveResult, StreamInspectorDraftBatchCommitResult,
+    StreamInspectorDraftBatchDiscardResult, StreamInspectorDraftCommitResult,
+    StreamInspectorDraftDiscardResult, StreamInspectorDraftField, StreamInspectorDraftUpdateResult,
+    StreamReconnectEditResult, UiPanelsState, UnitCreateResult, UnitInspectorDraftCommitResult,
+    UnitInspectorDraftDiscardResult, UnitInspectorDraftField, UnitInspectorDraftUpdateResult,
+    UserPreferences, WorkspaceState, latest_snapshot, latest_snapshot_id, stale_snapshot,
+    stream_inspector_draft_key, stream_inspector_draft_key_parts, unit_inspector_draft_key,
+    unit_inspector_draft_key_parts, unit_inspector_parameter_is_explicit,
+    unit_inspector_parameter_value,
 };
 
 #[cfg(test)]
 mod tests;
+
+pub use state::{
+    InputUnitOrigin, NumericEditError, NumericEditEvent, NumericEditReceipt, NumericEditSession,
+    NumericParseError, NumericParseOutcome, NumericPrecisionSource, parse_numeric_input,
+};
+
+pub use state::{
+    NumericEditCommand, NumericFieldIssue, NumericFieldPresentation, NumericFieldSource,
+};
+
+pub use state::{DisplayUnitViewId, ViewDisplayUnits};

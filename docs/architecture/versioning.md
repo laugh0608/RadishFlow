@@ -1,6 +1,8 @@
 # Versioning And Release
 
-更新时间：2026-07-19
+更新时间：2026-09-06
+
+> 当前不推进 tag、发布包刷新或对外发布。本文保留命名与打包历史规则；既有 CI 行为不代表恢复发布，维护范围见 [当前状态](../status/current.md)。
 
 ## 目标
 
@@ -109,12 +111,12 @@ vYY.M.RELEASE.DDXX
 
 当前补充口径：
 
-- `master` / `main` ruleset 要求的状态检查固定为 `Repo Hygiene`、三平台 `Rust Baseline`、`.NET Adapter Baseline` 与 `Windows Staging Package`
+- `master` / `main` ruleset 只要求聚合检查 `Candidate Quality`；它汇总 `Repo Hygiene`、三平台 `Rust Baseline`、`.NET Adapter Baseline` 与 `Windows Staging Package`，任一组件失败、取消或跳过都会使聚合失败。配置真相源见 [分支治理 ADR](../adr/0001-branch-and-pr-governance.md) 与 [ruleset 模板](../../.github/rulesets/master-protection.json)
 - GitHub 对 Actions required status checks 当前按 job 名匹配，不看 workflow 前缀或事件后缀
-- 当前向 Radish 对齐为拆分式门禁，但不引入当前仓库暂不存在的 `Frontend Lint`，也不把目标为 `dev` 的 PR 检查提升为强制门禁
+- 组件分开执行，稳定主线通过单一 `Candidate Quality` context 收口；不引入 `Frontend Lint`，也不把目标为 `dev` 的 PR 检查提升为强制门禁
 - 仓库检查正式由 Rust `xtask` 实现，`.ps1` 与 `.sh` 只保留为调用包装层
 - `.NET Adapter Baseline` 通过 `scripts/check-dotnet-capeopen.ps1` 在 Windows runner 上验证 `rf-ffi` native build、`.NET` solution build、contract tests 和 smoke tests，不执行 COM 注册或注册表写入
-- `Windows Staging Package` 通过 `scripts/package.ps1` 产出 portable staging package artifact，不创建 GitHub Release，也不发布安装包
+- `Windows Staging Package` 通过 `scripts/package.ps1` 产出内部 workflow artifact，属于既有 CI 验证行为，不创建 GitHub Release，不构成持续刷新公开交付包的承诺。若调整该行为，应按 ADR 同步 workflow、聚合检查和 ruleset；本次仅校准说明，不修改 CI
 - 不再让 PR 检查与手动 staging 检查共用同一个 workflow 名称，避免 required check 名称与实际上报名漂移
 
 当前明确不做：
@@ -149,7 +151,7 @@ vYY.M.RELEASE.DDXX
 - 过早把每个 crate 都拉进发布版本同步，会制造额外维护噪声
 - 当前更重要的是先把“对外怎么标记版本”和“自动化对哪些 tag 响应”固定下来
 
-## 推荐使用方式
+## 历史版本操作方式（当前不执行）
 
 ### 日常开发
 
@@ -172,7 +174,7 @@ vYY.M.RELEASE.DDXX
 - 创建 `vYY.M.RELEASE-release`
 - 例如：`v26.3.1-release`
 
-## 便携 staging 操作清单
+## 历史便携 staging 操作清单（当前不执行）
 
 当前如需人工验证 Windows 便携形态，可生成 staging 目录或压缩包。它不代表正式安装器、正式 demo、对外发布或已达到 tag 标准。包内入口是 `radishflow-studio.exe`；示例项目、样例物性包、quick start、结果审阅说明、验收清单、版本说明和许可文件可随包附带。
 
@@ -215,7 +217,7 @@ pwsh ./scripts/package.ps1 -Version <staging-version> -Clean
 
 版本化说明可放在 `docs/releases/<version-or-tag>.md`。`scripts/package.ps1` 会在对应文件存在时把它复制进便携包，并在 `PACKAGE-MANIFEST.txt` 中记录 `releaseNotes` 路径；若对应文件不存在，则记录为 `not-included`。历史 `docs/releases/v26.5.1-dev.md` 仅作为曾经的 staging / release notes 草案保留，不再作为当前正式版本节点事实源。
 
-## 当前后续事项
+## 历史后续事项（未排期）
 
 以下内容后续仍需继续细化，但不再属于“方向未定”：
 

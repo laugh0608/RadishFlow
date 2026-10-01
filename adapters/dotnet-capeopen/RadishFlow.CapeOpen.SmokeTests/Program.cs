@@ -68,6 +68,7 @@ internal static class SmokeExecutable
             RfNativeLibraryLoader.ConfigureSearchDirectory(options.NativeLibraryDirectory);
         }
 
+        NativeEngineLifetimeTests.Run();
         using var engine = new RadishFlowNativeEngine();
         var projectJson = File.ReadAllText(options.ProjectPath);
         engine.LoadFlowsheetJson(projectJson);

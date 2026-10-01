@@ -1,6 +1,6 @@
 # Studio UI Design Guidelines
 
-更新时间：2026-06-10
+更新时间：2026-09-23
 
 ## 用途
 
@@ -10,13 +10,15 @@
 
 ## 设计定位
 
+2026-09-16 起，[UI 专题计划](studio-ui-topic-plan.md) 和 [主稿 brief](designs/studio-client-main-brief.md) 管理新增功能分区重评。本文下方固定导航、四个 frame、左右栏及旧 MVP 范围用于已有工作台，不约束独立设备、单位集和规格辅助的新设计；新稿尚未定稿。长期视觉和单一状态 / 命令来源继续有效。
+
 RadishFlow Studio 继续走轻量、清晰、工程化的浅色桌面应用风格。当前用户认可的是“干净、直接、带一点现代工具感”的基调，因此后续优化不应把界面改成传统厚重 ribbon 的复制品，也不应转向深色监控大屏或营销型产品页。
 
 参考 Aspen、HYSYS、PRO/II、COFE、DWSIM 等同类软件时，只吸收它们的信息架构、任务分区、状态呈现和流程模拟行业习惯；不复制专有视觉资产、具体图标、颜色组合、面板外观或功能范围。
 
 核心原则：
 
-- 画布是主舞台，其他区域为画布建模、求解运行和结果审阅服务。
+- 流程建模任务以画布为主区域；设备、物性与结果任务以各自主要内容为主，具体分区由新 UI 计划评审。
 - 顶部只放全局身份、主路径命令和运行状态，不堆调试计数、窗口控制或完整命令清单。
 - 左右侧栏各有稳定职责，不把对象库、属性编辑、日志、授权、结果和调试信息混在同一列里。
 - 结果展示只读消费当前 revision 的最新 `SolveSnapshot`，不新增 Studio shell 私有结果缓存或第二套求解解释；文档编辑后旧快照只用于过期提示，不继续驱动结果审阅、结果表或导出。
@@ -28,7 +30,7 @@ UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baselin
 
 | 素材 | 路径 | 用途 |
 | --- | --- | --- |
-| Studio 视觉系统规范 | [studio-visual-system.md](studio-visual-system.md) | RadishFlow Studio 的视觉定位、token、色彩角色、控件状态和视觉验收口径 |
+| Studio 视觉系统规范 | [studio-visual-system.md](studio-visual-system.md) | RadishFlow Studio 的视觉定位、排版密度、控件结构和按任务验收口径 |
 | 外部优秀产品灵感参考 | [ui-inspiration-reference.md](ui-inspiration-reference.md) | AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 截图的设计语言提炼，用于后续 UI 专题的视觉、排版和信息密度参考 |
 | 当前 RadishFlow UI | [radishflow-current-workbench-20260516.png](assets/studio-ui/radishflow-current-workbench-20260516.png) | 2026-05-16 当前真实 Studio 截图，用于识别首页 / 工作台重排前的混乱分区和测试痛点 |
 | RadishFlow 工作台视觉基线 | [radishflow-workbench-concept.png](assets/studio-ui/baseline/radishflow-workbench-concept.png) | 进入项目后的工作台基线图，状态、SI 单位、单文档标题和结果区关系更符合当前规范 |
@@ -124,11 +126,11 @@ UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baselin
 
 ## 后续 UI 专题与设计稿资产
 
-当前文档记录的是 MVP α / β 阶段已经形成的 Studio UI 规范、真实 UI 收口经验和下一轮主设计稿约束，不等同于完整产品 UI 设计系统。长期视觉系统、token、色彩角色、控件状态和视觉验收口径见 `studio-visual-system.md`。Studio UI 专题阶段的端点边界、主工作流、状态模型和 `.pen` 设计稿规则见 `studio-ui-topic-plan.md`；当前唯一活跃 Studio 主设计稿见 `docs/architecture/designs/studio-client-main.pen`，文字 brief 见 `docs/architecture/designs/studio-client-main-brief.md`。本文继续承担设计规范职责，不承载阶段推进流水。
+当前文档记录的是 MVP α / β 阶段已经形成的 Studio UI 规范、真实 UI 收口经验和下一轮主设计稿约束，不等同于完整产品 UI 设计系统。长期视觉定位、排版与控件结构见 `studio-visual-system.md`；状态映射、token 与迁移验收归 [颜色与状态专题](../topics/color-and-state-system.md)。Studio UI 专题阶段的端点边界、主工作流、状态模型和 `.pen` 设计稿规则见 `studio-ui-topic-plan.md`；保留的 Studio 主设计稿见 `docs/architecture/designs/studio-client-main.pen`（新增功能分区待重评），文字 brief 见 `docs/architecture/designs/studio-client-main-brief.md`。本文继续承担设计规范职责，不承载阶段推进流水。
 
-当前已冻结的 P0 设计稿口径：
+旧版 P0 设计稿口径（保留历史范围，新增功能分区待重评）：
 
-- `studio-client-main.pen` 是当前唯一活跃 Studio 主设计稿，包含 `Home - Ready`、`Property - Components and Methods`、`Flowsheet - Modeling`、`Module - Settings and Results` 四个 frame。
+- 旧 brief 记录 `studio-client-main.pen` 包含 `Home - Ready`、`Property - Components and Methods`、`Flowsheet - Modeling`、`Module - Settings and Results` 四个 frame。
 - `Property - Components and Methods` 是顶部导航下的独立物性页，不是左侧或右侧栏 tab。
 - `unit-module-panel.pen` 不再作为完整 Workbench 复制稿维护；若模块设置 / 结果细节不足，再创建窄口径 `module-settings-panel.pen`。
 - 服务端 / 控制面 UI 和移动端 / 只读视图仍是 P2 边界，不进入当前主稿细化。
@@ -144,9 +146,9 @@ UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baselin
 
 ## 信息架构
 
-Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目标”。当前代码已以 Home Dashboard、八入口顶部导航、四类上下文工具栏、左侧 `模块 / 项目`、`模块` 面板分类 / 筛选、`项目` 面板分区、中央 Canvas `画布状态` 概览与建模主舞台、独立 `物性` 页、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 和状态汇总为基础；主设计稿目标仍以 `studio-client-main.pen` 为准，继续统一 Home、独立物性页、Flowsheet 工作台和模块设置 / 结果四个主 frame。
+Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目标”。当前代码已以 Home Dashboard、八入口顶部导航、四类上下文工具栏、左侧 `模块 / 项目`、`模块` 面板分类 / 筛选、`项目` 面板分区、中央 Canvas `画布状态` 概览与建模主舞台、独立 `物性` 页、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 和状态汇总为基础；原 Home / Property / Flowsheet / Module 四个主 frame 是旧设计范围；新功能分区以 UI 专题重评结论为准，不能据旧稿认定已定稿。
 
-主设计稿的 Workbench 建议分为七个稳定区域：
+既有流程 Workbench 的七区结构如下；新增设备等任务按新信息架构评审：
 
 | 区域 | 设计目标 |
 | --- | --- |
@@ -246,7 +248,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 
 当前已实现职责：
 
-- 应用和项目身份：项目名、脏状态、运行模式、当前单位集。
+- 应用和项目身份：项目名、脏状态、运行模式；当前核心为 SI，完整单位集尚未实现。
 - 顶部主导航：`文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`。
 - 上下文工具栏：`物性 / 流程图 / 运行 / 结果` screen 分别消费已有 property page、进入建模 readiness、command registry、Run Panel state、Module Results、结果表状态和 `SolveSnapshot` 状态。
 - 全局菜单：项目生命周期命令进入 `文件`；命令面板、Commands 面板和逻辑窗口进入 `工具`；语言进入 `设置`。
@@ -263,7 +265,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 
 - 继续收紧上下文工具栏密度，不把 `打开项目`、`打开示例` 常驻为工作区第一按钮。
 - 项目名称放在窗口标题或项目摘要中；保存状态使用右侧状态 chip，不在标题处重复加 `*` 或长状态说明。
-- `设备` 不作为一级导航；模块放置和模块设置分别归入左侧 `模块` 与右侧 `模块设置`。
+- 既有模块放置 / 设置仍沿用当前入口；独立设备设计与校核可设置主工作区 / 一级入口，具体位置在新版信息架构评审，不受旧排除规则限制。
 
 ### 左侧 Navigator / Examples / Palette
 
@@ -298,7 +300,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 
 规则：
 
-- 画布默认占窗口最大面积，左右侧栏和底部面板不得压缩到只剩小预览。
+- 在流程建模任务中，画布默认占主要面积，左右侧栏和底部面板不得将其压缩到只剩小预览；此约束不扩展到设备、物性和结果任务。
 - 打开示例或项目后，Canvas viewport 应根据当前单元与流股 bounds 做初始 fit-to-content / center；小流程不应固定在左上角。用户拖动空白画布后的 viewport offset 可写入 layout sidecar，但仍只属于呈现状态，不引入自动布线、自由连线或完整视图持久化。
 - 画布工具条应以图标或短标签表达选择、放置、suggestion 接受 / 拒绝、平移、缩放、适配视图和受控恢复动作；不要把当前 MVP 误设计成自由连线工具条。
 - 本地建模 suggestion 的接受动作应使用明确的 `连接流股` / `Connect stream` 或 `创建流股` / `Create stream`，不用泛化的 `Apply` 让用户猜测会改写什么。
@@ -324,7 +326,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 - `物性` 页承载本地 package 摘要、内置 package 选择、同一套项目组分选择入口和进入流程图建模的 readiness；用户进入 Workbench 后仍应能先从左侧项目树发现项目组分状态。Property toolbar、摘要和 package 选择卡展示可读 package label，不把 raw id 当作主界面文案。
 - 属性字段采用 label + input + unit + validation 的行结构；单位必须紧贴数值，不藏在说明文字里。
 - 从左侧 `项目` 对象树、Canvas 画布实体或结果定位动作选择 stream / unit 后，应自然切换到对应检查器；stream 优先暴露 `T / P / F`、组成草稿和提交/归一化动作，unit 的可编辑参数进入 `模块设置`，latest unit result 进入 `模块结果`。
-- Unit Inspector 当前只把 `Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 与 `Flash Drum` 的 flash temperature / pressure 作为可编辑参数行；字段必须显示 SI 单位和约束提示，提交走正式文档命令并同步对应 outlet stream 模板。若字段值来自 outlet stream 模板 / fallback 而 unit parameter 尚未显式存在，同值提交仍应写入正式 `SetUnitParameter`。其余单元信息仍以端口、关联步骤、关联诊断和最新只读结果为主，不提前设计完整单元参数表。
+- Unit Inspector 当前只把 `Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 与 `Flash Drum` 的 flash temperature / pressure 作为可编辑参数行；当前字段显示 SI 单位和约束提示；未来非 SI 输入 / 显示按统一单位专题接入，提交走正式文档命令并同步对应 outlet stream 模板。若字段值来自 outlet stream 模板 / fallback 而 unit parameter 尚未显式存在，同值提交仍应写入正式 `SetUnitParameter`。其余单元信息仍以端口、关联步骤、关联诊断和最新只读结果为主，不提前设计完整单元参数表。
 - 结果检查器中面向用户的组成、相态和摘要行应优先使用本地化结构化短句；`z: ...`、`phases: ...` 这类原始调试文本只应进入 hover、日志或开发诊断，不应作为默认结果正文。
 - 模块结果、环境摘要和状态摘要应使用状态 chip、metric card、stream chip 和短说明组合；避免把 `状态 / Duty / Outlet T / Diagnostics` 或 `客户端 / 服务端 / 缓存` 做成松散的两列文字直排。
 - 草稿态、未归一组成、运行阻断和只读结果要有稳定视觉语义。
@@ -358,7 +360,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 后续细化目标：
 
 - 底部继续从单一 drawer 向运行信息区 + 状态汇总的清晰分栏细化。
-- 运行信息 tabs 保持 `消息`、`运行日志`、`收敛`、`建议`、`诊断`、`结果表` 的职责边界。
+- 现有 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 保持当前行为；新增 [运行与诊断](../topics/runtime-messages-and-diagnostics.md) 按 R0 / R1 评审“当前问题 / 计算过程”双区及原标签归位，不冻结旧标签数量或重复建设日志。
 - 右侧：`状态汇总`，显示当前案例状态、最新运行、收敛 / 迭代信息、诊断数和 snapshot / revision 一致性；没有真实迭代次数时显示 `N/A` 或 `Sequential steps`，不得伪造收敛数据。
 
 ### 画布浮动工具条
@@ -373,7 +375,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 
 职责：
 
-- 当前单位集、solver 状态、收敛摘要、缩放比例、选择数量、后台任务状态。
+- SI / 当前显示单位说明、solver 状态、收敛摘要、缩放比例、选择数量；单位集和后台任务仅在真实能力交付后展示。
 
 规则：
 
@@ -426,26 +428,11 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 
 ## 视觉语言
 
-本节只保留 Studio UI 信息架构层面的视觉底线，避免后续页面重排偏离当前浅色工程工具定位。更完整的视觉系统、设计 token、控件状态、Canvas 图元和 i18n 长度规则见 `studio-visual-system.md`。
+本节只保留 Studio UI 信息架构层面的视觉底线，避免后续页面重排偏离当前浅色工程工具定位。视觉定位、Canvas 绘制和 i18n 长度规则见 `studio-visual-system.md`；状态角色与 token 规则见 [颜色专题](../topics/color-and-state-system.md)。
 
 ### 色彩
 
-RadishFlow 默认浅色中性底，搭配少量语义色。
-
-建议：
-
-- 背景：白色 / 极浅灰。
-- 主强调：克制蓝色，用于当前选择、主按钮和链接。
-- 成功 / 可运行：绿色。
-- 等待 / hold / warning：琥珀色。
-- 错误 / 阻断：红色。
-- 未配置 / 草稿 / 未保存：中性灰或淡蓝灰。
-
-限制：
-
-- 不做大面积单一蓝色、紫色、棕色或深色主题。
-- 不用渐变球、装饰 blob、营销式 hero 背景。
-- 状态色只表达状态，不做装饰。
+保持浅色中性底与克制的工程工具语言；具体默认配色、token 和非颜色表达只在 [主题与可访问性](../topics/color-state/theme-and-accessibility.md) 维护。状态如何叠加见 [V0 组合](../topics/color-state/semantics-and-composition.md)，迁移随 U2 / U3 和后续消费者推进，当前不声称全部实现。
 
 ### 字体层级
 
@@ -495,8 +482,8 @@ RadishFlow 默认浅色中性底，搭配少量语义色。
 每轮 UI 改动完成后，至少按下面问题做自检：
 
 - 启动后 5 秒内能否看懂如何打开示例、新建空白、运行、查看结果、保存 / 另存为？
-- 画布是否仍是首屏最大区域？
-- 顶部是否只保留全局身份、八个主导航入口、当前 screen 上下文工具栏和关键状态？
+- 流程建模时画布是否仍占主区域；设备 / 物性 / 结果任务是否为相应主内容留出空间？
+- 顶部是否符合当前已评审的信息架构，只保留必要全局身份、任务入口、上下文操作和关键状态？
 - 左侧是否只承担项目导航或对象库，而不是命令垃圾桶？
 - 右侧是否只展示当前选择、运行或结果的相关信息？
 - 原始日志和开发态活动是否没有压过用户主路径？

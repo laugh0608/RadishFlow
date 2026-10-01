@@ -455,18 +455,16 @@ mod tests {
         assert!(outcome.applied);
         assert_eq!(outcome.document_revision, 0);
         assert_eq!(outcome.command_history_len, 0);
+        let rf_ui::DraftValue::Numeric(session) =
+            &app_state.workspace.drafts.fields[&outcome.command.draft_key]
+        else {
+            panic!("expected numeric session");
+        };
+        assert_eq!(session.raw_text(), "333.5");
+        assert!(session.is_dirty());
         assert_eq!(
-            app_state
-                .workspace
-                .drafts
-                .fields
-                .get(&outcome.command.draft_key),
-            Some(&rf_ui::DraftValue::Number(rf_ui::FieldDraft {
-                original: "298.15".to_string(),
-                current: "333.5".to_string(),
-                is_dirty: true,
-                validation: rf_ui::DraftValidationState::Valid,
-            }))
+            session.draft_validation(),
+            rf_ui::DraftValidationState::Valid
         );
         assert_eq!(
             app_state.workspace.document.flowsheet.streams[&StreamId::new("stream-feed")]

@@ -1,6 +1,6 @@
 # RadishFlow Docs
 
-更新时间：2026-08-22
+更新时间：2026-09-29
 
 ## 先读什么
 
@@ -20,12 +20,13 @@
 - 想知道“现在怎么用 Studio”，先读 `guides/`
 - 想知道“字段、单位、结果是什么意思”，先读 `reference/`
 - 想知道“为什么这样分层、边界怎么定”，再读 `architecture/`
+- 想知道长期能力地图、弱耦合与多模式计算边界，读 `architecture/simulation-platform.md`；阶段顺序见 `radishflow-mvp-roadmap.md`
 
 `AGENTS.md` / `CLAUDE.md` 只保留启动即生效的长期约束，不承担当前说明书、命令手册或历史记录职责。
 
 ## Development Topics
 
-Topics 文档回答“一个功能、能力包或开发目标怎么设计、分阶段推进、验收和验证”。当前业务功能开发已停止，Topic 状态保留为停更前的组织和边界记录，不代表仍有排期中的产品开发主线。
+Topics 文档回答“一个功能、能力包或开发目标怎么设计、分阶段推进、验收和验证”。项目正常开发和迭代；Topic 状态描述当前专题成熟度，具体切片与优先级以 `status/current.md` 为准，Draft / Backlog 进入实现前需明确范围和验收。
 
 | 文档 | 说明 |
 | --- | --- |
@@ -34,12 +35,33 @@ Topics 文档回答“一个功能、能力包或开发目标怎么设计、分�
 | `topics/studio-main-workflow.md` | Studio 主工作台与空白项目建模主路径 |
 | `topics/property-basis-and-components.md` | 项目物性基础、内置 package 和组分选择 |
 | `topics/flowsheet-modeling-and-solve.md` | 流程图建模、连接、readiness、Run Panel 和 solver 闭环 |
-| `topics/results-review-diagnostics.md` | 结果审阅、诊断定位和 recovery action |
+| `topics/results-review-diagnostics.md` | 结果审阅、诊断恢复与 V1—V4 流程可视化规划 |
+| [运行、消息与诊断](topics/runtime-messages-and-diagnostics.md) | N0—N5 总纲及开发者诊断等七个子专题导航 |
+| [消息需求追踪](topics/runtime-messages/requirements-traceability.md) | MSG 要求、S 场景、D 待决策与实现 / 验证证据 |
 | `topics/project-lifecycle-storage.md` | 项目打开、保存、另存为、最近项目、sidecar 和脏改确认 |
 | `topics/capeopen-pmc-adapter.md` | `.NET 10` CAPE-OPEN / COM PMC 适配层和 PME 验证基线 |
 | `topics/unitops/` | Feed、Heater / Cooler、Flash Drum、Mixer、Valve 等单元模块专题 |
-| `topics/modeling/` | Material Stream 等建模对象专题 |
-| `topics/platform/` | Control Plane 后端服务和后端 Web UI 专题 |
+| `topics/modeling/` | Material Stream、模型目录 / 运行实例与多策略求解 / 问题装配专题 |
+| `topics/platform/` | Control Plane 后端服务、后端 Web UI、账户联合登录与公共 API 访问控制专题 |
+| `topics/platform/account-and-federated-login.md` | 参考 Radish / RadishMind 的未来账户与登录规划；未排期、待架构决策 |
+| [公共 API 与访问控制](topics/platform/public-api-and-access-control.md) | 凭据 / API key、资源权限、撤销、计算配额及分阶段验收；规划方向已确认、未排期 |
+
+## 本轮规划导航
+
+2026-09-16 的规划整理保留当前实现边界：总体职责见 [平台规划](architecture/simulation-platform.md)，依赖与顺序见 [路线图](radishflow-mvp-roadmap.md)，下一步见 [当前状态](status/current.md)。
+
+| 主题 | 正式设计入口 | 下钻 |
+| --- | --- | --- |
+| 模型发现与装配 | [模型目录、发现与运行实例](topics/modeling/model-catalog-and-runtime.md) | [当前分层](architecture/overview.md)、[CAPE-OPEN 方向与证据](capeopen/boundary.md#互操作方向与符合性证据)、[MC0—MC3](radishflow-mvp-roadmap.md#模型装配与物性上下文的配套切片)；2026-09-29 确认，新增能力待实施 |
+| 多策略求解 | [问题装配与模型能力](topics/modeling/solver-strategies-and-assembly.md) | [QS0—QS4](radishflow-mvp-roadmap.md#多策略求解的配套切片)、[物性要求](thermo/mvp-model.md#多策略求解的热力学要求规划)、[黑箱边界](capeopen/boundary.md#黑箱组件与多策略求解)；方向已确认，新增能力待实施 |
+| 装置工程与数字孪生 | [长期愿景与领域关系](architecture/simulation-platform.md#装置工程与数字孪生愿景) | [工程容器](topics/project-lifecycle-storage.md#装置工程容器规划)、[配置与场景](topics/engineering-basis-and-cases.md#装置配置与运行场景规划)、[DT0—DT4 演进](radishflow-mvp-roadmap.md#装置工程与数字孪生的演进切片)；2026-09-26 确认，尚未实现 |
+| 工程基础 | [设计基础、工况与数据来源](topics/engineering-basis-and-cases.md) | 共同条件、来源 / 假设、工况矩阵、位号与复现 |
+| 变量与对象浏览器 | [产品、身份与读写专题](topics/variable-and-object-browser.md) | 工程视图 / 变量树、路径引用、表格 / 关注及受控编辑；[VB0—VB3 衔接](radishflow-mvp-roadmap.md#变量与对象浏览器的配套切片)，方向已确认、新增能力待实施 |
+| 单位 | [单位总纲与四个子专题](topics/units-and-quantity-system.md) | [需求 / 验收追踪](topics/units/requirements-traceability.md)、[U2 实施切片与状态](topics/units-and-quantity-system.md#u2-实施切片与状态)、[现有 SI 约定](reference/units-and-conventions.md) |
+| 颜色 / 状态 | [颜色总纲与四个子专题](topics/color-and-state-system.md) | [需求 / 验收追踪](topics/color-state/requirements-traceability.md) |
+| 确定性智能辅助 | [规格分析与建模辅助](topics/modeling-assistance-and-specifications.md) | [目标反算](topics/flowsheet-modeling-and-solve.md#设计规格求解规划尚未实现)、[工程检查与交付](topics/results-review-diagnostics.md#工程检查与交付规划尚未实现)；未来 Agent 复用统一接口 |
+| 设备工程 | [设备设计与校核](topics/equipment-design-and-rating.md) | [分离器](topics/equipment/separator-sizing-and-rating.md)、[换热器](topics/equipment/heat-exchanger-design-and-rating.md) |
+| UI 重设计 | [专题计划](architecture/studio-ui-topic-plan.md) | [主稿 brief](architecture/designs/studio-client-main-brief.md)；U2 / V0 局部画板已获认可，I1 存储接通，交互待实施 |
 
 ## Development And Collaboration
 
@@ -68,6 +90,7 @@ Reference 文档回答“字段、单位、结果、格式分别是什么”，�
 
 | 文档 | 说明 |
 | --- | --- |
+| `reference/headless-cli.md` | 本地无界面查询、建模与参数化运行的命令、JSON 与错误语义 |
 | `reference/units-and-conventions.md` | 当前稳定的单位、相标签、组成与字段后缀约定 |
 | `reference/solve-snapshot-results.md` | `SolveSnapshot`、step 输入/输出与结果 DTO 的稳定语义 |
 
@@ -78,17 +101,18 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | 文档 | 说明 |
 | --- | --- |
 | `architecture/overview.md` | 当前仓库分层、crate 边界与阶段职责 |
+| `architecture/simulation-platform.md` | 长期能力与产品参考、多种模拟 / 求解方式、插件系统、变量树 / COM 自动化与录制回放 |
 | `architecture/app-architecture.md` | 桌面 App 的状态、命令与模块边界 |
 | `architecture/canvas-interaction-contract.md` | 画布视图模式、流线状态与 suggestion 契约 |
 | `architecture/studio-ui-topic-plan.md` | Studio UI 专题阶段的端点边界、信息架构、主工作流和 `.pen` 设计稿规则 |
-| `architecture/designs/studio-client-main-brief.md` | 当前唯一活跃 Studio 主设计稿的文字 brief，覆盖 Home、独立物性页、Flowsheet 工作台和模块设置 / 结果 |
+| `architecture/designs/studio-client-main-brief.md` | 旧稿保留与新功能设计输入；U2 / V0 局部节点、截图及评审结论 |
 | `architecture/studio-ui-design-guidelines.md` | Studio 首屏、画布、面板、按钮、文字和结果审阅的 UI 设计规范 |
-| `architecture/studio-visual-system.md` | Studio 视觉定位、token、色彩角色、控件状态和视觉验收口径 |
+| `architecture/studio-visual-system.md` | Studio 视觉定位、排版密度、控件结构与按任务验收；颜色规则归一级专题 |
 | `architecture/ui-inspiration-reference.md` | AFFINE、CodexApp、Cloudflare、GitHub、Discourse、1Panel 等优秀产品截图的 UI 设计灵感参考 |
-| `architecture/auth-entitlement-architecture.md` | 桌面登录、授权、控制面与本地求解边界 |
+| `architecture/auth-entitlement-architecture.md` | 软件许可 / 产品授权 / 操作权限分层、桌面登录、控制面与本地求解边界 |
 | `architecture/versioning.md` | 版本命名、 tag 与发布轨道约定 |
 | `architecture/open-source-references.md` | 可借鉴的开源参考与许可边界 |
-| `thermo/mvp-model.md` | 热力学与 `TP Flash` 当前最小模型和数值口径 |
+| `thermo/mvp-model.md` | 公式与单元近似、样例身份、数值证据及独立验证缺口 |
 | `capeopen/boundary.md` | Rust Core 与 `.NET 10` CAPE-OPEN 适配层边界 |
 
 ## Status, Scope, Logs
@@ -98,11 +122,11 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 | 文档 | 说明 |
 | --- | --- |
 | `status/current.md` | 当前阶段、重点、验证基线和按需阅读入口 |
-| `topics/README.md` | 功能 / 开发目标专题索引，承接当前阶段的可执行子专题 |
-| `mvp/scope.md` | 第一阶段 MVP 冻结范围、非目标与开发节奏 |
+| `topics/README.md` | 已有能力与开发专题索引；长期目标进入具体切片后再排期 |
+| `mvp/scope.md` | 已保留的 MVP 范围、模型限制与验收含义 |
 | `mvp/alpha-acceptance-checklist.md` | MVP α 验收矩阵、smoke 记录口径和 release blocker 分类 |
 | `mvp/beta-acceptance-checklist.md` | MVP β 人工 smoke、通过 / 失败标准和暂不推进项 |
-| `radishflow-mvp-roadmap.md` | 第一阶段 MVP 路线图 |
+| `radishflow-mvp-roadmap.md` | 历史里程碑、基础功能优先的近期顺序与长期阶段退出标准 |
 | `devlogs/README.md` | 按月份分组的周志索引与命名规则 |
 | `releases/v26.5.1-dev.md` | 历史 `v26.5.1-dev` 便携 staging 草案和验证记录；不作为当前正式版本节点事实源 |
 
@@ -138,6 +162,8 @@ Architecture 文档回答“系统如何分层、边界为何这样定”，不�
 - `status/` / `mvp/` / `devlogs/`：当前阶段、范围和演进记录
 
 不要继续把“使用说明”“字段参考”和“架构边界”混写进同一篇大文档。
+
+当前校准已将架构与 MVP 入口中的重复开发流水收敛为历史引用。实现限制与静态风险保留在对应领域真相源，未排期建议不写成已批准方案，历史验收不重标为本次验证；文档更新时间仅表示说明被维护。
 
 ## 文档体量约束
 

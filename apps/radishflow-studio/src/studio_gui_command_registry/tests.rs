@@ -174,21 +174,21 @@ fn gui_command_registry_assigns_file_and_history_shortcuts() {
     for (shortcut, command_id) in [
         (
             StudioGuiShortcut {
-                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                modifiers: vec![StudioGuiShortcutModifier::Primary],
                 key: StudioGuiShortcutKey::S,
             },
             "file.save",
         ),
         (
             StudioGuiShortcut {
-                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                modifiers: vec![StudioGuiShortcutModifier::Primary],
                 key: StudioGuiShortcutKey::Z,
             },
             "edit.undo",
         ),
         (
             StudioGuiShortcut {
-                modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+                modifiers: vec![StudioGuiShortcutModifier::Primary],
                 key: StudioGuiShortcutKey::Y,
             },
             "edit.redo",
@@ -934,6 +934,7 @@ fn gui_command_entry_presentation_builds_shared_surface_labels_and_hover_text() 
             modifiers: Vec::new(),
             key: StudioGuiShortcutKey::F8,
         }),
+        shortcut_aliases: Vec::new(),
     };
 
     let presentation = entry.presentation();
@@ -1006,4 +1007,98 @@ fn filtered_command_ids<'a>(registry: &'a StudioGuiCommandRegistry, query: &str)
         .into_iter()
         .map(|entry| entry.command_id.as_str())
         .collect()
+}
+
+#[test]
+fn platform_shortcuts_share_bindings_labels_and_focus_boundaries() {
+    use crate::{
+        StudioGuiFocusContext as Focus, StudioGuiShortcutPlatform as Platform,
+        StudioGuiShortcutRoute as Route, route_shortcut,
+    };
+    let model = StudioAppHostUiCommandModel {
+        actions: [
+            ("file.save", StudioAppHostUiCommandGroup::File),
+            ("edit.undo", StudioAppHostUiCommandGroup::Edit),
+            ("edit.redo", StudioAppHostUiCommandGroup::Edit),
+        ]
+        .into_iter()
+        .map(|(command_id, group)| StudioAppHostUiActionModel {
+            action: None,
+            command_id,
+            group,
+            sort_order: 0,
+            label: command_id,
+            enabled: true,
+            detail: "test",
+            target_window_id: Some(1),
+        })
+        .collect(),
+    };
+    for (platform, labels) in [
+        (Platform::MacOs, ["⌘S", "⌘Z", "⇧⌘Z"]),
+        (Platform::Windows, ["Ctrl+S", "Ctrl+Z", "Ctrl+Y"]),
+        (Platform::Linux, ["Ctrl+S", "Ctrl+Z", "Ctrl+Y"]),
+    ] {
+        let registry = StudioGuiCommandRegistry::from_surfaces_with_results_for_platform(
+            &model,
+            &crate::StudioGuiCanvasState::default(),
+            Some(1),
+            None,
+            platform,
+        );
+        for (id, label) in ["file.save", "edit.undo", "edit.redo"]
+            .into_iter()
+            .zip(labels)
+        {
+            let entry = registry.command(id).unwrap();
+            assert_eq!(
+                entry
+                    .presentation_for_platform(platform)
+                    .shortcut_label
+                    .as_deref(),
+                Some(label)
+            );
+            for shortcut in entry.shortcut.iter().chain(&entry.shortcut_aliases) {
+                for focus in [Focus::Global, Focus::Canvas, Focus::InspectorPanel] {
+                    assert_eq!(
+                        route_shortcut(&registry, shortcut, focus),
+                        Route::DispatchCommandId {
+                            command_id: id.to_string(),
+                        }
+                    );
+                }
+                for focus in [Focus::ModalDialog, Focus::CommandPalette, Focus::TextInput] {
+                    let route = route_shortcut(&registry, shortcut, focus);
+                    if focus == Focus::TextInput && id == "file.save" {
+                        assert!(matches!(route, Route::DispatchCommandId { .. }));
+                    } else {
+                        assert!(
+                            matches!(route, Route::Ignored { .. }),
+                            "{platform:?} {id} {focus:?}"
+                        );
+                    }
+                }
+            }
+        }
+        let redo = registry.command("edit.redo").unwrap();
+        assert_eq!(
+            redo.shortcut_aliases.len(),
+            usize::from(platform == Platform::MacOs)
+        );
+        let shift_z = Platform::MacOs.redo_shortcut();
+        assert_eq!(
+            registry.find_by_shortcut(&shift_z).is_some(),
+            platform == Platform::MacOs
+        );
+        let physical_ctrl_z = StudioGuiShortcut {
+            modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+            key: StudioGuiShortcutKey::Z,
+        };
+        assert!(registry.find_by_shortcut(&physical_ctrl_z).is_none());
+        let ctrl_tab = StudioGuiShortcut {
+            modifiers: vec![StudioGuiShortcutModifier::Ctrl],
+            key: StudioGuiShortcutKey::Tab,
+        };
+        assert_eq!(ctrl_tab.format(platform), "Ctrl+Tab");
+    }
 }

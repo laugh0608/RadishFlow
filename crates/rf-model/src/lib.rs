@@ -288,6 +288,13 @@ impl Flowsheet {
         Ok(())
     }
 
+    /// Remove the unit and its own ports, preserving streams and other units' bindings.
+    pub fn remove_unit(&mut self, id: &UnitId) -> RfResult<UnitNode> {
+        self.units
+            .remove(id)
+            .ok_or_else(|| RfError::missing_entity("unit", id))
+    }
+
     pub fn component(&self, id: &ComponentId) -> RfResult<&Component> {
         self.components
             .get(id)

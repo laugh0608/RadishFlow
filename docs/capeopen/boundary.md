@@ -1,10 +1,54 @@
 # CAPE-OPEN Boundary
 
-更新时间：2026-04-26
+更新时间：2026-09-29
+
+> 本文定义接口边界并保留历史验证说明。具体迭代与验证安排见 [当前状态](../status/current.md)。native 句柄生命周期契约见 [适配层专题](../topics/capeopen-pmc-adapter.md#native-engine-生命周期)。
 
 ## 边界目标
 
 该文档用于冻结 Rust Core 与 `.NET 10` CAPE-OPEN 适配层之间的边界，避免 COM 语义反向污染 Rust 核心。
+
+2026-09-13 明确的变量树式 COM Automation 属于未来应用自动化适配，与本文件的 CAPE-OPEN PMC / PME 契约分开设计。它同样由 .NET 承载 COM 语义，并转发到统一领域命令与查询；本轮不更改既有 CAPE-OPEN 接口、GUID、注册或运行行为。目标见 [统一 API](../architecture/simulation-platform.md#统一-api-的目标形态)。
+
+## 流程模拟概念与标准边界
+
+CAPE-OPEN 定义组件互操作契约，不要求模拟器内部照搬 COM 对象布局。标准意义的 PME 是流程建模环境，PMC 是供环境使用的模型组件；内部模型可使用 Rust 数据和服务，再由适配层提供标准接口。
+
+| 概念 | 职责与 RadishFlow 映射 |
+| --- | --- |
+| 流程环境与调度 | 工程拥有连接与配置，solver 编排计算；Studio 是操作入口，不是热力学计算器 |
+| Unit Operation | 从端口和参数取得输入，执行局部模型并确定出口；Rust 的工程节点与计算对象分别表达配置与行为 |
+| Stream / Material Object | Stream 是模拟器自身表示；Material Object 对组件提供标准状态访问及热力学服务入口，不能把画布连线、Rust 状态结构与 COM 对象视为同一个对象 |
+| Property Package | 提供配置后的物性与相平衡能力；方法、数据、允许相态与计算上下文需明确 |
+| Property Package Manager | 枚举和实例化物性包的目录 / 工厂；不强制拥有流程或所有物流对象，也不规定必须采用“物流对象模板”结构 |
+
+顺序模块路径中，单元读取入口、按需进行中间物性计算并确定出口；不得改写入口 Material Object，可用副本试算。成功计算后应按所选规格使出口达到要求的平衡状态；TP、PH 等依赖实际支持能力，不是由 UI 在计算结束后补算。依据为 [Unit Operation 规范第 2.1.6—2.1.7 节](https://www.colan.org/wp-content/uploads/2016/05/CO_Unit_Operations_v6.25.pdf)。
+
+“物流对象不实现物性算法”是职责分离，不等于不能提供物性或闪蒸调用入口。Material Object 可将请求交给热力学服务；内部仍可保持“状态数据 + 显式服务”。算法独立于流程拓扑，也不意味着配置不可变或所有任务共享一个可变全局实例。依据为 [Thermo 1.1 规范第 5 节](https://www.colan.org/wp-content/uploads/2015/05/CO_Thermo_1.1_Specification_311.pdf)；实现时同时核对 [官方勘误入口](https://www.colan.org/specifications/thermodynamics-and-physical-properties-interface-specification-v1-1/)。
+
+将物性与单元分开也符合通用模拟架构；例如 [IDAES](https://idaes-pse.readthedocs.io/en/stable/explanations/components/property_package/index.html) 将共享物性参数和各处状态子模型分开组织。这是职责参考，不要求采用其具体类结构。
+
+## 互操作方向与符合性证据
+
+| 方向 | 当前状态 | 证据边界 |
+| --- | --- | --- |
+| 外部 PME → RadishFlow Unit Operation PMC → Rust | 已有自有 PMC、注册工具与 DWSIM / COFE 样例验证 | 只覆盖记录中的宿主、接口版本与场景 |
+| RadishFlow → 第三方 Unit Operation / Property Package | 未实现正式宿主加载链路 | SampleHost 是自有组件的消费样例，不是任意第三方组件宿主 |
+| 外部自动化 → RadishFlow 工程命令 / 查询 | CLI 已有受控能力，通用 COM Automation 待实施 | 与 CAPE-OPEN 的单元 / 物性接口分别验收 |
+
+Windows COM 的组件发现依赖已注册的类别与类标识，之后才是激活和接口协商，不以扫描 DLL 代替。未来宿主侧还须定义 Material Object、组分 / 相态与基准映射、Simulation Context、线程 / 引用释放和持久化职责。按 [模型装配专题 MC3](../topics/modeling/model-catalog-and-runtime.md#分阶段切片) 选定真实场景后，再建立宿主侧实施范围；当前不增加注册或加载行为。
+
+架构职责合理、接口兼容、工程数值可信分别建立证据：源码分层不能证明标准符合性，COM 激活不能证明完整互操作，宿主计算成功不能证明物性准确或能量守恒。对外符合性说明应列明接口、版本、支持 / 不支持范围与测试场景，不使用“全面兼容任意 PME”的概括。数值证据归 [热力学模型](../thermo/mvp-model.md#验证证据与缺口)。
+
+## 黑箱组件与多策略求解
+
+2026-09-29 确认未来外部模型按实际能力参与 [多策略装配](../topics/modeling/solver-strategies-and-assembly.md)，当前尚未实现第三方宿主或相应桥接。只有 `Calculate()` 的组件首先提供局部求解；它不自动提供内部方程、导数或动态状态。
+
+在可重复求值且状态可隔离时，可估计模块响应供联立模块使用，或封装 `y - G(x) = 0` 作为黑箱残差。每次求值仍调用组件，必须计入局部收敛、物性和导数成本；这种封装不等于取得内部方程或获得完整 EO 能力。
+
+桥接前须明确输入材料副本、可变状态的重置 / 重建、固定规格、失败后恢复、线程 / 引用释放和误差控制。数值扰动不得修改活动工程或共享入口对象；无法保证调用隔离、重复性或所需精度时，应拒绝相应策略，不能复用旧输出伪造残差。COM apartment 约束不会因联立求解而消失，Rust 内仍不传递 COM 对象。
+
+[CAPE-OPEN Numerical](https://www.colan.org/specifications/) 定义方程集合对象相关概念；[Unit Operation 规范附录 10](https://www.colan.org/wp-content/uploads/2016/05/CO_Unit_Operations_v6.25.pdf) 讨论 EO 扩展，并说明该分析在当时未完成原型验证。普通 Unit Operation 兼容不能据此推导组件支持方程集合接口，当前 PMC 测试也不作为未来 EO 宿主验收。
 
 ## 第一阶段原则
 
@@ -156,7 +200,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - COFE trace 中 `Validate()` 返回 "Required parameter `Flowsheet Json` is not configured." 属于 MVP 必填参数未配置时的预期 invalid 结果，不再视为 discovery、activation、placement 或 connection blocker；参数完整配置后 `Validate()` 与 `Calculate()` 已完成真实复验。
 - DWSIM 日志中的 `AutomaticTranslation.AutomaticTranslator.SetMainWindow(...)` `NullReferenceException` 属于 DWSIM 主窗口 extender 初始化路径，发生在 RadishFlow UnitOp activation 前；当前只记录为宿主侧启动噪声。
 
-截至 2026-04-27，CAPE-OPEN / PME 主线进入阶段性冻结：
+历史阶段记录：2026-04-27 曾将 CAPE-OPEN / PME 主线阶段性冻结；以下记录当时的范围取舍。2026-09-12 起按 [适配层专题](../topics/capeopen-pmc-adapter.md) 恢复可靠性与接口契约迭代，第三方模型等范围扩展仍按专题评审：
 
 - 当前以 `DWSIM / COFE` 人工验证记录、`ContractTests`、`SampleHost`、受控注册脚本和 `scripts/gen-typelib.ps1` 作为 M5 回归基线。
 - 除非出现明确回归，不再主动扩张新的 PME 兼容接口、PME 自动化互调、完整 OLE 持久化、out-of-proc COM shim、完整 Thermo PMC 或第三方 CAPE-OPEN 模型加载。

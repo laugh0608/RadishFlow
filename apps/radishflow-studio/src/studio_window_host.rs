@@ -253,6 +253,10 @@ impl StudioRuntimeHostPort {
             .reconnect_selected_stream_to_unique_available_endpoint()
     }
 
+    pub fn delete_selected_unit(&mut self) -> RfResult<Option<u64>> {
+        self.runtime.delete_selected_unit()
+    }
+
     pub fn delete_selected_stream_and_connections(
         &mut self,
     ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
@@ -368,6 +372,8 @@ impl StudioRuntimeHostPort {
         window_id: StudioWindowHostId,
     ) -> Option<StudioWindowHostShutdown> {
         let mut state = self.windows.remove(&window_id)?;
+        self.runtime
+            .close_presentation_view(rf_ui::DisplayUnitViewId(window_id));
         if let Some(observer_layout_slot) = state.clear_observer_layout_slot() {
             self.allocated_observer_layout_slots
                 .remove(&observer_layout_slot);
@@ -379,12 +385,11 @@ impl StudioRuntimeHostPort {
 
         if shutdown.was_entitlement_timer_owner {
             if let Some(new_owner_window_id) = self.windows.keys().next().copied() {
-                if let Some(new_owner_state) = self.windows.get_mut(&new_owner_window_id) {
-                    if let Some(observer_layout_slot) = new_owner_state.clear_observer_layout_slot()
-                    {
-                        self.allocated_observer_layout_slots
-                            .remove(&observer_layout_slot);
-                    }
+                if let Some(new_owner_state) = self.windows.get_mut(&new_owner_window_id)
+                    && let Some(observer_layout_slot) = new_owner_state.clear_observer_layout_slot()
+                {
+                    self.allocated_observer_layout_slots
+                        .remove(&observer_layout_slot);
                 }
                 if let Some(slot) = shutdown.cleared_entitlement_timer.clone() {
                     self.windows

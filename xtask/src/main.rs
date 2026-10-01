@@ -236,8 +236,8 @@ fn inspect_text_bytes(relative_path: &str, bytes: &[u8]) -> Vec<String> {
 
 fn validate_workspace(repo_root: &Path, skip_clippy: bool) -> Result<(), io::Error> {
     run_checked_command(repo_root, "cargo", &["fmt", "--all", "--check"])?;
-    run_checked_command(repo_root, "cargo", &["check", "--workspace"])?;
-    run_checked_command(repo_root, "cargo", &["test", "--workspace"])?;
+    run_checked_command(repo_root, "cargo", &["check", "--locked", "--workspace"])?;
+    run_checked_command(repo_root, "cargo", &["test", "--locked", "--workspace"])?;
 
     if !skip_clippy {
         run_checked_command(
@@ -245,6 +245,7 @@ fn validate_workspace(repo_root: &Path, skip_clippy: bool) -> Result<(), io::Err
             "cargo",
             &[
                 "clippy",
+                "--locked",
                 "--workspace",
                 "--all-targets",
                 "--",

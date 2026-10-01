@@ -327,6 +327,11 @@ impl StudioShellLocale {
             "Move right" => Cow::Borrowed("右移"),
             "Move up" => Cow::Borrowed("上移"),
             "Move down" => Cow::Borrowed("下移"),
+            "Name cannot be blank; duplicate display names are allowed. Object ID and connections remain unchanged." => {
+                Cow::Borrowed("名称不能为空白；允许重名。对象 ID 和连接保持不变。")
+            }
+            "Name cannot be blank." => Cow::Borrowed("名称不能为空白。"),
+            "Delete unit" => Cow::Borrowed("删除单元"),
             "Disconnect stream" => Cow::Borrowed("断开流股"),
             "Disconnect source" => Cow::Borrowed("断开源端"),
             "Disconnect sink" => Cow::Borrowed("断开目标端"),
@@ -533,8 +538,8 @@ impl ShellText {
             ShellText::NoRecentProjects => "No recent projects yet.",
             ShellText::ExampleProjects => "Example projects",
             ShellText::Results => "Results",
-            ShellText::CopySnapshot => "Copy snapshot",
-            ShellText::ExportSnapshot => "Export text...",
+            ShellText::CopySnapshot => "Copy current results",
+            ShellText::ExportSnapshot => "Export current results...",
             ShellText::ResultInspector => "Result inspector",
             ShellText::SelectStream => "Select stream",
             ShellText::SelectUnit => "Select unit",
@@ -690,8 +695,8 @@ impl ShellText {
             ShellText::NoRecentProjects => "还没有最近项目。",
             ShellText::ExampleProjects => "示例项目",
             ShellText::Results => "结果",
-            ShellText::CopySnapshot => "复制快照",
-            ShellText::ExportSnapshot => "导出文本...",
+            ShellText::CopySnapshot => "复制当前结果",
+            ShellText::ExportSnapshot => "导出当前结果...",
             ShellText::ResultInspector => "结果检查器",
             ShellText::SelectStream => "选择流股",
             ShellText::SelectUnit => "选择单元",

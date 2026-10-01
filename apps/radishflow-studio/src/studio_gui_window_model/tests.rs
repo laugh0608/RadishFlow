@@ -2289,7 +2289,7 @@ fn studio_gui_window_model_surfaces_module_settings_for_active_unit() {
         .expect("expected module parameter summary");
     assert_eq!(parameter_summary.title, "Parameter Summary");
     assert_eq!(parameter_summary.status_label, "Synced");
-    assert_eq!(parameter_summary.total_field_count, 2);
+    assert_eq!(parameter_summary.total_field_count, 3);
     assert_eq!(parameter_summary.dirty_field_count, 0);
     assert_eq!(parameter_summary.issue_count, 0);
     assert_eq!(parameter_summary.notice_count, 0);
@@ -2587,7 +2587,7 @@ fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_heater
         .as_ref()
         .expect("expected module parameter summary");
     assert_eq!(summary.status_label, "Invalid");
-    assert_eq!(summary.total_field_count, 2);
+    assert_eq!(summary.total_field_count, 3);
     assert_eq!(summary.dirty_field_count, 1);
     assert_eq!(summary.issue_count, 2);
     assert_eq!(summary.notice_count, 1);

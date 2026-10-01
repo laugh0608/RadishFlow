@@ -16,16 +16,20 @@ const REQUIRED_FILES: &[&str] = &[
     ".github/rulesets/master-protection.json",
     ".github/workflows/pr-check.yml",
     ".github/workflows/release-check.yml",
+    ".github/workflows/rust-compatibility.yml",
     "AGENTS.md",
     "CLAUDE.md",
     "CODE_OF_CONDUCT.md",
     "CONTRIBUTING.md",
+    "Cargo.toml",
+    "Cargo.lock",
     "LICENSE",
     "README.md",
     "SECURITY.md",
     "docs/README.md",
     "docs/adr/0001-branch-and-pr-governance.md",
     "docs/status/current.md",
+    "rust-toolchain.toml",
     "scripts/check-repo.ps1",
     "scripts/check-repo.sh",
     "xtask/src/repository_governance.rs",
@@ -44,6 +48,7 @@ pub(crate) fn check_repository_governance(
     check_json_files(repo_root, &paths, &mut errors);
     check_markdown_links(repo_root, &paths, &mut errors);
     check_agent_files(repo_root, &mut errors);
+    check_branch_sync_contract(repo_root, &mut errors);
     check_issue_template_contract(repo_root, &mut errors);
     check_ruleset_contract(repo_root, &mut errors);
     check_workflow_contract(repo_root, &mut errors);
@@ -360,12 +365,56 @@ fn check_agent_files(repo_root: &Path, errors: &mut Vec<String>) {
     }
 }
 
+fn check_branch_sync_contract(repo_root: &Path, errors: &mut Vec<String>) {
+    for relative_path in ["AGENTS.md", "CLAUDE.md"] {
+        check_required_fragments(
+            repo_root,
+            relative_path,
+            &[
+                "任何 PR 合并到 `master` / `main` 后",
+                "回灌并推送到 `dev`",
+                "禁止使用 rebase、reset、force push",
+            ],
+            errors,
+        );
+    }
+
+    check_required_fragments(
+        repo_root,
+        "docs/adr/0001-branch-and-pr-governance.md",
+        &[
+            "### `master` / `main` -> `dev` 合并后回灌",
+            "回灌是稳定主线 PR 的必需收口动作",
+            "可快进时，优先使用 fast-forward",
+        ],
+        errors,
+    );
+    check_required_fragments(
+        repo_root,
+        "CONTRIBUTING.md",
+        &["开始下一轮开发前必须把最新 `origin/master` / `origin/main` 回灌并推送到 `dev`"],
+        errors,
+    );
+    check_required_fragments(
+        repo_root,
+        ".github/PULL_REQUEST_TEMPLATE.md",
+        &["已明确合并后立即把最新稳定主线回灌 `dev` 的执行人和时机"],
+        errors,
+    );
+    check_required_fragments(
+        repo_root,
+        ".github/rulesets/README.md",
+        &["合并到默认分支后，先把最新默认分支回灌并推送到 `dev`"],
+        errors,
+    );
+}
+
 fn check_issue_template_contract(repo_root: &Path, errors: &mut Vec<String>) {
     check_required_fragments(
         repo_root,
         ".github/ISSUE_TEMPLATE/config.yml",
         &[
-            "blank_issues_enabled: false",
+            "blank_issues_enabled: true",
             "私下报告安全问题",
             "https://github.com/laugh0608/RadishFlow/security/advisories/new",
         ],
@@ -502,9 +551,24 @@ fn check_workflow_contract(repo_root: &Path, errors: &mut Vec<String>) {
         errors,
     );
 
+    check_required_fragments(
+        repo_root,
+        ".github/workflows/rust-compatibility.yml",
+        &[
+            "workflow_dispatch:",
+            "permissions:\n  contents: read",
+            "RUSTUP_TOOLCHAIN: stable",
+            "dtolnay/rust-toolchain@stable",
+            "./scripts/check-repo.sh",
+            "./scripts/check-repo.ps1",
+        ],
+        errors,
+    );
+
     for relative_path in [
         ".github/workflows/pr-check.yml",
         ".github/workflows/release-check.yml",
+        ".github/workflows/rust-compatibility.yml",
     ] {
         let Ok(content) = fs::read_to_string(repo_root.join(relative_path)) else {
             continue;
@@ -524,7 +588,7 @@ fn check_pull_request_template_contract(repo_root: &Path, errors: &mut Vec<Strin
         repo_root,
         ".github/PULL_REQUEST_TEMPLATE.md",
         &[
-            "已停止公开业务功能维护和外部 PR 合并",
+            "本次改动符合当前开发范围",
             "CONTRIBUTING.md",
             "SECURITY.md",
             "任职单位或其他第三方的保密材料",

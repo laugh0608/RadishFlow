@@ -14,7 +14,7 @@ impl ReadyAppState {
         self.render_canvas_object_action_strip(ui, widget);
         self.render_canvas_legend(ui, widget);
         ui.separator();
-        self.render_canvas_drop_surface(ui, widget);
+        self.render_canvas_drop_surface(ui);
         ui.add_space(8.0);
         self.render_canvas_suggestions(ui, widget, window, area_id);
     }
@@ -81,7 +81,7 @@ impl ReadyAppState {
             Some(shortcut) => format!(
                 "{} ({})",
                 self.locale.runtime_label(&action.label),
-                format_shortcut(shortcut)
+                shortcut.format(radishflow_studio::StudioGuiShortcutPlatform::current())
             ),
             None => self.locale.runtime_label(&action.label).into_owned(),
         };
@@ -306,20 +306,32 @@ impl ReadyAppState {
                             radishflow_studio::StudioGuiCanvasActionId::MoveSelectedUnit(
                                 *direction,
                             ),
-                        ) {
-                            if ui
-                                .add_enabled(
-                                    action.enabled,
-                                    egui::Button::new(
-                                        self.locale.runtime_label(&action.label).as_ref(),
-                                    ),
-                                )
-                                .on_hover_text(self.locale.runtime_label(&action.detail).as_ref())
-                                .clicked()
-                            {
-                                self.dispatch_ui_command(&action.command_id);
-                            }
+                        ) && ui
+                            .add_enabled(
+                                action.enabled,
+                                egui::Button::new(
+                                    self.locale.runtime_label(&action.label).as_ref(),
+                                ),
+                            )
+                            .on_hover_text(self.locale.runtime_label(&action.detail).as_ref())
+                            .clicked()
+                        {
+                            self.dispatch_ui_command(&action.command_id);
                         }
+                    }
+                    if let Some(action) = widget
+                        .action(radishflow_studio::StudioGuiCanvasActionId::DeleteSelectedUnit)
+                        && ui
+                            .add_enabled(
+                                action.enabled,
+                                egui::Button::new(
+                                    self.locale.runtime_label(&action.label).as_ref(),
+                                ),
+                            )
+                            .on_hover_text(&action.detail)
+                            .clicked()
+                    {
+                        self.dispatch_ui_command(&action.command_id);
                     }
                 } else if selection.kind_label == "Stream" {
                     for action_id in [
@@ -329,8 +341,8 @@ impl ReadyAppState {
                         radishflow_studio::StudioGuiCanvasActionId::ReconnectSelectedStream,
                         radishflow_studio::StudioGuiCanvasActionId::DeleteSelectedStream,
                     ] {
-                        if let Some(action) = widget.action(action_id) {
-                            if ui
+                        if let Some(action) = widget.action(action_id)
+                            && ui
                                 .add_enabled(
                                     action.enabled,
                                     egui::Button::new(
@@ -339,9 +351,8 @@ impl ReadyAppState {
                                 )
                                 .on_hover_text(self.locale.runtime_label(&action.detail).as_ref())
                                 .clicked()
-                            {
-                                self.dispatch_ui_command(&action.command_id);
-                            }
+                        {
+                            self.dispatch_ui_command(&action.command_id);
                         }
                     }
                 }
@@ -393,17 +404,16 @@ impl ReadyAppState {
         });
     }
 
-    fn render_canvas_drop_surface(
-        &mut self,
-        ui: &mut egui::Ui,
-        widget: &radishflow_studio::StudioGuiCanvasWidgetModel,
-    ) {
-        let view = widget.view();
+    fn render_canvas_drop_surface(&mut self, ui: &mut egui::Ui) {
+        // Earlier controls can change selection or topology in this same egui frame.
+        // Resolve navigation and paint geometry from the same current presentation.
+        let window = self.platform_host.snapshot().window_model();
+        let view = window.canvas.widget.view();
         let pending_edit = view.pending_edit.as_ref();
         let focus_callout = view.focus_callout.as_ref();
         let unit_blocks = &view.unit_blocks;
         let stream_lines = &view.stream_lines;
-        self.reconcile_canvas_viewport_navigation(view.viewport.focus.as_ref());
+        self.reconcile_canvas_viewport_navigation(view);
         let available_width = ui.available_width().max(320.0);
         let desired_size = egui::vec2(available_width, 280.0);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click_and_drag());
@@ -575,20 +585,19 @@ impl ReadyAppState {
                     ),
                 });
             }
-            if unit_response.dragged() {
-                if let Some(drag) = self
+            if unit_response.dragged()
+                && let Some(drag) = self
                     .canvas_unit_drag
                     .as_mut()
                     .filter(|drag| drag.unit_id == unit.unit_id)
-                {
-                    drag.current_position = canvas_unit_drag_position(
-                        rect,
-                        &viewport_transform,
-                        drag,
-                        unit_response.interact_pointer_pos(),
-                        unit_response.drag_delta(),
-                    );
-                }
+            {
+                drag.current_position = canvas_unit_drag_position(
+                    rect,
+                    &viewport_transform,
+                    drag,
+                    unit_response.interact_pointer_pos(),
+                    unit_response.drag_delta(),
+                );
             }
             if self
                 .canvas_unit_drag
@@ -617,16 +626,16 @@ impl ReadyAppState {
             }
         }
 
-        if let Some(callout) = focus_callout {
-            if let Some(anchor) = canvas_focus_callout_anchor(
+        if let Some(callout) = focus_callout
+            && let Some(anchor) = canvas_focus_callout_anchor(
                 rect,
                 &viewport_transform,
                 callout,
                 unit_blocks,
                 stream_lines,
-            ) {
-                paint_canvas_focus_callout(&painter, rect, anchor, callout);
-            }
+            )
+        {
+            paint_canvas_focus_callout(&painter, rect, anchor, callout);
         }
         if let Some((anchor, port)) = hovered_port_callout {
             paint_canvas_port_hover_callout(&painter, rect, anchor, port);
@@ -639,10 +648,11 @@ impl ReadyAppState {
         }
 
         let clicked_stream = clicked_stream_command.is_some();
-        if !clicked_unit && !clicked_port {
-            if let Some(command_id) = clicked_stream_command {
-                self.dispatch_ui_command(command_id);
-            }
+        if !clicked_unit
+            && !clicked_port
+            && let Some(command_id) = clicked_stream_command
+        {
+            self.dispatch_ui_command(command_id);
         }
 
         let hovered_port = hovered_port_callout.is_some();
