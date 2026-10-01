@@ -144,9 +144,12 @@ jobs:
         shell: pwsh
         run: |
           $version = '${{ inputs.package_version }}'
-          $arguments = @('-Configuration', 'Release', '-Clean')
+          $arguments = @{
+              Configuration = 'Release'
+              Clean = $true
+          }
           if (-not [string]::IsNullOrWhiteSpace($version)) {
-              $arguments += @('-Version', $version)
+              $arguments.Version = $version
           }
 
           ./scripts/package.ps1 @arguments
