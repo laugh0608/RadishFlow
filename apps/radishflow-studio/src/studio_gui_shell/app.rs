@@ -75,6 +75,11 @@ impl ReadyAppState {
     }
 
     fn request_blank_project(&mut self, authoring_case: Option<AuthoringCaseKind>) {
+        if self.unit_settings.is_open() {
+            self.validate_project_departure();
+            return;
+        }
+        self.project_open.departure_checkpoint = Some(self.project_departure_checkpoint());
         if self
             .platform_host
             .snapshot()
@@ -101,6 +106,9 @@ impl ReadyAppState {
 
     pub(super) fn confirm_pending_blank_project(&mut self) {
         if !self.project_open.pending_blank_project_confirmation {
+            return;
+        }
+        if !self.validate_project_departure() {
             return;
         }
         let authoring_case = self.project_open.pending_authoring_blank_project;
@@ -138,6 +146,11 @@ impl ReadyAppState {
         authoring_case: Option<AuthoringCaseKind>,
         units: rf_types::units::DisplayUnitSet,
     ) {
+        if self.project_open.departure_checkpoint.is_some() && !self.validate_project_departure() {
+            self.project_open.pending_blank_project_confirmation = true;
+            self.project_open.pending_authoring_blank_project = authoring_case;
+            return;
+        }
         let config = studio_shell_blank_runtime_config();
 
         match StudioGuiPlatformHost::new(&config) {
@@ -148,6 +161,8 @@ impl ReadyAppState {
                 self.unit_settings.view_draft = None;
                 self.unit_settings.closed_inspectors.clear();
                 self.pending_unit_deletion = None;
+                self.pending_input_action = None;
+                self.project_open.departure_checkpoint = None;
                 self.pending_result_export = None;
                 self.platform_timer_executor = EguiPlatformTimerExecutor::default();
                 self.command_palette.close();
@@ -221,6 +236,11 @@ impl ReadyAppState {
     }
 
     pub(super) fn request_open_project(&mut self, project_path: PathBuf, source_label: &str) {
+        if self.unit_settings.is_open() {
+            self.validate_project_departure();
+            return;
+        }
+        self.project_open.departure_checkpoint = Some(self.project_departure_checkpoint());
         if self
             .platform_host
             .snapshot()
@@ -253,6 +273,9 @@ impl ReadyAppState {
     }
 
     pub(super) fn confirm_pending_project_open(&mut self) {
+        if self.project_open.pending_confirmation.is_none() || !self.validate_project_departure() {
+            return;
+        }
         let Some(request) = self.project_open.pending_confirmation.take() else {
             return;
         };
@@ -279,6 +302,8 @@ impl ReadyAppState {
                 self.unit_settings.view_draft = None;
                 self.unit_settings.closed_inspectors.clear();
                 self.pending_unit_deletion = None;
+                self.pending_input_action = None;
+                self.project_open.departure_checkpoint = None;
                 self.pending_result_export = None;
                 self.platform_timer_executor = EguiPlatformTimerExecutor::default();
                 self.command_palette.close();
@@ -415,6 +440,7 @@ impl ReadyAppState {
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
+            self.render_input_action_dialog(ctx);
             self.render_result_export_dialog(ctx);
             return;
         }
@@ -431,6 +457,7 @@ impl ReadyAppState {
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
+            self.render_input_action_dialog(ctx);
             self.render_result_export_dialog(ctx);
             return;
         }
@@ -444,6 +471,7 @@ impl ReadyAppState {
         self.render_floating_drop_preview_overlay(ctx, &window);
         self.render_pending_close_window_dialog(ctx);
         self.render_unit_deletion_dialog(ctx);
+        self.render_input_action_dialog(ctx);
         self.render_result_export_dialog(ctx);
         self.finish_drop_preview_cycle(
             ctx,
@@ -464,6 +492,7 @@ impl ReadyAppState {
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
+            self.render_input_action_dialog(ctx);
             self.render_result_export_dialog(ctx);
             return;
         }
@@ -480,6 +509,7 @@ impl ReadyAppState {
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
+            self.render_input_action_dialog(ctx);
             self.render_result_export_dialog(ctx);
             return;
         }
@@ -492,6 +522,7 @@ impl ReadyAppState {
         self.render_floating_drop_preview_overlay(ctx, &window);
         self.render_pending_close_window_dialog(ctx);
         self.render_unit_deletion_dialog(ctx);
+        self.render_input_action_dialog(ctx);
         self.render_result_export_dialog(ctx);
     }
 
@@ -523,6 +554,9 @@ impl ReadyAppState {
         }
         if command_id == "canvas.delete_selected_unit" {
             self.request_unit_deletion();
+            return;
+        }
+        if self.intercept_input_action(&command_id) {
             return;
         }
         self.dispatch_confirmed_ui_command(command_id);
@@ -858,6 +892,11 @@ impl ReadyAppState {
     }
 
     pub(super) fn dispatch_event(&mut self, event: StudioGuiEvent) {
+        if matches!(event, StudioGuiEvent::RunPanelRecoveryRequested)
+            && self.intercept_input_action("run_panel.recover_failure")
+        {
+            return;
+        }
         match self.dispatch_event_result(event.clone()) {
             Ok(_) => {
                 self.refresh_active_modeling_readiness_notice();
@@ -1188,6 +1227,16 @@ impl ReadyAppState {
             if self.intercept_modeling_readiness_shortcut_if_needed(&shortcut) {
                 continue;
             }
+            if let radishflow_studio::StudioGuiShortcutRoute::DispatchCommandId { command_id } =
+                radishflow_studio::route_shortcut(
+                    &self.platform_host.snapshot().command_registry,
+                    &shortcut,
+                    focus_context,
+                )
+                && self.intercept_input_action(&command_id)
+            {
+                continue;
+            }
             self.dispatch_event(StudioGuiEvent::ShortcutPressed {
                 shortcut,
                 focus_context,
@@ -1197,6 +1246,7 @@ impl ReadyAppState {
 
     pub(super) fn focus_context(&self, ctx: &egui::Context) -> StudioGuiFocusContext {
         if self.variable_browser.open
+            || self.pending_input_action.is_some()
             || self.pending_unit_deletion.is_some()
             || self.pending_result_export.is_some()
             || self.project_open.pending_confirmation.is_some()

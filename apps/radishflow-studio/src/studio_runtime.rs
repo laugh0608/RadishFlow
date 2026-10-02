@@ -875,6 +875,7 @@ mod tests {
                 panic!("expected entitlement session event dispatch")
             }
             StudioRuntimeDispatch::NumericEdit { .. }
+            | StudioRuntimeDispatch::ObjectDeletion { .. }
             | StudioRuntimeDispatch::ProjectPresentation { .. }
             | StudioRuntimeDispatch::DocumentLifecycle(_) => {
                 panic!("expected entitlement session event dispatch")

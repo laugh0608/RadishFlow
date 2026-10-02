@@ -110,6 +110,9 @@ fn dispatch_bootstrap_trigger(
     session: &mut BootstrapSessionResources<'_>,
 ) -> RfResult<StudioBootstrapDispatch> {
     match trigger {
+        StudioBootstrapTrigger::ConfirmedInputAction(request) => {
+            crate::confirmed_input_action::apply_confirmed_input_action(session.app_state, request)
+        }
         StudioBootstrapTrigger::AppCommand(command) => {
             let context =
                 StudioAppAuthCacheContext::new(session.cache_root, &*session.auth_cache_index);
@@ -450,6 +453,15 @@ impl BootstrapSession {
             let mut session_resources = self.resources();
             dispatch_bootstrap_trigger(trigger, &mut session_resources)?
         };
+        if matches!(dispatch, StudioBootstrapDispatch::ObjectDeletion { .. }) {
+            self.refresh_local_canvas_suggestions();
+            if let Err(error) = self.dispatch_automatic_run_after_canvas_write_if_needed() {
+                self.app_state.log_feed.push(
+                    rf_ui::AppLogLevel::Error,
+                    format!("Object deletion committed, but automatic run failed: {error}"),
+                );
+            }
+        }
         self.build_report(dispatch)
     }
 

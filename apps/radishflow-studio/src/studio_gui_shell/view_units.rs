@@ -163,7 +163,15 @@ impl ReadyAppState {
                     }
                 }
             }
-            if let Some(notice) = &draft.notice { ui.label(notice); }
+            if draft.units != snapshot.runtime.workspace_document.presentation.view_units(draft.view) {
+                super::state_presentation::light_state_surface(ui, |ui| {
+                    ui.colored_label(super::state_presentation::StudioStateTokens::SECONDARY, if zh { "本视图选择尚未应用；不写入工程文件。" } else { "View choices not yet applied; not saved in the project file." });
+                });
+            }
+            render_project_save_state(ui, &snapshot.runtime.workspace_document.save_state, self.locale);
+            if let Some(detail) = &draft.notice {
+                render_project_notice(ui, &ProjectOpenNotice { level: ProjectOpenNoticeLevel::Error, title: if zh { "视图设置未修改" } else { "View settings unchanged" }.into(), detail: detail.clone() });
+            }
         });
         self.unit_settings.view_draft = if close || response.should_close() {
             None

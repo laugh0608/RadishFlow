@@ -1,6 +1,6 @@
 # 颜色与状态系统
 
-更新时间：2026-09-28
+更新时间：2026-10-02
 
 ## 用途与状态
 
@@ -9,7 +9,7 @@
 不包含：第二套领域状态机、求解 / 输出门禁、具体色值、已实现的统一主题或产品验收声明。
 
 - 层级：一级轨道；关联 [平台](../architecture/simulation-platform.md)、[单位](units-and-quantity-system.md)、[消息](runtime-messages-and-diagnostics.md)、[结果](results-review-diagnostics.md) 与 [UI 计划](../architecture/studio-ui-topic-plan.md)。
-- 状态：Active / V0 方向已确认，首批数值字段已接通类型化映射与局部浅色角色；设置 / 保存及其他消费者待迁移，原生可访问性与完整 V0 未验收。
+- 状态：Active / V0 方向已确认，首批数值字段已接通类型化映射与局部浅色角色；设置 / 保存已接入共享角色，其他消费者待迁移，原生可访问性与完整 V0 未验收。
 - 时机：V0 随 U2 / N0 / R0—R1 设计，消费者随 U2 / U3 / 规格辅助逐步迁移；不改变 U2→U3→规格辅助→设备工程的顺序。
 
 ## 目标与职责

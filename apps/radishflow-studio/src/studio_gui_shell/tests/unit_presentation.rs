@@ -1,6 +1,37 @@
 use super::*;
 
 #[test]
+fn failed_personal_default_recovery_preserves_the_requested_units_for_retry() {
+    let preferences = test_preferences_path("unit-default-retry");
+    let defaults = preferences.with_file_name(rf_store::UNIT_DEFAULTS_FILE_NAME);
+    fs::create_dir_all(&defaults).unwrap();
+    let mut app =
+        ReadyAppState::from_config(&synced_workspace_config(), preferences.clone()).unwrap();
+    app.apply_presentation_command(rf_ui::ProjectPresentationCommand::Apply(
+        rf_types::units::DisplayUnitSet::engineering(),
+    ))
+    .unwrap();
+    app.request_unit_default_recovery();
+    app.save_unit_default(true);
+    assert!(app.unit_settings.is_open());
+    assert!(app.unit_settings.default_units.is_err());
+    fs::remove_dir(&defaults).unwrap();
+    fs::write(&defaults, b"invalid default").unwrap();
+    // A changed project setting must not silently replace the already confirmed recovery choice.
+    app.apply_presentation_command(rf_ui::ProjectPresentationCommand::Apply(
+        rf_types::units::DisplayUnitSet::si(),
+    ))
+    .unwrap();
+    app.save_unit_default(true);
+    assert_eq!(
+        rf_store::read_unit_defaults(&defaults).unwrap(),
+        Some(rf_types::units::DisplayUnitSet::engineering())
+    );
+    assert!(!app.unit_settings.is_open());
+    fs::remove_dir_all(preferences.parent().unwrap()).unwrap();
+}
+
+#[test]
 fn invalid_v2_presentation_does_not_replace_the_open_workspace_or_results() {
     let mut app = ready_app_state(&synced_workspace_config());
     app.dispatch_ui_command("run_panel.run_manual");

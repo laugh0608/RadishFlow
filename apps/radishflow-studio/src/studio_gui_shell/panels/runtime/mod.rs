@@ -549,13 +549,12 @@ impl ReadyAppState {
                 });
             });
             if let Some(notice) = self.project_open.notice.as_ref() {
-                let color = match notice.level {
-                    ProjectOpenNoticeLevel::Info => egui::Color32::from_rgb(66, 118, 92),
-                    ProjectOpenNoticeLevel::Warning => egui::Color32::from_rgb(160, 120, 40),
-                    ProjectOpenNoticeLevel::Error => egui::Color32::from_rgb(180, 40, 40),
-                };
-                ui.colored_label(color, &notice.title);
-                render_wrapped_small(ui, &notice.detail);
+                render_project_notice(ui, notice);
+            }
+            if self.project_open.pending_confirmation.is_some()
+                || self.project_open.pending_blank_project_confirmation
+            {
+                self.render_project_departure_inputs(ui);
             }
             if self.project_open.pending_confirmation.is_some() {
                 ui.horizontal_wrapped(|ui| {

@@ -1,8 +1,10 @@
 mod app_facade;
 mod auth_cache_sync;
 mod bootstrap;
+mod confirmed_input_action;
 mod control_plane_client;
 mod control_plane_sync;
+pub use confirmed_input_action::{StudioConfirmedInputAction, StudioInputAction};
 mod document_history_driver;
 mod document_lifecycle_driver;
 mod entitlement_control;

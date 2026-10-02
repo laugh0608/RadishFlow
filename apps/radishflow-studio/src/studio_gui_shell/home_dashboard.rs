@@ -71,7 +71,6 @@ enum HomeText {
 
 #[derive(Debug, Clone, Copy)]
 enum HomeMessageTag {
-    Notice,
     Auth,
     Examples,
     Cache,
@@ -689,13 +688,13 @@ impl ReadyAppState {
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
                         if let Some(notice) = self.project_open.notice.clone() {
-                            self.render_home_message_row(
-                                ui,
-                                HomeMessageTag::Notice,
-                                &notice.title,
-                                Some(&notice.detail),
-                            );
                             self.render_home_project_operation_actions(ui);
+                            render_project_notice(ui, &notice);
+                            render_project_save_state(
+                                ui,
+                                &window.runtime.workspace_document.save_state,
+                                self.locale,
+                            );
                         }
                         self.render_home_message_row(
                             ui,
@@ -809,6 +808,11 @@ impl ReadyAppState {
                 }
             }
         });
+        if self.project_open.pending_confirmation.is_some()
+            || self.project_open.pending_blank_project_confirmation
+        {
+            self.render_project_departure_inputs(ui);
+        }
     }
 
     fn render_home_message_row(
@@ -891,20 +895,17 @@ fn message_tag_color(tag: HomeMessageTag) -> egui::Color32 {
         HomeMessageTag::Auth => egui::Color32::from_rgb(160, 120, 40),
         HomeMessageTag::Examples => egui::Color32::from_rgb(56, 126, 214),
         HomeMessageTag::Cache => egui::Color32::from_rgb(52, 128, 89),
-        HomeMessageTag::Notice => egui::Color32::from_rgb(86, 118, 168),
     }
 }
 
 fn home_message_tag_text(locale: StudioShellLocale, tag: HomeMessageTag) -> &'static str {
     match locale {
         StudioShellLocale::En => match tag {
-            HomeMessageTag::Notice => "NOTICE",
             HomeMessageTag::Auth => "AUTH",
             HomeMessageTag::Examples => "EXAMPLES",
             HomeMessageTag::Cache => "CACHE",
         },
         StudioShellLocale::ZhCn => match tag {
-            HomeMessageTag::Notice => "提示",
             HomeMessageTag::Auth => "认证",
             HomeMessageTag::Examples => "示例",
             HomeMessageTag::Cache => "缓存",

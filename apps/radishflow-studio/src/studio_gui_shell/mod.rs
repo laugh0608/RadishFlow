@@ -36,6 +36,7 @@ mod chrome;
 mod failure_recovery;
 mod fonts;
 mod home_dashboard;
+mod input_departure;
 mod locale;
 mod modeling_readiness;
 mod numeric_input;
@@ -45,6 +46,7 @@ mod project_layout_save;
 mod project_picker;
 mod project_save;
 mod result_export;
+mod state_presentation;
 mod unit_deletion;
 mod unit_settings;
 mod utils;
@@ -58,6 +60,7 @@ mod timer_tests;
 
 use self::locale::{ShellText, StudioShellLocale};
 use self::project_picker::{NativeProjectFilePicker, ProjectFilePicker};
+use self::state_presentation::{render_project_notice, render_project_save_state};
 use self::utils::*;
 
 const STUDIO_INITIAL_WINDOW_SIZE: [f32; 2] = [1280.0, 860.0];
@@ -126,6 +129,7 @@ struct ReadyAppState {
     command_palette: CommandPaletteState,
     project_open: ProjectOpenState,
     pending_unit_deletion: Option<unit_deletion::PendingUnitDeletion>,
+    pending_input_action: Option<input_departure::PendingInputAction>,
     pending_result_export: Option<result_export::PendingResultExport>,
     pending_format_upgrade: Option<project_save::PendingFormatUpgrade>,
     unit_settings: unit_settings::UnitSettingsState,
@@ -212,6 +216,7 @@ struct ProjectOpenState {
     pending_authoring_blank_project: Option<AuthoringCaseKind>,
     pending_save_as_overwrite: Option<PathBuf>,
     pending_close_window_confirmation: Option<StudioWindowHostId>,
+    departure_checkpoint: Option<input_departure::ProjectDepartureCheckpoint>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -440,6 +445,7 @@ impl ReadyAppState {
             platform_timer_executor: EguiPlatformTimerExecutor::default(),
             command_palette: CommandPaletteState::default(),
             pending_unit_deletion: None,
+            pending_input_action: None,
             pending_result_export: None,
             pending_format_upgrade: None,
             unit_settings: unit_settings::UnitSettingsState::load(&preferences_path),
@@ -741,6 +747,7 @@ impl ProjectOpenState {
             pending_authoring_blank_project: None,
             pending_save_as_overwrite: None,
             pending_close_window_confirmation: None,
+            departure_checkpoint: None,
         };
         state.replace_recent_projects(recent_projects);
         state

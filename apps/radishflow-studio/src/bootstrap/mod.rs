@@ -76,6 +76,7 @@ pub enum StudioBootstrapTrigger {
     ProjectComponentSelection(crate::StudioProjectComponentSelectionCommand),
     ProjectComponentRemoval(crate::StudioProjectComponentSelectionCommand),
     DocumentHistory(crate::StudioDocumentHistoryCommand),
+    ConfirmedInputAction(Box<crate::StudioConfirmedInputAction>),
     EntitlementWidgetPrimaryAction,
     EntitlementWidgetAction(rf_ui::EntitlementActionId),
     EntitlementSessionEvent(StudioBootstrapEntitlementSessionEvent),
@@ -147,8 +148,12 @@ pub enum StudioBootstrapDispatch {
     AppCommand(StudioAppCommandOutcome),
     RunPanelRecovery(RunPanelRecoveryOutcome),
     DocumentLifecycle(crate::DocumentLifecycleOutcome),
-    ProjectPresentation { changed: bool },
-    NumericEdit { generation: Option<u64> },
+    ProjectPresentation {
+        changed: bool,
+    },
+    NumericEdit {
+        generation: Option<u64>,
+    },
     InspectorTarget(crate::InspectorTargetFocusOutcome),
     ClearInspectorTarget(crate::InspectorTargetClearOutcome),
     InspectorDraftUpdate(crate::InspectorDraftUpdateOutcome),
@@ -163,6 +168,10 @@ pub enum StudioBootstrapDispatch {
     ProjectComponentSelection(crate::ProjectComponentSelectionOutcome),
     ProjectComponentRemoval(crate::ProjectComponentSelectionOutcome),
     DocumentHistory(crate::DocumentHistoryOutcome),
+    ObjectDeletion {
+        target: rf_ui::InspectorTarget,
+        revision: u64,
+    },
     EntitlementSessionEvent(EntitlementSessionEventDriverOutcome),
 }
 

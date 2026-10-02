@@ -1,5 +1,7 @@
 mod actions;
 mod input_commands;
+mod input_discard;
+pub use input_discard::{InputDiscardScope, InputEditCheckpoint};
 mod numeric_edit;
 mod stream_inspector;
 pub use numeric_edit::*;
@@ -203,7 +205,7 @@ pub enum DraftValidationState {
     Invalid,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldDraft<T> {
     pub original: T,
     pub current: T,

@@ -193,7 +193,7 @@ impl ReadyAppState {
                             .project_open
                             .pending_close_window_confirmation
                             .is_some()
-                        && self.confirm_pending_close_window()
+                        && self.finish_saved_close()
                     {
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }

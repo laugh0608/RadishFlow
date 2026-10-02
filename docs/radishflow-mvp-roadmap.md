@@ -1,6 +1,6 @@
 # RadishFlow 开发路线图
 
-更新时间：2026-09-29
+更新时间：2026-10-02
 
 ## 用途
 
@@ -71,7 +71,7 @@ P2 的自动化按可交付切片展开：先做变量 / 动作描述和只读�
 
 设备能力是独立稳态工程主线，不排在 P5 / P6 之后；数值依赖按所用方法补齐。单位定义、规格规则与工程结果由领域拥有，UI、脚本和未来 Agent 均作消费者。当前不接入大模型，不为未来预建空模块、聊天占位页或通用框架。
 
-单位细化按 [需求追踪](topics/units/requirements-traceability.md) 与 [U2 事件表](topics/units/input-drafts-and-interactions.md#u2-事件表) 推进；U1 已实现，U2 按下述内部切片推进，U3 待实现。2026-09-23 草稿路由与存储兼容方向已接受，[局部画板](architecture/designs/studio-client-main-brief.md#本轮画板与静态复核) 已获认可；[U2 内部切片与接口提案](topics/units-and-quantity-system.md#u2-实施切片与状态) 按切片审定；I1 / I2 项目层、I3 会话及 I4 首批数值控件已接通，视图覆盖 / 历史也已接通，继续统一离开确认与其余 V0 接线。
+单位细化按 [需求追踪](topics/units/requirements-traceability.md) 与 [U2 事件表](topics/units/input-drafts-and-interactions.md#u2-事件表) 推进；U1 已实现，U2 按下述内部切片推进，U3 待实现。2026-09-23 草稿路由与存储兼容方向已接受，[局部画板](architecture/designs/studio-client-main-brief.md#本轮画板与静态复核) 已获认可；[U2 内部切片与接口提案](topics/units-and-quantity-system.md#u2-实施切片与状态) 按切片审定；I1 / I2 项目层、I3 会话及 I4 首批数值控件已接通，视图覆盖 / 历史也已接通，2026-10-02 统一离开确认和设置 / 保存 V0 已接通，继续 I5 原生组合验收；其他 V0 消费者按所属阶段推进。
 
 ### 变量与对象浏览器的配套切片
 

@@ -2,9 +2,9 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub(super) struct PendingUnitDeletion {
-    document_id: String,
+    checkpoint: rf_ui::InputEditCheckpoint,
     revision: u64,
-    input_edits: BTreeMap<String, rf_ui::DraftValue>,
+    affected: Vec<String>,
     unit_id: rf_types::UnitId,
     name: String,
     bindings: Vec<(String, String)>,
@@ -21,9 +21,12 @@ impl ReadyAppState {
         };
         let document = &snapshot.runtime.workspace_document;
         self.pending_unit_deletion = Some(PendingUnitDeletion {
-            document_id: document.document_id.clone(),
+            checkpoint: self.input_checkpoint(),
             revision: document.revision,
-            input_edits: document.input_edits.clone(),
+            affected: self.describe_affected_inputs(
+                &rf_ui::InputDiscardScope::Object(rf_ui::InspectorTarget::Unit(unit_id.clone()))
+                    .pending_keys(&document.input_edits),
+            ),
             unit_id: unit_id.clone(),
             name: detail.title.clone(),
             bindings: detail
@@ -43,12 +46,9 @@ impl ReadyAppState {
             return;
         };
         let snapshot = self.platform_host.snapshot();
-        let document = &snapshot.runtime.workspace_document;
-        if document.document_id != pending.document_id
-            || document.revision != pending.revision
-            || document.input_edits != pending.input_edits
+        if self.input_checkpoint() != pending.checkpoint
             || snapshot.runtime.active_inspector_target
-                != Some(rf_ui::InspectorTarget::Unit(pending.unit_id))
+                != Some(rf_ui::InspectorTarget::Unit(pending.unit_id.clone()))
         {
             self.project_open.notice = Some(ProjectOpenNotice {
                 level: ProjectOpenNoticeLevel::Warning,
@@ -57,7 +57,12 @@ impl ReadyAppState {
             });
             return;
         }
-        self.dispatch_confirmed_ui_command("canvas.delete_selected_unit".to_string());
+        self.execute_confirmed_input_action(radishflow_studio::StudioConfirmedInputAction {
+            checkpoint: pending.checkpoint,
+            action: radishflow_studio::StudioInputAction::Delete(rf_ui::InspectorTarget::Unit(
+                pending.unit_id,
+            )),
+        });
         if self
             .platform_host
             .snapshot()
@@ -94,8 +99,9 @@ impl ReadyAppState {
                 ui.label(
                     "删除该单元及其端口绑定；保留关联流股的参数和其他设备的连接。可通过撤销恢复。",
                 );
-                if !pending.input_edits.is_empty() {
-                    ui.label("确认后放弃被删除单元的未提交输入；其他数值编辑保留并重新校验。");
+                if !pending.affected.is_empty() {
+                    ui.label("确认后放弃以下未提交输入；其他对象的编辑保留，数值会话重新校验。");
+                    super::input_departure::render_affected_inputs(ui, &pending.affected);
                 }
                 if pending.bindings.is_empty() {
                     ui.label("该单元没有关联流股。");

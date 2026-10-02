@@ -1169,15 +1169,24 @@ impl ReadyAppState {
         }
 
         ui.separator();
+        if self.project_open.pending_confirmation.is_some()
+            || self.project_open.pending_blank_project_confirmation
+        {
+            self.render_project_departure_inputs(ui);
+        }
+        render_project_save_state(
+            ui,
+            &self
+                .platform_host
+                .snapshot()
+                .runtime
+                .workspace_document
+                .save_state,
+            self.locale,
+        );
         ui.horizontal_wrapped(|ui| {
             if let Some(notice) = self.project_open.notice.as_ref() {
-                let color = match notice.level {
-                    ProjectOpenNoticeLevel::Info => egui::Color32::from_rgb(66, 118, 92),
-                    ProjectOpenNoticeLevel::Warning => egui::Color32::from_rgb(160, 120, 40),
-                    ProjectOpenNoticeLevel::Error => egui::Color32::from_rgb(180, 40, 40),
-                };
-                ui.colored_label(color, &notice.title);
-                render_wrapped_small(ui, &notice.detail);
+                render_project_notice(ui, notice);
             }
             if self.project_open.pending_confirmation.is_some() {
                 if ui
@@ -1393,15 +1402,7 @@ impl ReadyAppState {
 
     fn render_bottom_messages(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         if let Some(notice) = self.project_open.notice.as_ref() {
-            ui.colored_label(
-                match notice.level {
-                    ProjectOpenNoticeLevel::Info => egui::Color32::from_rgb(66, 118, 92),
-                    ProjectOpenNoticeLevel::Warning => egui::Color32::from_rgb(160, 120, 40),
-                    ProjectOpenNoticeLevel::Error => egui::Color32::from_rgb(180, 40, 40),
-                },
-                &notice.title,
-            );
-            render_wrapped_small(ui, &notice.detail);
+            render_project_notice(ui, notice);
             ui.add_space(4.0);
         }
         if let Some(failure) = window.runtime.latest_failure.as_ref() {

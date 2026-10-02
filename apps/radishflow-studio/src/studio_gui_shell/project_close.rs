@@ -41,6 +41,7 @@ impl ReadyAppState {
     }
 
     fn request_close_window_confirmation(&mut self, window_id: StudioWindowHostId) {
+        self.project_open.departure_checkpoint = Some(self.project_departure_checkpoint());
         self.project_open.pending_confirmation = None;
         self.project_open.pending_blank_project_confirmation = false;
         self.project_open.pending_authoring_blank_project = None;
@@ -70,22 +71,17 @@ impl ReadyAppState {
             .show(ctx, |ui| {
                 ui.set_min_width(360.0);
                 render_wrapped_label(ui, close_workspace_discard_notice_detail(self.locale));
+                self.render_project_departure_inputs(ui);
+                if let Some(notice) = &self.project_open.notice {
+                    ui.label(&notice.detail);
+                }
                 let state = self
                     .platform_host
                     .snapshot()
                     .runtime
                     .workspace_document
                     .save_state;
-                ui.label(format!(
-                    "工程内容待保存：{} · 显示设置待保存：{} · 未提交输入：{}",
-                    if state.document_dirty { "有" } else { "无" },
-                    if state.presentation_dirty {
-                        "有"
-                    } else {
-                        "无"
-                    },
-                    state.pending_input_count
-                ));
+                render_project_save_state(ui, &state, self.locale);
                 if state.pending_input_count > 0 {
                     ui.label(
                         "保存仅写入已提交内容。请取消关闭并处理未提交输入，或明确放弃后关闭。",
@@ -141,10 +137,33 @@ impl ReadyAppState {
             return false;
         }
 
+        self.finish_saved_close()
+    }
+
+    pub(super) fn finish_saved_close(&mut self) -> bool {
+        if self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .save_state
+            .needs_close_confirmation()
+        {
+            return false;
+        }
+        self.project_open.departure_checkpoint = Some(self.project_departure_checkpoint());
         self.confirm_pending_close_window()
     }
 
     pub(super) fn confirm_pending_close_window(&mut self) -> bool {
+        if self
+            .project_open
+            .pending_close_window_confirmation
+            .is_none()
+            || !self.validate_project_departure()
+        {
+            return false;
+        }
         let Some(window_id) = self.project_open.pending_close_window_confirmation.take() else {
             return false;
         };

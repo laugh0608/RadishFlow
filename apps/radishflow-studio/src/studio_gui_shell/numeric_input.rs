@@ -1,22 +1,10 @@
+use super::state_presentation::StudioStateTokens;
 use super::*;
 use rf_types::units::{ALL_UNITS, from_canonical};
 use rf_ui::{
     NumericEditCommand, NumericEditEvent, NumericFieldIssue, NumericFieldPresentation,
     NumericFieldSource,
 };
-
-/// The accepted light palette. Numeric controls consume roles, never status strings.
-struct StudioStateTokens;
-impl StudioStateTokens {
-    const SURFACE: egui::Color32 = egui::Color32::WHITE;
-    const EDIT: egui::Color32 = egui::Color32::from_rgb(239, 246, 255);
-    const TEXT: egui::Color32 = egui::Color32::from_rgb(31, 41, 55);
-    const SPECIFIED: egui::Color32 = egui::Color32::from_rgb(29, 78, 216);
-    const SECONDARY: egui::Color32 = egui::Color32::from_rgb(71, 85, 105);
-    const ERROR: egui::Color32 = egui::Color32::from_rgb(185, 28, 28);
-    const BORDER: egui::Color32 = egui::Color32::from_rgb(100, 116, 139);
-    const FOCUS: egui::Color32 = egui::Color32::from_rgb(37, 99, 235);
-}
 
 #[derive(Clone, Default)]
 struct TypingGroup {

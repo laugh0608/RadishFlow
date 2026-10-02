@@ -96,3 +96,4 @@ pub use state::{
 };
 
 pub use state::{DisplayUnitViewId, ViewDisplayUnits};
+pub use state::{InputDiscardScope, InputEditCheckpoint};

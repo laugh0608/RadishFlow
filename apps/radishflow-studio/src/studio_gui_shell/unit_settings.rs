@@ -9,7 +9,7 @@ pub(super) struct UnitSettingsState {
     pub default_units: Result<DisplayUnitSet, String>,
     pub pending_new: Option<Option<AuthoringCaseKind>>,
     default_path: PathBuf,
-    notice: Option<String>,
+    notice: Option<ProjectOpenNotice>,
     recovery_required: bool,
     pending_recovery: Option<DisplayUnitSet>,
 }
@@ -101,12 +101,21 @@ impl ReadyAppState {
             Ok(message) => {
                 self.unit_settings.default_units = Ok(units);
                 self.unit_settings.recovery_required = false;
-                self.unit_settings.notice = Some(message);
+                self.unit_settings.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Info,
+                    title: "个人默认已保存".into(),
+                    detail: message,
+                });
             }
             Err(error) => {
-                self.unit_settings.notice = Some(format!(
-                    "默认保存失败：{error}。内存默认与工程设置保持不变。"
-                ));
+                if recover {
+                    self.unit_settings.pending_recovery = Some(units);
+                }
+                self.unit_settings.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Error,
+                    title: "个人默认保存失败".into(),
+                    detail: format!("{error}。内存默认与工程设置保持不变，可重试。"),
+                });
                 self.unit_settings.recovery_required =
                     rf_store::read_unit_defaults(&self.unit_settings.default_path).is_err();
             }
@@ -150,6 +159,7 @@ impl ReadyAppState {
                 ui.heading("恢复个人单位默认");
                 ui.label("将先备份原默认文件，再用当前已应用的项目单位集替换。备份或替换失败时保留可重试状态。");
                 ui.label(self.unit_settings.default_path.display().to_string());
+                if let Some(notice) = &self.unit_settings.notice { render_project_notice(ui, notice); }
                 if ui.button("备份并替换默认").clicked() { self.save_unit_default(true); }
                 if ui.button("取消").clicked() { self.unit_settings.pending_recovery = None; }
             });
@@ -211,27 +221,19 @@ impl ReadyAppState {
                     ui.end_row();
                 }
             });
-            ui.label(format!(
-                "工程待保存：{} · 显示设置待保存：{} · 未提交输入：{}",
-                if document.save_state.document_dirty {
-                    "有"
-                } else {
-                    "无"
-                },
-                if document.save_state.presentation_dirty {
-                    "有"
-                } else {
-                    "无"
-                },
-                document.save_state.pending_input_count
-            ));
+            render_project_save_state(ui, &document.save_state, self.locale);
+            if units != *document.presentation.display_units() {
+                super::state_presentation::light_state_surface(ui, |ui| {
+                    ui.colored_label(super::state_presentation::StudioStateTokens::SECONDARY, "当前选择尚未应用；应用后才进入显示设置保存状态。");
+                });
+            }
             ui.horizontal(|ui| {
                 if ui.button("应用显示设置").clicked() {
                     match self.apply_presentation_command(ProjectPresentationCommand::Apply(
                         units.clone(),
                     )) {
                         Ok(()) => close = true,
-                        Err(error) => self.unit_settings.notice = Some(error.to_string()),
+                        Err(error) => self.unit_settings.notice = Some(ProjectOpenNotice { level: ProjectOpenNoticeLevel::Error, title: "显示设置未应用".into(), detail: error.to_string() }),
                     }
                 }
                 if ui.button("取消").clicked() {
@@ -269,7 +271,7 @@ impl ReadyAppState {
                                     .display_units()
                                     .clone()
                             }
-                            Err(error) => self.unit_settings.notice = Some(error.to_string()),
+                            Err(error) => self.unit_settings.notice = Some(ProjectOpenNotice { level: ProjectOpenNoticeLevel::Error, title: "显示设置未修改".into(), detail: error.to_string() }),
                         }
                     }
                 }
@@ -292,8 +294,8 @@ impl ReadyAppState {
             {
                 self.request_unit_default_recovery();
             }
-            if let Some(message) = &self.unit_settings.notice {
-                ui.label(message);
+            if let Some(notice) = &self.unit_settings.notice {
+                render_project_notice(ui, notice);
             }
         });
         self.unit_settings.draft = if close || response.should_close() {
