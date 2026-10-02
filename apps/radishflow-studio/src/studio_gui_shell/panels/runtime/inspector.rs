@@ -694,33 +694,35 @@ fn localized_inspector_constraint<'a>(
     }
 
     match text {
-        "Unit K; positive finite source outlet temperature; commit syncs the Feed outlet template." => {
-            std::borrow::Cow::Borrowed("单位 K；输入正数，提交后同步 Feed outlet。")
+        "Absolute source outlet temperature must be finite and above 0 K; commit syncs the Feed outlet template." => {
+            std::borrow::Cow::Borrowed("绝对温度须为有限值且高于 0 K；提交后同步 Feed 出口。")
         }
-        "Unit K; positive finite flash temperature; commit syncs liquid/vapor outlet templates." => {
-            std::borrow::Cow::Borrowed("单位 K；输入正数，提交后同步液相 / 气相出口。")
+        "Absolute flash temperature must be finite and above 0 K; commit syncs liquid/vapor outlet templates." => {
+            std::borrow::Cow::Borrowed("绝对温度须为有限值且高于 0 K；提交后同步液相 / 气相出口。")
         }
-        "Unit K; positive finite outlet temperature; commit syncs the outlet stream template." => {
-            std::borrow::Cow::Borrowed("单位 K；输入正数，提交后同步出口流股。")
+        "Absolute outlet temperature must be finite and above 0 K; commit syncs the outlet stream template." => {
+            std::borrow::Cow::Borrowed("绝对温度须为有限值且高于 0 K；提交后同步出口流股。")
         }
-        "Unit Pa; positive finite source outlet pressure; commit syncs the Feed outlet template." => {
-            std::borrow::Cow::Borrowed("单位 Pa；输入正数，提交后同步 Feed outlet。")
+        "Absolute source outlet pressure must be finite and above 0 Pa; commit syncs the Feed outlet template." => {
+            std::borrow::Cow::Borrowed("绝对压力须为有限值且高于 0 Pa；提交后同步 Feed 出口。")
         }
-        "Unit Pa; positive finite flash pressure; commit syncs liquid/vapor outlet templates." => {
-            std::borrow::Cow::Borrowed("单位 Pa；输入正数，提交后同步液相 / 气相出口。")
+        "Absolute flash pressure must be finite and above 0 Pa; commit syncs liquid/vapor outlet templates." => {
+            std::borrow::Cow::Borrowed("绝对压力须为有限值且高于 0 Pa；提交后同步液相 / 气相出口。")
         }
         _ => {
             if let Some(limit) = text.strip_prefix(
-                "Unit Pa; positive finite outlet pressure; cannot exceed connected inlet pressure. Inlet limit: ",
+                "Absolute outlet pressure must be finite and above 0 Pa; cannot exceed connected inlet pressure. Inlet limit: ",
             ) {
                 return std::borrow::Cow::Owned(format!(
-                    "单位 Pa；输入正数，不能高于已连接入口压力。入口上限: {limit}"
+                    "绝对压力须为有限值且高于 0 Pa，不能高于已连接入口压力。入口上限: {limit}"
                 ));
             }
             if text
-                == "Unit Pa; positive finite outlet pressure; cannot exceed connected inlet pressure."
+                == "Absolute outlet pressure must be finite and above 0 Pa; cannot exceed connected inlet pressure."
             {
-                return std::borrow::Cow::Borrowed("单位 Pa；输入正数，不能高于已连接入口压力。");
+                return std::borrow::Cow::Borrowed(
+                    "绝对压力须为有限值且高于 0 Pa，不能高于已连接入口压力。",
+                );
             }
             locale.runtime_label(text)
         }

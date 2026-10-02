@@ -1,5 +1,7 @@
 use super::*;
 
+mod field_matrix;
+
 #[test]
 fn legacy_si_inspector_commands_keep_explicit_units() {
     let mut app = ready_app_state(&synced_workspace_config());

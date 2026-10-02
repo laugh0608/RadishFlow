@@ -43,6 +43,7 @@
 
 - 恢复原生控制后，中文浅色 Feed 压力样本验证未完成 / 错误 / 焦点组合、三类保存摘要、关闭保护及三类历史；项目显示变更保持当前结果，物理提交使结果过期。只覆盖 VA-02 / 04 / 05 / 10 / 11 的部分组合。
 - 修复输入、项目及检查器单位菜单的匿名原生节点，现暴露作用域、量、当前值与组合期间禁用状态；[AccessKit 回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/unit_accessibility.rs) 与 macOS 原生树复核一致。快捷键修饰键时序另有 [回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/keyboard_events.rs)，实窗 ⌘Q / ⌘K、Tab → Enter、拼音组合通过抽样。
+- 随后补齐首批 13 类字段原生提交 / 保存重开，修复继承值误计草稿与温压约束提示，覆盖 VA-02 / 04 / 05 / 11 的增量样本；[呈现回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/runtime/numeric_field_presentation.rs) 与 [字段矩阵证据](../units/input-drafts-and-interactions.md#i5-首批字段矩阵与呈现一致性) 区分 26 个中英文组件场景与原生语言抽样。
 - 原生树检查没有验证 VoiceOver 播报；未做运行态对比测量、系统缩放、完整中英文 / 窄栏及灰度 / 色觉矩阵，不据此声明完整 VA 通过。详细证据见 [W40](../../devlogs/2026-09/2026-W40.md#2026-10-02-u2-i5-首轮原生验收与修复)。
 
 ## 待决策清单

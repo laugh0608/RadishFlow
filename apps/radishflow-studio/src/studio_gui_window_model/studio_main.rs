@@ -618,10 +618,24 @@ fn module_settings_parameter_summary(
     }
 
     let total_field_count = fields.len();
-    let dirty_field_count = fields.iter().filter(|field| field.is_dirty).count();
+    let dirty_field_count = fields
+        .iter()
+        .filter(|field| match &field.numeric {
+            Some(Ok(numeric)) => numeric.pending,
+            Some(Err(_)) => false,
+            None => field.is_dirty,
+        })
+        .count();
     let invalid_field_count = fields
         .iter()
-        .filter(|field| field.status_label == "Invalid")
+        .filter(|field| match &field.numeric {
+            Some(Ok(numeric)) => matches!(
+                numeric.issue,
+                Some(rf_ui::NumericFieldIssue::Conflict | rf_ui::NumericFieldIssue::Rejected(_))
+            ),
+            Some(Err(_)) => true,
+            None => field.status_label == "Invalid",
+        })
         .count();
     let invalid_notice_count = notices
         .iter()
@@ -642,9 +656,13 @@ fn module_settings_parameter_summary(
         format!(
             "{total_field_count} parameter field(s), {dirty_field_count} draft(s), {issue_count} issue(s); fix invalid values before committing."
         )
-    } else if dirty_field_count > 0 {
+    } else if batch_commit_available {
         format!(
             "{total_field_count} parameter field(s), {dirty_field_count} draft(s), ready for batch commit."
+        )
+    } else if dirty_field_count > 0 {
+        format!(
+            "{total_field_count} parameter field(s), {dirty_field_count} draft(s); finish editing before batch commit."
         )
     } else {
         format!("{total_field_count} parameter field(s), all synced with the current document.")

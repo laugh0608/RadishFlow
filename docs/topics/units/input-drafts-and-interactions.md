@@ -8,7 +8,7 @@
 读者：字段控件、输入事务、单位集、交互设计与验证维护者。
 不包含：已冻结的控件 API、持久化 schema 或已交付交互声明。
 
-父专题：[单位系统](../units-and-quantity-system.md)。状态：U2 交互与 Pencil 局部画板已于 2026-09-23 获项目所有者认可；I3 会话 / 事务及 I4 控件、历史、组合输入、视图覆盖与统一离开确认已接通；2026-10-02 完成 I5 首轮 macOS 原生抽样，完整矩阵待续。
+父专题：[单位系统](../units-and-quantity-system.md)。状态：U2 交互与 Pencil 局部画板已于 2026-09-23 获项目所有者认可；I3 会话 / 事务及 I4 控件、历史、组合输入、视图覆盖与统一离开确认已接通；2026-10-02 完成 I5 首轮 macOS 原生抽样及首批 13 类字段提交 / 保存重开，完整交互与可访问性矩阵待续。
 
 ## 值与草稿的边界
 
@@ -195,4 +195,12 @@ I3 前 [共享输入事务](../../../crates/rf-ui/src/state/input_commands.rs) �
 
 实窗发现并修复两处缺口：平台快捷键按键事件与修饰键释放同帧时，`⌘Q` / `⌘K` 必须按事件修饰键消费一次；输入、项目和检查器单位菜单必须提供明确的原生名称、作用域及当前值。回归分别见 [快捷键事件](../../../apps/radishflow-studio/src/studio_gui_shell/tests/keyboard_events.rs) 与 [可访问性树](../../../apps/radishflow-studio/src/studio_gui_shell/tests/unit_accessibility.rs)，修复后实窗复验通过。
 
-本轮是 UA-05—12 的局部证据；首批字段全覆盖、中英文 / 窄栏组合、更多输入法时序、VoiceOver、系统缩放及对比测量仍待验证，Windows / Linux 按阶段节点集中执行。原生可访问性树不等于读屏验收，详细样本与验证范围见 [W40](../../devlogs/2026-09/2026-W40.md#2026-10-02-u2-i5-首轮原生验收与修复)。
+首轮是 UA-05—12 的局部证据，详细样本见 [W40](../../devlogs/2026-09/2026-W40.md#2026-10-02-u2-i5-首轮原生验收与修复)。随后字段覆盖见下节；中英文 / 窄栏组合、更多输入法时序、VoiceOver、系统缩放及对比测量仍待验证，Windows / Linux 按阶段节点集中执行。原生可访问性树不等于读屏验收。
+
+### I5 首批字段矩阵与呈现一致性
+
+2026-10-02 补齐 13 类字段的 macOS 实窗非 SI 提交：Feed 流股温度 / 压力 / 摩尔流量，Feed、Heater、Cooler、Flash 温压，以及 Mixer / Valve 出口压力。四份隔离工程均保存、重开并重跑收敛，磁盘 SI 参数与出口模板同步；Cooler `-10 °C → 263.15 K` 证明物理正温约束不限制摄氏输入为正。中文覆盖 Feed / Heater / Cooler / Flash，英文覆盖 Mixer / Valve，尚未覆盖所有字段与两种语言的原生交叉组合。
+
+[字段矩阵回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/numeric_edits/field_matrix.rs) 另覆盖 13 类 × 中英文共 26 个组件场景：独立 SI 期望值、草稿不改工程 / 快照、Enter 提交、工程 Undo / Redo、保存重开及重跑。自动回归与实窗证据分别记录，不以组件场景代替输入设备验证。
+
+实窗发现并修复两处呈现问题：温压提示改为明确的 SI 物理边界，不再把 °C / bar 字段标为 K / Pa 输入；模块参数摘要消费数值会话的 `pending` 与类型化问题，继承但未编辑的值不计入草稿，未完成输入不显示“可批量提交”。[呈现回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/runtime/numeric_field_presentation.rs) 覆盖继承、仅切单位、本地撤销、未完成 / 非法输入及两种语言的约束提示；修复后原生复验通过。完整交互与可访问性矩阵仍待续，详见 [W40](../../devlogs/2026-09/2026-W40.md#2026-10-02-u2-i5-字段矩阵与呈现一致性)。

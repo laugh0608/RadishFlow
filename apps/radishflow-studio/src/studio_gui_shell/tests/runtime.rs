@@ -13,6 +13,8 @@ use radishflow_studio::{
 use rf_flash::estimate_bubble_dew_window;
 use rf_types::PhaseEquilibriumRegion;
 
+mod numeric_field_presentation;
+
 const REFERENCE_TEMPERATURE_K: f64 = 300.0;
 const REFERENCE_PRESSURE_PA: f64 = 100_000.0;
 const BOUNDARY_DELTA_K: f64 = 0.001;

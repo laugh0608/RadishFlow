@@ -1774,7 +1774,7 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
             field.key == "unit:heater-1:outlet_temperature_k"
                 && field.label == "Outlet temperature (K)"
                 && field.constraint_text.as_deref().is_some_and(|text| {
-                    text.contains("Unit K") && text.contains("positive finite outlet temperature")
+                    text.contains("above 0 K") && text.contains("outlet temperature must be finite")
                 })
                 && field.value_kind_label == "Number"
                 && field.status_label == "Synced"
@@ -2496,7 +2496,7 @@ fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_valve_
         field
             .constraint_text
             .as_deref()
-            .is_some_and(|text| text.contains("Unit Pa")
+            .is_some_and(|text| text.contains("above 0 Pa")
                 && text.contains("cannot exceed connected inlet pressure")
                 && text.contains("700000 Pa"))
     );
@@ -2554,7 +2554,7 @@ fn studio_gui_window_model_surfaces_heater_pressure_parameter() {
         pressure
             .constraint_text
             .as_deref()
-            .is_some_and(|text| text.contains("Unit Pa")
+            .is_some_and(|text| text.contains("above 0 Pa")
                 && text.contains("cannot exceed connected inlet pressure")
                 && text.contains("120000 Pa"))
     );
@@ -2612,7 +2612,7 @@ fn studio_gui_window_model_surfaces_unit_parameter_constraint_for_invalid_heater
         field
             .constraint_text
             .as_deref()
-            .is_some_and(|text| text.contains("Unit Pa")
+            .is_some_and(|text| text.contains("above 0 Pa")
                 && text.contains("cannot exceed connected inlet pressure")
                 && text.contains("120000 Pa"))
     );
@@ -2665,11 +2665,14 @@ fn studio_gui_window_model_surfaces_flash_drum_parameters() {
         "inspector.update_stream_draft:unit:flash-1:outlet_temperature_k"
     );
     assert!(temperature_field.commit_command_id.is_none());
-    assert!(temperature_field.constraint_text.as_deref().is_some_and(
-        |text| text.contains("Unit K")
-            && text.contains("positive finite flash temperature")
-            && text.contains("liquid/vapor outlet templates")
-    ));
+    assert!(
+        temperature_field
+            .constraint_text
+            .as_deref()
+            .is_some_and(|text| text.contains("above 0 K")
+                && text.contains("flash temperature must be finite")
+                && text.contains("liquid/vapor outlet templates"))
+    );
     assert_eq!(field.label, "Flash pressure (Pa)");
     assert_eq!(field.value_kind_label, "Number");
     assert_eq!(field.status_label, "Synced");
@@ -2682,8 +2685,8 @@ fn studio_gui_window_model_surfaces_flash_drum_parameters() {
         field
             .constraint_text
             .as_deref()
-            .is_some_and(|text| text.contains("Unit Pa")
-                && text.contains("positive finite flash pressure")
+            .is_some_and(|text| text.contains("above 0 Pa")
+                && text.contains("flash pressure must be finite")
                 && text.contains("liquid/vapor outlet templates")
                 && !text.contains("cannot exceed connected inlet pressure"))
     );
@@ -2730,11 +2733,14 @@ fn studio_gui_window_model_surfaces_feed_source_parameters() {
         temperature_field.commit_command_id.as_deref(),
         Some("inspector.commit_stream_draft:unit:feed-1:outlet_temperature_k")
     );
-    assert!(temperature_field.constraint_text.as_deref().is_some_and(
-        |text| text.contains("Unit K")
-            && text.contains("positive finite source outlet temperature")
-            && text.contains("Feed outlet template")
-    ));
+    assert!(
+        temperature_field
+            .constraint_text
+            .as_deref()
+            .is_some_and(|text| text.contains("above 0 K")
+                && text.contains("source outlet temperature must be finite")
+                && text.contains("Feed outlet template"))
+    );
 
     assert_eq!(pressure_field.label, "Source pressure (Pa)");
     assert_eq!(pressure_field.value_kind_label, "Number");
@@ -2748,14 +2754,11 @@ fn studio_gui_window_model_surfaces_feed_source_parameters() {
         pressure_field.commit_command_id.as_deref(),
         Some("inspector.commit_stream_draft:unit:feed-1:outlet_pressure_pa")
     );
-    assert!(
-        pressure_field
-            .constraint_text
-            .as_deref()
-            .is_some_and(|text| text.contains("Unit Pa")
-                && text.contains("positive finite source outlet pressure")
-                && text.contains("Feed outlet template"))
-    );
+    assert!(pressure_field.constraint_text.as_deref().is_some_and(
+        |text| text.contains("above 0 Pa")
+            && text.contains("source outlet pressure must be finite")
+            && text.contains("Feed outlet template")
+    ));
 }
 
 #[test]
@@ -2794,8 +2797,8 @@ fn studio_gui_window_model_surfaces_mixer_pressure_parameter() {
         field
             .constraint_text
             .as_deref()
-            .is_some_and(|text| text.contains("Unit Pa")
-                && text.contains("positive finite outlet pressure")
+            .is_some_and(|text| text.contains("above 0 Pa")
+                && text.contains("outlet pressure must be finite")
                 && text.contains("cannot exceed connected inlet pressure")
                 && text.contains("Inlet limit"))
     );

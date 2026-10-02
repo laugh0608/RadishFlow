@@ -97,7 +97,9 @@
 
 `numeric_input.rs` 集中消费 `StudioStateTokens` 浅色角色：指定数值蓝字并附来源文字；继承 / 缺失有明确说明；未提交和未完成使用中性文字；错误有原因与内边框，焦点用外环并留白隔开。字段区显式白底 / 浅色控件，避免跟随 OS 暗色时仍使用浅色评审前景。2026-10-02 设置 / 保存迁移见下节；其他消费者按阶段接入。
 
-TextEdit 的 `WidgetInfo` 输出字段名、输入单位、未提交 / 问题说明及原文；这只证明应用输出，尚未验证 macOS accessibility bridge 或读屏实际朗读。可用性、主题、缩放和键盘验收仍须按 [VA](migration-and-acceptance.md#验收场景) 执行。跨帧用例见 [U2 证据](../units/input-drafts-and-interactions.md#i4-首批控件与验证范围)，不将合成事件当成真实输入法或菜单验收。
+TextEdit 的 `WidgetInfo` 输出字段名、输入单位、未提交 / 问题说明及原文；I5 已抽样复核 macOS 原生树，读屏实际朗读仍待验。可用性、主题、缩放和键盘验收仍须按 [VA](migration-and-acceptance.md#验收场景) 执行。跨帧用例见 [U2 证据](../units/input-drafts-and-interactions.md#i4-首批控件与验证范围)，不将合成事件当成真实输入法或菜单验收。
+
+2026-10-02 I5 字段验收后，模块参数摘要改为消费数值会话的 `pending` 与类型化问题；未编辑的继承值不计为草稿，未完成输入不标为可批量提交。温压提示明确表述 SI 物理边界，避免与当前输入单位冲突；[回归与原生证据](../units/input-drafts-and-interactions.md#i5-首批字段矩阵与呈现一致性) 已补，不改变来源、物理约束或求解状态。
 
 
 ## V0 设置与保存提示实施
