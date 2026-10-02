@@ -333,20 +333,20 @@ impl ReadyAppState {
             ),
         });
         response.widget_info(|| {
-            let mut info = egui::WidgetInfo::labeled(
-                egui::WidgetType::TextEdit,
-                true,
-                format!(
-                    "{label} {} · {}{}",
-                    field.input_unit.definition().symbol,
-                    if field.pending {
-                        if zh { "未提交" } else { "Uncommitted" }
-                    } else {
-                        ""
-                    },
-                    issue_text.as_deref().unwrap_or("")
-                ),
-            );
+            let mut accessible_label = format!("{label} {}", field.input_unit.definition().symbol);
+            if field.pending {
+                accessible_label.push_str(if zh {
+                    " · 未提交"
+                } else {
+                    " · Uncommitted"
+                });
+            }
+            if let Some(issue) = &issue_text {
+                accessible_label.push_str(" · ");
+                accessible_label.push_str(issue);
+            }
+            let mut info =
+                egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, accessible_label);
             info.current_text_value = Some(field.text.clone());
             info
         });
@@ -364,36 +364,37 @@ impl ReadyAppState {
         ui.horizontal_wrapped(|ui| {
             ui.label(if zh { "本次输入" } else { "Input unit" });
             ui.add_enabled_ui(!ime_guard, |ui| {
-                egui::ComboBox::from_id_salt(id.with("unit"))
-                    .selected_text(field.input_unit.definition().symbol)
-                    .show_ui(ui, |ui| {
-                        for unit in ALL_UNITS {
-                            if from_canonical(1.0, field.quantity, *unit).is_ok()
-                                && ui
-                                    .selectable_label(
-                                        *unit == field.input_unit,
-                                        unit.definition().symbol,
-                                    )
-                                    .clicked()
-                            {
-                                selected_unit = Some(*unit);
-                            }
-                        }
+                let choices: Vec<_> = ALL_UNITS
+                    .iter()
+                    .filter(|unit| from_canonical(1.0, field.quantity, **unit).is_ok())
+                    .map(|unit| (*unit, unit.definition().symbol))
+                    .collect();
+                let accessible_label = if zh {
+                    format!("{label}本次输入单位")
+                } else {
+                    format!("{label} input unit")
+                };
+                let selection = super::unit_selector::unit_selector(
+                    ui,
+                    id.with("unit"),
+                    &accessible_label,
+                    field.input_unit,
+                    &choices,
+                );
+                selected_unit = selection.inner;
+                let selector_focused = selection.response.has_focus()
+                    || ui.memory(|memory| memory.had_focus_last_frame(selection.response.id));
+                if !popup_open
+                    && selector_focused
+                    && !ime_guard
+                    && ui.input_mut(|input| {
+                        input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)
                     })
-                    .response
-                    .widget_info(|| {
-                        let mut info = egui::WidgetInfo::labeled(
-                            egui::WidgetType::ComboBox,
-                            ui.is_enabled(),
-                            if zh {
-                                format!("{label}本次输入单位")
-                            } else {
-                                format!("{label} input unit")
-                            },
-                        );
-                        info.current_text_value = Some(field.input_unit.definition().symbol.into());
-                        info
-                    });
+                {
+                    self.cancel_numeric_field(&mut field);
+                    response.request_focus();
+                    group = TypingGroup::default();
+                }
             });
         });
         if let Some(unit) = selected_unit {

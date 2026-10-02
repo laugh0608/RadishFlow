@@ -101,3 +101,60 @@ fn project_and_view_unit_selectors_expose_distinct_scope_and_current_selection()
         );
     }
 }
+
+#[test]
+fn numeric_accessible_name_separates_unit_pending_state_and_issue() {
+    for (locale, label, pending, incomplete) in [
+        (StudioShellLocale::ZhCn, "压力", "未提交", "输入未完成"),
+        (
+            StudioShellLocale::En,
+            "Pressure",
+            "Uncommitted",
+            "Input incomplete",
+        ),
+    ] {
+        let mut app = ready_app_state(&synced_workspace_config());
+        app.locale = locale;
+        app.dispatch_ui_command("inspector.focus_stream:stream-feed");
+        let key = "stream:stream-feed:pressure_pa";
+        let mut field = app
+            .platform_host
+            .snapshot()
+            .runtime
+            .active_inspector_detail
+            .unwrap()
+            .property_fields
+            .into_iter()
+            .find(|field| field.key == key)
+            .unwrap()
+            .numeric
+            .unwrap()
+            .unwrap();
+        for edited in [false, true] {
+            if edited {
+                app.edit_numeric_field(
+                    &mut field,
+                    rf_ui::NumericEditEvent::ReplaceText("1e-".into()),
+                );
+            }
+            let tree = accessibility_frame(|ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    app.render_numeric_property_field(ui, key, label, &field);
+                });
+            });
+            let expected = if edited {
+                format!("{label} Pa · {pending} · {incomplete}")
+            } else {
+                format!("{label} Pa")
+            };
+            let input = tree
+                .nodes
+                .iter()
+                .map(|(_, node)| node)
+                .find(|node| node.role() == Role::TextInput)
+                .unwrap();
+            assert_eq!(input.label(), Some(expected.as_str()));
+            assert_eq!(input.value(), Some(field.text.as_str()));
+        }
+    }
+}

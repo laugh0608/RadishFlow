@@ -202,33 +202,20 @@ impl ReadyAppState {
                         QuantityKind::MolarEnthalpy => "摩尔焓",
                     };
                     ui.label(label);
-                    egui::ComboBox::from_id_salt(quantity.definition().id)
-                        .selected_text(selected.definition().symbol)
-                        .show_ui(ui, |ui| {
-                            for unit in ALL_UNITS {
-                                let mut candidate = units.clone();
-                                if candidate.set_unit(quantity, *unit).is_ok()
-                                    && ui
-                                        .selectable_label(
-                                            *unit == selected,
-                                            unit.definition().symbol,
-                                        )
-                                        .clicked()
-                                {
-                                    units = candidate;
-                                }
-                            }
-                        })
-                        .response
-                        .widget_info(|| {
-                            let mut info = egui::WidgetInfo::labeled(
-                                egui::WidgetType::ComboBox,
-                                ui.is_enabled(),
-                                format!("项目显示单位：{label}"),
-                            );
-                            info.current_text_value = Some(selected.definition().symbol.into());
-                            info
-                        });
+                    let choices: Vec<_> = ALL_UNITS
+                        .iter()
+                        .filter(|unit| units.clone().set_unit(quantity, **unit).is_ok())
+                        .map(|unit| (*unit, unit.definition().symbol))
+                        .collect();
+                    if let Some(unit) = super::unit_selector::unit_selector(
+                        ui,
+                        quantity.definition().id,
+                        &format!("项目显示单位：{label}"),
+                        selected,
+                        &choices,
+                    ).inner {
+                        units.set_unit(quantity, unit).expect("menu contains valid units");
+                    }
                     ui.end_row();
                 }
             });

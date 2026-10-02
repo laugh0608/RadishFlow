@@ -730,5 +730,6 @@ mod input_departure;
 mod keyboard_events;
 mod numeric_edits;
 mod unit_accessibility;
+mod unit_menu_keyboard;
 mod unit_presentation;
 mod view_units;

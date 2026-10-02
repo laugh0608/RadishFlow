@@ -48,6 +48,7 @@ mod project_save;
 mod result_export;
 mod state_presentation;
 mod unit_deletion;
+mod unit_selector;
 mod unit_settings;
 mod utils;
 mod variable_browser;

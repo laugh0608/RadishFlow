@@ -1,6 +1,7 @@
 use super::*;
 
 mod field_matrix;
+mod layout;
 
 #[test]
 fn legacy_si_inspector_commands_keep_explicit_units() {

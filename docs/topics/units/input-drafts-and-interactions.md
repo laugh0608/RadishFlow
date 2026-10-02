@@ -204,3 +204,13 @@ I3 前 [共享输入事务](../../../crates/rf-ui/src/state/input_commands.rs) �
 [字段矩阵回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/numeric_edits/field_matrix.rs) 另覆盖 13 类 × 中英文共 26 个组件场景：独立 SI 期望值、草稿不改工程 / 快照、Enter 提交、工程 Undo / Redo、保存重开及重跑。自动回归与实窗证据分别记录，不以组件场景代替输入设备验证。
 
 实窗发现并修复两处呈现问题：温压提示改为明确的 SI 物理边界，不再把 °C / bar 字段标为 K / Pa 输入；模块参数摘要消费数值会话的 `pending` 与类型化问题，继承但未编辑的值不计入草稿，未完成输入不显示“可批量提交”。[呈现回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/runtime/numeric_field_presentation.rs) 覆盖继承、仅切单位、本地撤销、未完成 / 非法输入及两种语言的约束提示；修复后原生复验通过。完整交互与可访问性矩阵仍待续，详见 [W40](../../devlogs/2026-09/2026-W40.md#2026-10-02-u2-i5-字段矩阵与呈现一致性)。
+
+### I5 单位菜单键盘与窄栏验证
+
+2026-10-02 实窗复现单位菜单第二次向下键把焦点移到菜单外“撤销输入”，回车误撤销候选。输入、项目和检查器显示单位现共用 [单位选择器](../../../apps/radishflow-studio/src/studio_gui_shell/unit_selector.rs)：展开时焦点留在选择器，上下键、Tab / Shift+Tab 循环选项，Home / End 到首尾，Enter / Space 选择；Escape 仅关菜单并恢复选择器焦点，数值字段再次 Escape 才取消候选并回到输入框。关闭后 Tab 继续到后续控件。可访问性节点标明展开状态、受控菜单和当前活动选项，候选移动本身不改单位或工程。
+
+[键盘回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/unit_menu_keyboard.rs) 覆盖焦点、取消、输入单位换算、显式应用及两类显示设置草稿；修复前的越界焦点和 Escape 丢焦回归失败，修复后通过。macOS 实窗验证输入 `1.4 bar → 140 kPa` 后 Tab / Enter 显式提交 `140000 Pa`，菜单 Escape 保留候选、Shift+Tab 返回输入；项目和视图菜单经 Home / End / Enter 选择后按 Tab 到应用，均保持数值草稿。显式 kPa 下 `1.4 bar` 后缀冲突保留原文且禁止应用，显示设置变化不重新解释该草稿。
+
+[布局回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/numeric_edits/layout.rs) 使用实际字体，检查中文 / 英文 × 400 / 280 逻辑像素 × 100% / 150% / 200% 字体大小 × 未编辑继承 / 有效 / 未完成 / 非法共 48 个组件场景，文字未横向越出裁剪区。现有原生右栏不可拖拽到 280；组件窄栏和字体放大不等于整窗、系统缩放或读屏通过。[可访问性回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/unit_accessibility.rs) 同时检查字段名称、输入单位、未提交及错误提示的文字分隔。
+
+剩余 I5 包括完整原生交互 / 语言组合、VoiceOver、系统缩放与运行态色对 / 灰度 / 色觉矩阵。本次还发现拒绝详情仍显示内部错误名称，英文模式的项目单位弹窗仍为中文；后续应从结构化原因与本地化资源修复，不解析错误字符串补翻译。详细环境、保存读回及验证命令见 [W40](../../devlogs/2026-09/2026-W40.md#2026-10-02-u2-i5-单位菜单键盘与窄栏验证)。
