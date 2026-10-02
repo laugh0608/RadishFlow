@@ -10,7 +10,7 @@
 
 父专题：[颜色与状态系统](../color-and-state-system.md)。VIS / VA / VD 编号稳定且不复用，替代保留去向。需求正文只在规范归属维护，状态与证据在本表维护，历史记录归周志。
 
-首批设计、映射与测量方向已于 2026-09-23 获接受，局部画板亦获认可；2026-09-28 首批数值字段已接通有限类型化接口、浅色角色与可访问性信息输出，合成事件回归通过。2026-10-02 设置 / 保存已接通共享角色，其他消费者待迁移，完整 VA 和原生可访问性待验。VIS-12 的文档冲突已修正，但全局新布局 / 产品仍待评审和验证，不能据此标全项完成。后续按消费者和阶段分别记录实施、验证、代码 / 测试、日期与证据。
+首批设计、映射与测量方向已于 2026-09-23 获接受，局部画板亦获认可；2026-09-28 首批数值字段已接通有限类型化接口、浅色角色与可访问性信息输出，合成事件回归通过。2026-10-02 设置 / 保存已接通共享角色，I5 首轮已补 macOS 键盘与原生可访问性树抽样，完整 VA 仍待验。VIS-12 的文档冲突已修正，但全局新布局 / 产品仍待评审和验证，不能据此标全项完成。后续按消费者和阶段分别记录实施、验证、代码 / 测试、日期与证据。
 
 ## 要求与场景
 
@@ -25,7 +25,7 @@
 | VIS-07 | [消息身份与应用通知映射](control-and-canvas-mapping.md) | V0 / N1 | [VA-07](migration-and-acceptance.md#验收场景) | 应用通知已接入类型化角色；全局问题身份 / 计数仍待 N1；见下方证据 |
 | VIS-08 | [token 与主题一致性](theme-and-accessibility.md) | V0 / 随主题 | [VA-08](migration-and-acceptance.md#验收场景) | 局部浅色 token 已接入；全局主题一致性待验；见下方证据 |
 | VIS-09 | [非颜色表达与对比](theme-and-accessibility.md) | V0 | [VA-09](migration-and-acceptance.md#验收场景) | 来源 / 草稿 / 错误文字与焦点边界已接入；运行态测量、灰度 / 色觉模拟待验；见下方证据 |
-| VIS-10 | [键盘、文本与减少动画](theme-and-accessibility.md) | V0；后续动画 | [VA-10](migration-and-acceptance.md#验收场景) | 会话键盘合成事件与 WidgetInfo 输出已接通；真实菜单、读屏和缩放待验；见下方证据 |
+| VIS-10 | [键盘、文本与减少动画](theme-and-accessibility.md) | V0；后续动画 | [VA-10](migration-and-acceptance.md#验收场景) | macOS 单位菜单 / 键盘、拼音组合和原生名称抽样通过；完整矩阵、读屏和缩放待验；见下方证据 |
 | VIS-11 | [分批迁移与门禁保持](migration-and-acceptance.md) | U2 / U3 / 辅助 | [VA-11](migration-and-acceptance.md#验收场景) | 已记录首批数值迁移与未迁移范围；完整消费者门禁验收待续；见下方证据 |
 | VIS-12 | [按工程任务分配主区域](migration-and-acceptance.md) | R0 / R1 | [VA-12](migration-and-acceptance.md#验收场景) | 待实现 / 待验证；— |
 
@@ -38,6 +38,12 @@
 
 - [共享角色与保存摘要](../../../apps/radishflow-studio/src/studio_gui_shell/state_presentation.rs) 消费 `ProjectSaveState` 和类型化通知，覆盖项目 / 视图单位设置、保存操作提示与关闭摘要。草稿、呈现保存和工程保存分别表达，警告 / 错误不由翻译后的标签推断。
 - [离开确认回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/input_departure.rs) 和 [保存 / 默认回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/unit_presentation.rs) 覆盖失败保留、保存不清草稿及默认恢复重试；证据归 W40。实窗控制连接超时，未新增实际对比、读屏或系统缩放通过声明。
+
+### 2026-10-02 I5 原生抽样证据
+
+- 恢复原生控制后，中文浅色 Feed 压力样本验证未完成 / 错误 / 焦点组合、三类保存摘要、关闭保护及三类历史；项目显示变更保持当前结果，物理提交使结果过期。只覆盖 VA-02 / 04 / 05 / 10 / 11 的部分组合。
+- 修复输入、项目及检查器单位菜单的匿名原生节点，现暴露作用域、量、当前值与组合期间禁用状态；[AccessKit 回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/unit_accessibility.rs) 与 macOS 原生树复核一致。快捷键修饰键时序另有 [回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/keyboard_events.rs)，实窗 ⌘Q / ⌘K、Tab → Enter、拼音组合通过抽样。
+- 原生树检查没有验证 VoiceOver 播报；未做运行态对比测量、系统缩放、完整中英文 / 窄栏及灰度 / 色觉矩阵，不据此声明完整 VA 通过。详细证据见 [W40](../../devlogs/2026-09/2026-W40.md#2026-10-02-u2-i5-首轮原生验收与修复)。
 
 ## 待决策清单
 

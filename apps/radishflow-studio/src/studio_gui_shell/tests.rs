@@ -727,6 +727,8 @@ fn run_with_key_press_and_focus<R>(
 mod unit_rename;
 
 mod input_departure;
+mod keyboard_events;
 mod numeric_edits;
+mod unit_accessibility;
 mod unit_presentation;
 mod view_units;

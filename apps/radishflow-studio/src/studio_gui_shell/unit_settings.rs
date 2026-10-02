@@ -192,7 +192,7 @@ impl ReadyAppState {
             let choices: Vec<_> = units.entries().collect();
             egui::Grid::new("project-display-unit-choices").show(ui, |ui| {
                 for (quantity, selected) in choices {
-                    ui.label(match quantity {
+                    let label = match quantity {
                         QuantityKind::AbsoluteTemperature => "绝对温度",
                         QuantityKind::TemperatureDifference => "温差",
                         QuantityKind::AbsolutePressure => "绝对压力",
@@ -200,7 +200,8 @@ impl ReadyAppState {
                         QuantityKind::MoleFraction => "摩尔分数",
                         QuantityKind::MolarPhaseFraction => "相摩尔分率",
                         QuantityKind::MolarEnthalpy => "摩尔焓",
-                    });
+                    };
+                    ui.label(label);
                     egui::ComboBox::from_id_salt(quantity.definition().id)
                         .selected_text(selected.definition().symbol)
                         .show_ui(ui, |ui| {
@@ -217,6 +218,16 @@ impl ReadyAppState {
                                     units = candidate;
                                 }
                             }
+                        })
+                        .response
+                        .widget_info(|| {
+                            let mut info = egui::WidgetInfo::labeled(
+                                egui::WidgetType::ComboBox,
+                                ui.is_enabled(),
+                                format!("项目显示单位：{label}"),
+                            );
+                            info.current_text_value = Some(selected.definition().symbol.into());
+                            info
                         });
                     ui.end_row();
                 }

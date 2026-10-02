@@ -379,6 +379,20 @@ impl ReadyAppState {
                                 selected_unit = Some(*unit);
                             }
                         }
+                    })
+                    .response
+                    .widget_info(|| {
+                        let mut info = egui::WidgetInfo::labeled(
+                            egui::WidgetType::ComboBox,
+                            ui.is_enabled(),
+                            if zh {
+                                format!("{label}本次输入单位")
+                            } else {
+                                format!("{label} input unit")
+                            },
+                        );
+                        info.current_text_value = Some(field.input_unit.definition().symbol.into());
+                        info
                     });
             });
         });

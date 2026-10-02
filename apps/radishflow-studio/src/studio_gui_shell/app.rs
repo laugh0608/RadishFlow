@@ -1146,7 +1146,7 @@ impl ReadyAppState {
 
     pub(super) fn handle_quit_shortcut(&mut self, ctx: &egui::Context) -> bool {
         let quit_requested =
-            ctx.input(|input| input.modifiers.command && input.key_pressed(egui::Key::Q));
+            ctx.input_mut(|input| input.consume_key(egui::Modifiers::COMMAND, egui::Key::Q));
         if !quit_requested {
             return false;
         }
@@ -1162,7 +1162,7 @@ impl ReadyAppState {
             return false;
         }
         let toggle_requested =
-            ctx.input(|input| input.modifiers.command && input.key_pressed(egui::Key::K));
+            ctx.input_mut(|input| input.consume_key(egui::Modifiers::COMMAND, egui::Key::K));
         if toggle_requested {
             self.command_palette.toggle();
         }

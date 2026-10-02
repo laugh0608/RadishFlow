@@ -128,14 +128,25 @@ impl ReadyAppState {
                 ui.horizontal(|ui| {
                     ui.label(label);
                     let selected = draft.units.unit_for(quantity);
+                    let selection = selected.map_or(if zh { "跟随项目" } else { "Follow project" }, |unit| unit.definition().symbol);
                     egui::ComboBox::from_id_salt(quantity.definition().id)
-                        .selected_text(selected.map_or(if zh { "跟随项目" } else { "Follow project" }, |unit| unit.definition().symbol))
+                        .selected_text(selection)
                         .show_ui(ui, |ui| {
                             if ui.selectable_label(selected.is_none(), if zh { "跟随项目" } else { "Follow project" }).clicked() { draft.units.set_unit(quantity, None).expect("clear is valid"); }
                             for unit in ALL_UNITS {
                                 let mut candidate = draft.units.clone();
                                 if candidate.set_unit(quantity, Some(*unit)).is_ok() && ui.selectable_label(selected == Some(*unit), unit.definition().symbol).clicked() { draft.units = candidate; }
                             }
+                        })
+                        .response
+                        .widget_info(|| {
+                            let mut info = egui::WidgetInfo::labeled(
+                                egui::WidgetType::ComboBox,
+                                ui.is_enabled(),
+                                if zh { format!("检查器显示单位：{label}") } else { format!("Inspector display unit: {label}") },
+                            );
+                            info.current_text_value = Some(selection.into());
+                            info
                         });
                     ui.small(format!("{} {}", if zh { "项目" } else { "Project" }, snapshot.runtime.workspace_document.presentation.display_units().unit_for(quantity).definition().symbol));
                 });
