@@ -77,7 +77,7 @@ UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-p
 
 ### 单位与颜色状态
 
-[单位总纲](units-and-quantity-system.md) 下按四项职责维护，U1 / U2-I1 已实现，其余按追踪表标注；[颜色总纲](color-and-state-system.md) 下四个子专题均为 Draft。需求 / 场景 / 决策与证据分别由 [单位追踪](units/requirements-traceability.md) 和 [颜色追踪](color-state/requirements-traceability.md) 维护。
+[单位总纲](units-and-quantity-system.md) 下按四项职责维护，U1 已实现，U2-I1—I4 首批范围已接通、I5 验收待续，U3 / U4 未实现；[颜色总纲](color-and-state-system.md) 的 V0 已有局部实现，通用扩展和其余消费者仍待审定 / 迁移。逐项状态与证据分别由 [单位追踪](units/requirements-traceability.md) 和 [颜色追踪](color-state/requirements-traceability.md) 维护。
 
 | 一级专题 | 二级职责入口 |
 | --- | --- |

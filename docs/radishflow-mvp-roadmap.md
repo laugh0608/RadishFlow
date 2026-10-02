@@ -14,7 +14,7 @@
 
 每个迭代切片应明确用户价值、范围、非目标和退出标准；架构、接口与依赖变化按正常协作流程确认，发布与部署按专门流程验收。
 
-2026-09-16 确认新增 [单位系统](topics/units-and-quantity-system.md)、[规格分析与建模辅助](topics/modeling-assistance-and-specifications.md)、[设备设计与校核](topics/equipment-design-and-rating.md) 专题。B3-5 已完成本机无界面建模闭环，U1 单位基础已接通，下一实现切片为 U2 输入与单位集，其后贯通输出和规格基础；UI 功能分区重新评审与非 UI 基础工作衔接。具体新增顺序见下文，不表示新能力已实现。
+2026-09-16 确认新增 [单位系统](topics/units-and-quantity-system.md)、[规格分析与建模辅助](topics/modeling-assistance-and-specifications.md)、[设备设计与校核](topics/equipment-design-and-rating.md) 专题。B3-5 与 U1 已接通，U2-I1—I4 首批输入、保存及离开保护已实现，当前补 I5 综合验收，随后进入 U3 输出与规格基础。UI 分区重评与非 UI 基础工作衔接，后续未实现能力仍按下文切片推进。
 
 ## 第一阶段目标与成果
 

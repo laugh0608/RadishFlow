@@ -1,6 +1,6 @@
 # Studio 主工作台与空白项目建模主路径
 
-更新时间：2026-09-28
+更新时间：2026-10-02
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -20,7 +20,7 @@
 
 2026-09-28 确认 [统一变量与对象浏览器](variable-and-object-browser.md)：工程分类与变量树共用身份、查询和正式命令，后续支持停靠浏览、字段级双向定位、路径、关注与受控表格编辑。现有 B3-1—B3-5 实现边界仍由下文维护，新增 VB0—VB3 由该专题管理；VB0 衔接 R0 / R1，VB1 随 U3，VB2 依赖 U2 编辑闭环，不改变当前 U2 优先级。
 
-2026-09-16 已确认 [单位系统](units-and-quantity-system.md)、[规格与辅助](modeling-assistance-and-specifications.md)、[设备工程](equipment-design-and-rating.md)；旧 `.pen` 的功能分区进入 [重新评审](../architecture/studio-ui-topic-plan.md)。本专题继续管理现有工作流；新单位控件、规格提示及独立设备任务按对应专题接入同一状态 / 命令，不强行塞入旧检查器。B3-5 已接通无界面建模，U1 目录与转换已接通，下一步为 U2—U3→A1—A2→首个可信设备任务；U2-I1 / I2 保存与默认、I3 会话和 I4 首批控件 / 视图覆盖已接通，单位剩余交互及辅助 / 设备待续。
+2026-09-16 已确认 [单位系统](units-and-quantity-system.md)、[规格与辅助](modeling-assistance-and-specifications.md)、[设备工程](equipment-design-and-rating.md)；旧 `.pen` 分区进入 [重新评审](../architecture/studio-ui-topic-plan.md)。B3-5 无界面建模与 U1 已接通；U2-I1—I4 已覆盖保存 / 默认、数值会话、首批控件 / 视图覆盖和统一离开保护，I5 已补 macOS 字段、历史及可访问性抽样，完整矩阵待续。顺序保持 U2→U3→A1—A2→首个可信设备任务，新入口复用同一状态 / 命令。
 
 [工程基础与工况](engineering-basis-and-cases.md) 的 G0 同步进入 UI R0，评审共享条件、输入来源、工况、设备和结果的关系；后续目标反算与分层工程检查分别消费正式求解 / 诊断。现有单文档、SI 和 current 快照主路径不因规划改为已支持多案例历史或完整报告。
 

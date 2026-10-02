@@ -161,6 +161,6 @@ I1 格式采用外层项目版本 2 保存与 document 并列的呈现块；块�
 - `numeric_field_presentation_in_view` 与 `BeginInView` 分别按显式视图读取和初始化。已有同字段会话仍是唯一输入所有者：从另一视图打开或关闭原视图都不重写原文 / 输入单位；各视图的“提交后显示”按各自有效单位呈现。单位选择仍走 `NumericEditCommand`，不因显示覆盖而误标为用户显式选择输入单位。
 - 保存脏判断、工程 DTO 与个人默认仅消费项目 `display_units()`；视图覆盖不改变 revision、SI、快照或保存基线，不写入工程文件 / 布局 sidecar。跨窗口带视图身份的命令在窗口分派处拒绝错误作用域。
 
-[领域回归](../../../crates/rf-ui/src/state/project_presentation.rs) 覆盖非法组合原子拒绝、逐量跟随、同值显式覆盖、混合 Undo / Redo 和退役双栈裁剪；[编辑回归](../../../crates/rf-ui/src/state/numeric_edit/tests.rs) 覆盖原始 SI 精度与共享会话；[Studio 回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/view_units.rs) 覆盖跨对象、跨窗口、关闭、取消、保存重开和装载失败 / 成功。原生渲染测试区分 Inspector °C 与模块设置 K。真实窗口、键盘菜单、读屏与跨平台验收仍待 I5，不以合成事件和绘制文本代替。
+[领域回归](../../../crates/rf-ui/src/state/project_presentation.rs) 覆盖非法组合原子拒绝、逐量跟随、同值显式覆盖、混合 Undo / Redo 和退役双栈裁剪；[编辑回归](../../../crates/rf-ui/src/state/numeric_edit/tests.rs) 覆盖原始 SI 精度与共享会话；[Studio 回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/view_units.rs) 覆盖跨对象、跨窗口、关闭、取消、保存重开和装载失败 / 成功。渲染回归区分 Inspector °C 与模块设置 K；I5 已补 [菜单键盘](input-drafts-and-interactions.md#i5-单位菜单键盘与窄栏验证) 和 [多对象 / 显示作用域](input-drafts-and-interactions.md#i5-多对象草稿与离开保护原生验证) 的 macOS 实窗抽样，读屏、完整缩放 / 原生矩阵及跨平台仍待验。
 
 2026-10-02 I5 补齐项目单位 / 个人默认 / 恢复弹窗的中英文资源及七类量的可访问名称；保存与恢复通知随当前语言渲染，原始 IO 诊断保留。语言切换不改候选、已应用单位、个人默认来源及恢复事务；[回归与原生证据](input-drafts-and-interactions.md#i5-数值错误与单位设置本地化) 分别记录，不改变上述所有权和持久化契约。
