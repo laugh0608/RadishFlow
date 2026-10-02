@@ -5,6 +5,7 @@ pub(super) struct StudioStateTokens;
 impl StudioStateTokens {
     pub const SURFACE: egui::Color32 = egui::Color32::WHITE;
     pub const EDIT: egui::Color32 = egui::Color32::from_rgb(239, 246, 255);
+    pub const TEXT_SELECTION: egui::Color32 = egui::Color32::from_rgb(219, 234, 254);
     pub const TEXT: egui::Color32 = egui::Color32::from_rgb(31, 41, 55);
     pub const SPECIFIED: egui::Color32 = egui::Color32::from_rgb(29, 78, 216);
     pub const SECONDARY: egui::Color32 = egui::Color32::from_rgb(71, 85, 105);

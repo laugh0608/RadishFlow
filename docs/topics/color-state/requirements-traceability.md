@@ -24,8 +24,8 @@
 | VIS-06 | [画布映射与数据着色分离](control-and-canvas-mapping.md) | V0；后续 V2 | [VA-06](migration-and-acceptance.md#验收场景) | 待实现 / 待验证；— |
 | VIS-07 | [消息身份与应用通知映射](control-and-canvas-mapping.md) | V0 / N1 | [VA-07](migration-and-acceptance.md#验收场景) | 应用通知已接入类型化角色；全局问题身份 / 计数仍待 N1；见下方证据 |
 | VIS-08 | [token 与主题一致性](theme-and-accessibility.md) | V0 / 随主题 | [VA-08](migration-and-acceptance.md#验收场景) | 局部浅色 token 已接入；全局主题一致性待验；见下方证据 |
-| VIS-09 | [非颜色表达与对比](theme-and-accessibility.md) | V0 | [VA-09](migration-and-acceptance.md#验收场景) | 来源 / 草稿 / 错误文字与焦点边界已接入；运行态测量、灰度 / 色觉模拟待验；见下方证据 |
-| VIS-10 | [键盘、文本与减少动画](theme-and-accessibility.md) | V0；后续动画 | [VA-10](migration-and-acceptance.md#验收场景) | macOS 单位菜单 / 键盘、拼音组合和原生名称抽样通过；完整矩阵、读屏和缩放待验；见下方证据 |
+| VIS-09 | [非颜色表达与对比](theme-and-accessibility.md) | V0 | [VA-09](migration-and-acceptance.md#验收场景) | 来源 / 草稿 / 错误文字已接入；数值选区及单位控件实绘色对已测，其余组合、灰度 / 色觉待验；见下方证据 |
+| VIS-10 | [键盘、文本与减少动画](theme-and-accessibility.md) | V0；后续动画 | [VA-10](migration-and-acceptance.md#验收场景) | macOS 单位菜单、关闭焦点 / Escape、原生名称和系统工作区抽样通过；完整矩阵、读屏 / 精确缩放待验；见下方证据 |
 | VIS-11 | [分批迁移与门禁保持](migration-and-acceptance.md) | U2 / U3 / 辅助 | [VA-11](migration-and-acceptance.md#验收场景) | 已记录首批数值迁移与未迁移范围；完整消费者门禁验收待续；见下方证据 |
 | VIS-12 | [按工程任务分配主区域](migration-and-acceptance.md) | R0 / R1 | [VA-12](migration-and-acceptance.md#验收场景) | 待实现 / 待验证；— |
 
@@ -46,7 +46,7 @@
 - 随后补齐首批 13 类字段原生提交 / 保存重开，修复继承值误计草稿与温压约束提示，覆盖 VA-02 / 04 / 05 / 11 的增量样本；[呈现回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/runtime/numeric_field_presentation.rs) 与 [字段矩阵证据](../units/input-drafts-and-interactions.md#i5-首批字段矩阵与呈现一致性) 区分 26 个中英文组件场景与原生语言抽样。
 - 单位菜单越界焦点修复后，macOS 输入 / 项目 / 视图菜单键盘选择与应用通过；字段无障碍名称明确分隔单位、待提交与问题。另有 48 个组件宽度 / 字体 / 语言 / 状态场景，提供 VA-04 / 10 增量证据；见 [范围与缺口](../units/input-drafts-and-interactions.md#i5-单位菜单键盘与窄栏验证)。
 - 首批数值错误改由类型化原因生成中英文，项目单位 / 个人默认弹窗补齐英文，20 个错误组件场景覆盖可访问名称及状态不变量；原生窗口验证提示换行、语言切换保留草稿、领域诊断可展开。作为 VA-02 / 04 / 10 / 11 的局部增量，[本地化证据](../units/input-drafts-and-interactions.md#i5-数值错误与单位设置本地化) 保留整应用与完整原生矩阵边界。
-- 原生树检查没有验证 VoiceOver 播报；未做运行态对比测量、系统缩放、完整中英文 / 窄栏及灰度 / 色觉矩阵，不据此声明完整 VA 通过。详细证据见 [W40](../../devlogs/2026-09/2026-W40.md#2026-10-02-u2-i5-首轮原生验收与修复)。
+- 后续修复关闭确认焦点、数值选区和单位边框，补充实绘色对及两档系统工作区抽样，见 [主题证据](theme-and-accessibility.md#i5-实绘对比与原生验证)。VoiceOver 字幕窗口读取超时，实际播报未确认；完整缩放 / 原生组合、其余状态色对及运行态灰度 / 色觉矩阵待验，不声明完整 VA 通过。
 
 ## 待决策清单
 

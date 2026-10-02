@@ -206,48 +206,89 @@ impl ReadyAppState {
         let document = self.platform_host.snapshot().runtime.workspace_document;
         let affected = InputDiscardScope::All.pending_keys(&document.input_edits);
         if !affected.is_empty() {
-            ui.label("继续离开将放弃以下未提交输入；保存不会自动应用这些输入：");
+            ui.label(match self.locale {
+                StudioShellLocale::ZhCn => {
+                    "继续离开将放弃以下未提交输入；保存不会自动应用这些输入："
+                }
+                StudioShellLocale::En => {
+                    "Continuing will discard these unsubmitted inputs; saving does not apply them:"
+                }
+            });
             render_affected_inputs(ui, &self.describe_affected_inputs(&affected));
         }
     }
 
     pub(super) fn describe_affected_inputs(&self, keys: &[String]) -> Vec<String> {
+        let zh = self.locale == StudioShellLocale::ZhCn;
         let snapshot = self.platform_host.snapshot();
         let flowsheet = &self.platform_host.document().flowsheet;
         keys.iter()
             .filter_map(|key| {
                 let value = snapshot.runtime.workspace_document.input_edits.get(key)?;
-                let (object, field) = if let Some((id, field)) =
-                    rf_ui::stream_inspector_draft_key_parts(key)
-                {
-                    let object = flowsheet
-                        .streams
-                        .get(&id)
-                        .map_or_else(|| id.as_str().to_string(), |stream| stream.name.clone());
-                    let field = match field {
-                        rf_ui::StreamInspectorDraftField::Name => "名称".into(),
-                        rf_ui::StreamInspectorDraftField::TemperatureK => "温度".into(),
-                        rf_ui::StreamInspectorDraftField::PressurePa => "压力".into(),
-                        rf_ui::StreamInspectorDraftField::TotalMolarFlowMolS => "摩尔流量".into(),
-                        rf_ui::StreamInspectorDraftField::OverallMoleFraction(id) => {
-                            format!("组分 {} 摩尔分数", id.as_str())
-                        }
+                let (object, field) =
+                    if let Some((id, field)) = rf_ui::stream_inspector_draft_key_parts(key) {
+                        let object = flowsheet
+                            .streams
+                            .get(&id)
+                            .map_or_else(|| id.as_str().to_string(), |stream| stream.name.clone());
+                        let field = match field {
+                            rf_ui::StreamInspectorDraftField::Name => {
+                                if zh { "名称" } else { "Name" }.into()
+                            }
+                            rf_ui::StreamInspectorDraftField::TemperatureK => {
+                                if zh { "温度" } else { "Temperature" }.into()
+                            }
+                            rf_ui::StreamInspectorDraftField::PressurePa => {
+                                if zh { "压力" } else { "Pressure" }.into()
+                            }
+                            rf_ui::StreamInspectorDraftField::TotalMolarFlowMolS => {
+                                if zh { "摩尔流量" } else { "Molar flow" }.into()
+                            }
+                            rf_ui::StreamInspectorDraftField::OverallMoleFraction(id) => {
+                                if zh {
+                                    format!("组分 {} 摩尔分数", id.as_str())
+                                } else {
+                                    format!("Component {} mole fraction", id.as_str())
+                                }
+                            }
+                        };
+                        (object, field)
+                    } else if let Some((id, field)) = rf_ui::unit_inspector_draft_key_parts(key) {
+                        let object = flowsheet
+                            .units
+                            .get(&id)
+                            .map_or_else(|| id.as_str().to_string(), |unit| unit.name.clone());
+                        let field = match field {
+                            rf_ui::UnitInspectorDraftField::Name => {
+                                if zh {
+                                    "名称"
+                                } else {
+                                    "Name"
+                                }
+                            }
+                            rf_ui::UnitInspectorDraftField::OutletTemperatureK => {
+                                if zh {
+                                    "出口温度"
+                                } else {
+                                    "Outlet temperature"
+                                }
+                            }
+                            rf_ui::UnitInspectorDraftField::OutletPressurePa => {
+                                if zh {
+                                    "出口压力"
+                                } else {
+                                    "Outlet pressure"
+                                }
+                            }
+                        };
+                        (object, field.to_string())
+                    } else {
+                        return Some(if zh {
+                            format!("未识别的待提交输入：{key}")
+                        } else {
+                            format!("Unrecognized unsubmitted input: {key}")
+                        });
                     };
-                    (object, field)
-                } else if let Some((id, field)) = rf_ui::unit_inspector_draft_key_parts(key) {
-                    let object = flowsheet
-                        .units
-                        .get(&id)
-                        .map_or_else(|| id.as_str().to_string(), |unit| unit.name.clone());
-                    let field = match field {
-                        rf_ui::UnitInspectorDraftField::Name => "名称",
-                        rf_ui::UnitInspectorDraftField::OutletTemperatureK => "出口温度",
-                        rf_ui::UnitInspectorDraftField::OutletPressurePa => "出口压力",
-                    };
-                    (object, field.to_string())
-                } else {
-                    return Some(format!("未识别的待提交输入：{key}"));
-                };
                 let text = match value {
                     rf_ui::DraftValue::Numeric(session) => format!(
                         "{} {}",

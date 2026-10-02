@@ -64,53 +64,60 @@ impl ReadyAppState {
             return;
         }
 
-        egui::Window::new(unsaved_changes_notice_title(self.locale))
-            .collapsible(false)
-            .resizable(false)
-            .anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO)
+        let response = egui::Modal::new(egui::Id::new("close-project-confirmation"))
             .show(ctx, |ui| {
-                ui.set_min_width(360.0);
-                render_wrapped_label(ui, close_workspace_discard_notice_detail(self.locale));
-                self.render_project_departure_inputs(ui);
-                if let Some(notice) = &self.project_open.notice {
-                    ui.label(&notice.detail);
-                }
-                let state = self
-                    .platform_host
-                    .snapshot()
-                    .runtime
-                    .workspace_document
-                    .save_state;
-                render_project_save_state(ui, &state, self.locale);
-                if state.pending_input_count > 0 {
-                    ui.label(
-                        "保存仅写入已提交内容。请取消关闭并处理未提交输入，或明确放弃后关闭。",
-                    );
-                }
+                ui.set_width((ctx.screen_rect().width() - 32.0).clamp(240.0, 520.0));
+                ui.heading(unsaved_changes_notice_title(self.locale));
+                egui::ScrollArea::vertical()
+                    .max_height((ctx.screen_rect().height() - 160.0).max(120.0))
+                    .show(ui, |ui| {
+                        render_wrapped_label(ui, close_workspace_discard_notice_detail(self.locale));
+                        self.render_project_departure_inputs(ui);
+                        if let Some(notice) = &self.project_open.notice {
+                            ui.label(&notice.detail);
+                        }
+                        let state = self
+                            .platform_host
+                            .snapshot()
+                            .runtime
+                            .workspace_document
+                            .save_state;
+                        render_project_save_state(ui, &state, self.locale);
+                        if state.pending_input_count > 0 {
+                            ui.label(match self.locale {
+                                StudioShellLocale::ZhCn => {
+                                    "保存仅写入已提交内容。请取消关闭并处理未提交输入，或明确放弃后关闭。"
+                                }
+                                StudioShellLocale::En => concat!(
+                                    "Saving includes committed content only. Cancel closing to handle ",
+                                    "unsubmitted inputs, or explicitly discard them before closing."
+                                ),
+                            });
+                        }
+                    });
                 ui.add_space(8.0);
                 ui.horizontal_wrapped(|ui| {
-                    if ui
-                        .button(self.locale.text(ShellText::SaveAndCloseProject))
-                        .clicked()
-                        && self.save_pending_close_window()
-                    {
+                    let save = ui.button(self.locale.text(ShellText::SaveAndCloseProject));
+                    if save.clicked() && self.save_pending_close_window() {
                         ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                     }
-                    if ui
-                        .button(self.locale.text(ShellText::DiscardAndCloseProject))
-                        .clicked()
-                        && self.confirm_pending_close_window()
-                    {
+                    let discard = ui.button(self.locale.text(ShellText::DiscardAndCloseProject));
+                    if discard.clicked() && self.confirm_pending_close_window() {
                         ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                     }
-                    if ui
-                        .button(self.locale.text(ShellText::CancelCloseProject))
-                        .clicked()
-                    {
+                    let cancel = ui.button(self.locale.text(ShellText::CancelCloseProject));
+                    if !save.has_focus() && !discard.has_focus() && !cancel.has_focus() {
+                        // Start on the action that preserves the document and drafts.
+                        cancel.request_focus();
+                    }
+                    if cancel.clicked() {
                         self.cancel_pending_close_window();
                     }
                 });
             });
+        if response.should_close() {
+            self.cancel_pending_close_window();
+        }
     }
 
     pub(super) fn save_pending_close_window(&mut self) -> bool {

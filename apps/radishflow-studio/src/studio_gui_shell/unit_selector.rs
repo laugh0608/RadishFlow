@@ -1,8 +1,30 @@
-use super::egui;
+use super::{egui, state_presentation::StudioStateTokens};
 
 /// Keep keyboard navigation inside a unit menu instead of egui's spatial focus search.
 /// The selector owns focus; the highlighted option is its accessible active descendant.
 pub(super) fn unit_selector<T: Copy + PartialEq>(
+    ui: &mut egui::Ui,
+    id_salt: impl std::hash::Hash,
+    label: &str,
+    selected: T,
+    choices: &[(T, &str)],
+) -> egui::InnerResponse<Option<T>> {
+    ui.scope(|ui| {
+        let widgets = &mut ui.visuals_mut().widgets;
+        for widget in [&mut widgets.inactive, &mut widgets.hovered] {
+            widget.bg_stroke = egui::Stroke::new(1.0, StudioStateTokens::BORDER);
+        }
+        for widget in [&mut widgets.active, &mut widgets.open] {
+            widget.bg_fill = StudioStateTokens::EDIT;
+            widget.weak_bg_fill = StudioStateTokens::EDIT;
+            widget.bg_stroke = egui::Stroke::new(1.0, StudioStateTokens::FOCUS);
+        }
+        render_unit_selector(ui, id_salt, label, selected, choices)
+    })
+    .inner
+}
+
+fn render_unit_selector<T: Copy + PartialEq>(
     ui: &mut egui::Ui,
     id_salt: impl std::hash::Hash,
     label: &str,

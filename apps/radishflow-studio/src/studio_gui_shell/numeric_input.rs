@@ -203,6 +203,7 @@ impl ReadyAppState {
         let output = ui
             .scope(|ui| {
                 let visuals = ui.visuals_mut();
+                visuals.selection.bg_fill = StudioStateTokens::TEXT_SELECTION;
                 visuals.extreme_bg_color = if focused {
                     StudioStateTokens::EDIT
                 } else {
