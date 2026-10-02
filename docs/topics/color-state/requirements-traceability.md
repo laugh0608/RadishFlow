@@ -19,12 +19,12 @@
 | VIS-01 | [状态事实与所有权](semantics-and-composition.md) | V0 / 随领域 | [VA-01](migration-and-acceptance.md#验收场景) | 部分接入；首批数值来源为指定 / 继承 / 缺失，其他来源与消费者未覆盖；见下方证据 |
 | VIS-02 | [完整性、草稿与独立保存](semantics-and-composition.md) | V0 / U2 | [VA-02](migration-and-acceptance.md#验收场景) | 部分接入；草稿 / 未完成与保存摘要独立；保存区 V0 角色已接通，完整原生场景待续；见下方证据 |
 | VIS-03 | [运行、结果与检查的作用域](semantics-and-composition.md) | V0 / 随运行能力 | [VA-03](migration-and-acceptance.md#验收场景) | 待实现 / 待验证；— |
-| VIS-04 | [诊断、来源与焦点叠加](semantics-and-composition.md) | V0 | [VA-04](migration-and-acceptance.md#验收场景) | 部分接入；首批字段错误 / 来源 / 焦点叠加，实际对比与完整组合待验；见下方证据 |
+| VIS-04 | [诊断、来源与焦点叠加](semantics-and-composition.md) | V0 | [VA-04](migration-and-acceptance.md#验收场景) | 部分接入；首批字段错误 / 来源 / 焦点叠加已补实绘对比与边界分离，完整组合待验；见下方证据 |
 | VIS-05 | [字段与表格映射](control-and-canvas-mapping.md) | U2 / U3 | [VA-05](migration-and-acceptance.md#验收场景) | 首批输入字段已接入；变量 / 结果表待 U3；见下方证据 |
 | VIS-06 | [画布映射与数据着色分离](control-and-canvas-mapping.md) | V0；后续 V2 | [VA-06](migration-and-acceptance.md#验收场景) | 待实现 / 待验证；— |
 | VIS-07 | [消息身份与应用通知映射](control-and-canvas-mapping.md) | V0 / N1 | [VA-07](migration-and-acceptance.md#验收场景) | 应用通知已接入类型化角色；全局问题身份 / 计数仍待 N1；见下方证据 |
 | VIS-08 | [token 与主题一致性](theme-and-accessibility.md) | V0 / 随主题 | [VA-08](migration-and-acceptance.md#验收场景) | 局部浅色 token 已接入；全局主题一致性待验；见下方证据 |
-| VIS-09 | [非颜色表达与对比](theme-and-accessibility.md) | V0 | [VA-09](migration-and-acceptance.md#验收场景) | 来源 / 草稿 / 错误文字已接入；数值选区及单位控件实绘色对已测，其余组合、灰度 / 色觉待验；见下方证据 |
+| VIS-09 | [非颜色表达与对比](theme-and-accessibility.md) | V0 | [VA-09](migration-and-acceptance.md#验收场景) | 来源 / 草稿 / 错误及组合禁用说明已接入；首批实绘色对、双语灰度 / 三类色觉样例已补，完整消费者待验；见下方证据 |
 | VIS-10 | [键盘、文本与减少动画](theme-and-accessibility.md) | V0；后续动画 | [VA-10](migration-and-acceptance.md#验收场景) | macOS 单位菜单、关闭焦点 / Escape、原生名称和系统工作区抽样通过；完整矩阵、读屏 / 精确缩放待验；见下方证据 |
 | VIS-11 | [分批迁移与门禁保持](migration-and-acceptance.md) | U2 / U3 / 辅助 | [VA-11](migration-and-acceptance.md#验收场景) | 已记录首批数值迁移与未迁移范围；完整消费者门禁验收待续；见下方证据 |
 | VIS-12 | [按工程任务分配主区域](migration-and-acceptance.md) | R0 / R1 | [VA-12](migration-and-acceptance.md#验收场景) | 待实现 / 待验证；— |
@@ -47,6 +47,7 @@
 - 单位菜单越界焦点修复后，macOS 输入 / 项目 / 视图菜单键盘选择与应用通过；字段无障碍名称明确分隔单位、待提交与问题。另有 48 个组件宽度 / 字体 / 语言 / 状态场景，提供 VA-04 / 10 增量证据；见 [范围与缺口](../units/input-drafts-and-interactions.md#i5-单位菜单键盘与窄栏验证)。
 - 首批数值错误改由类型化原因生成中英文，项目单位 / 个人默认弹窗补齐英文，20 个错误组件场景覆盖可访问名称及状态不变量；原生窗口验证提示换行、语言切换保留草稿、领域诊断可展开。作为 VA-02 / 04 / 10 / 11 的局部增量，[本地化证据](../units/input-drafts-and-interactions.md#i5-数值错误与单位设置本地化) 保留整应用与完整原生矩阵边界。
 - 后续修复关闭确认焦点、数值选区和单位边框，补充实绘色对及两档系统工作区抽样，见 [主题证据](theme-and-accessibility.md#i5-实绘对比与原生验证)。VoiceOver 字幕窗口读取超时，实际播报未确认；完整缩放 / 原生组合、其余状态色对及运行态灰度 / 色觉矩阵待验，不声明完整 VA 通过。
+- 本批再修复数值错误框 / 焦点环的内外框偏差，补双语输入法组合禁用说明及 60 组布局回归；12 组状态实绘及 50 个非彩色对照视图见 [主题样例](theme-and-accessibility.md#i5-状态组合与非彩色样例)。原生中英文拼音组合通过；VoiceOver 开关开启后应用清单仍显示未运行，实际读屏待验。
 
 ## 待决策清单
 
@@ -58,7 +59,7 @@
 | VD-02 | [角色槽位、图标 / 线型、窄布局压缩及图层叠加](control-and-canvas-mapping.md#u2-首批映射方案已接受) | VIS-04、05、06、12 | R1 对应画板与消费者实施前；Studio / Canvas / 设计 | 槽位与叠加方向已接受；五张局部画板已获认可，原生运行态仍待验证 |
 | VD-03 | [token 色值、支持主题、对比目标、测量及原生可访问性映射](theme-and-accessibility.md#v0-首批主题方案已接受) | VIS-08、09、10 | R1 主题与首批控件实施前；主题 / 可访问性 / 验证 | 浅色评审色值与对比目标已接受；静态检查完成，[token / 原生映射提案](control-and-canvas-mapping.md#v0-呈现接口提案待审定) 的通用扩展待审；首批数值有限接口已实施 |
 | VD-04 | [消费者盘点、共享映射边界、旧新并存与完成判据](control-and-canvas-mapping.md#u2-首批映射方案已接受) | VIS-05、06、07、11 | U2 首批迁移前；U3 / 辅助批次复核；各消费者维护方 | 首批字段、单位设置与保存提示范围已接受；首批数值字段已接通，2026-10-02 单位设置 / 保存角色已接通，其他消费者待迁移 |
-| VD-05 | [样例数据、测量记录、主题 / 语言 / 窗口 / 平台样本](migration-and-acceptance.md#退出与证据) | VIS-01—12 | 各批次实施 / 验收前；设计与验证 | 样本范围已接受；中文 / 英文、窄栏、灰度与字体放大静态样例已绘制；运行态及色觉模拟待验 |
+| VD-05 | [样例数据、测量记录、主题 / 语言 / 窗口 / 平台样本](migration-and-acceptance.md#退出与证据) | VIS-01—12 | 各批次实施 / 验收前；设计与验证 | 样本范围已接受；静态样例与首批双语控件实绘灰度 / 色觉样例已补，完整消费者及原生矩阵待验 |
 
 ## 维护检查
 

@@ -21,12 +21,12 @@ fn luminance(color: egui::Color32) -> f64 {
         .sum()
 }
 
-fn contrast(a: egui::Color32, b: egui::Color32) -> f64 {
+pub(super) fn contrast(a: egui::Color32, b: egui::Color32) -> f64 {
     let (a, b) = (luminance(a), luminance(b));
     (a.max(b) + 0.05) / (a.min(b) + 0.05)
 }
 
-fn shapes(shape: &egui::epaint::Shape) -> Vec<&egui::epaint::Shape> {
+pub(super) fn shapes(shape: &egui::epaint::Shape) -> Vec<&egui::epaint::Shape> {
     match shape {
         egui::epaint::Shape::Vec(children) => children.iter().flat_map(shapes).collect(),
         _ => vec![shape],

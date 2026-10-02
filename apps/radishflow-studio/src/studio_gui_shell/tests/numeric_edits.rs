@@ -3,6 +3,7 @@ use super::*;
 mod field_matrix;
 mod layout;
 mod paint_contrast;
+mod state_contrast;
 
 #[test]
 fn legacy_si_inspector_commands_keep_explicit_units() {

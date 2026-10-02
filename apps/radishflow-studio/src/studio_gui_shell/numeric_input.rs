@@ -200,10 +200,14 @@ impl ReadyAppState {
             egui::TextEdit::load_state(ui.ctx(), id).and_then(|state| state.cursor.char_range());
         let mut raw = field.text.clone();
         let input_width = ui.available_width().clamp(80.0, 240.0);
+        let input_margin = egui::Margin::symmetric(4, 2);
+        // Leave room for the independent focus ring on both sides of the control row.
+        ui.add_space(6.0);
         let output = ui
             .scope(|ui| {
                 let visuals = ui.visuals_mut();
                 visuals.selection.bg_fill = StudioStateTokens::TEXT_SELECTION;
+                visuals.selection.stroke = egui::Stroke::new(1.0, StudioStateTokens::BORDER);
                 visuals.extreme_bg_color = if focused {
                     StudioStateTokens::EDIT
                 } else {
@@ -215,9 +219,11 @@ impl ReadyAppState {
                     &mut visuals.widgets.active,
                 ] {
                     widget.bg_stroke = egui::Stroke::new(1.0, StudioStateTokens::BORDER);
+                    widget.expansion = 0.0;
                 }
                 egui::TextEdit::singleline(&mut raw)
                     .id(id)
+                    .margin(input_margin)
                     .desired_width(input_width)
                     .text_color(if field.source == NumericFieldSource::Specified {
                         StudioStateTokens::SPECIFIED
@@ -227,6 +233,9 @@ impl ReadyAppState {
                     .show(ui)
             })
             .inner;
+        // TextEdit::show returns the inner text rect, not the painted control frame.
+        let input_frame = output.response.rect + input_margin;
+        ui.add_space(6.0);
         let response = output.response;
         if response.has_focus() {
             ui.data_mut(|data| data.insert_temp(egui::Id::new("numeric-keyboard-owner"), id));
@@ -293,7 +302,7 @@ impl ReadyAppState {
         );
         if error {
             ui.painter().rect_stroke(
-                response.rect,
+                input_frame,
                 2.0,
                 egui::Stroke::new(1.0, StudioStateTokens::ERROR),
                 egui::StrokeKind::Inside,
@@ -301,13 +310,13 @@ impl ReadyAppState {
         }
         if response.has_focus() {
             ui.painter().rect_stroke(
-                response.rect.expand(2.0),
+                input_frame.expand(2.0),
                 3.0,
                 egui::Stroke::new(3.0, StudioStateTokens::SURFACE),
                 egui::StrokeKind::Outside,
             );
             ui.painter().rect_stroke(
-                response.rect.expand(5.0),
+                input_frame.expand(5.0),
                 4.0,
                 egui::Stroke::new(1.0, StudioStateTokens::FOCUS),
                 egui::StrokeKind::Outside,
@@ -317,6 +326,14 @@ impl ReadyAppState {
             .issue
             .as_ref()
             .map(|issue| self.locale.numeric_issue(issue));
+        let composition_hint = ime_guard.then(|| {
+            let unit = field.input_unit.definition().symbol;
+            if zh {
+                format!("输入法正在处理文本（输入单位：{unit}）；完成后可切换单位、应用或撤销 / 重做。")
+            } else {
+                format!("Input method is composing (input unit: {unit}); finish composing to change units, apply, or undo / redo.")
+            }
+        });
         response.widget_info(|| {
             let mut accessible_label = format!("{label} {}", field.input_unit.definition().symbol);
             if field.pending {
@@ -330,11 +347,18 @@ impl ReadyAppState {
                 accessible_label.push_str(" · ");
                 accessible_label.push_str(issue);
             }
+            if let Some(hint) = &composition_hint {
+                accessible_label.push_str(" · ");
+                accessible_label.push_str(hint);
+            }
             let mut info =
                 egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, accessible_label);
             info.current_text_value = Some(field.text.clone());
             info
         });
+        if let Some(hint) = &composition_hint {
+            ui.colored_label(StudioStateTokens::SECONDARY, hint);
+        }
         if let Some(reason) = &issue_text {
             ui.colored_label(
                 if error {
