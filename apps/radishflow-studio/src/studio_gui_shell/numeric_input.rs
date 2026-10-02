@@ -22,7 +22,7 @@ impl ReadyAppState {
         {
             Ok(current) => *field = current,
             Err(error) => {
-                field.issue = Some(NumericFieldIssue::Rejected(error.to_string()));
+                field.issue = Some(NumericFieldIssue::Rejected(error));
                 field.can_apply = false;
                 field.can_undo = false;
                 field.can_redo = false;
@@ -312,26 +312,10 @@ impl ReadyAppState {
                 egui::StrokeKind::Outside,
             );
         }
-        let issue_text = field.issue.as_ref().map(|issue| match issue {
-            NumericFieldIssue::Incomplete => {
-                if zh {
-                    "输入未完成".into()
-                } else {
-                    "Input incomplete".into()
-                }
-            }
-            NumericFieldIssue::Conflict => {
-                if zh {
-                    "已提交值或来源已改变，请选择如何保留本次编辑".into()
-                } else {
-                    "Committed value or source changed; choose how to preserve this edit".into()
-                }
-            }
-            NumericFieldIssue::Rejected(reason) => format!(
-                "{}: {reason}",
-                if zh { "输入错误" } else { "Invalid input" }
-            ),
-        });
+        let issue_text = field
+            .issue
+            .as_ref()
+            .map(|issue| self.locale.numeric_issue(issue));
         response.widget_info(|| {
             let mut accessible_label = format!("{label} {}", field.input_unit.definition().symbol);
             if field.pending {
@@ -359,6 +343,19 @@ impl ReadyAppState {
                 },
                 reason,
             );
+        }
+        if let Some(NumericFieldIssue::Rejected(rf_ui::NumericEditError::Rejected(reason))) =
+            &field.issue
+        {
+            egui::CollapsingHeader::new(if zh {
+                "诊断详情"
+            } else {
+                "Diagnostic details"
+            })
+            .id_salt(id.with("rejection-details"))
+            .show(ui, |ui| {
+                ui.label(reason.to_string());
+            });
         }
         let mut selected_unit = None;
         ui.horizontal_wrapped(|ui| {

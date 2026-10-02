@@ -243,7 +243,7 @@ fn display_unit_menus_keep_keyboard_selection_local_until_settings_are_applied()
         let label = if view {
             "Inspector display unit: Pressure"
         } else {
-            "项目显示单位：绝对压力"
+            "Project display unit: Absolute pressure"
         };
         settings_frame(&mut app, &ctx, view, vec![]);
         let first = settings_frame(&mut app, &ctx, view, vec![]);
@@ -289,7 +289,7 @@ fn display_unit_menus_keep_keyboard_selection_local_until_settings_are_applied()
             if view {
                 "Apply to this view"
             } else {
-                "应用显示设置"
+                "Apply display settings"
             },
         );
         settings_frame(&mut app, &ctx, view, vec![focus(apply)]);

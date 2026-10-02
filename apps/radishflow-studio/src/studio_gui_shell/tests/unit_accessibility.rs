@@ -3,7 +3,7 @@ use egui::accesskit::{Node, Role, TreeUpdate};
 use rf_types::units::DisplayUnitSet;
 use rf_ui::{DisplayUnitViewId, ProjectPresentationCommand};
 
-fn accessibility_frame(render: impl FnOnce(&egui::Context)) -> TreeUpdate {
+pub(super) fn accessibility_frame(render: impl FnOnce(&egui::Context)) -> TreeUpdate {
     let ctx = egui::Context::default();
     ctx.enable_accesskit();
     ctx.begin_pass(egui::RawInput {
@@ -90,6 +90,23 @@ fn project_and_view_unit_selectors_expose_distinct_scope_and_current_selection()
         );
     }
     app.locale = StudioShellLocale::En;
+    let tree = accessibility_frame(|ctx| {
+        assert!(app.render_unit_settings(ctx));
+    });
+    for (quantity, unit) in [
+        ("Absolute temperature", "°C"),
+        ("Temperature difference", "K"),
+        ("Absolute pressure", "bar"),
+        ("Molar flow", "kmol/h"),
+        ("Mole fraction", "mol/mol"),
+        ("Molar phase fraction", "mol/mol"),
+        ("Molar enthalpy", "J/mol"),
+    ] {
+        assert_eq!(
+            combo(&tree, &format!("Project display unit: {quantity}")).value(),
+            Some(unit)
+        );
+    }
     app.open_view_unit_settings(DisplayUnitViewId(app.current_window_id().unwrap()));
     let tree = accessibility_frame(|ctx| {
         assert!(app.render_view_unit_settings(ctx));
@@ -99,6 +116,128 @@ fn project_and_view_unit_selectors_expose_distinct_scope_and_current_selection()
             combo(&tree, &format!("Inspector display unit: {quantity}")).value(),
             Some("Follow project")
         );
+    }
+}
+
+#[test]
+fn numeric_errors_are_localized_without_reinterpreting_or_committing_the_input() {
+    use rf_types::units::MeasurementUnit;
+    use rf_ui::NumericEditEvent;
+    for locale in [StudioShellLocale::ZhCn, StudioShellLocale::En] {
+        let mut app = ready_app_state(&synced_workspace_config());
+        app.locale = locale;
+        app.dispatch_ui_command("inspector.focus_stream:stream-feed");
+        app.dispatch_ui_command("run_panel.run_manual");
+        let key = "stream:stream-feed:pressure_pa";
+        let mut field = app
+            .platform_host
+            .snapshot()
+            .runtime
+            .active_inspector_detail
+            .unwrap()
+            .property_fields
+            .into_iter()
+            .find(|field| field.key == key)
+            .unwrap()
+            .numeric
+            .unwrap()
+            .unwrap();
+        app.edit_numeric_field(
+            &mut field,
+            NumericEditEvent::SelectInputUnit(MeasurementUnit::Kilopascal),
+        );
+        let document = app.platform_host.document().clone();
+        let snapshot = app.platform_host.snapshot().runtime.latest_solve_snapshot;
+        for (raw, zh, en) in [
+            (
+                "1.4 bar",
+                "输入单位冲突：已选择 kPa，文本后缀为 bar",
+                "Unit conflict: selected kPa, but the text uses bar",
+            ),
+            ("oops", "数值格式无效", "Invalid number"),
+            (
+                "1 mystery",
+                "无法识别单位“mystery”",
+                "Unknown unit “mystery”",
+            ),
+            (
+                "1 kelvin",
+                "K 不能用于绝对压力",
+                "K cannot be used for Absolute pressure",
+            ),
+            ("1 K", "单位“K”的含义不明确", "Unit “K” is ambiguous"),
+            (
+                "1 barg",
+                "bar(g) 的换算需要参考压力",
+                "Converting bar(g) requires a reference pressure",
+            ),
+            ("NaN", "请输入有限数值", "Enter a finite number"),
+            (
+                "1e308 kPa",
+                "单位换算结果超出数值范围",
+                "The converted value is outside the numeric range",
+            ),
+            ("-1", "无法应用此值", "Cannot apply this value"),
+            ("1e-", "输入未完成", "Input incomplete"),
+        ] {
+            app.edit_numeric_field(&mut field, NumericEditEvent::ReplaceText(raw.into()));
+            let tree = accessibility_frame(|ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    app.render_numeric_property_field(
+                        ui,
+                        key,
+                        if locale == StudioShellLocale::ZhCn {
+                            "压力"
+                        } else {
+                            "Pressure"
+                        },
+                        &field,
+                    );
+                });
+            });
+            let input = tree
+                .nodes
+                .iter()
+                .map(|(_, node)| node)
+                .find(|node| node.role() == Role::TextInput)
+                .unwrap();
+            let label = input.label().unwrap();
+            assert!(
+                label.contains(if locale == StudioShellLocale::ZhCn {
+                    zh
+                } else {
+                    en
+                }),
+                "{raw}: {label}"
+            );
+            assert!(
+                !label.contains("UnitConflict")
+                    && !label.contains("Conversion(")
+                    && !label.contains("Rejected(")
+            );
+            assert_eq!(input.value(), Some(raw));
+            assert_eq!(field.input_unit, MeasurementUnit::Kilopascal);
+            assert!(!field.can_apply);
+            let projected = app
+                .platform_host
+                .snapshot()
+                .runtime
+                .active_inspector_detail
+                .unwrap()
+                .property_fields
+                .into_iter()
+                .find(|field| field.key == key)
+                .unwrap();
+            assert_eq!(
+                projected.constraint_text, None,
+                "errors must not be duplicated in the constraint slot"
+            );
+            assert_eq!(app.platform_host.document(), &document);
+            assert_eq!(
+                app.platform_host.snapshot().runtime.latest_solve_snapshot,
+                snapshot
+            );
+        }
     }
 }
 

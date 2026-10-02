@@ -44,7 +44,8 @@
 - 恢复原生控制后，中文浅色 Feed 压力样本验证未完成 / 错误 / 焦点组合、三类保存摘要、关闭保护及三类历史；项目显示变更保持当前结果，物理提交使结果过期。只覆盖 VA-02 / 04 / 05 / 10 / 11 的部分组合。
 - 修复输入、项目及检查器单位菜单的匿名原生节点，现暴露作用域、量、当前值与组合期间禁用状态；[AccessKit 回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/unit_accessibility.rs) 与 macOS 原生树复核一致。快捷键修饰键时序另有 [回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/keyboard_events.rs)，实窗 ⌘Q / ⌘K、Tab → Enter、拼音组合通过抽样。
 - 随后补齐首批 13 类字段原生提交 / 保存重开，修复继承值误计草稿与温压约束提示，覆盖 VA-02 / 04 / 05 / 11 的增量样本；[呈现回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/runtime/numeric_field_presentation.rs) 与 [字段矩阵证据](../units/input-drafts-and-interactions.md#i5-首批字段矩阵与呈现一致性) 区分 26 个中英文组件场景与原生语言抽样。
-- 单位菜单越界焦点修复后，macOS 输入 / 项目 / 视图菜单键盘选择与应用通过；字段无障碍名称明确分隔单位、待提交与问题。另有 48 个组件宽度 / 字体 / 语言 / 状态场景，提供 VA-04 / 10 增量证据；[范围与缺口](../units/input-drafts-and-interactions.md#i5-单位菜单键盘与窄栏验证) 保留完整本地化和原生矩阵待办。
+- 单位菜单越界焦点修复后，macOS 输入 / 项目 / 视图菜单键盘选择与应用通过；字段无障碍名称明确分隔单位、待提交与问题。另有 48 个组件宽度 / 字体 / 语言 / 状态场景，提供 VA-04 / 10 增量证据；见 [范围与缺口](../units/input-drafts-and-interactions.md#i5-单位菜单键盘与窄栏验证)。
+- 首批数值错误改由类型化原因生成中英文，项目单位 / 个人默认弹窗补齐英文，20 个错误组件场景覆盖可访问名称及状态不变量；原生窗口验证提示换行、语言切换保留草稿、领域诊断可展开。作为 VA-02 / 04 / 10 / 11 的局部增量，[本地化证据](../units/input-drafts-and-interactions.md#i5-数值错误与单位设置本地化) 保留整应用与完整原生矩阵边界。
 - 原生树检查没有验证 VoiceOver 播报；未做运行态对比测量、系统缩放、完整中英文 / 窄栏及灰度 / 色觉矩阵，不据此声明完整 VA 通过。详细证据见 [W40](../../devlogs/2026-09/2026-W40.md#2026-10-02-u2-i5-首轮原生验收与修复)。
 
 ## 待决策清单

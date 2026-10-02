@@ -409,7 +409,13 @@ impl ReadyAppState {
     }
 
     pub(super) fn render_settings_top_menu_content(&mut self, ui: &mut egui::Ui) {
-        if ui.button("项目显示单位…").clicked() {
+        if ui
+            .button(
+                self.locale
+                    .unit_settings_text(locale::UnitSettingsText::Open),
+            )
+            .clicked()
+        {
             self.open_unit_settings();
             ui.close_menu();
         }

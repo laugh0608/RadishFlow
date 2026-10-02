@@ -1,6 +1,15 @@
+use super::locale::UnitSettingsText;
 use super::*;
-use rf_types::units::{ALL_UNITS, DisplayUnitSet, QuantityKind};
+use rf_types::units::{ALL_UNITS, DisplayUnitSet};
 use rf_ui::ProjectPresentationCommand;
+
+enum UnitSettingsNotice {
+    DefaultsSaved,
+    DefaultsRecovered(PathBuf),
+    DefaultsSaveFailed(String),
+    ApplyFailed(String),
+    HistoryFailed(String),
+}
 
 pub(super) struct UnitSettingsState {
     pub draft: Option<(String, DisplayUnitSet)>,
@@ -9,7 +18,7 @@ pub(super) struct UnitSettingsState {
     pub default_units: Result<DisplayUnitSet, String>,
     pub pending_new: Option<Option<AuthoringCaseKind>>,
     default_path: PathBuf,
-    notice: Option<ProjectOpenNotice>,
+    notice: Option<UnitSettingsNotice>,
     recovery_required: bool,
     pending_recovery: Option<DisplayUnitSet>,
 }
@@ -92,30 +101,23 @@ impl ReadyAppState {
         };
         let result = if recover {
             rf_store::recover_unit_defaults(&self.unit_settings.default_path, &units)
-                .map(|backup| format!("新工程默认已恢复；原文件备份：{}", backup.display()))
+                .map(UnitSettingsNotice::DefaultsRecovered)
         } else {
             rf_store::write_unit_defaults(&self.unit_settings.default_path, &units)
-                .map(|()| "新工程默认已保存；现有工程保持原设置。".into())
+                .map(|()| UnitSettingsNotice::DefaultsSaved)
         };
         match result {
-            Ok(message) => {
+            Ok(notice) => {
                 self.unit_settings.default_units = Ok(units);
                 self.unit_settings.recovery_required = false;
-                self.unit_settings.notice = Some(ProjectOpenNotice {
-                    level: ProjectOpenNoticeLevel::Info,
-                    title: "个人默认已保存".into(),
-                    detail: message,
-                });
+                self.unit_settings.notice = Some(notice);
             }
             Err(error) => {
                 if recover {
                     self.unit_settings.pending_recovery = Some(units);
                 }
-                self.unit_settings.notice = Some(ProjectOpenNotice {
-                    level: ProjectOpenNoticeLevel::Error,
-                    title: "个人默认保存失败".into(),
-                    detail: format!("{error}。内存默认与工程设置保持不变，可重试。"),
-                });
+                self.unit_settings.notice =
+                    Some(UnitSettingsNotice::DefaultsSaveFailed(error.to_string()));
                 self.unit_settings.recovery_required =
                     rf_store::read_unit_defaults(&self.unit_settings.default_path).is_err();
             }
@@ -134,35 +136,108 @@ impl ReadyAppState {
         );
     }
 
+    fn render_unit_settings_notice(&self, ui: &mut egui::Ui) {
+        let Some(notice) = &self.unit_settings.notice else {
+            return;
+        };
+        let (level, title, detail) = match notice {
+            UnitSettingsNotice::DefaultsSaved => (
+                ProjectOpenNoticeLevel::Info,
+                UnitSettingsText::DefaultsSaved,
+                self.locale
+                    .unit_settings_text(UnitSettingsText::DefaultsSavedHelp)
+                    .to_owned(),
+            ),
+            UnitSettingsNotice::DefaultsRecovered(backup) => (
+                ProjectOpenNoticeLevel::Info,
+                UnitSettingsText::DefaultsSaved,
+                self.locale.unit_defaults_recovered(backup),
+            ),
+            UnitSettingsNotice::DefaultsSaveFailed(error) => (
+                ProjectOpenNoticeLevel::Error,
+                UnitSettingsText::DefaultsSaveFailed,
+                format!(
+                    "{}\n{}: {error}",
+                    self.locale
+                        .unit_settings_text(UnitSettingsText::DefaultsSaveFailedHelp),
+                    self.locale
+                        .unit_settings_text(UnitSettingsText::DiagnosticDetails)
+                ),
+            ),
+            UnitSettingsNotice::ApplyFailed(error) => (
+                ProjectOpenNoticeLevel::Error,
+                UnitSettingsText::ApplyFailed,
+                error.clone(),
+            ),
+            UnitSettingsNotice::HistoryFailed(error) => (
+                ProjectOpenNoticeLevel::Error,
+                UnitSettingsText::HistoryFailed,
+                error.clone(),
+            ),
+        };
+        render_project_notice(
+            ui,
+            &ProjectOpenNotice {
+                level,
+                title: self.locale.unit_settings_text(title).to_owned(),
+                detail,
+            },
+        );
+    }
+
     pub(super) fn render_unit_settings(&mut self, ctx: &egui::Context) -> bool {
         if self.render_view_unit_settings(ctx) {
             return true;
         }
+        let locale = self.locale;
         if let Some(authoring) = self.unit_settings.pending_new {
-            let response = egui::Modal::new(egui::Id::new("invalid-unit-default-new-project")).show(ctx, |ui| {
-                ui.heading("个人单位默认不可用");
-                if let Err(error) = &self.unit_settings.default_units { ui.label(error); }
-                ui.label("原默认文件保持不变。可明确选择完整 SI 创建此工程，或取消并在显示单位设置中恢复默认。");
-                if ui.button("本次使用 SI 新建").clicked() {
-                    self.unit_settings.pending_new = None;
-                    self.create_blank_project_with_units(authoring, DisplayUnitSet::si());
-                }
-                if ui.button("取消").clicked() { self.unit_settings.pending_new = None; }
-            });
+            let response = egui::Modal::new(egui::Id::new("invalid-unit-default-new-project"))
+                .show(ctx, |ui| {
+                    ui.set_width(520.0);
+                    ui.heading(locale.unit_settings_text(UnitSettingsText::DefaultUnavailable));
+                    if let Err(error) = &self.unit_settings.default_units {
+                        ui.collapsing(
+                            locale.unit_settings_text(UnitSettingsText::DiagnosticDetails),
+                            |ui| {
+                                ui.label(error);
+                            },
+                        );
+                    }
+                    ui.label(locale.unit_settings_text(UnitSettingsText::DefaultUnavailableHelp));
+                    if ui
+                        .button(locale.unit_settings_text(UnitSettingsText::UseSiOnce))
+                        .clicked()
+                    {
+                        self.unit_settings.pending_new = None;
+                        self.create_blank_project_with_units(authoring, DisplayUnitSet::si());
+                    }
+                    if ui.button(locale.text(ShellText::Cancel)).clicked() {
+                        self.unit_settings.pending_new = None;
+                    }
+                });
             if response.should_close() {
                 self.unit_settings.pending_new = None;
             }
             return true;
         }
         if self.unit_settings.pending_recovery.is_some() {
-            let response = egui::Modal::new(egui::Id::new("recover-unit-defaults")).show(ctx, |ui| {
-                ui.heading("恢复个人单位默认");
-                ui.label("将先备份原默认文件，再用当前已应用的项目单位集替换。备份或替换失败时保留可重试状态。");
-                ui.label(self.unit_settings.default_path.display().to_string());
-                if let Some(notice) = &self.unit_settings.notice { render_project_notice(ui, notice); }
-                if ui.button("备份并替换默认").clicked() { self.save_unit_default(true); }
-                if ui.button("取消").clicked() { self.unit_settings.pending_recovery = None; }
-            });
+            let response =
+                egui::Modal::new(egui::Id::new("recover-unit-defaults")).show(ctx, |ui| {
+                    ui.set_width(520.0);
+                    ui.heading(locale.unit_settings_text(UnitSettingsText::RecoveryTitle));
+                    ui.label(locale.unit_settings_text(UnitSettingsText::RecoveryHelp));
+                    ui.label(self.unit_settings.default_path.display().to_string());
+                    self.render_unit_settings_notice(ui);
+                    if ui
+                        .button(locale.unit_settings_text(UnitSettingsText::BackupAndReplace))
+                        .clicked()
+                    {
+                        self.save_unit_default(true);
+                    }
+                    if ui.button(locale.text(ShellText::Cancel)).clicked() {
+                        self.unit_settings.pending_recovery = None;
+                    }
+                });
             if response.should_close() {
                 self.unit_settings.pending_recovery = None;
             }
@@ -178,29 +253,27 @@ impl ReadyAppState {
         }
         let mut close = false;
         let response = egui::Modal::new(egui::Id::new("project-display-units")).show(ctx, |ui| {
-            ui.set_min_width(430.0);
-            ui.heading("项目显示单位");
-            ui.label("作用范围：当前工程，随工程文件保存。检查器可单独覆盖；当前输入保持本次输入单位，结果仍以自身标签为准。");
-            ui.horizontal(|ui| {
-                if ui.button("完整 SI").clicked() {
+            ui.set_width(520.0);
+            ui.heading(locale.unit_settings_text(UnitSettingsText::Title));
+            ui.label(locale.unit_settings_text(UnitSettingsText::Scope));
+            ui.horizontal_wrapped(|ui| {
+                if ui
+                    .button(locale.unit_settings_text(UnitSettingsText::FullSi))
+                    .clicked()
+                {
                     units = DisplayUnitSet::si();
                 }
-                if ui.button("工程集").clicked() {
+                if ui
+                    .button(locale.unit_settings_text(UnitSettingsText::Engineering))
+                    .clicked()
+                {
                     units = DisplayUnitSet::engineering();
                 }
             });
             let choices: Vec<_> = units.entries().collect();
             egui::Grid::new("project-display-unit-choices").show(ui, |ui| {
                 for (quantity, selected) in choices {
-                    let label = match quantity {
-                        QuantityKind::AbsoluteTemperature => "绝对温度",
-                        QuantityKind::TemperatureDifference => "温差",
-                        QuantityKind::AbsolutePressure => "绝对压力",
-                        QuantityKind::MolarFlow => "摩尔流量",
-                        QuantityKind::MoleFraction => "摩尔分数",
-                        QuantityKind::MolarPhaseFraction => "相摩尔分率",
-                        QuantityKind::MolarEnthalpy => "摩尔焓",
-                    };
+                    let label = locale.quantity_name(quantity);
                     ui.label(label);
                     let choices: Vec<_> = ALL_UNITS
                         .iter()
@@ -210,11 +283,15 @@ impl ReadyAppState {
                     if let Some(unit) = super::unit_selector::unit_selector(
                         ui,
                         quantity.definition().id,
-                        &format!("项目显示单位：{label}"),
+                        &locale.project_unit_selector_name(quantity),
                         selected,
                         &choices,
-                    ).inner {
-                        units.set_unit(quantity, unit).expect("menu contains valid units");
+                    )
+                    .inner
+                    {
+                        units
+                            .set_unit(quantity, unit)
+                            .expect("menu contains valid units");
                     }
                     ui.end_row();
                 }
@@ -222,37 +299,46 @@ impl ReadyAppState {
             render_project_save_state(ui, &document.save_state, self.locale);
             if units != *document.presentation.display_units() {
                 super::state_presentation::light_state_surface(ui, |ui| {
-                    ui.colored_label(super::state_presentation::StudioStateTokens::SECONDARY, "当前选择尚未应用；应用后才进入显示设置保存状态。");
+                    ui.colored_label(
+                        super::state_presentation::StudioStateTokens::SECONDARY,
+                        locale.unit_settings_text(UnitSettingsText::Unapplied),
+                    );
                 });
             }
-            ui.horizontal(|ui| {
-                if ui.button("应用显示设置").clicked() {
+            ui.horizontal_wrapped(|ui| {
+                if ui
+                    .button(locale.unit_settings_text(UnitSettingsText::Apply))
+                    .clicked()
+                {
                     match self.apply_presentation_command(ProjectPresentationCommand::Apply(
                         units.clone(),
                     )) {
                         Ok(()) => close = true,
-                        Err(error) => self.unit_settings.notice = Some(ProjectOpenNotice { level: ProjectOpenNoticeLevel::Error, title: "显示设置未应用".into(), detail: error.to_string() }),
+                        Err(error) => {
+                            self.unit_settings.notice =
+                                Some(UnitSettingsNotice::ApplyFailed(error.to_string()))
+                        }
                     }
                 }
-                if ui.button("取消").clicked() {
+                if ui.button(locale.text(ShellText::Cancel)).clicked() {
                     close = true;
                 }
             });
-            ui.label("撤销 / 重做按项目与检查器共用的呈现历史执行；恢复已保存设置只影响项目。");
-            ui.horizontal(|ui| {
+            ui.label(locale.unit_settings_text(UnitSettingsText::HistoryScope));
+            ui.horizontal_wrapped(|ui| {
                 for (label, command, enabled) in [
                     (
-                        "撤销显示设置",
+                        locale.unit_settings_text(UnitSettingsText::Undo),
                         ProjectPresentationCommand::Undo,
                         document.presentation.can_undo(),
                     ),
                     (
-                        "重做显示设置",
+                        locale.unit_settings_text(UnitSettingsText::Redo),
                         ProjectPresentationCommand::Redo,
                         document.presentation.can_redo(),
                     ),
                     (
-                        "恢复已保存设置",
+                        locale.unit_settings_text(UnitSettingsText::RestoreSaved),
                         ProjectPresentationCommand::RestoreSaved,
                         document.save_state.presentation_dirty,
                     ),
@@ -269,32 +355,42 @@ impl ReadyAppState {
                                     .display_units()
                                     .clone()
                             }
-                            Err(error) => self.unit_settings.notice = Some(ProjectOpenNotice { level: ProjectOpenNoticeLevel::Error, title: "显示设置未修改".into(), detail: error.to_string() }),
+                            Err(error) => {
+                                self.unit_settings.notice =
+                                    Some(UnitSettingsNotice::HistoryFailed(error.to_string()))
+                            }
                         }
                     }
                 }
             });
             ui.separator();
-            ui.label("个人默认只采用已应用的项目选择；未应用的设置草稿不写入默认。");
+            ui.label(locale.unit_settings_text(UnitSettingsText::PersonalScope));
             if let Err(error) = &self.unit_settings.default_units {
-                ui.label(format!("个人默认未加载：{error}"));
+                ui.label(locale.unit_settings_text(UnitSettingsText::DefaultLoadFailed));
+                ui.collapsing(
+                    locale.unit_settings_text(UnitSettingsText::DiagnosticDetails),
+                    |ui| {
+                        ui.label(error);
+                    },
+                );
             }
             if ui
                 .add_enabled(
                     !self.unit_settings.recovery_required,
-                    egui::Button::new("设为新工程默认"),
+                    egui::Button::new(locale.unit_settings_text(UnitSettingsText::SaveDefaults)),
                 )
                 .clicked()
             {
                 self.save_unit_default(false);
             }
-            if self.unit_settings.recovery_required && ui.button("恢复个人默认…").clicked()
+            if self.unit_settings.recovery_required
+                && ui
+                    .button(locale.unit_settings_text(UnitSettingsText::RecoverDefaults))
+                    .clicked()
             {
                 self.request_unit_default_recovery();
             }
-            if let Some(notice) = &self.unit_settings.notice {
-                render_project_notice(ui, notice);
-            }
+            self.render_unit_settings_notice(ui);
         });
         self.unit_settings.draft = if close || response.should_close() {
             None

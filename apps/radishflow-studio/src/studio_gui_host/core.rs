@@ -1175,7 +1175,9 @@ fn inspector_number_field(
                 ),
                 &format!("({})", session.input_unit().definition().symbol),
             ),
-            constraint_text: session.validation().as_ref().err().map(ToString::to_string),
+            // Validation is carried by the typed numeric projection; this slot is for
+            // stable field constraints, not a second stringified copy of the error.
+            constraint_text: None,
             value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Number,
             original_value: rf_types::units::from_canonical(
                 original,
