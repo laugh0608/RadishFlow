@@ -4,7 +4,7 @@ RadishFlow 正在开发和迭代，尚无正式稳定版本、固定安全响应
 
 ## 私下报告
 
-远程仓库已启用 [GitHub Private Vulnerability Reporting](https://github.com/laugh0608/RadishFlow/security/advisories/new)，请优先通过该入口私下提交安全漏洞。若该入口不可用，可发送邮件至 `laugh0608@foxmail.com`，主题包含 `[RadishFlow Security]`。
+远程仓库已启用 [GitHub Private Vulnerability Reporting](https://github.com/laugh0608/RadishFlow/security/advisories/new)，请优先通过该入口私下提交安全漏洞。若该入口不可用，可发送邮件至 `luobo@radishx.com`，主题包含 `[RadishFlow Security]`。
 
 请不要为未修复漏洞创建公开 Issue 或 Pull Request，也不要提交真实密钥、凭据、个人数据、任职单位资料、专有流程数据或未经授权取得的第三方材料。
 
