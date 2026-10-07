@@ -12,6 +12,8 @@ pub(super) fn unit_settings_modal<R>(
 ) -> egui::ModalResponse<R> {
     let available = ctx.screen_rect().size() - egui::vec2(48.0, 48.0);
     egui::Modal::new(egui::Id::new(id)).show(ctx, |ui| {
+        // Diagnostic details must expose keyboard focus beyond a text-color change.
+        ui.visuals_mut().collapsing_header_frame = true;
         ui.set_width(520.0_f32.min(available.x.max(1.0)));
         ui.set_max_height(available.y.max(1.0));
         let scroll = egui::ScrollArea::vertical()

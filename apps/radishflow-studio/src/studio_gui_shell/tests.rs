@@ -732,6 +732,7 @@ mod numeric_edits;
 mod unit_accessibility;
 mod unit_menu_keyboard;
 mod unit_presentation;
+mod unit_settings_contrast;
 mod unit_settings_layout;
 mod unit_settings_localization;
 mod view_units;
