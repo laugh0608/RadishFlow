@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::*;
+use rf_types::units::{DisplayUnitSet, QuantityKind as Q};
 
 impl StudioGuiWindowSolveSnapshotModel {
     pub fn result_inspector(
@@ -67,7 +68,9 @@ impl StudioGuiWindowSolveSnapshotModel {
         let comparison = selected_stream
             .as_ref()
             .zip(comparison_stream.as_ref())
-            .map(|(base, compared)| result_inspector_comparison_model(base, compared));
+            .map(|(base, compared)| {
+                result_inspector_comparison_model(base, compared, &self.display_units)
+            });
         let related_steps: Vec<StudioGuiWindowSolveStepModel> = selected_stream_id
             .as_deref()
             .map(|selected_id| {
@@ -374,6 +377,7 @@ fn result_inspector_unit_focus_action(unit_id: &str) -> StudioGuiWindowCommandAc
 fn result_inspector_comparison_model(
     base: &StudioGuiWindowStreamResultModel,
     compared: &StudioGuiWindowStreamResultModel,
+    units: &DisplayUnitSet,
 ) -> StudioGuiWindowResultInspectorComparisonModel {
     let base_composition = base
         .composition_rows
@@ -412,14 +416,22 @@ fn result_inspector_comparison_model(
             detail_label: "Temperature",
             base_value: base.temperature_text.clone(),
             compared_value: compared.temperature_text.clone(),
-            delta_text: format_signed_delta(compared.temperature_k - base.temperature_k, "K", 2),
+            delta_text: format_signed_delta(
+                compared.temperature_k - base.temperature_k,
+                Q::TemperatureDifference,
+                units,
+            ),
         },
         StudioGuiWindowResultInspectorComparisonRowModel {
             label: "P",
             detail_label: "Pressure",
             base_value: base.pressure_text.clone(),
             compared_value: compared.pressure_text.clone(),
-            delta_text: format_signed_delta(compared.pressure_pa - base.pressure_pa, "Pa", 0),
+            delta_text: format_signed_delta(
+                compared.pressure_pa - base.pressure_pa,
+                Q::AbsolutePressure,
+                units,
+            ),
         },
         StudioGuiWindowResultInspectorComparisonRowModel {
             label: "F",
@@ -428,8 +440,8 @@ fn result_inspector_comparison_model(
             compared_value: compared.molar_flow_text.clone(),
             delta_text: format_signed_delta(
                 compared.total_molar_flow_mol_s - base.total_molar_flow_mol_s,
-                "mol/s",
-                6,
+                Q::MolarFlow,
+                units,
             ),
         },
     ];
@@ -449,7 +461,9 @@ fn result_inspector_comparison_model(
                 base.molar_enthalpy_j_per_mol,
                 compared.molar_enthalpy_j_per_mol,
             ) {
-                (Some(base), Some(compared)) => format_signed_delta(compared - base, "J/mol", 3),
+                (Some(base), Some(compared)) => {
+                    format_signed_delta(compared - base, Q::MolarEnthalpy, units)
+                }
                 _ => "-".to_string(),
             },
         });
@@ -464,16 +478,18 @@ fn result_inspector_comparison_model(
         composition_rows: component_ids
             .into_iter()
             .map(|component_id| {
-                let base_fraction = base_composition.get(component_id).copied().unwrap_or(0.0);
-                let compared_fraction = compared_composition
-                    .get(component_id)
-                    .copied()
-                    .unwrap_or(0.0);
+                let base_fraction = base_composition.get(component_id).copied();
+                let compared_fraction = compared_composition.get(component_id).copied();
                 StudioGuiWindowResultInspectorCompositionComparisonRowModel {
                     component_id: component_id.to_string(),
-                    base_fraction_text: format_fraction(base_fraction),
-                    compared_fraction_text: format_fraction(compared_fraction),
-                    delta_text: format_signed_delta(compared_fraction - base_fraction, "", 4),
+                    base_fraction_text: format_optional_fraction(base_fraction, units),
+                    compared_fraction_text: format_optional_fraction(compared_fraction, units),
+                    delta_text: match (base_fraction, compared_fraction) {
+                        (Some(base), Some(compared)) => {
+                            format_signed_delta(compared - base, Q::MoleFraction, units)
+                        }
+                        _ => "-".into(),
+                    },
                 }
             })
             .collect(),
@@ -493,8 +509,8 @@ fn result_inspector_comparison_model(
                     fraction_delta_text: match (base_phase, compared_phase) {
                         (Some(base), Some(compared)) => format_signed_delta(
                             compared.phase_fraction - base.phase_fraction,
-                            "",
-                            4,
+                            Q::MolarPhaseFraction,
+                            units,
                         ),
                         _ => "-".to_string(),
                     },
@@ -507,8 +523,8 @@ fn result_inspector_comparison_model(
                     molar_flow_delta_text: match (base_phase, compared_phase) {
                         (Some(base), Some(compared)) => format_signed_delta(
                             compared.molar_flow_mol_s - base.molar_flow_mol_s,
-                            "mol/s",
-                            6,
+                            Q::MolarFlow,
+                            units,
                         ),
                         _ => "-".to_string(),
                     },
@@ -523,7 +539,7 @@ fn result_inspector_comparison_model(
                         compared_phase.and_then(|phase| phase.molar_enthalpy_j_per_mol),
                     ) {
                         (Some(base), Some(compared)) => {
-                            format_signed_delta(compared - base, "J/mol", 3)
+                            format_signed_delta(compared - base, Q::MolarEnthalpy, units)
                         }
                         _ => "-".to_string(),
                     },
@@ -533,12 +549,17 @@ fn result_inspector_comparison_model(
     }
 }
 
-fn format_signed_delta(value: f64, unit: &str, decimals: usize) -> String {
-    let sign = if value >= 0.0 { "+" } else { "" };
-    let number = format!("{value:.decimals$}");
-    if unit.is_empty() {
-        format!("{sign}{number}")
-    } else {
-        format!("{sign}{number} {unit}")
-    }
+fn format_signed_delta(value: f64, quantity: Q, units: &DisplayUnitSet) -> String {
+    rf_ui::format_quantity_delta(value, quantity, units.unit_for(quantity))
+        .unwrap_or_else(|error| format!("Conversion failed: {error}"))
+}
+
+fn format_optional_fraction(value: Option<f64>, units: &DisplayUnitSet) -> String {
+    value.map_or_else(
+        || "-".into(),
+        |value| {
+            rf_ui::format_quantity(value, Q::MoleFraction, units.unit_for(Q::MoleFraction))
+                .unwrap_or_else(|error| format!("Conversion failed: {error}"))
+        },
+    )
 }

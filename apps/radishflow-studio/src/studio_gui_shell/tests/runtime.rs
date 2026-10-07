@@ -1447,7 +1447,7 @@ fn runtime_module_results_tab_consumes_current_module_results_dto_for_active_uni
         "expected active unit module result to render consumed and produced stream chips, rendered texts: {texts:?}"
     );
     assert!(
-        texts.iter().any(|text| text.contains("345.00 K"))
+        texts.iter().any(|text| text.contains("345 K"))
             && texts.iter().any(|text| text == "stream-feed")
             && texts.iter().any(|text| text == "stream-heated"),
         "expected current module result to render latest stream values and stream focus actions, rendered texts: {texts:?}"
@@ -1493,7 +1493,7 @@ fn runtime_module_results_tab_consumes_stale_module_results_without_old_unit_res
     );
     assert!(
         !texts.iter().any(|text| text.contains("stream-heated"))
-            && !texts.iter().any(|text| text.contains("345.00 K")),
+            && !texts.iter().any(|text| text.contains("345 K")),
         "stale module result must not render old unit stream results, rendered texts: {texts:?}"
     );
 }

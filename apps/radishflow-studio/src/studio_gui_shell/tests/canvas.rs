@@ -1224,8 +1224,8 @@ fn blank_project_single_inlet_flash_paths_save_reopen_and_rerun() {
         assert!(exported.contains("stream-feed-1-outlet"));
         assert!(exported.contains("stream-flash-1-liquid"));
         assert!(exported.contains("stream-flash-1-vapor"));
-        assert!(exported.contains("methane=0.2500"));
-        assert!(exported.contains("ethane=0.7500"));
+        assert!(exported.contains("methane=0.25 mol/mol"));
+        assert!(exported.contains("ethane=0.75 mol/mol"));
         assert!(exported.contains("phase_region="));
         assert!(exported.contains("bubble_pressure="));
         assert!(exported.contains("dew_pressure="));

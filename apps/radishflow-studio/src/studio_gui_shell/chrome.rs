@@ -581,7 +581,14 @@ impl ReadyAppState {
                         ),
                     );
                     ui.separator();
-                    ui.small(self.locale.text(ShellText::UnitsSi));
+                    ui.small(super::unit_settings::project_units_label(
+                        self.locale,
+                        window
+                            .runtime
+                            .workspace_document
+                            .presentation
+                            .display_units(),
+                    ));
                     ui.separator();
                     ui.small(self.locale.text(ShellText::SolverSequentialModular));
                     ui.separator();
@@ -1631,95 +1638,6 @@ impl ReadyAppState {
         }
     }
 
-    pub(in crate::studio_gui_shell) fn render_bottom_results_table(
-        &mut self,
-        ui: &mut egui::Ui,
-        window: &StudioGuiWindowModel,
-    ) {
-        let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() else {
-            if let Some(stale_snapshot) = window.runtime.stale_solve_snapshot.as_ref() {
-                self.render_stale_solve_snapshot_notice(ui, stale_snapshot);
-                return;
-            }
-            ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
-            return;
-        };
-        if snapshot.streams.is_empty() {
-            ui.small(self.locale.text(ShellText::NoStreamResults));
-            return;
-        }
-        egui::Grid::new(format!("bottom-results-table:{}", snapshot.snapshot_id))
-            .num_columns(6)
-            .striped(true)
-            .min_col_width(78.0)
-            .show(ui, |ui| {
-                ui.strong(result_table_header(self.locale, ResultTableHeader::Stream));
-                ui.strong("T (K)");
-                ui.strong("P (Pa)");
-                ui.strong("F (mol/s)");
-                ui.strong("H (J/mol)");
-                ui.strong(result_table_header(self.locale, ResultTableHeader::Phase));
-                ui.end_row();
-                for stream in &snapshot.streams {
-                    let response = ui
-                        .add(egui::Button::new(&stream.label).frame(false))
-                        .on_hover_text(&stream.stream_id);
-                    if response.clicked() {
-                        self.focus_result_table_stream(
-                            &snapshot.snapshot_id,
-                            stream.stream_id.clone(),
-                        );
-                    }
-                    ui.label(format!("{:.2}", stream.temperature_k));
-                    ui.label(format!("{:.0}", stream.pressure_pa));
-                    ui.label(format!("{:.6}", stream.total_molar_flow_mol_s));
-                    ui.label(
-                        stream
-                            .molar_enthalpy_j_per_mol
-                            .map(|value| format!("{value:.3}"))
-                            .unwrap_or_else(|| "-".to_string()),
-                    );
-                    ui.label(result_table_phase_summary(self.locale, stream))
-                        .on_hover_text(&stream.phase_text);
-                    ui.end_row();
-                }
-            });
-
-        if !snapshot.review_summary.unit_results.is_empty() {
-            ui.add_space(8.0);
-            ui.strong(self.locale.text(ShellText::Units));
-            egui::Grid::new(format!(
-                "bottom-results-units-table:{}",
-                snapshot.snapshot_id
-            ))
-            .num_columns(5)
-            .striped(true)
-            .min_col_width(78.0)
-            .show(ui, |ui| {
-                ui.strong(result_table_header(self.locale, ResultTableHeader::Unit));
-                ui.strong(result_table_header(self.locale, ResultTableHeader::Status));
-                ui.strong(result_table_header(self.locale, ResultTableHeader::Step));
-                ui.strong(self.locale.text(ShellText::InspectorConsumedStreams));
-                ui.strong(self.locale.text(ShellText::InspectorProducedStreams));
-                ui.end_row();
-
-                for unit in &snapshot.review_summary.unit_results {
-                    let unit_response = ui
-                        .add(egui::Button::new(&unit.unit_id).frame(false))
-                        .on_hover_text(&unit.summary);
-                    if unit_response.clicked() {
-                        self.focus_result_table_unit(&snapshot.snapshot_id, unit.unit_id.clone());
-                    }
-                    ui.label(self.locale.runtime_label(unit.status_label).as_ref());
-                    ui.label(format!("#{}", unit.step_index));
-                    render_wrapped_small(ui, result_table_stream_ids(&unit.consumed_stream_ids));
-                    render_wrapped_small(ui, result_table_stream_ids(&unit.produced_stream_ids));
-                    ui.end_row();
-                }
-            });
-        }
-    }
-
     fn render_bottom_diagnostics(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
             if snapshot.diagnostics.is_empty() {
@@ -2224,78 +2142,6 @@ fn context_toolbar_item_status_is_top_bar_summary_only(
     section_title: &str,
 ) -> bool {
     toolbar_title == "Run Context" && section_title == "Monitor"
-}
-
-#[derive(Debug, Clone, Copy)]
-enum ResultTableHeader {
-    Stream,
-    Unit,
-    Status,
-    Step,
-    Phase,
-}
-
-fn result_table_header(locale: StudioShellLocale, header: ResultTableHeader) -> &'static str {
-    match locale {
-        StudioShellLocale::En => match header {
-            ResultTableHeader::Stream => "Stream",
-            ResultTableHeader::Unit => "Unit",
-            ResultTableHeader::Status => "Status",
-            ResultTableHeader::Step => "Step",
-            ResultTableHeader::Phase => "Phase",
-        },
-        StudioShellLocale::ZhCn => match header {
-            ResultTableHeader::Stream => "流股",
-            ResultTableHeader::Unit => "单元",
-            ResultTableHeader::Status => "状态",
-            ResultTableHeader::Step => "步骤",
-            ResultTableHeader::Phase => "相态",
-        },
-    }
-}
-
-fn result_table_stream_ids(stream_ids: &[String]) -> String {
-    if stream_ids.is_empty() {
-        return "-".to_string();
-    }
-
-    stream_ids.join(", ")
-}
-
-fn result_table_phase_summary(
-    locale: StudioShellLocale,
-    stream: &radishflow_studio::StudioGuiWindowStreamResultModel,
-) -> String {
-    if stream.phase_rows.is_empty() {
-        return locale.text(ShellText::NoneValue).to_string();
-    }
-
-    let visible_rows = stream
-        .phase_rows
-        .iter()
-        .filter(|row| row.label != "overall")
-        .collect::<Vec<_>>();
-    let visible_rows = if visible_rows.is_empty() {
-        stream.phase_rows.iter().collect::<Vec<_>>()
-    } else {
-        visible_rows
-    };
-    let hidden_count = visible_rows.len().saturating_sub(2);
-    let mut parts = visible_rows
-        .iter()
-        .take(2)
-        .map(|row| {
-            format!(
-                "{} {:.3}",
-                locale.runtime_label(&row.label),
-                row.phase_fraction
-            )
-        })
-        .collect::<Vec<_>>();
-    if hidden_count > 0 {
-        parts.push(format!("+{hidden_count}"));
-    }
-    parts.join(" / ")
 }
 
 fn visible_panel_badge(area_id: StudioGuiWindowAreaId, badge: Option<&str>) -> Option<&str> {

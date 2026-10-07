@@ -182,7 +182,14 @@ impl ReadyAppState {
                                     .to_string(),
                             });
                         }
-                        ui.small(self.locale.text(ShellText::UnitsSi));
+                        ui.small(super::unit_settings::project_units_label(
+                            self.locale,
+                            window
+                                .runtime
+                                .workspace_document
+                                .presentation
+                                .display_units(),
+                        ));
                     });
                 });
             });

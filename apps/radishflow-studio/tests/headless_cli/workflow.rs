@@ -324,3 +324,22 @@ fn headless_v2_never_binds_a_write_as_an_object_or_writes_results() {
         assert_eq!(result["steps"].as_array().unwrap().len(), 3);
     }
 }
+
+#[test]
+fn headless_v2_keeps_si_with_persisted_engineering_display_units() {
+    let f = Fixture::new();
+    let request = f.workflow_request();
+    let path = f.root.join("basis.json");
+    let mut project = rf_store::read_project_file(&path).unwrap();
+    project.schema_version = 2;
+    project.presentation.display_units = rf_types::units::DisplayUnitSet::engineering();
+    rf_store::write_project_file(&path, &project).unwrap();
+    let original = fs::read(&path).unwrap();
+    let (code, result) = f.run(&request);
+    assert_eq!(code, 0, "{result}");
+    for (index, value, unit) in [(0, 330.0, "K"), (1, 90000.0, "Pa"), (2, 5.0, "mol/s")] {
+        assert_eq!(result["variables"][index]["unit"], unit);
+        assert_eq!(result["variables"][index]["value"], value);
+    }
+    assert_eq!(fs::read(f.root.join("basis.json")).unwrap(), original);
+}

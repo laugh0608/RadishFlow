@@ -5,7 +5,7 @@ use crate::state::unit_inspector::{
 };
 use crate::{SolveSnapshotId, UnitInspectorDraftField};
 use rf_types::ComponentId;
-use rf_types::units::{MeasurementUnit, QuantityKind};
+use rf_types::units::{ConversionError, DisplayUnitSet, MeasurementUnit, QuantityKind};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VariableField {
@@ -111,7 +111,25 @@ impl VariableDescriptor {
             .map(|quantity| quantity.definition().canonical_unit)
     }
 
-    /// Existing GUI and wire labels remain SI, sourced from the shared catalog.
+    /// Explicit read-only display projection. The descriptor's value, provenance,
+    /// constraints and canonical wire units are unchanged.
+    pub fn display_value(&self, units: &DisplayUnitSet) -> Result<String, ConversionError> {
+        match (&self.value, self.quantity) {
+            (Some(VariableValue::Number(value)), Some(quantity)) => {
+                crate::format_quantity(*value, quantity, units.unit_for(quantity))
+            }
+            (Some(VariableValue::Number(value)), None) => crate::format_display_number(*value),
+            (Some(VariableValue::Text(value)), _) => Ok(value.clone()),
+            (None, Some(quantity)) => Ok(format!(
+                "— {}",
+                units.unit_for(quantity).definition().symbol
+            )),
+            (None, None) => Ok("—".into()),
+        }
+    }
+
+    /// Canonical labels for metadata and existing wire protocols. GUI display
+    /// projections explicitly select their units through `display_value`.
     pub fn unit_symbol(&self) -> &'static str {
         self.canonical_unit()
             .map_or("", |unit| unit.definition().symbol)

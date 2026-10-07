@@ -461,3 +461,59 @@ fn converted_inputs_reuse_physical_constraints_and_atomic_variable_writes() {
         300.0
     );
 }
+
+#[test]
+fn display_projection_preserves_canonical_values_provenance_and_missing_states() {
+    use rf_types::units::{ConversionError, DisplayUnitSet};
+    let mut document = document();
+    let mut snapshot = result(&document);
+    snapshot.streams[0].temperature_k = 300.;
+    snapshot.streams[0].pressure_pa = 100_000.;
+    let units = DisplayUnitSet::engineering();
+    for (field, expected, canonical, symbol) in [
+        (VariableField::Temperature, "26.85 °C", 300., "K"),
+        (VariableField::Pressure, "1 bar", 100_000., "Pa"),
+        (VariableField::MolarFlow, "3.6 kmol/h", 1., "mol/s"),
+    ] {
+        let id = id(
+            &document,
+            ObjectId::Stream("s".into()),
+            VariableSection::Results,
+            field,
+        );
+        let row = VariableBrowser::new(&document, Some(&snapshot), None)
+            .read(&id)
+            .unwrap();
+        let original = row.clone();
+        assert_eq!(row.display_value(&units).unwrap(), expected);
+        assert_eq!(row.value, Some(VariableValue::Number(canonical)));
+        assert_eq!(row.unit_symbol(), symbol);
+        assert_eq!(row, original);
+        assert!(matches!(
+            row.source,
+            ValueSource::SolveResult { sequence: 1, .. }
+        ));
+    }
+    let id = id(
+        &document,
+        ObjectId::Stream("s".into()),
+        VariableSection::Results,
+        VariableField::MolarFlow,
+    );
+    let missing = VariableBrowser::new(&document, None, None)
+        .read(&id)
+        .unwrap();
+    assert_eq!(missing.display_value(&units).unwrap(), "— kmol/h");
+    assert_eq!(missing.state, ValueState::Missing);
+    snapshot.streams[0].total_molar_flow_mol_s = f64::MAX;
+    let row = VariableBrowser::new(&document, Some(&snapshot), None)
+        .read(&id)
+        .unwrap();
+    assert_eq!(row.display_value(&units), Err(ConversionError::Overflow));
+    document.revision += 1;
+    let stale = VariableBrowser::new(&document, None, Some(&snapshot))
+        .read(&id)
+        .unwrap();
+    assert_eq!(stale.display_value(&units).unwrap(), "— kmol/h");
+    assert_eq!(stale.state, ValueState::Stale);
+}

@@ -29,6 +29,7 @@ use super::test_support::{
     unit_target_detail_model,
 };
 
+mod result_units;
 mod synthetic_near_boundary_focus;
 
 fn solve_binary_hydrocarbon_lite_snapshot(
@@ -92,7 +93,7 @@ fn solve_snapshot_light_text_export_uses_current_snapshot_results() {
         "../../../../examples/flowsheets/feed-cooler-flash-binary-hydrocarbon.rfproj.json"
     ));
 
-    let text = snapshot.light_text_export();
+    let text = snapshot.light_text_export().unwrap();
 
     assert!(text.contains("RadishFlow Solve Snapshot"));
     assert!(text.contains(&format!("snapshot_id: {}", snapshot.snapshot_id)));
@@ -139,7 +140,7 @@ fn official_binary_demo_case_exports_keep_result_review_paths() {
         ),
     ] {
         let snapshot = solve_binary_hydrocarbon_lite_snapshot(project_json);
-        let text = snapshot.light_text_export();
+        let text = snapshot.light_text_export().unwrap();
 
         assert!(text.contains(intermediate_stream_id));
         assert!(text.contains("stream-liquid"));
@@ -534,19 +535,39 @@ fn assert_window_model_preserves_ui_stream_window(
     assert_eq!(result_window.dew_temperature_k, ui_window.dew_temperature_k);
     assert_eq!(
         result_window.bubble_pressure_text,
-        format!("{:.0} Pa", ui_window.bubble_pressure_pa)
+        rf_ui::format_quantity(
+            ui_window.bubble_pressure_pa,
+            rf_types::units::QuantityKind::AbsolutePressure,
+            rf_types::units::MeasurementUnit::Pascal
+        )
+        .unwrap()
     );
     assert_eq!(
         result_window.dew_pressure_text,
-        format!("{:.0} Pa", ui_window.dew_pressure_pa)
+        rf_ui::format_quantity(
+            ui_window.dew_pressure_pa,
+            rf_types::units::QuantityKind::AbsolutePressure,
+            rf_types::units::MeasurementUnit::Pascal
+        )
+        .unwrap()
     );
     assert_eq!(
         result_window.bubble_temperature_text,
-        format!("{:.2} K", ui_window.bubble_temperature_k)
+        rf_ui::format_quantity(
+            ui_window.bubble_temperature_k,
+            rf_types::units::QuantityKind::AbsoluteTemperature,
+            rf_types::units::MeasurementUnit::Kelvin
+        )
+        .unwrap()
     );
     assert_eq!(
         result_window.dew_temperature_text,
-        format!("{:.2} K", ui_window.dew_temperature_k)
+        rf_ui::format_quantity(
+            ui_window.dew_temperature_k,
+            rf_types::units::QuantityKind::AbsoluteTemperature,
+            rf_types::units::MeasurementUnit::Kelvin
+        )
+        .unwrap()
     );
 
     let active_detail = stream_target_detail_model(snapshot, stream_id, title);
@@ -1394,12 +1415,14 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         .iter()
         .find(|stream| stream.stream_id == "stream-heated")
         .expect("expected heated stream");
-    assert_eq!(heated_stream.temperature_text, "345.00 K");
+    assert_eq!(heated_stream.temperature_text, "345 K");
     assert!(heated_stream.composition_text.contains("methane="));
     assert_eq!(heated_stream.summary_rows.len(), 4);
-    assert!(heated_stream.summary_rows.iter().any(|row| row.label == "T"
-        && row.detail_label == "Temperature"
-        && row.value == "345.00 K"));
+    assert!(
+        heated_stream.summary_rows.iter().any(|row| row.label == "T"
+            && row.detail_label == "Temperature"
+            && row.value == "345 K")
+    );
     assert!(heated_stream.summary_rows.iter().any(|row| {
         row.label == "H" && row.detail_label == "Molar enthalpy" && row.value.ends_with(" J/mol")
     }));
@@ -1452,7 +1475,7 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         row.label == "H" && row.detail_label == "Molar enthalpy" && row.value.ends_with(" J/mol")
     }));
     assert!(vapor_stream.phase_rows.iter().any(|row| {
-        row.phase_fraction_text == "1.0000"
+        row.phase_fraction_text == "1 mol/mol"
             && (row.molar_flow_mol_s - vapor_stream.total_molar_flow_mol_s).abs() < 1e-9
             && row.molar_flow_text == vapor_stream.molar_flow_text
             && row.composition_text.contains("methane=")
@@ -1499,7 +1522,7 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
             .selected_stream
             .as_ref()
             .map(|stream| stream.temperature_text.as_str()),
-        Some("345.00 K")
+        Some("345 K")
     );
     assert!(
         inspector
@@ -1904,7 +1927,9 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         row.component_id == "methane"
             && !row.base_fraction_text.is_empty()
             && !row.compared_fraction_text.is_empty()
-            && (row.delta_text.starts_with('+') || row.delta_text.starts_with('-'))
+            && (row.delta_text.starts_with('+')
+                || row.delta_text.starts_with('-')
+                || row.delta_text == "0 mol/mol")
     }));
     let phase_comparison =
         snapshot.result_inspector_with_comparison(Some("stream-liquid"), Some("stream-vapor"));
@@ -1922,7 +1947,7 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
     assert!(phase_comparison.phase_rows.iter().any(|row| {
         row.phase_label == "overall"
             && row.base_fraction_text == "-"
-            && row.compared_fraction_text == "1.0000"
+            && row.compared_fraction_text == "1 mol/mol"
             && row.fraction_delta_text == "-"
             && row.base_molar_flow_text == "-"
             && row.compared_molar_flow_text.ends_with(" mol/s")
@@ -2841,7 +2866,7 @@ fn studio_gui_window_model_surfaces_official_two_phase_flash_outlet_enthalpy_in_
     }));
     assert!(liquid_stream.phase_rows.iter().any(|row| {
         row.label == "overall"
-            && row.phase_fraction_text == "1.0000"
+            && row.phase_fraction_text == "1 mol/mol"
             && row.molar_flow_text == liquid_stream.molar_flow_text
             && row
                 .molar_enthalpy_text
@@ -2850,7 +2875,7 @@ fn studio_gui_window_model_surfaces_official_two_phase_flash_outlet_enthalpy_in_
     }));
     assert!(liquid_stream.phase_rows.iter().any(|row| {
         row.label == "liquid"
-            && row.phase_fraction_text == "1.0000"
+            && row.phase_fraction_text == "1 mol/mol"
             && row
                 .molar_enthalpy_text
                 .as_deref()
@@ -2870,7 +2895,7 @@ fn studio_gui_window_model_surfaces_official_two_phase_flash_outlet_enthalpy_in_
     }));
     assert!(vapor_stream.phase_rows.iter().any(|row| {
         row.label == "overall"
-            && row.phase_fraction_text == "1.0000"
+            && row.phase_fraction_text == "1 mol/mol"
             && row.molar_flow_text == vapor_stream.molar_flow_text
             && row
                 .molar_enthalpy_text
@@ -2879,7 +2904,7 @@ fn studio_gui_window_model_surfaces_official_two_phase_flash_outlet_enthalpy_in_
     }));
     assert!(vapor_stream.phase_rows.iter().any(|row| {
         row.label == "vapor"
-            && row.phase_fraction_text == "1.0000"
+            && row.phase_fraction_text == "1 mol/mol"
             && row
                 .molar_enthalpy_text
                 .as_deref()
@@ -2899,9 +2924,9 @@ fn studio_gui_window_model_surfaces_official_two_phase_flash_outlet_enthalpy_in_
     }));
     assert!(phase_comparison.phase_rows.iter().any(|row| {
         row.phase_label == "overall"
-            && row.base_fraction_text == "1.0000"
-            && row.compared_fraction_text == "1.0000"
-            && row.fraction_delta_text == "+0.0000"
+            && row.base_fraction_text == "1 mol/mol"
+            && row.compared_fraction_text == "1 mol/mol"
+            && row.fraction_delta_text == "0 mol/mol"
             && row.base_molar_flow_text.ends_with(" mol/s")
             && row.compared_molar_flow_text.ends_with(" mol/s")
             && row.molar_flow_delta_text.ends_with(" mol/s")

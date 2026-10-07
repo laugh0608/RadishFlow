@@ -507,9 +507,11 @@ fn mixer_feed_flow_edits_propagate_through_saved_results_and_export() {
         let project_bytes = fs::read(&project_path).unwrap();
         app.export_solve_snapshot_to_path(&snapshot, export_path.clone());
         let exported = fs::read_to_string(&export_path).unwrap();
-        assert_eq!(exported, snapshot.light_text_export());
+        assert_eq!(exported, snapshot.light_text_export().unwrap());
         assert!(exported.contains(&format!(
-            "T {temperature:.2} K | P 90000 Pa | F {expected_flow:.6} mol/s"
+            "T {} K | P 90000 Pa | F {} mol/s",
+            rf_ui::format_display_number(temperature).unwrap(),
+            rf_ui::format_display_number(expected_flow).unwrap()
         )));
         assert_eq!(fs::read(&project_path).unwrap(), project_bytes);
         assert!(

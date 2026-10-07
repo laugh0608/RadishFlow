@@ -47,6 +47,7 @@ mod project_layout_save;
 mod project_picker;
 mod project_save;
 mod result_export;
+mod result_table;
 mod state_presentation;
 mod unit_deletion;
 mod unit_selector;

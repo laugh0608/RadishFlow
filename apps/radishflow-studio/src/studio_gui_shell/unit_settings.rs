@@ -428,3 +428,23 @@ impl ReadyAppState {
         true
     }
 }
+
+/// Identify the project scope without confusing an Inspector's local override.
+pub(super) fn project_units_label(
+    locale: StudioShellLocale,
+    units: &DisplayUnitSet,
+) -> &'static str {
+    if units == &DisplayUnitSet::si() {
+        locale.text(ShellText::UnitsSi)
+    } else if units == &DisplayUnitSet::engineering() {
+        match locale {
+            StudioShellLocale::En => "Units: Engineering",
+            StudioShellLocale::ZhCn => "单位: 工程",
+        }
+    } else {
+        match locale {
+            StudioShellLocale::En => "Units: Custom",
+            StudioShellLocale::ZhCn => "单位: 自定义",
+        }
+    }
+}

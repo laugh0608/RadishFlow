@@ -1,7 +1,8 @@
 use super::*;
+use rf_types::units::DisplayUnitSet;
 use rf_ui::variable_browser::{
     ActionDescriptor, ObjectId, ValueSource, ValueState, VariableBrowser, VariableDescriptor,
-    VariableSection, VariableValue,
+    VariableSection,
 };
 
 #[derive(Default)]
@@ -23,6 +24,11 @@ impl ReadyAppState {
             snapshot.runtime.latest_solve_snapshot.as_ref(),
             snapshot.runtime.stale_solve_snapshot.as_ref(),
         );
+        let units = snapshot
+            .runtime
+            .workspace_document
+            .presentation
+            .display_units();
         let mut open = true;
         let mut focus = None;
         let response =
@@ -39,7 +45,7 @@ impl ReadyAppState {
                     "{} · 修订 {}",
                     browser.document.metadata.title, browser.document.revision
                 ));
-                ui.small("只读浏览已提交输入与求解结果；编辑请定位到检查器。");
+                ui.small("只读浏览已提交输入与求解结果，显示跟随项目单位；编辑请定位到检查器。");
                 ui.add(
                     egui::TextEdit::singleline(&mut self.variable_browser.query)
                         .hint_text("搜索对象、变量或 SI 单位"),
@@ -117,7 +123,7 @@ impl ReadyAppState {
                                             ));
                                             self.variable_browser.query.clear();
                                         }
-                                        render_variable(ui, &row);
+                                        render_variable(ui, &row, units);
                                     });
                                 }
                                 return;
@@ -156,7 +162,7 @@ impl ReadyAppState {
                                     .show(ui, |ui| {
                                         for row in rows {
                                             ui.push_id(format!("{:?}", row.id), |ui| {
-                                                render_variable(ui, row)
+                                                render_variable(ui, row, units)
                                             });
                                         }
                                     });
@@ -206,7 +212,7 @@ impl ReadyAppState {
     }
 }
 
-fn render_variable(ui: &mut egui::Ui, row: &VariableDescriptor) {
+fn render_variable(ui: &mut egui::Ui, row: &VariableDescriptor, units: &DisplayUnitSet) {
     let state = match row.state {
         ValueState::Valid => "单值有效",
         ValueState::Invalid => "无效",
@@ -214,13 +220,18 @@ fn render_variable(ui: &mut egui::Ui, row: &VariableDescriptor) {
         ValueState::Missing => "缺少结果",
         ValueState::Stale => "结果已过期",
     };
-    let value = match &row.value {
-        Some(VariableValue::Number(v)) => v.to_string(),
-        Some(VariableValue::Text(v)) => v.clone(),
-        None => "—".into(),
-    };
     ui.label(egui::RichText::new(&row.label).strong());
-    ui.label(format!("{value} {} · {state}", row.unit_symbol()));
+    match row.display_value(units) {
+        Ok(value) => {
+            ui.label(format!("{value} · {state}"));
+        }
+        Err(error) => {
+            ui.colored_label(
+                egui::Color32::from_rgb(185, 28, 28),
+                format!("单位转换失败 / Conversion failed: {error}"),
+            );
+        }
+    }
     ui.small(match row.source {
         ValueSource::DocumentInput => "来源：已提交文档输入",
         ValueSource::StreamTemplate => "来源：流股模板（不是求解结果）",
@@ -232,7 +243,8 @@ fn render_variable(ui: &mut egui::Ui, row: &VariableDescriptor) {
         ui.label(format!("类型：{:?} · 标量", row.value_type));
         if let Some(c) = row.constraint {
             ui.label(format!(
-                "有限值；{} {}{}",
+                "约束（SI {}）：有限值；{} {}{}",
+                row.unit_symbol(),
                 if c.minimum_inclusive { "≥" } else { ">" },
                 c.minimum,
                 c.maximum.map(|m| format!("；≤ {m}")).unwrap_or_default()

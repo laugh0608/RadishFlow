@@ -1,12 +1,31 @@
 use super::*;
 
 impl StudioGuiWindowSolveSnapshotModel {
-    pub fn light_text_export(&self) -> String {
+    pub fn light_text_export(&self) -> Result<String, StudioGuiQuantityPresentationError> {
+        if let Some(error) = self.presentation_errors.first() {
+            return Err(error.clone());
+        }
         let mut lines = vec![
             "RadishFlow Solve Snapshot".to_string(),
             format!("snapshot_id: {}", self.snapshot_id),
             format!("sequence: {}", self.sequence),
             format!("document_revision: {}", self.document_revision),
+            format!(
+                "display_units: {}",
+                rf_types::units::ALL_QUANTITIES
+                    .iter()
+                    .map(|quantity| {
+                        format!(
+                            "{}={}",
+                            quantity.definition().id,
+                            self.display_units.unit_for(*quantity).definition().id
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            "number_format: 6 significant digits; decimal point; display text, not lossless SI"
+                .into(),
             format!("status: {}", self.status_label),
             format!("summary: {}", one_line(&self.summary)),
             format!(
@@ -132,7 +151,7 @@ impl StudioGuiWindowSolveSnapshotModel {
         }
 
         lines.push(String::new());
-        lines.join("\n")
+        Ok(lines.join("\n"))
     }
 }
 

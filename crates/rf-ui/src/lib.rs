@@ -8,6 +8,7 @@ mod entitlement_panel_text;
 mod entitlement_panel_view;
 mod entitlement_panel_widget;
 mod ids;
+mod quantity_presentation;
 mod run;
 mod run_panel;
 mod run_panel_presenter;
@@ -51,6 +52,7 @@ pub use entitlement_panel_view::{
 };
 pub use entitlement_panel_widget::{EntitlementPanelWidgetEvent, EntitlementPanelWidgetModel};
 pub use ids::{CanvasSuggestionId, DocumentId, SolveSnapshotId};
+pub use quantity_presentation::{format_display_number, format_quantity, format_quantity_delta};
 pub use run::{
     BubbleDewWindowSnapshot, PhaseStateSnapshot, RunStatus, SimulationMode, SolvePendingReason,
     SolveSessionState, SolveSnapshot, StepSnapshot, StreamStateSnapshot, UnitExecutionSnapshot,
