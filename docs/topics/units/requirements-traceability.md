@@ -22,11 +22,11 @@ U1 证据为 [W38 的 U1 记录](../../devlogs/2026-09/2026-W38.md) 与现有代
 | UNIT-02 | [共享转换与明确拒绝](catalog-and-conversion.md) | U1 | [UA-02](catalog-and-conversion.md#目录与转换验收场景) | 已实现 / 已有历史验证；[转换](../../../crates/rf-types/src/units/mod.rs)、[转换测试](../../../crates/rf-types/src/units/tests.rs)；W38 |
 | UNIT-03 | [转换精度与物理约束分离](catalog-and-conversion.md) | U1 | [UA-03](catalog-and-conversion.md#目录与转换验收场景) | 已实现 / 已有历史验证；[转换测试](../../../crates/rf-types/src/units/tests.rs)、[变量写入测试](../../../crates/rf-ui/src/variable_browser/tests.rs)；W38 |
 | UNIT-04 | [变量量语义与规范标签](catalog-and-conversion.md) | U1 | [UA-04](catalog-and-conversion.md#目录与转换验收场景) | 已实现 / 已有历史验证；[变量元数据](../../../crates/rf-ui/src/variable_browser/variables.rs)、[浏览测试](../../../crates/rf-ui/src/variable_browser/tests.rs)；W38 |
-| UNIT-05 | [单位集与选择优先级](unit-sets-and-persistence.md) | U2 | [UA-05](unit-sets-and-persistence.md#单位集与保存验收场景) | I1 单位集、I2 个人默认及 [I4 覆盖 / 生命周期](unit-sets-and-persistence.md#i4-视图覆盖与历史生命周期) 已接通；I5 已补项目 / 视图、默认恢复、新建继承与旧工程隔离 macOS 样本；跨窗口等仍待验 |
+| UNIT-05 | [单位集与选择优先级](unit-sets-and-persistence.md) | U2 | [UA-05](unit-sets-and-persistence.md#单位集与保存验收场景) | I1 单位集、I2 个人默认及 [I4 覆盖 / 生命周期](unit-sets-and-persistence.md#i4-视图覆盖与历史生命周期) 已接通；I5 已补项目 / 视图、默认恢复、新建继承与旧工程隔离 macOS 样本；跨逻辑窗口隔离 / 关闭清理已有原生样本 |
 | UNIT-06 | [独立保存脏标记与安全保存](unit-sets-and-persistence.md) | U2 | [UA-06](unit-sets-and-persistence.md#单位集与保存验收场景) | I2 已接通独立脏状态、呈现历史和失败基线保护；[证据](unit-sets-and-persistence.md#i2-代码与验证范围) |
 | UNIT-07 | [旧工程与未知单位兼容](unit-sets-and-persistence.md) | U2 | [UA-07](unit-sets-and-persistence.md#单位集与保存验收场景) | 部分实现 / I1 文件兼容、拒读与原件保护已验证；[证据](unit-sets-and-persistence.md#i1-代码与验证范围)；I2 已接通升级确认及取消 / 失败保护 |
 | UNIT-08 | [输入单位事件与拒绝保护](input-drafts-and-interactions.md) | U2 | [UA-08](input-drafts-and-interactions.md#交互验收场景) | I3 解析 / 换算及 I4 首批控件已接通；I5 已补字段、菜单与输入法抽样，完整原生时序待验；见下方证据 |
-| UNIT-09 | [显示单位事件与草稿解释](input-drafts-and-interactions.md) | U2 | [UA-09](input-drafts-and-interactions.md#交互验收场景) | I3 / I4 显示切换保留会话已接通；I5 已补项目 / 视图及多对象实窗，跨逻辑窗口等组合待验；见下方证据 |
+| UNIT-09 | [显示单位事件与草稿解释](input-drafts-and-interactions.md) | U2 | [UA-09](input-drafts-and-interactions.md#交互验收场景) | I3 / I4 显示切换保留会话已接通；I5 已补项目 / 视图及多对象实窗，跨逻辑窗口 / 关闭清理已有代表证据；见下方证据 |
 | UNIT-10 | [提交、取消与正式事务](input-drafts-and-interactions.md) | U2 | [UA-10](input-drafts-and-interactions.md#交互验收场景) | I3 / I4 提交 / 取消 / 来源重验已接通；I5 已补首批字段提交 / 取消及拒绝抽样，完整原生矩阵待验；见下方证据 |
 | UNIT-11 | [撤销、保存与焦点路由](input-drafts-and-interactions.md) | U2 | [UA-11](input-drafts-and-interactions.md#交互验收场景) | I2 已接项目呈现独立历史 / 保存保留草稿；I4 数值焦点与会话历史已接，视图历史已接，[统一离开确认及应用回归已接通](input-drafts-and-interactions.md#i4-统一离开确认与失败保护)，实窗待续 |
 | UNIT-12 | [未编辑值、候选精度与等价输入](input-drafts-and-interactions.md) | U2 | [UA-12](input-drafts-and-interactions.md#交互验收场景) | I3 精度直通 / 微小编辑有回归；I5 已补 13 类字段 SI 文件读回、三类量高精度往返及流量微小编辑原生样本，更多组合待验；见下方证据 |
@@ -67,9 +67,11 @@ UA-05—07 / 11 新增单元删除、工程撤销默认安全焦点及 `⌘S` �
 
 UA-11 另补 [保存失败重试与关闭重验](input-drafts-and-interactions.md#i5-保存失败重试与关闭重验)：目录不可写时快捷保存 / 保存并关闭均保留现场和磁盘原件；恢复权限后只保存正式值，草稿不入文件；保存基线变化使旧关闭确认重新提示，再次确认才关闭。其余迟到确认和失败事务仍按场景保留待验，不扩大阶段通过范围。
 
-UA-11 / 12 再补 [温压微小编辑与英文交互](input-drafts-and-interactions.md#i5-温压微小编辑与英文交互)：温度 / 压力实际微小修改及工程 Undo / Redo 精确读回、英文撤销 / 删除确认安全焦点与取消、组合输入 Enter 后非法草稿的一次文本历史和保存保护通过。三类量微小修改已有代表证据，有效数字组合的同帧 Enter 仍仅有自动回归。
+UA-11 / 12 再补 [温压微小编辑与英文交互](input-drafts-and-interactions.md#i5-温压微小编辑与英文交互)：温度 / 压力实际微小修改及工程 Undo / Redo 精确读回、英文撤销 / 删除确认安全焦点与取消、组合输入 Enter 后非法草稿的一次文本历史和保存保护通过。三类量微小修改已有代表证据；有效数字组合的后续原生样本见下文。
 
 UA-05 / 07 补 [个人默认与兼容拒读](unit-sets-and-persistence.md#i5-个人默认与兼容拒读原生续验)：损坏默认取消 / 原文备份恢复、新工程继承和旧工程 SI 隔离；未知单位 / 缺项 / 不兼容量 / 较新版本均拒读并保留工作区、草稿和原件。UA-08—11 补 [双语作用域与后缀冲突](input-drafts-and-interactions.md#i5-双语作用域与后缀冲突续验)：项目 bar / 视图 MPa / 临时输入 kPa、冲突 Undo / Redo、语言切换、跨对象返回和取消。两项原定下一批代表样本已完成，未扩大为完整 UA 通过。
+
+UA-05 / 09 / 11 补 [跨逻辑窗口与有效数字组合](input-drafts-and-interactions.md#i5-跨逻辑窗口与有效数字组合)：三个逻辑窗口的视图隔离、共享草稿与关闭历史清理；真实 `40e0` 组合第一次 Enter 仅确认，第二次才提交。另修复 [确认弹窗被命令面板快捷键穿透](input-drafts-and-interactions.md#i5-确认弹窗与命令面板隔离)，五类模态回归及原生撤销 / 关闭复验通过。两项原定代表样本从剩余表移除，不外推操作系统多窗口或全部输入法时序。
 
 ### I5 剩余项核对（2026-10-07）
 
@@ -77,13 +79,11 @@ UA-05 / 07 补 [个人默认与兼容拒读](unit-sets-and-persistence.md#i5-个
 
 | 剩余范围 | 已有依据与具体缺口 | 后续执行条件 |
 | --- | --- | --- |
-| UA-09 跨逻辑窗口 | 自动回归覆盖窗口隔离；当前原生样本主要为单窗口 | 先确认现有原生入口能创建所需逻辑窗口；未取得路径前保留待验，不以内部状态注入替代 |
-| UA-11 有效数字组合 Enter | 英文非法组合已原生核对；有效数字在同帧 IME Commit / Enter 后仍不提交，有合成事件回归 | 需要能生成相应有效数字组合的真实输入法路径；普通粘贴不能替代 |
-| UA-11 输入代次 / 删除目标迟到确认及失败事务 | 已有领域 / 应用回归；保存基线变化已有原生证据。当前模态框隔离背景交互，壳层在模态状态停止普通快捷键分发，尚未确认其他实际触发路径 | 先给出真实并发或延迟事件来源；不为验收新增调试后门，不把不可复现写成通过 |
+| UA-11 输入代次 / 删除目标迟到确认及失败事务 | 已有领域 / 应用回归；保存基线变化已有原生证据。本批修复命令面板穿透；普通快捷键与面板共用模态隔离。已追踪原生定时器至许可会话生命周期，未取得它改变草稿代次 / 删除目标的路径 | 先给出真实并发或延迟事件来源；不为验收新增调试后门，不把不可复现写成通过 |
 | VA-09 / 10 实际读屏、精确缩放与运行态视觉组合 | 原生名称、键盘、两档工作区及控件实绘 / 非彩色样例已有局部证据；VoiceOver 未取得播报，工作区分辨率不等于精确缩放；其余消费者不外推 | 读屏需恢复可用环境；缩放需可核实的系统倍率；视觉组合按 V0 已迁移消费者补测 |
 | Windows / Linux 原生路径 | macOS 证据不能替代其他平台；键盘、保存 / 输出路径尚未集中复验 | 按已批准的后续阶段节点执行，未测状态保持 |
 
-本次没有发现新的产品缺陷；I5 仍未完整收口。下一步先核对上述原生入口 / 事件来源，区分能执行的路径与需环境支持的条目，不重复已完成样本，也不以泛称“更多组合”无限追加范围。U3 UD-07 继续待审；若另行提议延期验收并放行 U3，须明确延期条目和验证节点，再由项目所有者确认。
+本批修复模态键盘隔离缺陷，I5 仍未完整收口。下一步按 V0 已迁移消费者补视觉组合，读屏 / 精确缩放需环境条件；其余迟到确认先落实真实事件来源。不重复已完成样本，也不以泛称“更多组合”无限追加范围。U3 UD-07 继续待审；若另行提议延期验收并放行 U3，须明确延期条目和验证节点，再由项目所有者确认。
 
 ## 待决策清单
 

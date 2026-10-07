@@ -210,3 +210,89 @@ fn command_palette_enter_executes_selected_command_and_closes_palette() {
         SimulationMode::Active
     );
 }
+
+#[test]
+fn command_palette_cannot_open_or_dispatch_behind_confirmation_dialogs() {
+    #[derive(Debug)]
+    enum Dialog {
+        InputDeparture,
+        UnitDeletion,
+        ProjectClose,
+        UnitSettings,
+        FormatUpgrade,
+    }
+    for dialog in [
+        Dialog::InputDeparture,
+        Dialog::UnitDeletion,
+        Dialog::ProjectClose,
+        Dialog::UnitSettings,
+        Dialog::FormatUpgrade,
+    ] {
+        let mut app = ready_app_state(&synced_workspace_config());
+        app.dispatch_ui_command("inspector.focus_unit:feed-1");
+        app.dispatch_inspector_field_draft_update(
+            radishflow_studio::inspector_draft_update_command_id("unit:feed-1:outlet_pressure_pa"),
+            "1e-",
+        );
+        match dialog {
+            Dialog::InputDeparture => app.dispatch_ui_command("edit.undo"),
+            Dialog::UnitDeletion => app.request_unit_deletion(),
+            Dialog::ProjectClose => {
+                assert!(!app.close_current_window_for_viewport_request());
+            }
+            Dialog::UnitSettings => app.open_unit_settings(),
+            Dialog::FormatUpgrade => {
+                assert_eq!(
+                    app.platform_host
+                        .snapshot()
+                        .runtime
+                        .workspace_document
+                        .presentation
+                        .source_file_version(),
+                    Some(1)
+                );
+                app.save_project();
+                assert!(app.pending_format_upgrade.is_some());
+            }
+        }
+        let before = app.platform_host.snapshot();
+        assert_ne!(
+            before.window_model().runtime.control_state.simulation_mode,
+            SimulationMode::Active
+        );
+
+        run_with_key_press(egui::Key::K, egui::Modifiers::COMMAND, |ctx| {
+            assert_eq!(app.focus_context(ctx), StudioGuiFocusContext::ModalDialog);
+            assert!(
+                !app.handle_command_palette_toggle_shortcut(ctx),
+                "{dialog:?}"
+            );
+        });
+        assert!(!app.command_palette.open, "{dialog:?}");
+
+        // A palette already open when a confirmation takes over must not process
+        // Enter or steal Escape from the confirmation underneath it.
+        for key in [egui::Key::Enter, egui::Key::Escape] {
+            app.command_palette.open();
+            app.command_palette.query = "activate".into();
+            let commands = app.platform_host.snapshot().window_model().commands;
+            run_with_key_press(key, egui::Modifiers::NONE, |ctx| {
+                assert!(
+                    !app.handle_command_palette_keyboard(ctx, &commands),
+                    "{dialog:?}"
+                );
+                assert!(ctx.input(|input| input.key_pressed(key)), "{dialog:?}");
+            });
+            assert!(!app.command_palette.open, "{dialog:?}");
+            let after = app.platform_host.snapshot();
+            assert_eq!(
+                after.runtime.workspace_document,
+                before.runtime.workspace_document
+            );
+            assert_eq!(
+                after.window_model().runtime.control_state,
+                before.window_model().runtime.control_state
+            );
+        }
+    }
+}

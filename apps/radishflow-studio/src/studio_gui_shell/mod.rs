@@ -37,6 +37,7 @@ mod failure_recovery;
 mod fonts;
 mod home_dashboard;
 mod input_departure;
+mod keyboard;
 mod locale;
 mod modeling_readiness;
 mod numeric_input;
