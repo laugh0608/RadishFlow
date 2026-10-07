@@ -3,6 +3,37 @@ use super::*;
 use rf_types::units::{ALL_UNITS, DisplayUnitSet};
 use rf_ui::ProjectPresentationCommand;
 
+// Keep the accepted settings width while making all content reachable in short
+// viewports or with enlarged text. This is shared by project, view and recovery UI.
+pub(super) fn unit_settings_modal<R>(
+    ctx: &egui::Context,
+    id: &'static str,
+    contents: impl FnOnce(&mut egui::Ui) -> R,
+) -> egui::ModalResponse<R> {
+    let available = ctx.screen_rect().size() - egui::vec2(48.0, 48.0);
+    egui::Modal::new(egui::Id::new(id)).show(ctx, |ui| {
+        ui.set_width(520.0_f32.min(available.x.max(1.0)));
+        ui.set_max_height(available.y.max(1.0));
+        let scroll = egui::ScrollArea::vertical()
+            .max_height(available.y.max(1.0))
+            .auto_shrink([false, true])
+            .show(ui, |ui| {
+                let result = contents(ui);
+                if let Some(response) = ui
+                    .memory(|memory| memory.focused())
+                    .and_then(|id| ctx.read_response(id))
+                    .filter(|response| {
+                        response.gained_focus() && response.layer_id == ui.layer_id()
+                    })
+                {
+                    response.scroll_to_me(None);
+                }
+                result
+            });
+        scroll.inner
+    })
+}
+
 enum UnitSettingsNotice {
     DefaultsSaved,
     DefaultsRecovered(PathBuf),
@@ -191,53 +222,49 @@ impl ReadyAppState {
         }
         let locale = self.locale;
         if let Some(authoring) = self.unit_settings.pending_new {
-            let response = egui::Modal::new(egui::Id::new("invalid-unit-default-new-project"))
-                .show(ctx, |ui| {
-                    ui.set_width(520.0);
-                    ui.heading(locale.unit_settings_text(UnitSettingsText::DefaultUnavailable));
-                    if let Err(error) = &self.unit_settings.default_units {
-                        ui.collapsing(
-                            locale.unit_settings_text(UnitSettingsText::DiagnosticDetails),
-                            |ui| {
-                                ui.label(error);
-                            },
-                        );
-                    }
-                    ui.label(locale.unit_settings_text(UnitSettingsText::DefaultUnavailableHelp));
-                    if ui
-                        .button(locale.unit_settings_text(UnitSettingsText::UseSiOnce))
-                        .clicked()
-                    {
-                        self.unit_settings.pending_new = None;
-                        self.create_blank_project_with_units(authoring, DisplayUnitSet::si());
-                    }
-                    if ui.button(locale.text(ShellText::Cancel)).clicked() {
-                        self.unit_settings.pending_new = None;
-                    }
-                });
+            let response = unit_settings_modal(ctx, "invalid-unit-default-new-project", |ui| {
+                ui.heading(locale.unit_settings_text(UnitSettingsText::DefaultUnavailable));
+                if let Err(error) = &self.unit_settings.default_units {
+                    ui.collapsing(
+                        locale.unit_settings_text(UnitSettingsText::DiagnosticDetails),
+                        |ui| {
+                            ui.label(error);
+                        },
+                    );
+                }
+                ui.label(locale.unit_settings_text(UnitSettingsText::DefaultUnavailableHelp));
+                if ui
+                    .button(locale.unit_settings_text(UnitSettingsText::UseSiOnce))
+                    .clicked()
+                {
+                    self.unit_settings.pending_new = None;
+                    self.create_blank_project_with_units(authoring, DisplayUnitSet::si());
+                }
+                if ui.button(locale.text(ShellText::Cancel)).clicked() {
+                    self.unit_settings.pending_new = None;
+                }
+            });
             if response.should_close() {
                 self.unit_settings.pending_new = None;
             }
             return true;
         }
         if self.unit_settings.pending_recovery.is_some() {
-            let response =
-                egui::Modal::new(egui::Id::new("recover-unit-defaults")).show(ctx, |ui| {
-                    ui.set_width(520.0);
-                    ui.heading(locale.unit_settings_text(UnitSettingsText::RecoveryTitle));
-                    ui.label(locale.unit_settings_text(UnitSettingsText::RecoveryHelp));
-                    ui.label(self.unit_settings.default_path.display().to_string());
-                    self.render_unit_settings_notice(ui);
-                    if ui
-                        .button(locale.unit_settings_text(UnitSettingsText::BackupAndReplace))
-                        .clicked()
-                    {
-                        self.save_unit_default(true);
-                    }
-                    if ui.button(locale.text(ShellText::Cancel)).clicked() {
-                        self.unit_settings.pending_recovery = None;
-                    }
-                });
+            let response = unit_settings_modal(ctx, "recover-unit-defaults", |ui| {
+                ui.heading(locale.unit_settings_text(UnitSettingsText::RecoveryTitle));
+                ui.label(locale.unit_settings_text(UnitSettingsText::RecoveryHelp));
+                ui.label(self.unit_settings.default_path.display().to_string());
+                self.render_unit_settings_notice(ui);
+                if ui
+                    .button(locale.unit_settings_text(UnitSettingsText::BackupAndReplace))
+                    .clicked()
+                {
+                    self.save_unit_default(true);
+                }
+                if ui.button(locale.text(ShellText::Cancel)).clicked() {
+                    self.unit_settings.pending_recovery = None;
+                }
+            });
             if response.should_close() {
                 self.unit_settings.pending_recovery = None;
             }
@@ -252,8 +279,7 @@ impl ReadyAppState {
             return false;
         }
         let mut close = false;
-        let response = egui::Modal::new(egui::Id::new("project-display-units")).show(ctx, |ui| {
-            ui.set_width(520.0);
+        let response = unit_settings_modal(ctx, "project-display-units", |ui| {
             ui.heading(locale.unit_settings_text(UnitSettingsText::Title));
             ui.label(locale.unit_settings_text(UnitSettingsText::Scope));
             ui.horizontal_wrapped(|ui| {
