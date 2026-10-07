@@ -289,3 +289,9 @@ macOS 原生中英文压力字段已复验错误 / 焦点分离、真实拼音�
 英文界面保留 Feed `3e- K` 时，工程撤销确认默认 `Return to editing`，Tab 到放弃后再回取消，Enter 取消；Heater 删除确认默认 `Cancel deletion`，同样完成 Tab 循环和 Enter 取消。正式结构 / 数值与 Feed 草稿均保留，保存仍为 revision 6。原生已补这两类英文安全焦点，不外推所有英文确认动作。
 
 当前输入源逐键输入 `n`、`i`，英文温度框显示组合中及禁用原因；Enter 后组合结束，`ni` 为不可应用的非法草稿。文本焦点下单次 Undo 恢复正式温度原文，Redo 恢复 `ni`；保存未改变正式 flowsheet / revision，Escape 取消后可正常退出。该原生样本覆盖非法组合确认和一次文本历史；有效数字组合的同帧 Enter 隔离仍由 [合成事件回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/numeric_edits.rs) 证明，未声称取得同样的原生数字样本。详细环境、文件读回及剩余项见 [W41](../../devlogs/2026-10/2026-W41.md#2026-10-07-i5-温压微小编辑英文确认与组合输入) 与 [剩余项核对](requirements-traceability.md#i5-剩余项核对2026-10-07)。
+
+### I5 双语作用域与后缀冲突续验
+
+2026-10-07 macOS 原生在工程集压力 bar、Inspector 覆盖 MPa 下，将 Feed 临时输入单位切到 kPa，粘贴 `1.4 bar`。中文提示后缀冲突、应用禁用；文本焦点下两次 Undo 恢复原 MPa 数字，两次 Redo 恢复 kPa / `1.4 bar` 冲突。切换英文、切到 Heated Outlet 再返回，原文和临时单位保持，冲突提示改为英文，提交后显示仍标 MPa。Heated Outlet 使用同一 Inspector 的 MPa 覆盖；全程正式值未提交，结果仍当前。
+
+带该草稿执行四类异常工程打开后，失败均保留现场，见 [默认与拒读续验](unit-sets-and-persistence.md#i5-个人默认与兼容拒读原生续验)。最后点击 Cancel edit 恢复 `0.12000012345679 MPa`，关闭摘要为工程无待保存、显示待保存、0 项草稿；显式舍弃呈现修改后退出，v1 原文件逐字节未变。此批补双语作用域、后缀冲突历史、失焦返回和取消的代表样本，跨逻辑窗口及其他真实事件条件按剩余清单保留。
