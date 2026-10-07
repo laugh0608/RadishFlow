@@ -29,7 +29,7 @@ U1 证据为 [W38 的 U1 记录](../../devlogs/2026-09/2026-W38.md) 与现有代
 | UNIT-09 | [显示单位事件与草稿解释](input-drafts-and-interactions.md) | U2 | [UA-09](input-drafts-and-interactions.md#交互验收场景) | I3 / I4 显示切换保留会话已接通；I5 已补项目 / 视图及多对象实窗，跨逻辑窗口等组合待验；见下方证据 |
 | UNIT-10 | [提交、取消与正式事务](input-drafts-and-interactions.md) | U2 | [UA-10](input-drafts-and-interactions.md#交互验收场景) | I3 / I4 提交 / 取消 / 来源重验已接通；I5 已补首批字段提交 / 取消及拒绝抽样，完整原生矩阵待验；见下方证据 |
 | UNIT-11 | [撤销、保存与焦点路由](input-drafts-and-interactions.md) | U2 | [UA-11](input-drafts-and-interactions.md#交互验收场景) | I2 已接项目呈现独立历史 / 保存保留草稿；I4 数值焦点与会话历史已接，视图历史已接，[统一离开确认及应用回归已接通](input-drafts-and-interactions.md#i4-统一离开确认与失败保护)，实窗待续 |
-| UNIT-12 | [未编辑值、候选精度与等价输入](input-drafts-and-interactions.md) | U2 | [UA-12](input-drafts-and-interactions.md#交互验收场景) | I3 精度直通 / 微小编辑有回归；I5 已补 13 类字段 SI 文件读回与继承同值采用，高精度往返等原生样本待验；见下方证据 |
+| UNIT-12 | [未编辑值、候选精度与等价输入](input-drafts-and-interactions.md) | U2 | [UA-12](input-drafts-and-interactions.md#交互验收场景) | I3 精度直通 / 微小编辑有回归；I5 已补 13 类字段 SI 文件读回、三类量高精度往返及流量微小编辑原生样本，更多组合待验；见下方证据 |
 | UNIT-13 | [现有结果与输出一致性](output-and-consumer-consistency.md) | U3 | [UA-13](output-and-consumer-consistency.md#输出验收场景) | 待实现 / 待验证；— |
 | UNIT-14 | [输出资格与失败隔离](output-and-consumer-consistency.md) | U3 | [UA-14](output-and-consumer-consistency.md#输出验收场景) | 待实现 / 待验证；—；沿用结果门禁，新增转换路径未验证 |
 | UNIT-15 | [SI 协议兼容与后续消费者](output-and-consumer-consistency.md) | U3 / 后续 API、录制、N4 | [UA-15](output-and-consumer-consistency.md#输出验收场景) | 新增接入待实现 / 待验证；—；现有 SI 基础见 UNIT-04 |
@@ -61,7 +61,9 @@ U1 证据为 [W38 的 U1 记录](../../devlogs/2026-09/2026-W38.md) 与现有代
 
 ### 2026-10-07 I5 增量证据
 
-UA-05—07 / 11 新增单元删除、工程撤销默认安全焦点及 `⌘S` 旧项目升级确认的 macOS 证据；两类确认双语键盘回归和保存 / 草稿保护回归通过，详见 [交互增量](input-drafts-and-interactions.md#i5-删除确认与保存快捷键增量) 与 [W41](../../devlogs/2026-10/2026-W41.md)。本轮仍未取得 VoiceOver 播报，没有补齐精确系统缩放、迟到确认或高精度往返等完整原生矩阵，不更改 U2 / I5 阶段结论。
+UA-05—07 / 11 新增单元删除、工程撤销默认安全焦点及 `⌘S` 旧项目升级确认的 macOS 证据；两类确认双语键盘回归和保存 / 草稿保护回归通过，详见 [交互增量](input-drafts-and-interactions.md#i5-删除确认与保存快捷键增量) 与 [W41](../../devlogs/2026-10/2026-W41.md)。首批仍未取得 VoiceOver 播报，未补齐精确系统缩放、迟到确认等完整矩阵；高精度代表样本见下方续验，U2 / I5 阶段结论不变。
+
+同日续验补 UA-11 / 12：温度、压力、流量各三轮单位往返保持原 SI 和 revision，流量微小修改、Undo / Redo、保存重开与结果资格通过原生核对；F8、按钮、命令面板修复入口均有草稿保护，详情见 [精度与修复续验](input-drafts-and-interactions.md#i5-高精度往返与修复入口续验)。这核销对应代表样本，不将所有精度、修复及平台组合标为通过。
 
 ## 待决策清单
 
