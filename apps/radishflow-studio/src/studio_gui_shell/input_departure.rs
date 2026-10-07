@@ -13,7 +13,6 @@ pub(super) struct ProjectDepartureCheckpoint {
 #[derive(Debug, Clone)]
 pub(super) struct PendingInputAction {
     request: StudioConfirmedInputAction,
-    title: String,
     affected: Vec<String>,
 }
 
@@ -106,21 +105,12 @@ impl ReadyAppState {
             }
             return false;
         }
-        let title = match &action {
-            StudioInputAction::History(radishflow_studio::StudioDocumentHistoryCommand::Undo) => {
-                "撤销工程修改"
-            }
-            StudioInputAction::History(_) => "重做工程修改",
-            StudioInputAction::Delete(_) => "删除流股及其连接",
-            StudioInputAction::Repair(_) => "修复模型",
-        };
         self.project_open.notice = None;
         self.pending_input_action = Some(PendingInputAction {
             request: StudioConfirmedInputAction {
                 checkpoint: self.input_checkpoint(),
                 action,
             },
-            title: title.into(),
             affected: self.describe_affected_inputs(&affected_keys),
         });
         true
@@ -179,20 +169,70 @@ impl ReadyAppState {
         let Some(pending) = self.pending_input_action.clone() else {
             return;
         };
+        let zh = self.locale == StudioShellLocale::ZhCn;
+        let title = match &pending.request.action {
+            StudioInputAction::History(radishflow_studio::StudioDocumentHistoryCommand::Undo) => {
+                if zh {
+                    "撤销工程修改"
+                } else {
+                    "Undo project change"
+                }
+            }
+            StudioInputAction::History(_) => {
+                if zh {
+                    "重做工程修改"
+                } else {
+                    "Redo project change"
+                }
+            }
+            StudioInputAction::Delete(_) => {
+                if zh {
+                    "删除流股及其连接"
+                } else {
+                    "Delete stream and connections"
+                }
+            }
+            StudioInputAction::Repair(_) => {
+                if zh {
+                    "修复模型"
+                } else {
+                    "Repair model"
+                }
+            }
+        };
         let response =
             egui::Modal::new(egui::Id::new("input-departure-confirmation")).show(ctx, |ui| {
-                ui.set_max_width(520.0);
-                ui.heading(&pending.title);
-                ui.label("以下未提交输入将被放弃；此操作不会自动应用输入：");
-                render_affected_inputs(ui, &pending.affected);
-                if let Some(notice) = &self.project_open.notice {
-                    ui.label(&notice.detail);
-                }
-                ui.horizontal(|ui| {
-                    if ui.button("返回编辑").clicked() {
+                ui.set_width((ctx.screen_rect().width() - 32.0).clamp(240.0, 520.0));
+                ui.heading(title);
+                egui::ScrollArea::vertical()
+                    .max_height((ctx.screen_rect().height() - 160.0).max(120.0))
+                    .show(ui, |ui| {
+                        ui.label(if zh {
+                            "以下未提交输入将被放弃；此操作不会自动应用输入："
+                        } else {
+                            "The following unsubmitted inputs will be discarded; this action does not apply them:"
+                        });
+                        render_affected_inputs(ui, &pending.affected);
+                        if let Some(notice) = &self.project_open.notice {
+                            ui.label(&notice.detail);
+                        }
+                    });
+                ui.add_space(8.0);
+                ui.horizontal_wrapped(|ui| {
+                    let cancel = ui.button(if zh { "返回编辑" } else { "Return to editing" });
+                    let confirm = ui.button(if zh {
+                        "放弃受影响编辑后继续"
+                    } else {
+                        "Discard affected edits and continue"
+                    });
+                    if !cancel.has_focus() && !confirm.has_focus() && !confirm.lost_focus() {
+                        // Let egui finish Tab wrapping before assigning the initial focus.
+                        cancel.request_focus();
+                    }
+                    if cancel.clicked() {
                         self.pending_input_action = None;
                     }
-                    if ui.button("放弃受影响编辑后继续").clicked() {
+                    if confirm.clicked() {
                         self.confirm_input_action();
                     }
                 });

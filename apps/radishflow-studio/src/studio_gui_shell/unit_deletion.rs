@@ -91,32 +91,62 @@ impl ReadyAppState {
         let Some(pending) = self.pending_unit_deletion.clone() else {
             return;
         };
+        let zh = self.locale == StudioShellLocale::ZhCn;
         let response =
             egui::Modal::new(egui::Id::new("delete-unit-confirmation")).show(ctx, |ui| {
-                ui.set_max_width(480.0);
-                ui.heading("删除单元");
-                ui.label(format!("{} ({})", pending.name, pending.unit_id.as_str()));
-                ui.label(
-                    "删除该单元及其端口绑定；保留关联流股的参数和其他设备的连接。可通过撤销恢复。",
-                );
-                if !pending.affected.is_empty() {
-                    ui.label("确认后放弃以下未提交输入；其他对象的编辑保留，数值会话重新校验。");
-                    super::input_departure::render_affected_inputs(ui, &pending.affected);
-                }
-                if pending.bindings.is_empty() {
-                    ui.label("该单元没有关联流股。");
-                } else {
-                    ui.label("以下流股将失去该单元的端口连接：");
-                    for (port, stream) in &pending.bindings {
-                        ui.label(format!("{port} → {stream}"));
+                ui.set_width((ctx.screen_rect().width() - 32.0).clamp(240.0, 480.0));
+                ui.heading(if zh { "删除单元" } else { "Delete unit" });
+                egui::ScrollArea::vertical()
+                    .max_height((ctx.screen_rect().height() - 160.0).max(120.0))
+                    .show(ui, |ui| {
+                        ui.label(format!("{} ({})", pending.name, pending.unit_id.as_str()));
+                        ui.label(if zh {
+                            "删除该单元及其端口绑定；保留关联流股的参数和其他设备的连接。可通过撤销恢复。"
+                        } else {
+                            "Delete this unit and its port bindings. Connected stream parameters and other units' connections are preserved. Undo can restore the unit."
+                        });
+                        if !pending.affected.is_empty() {
+                            ui.label(if zh {
+                                "确认后放弃以下未提交输入；其他对象的编辑保留，数值会话重新校验。"
+                            } else {
+                                "Confirming discards the following unsubmitted inputs. Other objects' edits are preserved and numeric sessions are revalidated."
+                            });
+                            super::input_departure::render_affected_inputs(ui, &pending.affected);
+                        }
+                        if pending.bindings.is_empty() {
+                            ui.label(if zh {
+                                "该单元没有关联流股。"
+                            } else {
+                                "This unit has no connected streams."
+                            });
+                        } else {
+                            ui.label(if zh {
+                                "以下流股将失去该单元的端口连接："
+                            } else {
+                                "These streams will lose their port connections to this unit:"
+                            });
+                            for (port, stream) in &pending.bindings {
+                                ui.label(format!("{port} → {stream}"));
+                            }
+                            ui.label(if zh {
+                                "缺少源端或变为孤立对象的流股将需要修复或显式删除。"
+                            } else {
+                                "Streams without a source or any remaining connections will need repair or explicit deletion."
+                            });
+                        }
+                    });
+                ui.add_space(8.0);
+                ui.horizontal_wrapped(|ui| {
+                    let cancel = ui.button(if zh { "取消删除" } else { "Cancel deletion" });
+                    let confirm = ui.button(if zh { "确认删除单元" } else { "Delete unit" });
+                    if !cancel.has_focus() && !confirm.has_focus() && !confirm.lost_focus() {
+                        // Let egui finish Tab wrapping before assigning the initial focus.
+                        cancel.request_focus();
                     }
-                    ui.label("缺少源端或变为孤立对象的流股将需要修复或显式删除。");
-                }
-                ui.horizontal(|ui| {
-                    if ui.button("取消删除").clicked() {
+                    if cancel.clicked() {
                         self.pending_unit_deletion = None;
                     }
-                    if ui.button("确认删除单元").clicked() {
+                    if confirm.clicked() {
                         self.confirm_unit_deletion();
                     }
                 });

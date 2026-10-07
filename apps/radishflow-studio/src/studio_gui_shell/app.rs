@@ -1233,8 +1233,9 @@ impl ReadyAppState {
                     &shortcut,
                     focus_context,
                 )
-                && self.intercept_input_action(&command_id)
             {
+                // Menu, palette and keyboard commands share shell confirmations and pickers.
+                self.dispatch_ui_command(command_id);
                 continue;
             }
             self.dispatch_event(StudioGuiEvent::ShortcutPressed {

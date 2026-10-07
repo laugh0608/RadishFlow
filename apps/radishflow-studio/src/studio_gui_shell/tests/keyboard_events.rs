@@ -1,6 +1,94 @@
 use super::*;
 
 #[test]
+fn destructive_confirmations_default_to_cancel_and_keep_tab_focus_inside() {
+    for locale in [StudioShellLocale::ZhCn, StudioShellLocale::En] {
+        for delete_unit in [false, true] {
+            for dismiss in [egui::Key::Enter, egui::Key::Escape] {
+                let mut app = ready_app_state(&synced_workspace_config());
+                app.locale = locale;
+                app.dispatch_ui_command("inspector.focus_unit:feed-1");
+                app.dispatch_inspector_field_draft_update(
+                    radishflow_studio::inspector_draft_update_command_id(
+                        "unit:feed-1:outlet_pressure_pa",
+                    ),
+                    "1e-",
+                );
+                let before = app.platform_host.snapshot().runtime.workspace_document;
+                if delete_unit {
+                    app.request_unit_deletion();
+                    assert!(app.pending_unit_deletion.is_some());
+                } else {
+                    app.dispatch_ui_command("edit.undo");
+                    assert!(app.pending_input_action.is_some());
+                }
+                let (cancel, confirm) = match (delete_unit, locale) {
+                    (true, StudioShellLocale::ZhCn) => ("取消删除", "确认删除单元"),
+                    (true, StudioShellLocale::En) => ("Cancel deletion", "Delete unit"),
+                    (false, StudioShellLocale::ZhCn) => ("返回编辑", "放弃受影响编辑后继续"),
+                    (false, StudioShellLocale::En) => {
+                        ("Return to editing", "Discard affected edits and continue")
+                    }
+                };
+                let ctx = egui::Context::default();
+                ctx.enable_accesskit();
+                let mut frame = |key: Option<egui::Key>| {
+                    ctx.run(
+                        egui::RawInput {
+                            screen_rect: Some(egui::Rect::from_min_size(
+                                egui::Pos2::ZERO,
+                                egui::vec2(1024.0, 665.0),
+                            )),
+                            focused: true,
+                            events: key
+                                .map(|key| egui::Event::Key {
+                                    key,
+                                    physical_key: Some(key),
+                                    pressed: true,
+                                    repeat: false,
+                                    modifiers: egui::Modifiers::NONE,
+                                })
+                                .into_iter()
+                                .collect(),
+                            ..Default::default()
+                        },
+                        |ctx| {
+                            egui::CentralPanel::default().show(ctx, |ui| {
+                                let _ = ui.button("Background action");
+                            });
+                            if delete_unit {
+                                app.render_unit_deletion_dialog(ctx);
+                            } else {
+                                app.render_input_action_dialog(ctx);
+                            }
+                        },
+                    )
+                };
+                let _ = frame(None);
+                let _ = frame(None);
+                let assert_focus = |output: egui::FullOutput, expected: &str| {
+                    let tree = output.platform_output.accesskit_update.unwrap();
+                    let focused = tree.nodes.iter().find(|(id, _)| *id == tree.focus);
+                    assert_eq!(focused.and_then(|(_, node)| node.label()), Some(expected));
+                };
+                assert_focus(frame(None), cancel);
+                for expected in [confirm, cancel, confirm, cancel] {
+                    let _ = frame(Some(egui::Key::Tab));
+                    assert_focus(frame(None), expected);
+                }
+                let _ = frame(Some(dismiss));
+                assert!(app.pending_unit_deletion.is_none());
+                assert!(app.pending_input_action.is_none());
+                assert_eq!(
+                    app.platform_host.snapshot().runtime.workspace_document,
+                    before
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn close_confirmation_keeps_keyboard_focus_inside_and_escape_preserves_the_draft() {
     for locale in [StudioShellLocale::ZhCn, StudioShellLocale::En] {
         let mut app = ready_app_state(&synced_workspace_config());

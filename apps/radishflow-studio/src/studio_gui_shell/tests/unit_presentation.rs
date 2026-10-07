@@ -1,6 +1,84 @@
 use super::*;
 
 #[test]
+fn save_shortcut_uses_upgrade_confirmation_and_preserves_unsubmitted_inputs() {
+    let path = test_preferences_path("shortcut-legacy-upgrade").with_extension("rfproj.json");
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let bytes = include_bytes!(
+        "../../../../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json"
+    );
+    fs::write(&path, bytes).unwrap();
+    let mut app = ready_app_state(&StudioRuntimeConfig {
+        project_path: path.clone(),
+        ..synced_workspace_config()
+    });
+    app.dispatch_ui_command("inspector.focus_stream:stream-feed");
+    app.dispatch_inspector_field_draft_update(
+        radishflow_studio::inspector_draft_update_command_id("stream:stream-feed:temperature_k"),
+        "2e-",
+    );
+    app.apply_presentation_command(rf_ui::ProjectPresentationCommand::Apply(
+        rf_types::units::DisplayUnitSet::engineering(),
+    ))
+    .unwrap();
+    let before = app.platform_host.snapshot().runtime.workspace_document;
+    let save_shortcut = |app: &mut ReadyAppState| {
+        run_with_key_press(egui::Key::S, egui::Modifiers::COMMAND, |ctx| {
+            app.dispatch_shortcuts(ctx);
+        });
+    };
+    save_shortcut(&mut app);
+    assert!(app.pending_format_upgrade.is_some());
+    assert_eq!(fs::read(&path).unwrap(), bytes);
+    assert_eq!(
+        app.platform_host.snapshot().runtime.workspace_document,
+        before
+    );
+    app.cancel_pending_save_as_overwrite();
+    assert_eq!(
+        app.platform_host.snapshot().runtime.workspace_document,
+        before
+    );
+    save_shortcut(&mut app);
+    app.confirm_format_upgrade();
+    let saved = read_project_file(&path).unwrap();
+    assert_eq!(saved.schema_version, 2);
+    assert_eq!(
+        saved.presentation.display_units,
+        rf_types::units::DisplayUnitSet::engineering()
+    );
+    assert_eq!(
+        saved.document.flowsheet.streams[&"stream-feed".into()].temperature_k,
+        300.0
+    );
+    let after = app.platform_host.snapshot().runtime.workspace_document;
+    assert_eq!(after.input_edits, before.input_edits);
+    assert!(!after.save_state.presentation_dirty);
+    assert_eq!(after.save_state.pending_input_count, 1);
+
+    // A subsequent v2 save goes through the same shell path without another upgrade prompt.
+    app.apply_presentation_command(rf_ui::ProjectPresentationCommand::Apply(
+        rf_types::units::DisplayUnitSet::si(),
+    ))
+    .unwrap();
+    save_shortcut(&mut app);
+    assert!(app.pending_format_upgrade.is_none());
+    assert_eq!(
+        read_project_file(&path).unwrap().presentation.display_units,
+        rf_types::units::DisplayUnitSet::si()
+    );
+    assert_eq!(
+        app.platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .input_edits,
+        before.input_edits
+    );
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
 fn failed_personal_default_recovery_preserves_the_requested_units_for_retry() {
     let preferences = test_preferences_path("unit-default-retry");
     let defaults = preferences.with_file_name(rf_store::UNIT_DEFAULTS_FILE_NAME);
