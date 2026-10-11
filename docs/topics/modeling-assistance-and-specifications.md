@@ -10,7 +10,7 @@
 
 - 层级：一级轨道；上位规划：[模拟平台](../architecture/simulation-platform.md)。
 - 关联：[建模求解](flowsheet-modeling-and-solve.md)、[Studio](studio-main-workflow.md)、[单位](units-and-quantity-system.md)、[结果与诊断](results-review-diagnostics.md)。
-- 状态：Active / A1-I1 / I2 已实现；局部 Pencil 静态复核、自动回归与 macOS 代表路径通过；A2-I1 已实现并通过自动回归，I2 局部 UI 待审且未接线，I5 限制保持。
+- 状态：Active / A1-I1 / I2 已实现；局部 Pencil 静态复核、自动回归与 macOS 代表路径通过；A2-I1 已实现并通过自动回归，I2 局部 UI 已认可、Pencil 静态通过，接线与 I3 待完成，I5 限制保持。
 
 2026-10-11 项目所有者先批准 [A1 首批](#a1-首批范围与实现)及两项行为校正，再批准 A1-I2 局部方案与实施；随后批准 A2 首批与 I1 实施，要求 A2-I2 另审后接线。各切片证据与保留边界见下文。
 
@@ -211,7 +211,7 @@ I1 先落实 V01—06 的应用 / 领域范围及 V07—08 可自动验证部分
 
 #### A2-I1 实现与验收状态（2026-10-11）
 
-先行方案提交为 `69b7ddeb`，随后完成下列应用基础。A2-I2 的[局部 UI 方案](../architecture/designs/studio-client-main-brief.md#a2-i2-局部-ui-方案2026-10-11待审定)已补齐，仍待项目所有者审定；未修改产品 GUI 接线、CLI 协议、项目格式或依赖。
+先行方案提交为 `69b7ddeb`，随后完成下列应用基础。A2-I2 的[局部 UI 方案](../architecture/designs/studio-client-main-brief.md#a2-i2-局部-ui-方案2026-10-11已认可)已认可并通过 Pencil 静态复核；I1 未修改产品 GUI 接线、CLI 协议、项目格式或依赖，I2 / I3 继续按授权实施。
 
 | 实现入口 | 已落实的责任 |
 | --- | --- |
