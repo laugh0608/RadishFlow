@@ -387,6 +387,8 @@ fn headless_process_returns_json_for_bad_arguments_and_unreadable_files() {
     );
 }
 
+#[path = "headless_cli/specifications.rs"]
+mod specifications;
 #[path = "headless_cli/workflow.rs"]
 mod workflow;
 

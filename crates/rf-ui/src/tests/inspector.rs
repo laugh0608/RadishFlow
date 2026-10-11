@@ -272,6 +272,13 @@ fn unit_parameter_document() -> FlowsheetDocument {
         ))
         .expect("expected heater insert");
 
+    flowsheet
+        .insert_unit(rf_unitops::build_feed_node(
+            "source-0",
+            "Feed",
+            "stream-feed",
+        ))
+        .unwrap();
     FlowsheetDocument::new(
         flowsheet,
         DocumentMetadata::new("doc-unit-parameter", "Unit Parameter Demo", timestamp(10)),
@@ -354,6 +361,13 @@ fn valve_parameter_document() -> FlowsheetDocument {
         ))
         .expect("expected valve insert");
 
+    flowsheet
+        .insert_unit(rf_unitops::build_feed_node(
+            "source-0",
+            "Feed",
+            "stream-feed",
+        ))
+        .unwrap();
     FlowsheetDocument::new(
         flowsheet,
         DocumentMetadata::new("doc-valve-parameter", "Valve Parameter Demo", timestamp(10)),
@@ -420,6 +434,20 @@ fn mixer_parameter_document() -> FlowsheetDocument {
         ))
         .expect("expected mixer insert");
 
+    flowsheet
+        .insert_unit(rf_unitops::build_feed_node(
+            "source-0",
+            "Feed",
+            "stream-feed-a",
+        ))
+        .unwrap();
+    flowsheet
+        .insert_unit(rf_unitops::build_feed_node(
+            "source-1",
+            "Feed",
+            "stream-feed-b",
+        ))
+        .unwrap();
     FlowsheetDocument::new(
         flowsheet,
         DocumentMetadata::new("doc-mixer-parameter", "Mixer Parameter Demo", timestamp(10)),

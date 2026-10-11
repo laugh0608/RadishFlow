@@ -14,6 +14,9 @@ fn app() -> AppState {
     stream.pressure_pa = 200_000.0;
     stream.total_molar_flow_mol_s = 1.23456789012345;
     flowsheet.insert_stream(stream).unwrap();
+    flowsheet
+        .insert_unit(rf_unitops::build_feed_node("feed", "Feed", "s"))
+        .unwrap();
     let mut valve = UnitNode::new(
         "v",
         "Valve",

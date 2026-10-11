@@ -118,6 +118,14 @@ fn variable_browser_reports_supported_fields_without_inventing_committed_default
 #[test]
 fn variable_browser_uses_unit_pressure_constraints_and_distinguishes_templates() {
     let mut document = document();
+    document.flowsheet.units.insert(
+        "feed".into(),
+        rf_unitops::build_feed_node("feed", "Feed", "s"),
+    );
+    document
+        .flowsheet
+        .insert_stream(MaterialStreamState::new("out", "Template"))
+        .unwrap();
     let unit = document
         .flowsheet
         .units
@@ -129,7 +137,7 @@ fn variable_browser_uses_unit_pressure_constraints_and_distinguishes_templates()
         "outlet",
         PortDirection::Outlet,
         PortKind::Material,
-        Some(StreamId::new("s")),
+        Some(StreamId::new("out")),
     ));
     let browser = VariableBrowser::new(&document, None, None);
     let rows = browser
@@ -146,7 +154,7 @@ fn variable_browser_uses_unit_pressure_constraints_and_distinguishes_templates()
     assert!(!constraint.accepts(0.));
     assert!(!constraint.accepts(f64::INFINITY));
     let stream = browser
-        .variables(&ObjectId::Stream(StreamId::new("s")))
+        .variables(&ObjectId::Stream(StreamId::new("out")))
         .unwrap();
     assert_eq!(stream[1].source, ValueSource::StreamTemplate);
     assert_eq!(

@@ -304,31 +304,16 @@ fn unit_command_value_from_draft(
 }
 
 pub(crate) fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorDraftField> {
-    let mut fields = match unit.kind.as_str() {
-        rf_unitops::FEED_KIND => {
-            vec![
-                UnitInspectorDraftField::OutletTemperatureK,
-                UnitInspectorDraftField::OutletPressurePa,
-            ]
-        }
-        rf_unitops::HEATER_KIND | rf_unitops::COOLER_KIND => {
-            vec![
-                UnitInspectorDraftField::OutletTemperatureK,
-                UnitInspectorDraftField::OutletPressurePa,
-            ]
-        }
-        rf_unitops::MIXER_KIND | rf_unitops::VALVE_KIND => {
-            vec![UnitInspectorDraftField::OutletPressurePa]
-        }
-        rf_unitops::FLASH_DRUM_KIND => {
-            vec![
-                UnitInspectorDraftField::OutletTemperatureK,
-                UnitInspectorDraftField::OutletPressurePa,
-            ]
-        }
-        _ => Vec::new(),
-    };
-    fields.insert(0, UnitInspectorDraftField::Name);
+    use rf_unitops::specifications::{UnitParameter, input_specification};
+    let mut fields = vec![UnitInspectorDraftField::Name];
+    if let Some(kind) = BuiltinUnitKind::parse(&unit.kind) {
+        fields.extend(input_specification(kind).parameters.iter().map(
+            |parameter| match parameter {
+                UnitParameter::OutletTemperature => UnitInspectorDraftField::OutletTemperatureK,
+                UnitParameter::OutletPressure => UnitInspectorDraftField::OutletPressurePa,
+            },
+        ));
+    }
     fields
 }
 
@@ -418,49 +403,38 @@ pub(super) fn apply_unit_parameter_value(
     Ok(())
 }
 
-fn is_valid_unit_parameter_value(_field: &UnitInspectorDraftField, value: f64) -> bool {
-    value.is_finite() && value > 0.0
-}
-
 pub(crate) fn is_valid_unit_parameter_value_for_unit(
     flowsheet: &Flowsheet,
     unit: &UnitNode,
     field: &UnitInspectorDraftField,
     value: f64,
 ) -> bool {
-    if !is_valid_unit_parameter_value(field, value) {
+    use rf_flowsheet::pressure_context::document_pressure_context;
+    use rf_unitops::specifications::{UnitParameter, check_parameter_value};
+    let Some(kind) = BuiltinUnitKind::parse(&unit.kind) else {
         return false;
-    }
-
-    if unit_outlet_pressure_cannot_exceed_inlet(unit)
-        && matches!(field, UnitInspectorDraftField::OutletPressurePa)
-    {
-        return inlet_pressure_limit(flowsheet, unit)
-            .map(|pressure_pa| value <= pressure_pa)
-            .unwrap_or(true);
-    }
-
-    true
+    };
+    let parameter = match field {
+        UnitInspectorDraftField::OutletTemperatureK => UnitParameter::OutletTemperature,
+        UnitInspectorDraftField::OutletPressurePa => UnitParameter::OutletPressure,
+        UnitInspectorDraftField::Name => return false,
+    };
+    let context = document_pressure_context(flowsheet, unit, kind);
+    check_parameter_value(kind, parameter, value, context.limit().as_ref()).is_ok()
 }
 
 pub(crate) fn unit_outlet_pressure_cannot_exceed_inlet(unit: &UnitNode) -> bool {
-    matches!(
-        unit.kind.as_str(),
-        rf_unitops::MIXER_KIND
-            | rf_unitops::HEATER_KIND
-            | rf_unitops::COOLER_KIND
-            | rf_unitops::VALVE_KIND
-    )
+    use rf_unitops::specifications::{OutletPressureRule, input_specification};
+    BuiltinUnitKind::parse(&unit.kind).is_some_and(|kind| {
+        input_specification(kind).outlet_pressure_rule != OutletPressureRule::Unrestricted
+    })
 }
 
 pub(crate) fn inlet_pressure_limit(flowsheet: &Flowsheet, unit: &UnitNode) -> Option<f64> {
-    unit.ports
-        .iter()
-        .filter(|port| port.direction == PortDirection::Inlet && port.kind == PortKind::Material)
-        .filter_map(|port| port.stream_id.as_ref())
-        .filter_map(|stream_id| flowsheet.streams.get(stream_id))
-        .map(|stream| stream.pressure_pa)
-        .reduce(f64::min)
+    let kind = BuiltinUnitKind::parse(&unit.kind)?;
+    rf_flowsheet::pressure_context::document_pressure_context(flowsheet, unit, kind)
+        .limit()
+        .map(|limit| limit.pressure_pa)
 }
 
 fn outlet_stream<'a>(flowsheet: &'a Flowsheet, unit: &UnitNode) -> Option<&'a MaterialStreamState> {

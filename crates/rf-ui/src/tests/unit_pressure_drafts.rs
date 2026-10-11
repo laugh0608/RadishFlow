@@ -24,6 +24,39 @@ fn pressure_draft_app(kind: BuiltinUnitKind) -> AppState {
         .unwrap()
         .parameters
         .outlet_pressure_pa = Some(90_000.0);
+    if kind == BuiltinUnitKind::Mixer {
+        document
+            .flowsheet
+            .insert_stream(MaterialStreamState::from_tpzf(
+                "stream-second",
+                "Second feed",
+                330.0,
+                200_000.0,
+                1.0,
+                Default::default(),
+            ))
+            .unwrap();
+        document
+            .flowsheet
+            .insert_unit(rf_unitops::build_feed_node(
+                "feed-second",
+                "Second feed",
+                "stream-second",
+            ))
+            .unwrap();
+        let unit = document
+            .flowsheet
+            .units
+            .get_mut(&UnitId::new("unit-1"))
+            .unwrap();
+        unit.ports[0].name = "inlet_a".into();
+        unit.ports.push(UnitPort::new(
+            "inlet_b",
+            PortDirection::Inlet,
+            PortKind::Material,
+            Some("stream-second".into()),
+        ));
+    }
     AppState::new(document)
 }
 
@@ -222,36 +255,10 @@ fn mixer_draft_tracks_both_inlets_when_the_limiting_source_changes() {
     app.workspace
         .document
         .flowsheet
-        .units
-        .get_mut(&id)
+        .streams
+        .get_mut(&StreamId::new("stream-second"))
         .unwrap()
-        .ports[0]
-        .name = "inlet_a".to_string();
-    app.workspace
-        .document
-        .flowsheet
-        .insert_stream(MaterialStreamState::from_tpzf(
-            "stream-second",
-            "Second feed",
-            330.0,
-            100_000.0,
-            1.0,
-            Default::default(),
-        ))
-        .unwrap();
-    app.workspace
-        .document
-        .flowsheet
-        .units
-        .get_mut(&id)
-        .unwrap()
-        .ports
-        .push(UnitPort::new(
-            "inlet_b",
-            PortDirection::Inlet,
-            PortKind::Material,
-            Some("stream-second".into()),
-        ));
+        .pressure_pa = 100_000.0;
     app.focus_inspector_target(InspectorTarget::Unit(id.clone()));
     app.update_unit_inspector_draft(&id, UnitInspectorDraftField::OutletPressurePa, "110000")
         .unwrap();

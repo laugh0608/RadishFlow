@@ -1,3 +1,5 @@
+pub mod specifications;
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use rf_flash::{TpFlashInput, TpFlashSolver, estimate_bubble_dew_window};
@@ -900,32 +902,30 @@ fn validated_total_flow(stream: &MaterialStreamState) -> RfResult<f64> {
 }
 
 fn normalized_composition(stream: &MaterialStreamState) -> RfResult<Composition> {
-    if stream.overall_mole_fractions.is_empty() {
+    use specifications::{CompositionCheck, CompositionPolicy, check_composition};
+    let check = check_composition(
+        &stream.overall_mole_fractions,
+        CompositionPolicy::NonnegativeWeights,
+    );
+    let message = match check {
+        CompositionCheck::Empty => Some("must define at least one overall mole fraction entry"),
+        CompositionCheck::InvalidFractions(_) => {
+            Some("overall mole fractions must be finite non-negative values")
+        }
+        CompositionCheck::InvalidTotal { .. } | CompositionCheck::Unnormalized { .. } => {
+            Some("overall mole fractions must sum to a positive finite value")
+        }
+        CompositionCheck::Valid { .. } => None,
+    };
+    if let Some(message) = message {
         return Err(RfError::invalid_input(format!(
-            "stream `{}` must define at least one overall mole fraction entry",
+            "stream `{}` {message}",
             stream.id
         )));
     }
-
-    if stream
-        .overall_mole_fractions
-        .values()
-        .any(|value| !value.is_finite() || *value < 0.0)
-    {
-        return Err(RfError::invalid_input(format!(
-            "stream `{}` overall mole fractions must be finite non-negative values",
-            stream.id
-        )));
-    }
-
-    let sum = stream.overall_mole_fractions.values().sum::<f64>();
-    if !sum.is_finite() || sum <= 0.0 {
-        return Err(RfError::invalid_input(format!(
-            "stream `{}` overall mole fractions must sum to a positive finite value",
-            stream.id
-        )));
-    }
-
+    let CompositionCheck::Valid { sum } = check else {
+        unreachable!("invalid composition returned its error");
+    };
     Ok(stream
         .overall_mole_fractions
         .iter()

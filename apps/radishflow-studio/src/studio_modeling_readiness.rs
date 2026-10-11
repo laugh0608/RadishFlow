@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use crate::modeling_specifications::{SpecificationProblem, check_inputs};
+use rf_flowsheet::specifications::FeedInputField;
+
+pub use rf_flowsheet::specifications::UnitParameter as StudioModelingUnitParameter;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioModelingRunBlocker {
@@ -39,12 +42,6 @@ pub enum StudioModelingReadinessTask {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum StudioModelingUnitParameter {
-    OutletTemperature,
-    OutletPressure,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioModelingFocusTarget {
     Package,
@@ -53,286 +50,85 @@ pub enum StudioModelingFocusTarget {
     Unit(String),
 }
 
+/// Legacy first-blocker view of the same facts used by the read-only A1 report.
+/// Execution-stage failures remain with the solver and retain their public codes.
 pub fn studio_modeling_run_blocker(
     document: &rf_ui::FlowsheetDocument,
 ) -> Option<StudioModelingRunBlocker> {
-    let flowsheet = &document.flowsheet;
-
-    if flowsheet.units.is_empty() {
-        return Some(StudioModelingRunBlocker {
-            task: StudioModelingReadinessTask::PlaceFirstUnit,
-            focus_target: StudioModelingFocusTarget::Palette,
-        });
-    }
-
-    if rf_flowsheet::validate_connections(flowsheet).is_err() {
-        return None;
-    }
-
-    if has_unit_dependency_cycle(flowsheet) {
-        return None;
-    }
-
-    if flowsheet.components.is_empty() {
-        return Some(StudioModelingRunBlocker {
-            task: StudioModelingReadinessTask::SelectProjectComponents,
-            focus_target: StudioModelingFocusTarget::Package,
-        });
-    }
-
-    if let Some((stream_id, component_id)) = first_stream_component_outside_project(flowsheet) {
-        return Some(StudioModelingRunBlocker {
-            task: StudioModelingReadinessTask::SelectReferencedProjectComponent {
-                stream_id: stream_id.clone(),
-                component_id,
+    let checks = check_inputs(&document.flowsheet);
+    let problem = checks.first_readiness_problem()?;
+    let (task, focus_target) = match problem {
+        SpecificationProblem::EmptyFlowsheet => (
+            StudioModelingReadinessTask::PlaceFirstUnit,
+            StudioModelingFocusTarget::Palette,
+        ),
+        SpecificationProblem::MissingProjectComponents => (
+            StudioModelingReadinessTask::SelectProjectComponents,
+            StudioModelingFocusTarget::Package,
+        ),
+        SpecificationProblem::ComponentOutsideProject {
+            stream_id,
+            component_id,
+        } => (
+            StudioModelingReadinessTask::SelectReferencedProjectComponent {
+                stream_id: stream_id.to_string(),
+                component_id: component_id.to_string(),
             },
-            focus_target: StudioModelingFocusTarget::Stream(stream_id),
-        });
-    }
-
-    if let Some((stream_id, task)) = first_feed_source_stream_state_issue(flowsheet) {
-        return Some(StudioModelingRunBlocker {
-            task,
-            focus_target: StudioModelingFocusTarget::Stream(stream_id),
-        });
-    }
-
-    if let Some(stream_id) = first_feed_source_stream_missing_composition(flowsheet) {
-        return Some(StudioModelingRunBlocker {
-            task: StudioModelingReadinessTask::CommitFeedComposition {
-                stream_id: stream_id.clone(),
-            },
-            focus_target: StudioModelingFocusTarget::Stream(stream_id),
-        });
-    }
-
-    if let Some((stream_id, task)) = first_stream_composition_value_issue(flowsheet) {
-        return Some(StudioModelingRunBlocker {
-            task,
-            focus_target: StudioModelingFocusTarget::Stream(stream_id),
-        });
-    }
-
-    if let Some((unit_id, parameter)) = first_required_unit_parameter_missing(flowsheet) {
-        return Some(StudioModelingRunBlocker {
-            task: StudioModelingReadinessTask::CommitUnitParameter {
-                unit_id: unit_id.clone(),
-                parameter,
-            },
-            focus_target: StudioModelingFocusTarget::Unit(unit_id),
-        });
-    }
-
-    None
-}
-
-fn has_unit_dependency_cycle(flowsheet: &rf_model::Flowsheet) -> bool {
-    let mut source_by_stream: HashMap<&str, &str> = HashMap::new();
-    let mut stream_sinks = Vec::new();
-
-    for unit in flowsheet.units.values() {
-        for port in &unit.ports {
-            if port.kind != rf_types::PortKind::Material {
-                continue;
-            }
-            let Some(stream_id) = port.stream_id.as_ref() else {
-                continue;
-            };
-            match port.direction {
-                rf_types::PortDirection::Outlet => {
-                    source_by_stream.insert(stream_id.as_str(), unit.id.as_str());
+            StudioModelingFocusTarget::Stream(stream_id.to_string()),
+        ),
+        SpecificationProblem::InvalidFeedInput {
+            stream_id, field, ..
+        } => {
+            let stream_id = stream_id.to_string();
+            let task = match field {
+                FeedInputField::Temperature => {
+                    StudioModelingReadinessTask::FixFeedSourceTemperature {
+                        stream_id: stream_id.clone(),
+                    }
                 }
-                rf_types::PortDirection::Inlet => {
-                    stream_sinks.push((stream_id.as_str(), unit.id.as_str()));
-                }
-            }
-        }
-    }
-
-    let mut graph: HashMap<&str, Vec<&str>> = HashMap::new();
-    for (stream_id, sink_unit_id) in stream_sinks {
-        if let Some(source_unit_id) = source_by_stream.get(stream_id) {
-            graph.entry(*source_unit_id).or_default().push(sink_unit_id);
-        }
-    }
-
-    let mut visiting = HashSet::new();
-    let mut visited = HashSet::new();
-    flowsheet
-        .units
-        .keys()
-        .any(|unit_id| visit_unit_dependency(unit_id.as_str(), &graph, &mut visiting, &mut visited))
-}
-
-fn visit_unit_dependency<'a>(
-    unit_id: &'a str,
-    graph: &HashMap<&'a str, Vec<&'a str>>,
-    visiting: &mut HashSet<&'a str>,
-    visited: &mut HashSet<&'a str>,
-) -> bool {
-    if visited.contains(unit_id) {
-        return false;
-    }
-    if !visiting.insert(unit_id) {
-        return true;
-    }
-
-    if let Some(dependencies) = graph.get(unit_id) {
-        for next_unit_id in dependencies {
-            if visit_unit_dependency(next_unit_id, graph, visiting, visited) {
-                return true;
-            }
-        }
-    }
-
-    visiting.remove(unit_id);
-    visited.insert(unit_id);
-    false
-}
-
-fn first_stream_component_outside_project(
-    flowsheet: &rf_model::Flowsheet,
-) -> Option<(String, String)> {
-    flowsheet.streams.values().find_map(|stream| {
-        stream
-            .overall_mole_fractions
-            .keys()
-            .find(|component_id| !flowsheet.components.contains_key(*component_id))
-            .map(|component_id| {
-                (
-                    stream.id.as_str().to_string(),
-                    component_id.as_str().to_string(),
-                )
-            })
-    })
-}
-
-fn first_feed_source_stream_state_issue(
-    flowsheet: &rf_model::Flowsheet,
-) -> Option<(String, StudioModelingReadinessTask)> {
-    feed_source_streams(flowsheet).find_map(|stream| {
-        let stream_id = stream.id.as_str().to_string();
-        if !is_positive_finite(stream.temperature_k) {
-            return Some((
-                stream_id.clone(),
-                StudioModelingReadinessTask::FixFeedSourceTemperature { stream_id },
-            ));
-        }
-        if !is_positive_finite(stream.pressure_pa) {
-            return Some((
-                stream_id.clone(),
-                StudioModelingReadinessTask::FixFeedSourcePressure { stream_id },
-            ));
-        }
-        if !is_positive_finite(stream.total_molar_flow_mol_s) {
-            return Some((
-                stream_id.clone(),
-                StudioModelingReadinessTask::FixFeedSourceMolarFlow { stream_id },
-            ));
-        }
-        None
-    })
-}
-
-fn first_feed_source_stream_missing_composition(flowsheet: &rf_model::Flowsheet) -> Option<String> {
-    feed_source_streams(flowsheet).find_map(|stream| {
-        stream
-            .overall_mole_fractions
-            .is_empty()
-            .then(|| stream.id.as_str().to_string())
-    })
-}
-
-fn first_stream_composition_value_issue(
-    flowsheet: &rf_model::Flowsheet,
-) -> Option<(String, StudioModelingReadinessTask)> {
-    flowsheet.streams.values().find_map(|stream| {
-        if stream.overall_mole_fractions.is_empty() {
-            return None;
-        }
-
-        let stream_id = stream.id.as_str().to_string();
-        let sum = stream
-            .overall_mole_fractions
-            .values()
-            .try_fold(0.0, |sum, value| {
-                (value.is_finite() && (0.0..=1.0).contains(value)).then_some(sum + value)
-            });
-
-        match sum {
-            Some(sum) if (sum - 1.0).abs() <= 1e-9 => None,
-            Some(sum) if sum.is_finite() && sum > 0.0 => Some((
-                stream_id.clone(),
-                StudioModelingReadinessTask::NormalizeStreamComposition {
-                    stream_id,
-                    sum: format!("{sum:.6}"),
+                FeedInputField::Pressure => StudioModelingReadinessTask::FixFeedSourcePressure {
+                    stream_id: stream_id.clone(),
                 },
-            )),
-            _ => Some((
-                stream_id.clone(),
-                StudioModelingReadinessTask::FixStreamCompositionValues { stream_id },
-            )),
+                FeedInputField::MolarFlow => StudioModelingReadinessTask::FixFeedSourceMolarFlow {
+                    stream_id: stream_id.clone(),
+                },
+            };
+            (task, StudioModelingFocusTarget::Stream(stream_id))
         }
-    })
-}
-
-fn first_required_unit_parameter_missing(
-    flowsheet: &rf_model::Flowsheet,
-) -> Option<(String, StudioModelingUnitParameter)> {
-    flowsheet.units.values().find_map(|unit| {
-        required_unit_parameters(unit.kind.as_str())
-            .iter()
-            .copied()
-            .find(|parameter| unit_parameter_missing(unit, *parameter))
-            .map(|parameter| (unit.id.as_str().to_string(), parameter))
-    })
-}
-
-fn feed_source_streams<'a>(
-    flowsheet: &'a rf_model::Flowsheet,
-) -> impl Iterator<Item = &'a rf_model::MaterialStreamState> + 'a {
-    flowsheet
-        .units
-        .values()
-        .filter(|unit| unit.kind == "feed")
-        .flat_map(|unit| {
-            unit.ports.iter().filter_map(|port| {
-                if port.kind != rf_types::PortKind::Material
-                    || port.direction != rf_types::PortDirection::Outlet
-                {
-                    return None;
-                }
-                let stream_id = port.stream_id.as_ref()?;
-                flowsheet.streams.get(stream_id)
-            })
-        })
-}
-
-fn required_unit_parameters(kind: &str) -> &'static [StudioModelingUnitParameter] {
-    match kind {
-        "heater" | "cooler" | "flash_drum" => &[
-            StudioModelingUnitParameter::OutletTemperature,
-            StudioModelingUnitParameter::OutletPressure,
-        ],
-        "mixer" | "valve" => &[StudioModelingUnitParameter::OutletPressure],
-        _ => &[],
-    }
-}
-
-fn unit_parameter_missing(
-    unit: &rf_model::UnitNode,
-    parameter: StudioModelingUnitParameter,
-) -> bool {
-    match parameter {
-        StudioModelingUnitParameter::OutletTemperature => {
-            unit.parameters.outlet_temperature_k.is_none()
+        SpecificationProblem::MissingFeedComposition { stream_id, .. } => (
+            StudioModelingReadinessTask::CommitFeedComposition {
+                stream_id: stream_id.to_string(),
+            },
+            StudioModelingFocusTarget::Stream(stream_id.to_string()),
+        ),
+        SpecificationProblem::UnnormalizedComposition { stream_id, sum } => (
+            StudioModelingReadinessTask::NormalizeStreamComposition {
+                stream_id: stream_id.to_string(),
+                sum: format!("{sum:.6}"),
+            },
+            StudioModelingFocusTarget::Stream(stream_id.to_string()),
+        ),
+        SpecificationProblem::InvalidMoleFraction { stream_id, .. }
+        | SpecificationProblem::InvalidCompositionTotal { stream_id, .. } => (
+            StudioModelingReadinessTask::FixStreamCompositionValues {
+                stream_id: stream_id.to_string(),
+            },
+            StudioModelingFocusTarget::Stream(stream_id.to_string()),
+        ),
+        SpecificationProblem::MissingParameter { unit_id, parameter } => (
+            StudioModelingReadinessTask::CommitUnitParameter {
+                unit_id: unit_id.to_string(),
+                parameter: *parameter,
+            },
+            StudioModelingFocusTarget::Unit(unit_id.to_string()),
+        ),
+        SpecificationProblem::Topology(_)
+        | SpecificationProblem::InvalidParameter { .. }
+        | SpecificationProblem::OutletPressureAboveInlet { .. } => {
+            unreachable!("execution problems do not enter authoring readiness")
         }
-        StudioModelingUnitParameter::OutletPressure => unit.parameters.outlet_pressure_pa.is_none(),
-    }
-}
-
-fn is_positive_finite(value: f64) -> bool {
-    value.is_finite() && value > 0.0
+    };
+    Some(StudioModelingRunBlocker { task, focus_target })
 }
 
 pub fn studio_modeling_run_blocked_title_en() -> &'static str {
