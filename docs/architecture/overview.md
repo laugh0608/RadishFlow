@@ -55,7 +55,7 @@ flowchart TD
 | 模块 | 实际职责 | 说明 |
 | --- | --- | --- |
 | `rf-types` | ID、相标签、错误与诊断上下文、相区容差及量 / 单位目录与转换 | 单位基础无 UI、IO 或 COM 语义；规范 SI 不变 |
-| `rf-model` | 组分、流股、单元、端口和 flowsheet 对象模型 | 不负责求解调度 |
+| `rf-model` | 组分、流股、单元、端口、flowsheet 及最小工程基础 / 来源对象模型 | 不负责求解调度；工程结构解析不证明方法有效性 |
 | `rf-thermo` | Antoine、理想 K 值、常热容相焓、泡露点估算、物性 provider | 目前还含缓存包装载，见下方依赖偏移说明 |
 | `rf-flash` | TP Flash、Rachford-Rice、相分率与相组成 | 数值假设与验证边界见 [热力学模型](../thermo/mvp-model.md) |
 | `rf-unitops` | canonical ports、单元输入输出、Feed / Mixer / Heater / Cooler / Valve / Flash Drum 行为 | Mixer、Valve 和焓模型使用 MVP 简化假设 |

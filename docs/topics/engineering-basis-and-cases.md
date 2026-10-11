@@ -10,7 +10,7 @@
 
 - 层级：一级轨道；上位规划：[模拟平台](../architecture/simulation-platform.md)。
 - 关联：[单位](units-and-quantity-system.md)、[物性](property-basis-and-components.md)、[设备](equipment-design-and-rating.md)、[建模求解](flowsheet-modeling-and-solve.md)、[结果](results-review-diagnostics.md)、[存储](project-lifecycle-storage.md)。
-- 状态：Draft / 方向已确认；2026-10-11 G0 + E0/S0 首批方案已认可；契约已细化，B04 依据待补，尚未实现。U1—U3、A1—A2 首批已接通；本节方案衔接首个独立设备任务，I5 按既定安排。
+- 状态：Draft / 方向已确认；2026-10-11 G0 + E0/S0 首批方案已认可；单位兼容与 G0 数据基础已实现，B04 依据待补，设备未实现。U1—U3、A1—A2 首批已接通；本节方案衔接首个独立设备任务，I5 按既定安排。
 
 ## 目标与当前基础
 
@@ -103,6 +103,10 @@ G0 在近期设计中优先，G1 随单位 / 规格基础按依赖切片；G2 �
 - 第三批：按完整 v3 契约实现基础存储子集，先覆盖 `tasks=[]`；非空任务保留原始数据且禁止覆写，CLI 与产品既有入口继续拒绝 v3，不启用 Studio 升级。不是另一种简化 v3。
 
 构造数据只验证单位、引用和存储，不能核销 B04 或宣布 G0/G1、v3 产品整体完成。下列设备与应用契约继续作为后续目标，不因基础实现自动启用。
+
+第二批实现位于 `rf-model::engineering`：`EngineeringBasis`、`SourceRecord`、`BasisEntry`、`InputBinding` 与借用的 `ResolvedBasisValue`；ID 复用 `rf-types` 的强类型 ID 机制，revision 使用非负整数。结构校验提供字段路径及分类错误，来源观察引用使用迭代拓扑检查，不递归执行来源表达式。ISO 日期只表达记录日期，T/P 成对且正有限；unknown / 缺文字资料可作为不完整数据保留。解析成功仅确定数值 / 来源 / 覆盖路径，既不升级来源可信度，也不授权计算。
+
+当前记录结构不负责编辑命令或 revision 自动推进；事务、删除提示、Undo / Redo、设备计算与证据代次、跨会话结果资格、G0-V01—06 的完整产品路径仍暂停。基础测试验证结构契约，不能将整张 G0 验收矩阵标为完成。
 
 ### 范围与所有权
 

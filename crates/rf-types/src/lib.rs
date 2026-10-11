@@ -61,6 +61,9 @@ macro_rules! define_string_id {
 define_string_id!(ComponentId);
 define_string_id!(StreamId);
 define_string_id!(UnitId);
+define_string_id!(BasisEntryId);
+define_string_id!(SourceId);
+define_string_id!(SourceObservationId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DiagnosticPortTarget {
