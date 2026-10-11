@@ -10,7 +10,7 @@
 
 - 层级：一级轨道；上位规划：[模拟平台](../architecture/simulation-platform.md)。
 - 关联：[建模求解](flowsheet-modeling-and-solve.md)、[Studio](studio-main-workflow.md)、[单位](units-and-quantity-system.md)、[结果与诊断](results-review-diagnostics.md)。
-- 状态：Active / A1-I1 已实现；A1-I2 局部 UI 待评审，A2 未实现。
+- 状态：Active / A1-I1 已实现；A1-I2 局部 UI 已认可、Pencil 静态复核通过，接线与产品验收待完成；A2 未实现。
 
 2026-10-11 项目所有者批准[首批范围](#a1-首批范围与实现)、共享检查与两项行为校正，先实施 A1-I1；I5 沿用既定补验节点与发布限制。A1-I2 先评审局部 UI 再接线，A2 暂不实现。
 
@@ -82,7 +82,7 @@
 
 集成验证覆盖诊断定位→修改→Undo / Redo→重检→运行→结果，GUI / CLI 结果一致，旧建议拒绝执行，保存重开按当前模型重新分析而非信任旧缓存。实现按相关 crate 定向测试及仓库基线收口；界面切片另做已告知的实窗验收。
 
-下一步：按已认可的 [A1-I2 局部 UI 方案](../architecture/designs/studio-client-main-brief.md#a1-i2-局部-ui-方案2026-10-11已认可)，补齐 Pencil 局部画板与静态复核后，接入问题生命周期与定位并验收；A2 写入动作与完整 N1 分别验收。
+下一步：按已认可且 Pencil 静态复核通过的 [A1-I2 局部 UI 方案](../architecture/designs/studio-client-main-brief.md#a1-i2-局部-ui-方案2026-10-11已认可)，接入问题生命周期与定位并完成产品验收；A2 写入动作与完整 N1 分别验收。
 
 ## A1 首批范围与实现
 

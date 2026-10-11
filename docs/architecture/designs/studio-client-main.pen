@@ -1,5 +1,5 @@
 {
-  "version": "2.17",
+  "version": "2.20",
   "children": [
     {
       "type": "frame",
@@ -18278,6 +18278,2823 @@
                   "fontWeight": "normal"
                 }
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "t8SCUl",
+      "x": 0,
+      "y": 3970,
+      "name": "R1-A1-01 · 当前问题与精确定位",
+      "clip": true,
+      "width": 1440,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "jOcNV",
+          "name": "评审标题",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "krIJr",
+              "name": "01 / 当前问题，与字段保持在同一上下文",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "01 / 当前问题，与字段保持在同一上下文",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 24,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "S4WGer",
+              "name": "A1-I2 已认可局部方案 · 当前输入 r42 · 预检只读已提交输入 · 静态设计，不代表产品验收",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "A1-I2 已认可局部方案 · 当前输入 r42 · 预检只读已提交输入 · 静态设计，不代表产品验收",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "WXDfB",
+          "name": "复用工程工具栏",
+          "width": "fill_container",
+          "fill": "#FFFFFF",
+          "stroke": "#CBD5E1",
+          "strokeWidth": {
+            "bottom": 1
+          },
+          "gap": 12,
+          "padding": [
+            12,
+            16
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "f4HEf",
+              "name": "Feed Heater Flash Example / 流程建模",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Mixing Example / 流程建模",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "jClhN",
+              "name": "保存",
+              "fill": "#FFFFFF",
+              "cornerRadius": 4,
+              "stroke": "$r1-border",
+              "strokeWidth": 1,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "nmF0P",
+                  "name": "保存",
+                  "fill": "$r1-text",
+                  "content": "保存",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "x7Hbfa",
+              "name": "项目显示单位",
+              "fill": "#FFFFFF",
+              "cornerRadius": 4,
+              "stroke": "$r1-border",
+              "strokeWidth": 1,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "io6nI",
+                  "name": "项目显示单位",
+                  "fill": "$r1-text",
+                  "content": "项目显示单位",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "M3SRb",
+          "name": "画布与对象字段",
+          "width": "fill_container",
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "WazTu",
+              "name": "流程上下文",
+              "width": 850,
+              "fill": "#F8FAFC",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "zINpr",
+                  "name": "流程图   /   Mixer M-101 已选中",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "流程图   /   Mixer M-101 已选中",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "G0cty",
+                  "name": "规范连接摘要",
+                  "width": "fill_container",
+                  "gap": 20,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "nMEza",
+                      "name": "Feed A",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": 14,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "E7zIbk",
+                          "name": "Feed A",
+                          "fill": "$r1-text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Feed A",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "pJlqC",
+                          "name": "出口 P  1.50 bar",
+                          "fill": "$r1-text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "出口 P  1.50 bar",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "pv8l0",
+                      "name": "Feed B",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": 14,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "A2Su6P",
+                          "name": "Feed B",
+                          "fill": "$r1-text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Feed B",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "j7638r",
+                          "name": "出口 P  1.20 bar",
+                          "fill": "$r1-text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "出口 P  1.20 bar",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "A5GAVe",
+                      "name": "Mixer M-101",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": 14,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "f6F6q",
+                          "name": "Mixer M-101",
+                          "fill": "$r1-text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Mixer M-101",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "OxxWr",
+                          "name": "出口 P  1.30 bar",
+                          "fill": "$r1-text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "出口 P  1.30 bar",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "S78CqF",
+                      "name": "Heater H-101",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": 14,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "htjuE",
+                          "name": "Heater H-101",
+                          "fill": "$r1-text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Heater H-101",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "MEYlf",
+                          "name": "出口 T  未指定",
+                          "fill": "$r1-text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "出口 T  未指定",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "ghExp",
+                  "name": "Feed A.outlet → M-101.inlet_a\nFeed B.outlet → M-101.inlet_b\nM-101.outlet → H-101.inlet",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Feed A.outlet → M-101.inlet_a\nFeed B.outlet → M-101.inlet_b\nM-101.outlet → H-101.inlet",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Fx08a",
+                  "name": "运行摘要   ! 当前问题 · 2    [打开当前问题]",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "运行摘要   ! 当前问题 · 2    [打开当前问题]",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "KrxwC",
+                  "name": "结果：当前输入尚未运行；旧快照已过期。",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "结果：当前输入尚未运行；旧快照已过期。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "LxqWF",
+              "name": "M-101 模块设置",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "PhFaH",
+                  "name": "M-101  /  模块设置",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "M-101  /  模块设置",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "h59Dnw",
+                  "name": "出口压力    ·    来源：指定",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "出口压力    ·    来源：指定",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "z3Vx5",
+                  "name": "压力字段焦点",
+                  "width": "fill_container",
+                  "fill": "#EFF6FF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-focus",
+                  "strokeWidth": 2,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "qEj1i",
+                      "name": "1.30                                     bar ▾",
+                      "fill": "$r1-specified",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "1.30                                     bar ▾",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 18,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "RQx7B",
+                  "name": "! 高于最低入口压力 1.20 bar",
+                  "fill": "$r1-error",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "! 高于最低入口压力 1.20 bar",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "DOBL4",
+                  "name": "inlet_b ← Feed B 的显式出口压力",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "inlet_b ← Feed B 的显式出口压力",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "KFB7C",
+                  "name": "返回当前问题",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "V1hkrt",
+                      "name": "返回当前问题文字",
+                      "fill": "$r1-text",
+                      "content": "返回当前问题",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "JwSC4",
+          "name": "现有诊断区域",
+          "width": "fill_container",
+          "fill": "#FFFFFF",
+          "stroke": "#CBD5E1",
+          "strokeWidth": {
+            "top": 1
+          },
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "N7aarj",
+              "name": "已有底部导航",
+              "width": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "DsaEE",
+                  "name": "诊断：当前问题     运行记录     诊断详情",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "诊断：当前问题     运行记录     诊断详情",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "epIWZ",
+              "name": "问题汇总",
+              "width": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "F2XD8r",
+                  "name": "! 当前问题 · 2     当前依据 r42",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "! 当前问题 · 2     当前依据 r42",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "ghvFj",
+                  "name": "重新检查",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "unB2t",
+                      "name": "重新检查文字",
+                      "fill": "$r1-text",
+                      "content": "重新检查",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "cndzG",
+              "name": "列表与依据",
+              "width": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "eMeFZ",
+                  "name": "问题列表",
+                  "width": 600,
+                  "fill": "#F8FAFC",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "H7M8Z",
+                      "name": "! 压力冲突  /  M-101 · 出口压力",
+                      "width": "fill_container",
+                      "fill": "#EFF6FF",
+                      "stroke": "$r1-focus",
+                      "strokeWidth": 2,
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "knHx1",
+                          "name": "! 压力冲突  /  M-101 · 出口压力",
+                          "fill": "$r1-text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "! 压力冲突  /  M-101 · 出口压力",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 15,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "yXM2p",
+                          "name": "1.30 bar 高于最低入口 1.20 bar · 当前",
+                          "fill": "$r1-secondary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "1.30 bar 高于最低入口 1.20 bar · 当前",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "av5ll",
+                      "name": "! 缺少输入  /  H-101 · 出口温度",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": 16,
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "psq0L",
+                          "name": "! 缺少输入  /  H-101 · 出口温度",
+                          "fill": "$r1-text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "! 缺少输入  /  H-101 · 出口温度",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 15,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "a4RFSf",
+                          "name": "请显式指定出口温度 · 当前",
+                          "fill": "$r1-secondary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "请显式指定出口温度 · 当前",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "m7JoRR",
+                      "name": "点击行仅阅读依据；定位按钮才改变对象选择。",
+                      "fill": "$r1-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "点击行仅阅读依据；定位按钮才改变对象选择。",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "FfDjN",
+                  "name": "选中问题依据",
+                  "width": "fill_container",
+                  "fill": "#FFFFFF",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "y9XYlA",
+                      "name": "M-101 · 出口压力",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "M-101 · 出口压力",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 18,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ilRnc",
+                      "name": "已提交 1.30 bar  >  两入口最低值 1.20 bar",
+                      "fill": "$r1-error",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "已提交 1.30 bar  >  两入口最低值 1.20 bar",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ZdQwJ",
+                      "name": "入口 a   Feed A → inlet_a   1.50 bar\n入口 b   Feed B → inlet_b   1.20 bar  ← 限制来源",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "入口 a   Feed A → inlet_a   1.50 bar\n入口 b   Feed B → inlet_b   1.20 bar  ← 限制来源",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "EXAXy",
+                      "name": "Mixer 不允许出口压力高于最低入口压力。\n依据为规范连接中的有效显式输入。",
+                      "fill": "$r1-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Mixer 不允许出口压力高于最低入口压力。\n依据为规范连接中的有效显式输入。",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "EPGDX",
+                      "name": "定位出口压力",
+                      "fill": "#1D4ED8",
+                      "cornerRadius": 4,
+                      "stroke": "#1D4ED8",
+                      "strokeWidth": 1,
+                      "padding": [
+                        8,
+                        14
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "NDTD3",
+                          "name": "定位出口压力文字",
+                          "fill": "#FFFFFF",
+                          "content": "定位出口压力",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "c6XhQ",
+                      "name": "▸ 技术依据：规则 A1-R08 · SI 证据",
+                      "fill": "$r1-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "▸ 技术依据：规则 A1-R07 · SI 证据",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "vd7G7",
+              "name": "结构自由度：未分析   ·   数值可解性：未分析   ·   运行与输出资格由真实求解结果决定",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "结构自由度：未分析   ·   数值可解性：未分析   ·   运行与输出资格由真实求解结果决定",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "kSPc4",
+      "x": 1540,
+      "y": 3970,
+      "name": "R1-A1-02 · 草稿保留与报告失效",
+      "clip": true,
+      "width": 1440,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "QFtLR",
+          "name": "评审标题",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "tUVVI",
+              "name": "02 / 定位不提交草稿，正式输入变化先失效",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "02 / 定位不提交草稿，正式输入变化先失效",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 24,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "pvCur",
+              "name": "同工程只读导航遵循 UE-13 · 问题更新不抢焦点 · 本次输入单位随草稿保存",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "同工程只读导航遵循 UE-13 · 问题更新不抢焦点 · 本次输入单位随草稿保存",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "wZLQv",
+          "name": "草稿与失效对照",
+          "width": "fill_container",
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "CJQfN",
+              "name": "未提交草稿仍保持当前报告",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "e1unUM",
+                  "name": "A  ·  当前问题 2 项   /   草稿 1 项",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "A  ·  当前问题 2 项   /   草稿 1 项",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "dfcht",
+                  "name": "M-101 · 出口压力",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "M-101 · 出口压力",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "IIbXM",
+                  "name": "保留原文和单位",
+                  "width": "fill_container",
+                  "fill": "#EFF6FF",
+                  "stroke": "$r1-focus",
+                  "strokeWidth": 2,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "XNr4U",
+                      "name": "1e-                                    bar ▾",
+                      "fill": "$r1-specified",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "1e-                                    bar ▾",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 20,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "eBajB",
+                  "name": "! 输入未完成 · 未提交",
+                  "fill": "$r1-error",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "! 输入未完成 · 未提交",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "l6SQv",
+                  "name": "检查仍基于已提交值 1.30 bar。\n输入原文尚未改变工程 r42；正式报告仍为当前。",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "检查仍基于已提交值 1.30 bar。\n输入原文尚未改变工程 r42；正式报告仍为当前。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "j2DhZ",
+                  "name": "定位 H-101 · 出口温度",
+                  "fill": "#1D4ED8",
+                  "cornerRadius": 4,
+                  "stroke": "#1D4ED8",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "WUW06",
+                      "name": "定位 H-101 · 出口温度文字",
+                      "fill": "#FFFFFF",
+                      "content": "定位 H-101 · 出口温度",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "e0wtcC",
+                  "name": "定位后的 H-101 字段",
+                  "width": "fill_container",
+                  "fill": "#F8FAFC",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "o0Vju9",
+                      "name": "H-101  /  出口温度",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "H-101  /  出口温度",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "W53VbY",
+                      "name": "未指定                                    K ▾",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "未指定                                    K ▾",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 18,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ScrHY",
+                      "name": "! 请显式指定出口温度",
+                      "fill": "$r1-error",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "! 请显式指定出口温度",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "aJpi4",
+                      "name": "返回当前问题",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-border",
+                      "strokeWidth": 1,
+                      "padding": [
+                        8,
+                        14
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "B79x8n",
+                          "name": "返回当前问题文字",
+                          "fill": "$r1-text",
+                          "content": "返回当前问题",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "r4Q2p",
+                  "name": "草稿 · 1  →  返回 M-101",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "XhNuX",
+                      "name": "草稿 · 1  →  返回 M-101文字",
+                      "fill": "$r1-text",
+                      "content": "草稿 · 1  →  返回 M-101",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "Yi7sf",
+                  "name": "返回后仍为 1e- bar；不提交、不丢弃、不弹离开确认。",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "返回后仍为 1e- bar；不提交、不丢弃、不弹离开确认。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "sH0oN",
+              "name": "正式输入变化后的旧依据",
+              "width": "fill_container",
+              "fill": "#F8FAFC",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "QTBPM",
+                  "name": "B  ·  待重检 · 上次 2 项",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "B  ·  待重检 · 上次 2 项",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "mYXAp",
+                  "name": "当前输入 r43  /  上次报告 r42",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "当前输入 r43  /  上次报告 r42",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "l1nFf",
+                  "name": "↻ 正式修改 Feed B 出口压力后，旧报告立即失效。",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "↻ 正式修改 Feed B 出口压力后，旧报告立即失效。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "pRaEL",
+                  "name": "上次问题依据",
+                  "width": "fill_container",
+                  "fill": "#FFFFFF",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "y7H5DS",
+                      "name": "上次：M-101 出口压力高于入口",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "上次：M-101 出口压力高于入口",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "omkLG",
+                      "name": "上次依据 r42\n出口 1.30 bar；入口最低 1.20 bar。\n这些数值仅解释上次问题，当前尚未确认。",
+                      "fill": "$r1-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "上次依据 r42\n出口 1.30 bar；入口最低 1.20 bar。\n这些数值仅解释上次问题，当前尚未确认。",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "cfrmk",
+                  "name": "重新检查",
+                  "fill": "#1D4ED8",
+                  "cornerRadius": 4,
+                  "stroke": "#1D4ED8",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "pC707",
+                      "name": "重新检查文字",
+                      "fill": "#FFFFFF",
+                      "content": "重新检查",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "X0fJud",
+                  "name": "自动同步检查完成后更新报告。\n不为短检查强制显示动画或人为等待。",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "自动同步检查完成后更新报告。\n不为短检查强制显示动画或人为等待。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "I8qww",
+                  "name": "重检保留选中问题与列表位置；原问题消失时提供变化摘要，不自动跳到下一字段。",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "重检保留选中问题与列表位置；原问题消失时提供变化摘要，不自动跳到下一字段。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "YEEs3",
+                  "name": "运行结果：旧快照已过期\n重检通过也不会恢复导出资格。",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "运行结果：旧快照已过期\n重检通过也不会恢复导出资格。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "MToib",
+          "name": "边界说明",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "Vex1f",
+              "name": "正式提交 / 连接 / 删除 / Undo / Redo → 失效并重检；语言、显示单位、焦点与面板收起不改变输入报告。",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "正式提交 / 连接 / 删除 / Undo / Redo → 失效并重检；语言、显示单位、焦点与面板收起不改变输入报告。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "oHxIb",
+              "name": "只有后续删除、工程历史或切工程等真实清除草稿操作，才进入既有离开保护。",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "只有后续删除、工程历史或切工程等真实清除草稿操作，才进入既有离开保护。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "l0EKjp",
+      "x": 3080,
+      "y": 3970,
+      "name": "R1-A1-03 · 重检失败与检查覆盖",
+      "clip": true,
+      "width": 1440,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "MRzMo",
+          "name": "评审标题",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "sVcfF",
+              "name": "03 / 未完成、未检查、未分析，分别说清楚",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "03 / 未完成、未检查、未分析，分别说清楚",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 24,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "zE6DB",
+              "name": "检查状态与求解结果独立；没有当前报告时不显示 0 问题",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "检查状态与求解结果独立；没有当前报告时不显示 0 问题",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "JI1PO",
+          "name": "检查状态对照",
+          "width": "fill_container",
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "gb6N8",
+              "name": "尚未检查",
+              "width": "fill_container",
+              "fill": "#F8FAFC",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "imFlY",
+                  "name": "尚未检查",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "尚未检查",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "RKYZC",
+                  "name": "— 尚无当前报告",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "— 尚无当前报告",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "TtRYY",
+                  "name": "初次打开 / 切工程。\n自动检查正式输入；不沿用其他会话的数量。",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "初次打开 / 切工程。\n自动检查正式输入；不沿用其他会话的数量。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "pZVmQ",
+                  "name": "检查当前输入",
+                  "fill": "#1D4ED8",
+                  "cornerRadius": 4,
+                  "stroke": "#1D4ED8",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "j9XJUj",
+                      "name": "检查当前输入文字",
+                      "fill": "#FFFFFF",
+                      "content": "检查当前输入",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "RvxQn",
+              "name": "检查未完成",
+              "width": "fill_container",
+              "fill": "#F8FAFC",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "wjk4Q",
+                  "name": "检查未完成",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "检查未完成",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "dGoTY",
+                  "name": "! 保留上次 2 项 · r42",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "! 保留上次 2 项 · r42",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "dXSC5",
+                  "name": "当前 r43 检查过程异常。\n失败原因：无法取得完整当前报告。\n旧问题仍标明“上次依据”，不能变成空列表。",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "当前 r43 检查过程异常。\n失败原因：无法取得完整当前报告。\n旧问题仍标明“上次依据”，不能变成空列表。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "B6CD4W",
+                  "name": "重新检查",
+                  "fill": "#1D4ED8",
+                  "cornerRadius": 4,
+                  "stroke": "#1D4ED8",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "CHF5s",
+                      "name": "重新检查文字",
+                      "fill": "#FFFFFF",
+                      "content": "重新检查",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "AAmTI",
+              "name": "部分范围未检查",
+              "width": "fill_container",
+              "fill": "#F8FAFC",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "KYpzX",
+                  "name": "部分范围未检查",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "部分范围未检查",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "nhxZa",
+                  "name": "! 当前已知问题 · 2",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "! 当前已知问题 · 2",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "yYKOw",
+                  "name": "M-101.inlet_b 尚未连接。\nH-101 缺少显式出口温度。\n温度缺项可独立检查；入口压力关系尚未检查。",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "M-101.inlet_b 尚未连接。\nH-101 缺少显式出口温度。\n温度缺项可独立检查；入口压力关系尚未检查。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "gej0g",
+                  "name": "定位 inlet_b",
+                  "fill": "#1D4ED8",
+                  "cornerRadius": 4,
+                  "stroke": "#1D4ED8",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "K0qS81",
+                      "name": "定位 inlet_b文字",
+                      "fill": "#FFFFFF",
+                      "content": "定位 inlet_b",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ILXDK",
+          "name": "部分覆盖细目",
+          "width": "fill_container",
+          "fill": "#FFFFFF",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "A5dcEb",
+              "name": "当前报告的覆盖范围",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "当前报告的覆盖范围",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 18,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "bjVim",
+              "name": "拓扑",
+              "width": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "UXNQM",
+                  "name": "拓扑",
+                  "width": 430,
+                  "fill": "#FFFFFF",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "aATe6",
+                      "name": "拓扑",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "拓扑",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "uWDad",
+                  "name": "! 已检查：入口未连接",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "! 已检查：入口未连接",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ptTOh",
+              "name": "单元参数",
+              "width": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "RJduS",
+                  "name": "单元参数",
+                  "width": 430,
+                  "fill": "#FFFFFF",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "g9ANJl",
+                      "name": "单元参数",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "单元参数",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "yftPF",
+                  "name": "! 已检查：H-101 缺出口温度",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "! 已检查：H-101 缺出口温度",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "TzKqx",
+              "name": "入口压力关系 / Feed 输入",
+              "width": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "a5xSTk",
+                  "name": "入口压力关系 / Feed 输入",
+                  "width": 430,
+                  "fill": "#FFFFFF",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "T0bQIb",
+                      "name": "入口压力关系 / Feed 输入",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "入口压力关系 / Feed 输入",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "thZhb",
+                  "name": "— 未检查：拓扑前置条件未满足",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "— 未检查：拓扑前置条件未满足",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "y4Skg",
+              "name": "缺少上游必需压力的独立变体",
+              "width": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "duJNG",
+                  "name": "缺少上游必需压力的独立变体",
+                  "width": 430,
+                  "fill": "#FFFFFF",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Vh5Z3",
+                      "name": "缺少上游必需压力的独立变体",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "缺少上游必需压力的独立变体",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "uHn1l",
+                  "name": "— 未检查：缺少有效输入；不写成待运行",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "— 未检查：缺少有效输入；不写成待运行",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "SRT6f",
+              "name": "结构自由度 / 数值可解性",
+              "width": "fill_container",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "pxZeu",
+                  "name": "结构自由度 / 数值可解性",
+                  "width": 430,
+                  "fill": "#FFFFFF",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n00CAH",
+                      "name": "结构自由度 / 数值可解性",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "结构自由度 / 数值可解性",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "decKY",
+                  "name": "— 未分析",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "— 未分析",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "nqSnU",
+          "name": "局部通过状态",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "tlClA",
+              "name": "✓ 本批局部检查未发现问题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "✓ 本批局部检查未发现问题",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "R8oJJB",
+              "name": "本次已执行范围内无问题；结构自由度与数值可解性仍未分析。",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "本次已执行范围内无问题；结构自由度与数值可解性仍未分析。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "FhwdV",
+              "name": "运行结果：旧快照已过期 / 当前输入尚未运行。\n通过局部检查不代表全流程可解，也不恢复旧结果输出资格。",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "运行结果：旧快照已过期 / 当前输入尚未运行。\n通过局部检查不代表全流程可解，也不恢复旧结果输出资格。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "wKfBl",
+              "name": "“待运行检查”只在报告明确需要实际执行上下文时出现；必需入口 P 缺失属于未检查。",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "“待运行检查”只在报告明确需要实际执行上下文时出现；必需入口 P 缺失属于未检查。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "hMPkA",
+              "name": "重新检查只读输入，不修改工程、Undo 或结果。运行继续沿用既有 blocked / failed 分类。",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "重新检查只读输入，不修改工程、Undo 或结果。运行继续沿用既有 blocked / failed 分类。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "xoP1a",
+      "x": 4620,
+      "y": 3970,
+      "name": "R1-A1-04 · 目标身份与会话隔离",
+      "clip": true,
+      "width": 1440,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "nlx9n",
+          "name": "评审标题",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "iE0sj",
+              "name": "04 / 对象移除不等于检查通过",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "04 / 对象移除不等于检查通过",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 24,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "uTZwm",
+              "name": "稳定对象身份，不以名称匹配；检查结果只属于原工程、会话、输入修订和检查代次",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "稳定对象身份，不以名称匹配；检查结果只属于原工程、会话、输入修订和检查代次",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "tTt9O",
+          "name": "原目标与新对象",
+          "width": "fill_container",
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "NQFDK",
+              "name": "原目标已移除",
+              "width": "fill_container",
+              "fill": "#F8FAFC",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "d3AIJi",
+                  "name": "本会话变化   /   目标已移除",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "本会话变化   /   目标已移除",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 20,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "SpobN",
+                  "name": "M-101 · 原对象",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "M-101 · 原对象",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "QwmHr",
+                  "name": "上次依据 r42：出口压力高于入口。\n该对象已删除，旧条目退出当前问题列表。",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "上次依据 r42：出口压力高于入口。\n该对象已删除，旧条目退出当前问题列表。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "FuknX",
+                  "name": "禁用的旧定位",
+                  "width": "fill_container",
+                  "fill": "#E2E8F0",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 12,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "SmQCP",
+                      "name": "定位不可用 · 原目标已删除",
+                      "fill": "$r1-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "定位不可用 · 原目标已删除",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "AlrGe",
+                  "name": "目标移除 ≠ 规则检查通过\n不把原问题显示为“已解决”。",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "目标移除 ≠ 规则检查通过\n不把原问题显示为“已解决”。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "YbzfT",
+              "name": "同名新对象",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "roKNa",
+                  "name": "当前问题   /   新对象独立检查",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "当前问题   /   新对象独立检查",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 20,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "NBzx2",
+                  "name": "M-101 · 新建对象",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "M-101 · 新建对象",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "KH22n",
+                  "name": "! inlet_a 尚未连接\n! inlet_b 尚未连接",
+                  "fill": "$r1-error",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "! inlet_a 尚未连接\n拓扑检查先报告当前首个错误；修复后重新检查。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "Rde59",
+                  "name": "定位新对象连接",
+                  "fill": "#1D4ED8",
+                  "cornerRadius": 4,
+                  "stroke": "#1D4ED8",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "CMhd7",
+                      "name": "定位新对象连接文字",
+                      "fill": "#FFFFFF",
+                      "content": "定位新对象连接",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "ii8ZC",
+                  "name": "名称相同，身份不同。旧压力问题不能跳到这个对象。",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "名称相同，身份不同。旧压力问题不能跳到这个对象。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "LmOC5",
+          "name": "切换与关联规则",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "hw1XZ",
+              "name": "工程与会话隔离",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "工程与会话隔离",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "wNt3l",
+              "name": "打开、切换、关闭后重开均建立新的检查会话；即使磁盘工程 ID 与修订相同，旧会话结果也不能覆盖新会话。",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "打开、切换、关闭后重开均建立新的检查会话；即使磁盘工程 ID 与修订相同，旧会话结果也不能覆盖新会话。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "DkfW2",
+              "name": "重检变化只给本会话摘要。只有对应范围明确完成且问题未再出现，才能报告已解决；未检查范围继续标为未确认。",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "重检变化只给本会话摘要。只有对应范围明确完成且问题未再出现，才能报告已解决；未检查范围继续标为未确认。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "IGLLm",
+              "name": "运行诊断保留来源",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "运行诊断保留来源",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "KioJG",
+              "name": "相同规则、稳定目标和结构化来源均可确认时才关联同一事实；不同运行的事实保留运行来源，不按文案或对象名猜测合并。",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "相同规则、稳定目标和结构化来源均可确认时才关联同一事实；不同运行的事实保留运行来源，不按文案或对象名猜测合并。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "NKIiz",
+              "name": "定位入口保持单一职责",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "定位入口保持单一职责",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "Ta1jq",
+              "name": "单元参数 → 模块设置；流股 T/P/F/z → Inspector 标量 / 组分行；端口 → 既有连接入口。\n工程缺组分 → 物性组分页；空流程 → 组件库。所有定位均不代填、不自动连接。",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "单元参数 → 模块设置；流股 T/P/F/z → Inspector 标量 / 组分行；端口 → 既有连接入口。\n工程缺组分 → 物性组分页；空流程 → 组件库。所有定位均不代填、不自动连接。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "a2jp8C",
+      "x": 6160,
+      "y": 3970,
+      "name": "R1-A1-05 · 窄区域与键盘返回",
+      "clip": true,
+      "width": 1440,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "yt4CM",
+          "name": "评审标题",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "V024AG",
+              "name": "05 / 窄区域单列切换，保留返回位置",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "05 / 窄区域单列切换，保留返回位置",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 24,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "zASsL",
+              "name": "以局部内容宽度演示；最终切换阈值由 egui 文本与控件实测，非物理像素约束",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "以局部内容宽度演示；最终切换阈值由 egui 文本与控件实测，非物理像素约束",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Azk8D",
+          "name": "窄区域双状态",
+          "width": "fill_container",
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "XhrEg",
+              "name": "当前问题窄页",
+              "width": 690,
+              "fill": "#F8FAFC",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ug4cY",
+                  "name": "当前问题   |   对象字段",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "当前问题   |   对象字段",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "F8utPb",
+                  "name": "! 当前问题 · 2   /   草稿 · 1",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "! 当前问题 · 2   /   草稿 · 1",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "ArzML",
+                  "name": "键盘选中问题",
+                  "width": "fill_container",
+                  "fill": "#FFFFFF",
+                  "stroke": "$r1-focus",
+                  "strokeWidth": 2,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "wZLpj",
+                      "name": "! M-101 · 出口压力",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "! M-101 · 出口压力",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 18,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "hOb1c",
+                      "name": "已提交 1.30 bar 高于最低入口压力 1.20 bar；限制来源为 Feed B → inlet_b。",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "已提交 1.30 bar 高于最低入口压力 1.20 bar；限制来源为 Feed B → inlet_b。",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Hj2Gc",
+                      "name": "定位出口压力",
+                      "fill": "#1D4ED8",
+                      "cornerRadius": 4,
+                      "stroke": "#1D4ED8",
+                      "strokeWidth": 1,
+                      "padding": [
+                        8,
+                        14
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "k2OHpy",
+                          "name": "定位出口压力文字",
+                          "fill": "#FFFFFF",
+                          "content": "定位出口压力",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "xM5AK",
+                  "name": "H-101 · 出口温度未指定",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "H-101 · 出口温度未指定",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Eynru",
+                  "name": "选中行仅显示依据；Tab → 定位动作，Enter / Space 激活。",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "选中行仅显示依据；Tab → 定位动作，Enter / Space 激活。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "S76W7u",
+              "name": "对象字段窄页",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "OvAMs",
+                  "name": "← 返回当前问题",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "UJr5x",
+                      "name": "← 返回当前问题文字",
+                      "fill": "$r1-text",
+                      "content": "← 返回当前问题",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "M0BGhs",
+                  "name": "对象字段   /   M-101",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "对象字段   /   M-101",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "QfXSd",
+                  "name": "出口压力 · 来源：指定",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "出口压力 · 来源：指定",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "P6SuD5",
+                  "name": "窄页未完成草稿",
+                  "width": "fill_container",
+                  "fill": "#EFF6FF",
+                  "stroke": "$r1-focus",
+                  "strokeWidth": 2,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 16,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "VsDpg",
+                      "name": "1e-                  bar ▾",
+                      "fill": "$r1-specified",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "1e-                  bar ▾",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 20,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "U4AnoE",
+                  "name": "! 输入未完成 · 未提交",
+                  "fill": "$r1-error",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "! 输入未完成 · 未提交",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "M8j1SJ",
+                  "name": "检查基于已提交值 1.30 bar；原文和本次输入单位保持。",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "检查基于已提交值 1.30 bar；原文和本次输入单位保持。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "bUZkJ",
+                  "name": "草稿 · 1",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "taXG9",
+                      "name": "草稿 · 1文字",
+                      "fill": "$r1-text",
+                      "content": "草稿 · 1",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "JRuYn",
+                  "name": "返回恢复选中行和列表滚动位置；重检不自动转移焦点。",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "返回恢复选中行和列表滚动位置；重检不自动转移焦点。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "W73Oom",
+          "name": "双语与大字体样例",
+          "width": "fill_container",
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "Df1CJ",
+              "name": "英文长名称换行",
+              "width": "fill_container",
+              "fill": "#F1F5F9",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "jP3jj",
+                  "name": "Current problems · 2",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Current problems · 2",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 24,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Fnoci",
+                  "name": "Mixer with a long equipment name / Outlet pressure",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Mixer with a long equipment name / Outlet pressure",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 22,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "gNzSI",
+                  "name": "Specified 1.300000 bar exceeds the lowest inlet pressure of 1.200000 bar from Feed B.",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Specified 1.300000 bar exceeds the lowest inlet pressure of 1.200000 bar from Feed B.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 20,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "sP3yP",
+                  "name": "Locate outlet pressure",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "cU00q",
+                      "name": "Locate outlet pressure文字",
+                      "fill": "$r1-text",
+                      "content": "Locate outlet pressure",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "J9p4m",
+                  "name": "Return to current problems",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Return to current problems",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 20,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "j057Q",
+              "name": "200% 字体与非颜色表达",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "knliW",
+                  "name": "! 压力冲突",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "! 压力冲突",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 28,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "pqiqx",
+                  "name": "M-101 · 出口压力",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "M-101 · 出口压力",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 28,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "HzJCa",
+                  "name": "1.30 bar > 1.20 bar",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "1.30 bar > 1.20 bar",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 28,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "z6KI60",
+                  "name": "上次依据 r42\n待重检 · 非当前结论",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "上次依据 r42\n待重检 · 非当前结论",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 28,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "RFlS9",
+                  "name": "错误图标 + 文字；焦点外框与字段错误各自可辨。",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "错误图标 + 文字；焦点外框与字段错误各自可辨。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "zcBpH",
+          "name": "验收边界",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 24,
+          "children": [
+            {
+              "type": "text",
+              "id": "g7kTKz",
+              "name": "Tab / Shift+Tab 遵循原生顺序；不新增快捷键。上述为静态字体与换行样例，系统缩放、读屏和真实键盘另验。",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Tab / Shift+Tab 遵循原生顺序；不新增快捷键。上述为静态字体与换行样例，系统缩放、读屏和真实键盘另验。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
             }
           ]
         }
