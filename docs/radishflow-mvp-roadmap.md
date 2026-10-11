@@ -67,7 +67,7 @@ P2 的自动化按可交付切片展开：先做变量 / 动作描述和只读�
 | 5 | E2—E3 设备深化与流程关联 | 推荐采纳、几何校核、源结果过期、多工况及热力 / 水力细化；与动态按真实依赖衔接 |
 | 后续 | A3—A5 工作流 / 结构分析 / Agent | 固定工作流随运行能力交付；结构分析随方程模型推进；Agent 未排期且复用统一入口 |
 
-2026-10-11 [A1—A2 首批](topics/modeling-assistance-and-specifications.md#a2-i2--i3-实现与验收状态2026-10-11)已完成共享规格检查、当前问题闭环及推荐预览 / 接受；Pencil 静态、自动基线与 macOS 代表路径通过。N1 仅完成相关子集，I5 沿用既定补验与发布限制。下一步 [G0 + E0/S0 首批方案](topics/equipment-design-and-rating.md#首批方案审定入口2026-10-11)已认可；单位兼容、G0 数据及 v3 基础存储三批已完成。S0-B04 方法门禁已核销，Pencil 六图静态复核通过、待审定；设备实现和 v3 产品启用继续暂停，I5 不变。
+2026-10-11 [A1—A2 首批](topics/modeling-assistance-and-specifications.md#a2-i2--i3-实现与验收状态2026-10-11)已完成共享规格检查、当前问题闭环及推荐预览 / 接受；Pencil 静态、自动基线与 macOS 代表路径通过。N1 仅完成相关子集，I5 沿用既定补验与发布限制。下一步 [G0 + E0/S0 首批方案](topics/equipment-design-and-rating.md#首批方案审定入口2026-10-11)已认可；单位兼容、G0 数据及 v3 基础存储三批已完成。S0-B04 方法门禁已核销，Pencil 六图静态复核通过并获认可；设备实现和 v3 产品启用继续暂停，后续按 [G1 / S1 数据与纯计算 → 事务 / 保存 → UI 验收](topics/equipment/separator-sizing-and-rating.md#后续事项2026-10-11) 顺序恢复，I5 不变。
 
 [R0—R2 UI 重设计](architecture/studio-ui-topic-plan.md) 与上述顺序衔接：先整理任务与信息架构，优先评审单位输入 / 显示、规格检查、设备任务三类代表路径，再通过 Pencil 更新对应画板。影响用户入口、布局或字段交互的切片需先评审其相关设计；B3-5 和纯单位转换逻辑不等待整套 UI 完成。旧 `.pen` 的既有定稿仅保留历史范围，新功能分区尚未定稿，不据此直接进行全界面代码重写。
 
@@ -90,7 +90,7 @@ U3 首批已在现有只读浏览器接入项目显示单位，完整 VB1 仍未
 
 ### 运行、消息与诊断的配套切片
 
-2026-09-23 确认 [运行与诊断大专题](topics/runtime-messages-and-diagnostics.md)，由七个子专题及 [需求追踪表](topics/runtime-messages/requirements-traceability.md) 承接细节、待决策和验收；新增 N0—N5 尚未实现，现有问题定位、恢复和 current 快照门禁继续维护。
+2026-09-23 确认 [运行与诊断大专题](topics/runtime-messages-and-diagnostics.md)，由七个子专题及 [需求追踪表](topics/runtime-messages/requirements-traceability.md) 承接细节、待决策和验收；N1 的 A1 / A2 当前问题与推荐子集已实现，完整 N1 和 N2—N5 未完成；现有恢复与 current 快照门禁继续维护。
 
 | 切片 | 进入时机 | 核心退出依据 |
 | --- | --- | --- |

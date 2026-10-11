@@ -1,6 +1,6 @@
 # Canvas Interaction Contract
 
-更新时间：2026-09-14
+更新时间：2026-10-11
 
 ## 文档目的
 
@@ -114,7 +114,7 @@
 - 普通 `新建项目` 不直接进入 Canvas 建模，而是先进入独立 `物性` 页；package 和项目组分选齐后，`StudioGuiWindowPropertyPageModel` 的 `flowsheet_modeling_enabled` 允许顶部 `流程图` 导航或 `物性` 上下文工具栏进入建模。Canvas 不复制这层 readiness，也不承担项目级物性状态编辑。
 - 当前最短可求解路径覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`。
 - 作者任务清单状态必须从当前 canvas presentation、项目输入和最新 `SolveSnapshot` 推导：unit kind、material stream source / sink 端点、项目级物性包 / 组分、Feed composition、必要单元参数和运行结果。清单不是真相源，不得反向修正文档、替代 suggestion acceptance 或充当手动运行 gate。
-- 进入 Canvas 后的运行前建模输入 gate 属于 App 层通用 `Flowsheet` readiness：它只按项目组分、Feed source stream T/P/F/z、composition 引用 / 归一和必要单元参数判断，并聚焦到 stream / unit。缺 property package、缓存缺失或多包歧义继续进入正式 run package resolution；缺 material port 绑定、坏 stream reference、重复 source / sink、orphan stream、cycle 等结构性连接 / 拓扑问题继续进入正式 Run Panel 诊断 / recovery。画布 suggestion 只帮助创建拓扑和 outlet stream，不代表输入已经完整。
+- 进入 Canvas 后的运行前建模输入 gate 属于 App 层通用 `Flowsheet` readiness：它只按项目组分、Feed 显式覆盖后的有效 T/P/F、流股组成、composition 引用 / 归一和必要单元参数判断，并聚焦到 stream / unit。缺 property package、缓存缺失或多包歧义继续进入正式 run package resolution；缺 material port 绑定、坏 stream reference、重复 source / sink、orphan stream、cycle 等结构性连接 / 拓扑问题继续进入正式 Run Panel 诊断 / recovery。画布 suggestion 只帮助创建拓扑和 outlet stream，不代表输入已经完整。
 - 本地 suggestion 可补齐标准材料端口连接和必要 outlet stream；显示动词按接受载荷区分为 `连接流股` / `Connect stream` 与 `创建流股` / `Create stream`，不再使用泛化 `Apply` 或单一 `连接`。
 - suggestion 接受仍转换为正式 `DocumentCommand::ConnectPorts` 或等价文档命令后写回；接受 / 拒绝本身不进入 `CommandHistory`。
 - Canvas 对象选择会驱动右侧 `检查器` / 结果定位，但不缓存第二份求解结果。
@@ -332,10 +332,10 @@ pub enum SuggestionStatus {
 
 冻结以下交互口径：
 
-- `Tab` 默认接受当前第一条高置信 `Focused` suggestion
-- 若没有高置信 suggestion，`Tab` 不应强行落盘
-- 鼠标点击或显式命令也可接受指定 suggestion
-- `Esc` 或明确 dismiss 动作可拒绝当前 suggestion
+- 当前 GUI 的 `Tab`、鼠标及旧接受命令对有写入载荷的 `Focused` suggestion 先打开 A2 预览；连接展示准确端点，创建展示完整流股模板，打开动作不写文档
+- 预览内显式接受才经同一推荐会话校验；草稿、旧修订、过期预览或无唯一候选时不能写回，按键不能从打开动作透传为接受
+- 画布上下文的 `Esc` / dismiss 对写入建议按本修订忽略，可从建议区恢复；预览内 Escape 只关闭预览。不影响当前问题计数、模型或结果资格
+- 无写入载荷的导航建议保留原定位语义；完整状态与验收见 [A2 首批](../topics/modeling-assistance-and-specifications.md#a2-i2--i3-实现与验收状态2026-10-11)
 - 接受 / 拒绝 suggestion 默认不进入 `CommandHistory`
 - suggestion 转成正式文档命令后的实际文档变更，才进入 `CommandHistory`
 
@@ -343,12 +343,12 @@ pub enum SuggestionStatus {
 
 必须遵守以下顺序：
 
-1. 用户接受 ghost suggestion
-2. UI 生成显式接受动作
-3. Studio 将 suggestion 转换为本地文档命令
+1. 用户打开 ghost suggestion 的预览，检查端点或完整创建模板
+2. 用户在预览中显式接受
+3. Studio 重验会话、修订、草稿与当前候选，并转换为本地文档命令
 4. 本地 canonical port 规则和连接校验执行
-5. 校验通过后写回 `FlowsheetDocument`
-6. ghost 元素移除，正式对象进入文档
+5. 校验通过后写回 `FlowsheetDocument`，形成一次正式历史事务
+6. ghost 元素刷新，正式对象进入文档；重检结论与提交回执分开，不自动运行
 
 禁止以下路径：
 
@@ -428,6 +428,6 @@ pub struct GhostElement {
 2. `Perspective` 视图是否需要单独的深度排序策略和遮挡规则
 3. selected stream 恢复动作是否要扩展到非唯一候选、任意端口选择或跨类型重连；当前答案是否，除非先补新的专题边界
 4. suggestion 是否需要批量接受，还是严格先从单条接受开始
-5. `Tab` 接受是否需要和属性面板焦点、文本输入焦点做更细的快捷键竞争规则
+5. 后续快捷键扩展继续保持属性 / 文本焦点隔离；当前 Tab 先预览及不透传接受已随 A2 验证
 6. `RadishMind` suggestion schema 是否与本地 `LocalRules` 输出完全同构，还是允许额外解释字段
 7. 短线段流股标签当前按空间不足时隐藏处理；后续是否需要更复杂的避让、缩放阈值或多标签排布，应作为 presentation 专题设计，不引入自动布线
