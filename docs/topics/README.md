@@ -19,7 +19,7 @@
 
 2026-09-14 补充 [插件系统](../architecture/simulation-platform.md#插件系统)、[许可与授权分层](../architecture/auth-entitlement-architecture.md#软件许可产品授权与操作权限) 和下表公共 API 专题。方向已确认，运行时、具体许可政策与接口仍待实施切片决策，不改变基础功能优先级。
 
-2026-09-16 确认单位系统、规格分析与确定性辅助、设备设计与校核三条主线，单位专题进入 Active，U1、U2-I1—I4 与 U3 首批结果 / 输出已接通；A1 已进入共享检查基础，其余新专题为 Draft / 规划已确认。UI 旧主稿需重审功能分区，见 [UI 重设计计划](../architecture/studio-ui-topic-plan.md)。B3-5 无界面建模已接通；2026-10-11 完成[六类盘点与 A1 首批范围](modeling-assistance-and-specifications.md#a1-首批范围与实现)，I1 已实现并验证共享规则和兼容投影；I2 局部 UI 先评审再接线，A2 暂不实现。
+2026-09-16 确认单位系统、规格分析与确定性辅助、设备设计与校核三条主线，单位专题进入 Active，U1、U2-I1—I4 与 U3 首批结果 / 输出已接通；A1 已进入共享检查基础，其余新专题为 Draft / 规划已确认。UI 旧主稿需重审功能分区，见 [UI 重设计计划](../architecture/studio-ui-topic-plan.md)。B3-5 无界面建模已接通；2026-10-11 完成[六类盘点与 A1 首批范围](modeling-assistance-and-specifications.md#a1-首批范围与实现)，A1-I1 / I2 已完成共享检查、问题闭环和 macOS 代表验收；A2 首批方案已审定，I1 基础待实施，I2 局部 UI 须另审后接线。
 
 本轮后续补充 [工程设计基础、工况与数据来源](engineering-basis-and-cases.md)。目标反算归建模求解，压力 / 公用工程与候选权衡归设备专题，工程检查 / 交付归结果专题；各切片见路线图，均未改变已实现能力声明。
 

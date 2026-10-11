@@ -10,7 +10,7 @@
 
 2026-09-16 项目所有者确认单位系统、规格与确定性辅助、设备设计 / 校核进入规划，旧 `.pen` 分区据此重新评审，全局导航与布局尚未定稿。2026-09-23 U2 / V0 局部画板已获认可；首批单位控件、视图覆盖及统一离开保护已接通，10 月 2 日补 macOS 原生、键盘与非颜色样例。完整 I5 验收和全局信息架构待续，范围见 [单位交互证据](../topics/units/input-drafts-and-interactions.md#i5-非颜色表达与边界分离)。
 
-2026-10-11 [A1-I2 局部方案](designs/studio-client-main-brief.md#a1-i2-局部-ui-方案2026-10-11已认可)已获认可，五张 Pencil 画板静态复核通过；当前问题与定位已接线，自动回归及 macOS 代表路径见 [I2 验收](../topics/modeling-assistance-and-specifications.md#a1-i2-实现与验收状态2026-10-11)。A2 暂不实现，I5 限制保持。
+2026-10-11 [A1-I2 局部方案](designs/studio-client-main-brief.md#a1-i2-局部-ui-方案2026-10-11已认可)已获认可，五张 Pencil 画板静态复核通过；当前问题与定位已接线，自动回归及 macOS 代表路径见 [I2 验收](../topics/modeling-assistance-and-specifications.md#a1-i2-实现与验收状态2026-10-11)。A2 首批方案已获审定，I1 基础先行；I2 先准备局部 UI 方案交项目所有者审定，未授权接线，I5 限制保持。
 
 现有 `designs/studio-client-main.pen` 保留为既有范围的设计基线和后续重设计入口，旧定稿不自动覆盖新增任务。已实现主路径仍按正式命令、状态和验收维护。视觉语言继续参考 [设计规范](studio-ui-design-guidelines.md) 和 [视觉系统](studio-visual-system.md)，旧固定导航 / 侧栏分区不再作为新设计必须遵循的条件。
 
