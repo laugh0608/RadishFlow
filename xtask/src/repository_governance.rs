@@ -41,6 +41,8 @@ pub(crate) fn check_repository_governance(
     repo_root: &Path,
     base_ref: Option<&str>,
 ) -> Result<(), io::Error> {
+    // Stop before reading or reporting any mistakenly tracked private content.
+    crate::private_resources::check_private_resources(repo_root)?;
     let paths = repository_files(repo_root)?;
     let mut errors = Vec::new();
 

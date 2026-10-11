@@ -11,3 +11,7 @@
 *.pdf binary
 *.tlb binary
 *.zip binary
+
+# Defense in depth for source archives, including accidental forced additions.
+/private-resources export-ignore
+/private-resources/** export-ignore

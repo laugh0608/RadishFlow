@@ -3,6 +3,9 @@
 **/*.rs.bk
 *.pdb
 
+# Independent local research repository; never part of the public repository.
+/private-resources/
+
 # Cargo mutants
 **/mutants.out*/
 

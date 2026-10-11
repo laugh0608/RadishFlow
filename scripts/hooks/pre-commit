@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+cd "$(git rev-parse --show-toplevel)"
+cargo run --locked --offline --quiet -p xtask -- check-private-resources

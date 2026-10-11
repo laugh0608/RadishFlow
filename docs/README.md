@@ -1,6 +1,6 @@
 # RadishFlow Docs
 
-更新时间：2026-10-02
+更新时间：2026-10-11
 
 ## 先读什么
 
@@ -71,6 +71,7 @@ Topics 文档回答“一个功能、能力包或开发目标怎么设计、分�
 | --- | --- |
 | `development/agent-collaboration.md` | Agent 任务推进、操作授权、环境边界、验证选择和文档归位规则 |
 | `development/code-style.md` | 跨语言代码风格、命名、抽象和 review 判断标准 |
+| `development/private-research-resources.md` | 独立私有资料库、索引与公开提交 / 打包隔离 |
 
 ## Guides
 

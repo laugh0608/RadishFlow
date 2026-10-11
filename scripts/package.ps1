@@ -113,6 +113,11 @@ function Copy-RelativeFile {
     )
 
     $source = Join-Path $SourceRoot $RelativePath
+    $gitPath = $RelativePath.Replace('\', '/')
+    if (-not $script:packageTrackedFiles.Contains($gitPath)) {
+        throw "Package input must be tracked in the public repository: $RelativePath"
+    }
+    Assert-PlainPackagePath -Path $source
     if (-not (Test-Path -LiteralPath $source)) {
         throw "Required package input was not found: $source"
     }
@@ -140,13 +145,45 @@ function Copy-DirectoryTree {
         throw "Required package input was not found: $source"
     }
 
-    $destination = Join-Path $DestinationRoot $RelativePath
-    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $destination) | Out-Null
-    Copy-Item -LiteralPath $source -Destination $destination -Recurse -Force
+    $prefix = $RelativePath.Replace('\', '/').TrimEnd('/') + '/'
+    $files = @($script:packageTrackedFiles | Where-Object { $_.StartsWith($prefix, [System.StringComparison]::Ordinal) })
+    if ($files.Count -eq 0) {
+        throw "Package directory has no tracked files: $RelativePath"
+    }
+    foreach ($file in $files) {
+        Copy-RelativeFile -RelativePath $file -SourceRoot $SourceRoot -DestinationRoot $DestinationRoot
+    }
+}
+
+function Assert-PlainPackagePath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $current = [System.IO.Path]::GetFullPath($Path)
+    while (-not [string]::IsNullOrEmpty($current)) {
+        if ((Split-Path -Leaf $current) -ieq 'private-resources') {
+            throw 'Private resources cannot be package inputs or output locations.'
+        }
+        if (Test-Path -LiteralPath $current) {
+            $item = Get-Item -LiteralPath $current -Force
+            if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Package paths cannot contain symbolic links or junctions: $current"
+            }
+        }
+        $parent = Split-Path -Parent $current
+        if ($parent -eq $current) { break }
+        $current = $parent
+    }
 }
 
 $repoRoot = Get-RepositoryRoot
 Set-Location -LiteralPath $repoRoot
+Invoke-CheckedCommand -Command 'cargo' -Arguments @('run', '--locked', '--offline', '--quiet', '-p', 'xtask', '--', 'check-private-resources')
+$trackedOutput = (& git ls-files --cached -z) -join "`n"
+if ($LASTEXITCODE -ne 0) { throw 'Could not enumerate public package inputs.' }
+$script:packageTrackedFiles = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+foreach ($file in $trackedOutput.Split([char]0, [System.StringSplitOptions]::RemoveEmptyEntries)) {
+    [void]$script:packageTrackedFiles.Add($file)
+}
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
     $Version = Get-DefaultVersion
@@ -164,6 +201,11 @@ $outputRootPath = [System.IO.Path]::GetFullPath($OutputRoot)
 $stagingDir = Join-Path $outputRootPath $packageName
 $archivePath = Join-Path $outputRootPath ($packageName + '.zip')
 
+Assert-PlainPackagePath -Path $stagingDir
+Assert-PlainPackagePath -Path $archivePath
+if (-not $Clean -and (Test-Path -LiteralPath $stagingDir)) {
+    throw 'Package staging directory already exists; select a new output or explicitly use -Clean.'
+}
 New-Item -ItemType Directory -Force -Path $outputRootPath | Out-Null
 Assert-UnderDirectory -Parent $outputRootPath -Child $stagingDir
 Assert-UnderDirectory -Parent $outputRootPath -Child $archivePath
@@ -189,6 +231,7 @@ if (-not $SkipBuild) {
 
 $targetProfile = $Configuration.ToLowerInvariant()
 $studioExe = Join-Path $repoRoot "target\$targetProfile\radishflow-studio.exe"
+Assert-PlainPackagePath -Path $studioExe
 if (-not (Test-Path -LiteralPath $studioExe)) {
     throw "Studio executable was not found: $studioExe"
 }
@@ -220,13 +263,7 @@ if (Test-Path -LiteralPath $releaseNotesSourcePath) {
     $releaseNotesPackagePath = $releaseNotesRelativePath.Replace('\', '/')
 }
 
-New-Item -ItemType Directory -Force -Path (Join-Path $stagingDir 'examples\flowsheets') | Out-Null
-Get-ChildItem -LiteralPath (Join-Path $repoRoot 'examples\flowsheets') -File |
-    ForEach-Object {
-        $destination = Join-Path $stagingDir ('examples\flowsheets\' + $_.Name)
-        Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
-    }
-
+Copy-DirectoryTree -RelativePath 'examples\flowsheets' -SourceRoot $repoRoot -DestinationRoot $stagingDir
 Copy-DirectoryTree -RelativePath 'examples\sample-components' -SourceRoot $repoRoot -DestinationRoot $stagingDir
 
 $gitCommit = 'unknown'
