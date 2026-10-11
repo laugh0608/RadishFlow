@@ -53,10 +53,10 @@
 
 ### 下一步
 
-- [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U3 与 A1 首批完成不表示 I5 完整通过或发布放行。
-- [x] [A1 首批](../topics/modeling-assistance-and-specifications.md#a1-i2-实现与验收状态2026-10-11)已接通共享检查与问题闭环；Pencil 静态、仓库基线及 macOS 代表验收通过。A2-I1—I3 首批完成，静态、自动及 macOS 代表验收通过；I5 不变。
-- [ ] G0 优先明确设计基础、工况矩阵和输入来源，并纳入 R0 的项目 / 工况 / 设备 / 结果关系；代码切片顺序保持。
-- [ ] R0 全局功能分区待评审；R1 单位及 A1-I2 局部稿已获认可，A1-I2 五张 Pencil 画板静态复核通过；设备工作区未绘制。
+- [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
+- [x] [A1 首批](../topics/modeling-assistance-and-specifications.md#a1-i2-实现与验收状态2026-10-11)与 A2-I1—I3 已完成共享检查、问题及推荐闭环，Pencil 静态、自动与 macOS 代表验收通过；I5 不变。
+- [ ] [G0 + E0/S0 首批方案](../topics/equipment-design-and-rating.md#首批方案审定入口2026-10-11)待审定；已明确范围、数据、局部 UI 与验收，未实现。
+- [ ] R0 待评审；U / A 局部稿通过；设备仅有待审定文字布局，Pencil 未绘制。
 - [ ] 2026-09-17 已确认 [可视化 V1—V4](../radishflow-mvp-roadmap.md#颜色与流程可视化的配套切片)：U3 后二维流向 / 数据着色，设备几何就绪后局部三维，真实时间结果后动态回放。均未实现，不阻塞 U2；整厂三维另评估。
 
 ### 最新规划
