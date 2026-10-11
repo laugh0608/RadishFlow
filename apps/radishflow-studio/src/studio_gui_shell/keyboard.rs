@@ -79,6 +79,10 @@ impl ReadyAppState {
             return;
         }
 
+        if self.recommendation_preview_shortcuts(ctx) {
+            return;
+        }
+
         if self.drag_session.is_some() && ctx.input(|input| input.key_pressed(egui::Key::Escape)) {
             self.cancel_drag_session(self.current_window_id());
             return;
@@ -97,6 +101,9 @@ impl ReadyAppState {
                 )
             {
                 // Menu, palette and keyboard commands share shell confirmations and pickers.
+                ctx.input_mut(|i| {
+                    i.consume_key(egui::Modifiers::NONE, egui::Key::Tab);
+                });
                 self.dispatch_ui_command(command_id);
                 continue;
             }
@@ -130,13 +137,15 @@ impl ReadyAppState {
             StudioGuiFocusContext::CommandPalette
         } else if ctx.wants_keyboard_input() || numeric_input::owns_keyboard(ctx) {
             StudioGuiFocusContext::TextInput
-        } else if self
-            .platform_host
-            .snapshot()
-            .window_model()
-            .canvas
-            .focused_suggestion_id
-            .is_some()
+        } else if self.last_area_focus == Some(StudioGuiWindowAreaId::Canvas)
+            && ctx.memory(|m| m.focused().is_none())
+            && self
+                .platform_host
+                .snapshot()
+                .window_model()
+                .canvas
+                .focused_suggestion_id
+                .is_some()
         {
             StudioGuiFocusContext::CanvasSuggestionFocused
         } else if self.last_area_focus == Some(StudioGuiWindowAreaId::Canvas) {

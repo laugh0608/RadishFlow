@@ -1,3 +1,7 @@
+use crate::modeling_recommendations::{
+    ModelingRecommendationSession, RecommendationError, RecommendationPreview,
+    RecommendationReceipt,
+};
 use std::collections::BTreeSet;
 
 use rf_types::{RfError, RfResult};
@@ -212,6 +216,15 @@ impl StudioAppWindowHostManager {
 
     pub fn replace_canvas_suggestions(&mut self, suggestions: Vec<rf_ui::CanvasSuggestion>) {
         self.session.replace_canvas_suggestions(suggestions);
+    }
+
+    pub fn accept_modeling_recommendation(
+        &mut self,
+        session: &mut ModelingRecommendationSession,
+        preview: &RecommendationPreview,
+    ) -> Result<RecommendationReceipt, RecommendationError> {
+        self.session
+            .accept_modeling_recommendation(session, preview)
     }
 
     pub fn accept_focused_canvas_suggestion_by_tab(

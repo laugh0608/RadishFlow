@@ -553,6 +553,9 @@ impl ReadyAppState {
 
     pub(super) fn dispatch_ui_command(&mut self, command_id: impl Into<String>) {
         let command_id = command_id.into();
+        if self.intercept_recommendation_command(&command_id) {
+            return;
+        }
         if command_id == radishflow_studio::FILE_SAVE_COMMAND_ID {
             self.save_project();
             return;
@@ -568,6 +571,9 @@ impl ReadyAppState {
     }
 
     pub(super) fn dispatch_confirmed_ui_command(&mut self, command_id: String) {
+        if self.intercept_recommendation_command(&command_id) {
+            return;
+        }
         if self.intercept_modeling_readiness_run_if_needed(&command_id) {
             return;
         }
@@ -897,6 +903,9 @@ impl ReadyAppState {
     }
 
     pub(super) fn dispatch_event(&mut self, event: StudioGuiEvent) {
+        if self.intercept_recommendation_event(&event) {
+            return;
+        }
         if matches!(event, StudioGuiEvent::RunPanelRecoveryRequested)
             && self.intercept_input_action("run_panel.recover_failure")
         {

@@ -1,3 +1,7 @@
+use crate::modeling_recommendations::{
+    ModelingRecommendationSession, RecommendationError, RecommendationPreview,
+    RecommendationReceipt,
+};
 use rf_types::RfResult;
 
 use crate::{
@@ -76,6 +80,15 @@ impl StudioWindowSession {
         position: rf_ui::CanvasPoint,
     ) -> RfResult<Option<rf_ui::CanvasEditCommitResult>> {
         self.host_port.commit_canvas_pending_edit_at(position)
+    }
+
+    pub fn accept_modeling_recommendation(
+        &mut self,
+        session: &mut ModelingRecommendationSession,
+        preview: &RecommendationPreview,
+    ) -> Result<RecommendationReceipt, RecommendationError> {
+        self.host_port
+            .accept_modeling_recommendation(session, preview)
     }
 
     pub fn accept_focused_canvas_suggestion_by_tab(

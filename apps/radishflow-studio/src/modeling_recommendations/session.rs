@@ -3,8 +3,8 @@ use crate::modeling_specifications::ModelingCheckSession;
 use rf_ui::composition_commands::CompositionNormalizationRequest;
 use rf_ui::{AppState, DateTimeUtc, FlowsheetDocument};
 
-/// One owner per open workspace. I2 will adopt the existing A1 check owner with
-/// from_checks(); this layer never holds a second independent problem projection.
+/// One owner per open workspace; the shell shares this A1 check owner across
+/// problems and recommendations, without a second independent problem projection.
 #[derive(Debug)]
 pub struct ModelingRecommendationSession {
     checks: ModelingCheckSession,
@@ -190,13 +190,13 @@ impl ModelingRecommendationSession {
         })
     }
 
-    pub(super) fn accept_with_recheck(
+    /// The UI uses the same checks to explain why a preview cannot be accepted.
+    /// Only session projections are refreshed; application inputs remain immutable.
+    pub fn validate_preview(
         &mut self,
-        app: &mut AppState,
+        app: &AppState,
         preview: &RecommendationPreview,
-        changed_at: DateTimeUtc,
-        recheck: impl FnOnce(&mut ModelingCheckSession, &FlowsheetDocument),
-    ) -> Result<RecommendationReceipt, RecommendationError> {
+    ) -> Result<(), RecommendationError> {
         use RecommendationError::*;
         self.refresh(app);
         if preview.recommendation.identity.document_id != self.identity.document_id {
@@ -228,6 +228,20 @@ impl ModelingRecommendationSession {
         if app.workspace.canvas_interaction.pending_edit.is_some() {
             return Err(PendingCanvasEdit);
         }
+        Ok(())
+    }
+
+    pub(super) fn accept_with_recheck(
+        &mut self,
+        app: &mut AppState,
+        preview: &RecommendationPreview,
+        changed_at: DateTimeUtc,
+        recheck: impl FnOnce(&mut ModelingCheckSession, &FlowsheetDocument),
+    ) -> Result<RecommendationReceipt, RecommendationError> {
+        self.validate_preview(app, preview)?;
+        let entry = self.current(&preview.recommendation.key)?;
+        let actual = self.identity.input_revision;
+        use RecommendationError::*;
         let command = match &entry.recommendation.action {
             RecommendedAction::Locate(_) => return Err(NavigationOnly),
             RecommendedAction::NormalizeComposition(normalization) => {

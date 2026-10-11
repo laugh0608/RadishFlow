@@ -259,6 +259,8 @@ impl StudioShellLocale {
             "Focused" => Cow::Borrowed("已聚焦"),
             "Suggestion" => Cow::Borrowed("建议"),
             "Suggestions" => Cow::Borrowed("建议"),
+            "Preview recommendation" => Cow::Borrowed("预览推荐"),
+            "Ignore this revision" => Cow::Borrowed("本修订忽略"),
             "Connect stream" => Cow::Borrowed("连接流股"),
             "Create stream" => Cow::Borrowed("创建流股"),
             "Apply suggestion" => Cow::Borrowed("应用建议"),

@@ -1,3 +1,7 @@
+use crate::modeling_recommendations::{
+    ModelingRecommendationSession, RecommendationError, RecommendationPreview,
+    RecommendationReceipt,
+};
 use std::time::SystemTime;
 
 use rf_types::RfResult;
@@ -531,6 +535,19 @@ impl StudioGuiPlatformHost {
             last_console_app_log: None,
             current_schedule: None,
         })
+    }
+
+    pub fn accept_modeling_recommendation(
+        &mut self,
+        session: &mut ModelingRecommendationSession,
+        preview: &RecommendationPreview,
+    ) -> Result<RecommendationReceipt, RecommendationError> {
+        self.driver.accept_modeling_recommendation(session, preview)
+    }
+
+    /// Read-only formal inputs, drafts and candidates for the shared modeling session.
+    pub fn modeling_inputs(&self) -> &rf_ui::AppState {
+        self.driver.host().app_state()
     }
 
     pub fn state(&self) -> &StudioAppHostState {

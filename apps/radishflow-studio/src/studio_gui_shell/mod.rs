@@ -41,6 +41,7 @@ mod keyboard;
 mod locale;
 mod modeling_problems;
 mod modeling_readiness;
+mod modeling_recommendations;
 mod numeric_input;
 mod panels;
 mod project_close;

@@ -407,7 +407,8 @@ impl ReadyAppState {
     fn render_canvas_drop_surface(&mut self, ui: &mut egui::Ui) {
         // Earlier controls can change selection or topology in this same egui frame.
         // Resolve navigation and paint geometry from the same current presentation.
-        let window = self.platform_host.snapshot().window_model();
+        let mut window = self.platform_host.snapshot().window_model();
+        self.project_canvas_recommendations(&mut window);
         let view = window.canvas.widget.view();
         let pending_edit = view.pending_edit.as_ref();
         let focus_callout = view.focus_callout.as_ref();

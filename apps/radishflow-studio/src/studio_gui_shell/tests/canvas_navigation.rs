@@ -49,7 +49,7 @@ fn navigation_relocates_surviving_object_when_topology_changes_layout_slots() {
         app.dispatch_ui_command(format!("canvas.begin_place_unit.{kind}"));
         app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(100.0, 80.0));
         for _ in 0..accepts {
-            app.dispatch_ui_command("canvas.accept_focused");
+            accept_focused_canvas_recommendation(&mut app);
         }
     }
     let before = app.platform_host.snapshot().window_model();
@@ -62,7 +62,7 @@ fn navigation_relocates_surviving_object_when_topology_changes_layout_slots() {
         .as_ref()
         .unwrap()
         .clone();
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let after = app.platform_host.snapshot().window_model();
     let focus = after.canvas.widget.view().viewport.focus.as_ref().unwrap();
     assert_eq!(focus.target_id, target.target_id);

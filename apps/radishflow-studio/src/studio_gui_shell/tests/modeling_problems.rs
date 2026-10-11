@@ -49,7 +49,7 @@ fn commit_source_pressure(app: &mut ReadyAppState, pressure: &str) {
 #[test]
 fn formal_edits_history_and_runs_share_current_problems_without_changing_result_gates() {
     let mut app = ready_app_state(&synced_workspace_config());
-    assert_eq!(app.modeling_problems.checks.current_count(), Some(0));
+    assert_eq!(app.modeling_problems.checks().current_count(), Some(0));
     app.dispatch_ui_command("run_panel.run_manual");
     assert!(
         app.platform_host
@@ -59,7 +59,7 @@ fn formal_edits_history_and_runs_share_current_problems_without_changing_result_
             .is_some()
     );
     commit_source_pressure(&mut app, "85000");
-    assert_eq!(app.modeling_problems.checks.current_count(), Some(1));
+    assert_eq!(app.modeling_problems.checks().current_count(), Some(1));
     assert!(
         app.platform_host
             .snapshot()
@@ -67,16 +67,16 @@ fn formal_edits_history_and_runs_share_current_problems_without_changing_result_
             .latest_solve_snapshot
             .is_none()
     );
-    let key = app.modeling_problems.checks.entries()[0].key.clone();
+    let key = app.modeling_problems.checks().entries()[0].key.clone();
     app.dispatch_ui_command("edit.undo");
-    assert_eq!(app.modeling_problems.checks.current_count(), Some(0));
+    assert_eq!(app.modeling_problems.checks().current_count(), Some(0));
     app.dispatch_ui_command("edit.redo");
-    assert_eq!(app.modeling_problems.checks.entries()[0].key, key);
+    assert_eq!(app.modeling_problems.checks().entries()[0].key, key);
     app.open_modeling_problems();
     let before = app.platform_host.document().clone();
     app.modeling_problems
-        .checks
-        .recheck(app.platform_host.document());
+        .recommendations
+        .recheck(app.platform_host.modeling_inputs());
     assert_eq!(app.platform_host.document(), &before);
     assert!(
         app.platform_host
@@ -95,12 +95,12 @@ fn formal_edits_history_and_runs_share_current_problems_without_changing_result_
         rf_ui::RunStatus::Error
     );
     assert_eq!(
-        app.modeling_problems.checks.current_count(),
+        app.modeling_problems.checks().current_count(),
         Some(1),
         "runtime presentation does not double-count a preflight problem"
     );
     commit_source_pressure(&mut app, "120000");
-    assert_eq!(app.modeling_problems.checks.current_count(), Some(0));
+    assert_eq!(app.modeling_problems.checks().current_count(), Some(0));
     assert!(
         app.platform_host
             .snapshot()
@@ -134,7 +134,7 @@ fn exact_field_navigation_and_return_preserve_incomplete_text_unit_and_session()
         rf_ui::NumericEditEvent::ReplaceText("1e-".into()),
     );
     let before = app.platform_host.snapshot();
-    let report = app.modeling_problems.checks.clone();
+    let report = app.modeling_problems.checks().clone();
     assert!(
         app.locate_specification_target(field_target("flash-1", VariableField::OutletTemperature))
     );
@@ -147,7 +147,7 @@ fn exact_field_navigation_and_return_preserve_incomplete_text_unit_and_session()
             .input_edits,
         before.runtime.workspace_document.input_edits
     );
-    assert_eq!(app.modeling_problems.checks, report);
+    assert_eq!(app.modeling_problems.checks(), &report);
     let target_field = numeric(&app, "unit:flash-1:outlet_temperature_k");
     let ctx = egui::Context::default();
     let mut target_id = egui::Id::NULL;
@@ -190,7 +190,7 @@ fn exact_field_navigation_and_return_preserve_incomplete_text_unit_and_session()
 #[test]
 fn navigation_rejects_removed_targets_and_reopening_resets_check_identity() {
     let mut app = ready_app_state(&synced_workspace_config());
-    let before = app.modeling_problems.checks.identity().clone();
+    let before = app.modeling_problems.checks().identity().clone();
     assert!(
         !app.locate_specification_target(field_target(
             "missing-unit",
@@ -199,11 +199,11 @@ fn navigation_rejects_removed_targets_and_reopening_resets_check_identity() {
     );
     app.open_example_project(synced_workspace_config().project_path);
     assert_eq!(
-        app.modeling_problems.checks.identity().document_id,
+        app.modeling_problems.checks().identity().document_id,
         before.document_id
     );
     assert_ne!(
-        app.modeling_problems.checks.identity().session,
+        app.modeling_problems.checks().identity().session,
         before.session
     );
 }
@@ -231,15 +231,15 @@ fn saving_and_reopening_rebuilds_missing_and_repaired_specifications_without_cac
         project_path: path.clone(),
         ..synced_workspace_config()
     });
-    assert_eq!(app.modeling_problems.checks.current_count(), Some(1));
+    assert_eq!(app.modeling_problems.checks().current_count(), Some(1));
     save_project_with_upgrade_consent(&mut app);
-    let before = app.modeling_problems.checks.identity().clone();
+    let before = app.modeling_problems.checks().identity().clone();
     app.open_project(path.clone(), "project");
     assert_ne!(
-        app.modeling_problems.checks.identity().session,
+        app.modeling_problems.checks().identity().session,
         before.session
     );
-    assert_eq!(app.modeling_problems.checks.current_count(), Some(1));
+    assert_eq!(app.modeling_problems.checks().current_count(), Some(1));
     assert!(
         app.locate_specification_target(field_target("heater-1", VariableField::OutletTemperature))
     );
@@ -249,14 +249,14 @@ fn saving_and_reopening_rebuilds_missing_and_repaired_specifications_without_cac
         "345",
     );
     assert_eq!(
-        app.modeling_problems.checks.current_count(),
+        app.modeling_problems.checks().current_count(),
         Some(1),
         "a draft does not complete a specification"
     );
     app.dispatch_inspector_field_draft_commit(
         radishflow_studio::inspector_draft_commit_command_id(key),
     );
-    assert_eq!(app.modeling_problems.checks.current_count(), Some(0));
+    assert_eq!(app.modeling_problems.checks().current_count(), Some(0));
     save_project_with_upgrade_consent(&mut app);
     let saved = read_project_file(&path).unwrap();
     assert_eq!(
@@ -268,7 +268,7 @@ fn saving_and_reopening_rebuilds_missing_and_repaired_specifications_without_cac
     let raw = fs::read_to_string(&path).unwrap();
     assert!(!raw.contains("specification") && !raw.contains("checkGeneration"));
     app.open_project(path.clone(), "project");
-    assert_eq!(app.modeling_problems.checks.current_count(), Some(0));
+    assert_eq!(app.modeling_problems.checks().current_count(), Some(0));
     assert!(
         app.platform_host
             .snapshot()

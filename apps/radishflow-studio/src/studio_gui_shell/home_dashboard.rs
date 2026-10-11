@@ -86,6 +86,7 @@ impl ReadyAppState {
         window.home.recent_case_tiles = self
             .project_open
             .recent_case_tiles_for_current(&window.runtime.workspace_document);
+        self.project_canvas_recommendations(&mut window);
         window
     }
 

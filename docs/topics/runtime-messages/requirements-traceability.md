@@ -41,7 +41,7 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 | MSG-16 | [求值、重新武装与采样](run-control-and-watch-conditions.md) | N4 | S-16 | 待实现 / 待验证；— |
 | MSG-17 | [动态、回放与检查点](run-control-and-watch-conditions.md) | N5 | S-17 | 待实现 / 待验证；— |
 | MSG-18 | [双区与多处联动](diagnostic-workbench-and-navigation.md) | N0 / N1 / N2 | S-18 | 待实现 / 待验证；— |
-| MSG-19 | [定位、修复与草稿](diagnostic-workbench-and-navigation.md) | N1 | S-19 | 部分实现 / 部分通过；字段 / 端口定位与草稿返回，见下方 A1 证据；A2-I1 动作 / 草稿保护已实现，UI 未接线 |
+| MSG-19 | [定位、修复与草稿](diagnostic-workbench-and-navigation.md) | N1 | S-19 | 部分实现 / 部分通过；字段 / 端口定位与草稿返回，见下方 A1 证据；A2-I1—I3 首批动作、预览 / 草稿保护与共享入口已接通，自动 / macOS 代表验收通过，完整 N1 与 I5 未核销 |
 | MSG-20 | [滚动、焦点与密集更新](diagnostic-workbench-and-navigation.md) | N1 / N2 | S-20 | 待实现 / 待验证；— |
 | MSG-21 | [可访问性与分层信息](diagnostic-workbench-and-navigation.md) | N0 / N1 | S-21 | 部分实现 / 部分通过；双语、键盘代表路径与组件大字体，见下方 A1 证据；I5 未验项保留 |
 | MSG-22 | [空状态与上下文](diagnostic-workbench-and-navigation.md) | N0 / N1 / N2 | S-22 | 部分实现 / 部分通过；A1 未检查 / 异常 / 部分覆盖 / 局部通过，见下方 A1 证据 |

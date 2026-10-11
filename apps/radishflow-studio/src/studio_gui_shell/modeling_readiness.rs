@@ -15,7 +15,7 @@ impl ReadyAppState {
         self.refresh_modeling_problems();
         let blocker = self
             .modeling_problems
-            .checks
+            .checks()
             .current_report()
             .and_then(studio_modeling_report_run_blocker);
         match blocker {
@@ -58,12 +58,12 @@ impl ReadyAppState {
         }
 
         self.modeling_problems
-            .checks
-            .recheck(self.platform_host.document());
+            .recommendations
+            .recheck(self.platform_host.modeling_inputs());
 
         let blocker = self
             .modeling_problems
-            .checks
+            .checks()
             .current_report()
             .and_then(studio_modeling_report_run_blocker);
         let Some(blocker) = blocker else {

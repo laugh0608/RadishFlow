@@ -1,3 +1,7 @@
+use crate::modeling_recommendations::{
+    ModelingRecommendationSession, RecommendationError, RecommendationPreview,
+    RecommendationReceipt,
+};
 use std::{path::Path, time::SystemTime};
 
 use crate::remove_inspector_composition_component;
@@ -564,6 +568,16 @@ impl BootstrapSession {
             self.refresh_local_canvas_suggestions();
         }
         Ok(result)
+    }
+
+    pub(crate) fn accept_modeling_recommendation(
+        &mut self,
+        session: &mut ModelingRecommendationSession,
+        preview: &RecommendationPreview,
+    ) -> Result<RecommendationReceipt, RecommendationError> {
+        let receipt = session.accept(&mut self.app_state, preview, SystemTime::now())?;
+        self.refresh_local_canvas_suggestions();
+        Ok(receipt)
     }
 
     pub(crate) fn accept_focused_canvas_suggestion_by_tab(

@@ -1,3 +1,7 @@
+use crate::modeling_recommendations::{
+    ModelingRecommendationSession, RecommendationError, RecommendationPreview,
+    RecommendationReceipt,
+};
 use std::collections::BTreeMap;
 
 use rf_types::{RfError, RfResult};
@@ -201,6 +205,15 @@ impl StudioRuntimeHostPort {
         position: rf_ui::CanvasPoint,
     ) -> RfResult<Option<rf_ui::CanvasEditCommitResult>> {
         self.runtime.commit_canvas_pending_edit_at(position)
+    }
+
+    pub fn accept_modeling_recommendation(
+        &mut self,
+        session: &mut ModelingRecommendationSession,
+        preview: &RecommendationPreview,
+    ) -> Result<RecommendationReceipt, RecommendationError> {
+        self.runtime
+            .accept_modeling_recommendation(session, preview)
     }
 
     pub fn accept_focused_canvas_suggestion_by_tab(

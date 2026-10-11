@@ -1,4 +1,5 @@
 use super::*;
+use radishflow_studio::modeling_recommendations::ModelingRecommendationSession;
 use radishflow_studio::modeling_specifications::*;
 use rf_ui::variable_browser::{ObjectId, VariableField, VariableId};
 
@@ -6,7 +7,8 @@ mod presentation;
 use presentation::*;
 
 pub(super) struct ModelingProblemsState {
-    pub checks: ModelingCheckSession,
+    pub recommendations: ModelingRecommendationSession,
+    pub recommendation_ui: super::modeling_recommendations::RecommendationUiState,
     selected: Option<SpecificationProblemKey>,
     destination: Option<SpecificationTarget>,
     pending_focus: bool,
@@ -19,7 +21,8 @@ pub(super) struct ModelingProblemsState {
 impl ModelingProblemsState {
     pub fn new(document: &rf_ui::FlowsheetDocument) -> Self {
         Self {
-            checks: ModelingCheckSession::new(document),
+            recommendations: ModelingRecommendationSession::new(document),
+            recommendation_ui: Default::default(),
             selected: None,
             destination: None,
             pending_focus: false,
@@ -30,8 +33,21 @@ impl ModelingProblemsState {
         }
     }
 
+    pub fn is_field_page(&self) -> bool {
+        self.field_page
+    }
+
+    pub fn select_problem(&mut self, key: Option<SpecificationProblemKey>) {
+        self.selected = key;
+    }
+
+    pub fn checks(&self) -> &ModelingCheckSession {
+        self.recommendations.checks()
+    }
+
     pub fn replace_document(&mut self, document: &rf_ui::FlowsheetDocument) {
-        self.checks.replace_document(document);
+        self.recommendations.replace_document(document);
+        self.recommendation_ui = Default::default();
         self.selected = None;
         self.destination = None;
         self.pending_focus = false;
@@ -72,8 +88,8 @@ impl ReadyAppState {
     }
     pub(super) fn refresh_modeling_problems(&mut self) {
         self.modeling_problems
-            .checks
-            .refresh(self.platform_host.document());
+            .recommendations
+            .refresh(self.platform_host.modeling_inputs());
     }
 
     pub(super) fn open_modeling_problems(&mut self) {
@@ -87,7 +103,7 @@ impl ReadyAppState {
 
     pub(super) fn render_modeling_problem_entry(&mut self, ui: &mut egui::Ui) {
         self.refresh_modeling_problems();
-        let label = phase_label(self.locale, &self.modeling_problems.checks);
+        let label = phase_label(self.locale, self.modeling_problems.checks());
         if ui.button(label).clicked() {
             self.open_modeling_problems();
         }
@@ -247,11 +263,11 @@ impl ReadyAppState {
             return;
         }
         ui.horizontal_wrapped(|ui| {
-            ui.strong(phase_label(self.locale, &self.modeling_problems.checks));
+            ui.strong(phase_label(self.locale, self.modeling_problems.checks()));
             if ui
                 .add_enabled(
                     !matches!(
-                        self.modeling_problems.checks.phase(),
+                        self.modeling_problems.checks().phase(),
                         ModelingCheckPhase::Checking
                     ),
                     egui::Button::new(tr(self.locale, "重新检查", "Recheck")),
@@ -259,12 +275,12 @@ impl ReadyAppState {
                 .clicked()
             {
                 self.modeling_problems
-                    .checks
-                    .recheck(self.platform_host.document());
+                    .recommendations
+                    .recheck(self.platform_host.modeling_inputs());
             }
             self.render_modeling_draft_access(ui);
         });
-        if let ModelingCheckPhase::Failed(error) = self.modeling_problems.checks.phase() {
+        if let ModelingCheckPhase::Failed(error) = self.modeling_problems.checks().phase() {
             ui.label(format!(
                 "{}: {error:?}",
                 tr(
@@ -274,7 +290,7 @@ impl ReadyAppState {
                 )
             ));
         }
-        if self.modeling_problems.checks.current_count() == Some(0) {
+        if self.modeling_problems.checks().current_count() == Some(0) {
             ui.label(tr(
                 self.locale,
                 "本批已执行的局部检查未发现问题。",
@@ -330,8 +346,8 @@ impl ReadyAppState {
     }
 
     fn render_specification_rows(&mut self, ui: &mut egui::Ui) {
-        let entries = self.modeling_problems.checks.entries().to_vec();
-        let identity = self.modeling_problems.checks.identity();
+        let entries = self.modeling_problems.checks().entries().to_vec();
+        let identity = self.modeling_problems.checks().identity();
         egui::ScrollArea::vertical()
             .id_salt((
                 "specification-list",
@@ -346,7 +362,11 @@ impl ReadyAppState {
                     let label = format!(
                         "! {}\n{}",
                         problem_title(self.locale, &entry.problem, self.platform_host.document()),
-                        entry_currency(self.locale, &entry, self.modeling_problems.checks.phase())
+                        entry_currency(
+                            self.locale,
+                            &entry,
+                            self.modeling_problems.checks().phase()
+                        )
                     );
                     let response = ui
                         .push_id(format!("{:?}", entry.key), |ui| {
@@ -358,6 +378,7 @@ impl ReadyAppState {
                         self.modeling_problems.restore_selection = false;
                     }
                     if response.clicked() {
+                        self.modeling_problems.recommendation_ui.review = None;
                         self.modeling_problems.selected = Some(entry.key);
                     }
                 }
@@ -365,12 +386,16 @@ impl ReadyAppState {
     }
 
     fn render_selected_specification(&mut self, ui: &mut egui::Ui) {
+        self.render_recommendation_notice(ui);
+        if self.render_recommendation_review(ui) {
+            return;
+        }
         let entry = self
             .modeling_problems
-            .checks
+            .checks()
             .entries()
             .iter()
-            .chain(self.modeling_problems.checks.changes())
+            .chain(self.modeling_problems.checks().changes())
             .find(|entry| Some(&entry.key) == self.modeling_problems.selected.as_ref())
             .cloned();
         let Some(entry) = entry else {
@@ -389,7 +414,7 @@ impl ReadyAppState {
         ui.label(entry_currency(
             self.locale,
             &entry,
-            self.modeling_problems.checks.phase(),
+            self.modeling_problems.checks().phase(),
         ));
         let presentation = self
             .platform_host
@@ -410,7 +435,7 @@ impl ReadyAppState {
                 .expect("validated presentation units");
         }
         ui.label(problem_evidence(self.locale, &entry.problem, &units));
-        for target in entry.key.targets {
+        for target in entry.key.targets.clone() {
             let enabled = target.exists(self.platform_host.document())
                 && entry.state != SpecificationEntryState::TargetRemoved;
             let label = if enabled {
@@ -438,6 +463,7 @@ impl ReadyAppState {
                 self.locate_specification_target(target);
             }
         }
+        self.render_problem_recommendations(ui, &entry.key);
         ui.collapsing(
             tr(self.locale, "技术依据 / SI", "Technical evidence / SI"),
             |ui| {
@@ -453,7 +479,7 @@ impl ReadyAppState {
     }
 
     fn render_specification_coverage(&self, ui: &mut egui::Ui) {
-        let Some(report) = self.modeling_problems.checks.report() else {
+        let Some(report) = self.modeling_problems.checks().report() else {
             return;
         };
         for item in &report.coverage {
@@ -467,12 +493,12 @@ impl ReadyAppState {
         }
         let resolved = self
             .modeling_problems
-            .checks
+            .checks()
             .changes()
             .iter()
             .filter(|e| e.state == SpecificationEntryState::Resolved)
             .count();
-        let removed = self.modeling_problems.checks.changes().len() - resolved;
+        let removed = self.modeling_problems.checks().changes().len() - resolved;
         if resolved + removed > 0 {
             ui.small(if self.locale == StudioShellLocale::ZhCn { format!("本次变化：同范围检查已解决 {resolved} 项；目标移除 {removed} 项。") } else { format!("This check: {resolved} resolved in evaluated scopes; {removed} targets removed.") });
         }
