@@ -108,3 +108,17 @@ pwsh ./scripts/normalize-text-files.ps1
 - [CapeOpenCore](https://github.com/laugh0608/CapeOpenCore): 当前用于提取 CAPE-OPEN 接口、GUID、异常语义与注册语义的参考仓库
 - [Radish](https://github.com/laugh0608/Radish): 当前用于参考 OIDC / Auth / Client Registration 能力的统一平台仓库
 - [DWSIM](https://github.com/DanWBR/dwsim): 当前用于参考模块拆分、求解组织和自动化入口的工程经验，不直接迁移源码
+
+## ❤️ 致谢
+
+感谢所有为 RadishFlow 的开发、讨论、测试和改进提供帮助的朋友。
+
+### GitHub 贡献者
+
+[![RadishFlow 的 GitHub 贡献者](https://contrib.rocks/image?repo=laugh0608/RadishFlow)](https://github.com/laugh0608/RadishFlow/graphs/contributors)
+
+### 其他协作者
+
+以下以花名列出，感谢他们对项目的支持与帮助（排名不分先后）：
+
+涛哥、宋工
