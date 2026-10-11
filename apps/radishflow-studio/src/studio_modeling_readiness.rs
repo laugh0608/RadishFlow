@@ -57,6 +57,17 @@ pub fn studio_modeling_run_blocker(
 ) -> Option<StudioModelingRunBlocker> {
     let checks = check_inputs(&document.flowsheet);
     let problem = checks.first_readiness_problem()?;
+    Some(blocker_from_problem(problem))
+}
+
+/// The GUI's current report is also its legacy run-readiness projection.
+pub fn studio_modeling_report_run_blocker(
+    report: &crate::modeling_specifications::ModelingSpecificationReport,
+) -> Option<StudioModelingRunBlocker> {
+    report.first_readiness_problem().map(blocker_from_problem)
+}
+
+fn blocker_from_problem(problem: &SpecificationProblem) -> StudioModelingRunBlocker {
     let (task, focus_target) = match problem {
         SpecificationProblem::EmptyFlowsheet => (
             StudioModelingReadinessTask::PlaceFirstUnit,
@@ -128,7 +139,7 @@ pub fn studio_modeling_run_blocker(
             unreachable!("execution problems do not enter authoring readiness")
         }
     };
-    Some(StudioModelingRunBlocker { task, focus_target })
+    StudioModelingRunBlocker { task, focus_target }
 }
 
 pub fn studio_modeling_run_blocked_title_en() -> &'static str {

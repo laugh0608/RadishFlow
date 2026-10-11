@@ -156,6 +156,8 @@ impl ReadyAppState {
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
                 self.platform_host = platform_host;
+                self.modeling_problems
+                    .replace_document(self.platform_host.document());
                 self.pending_format_upgrade = None;
                 self.unit_settings.draft = None;
                 self.unit_settings.view_draft = None;
@@ -297,6 +299,8 @@ impl ReadyAppState {
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
                 self.platform_host = platform_host;
+                self.modeling_problems
+                    .replace_document(self.platform_host.document());
                 self.pending_format_upgrade = None;
                 self.unit_settings.draft = None;
                 self.unit_settings.view_draft = None;
@@ -404,6 +408,7 @@ impl ReadyAppState {
     }
 
     pub(super) fn update(&mut self, ctx: &egui::Context) {
+        self.refresh_modeling_problems();
         let close_frame_snapshot = ctx
             .input(|input| input.viewport().close_requested())
             .then(|| self.platform_host.snapshot());
@@ -913,9 +918,11 @@ impl ReadyAppState {
         &mut self,
         event: StudioGuiEvent,
     ) -> RfResult<StudioGuiPlatformExecutedDispatch> {
-        let dispatch = self
+        let result = self
             .platform_host
-            .dispatch_event_and_execute_platform_timer(event, &mut self.platform_timer_executor)?;
+            .dispatch_event_and_execute_platform_timer(event, &mut self.platform_timer_executor);
+        self.refresh_modeling_problems();
+        let dispatch = result?;
         self.follow_run_and_recovery_outcome(&dispatch);
         Ok(dispatch)
     }

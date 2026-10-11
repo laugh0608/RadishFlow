@@ -356,9 +356,10 @@ pub use studio_inspector_target_command::{
 };
 pub use studio_modeling_readiness::{
     StudioModelingFocusTarget, StudioModelingReadinessTask, StudioModelingRunBlocker,
-    StudioModelingUnitParameter, studio_modeling_run_blocked_detail_en,
-    studio_modeling_run_blocked_detail_zh, studio_modeling_run_blocked_title_en,
-    studio_modeling_run_blocked_title_zh, studio_modeling_run_blocker,
+    StudioModelingUnitParameter, studio_modeling_report_run_blocker,
+    studio_modeling_run_blocked_detail_en, studio_modeling_run_blocked_detail_zh,
+    studio_modeling_run_blocked_title_en, studio_modeling_run_blocked_title_zh,
+    studio_modeling_run_blocker,
 };
 pub use studio_project_component_selection::{
     PROJECT_COMPONENT_REMOVE_COMMAND_PREFIX, PROJECT_COMPONENT_SELECT_COMMAND_PREFIX,

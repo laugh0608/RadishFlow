@@ -237,6 +237,7 @@ impl ReadyAppState {
         let input_frame = output.response.rect + input_margin;
         ui.add_space(6.0);
         let response = output.response;
+        let located = self.apply_specification_field_focus(&response, &field.variable);
         if response.has_focus() {
             ui.data_mut(|data| data.insert_temp(egui::Id::new("numeric-keyboard-owner"), id));
             ui.memory_mut(|memory| {
@@ -442,7 +443,8 @@ impl ReadyAppState {
                 field.display_unit.definition().symbol
             ),
         );
-        let enter = !ime_guard
+        let enter = !located
+            && !ime_guard
             && response.lost_focus()
             && ui.input(|input| {
                 input.key_pressed(egui::Key::Enter) && input.modifiers == egui::Modifiers::NONE

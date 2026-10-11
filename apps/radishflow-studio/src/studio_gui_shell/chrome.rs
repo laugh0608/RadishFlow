@@ -517,12 +517,17 @@ impl ReadyAppState {
             StudioGuiWindowDockRegion::RightSidebar,
         )
         .clamp(340.0, 420.0);
+        let problem_width = ctx.available_rect().width() - right_width - 16.0;
         egui::SidePanel::right("studio.right_sidebar")
             .default_width(right_width)
             .min_width(340.0)
             .max_width(420.0)
             .resizable(false)
             .show(ctx, |ui| {
+                self.prepare_modeling_problem_field_layout(
+                    problem_width,
+                    ui.text_style_height(&egui::TextStyle::Body),
+                );
                 self.render_right_workbench(ui, window);
             });
     }
@@ -547,10 +552,12 @@ impl ReadyAppState {
         window: &StudioGuiWindowModel,
     ) {
         egui::TopBottomPanel::bottom("studio.status_bar")
-            .exact_height(30.0)
+            .min_height(30.0)
             .resizable(false)
             .show(ctx, |ui| {
                 ui.horizontal_wrapped(|ui| {
+                    self.render_modeling_draft_access(ui);
+                    ui.separator();
                     ui.small(
                         egui::RichText::new(self.locale.runtime_label("Run").as_ref()).strong(),
                     );
@@ -970,6 +977,7 @@ impl ReadyAppState {
     }
 
     fn render_canvas_palette(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        self.render_modeling_problem_return(ui);
         let palette = &window.canvas.widget.view().place_unit_palette;
         ui.label(egui::RichText::new(self.locale.runtime_label(palette.title).as_ref()).strong());
         render_wrapped_small(
@@ -991,13 +999,17 @@ impl ReadyAppState {
             ui.add_space(6.0);
         }
 
-        ui.add(
+        let filter = ui.add(
             egui::TextEdit::singleline(&mut self.module_palette_filter)
                 .hint_text(match self.locale {
                     StudioShellLocale::En => "Filter modules",
                     StudioShellLocale::ZhCn => "筛选模块",
                 })
                 .desired_width(ui.available_width()),
+        );
+        self.focus_specification_section(
+            &filter,
+            radishflow_studio::modeling_specifications::SpecificationTarget::Palette,
         );
         ui.add_space(6.0);
 
@@ -1155,6 +1167,19 @@ impl ReadyAppState {
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 self.render_right_sidebar_selection_context(ui, window);
+                if self.modeling_problem_fields_embedded() {
+                    self.render_modeling_problem_return(ui);
+                    render_wrapped_label(
+                        ui,
+                        match self.locale {
+                            StudioShellLocale::ZhCn => "字段已在下方“对象字段”页打开。",
+                            StudioShellLocale::En => {
+                                "Fields are open in the Object fields page below."
+                            }
+                        },
+                    );
+                    return;
+                }
                 match self.right_sidebar_tab {
                     StudioShellRightSidebarTab::Inspector => {
                         self.render_runtime_inspector_tab(ui, window)
@@ -1274,6 +1299,10 @@ impl ReadyAppState {
 
     fn render_bottom_workbench(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         let available_width = ui.available_width();
+        if self.bottom_drawer_tab == StudioShellBottomDrawerTab::Diagnostics {
+            self.render_bottom_run_information(ui, window);
+            return;
+        }
         let status_summary_width = if available_width >= 960.0 {
             320.0
         } else {
@@ -1321,7 +1350,10 @@ impl ReadyAppState {
             ui.selectable_value(
                 &mut self.bottom_drawer_tab,
                 StudioShellBottomDrawerTab::Diagnostics,
-                self.locale.text(ShellText::Diagnostics),
+                match self.locale {
+                    StudioShellLocale::ZhCn => "当前问题",
+                    StudioShellLocale::En => "Current problems",
+                },
             );
             ui.selectable_value(
                 &mut self.bottom_drawer_tab,
@@ -1332,8 +1364,9 @@ impl ReadyAppState {
         ui.separator();
         egui::ScrollArea::vertical()
             .id_salt(format!(
-                "scroll:{}:bottom-workbench",
-                window.layout_state.scope.layout_key
+                "scroll:{}:bottom-workbench:{}",
+                window.layout_state.scope.layout_key,
+                self.modeling_problem_scroll_page()
             ))
             .auto_shrink([false, false])
             .show(ui, |ui| match self.bottom_drawer_tab {
@@ -1346,7 +1379,7 @@ impl ReadyAppState {
                     self.render_bottom_suggestions(ui, window)
                 }
                 StudioShellBottomDrawerTab::Diagnostics => {
-                    self.render_bottom_diagnostics(ui, window)
+                    self.render_modeling_problems(ui, window)
                 }
                 StudioShellBottomDrawerTab::ResultsTable => {
                     self.render_bottom_results_table(ui, window)
@@ -1354,10 +1387,15 @@ impl ReadyAppState {
             });
     }
 
-    fn render_bottom_status_summary_card(&self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+    fn render_bottom_status_summary_card(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+    ) {
         egui::Frame::group(ui.style())
             .inner_margin(egui::Margin::symmetric(10, 8))
             .show(ui, |ui| {
+                self.render_modeling_problem_entry(ui);
                 ui.horizontal_wrapped(|ui| {
                     ui.label(
                         egui::RichText::new(
@@ -1638,7 +1676,11 @@ impl ReadyAppState {
         }
     }
 
-    fn render_bottom_diagnostics(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+    pub(super) fn render_bottom_diagnostics(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+    ) {
         if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
             if snapshot.diagnostics.is_empty() {
                 ui.small(self.locale.text(ShellText::NoDiagnostics));
@@ -2022,7 +2064,8 @@ fn workbench_bottom_drawer_height(
         StudioShellBottomDrawerTab::RunLog => 170.0,
         StudioShellBottomDrawerTab::Convergence => 230.0,
         StudioShellBottomDrawerTab::ResultsTable => 250.0,
-        StudioShellBottomDrawerTab::Suggestions | StudioShellBottomDrawerTab::Diagnostics => 190.0,
+        StudioShellBottomDrawerTab::Suggestions => 190.0,
+        StudioShellBottomDrawerTab::Diagnostics => 340.0,
     }
 }
 

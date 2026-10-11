@@ -1567,7 +1567,7 @@ fn bottom_drawer_tabs_align_with_run_information_roles() {
 
     let texts = render_bottom_drawer_texts(&mut app);
 
-    for expected in ["消息", "运行日志", "收敛", "建议", "诊断", "结果表"] {
+    for expected in ["消息", "运行日志", "收敛", "建议", "当前问题", "结果表"] {
         assert!(
             texts.iter().any(|text| text == expected),
             "expected bottom drawer tab `{expected}`, rendered texts: {:?}",
@@ -1595,7 +1595,7 @@ fn bottom_workbench_renders_status_summary_as_right_split_role() {
         "运行",
         "收敛",
         "步骤",
-        "诊断",
+        "当前问题 · 0",
         "快照",
         "已保存",
         "顺序步骤",

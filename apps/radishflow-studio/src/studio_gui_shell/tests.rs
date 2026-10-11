@@ -728,6 +728,7 @@ mod unit_rename;
 
 mod input_departure;
 mod keyboard_events;
+mod modeling_problems;
 mod numeric_edits;
 mod unit_accessibility;
 mod unit_menu_keyboard;

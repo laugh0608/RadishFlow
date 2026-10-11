@@ -14,7 +14,7 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 
 - 设计状态分“方向已确认 / 细化待决策 / 细化已审定”；方向确认不等于接口已冻结。
 - 实施状态分“未纳入切片 / 待实现 / 部分实现 / 已实现”；验证状态分“待验证 / 部分通过 / 已通过 / 失败”。三者分别记录。
-- 当前所有 MSG 的设计方向已确认；带 D 依赖的细节仍待审定。MSG 完整范围仍未验收；A1-I1 的报告基础见下方切片记录，表内“—”不代表基础代码不存在。现有诊断等基础尚未逐项对齐，不能直接填已实现。
+- 当前所有 MSG 的设计方向已确认；带 D 依赖的完整细节仍待审定。MSG 完整范围仍未验收；A1-I1 / I2 子集见下方切片记录，表内“—”不代表基础代码不存在，不能直接填整项已实现。
 - 进入实施时给每项补充实施状态、验证状态、代码 / 测试路径、证据链接及日期。跨阶段逐段记录，不能用早期部分通过代表全项通过。代码行号变化应维护链接，不以周志中的旧结论替代当前状态。
 
 ## 要求与验收关联
@@ -23,12 +23,12 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 
 | 编号 | 要求 / 规范归属 | 切片 | 场景 | 实施 / 验证；代码与证据 |
 | --- | --- | --- | --- | --- |
-| MSG-01 | [消息分类与来源](message-model-and-lifecycle.md) | N0 / N1 | S-01 | 待实现 / 待验证；— |
-| MSG-02 | [身份、关联与本地化](message-model-and-lifecycle.md) | N1 / N2 | S-02 | 待实现 / 待验证；— |
-| MSG-03 | [失效、重检与生命周期](message-model-and-lifecycle.md) | N1 | S-03 | 待实现 / 待验证；— |
+| MSG-01 | [消息分类与来源](message-model-and-lifecycle.md) | N0 / N1 | S-01 | 部分实现 / 部分通过；A1 规格问题与运行诊断来源分开，见下方 A1 证据 |
+| MSG-02 | [身份、关联与本地化](message-model-and-lifecycle.md) | N1 / N2 | S-02 | 部分实现 / 部分通过；A1 类型化问题键 / 双语，运行事件关联待续，见下方 A1 证据 |
+| MSG-03 | [失效、重检与生命周期](message-model-and-lifecycle.md) | N1 | S-03 | 部分实现 / 部分通过；A1 会话失效与重检，见下方 A1 证据 |
 | MSG-04 | [恢复与终止错误](message-model-and-lifecycle.md) | N1 / N2 | S-04 | 待实现 / 待验证；— |
-| MSG-05 | [过滤与连锁聚合](message-model-and-lifecycle.md) | N1 | S-05 | 待实现 / 待验证；— |
-| MSG-06 | [状态维度与结果资格](message-model-and-lifecycle.md) | N0 / N1 / N3 | S-06 | 待实现 / 待验证；— |
+| MSG-05 | [过滤与连锁聚合](message-model-and-lifecycle.md) | N1 | S-05 | 部分实现 / 部分通过；A1 共享报告去重，过滤 / 因果聚合待续，见下方 A1 证据 |
+| MSG-06 | [状态维度与结果资格](message-model-and-lifecycle.md) | N0 / N1 / N3 | S-06 | 部分实现 / 部分通过；局部检查与结果资格独立，见下方 A1 证据 |
 | MSG-07 | [真实步骤与失败证据](execution-trace-and-convergence.md) | N2 | S-07 | 待实现 / 待验证；— |
 | MSG-08 | [层级、顺序与能力](execution-trace-and-convergence.md) | N2 / N4 | S-08 | 待实现 / 待验证；— |
 | MSG-09 | [残差与观察值解释](execution-trace-and-convergence.md) | N4 | S-09 | 待实现 / 待验证；— |
@@ -41,14 +41,14 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 | MSG-16 | [求值、重新武装与采样](run-control-and-watch-conditions.md) | N4 | S-16 | 待实现 / 待验证；— |
 | MSG-17 | [动态、回放与检查点](run-control-and-watch-conditions.md) | N5 | S-17 | 待实现 / 待验证；— |
 | MSG-18 | [双区与多处联动](diagnostic-workbench-and-navigation.md) | N0 / N1 / N2 | S-18 | 待实现 / 待验证；— |
-| MSG-19 | [定位、修复与草稿](diagnostic-workbench-and-navigation.md) | N1 | S-19 | 待实现 / 待验证；— |
+| MSG-19 | [定位、修复与草稿](diagnostic-workbench-and-navigation.md) | N1 | S-19 | 部分实现 / 部分通过；字段 / 端口定位与草稿返回，见下方 A1 证据；A2 未实现 |
 | MSG-20 | [滚动、焦点与密集更新](diagnostic-workbench-and-navigation.md) | N1 / N2 | S-20 | 待实现 / 待验证；— |
-| MSG-21 | [可访问性与分层信息](diagnostic-workbench-and-navigation.md) | N0 / N1 | S-21 | 待实现 / 待验证；— |
-| MSG-22 | [空状态与上下文](diagnostic-workbench-and-navigation.md) | N0 / N1 / N2 | S-22 | 待实现 / 待验证；— |
+| MSG-21 | [可访问性与分层信息](diagnostic-workbench-and-navigation.md) | N0 / N1 | S-21 | 部分实现 / 部分通过；双语、键盘代表路径与组件大字体，见下方 A1 证据；I5 未验项保留 |
+| MSG-22 | [空状态与上下文](diagnostic-workbench-and-navigation.md) | N0 / N1 / N2 | S-22 | 部分实现 / 部分通过；A1 未检查 / 异常 / 部分覆盖 / 局部通过，见下方 A1 证据 |
 | MSG-23 | [记录、规则与偏好所有权](records-storage-and-consumers.md) | N2 / N3 / N4 | S-23 | 待实现 / 待验证；— |
 | MSG-24 | [旧工程与未知规则](records-storage-and-consumers.md) | N3 / N4 | S-24 | 待实现 / 待验证；— |
 | MSG-25 | [重开、保留与损坏记录](records-storage-and-consumers.md) | N2 / N3 | S-25 | 待实现 / 待验证；— |
-| MSG-26 | [CLI 与跨端语义](records-storage-and-consumers.md) | N1 / N2 / 后续协议 | S-26 | 待实现 / 待验证；— |
+| MSG-26 | [CLI 与跨端语义](records-storage-and-consumers.md) | N1 / N2 / 后续协议 | S-26 | 部分实现 / 部分通过；A1 GUI / CLI 既有运行契约一致，见下方 A1 证据；无完整问题 DTO |
 | MSG-27 | [导出范围与复现依据](records-storage-and-consumers.md) | N2 / 后续导出 | S-27 | 待实现 / 待验证；— |
 | MSG-28 | [消费者深度与工程影响](developer-diagnostics-and-model-validation.md) | N0 / N1 | S-28 | 待实现 / 待验证；— |
 | MSG-29 | [调用身份与模型契约](developer-diagnostics-and-model-validation.md) | N1 / N2 | S-29 | 待实现 / 待验证；— |
@@ -59,9 +59,9 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 
 ## 待决策清单
 
-2026-10-11 [A1 首批范围与矩阵](../modeling-assistance-and-specifications.md#a1-首批范围与实现)已获准，I1 已实现只读报告 / 检查范围及兼容投影；D-01 的[首批细化](message-model-and-lifecycle.md#n1-随-a1-的首批细化)中问题生命周期留待 I2。D-07 局部 UI 先评审再接线；D-10 的 I1 自动证据见规格专题，原生代表路径未验。MSG-01—06、19、21、22、26 仅衔接适用子集；D-09 不新增协议，不核销完整 N1。
+2026-10-11 A1 证据：[I1 共享检查](../modeling-assistance-and-specifications.md#a1-i1-实现与验收状态2026-10-11)及 [I2 接线验收](../modeling-assistance-and-specifications.md#a1-i2-实现与验收状态2026-10-11)列出代码、自动测试和 macOS 代表路径。D-01 必要子集已接通；D-07 局部设计先通过 Pencil 静态门禁；D-10 的平台与载荷按批准范围完成。完整 MSG、运行事件关联、恢复错误策略及后续过滤 / 工作台仍待续，D-09 不新增协议，不核销完整 N1。
 
-以下均为“细化待决策”；须在标注范围进入实现前给出结论并回写所属子专题，不能以这个清单代替具体设计。负责方指领域职责，不指未获指派的人员。
+以下除 A1 已审定的 D-01 / 07 / 10 子集外，完整范围仍为“细化待决策”；须在进入实现前给出结论并回写所属子专题。负责方指领域职责，不指未获指派的人员。
 
 | 编号 | 决策 / 规范归属 | 受影响要求 | 最迟进入时机 / 负责方 |
 | --- | --- | --- | --- |

@@ -29,6 +29,7 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         window: &StudioGuiWindowModel,
     ) {
+        self.render_modeling_problem_return(ui);
         if let Some(detail) = window.runtime.active_inspector_detail.as_ref() {
             ui.push_id(
                 format!("runtime:active-inspector:{}", detail.target.command_id),
@@ -54,6 +55,7 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         window: &StudioGuiWindowModel,
     ) {
+        self.render_modeling_problem_return(ui);
         ui.push_id(
             format!(
                 "runtime:module-settings:{}",
@@ -344,6 +346,8 @@ impl ReadyAppState {
     ) {
         let run_panel = &window.runtime.run_panel;
         let run_panel_view = run_panel.view();
+
+        self.render_modeling_problem_entry(ui);
 
         egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {

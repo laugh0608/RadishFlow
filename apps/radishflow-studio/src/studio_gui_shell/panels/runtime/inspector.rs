@@ -197,7 +197,14 @@ impl ReadyAppState {
                 ui.small(egui::RichText::new("Attention").strong());
                 ui.end_row();
                 for port in &settings.ports {
-                    render_wrapped_small(ui, &port.name);
+                    self.render_specification_port(
+                        ui,
+                        settings
+                            .selected_unit
+                            .as_ref()
+                            .map_or("", |unit| unit.target_id.as_str()),
+                        &port.name,
+                    );
                     render_wrapped_small(ui, &port.direction);
                     render_wrapped_small(ui, &port.kind);
                     match (&port.stream_id, &port.stream_action) {
@@ -361,12 +368,17 @@ impl ReadyAppState {
             if let Some(summary) = detail.property_composition_summary.as_ref() {
                 ui.add_space(4.0);
                 ui.horizontal_wrapped(|ui| {
-                    ui.small(
-                        egui::RichText::new(
-                            self.locale.text(ShellText::InspectorCompositionSummary),
-                        )
-                        .strong(),
-                    );
+                    let heading = ui.add(egui::Label::new(
+                        egui::RichText::new(self.locale.text(ShellText::InspectorCompositionSummary)).small().strong()
+                    ).sense(egui::Sense::focusable_noninteractive()));
+                    if !detail.property_fields.iter().any(|field| matches!(
+                        rf_ui::stream_inspector_draft_key_parts(&field.key),
+                        Some((_, rf_ui::StreamInspectorDraftField::OverallMoleFraction(_)))
+                    )) {
+                        self.focus_specification_section(&heading,
+                            radishflow_studio::modeling_specifications::SpecificationTarget::Composition(
+                                rf_types::StreamId::new(&detail.target.target_id)));
+                    }
                     render_status_chip(
                         ui,
                         self.locale.runtime_label(summary.status_label).as_ref(),
@@ -439,7 +451,7 @@ impl ReadyAppState {
                     ui.small(egui::RichText::new("Attention").strong());
                     ui.end_row();
                     for port in &detail.unit_ports {
-                        render_wrapped_small(ui, &port.name);
+                        self.render_specification_port(ui, &detail.target.target_id, &port.name);
                         render_wrapped_small(ui, &port.direction);
                         render_wrapped_small(ui, &port.kind);
                         match (&port.stream_id, &port.stream_action) {
@@ -577,6 +589,7 @@ impl ReadyAppState {
                 egui::TextEdit::singleline(&mut draft_value)
                     .id_salt(format!("inspector-property-field:{}", field.key)),
             );
+            self.apply_specification_key_focus(&response, &field.key);
             if response.changed() {
                 self.dispatch_inspector_field_draft_update(
                     field.draft_update_command_id.clone(),

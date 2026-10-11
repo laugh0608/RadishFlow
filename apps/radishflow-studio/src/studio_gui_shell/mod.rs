@@ -39,6 +39,7 @@ mod home_dashboard;
 mod input_departure;
 mod keyboard;
 mod locale;
+mod modeling_problems;
 mod modeling_readiness;
 mod numeric_input;
 mod panels;
@@ -148,6 +149,7 @@ struct ReadyAppState {
     bottom_drawer_tab: StudioShellBottomDrawerTab,
     module_palette_filter: String,
     variable_browser: variable_browser::VariableBrowserState,
+    modeling_problems: modeling_problems::ModelingProblemsState,
     canvas_viewport_navigation: CanvasViewportNavigationState,
     canvas_initial_viewport_fit: CanvasInitialViewportFitState,
     canvas_viewport_fit_to_content_requested: bool,
@@ -443,8 +445,11 @@ impl ReadyAppState {
                     }),
                 ),
             };
+        let platform_host = StudioGuiPlatformHost::new(config)?;
+        let modeling_problems =
+            modeling_problems::ModelingProblemsState::new(platform_host.document());
         let mut ready = ReadyAppState {
-            platform_host: StudioGuiPlatformHost::new(config)?,
+            platform_host,
             platform_timer_executor: EguiPlatformTimerExecutor::default(),
             command_palette: CommandPaletteState::default(),
             pending_unit_deletion: None,
@@ -468,6 +473,7 @@ impl ReadyAppState {
             bottom_drawer_tab: StudioShellBottomDrawerTab::default(),
             module_palette_filter: String::new(),
             variable_browser: variable_browser::VariableBrowserState::default(),
+            modeling_problems,
             canvas_viewport_navigation: CanvasViewportNavigationState::default(),
             canvas_initial_viewport_fit: canvas_initial_viewport_fit_from_config(config),
             canvas_viewport_fit_to_content_requested: false,

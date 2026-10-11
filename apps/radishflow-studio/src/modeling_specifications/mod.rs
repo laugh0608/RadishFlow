@@ -2,6 +2,16 @@
 //! built-ins. No window, IO, property calculation, edit, or new wire protocol.
 
 mod checks;
+mod identity;
+mod session;
+#[cfg(test)]
+mod session_tests;
+
+pub use identity::{SpecificationProblemKey, SpecificationProblemReason, SpecificationTarget};
+pub use session::{
+    ModelingCheckFailure, ModelingCheckPhase, ModelingCheckSession, ModelingCheckTicket,
+    SpecificationEntry, SpecificationEntryState,
+};
 
 use rf_flowsheet::pressure_context::DocumentPressureContext;
 use rf_flowsheet::specifications::{FeedInputField, FeedInputValue, UnitParameter};
@@ -13,7 +23,7 @@ pub use rf_flowsheet::specifications::SPECIFICATION_CONTRACT_VERSION;
 
 /// Supplied by the owner of an open document. Reopening or replacing that
 /// document requires a new generation even when persisted ID/revision match.
-/// A1-I1 only captures it; the N1 lifecycle / UI consumer belongs to A1-I2.
+/// The open-workspace owner advances this generation on every replacement.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ModelingCheckSessionId(pub u64);
 
@@ -200,6 +210,12 @@ pub struct ModelingSpecificationReport {
     pub feed_inputs: Vec<FeedSpecificationInput>,
 }
 
+impl ModelingSpecificationReport {
+    pub(crate) fn first_readiness_problem(&self) -> Option<&SpecificationProblem> {
+        first_readiness_problem(&self.problems)
+    }
+}
+
 /// Same document / session yields the same ordered facts. No snapshots, display
 /// preferences, drafts, caches, or solver services participate in this query.
 pub fn check_modeling_specifications(
@@ -237,17 +253,20 @@ impl InputChecks {
     /// Retain the old application's first-problem projection, including deferring
     /// topology errors to the solver before any authoring blocker is returned.
     pub(crate) fn first_readiness_problem(&self) -> Option<&SpecificationProblem> {
-        if self
-            .problems
-            .iter()
-            .any(|problem| matches!(problem, SpecificationProblem::Topology(_)))
-        {
-            return None;
-        }
-        self.problems
-            .iter()
-            .find(|problem| problem.enforcement() == SpecificationEnforcement::AuthoringReadiness)
+        first_readiness_problem(&self.problems)
     }
+}
+
+fn first_readiness_problem(problems: &[SpecificationProblem]) -> Option<&SpecificationProblem> {
+    if problems
+        .iter()
+        .any(|problem| matches!(problem, SpecificationProblem::Topology(_)))
+    {
+        return None;
+    }
+    problems
+        .iter()
+        .find(|problem| problem.enforcement() == SpecificationEnforcement::AuthoringReadiness)
 }
 
 pub(crate) fn check_inputs(flowsheet: &Flowsheet) -> InputChecks {
