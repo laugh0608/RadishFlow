@@ -418,3 +418,59 @@ fn headless_v2_project_keeps_si_protocol_and_rejects_invalid_presentation() {
     assert!(result.to_string().contains("unknown unit ID"), "{result}");
     assert_eq!(fs::read_to_string(&path).unwrap(), invalid);
 }
+
+#[test]
+fn foundation_v3_is_rejected_before_inspection_modeling_or_solving() {
+    use rf_store::project_v3::{ProjectV3Read, StoredProjectV3Foundation};
+    let f = Fixture::new();
+    let path = f.root.join("工程 example.rfproj.json");
+    let legacy = rf_store::read_project_file(&path).unwrap();
+    let index_before = fs::read(f.root.join("index.json")).unwrap();
+    let foundation = ProjectV3Read::Foundation(StoredProjectV3Foundation {
+        document: legacy.document,
+        display_units: legacy.presentation.display_units,
+        engineering: None,
+    });
+    let mut value: Value =
+        serde_json::from_str(&rf_store::project_v3::to_pretty_json(&foundation).unwrap()).unwrap();
+    let mut workflow: Value = serde_json::from_str(include_str!(
+        "../../../examples/automation/build-feed-heater-flash.request.json"
+    ))
+    .unwrap();
+    workflow["project"] = json!("工程 example.rfproj.json");
+    workflow["auth_cache_index"] = json!("index.json");
+    for engineering in [
+        None,
+        Some(json!({"basisEntries":[],"sources":[],"tasks":[]})),
+        Some(
+            json!({"basisEntries":[],"sources":[],"tasks":[{"id":"opaque","kind":"future","method":{"id":"future","version":99}}]}),
+        ),
+    ] {
+        if let Some(engineering) = engineering {
+            value["engineering"] = engineering;
+        }
+        let bytes = serde_json::to_vec(&value).unwrap();
+        fs::write(&path, &bytes).unwrap();
+        assert!(load_project_app_state(&path).is_err());
+        let (code, result) = f.command("inspect", &path);
+        assert_eq!(code, 2, "{result}");
+        assert_eq!(result["error"]["stage"], "project");
+        for request in [f.request(), workflow.clone()] {
+            let (code, result) = f.run(&request);
+            assert_eq!(code, 2, "{result}");
+            assert_eq!(result["error"]["stage"], "project");
+            assert!(
+                result["error"]["message"]
+                    .as_str()
+                    .unwrap()
+                    .contains("schema")
+            );
+            assert_eq!(result["writes"], json!([]));
+            assert_eq!(result["variables"], json!([]));
+            assert!(result["steps"].is_null() || result["steps"] == json!([]));
+            assert!(result["package_id"].is_null());
+            assert_eq!(fs::read(&path).unwrap(), bytes);
+            assert_eq!(fs::read(f.root.join("index.json")).unwrap(), index_before);
+        }
+    }
+}
