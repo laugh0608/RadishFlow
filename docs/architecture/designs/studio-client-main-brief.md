@@ -281,7 +281,7 @@ Tab / Shift+Tab 保持原生焦点遍历，Enter / Space 只激活当前聚焦�
 
 ## G0 + E0/S0 局部 UI 方案（2026-10-11，已认可）
 
-承接 [G0 数据契约](../../topics/engineering-basis-and-cases.md#g0-首批数据契约2026-10-11已认可)与 [分离器 E0/S0](../../topics/equipment/separator-sizing-and-rating.md#e0s0-首批方法方案2026-10-11已认可)。文字布局和状态方案已获认可，尚未修改 Pencil 或产品 UI。单位 / v3 契约已细化，但 S0-B04 真实依据不足，先提交取证方向审定，再按原顺序推进静态画板。不将此局部 R0/R1 评审视为全局导航定稿。
+承接 [G0 数据契约](../../topics/engineering-basis-and-cases.md#g0-首批数据契约2026-10-11已认可)与 [分离器 E0/S0](../../topics/equipment/separator-sizing-and-rating.md#e0s0-首批方法方案2026-10-11已认可)。文字布局和状态方案已获认可，尚未修改 Pencil 或产品 UI。单位 / v3 契约已细化，已批准仅扩大取证物系；S0-B04 仍未齐，取得完整依据包后先审定适用边界，再推进静态画板。不将此局部 R0/R1 评审视为全局导航定稿。
 
 ### 入口与任务关系
 
