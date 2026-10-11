@@ -18,6 +18,7 @@ pub mod headless;
 mod inspector_draft_driver;
 mod inspector_target_driver;
 pub mod modeling_actions;
+pub mod modeling_recommendations;
 pub mod modeling_specifications;
 mod property_package_download;
 mod property_package_download_client;

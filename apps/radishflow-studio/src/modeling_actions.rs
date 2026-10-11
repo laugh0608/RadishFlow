@@ -180,7 +180,7 @@ pub fn dispatch_modeling_action(
     })
 }
 
-fn current_connections(app: &AppState) -> Vec<CanvasSuggestedMaterialConnection> {
+pub(crate) fn current_connections(app: &AppState) -> Vec<CanvasSuggestedMaterialConnection> {
     generate_local_canvas_suggestions(app)
         .into_iter()
         .filter(|s| s.can_accept_explicitly())
@@ -191,7 +191,9 @@ fn current_connections(app: &AppState) -> Vec<CanvasSuggestedMaterialConnection>
         .collect()
 }
 
-fn connection_target(connection: &CanvasSuggestedMaterialConnection) -> MaterialConnectionTarget {
+pub(crate) fn connection_target(
+    connection: &CanvasSuggestedMaterialConnection,
+) -> MaterialConnectionTarget {
     let stream_id = match &connection.stream {
         CanvasSuggestedStreamBinding::Existing { stream_id } => stream_id.clone(),
         CanvasSuggestedStreamBinding::Create { stream } => stream.id.clone(),

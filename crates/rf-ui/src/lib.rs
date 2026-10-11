@@ -1,6 +1,7 @@
 mod auth;
 mod canvas_interaction;
 mod commands;
+pub mod composition_commands;
 mod diagnostics;
 mod entitlement_panel;
 mod entitlement_panel_presenter;

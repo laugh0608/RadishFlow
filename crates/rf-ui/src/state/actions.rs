@@ -733,7 +733,7 @@ fn available_material_source_bindings(
     bindings
 }
 
-fn would_create_unit_dependency_cycle(
+pub(super) fn would_create_unit_dependency_cycle(
     flowsheet: &Flowsheet,
     source_unit_id: &UnitId,
     sink_unit_id: &UnitId,

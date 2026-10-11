@@ -290,12 +290,18 @@ impl AppState {
         if !sum.is_finite() || sum <= 0.0 {
             return Ok(None);
         }
+        let composition = entries
+            .iter()
+            .map(|(component, _, _, value)| (component.clone(), *value))
+            .collect();
+        let normalized =
+            crate::composition_commands::normalized_composition_values(&composition, sum);
 
         let mut values = Vec::new();
         let mut keys = Vec::new();
         let mut changes_document = false;
-        for (component_id, key, original_value, value) in entries {
-            let normalized = value / sum;
+        for (component_id, key, original_value, _) in entries {
+            let normalized = normalized[&component_id];
             changes_document |= normalized != original_value;
             let field = StreamInspectorDraftField::OverallMoleFraction(component_id);
             let command_value = CommandValue::Number(normalized);

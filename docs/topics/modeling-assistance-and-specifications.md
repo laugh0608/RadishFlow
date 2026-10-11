@@ -10,9 +10,9 @@
 
 - 层级：一级轨道；上位规划：[模拟平台](../architecture/simulation-platform.md)。
 - 关联：[建模求解](flowsheet-modeling-and-solve.md)、[Studio](studio-main-workflow.md)、[单位](units-and-quantity-system.md)、[结果与诊断](results-review-diagnostics.md)。
-- 状态：Active / A1-I1 / I2 已实现；局部 Pencil 静态复核、自动回归与 macOS 代表路径通过；A2 首批已审定，I1 待实施，I2 UI 待审，I5 限制保持。
+- 状态：Active / A1-I1 / I2 已实现；局部 Pencil 静态复核、自动回归与 macOS 代表路径通过；A2-I1 已实现并通过自动回归，I2 局部 UI 待审且未接线，I5 限制保持。
 
-2026-10-11 项目所有者批准[首批范围](#a1-首批范围与实现)、共享检查与两项行为校正，先实施 A1-I1；I5 沿用既定补验节点与发布限制。A1-I2 先评审局部 UI 再接线，A2 暂不实现。
+2026-10-11 项目所有者先批准 [A1 首批](#a1-首批范围与实现)及两项行为校正，再批准 A1-I2 局部方案与实施；随后批准 A2 首批与 I1 实施，要求 A2-I2 另审后接线。各切片证据与保留边界见下文。
 
 ## 目标与当前基础
 
@@ -186,7 +186,7 @@ Feed 出口沿用 298.15 K、101325 Pa、1 mol/s 与已选组分等分组成，�
 
 A1 检查会话负责问题是否仍存在；A2 维护推荐及执行凭据，不能把接受回执直接当成检查通过。N1 只投影状态和定位，不执行领域规则。不同 UI 入口对同一推荐共用状态与接受校验；旧快捷接受路径不得绕过必要预览，具体键盘方案归 I2 审定。
 
-现有 [`modeling_actions`](../../apps/radishflow-studio/src/modeling_actions.rs) 提供工程 / 修订、草稿检查与连接重枚举；[`stream_inspector`](../../crates/rf-ui/src/state/stream_inspector.rs) 的归一入口会消费草稿。I1 应复用归一计算与批量正式事务，增加以正式输入为依据的应用动作，不能直接复用草稿入口而顺带提交编辑。按职责在现有 crate 拆模块，不建立通用执行框架；现有 UI / CLI 尚不接 A2 新行为。
+现有 [`modeling_actions`](../../apps/radishflow-studio/src/modeling_actions.rs) 提供工程 / 修订、草稿检查与连接重枚举；[`stream_inspector`](../../crates/rf-ui/src/state/stream_inspector.rs) 的归一入口会消费草稿。I1 已复用归一计算与批量正式事务，增加以正式输入为依据的应用动作，未直接调用草稿入口。按职责在现有 crate 拆模块，不建立通用执行框架；现有 UI / CLI 尚不接 A2 新行为。
 
 #### 实施顺序与验收
 
@@ -209,6 +209,27 @@ A1 检查会话负责问题是否仍存在；A2 维护推荐及执行凭据，�
 
 I1 先落实 V01—06 的应用 / 领域范围及 V07—08 可自动验证部分，UI 和原生部分不得提前标通过。收口执行相关 crate 测试、严格 clippy 和仓库基线；I2 / I3 再执行告知后的隔离 macOS 原生代表路径。I5 读屏、精确 OS 倍率、Windows / Linux 及真实迟到事件入口沿用既定节点，首个对外候选前限制保持。
 
+#### A2-I1 实现与验收状态（2026-10-11）
+
+先行方案提交为 `69b7ddeb`，随后完成下列应用基础。A2-I2 的[局部 UI 方案](../architecture/designs/studio-client-main-brief.md#a2-i2-局部-ui-方案2026-10-11待审定)已补齐，仍待项目所有者审定；未修改产品 GUI 接线、CLI 协议、项目格式或依赖。
+
+| 实现入口 | 已落实的责任 |
+| --- | --- |
+| [`modeling_recommendations`](../../apps/radishflow-studio/src/modeling_recommendations/mod.rs) | 类型化规则 / 目标 / A1 问题关联、完整动作预览与成功回执；同一会话拥有 A1 检查，不另造问题集合；为 I2 提供接管既有检查会话的入口 |
+| [`session.rs`](../../apps/radishflow-studio/src/modeling_recommendations/session.rs) | 当前修订忽略 / 恢复、会话所有者隔离、单次预览凭据、接受重验及草稿阻挡；动作提交成功与后续重检失败分别回执，旧凭据不能重放 |
+| [`candidates.rs`](../../apps/radishflow-studio/src/modeling_recommendations/candidates.rs) | 复用本地候选与正式组成检查；仅精确目标可关联 A1 拓扑问题；独立候选不伪造关联，不扩大现有多源配线能力 |
+| [`composition_commands.rs`](../../crates/rf-ui/src/composition_commands.rs) | 无 Inspector 焦点依赖的正式组成预览与一次批量事务；共享除以总和的计算，保留旧 Inspector 权重归一 / 草稿语义 |
+| [`unit_edit.rs`](../../crates/rf-ui/src/state/unit_edit.rs) | 只读验证方向、占用、canonical 单元 / 端口、重复源、自环 / 成环，再复用原创建并绑定事务；失败不留下新流股 |
+
+| 验收 | 自动证据与结论 | 待完成 |
+| --- | --- | --- |
+| V01、06 | [组成 5 项](../../apps/radishflow-studio/src/modeling_recommendations/tests/composition.rs)：独立数值预期、容差及非法值矩阵、一次历史 / Undo / Redo、伪造 / 旧修订拒绝、旧 Inspector 兼容 | UI 数值 / 单位呈现 |
+| V01、04、06 | [连接 6 项](../../apps/radishflow-studio/src/modeling_recommendations/tests/connections.rs)：六类完整模板与实际事务一致、空组分 Feed、不补显式参数、竞争候选、未知 / 重复 / 方向 / 环路拒绝、无伪造关联 | 跨入口选择与原生预览 |
+| V02—05 | [生命周期 8 项](../../apps/radishflow-studio/src/modeling_recommendations/tests/lifecycle.rs)：忽略恢复、修订与重放、同 ID 重开 / 不同会话、删除同名重建、单位 / 组成 / 画布草稿、无修订载荷变化、提交成功后重检失败 | 实际焦点、快捷键及失败呈现 |
+| V07、08 自动部分 | [集成 2 项](../../apps/radishflow-studio/src/modeling_recommendations/tests/integration.rs)：正式保存 / 重开无推荐缓存；真实 Heater 求解→修改→归一后问题清零仍为旧结果→重跑产生当前结果。全基线包含既有 GUI / CLI 契约回归 | I2 / I3 产品接线、macOS 代表路径、跨入口一致性；未验平台按 I5 |
+
+新增 21 项测试通过，完整仓库基线 1,386 项测试及严格 clippy 通过。环境性复验、日志和原生未执行范围见 [W41](../devlogs/2026-10/2026-W41.md#2026-10-11-a2-i1-实现与-i2-局部方案)。A2-I1 完成不等于 A2 全部验收通过。
+
 ### N1 的衔接边界
 
 A1 提供检查事实、身份、检查范围和定位，N1 负责当前问题投影、去重、失效 / 重检及多处显示。D-01 首批细化只在[消息生命周期提案](runtime-messages/message-model-and-lifecycle.md#n1-随-a1-的首批细化)维护，本节不另定义状态机。
@@ -219,7 +240,7 @@ UI 复用 Run Panel / Inspector 定位路径，增加局部可扫描问题入口
 
 ### A1 首批验收矩阵
 
-下表为独立预期；A1-I1 / I2 已覆盖范围见末尾证据表，A2 仍待实现 / 验证。不能把旧测试已存在写成新验收已通过；同一规则至少有触发、不触发、边界及缺上下文样本。数值预期直接由表中公式与常数给出，不调用被测规则构造期望。
+下表为独立预期；A1-I1 / I2 已覆盖范围见末尾证据表，A2-I1 证据见上节，产品验收待续。不能把旧测试已存在写成新验收已通过；同一规则至少有触发、不触发、边界及缺上下文样本。数值预期直接由表中公式与常数给出，不调用被测规则构造期望。
 
 | 编号 / 层次 | 输入与操作 | 必须观察到的结果 |
 | --- | --- | --- |
@@ -246,7 +267,7 @@ UI 复用 Run Panel / Inspector 定位路径，增加局部可扫描问题入口
 | --- | --- | --- |
 | A1-I1 共享检查基础 | 六类契约、类型化规则事实 / 范围、应用只读报告；提取已有检查复用，保持底层和 CLI 兼容 | A1-V01—10 相关领域 / 应用回归；V12 协议兼容；无产品 UI 新布局 |
 | A1-I2 用户闭环与 N1 子集 | 经局部设计评审后接入问题入口、定位、失效 / 重检及现有运行投影 | A1-V11—14 及全矩阵集成；macOS 原生代表路径与仓库基线通过；未验平台单列 |
-| A2 后续 | 上述确定性候选与正式动作生命周期 | 另行审定实施，执行 A2-V01—05；不以 A1 只读报告替代 |
+| A2 后续 | 确定性候选与正式动作生命周期 | 首批已审定且 I1 已实现，按上节 V01—08 继续 I2 / I3；不以 A1 只读报告替代 |
 
 实现验证按实际改动执行 `cargo test --locked` 的相关 `rf-unitops`、`rf-flowsheet`、`rf-solver`、`rf-ui` 与 Studio 测试，再完成严格 clippy；跨 crate 收口执行 `./scripts/check-repo.sh`。CLI 使用磁盘样本和可用本地物性缓存；文件读回核实 SI 与无查询副作用。原生前告知，使用隔离工程 / 偏好，结束后关闭实例。首批载荷为六类小流程及组合异常图；不宣称大流程性能，本批不设置无测量依据的性能数值。
 
@@ -289,4 +310,4 @@ UI 复用 Run Panel / Inspector 定位路径，增加局部可扫描问题入口
 | V13 保存 / 重开 / 结果 | 同一 GUI 测试文件覆盖缺参保存重开、补齐后重开新会话、无缓存及重跑；修改后旧结果仍过期 | Heater 保存重开重新检查且无结果，重跑得到当前结果；四个修复文件整体 flowsheet 独立读回符合预期，断口文件仍为原始 revision 0 |
 | V14 草稿、双语与键盘 | 中文 / 英文 × 400 / 1100 逻辑宽度 × 100% / 200% 字体排布；窄字段页仅一个编辑器、定位 Enter 不提交；点击问题仅看详情 | 中文 Heater、英文 Mixer / Cooler / Valve / 断口；Tab / Enter / Space 定位、显式返回，`1e- bar` 草稿跨对象保留并可找回；断口定位到原端口且返回原问题行 |
 
-完整基线 1,365 项测试及严格 clippy 通过；运行环境、保存文件核对与修复过程见 [W41](../devlogs/2026-10/2026-W41.md#2026-10-11-a1-i2-接线与验收)。异常、迟到检查、删除 / 同名重建等采用自动测试，未冒充原生操作；200% 为组件字体排布证据，不是系统缩放验收。Windows / Linux、读屏及 I5 未验节点与发布限制保持。A2、完整 N1 / N2、结构 DOF / 数值可解性仍未实现；无项目格式、依赖或 CLI DTO 变更。
+完整基线 1,365 项测试及严格 clippy 通过；运行环境、保存文件核对与修复过程见 [W41](../devlogs/2026-10/2026-W41.md#2026-10-11-a1-i2-接线与验收)。异常、迟到检查、删除 / 同名重建等采用自动测试，未冒充原生操作；200% 为组件字体排布证据，不是系统缩放验收。Windows / Linux、读屏及 I5 未验节点与发布限制保持。该 A1-I2 收口时 A2 尚未实现，其后进展见上节；完整 N1 / N2、结构 DOF / 数值可解性仍未实现；无项目格式、依赖或 CLI DTO 变更。
