@@ -1,6 +1,6 @@
 # 量目录与共享转换
 
-更新时间：2026-09-23
+更新时间：2026-10-11
 
 ## 用途与状态
 
@@ -81,3 +81,45 @@ U1 独立数值、语义拒绝、精度和变量接入见 [UNIT-01—04](require
 | UA-03 | UNIT-03 | 全目录往返在既有测试容差内；同单位保持原值；数学转换可得负 K，但正式变量写入拒绝非法物理值且原输入不变 |
 | UA-04 | UNIT-04 | 变量字段引用正确量，标签由目录派生；GUI 浏览与 CLI 对同字段仍给规范 SI 标签，名称字段没有物理量；原 JSON 数值解释保持 |
 | UA-16 | UNIT-16 | 未来逐项提供表压参考压力、质量 / 摩尔所需组成与摩尔质量、标准体积温压 / 相 / 状态关系的独立算例；缺失、过期、不匹配上下文明确拒绝，焓参考态不当普通缩放；当前只验收拒绝基础 |
+
+## G0/S1 量与单位契约（2026-10-11，待实现）
+
+GE-D04 已认可统一目录扩展。本节冻结首批设备消费者所需编码和换算样本；不表示现有代码已支持 15 类量，也不启动质量 / 摩尔或标准态换算。量种与字段语义一起校验，稳定 ID 不使用本地化符号。
+
+| 新量种 ID | SI 量纲（M、L、T） | 规范单位 ID / 符号 | 其他单位 ID / 符号与 SI 系数 X |
+| --- | --- | --- | --- |
+| `actual_volume_flow` | L³ T⁻¹ | `cubic_metre_per_second` / m³/s | `cubic_metre_per_hour` / m³/h，1/3600 |
+| `mass_density` | M L⁻³ | `kilogram_per_cubic_metre` / kg/m³ | 无 |
+| `velocity` | L T⁻¹ | `metre_per_second` / m/s | 无 |
+| `duration` | T | `second` / s | `minute` / min，60 |
+| `length` | L | `metre` / m | `millimetre` / mm，0.001 |
+| `area` | L² | `square_metre` / m² | 无 |
+| `volume` | L³ | `cubic_metre` / m³ | 无 |
+| `dimensionless_ratio` | 1 | `one` / 1 | 无；首批不增加百分号 |
+
+新增 8 类量、11 个单位身份，C 均为 0。ASCII 别名限 `m3/s`、`m3/h`、`kg/m3`、`m2`、`m3`，其余使用表中符号及稳定 ID；按 quantity 解析。`one` 不兼容 `mole_fraction` 或 `molar_phase_fraction`，不把 mol% 借作气速利用系数。`K_eff` 是速度，不是温度；`K` 仍只是温度单位符号。
+
+S1 字段映射：`operatingTemperature` → 原 `absolute_temperature`；`operatingPressure` → 原 `absolute_pressure`；`gasActualVolumeFlow/liquidActualVolumeFlow` → `actual_volume_flow`；`gasMassDensity/liquidMassDensity` → `mass_density`；`effectiveK`、气速结果 → `velocity`；`gasUtilization`、气相负荷 → `dimensionless_ratio`；`workingDuration` → `duration`；`maximumWorkingLiquidHeight`、直径和各轴向区段 → `length`；约束截面 → `area`；工作容积 → `volume`。时间是工作区体积准则，不能因为量种相同自动称作分离停留时间。
+
+操作 T/P、物系与相的身份来自工程工况 / 来源，转换器只换尺度。`Nm³/h`、质量 / 摩尔流率转实际体积、密度变化或气体压缩关系仍拒绝，不能以新量种绕过上下文要求。比例的 `0<f<=1`、密度差、正流量与零相量处理由设备方法负责。换单位不改变依据、正式 SI、计算代次或 current 状态。
+
+### 版本投影与独立预期
+
+现有 `ALL_QUANTITIES` 同时被 `DisplayUnitSet` 和存储完整性检查使用。实施必须按文件版本显式投影，不能直接扩充该数组就改变旧读取 / 写出行为：
+
+- v1 不带 presentation；v2 的 `displayUnits` 始终是原 7 类，每类恰一次。读取旧文件在内存为新 8 类补 SI 显示选择，保留原 7 类，不据此升级或写盘。
+- v3 的同一 `presentation.displayUnits` 完整包含 15 类，不另建设备私有单位表；原 7 类编码不变。新增量非 SI 呈现也属于需要 v3 的内容，即使工程区当前为空。格式细则见 [v3 契约](../project-lifecycle-storage.md#v3-字段与兼容契约2026-10-11待实现)。
+- 现有 `unit-defaults.rfstudio-preferences.json` 的 v1 也使用该呈现 DTO，必须冻结原 7 类。首批新 8 类默认 SI、选择保存在项目 v3；不隐式升级个人默认文件。“存为个人默认”遇新量非 SI 时明确说明本批仅支持项目保存，不能报告全部保存成功。个人默认扩展另排，原 7 类路径保持。
+- v3 缺量 / 重复量 / 未知量 / 不兼容单位一律拒绝，不补 SI 掩盖损坏；旧文件补新量只属于版本迁移，不是通用 fallback。明确拒绝将含新非 SI 呈现的项目回存旧格式。
+
+| 合约样本 | 独立预期 / 后续实施断言 |
+| --- | --- |
+| GU-01 实际气量 | 3600 m³/h = 1 m³/s；18 m³/h = 0.005 m³/s；不读取温压或密度 |
+| GU-02 时间 / 长度 | 2 min = 120 s；1000 mm = 1 m；面积与体积不接受长度单位 |
+| GU-03 密度 / 比例 | 998 kg/m³ 原值保持；0.8 one 原值保持；mol/mol、mol% 对比例均不兼容 |
+| GU-04 基准拒绝 | `Nm3/h` 不解释成 m³/h；kg/s、mol/s 不借密度 / 摩尔质量隐式换算 |
+| GU-05 精度 / 极限 | 同单位原样返回；非有限输入与中间溢出结构化拒绝；往返按既有转换精度，不用显示舍入写回 |
+| GU-06 版本隔离 | 原 v1/v2 项目与个人默认样本仍读写原量目录；v3 恰 15 条，重复 / 缺项 / 错单位拒绝 |
+| GU-07 草稿 / 结果 | `1e- m³/h` 返回原字段无损；切显示单位仅变呈现脏标记，正式数值 / 候选不变化 |
+
+GU 是本次契约样本编号，尚未成为通过的产品测试；不替代 S0-B04 工程依据或 I5 原生组合验收。
