@@ -108,6 +108,9 @@ impl StoredProjectFile {
                 "project file version 1 cannot preserve non-SI presentation; upgrade explicitly before saving",
             ));
         }
+        self.presentation
+            .validate_legacy_projection()
+            .map_err(RfError::invalid_input)?;
         self.document.metadata.validate()?;
         validate_flowsheet_thermo_config(&self.document.flowsheet)
     }

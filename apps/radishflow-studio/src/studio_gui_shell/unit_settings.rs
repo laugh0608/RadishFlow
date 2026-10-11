@@ -298,7 +298,10 @@ impl ReadyAppState {
                     units = DisplayUnitSet::engineering();
                 }
             });
-            let choices: Vec<_> = units.entries().collect();
+            let choices: Vec<_> = units
+                .entries()
+                .filter(|(quantity, _)| rf_types::units::LEGACY_QUANTITIES.contains(quantity))
+                .collect();
             egui::Grid::new("project-display-unit-choices").show(ui, |ui| {
                 for (quantity, selected) in choices {
                     let label = locale.quantity_name(quantity);

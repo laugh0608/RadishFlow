@@ -212,7 +212,7 @@ Windows 保存已有文件继续先移出备份，再提交 staged 文件。2026
 | --- | --- |
 | 外层 | `kind`、`schemaVersion`、`document`、`presentation` 必需；`engineering` 可缺省，缺省表示空工程区；显式 null 拒绝。所有外层未知 / 重复键拒绝 |
 | `document` | 原 v2 语义和字段保持；无设备专用虚构 unit / stream，不改变流程 revision 或 metadata 版本 |
-| `presentation` | 只含 `displayUnits`，每项 `quantityId/unitId`；完整 15 类，各恰一次，写出按固定目录顺序。v2 始终只有原 7 类，详见 [单位契约](units/catalog-and-conversion.md#g0s1-量与单位契约2026-10-11待实现) |
+| `presentation` | 只含 `displayUnits`，每项 `quantityId/unitId`；完整 15 类，各恰一次，写出按固定目录顺序。v2 始终只有原 7 类，详见 [单位契约](units/catalog-and-conversion.md#g0s1-量与单位契约2026-10-11) |
 | `engineering` | 出现时必须包含 `basisEntries`、`sources`、`tasks` 三个数组，可为空；已知结构严格拒绝未知字段，不再增加同义版本号 |
 | `basisEntries[]` | `id`、`revision`、`name`、`quantityId`、`valueSi`、`sourceId` 必需；量种来自统一目录，valueSi 有限；来源与适用条件从 source 引用 |
 | `sources[]` | `id`、`revision`、`kind`、`title`、`reference`、`locator`、`publicationVersion`、`accessedOn`、`adoptionNote`、`review`、`applicability`、`observations` 必需；未取得的文本可为空，不能当作依据充分 |

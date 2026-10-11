@@ -12,7 +12,7 @@ impl StudioGuiWindowSolveSnapshotModel {
             format!("document_revision: {}", self.document_revision),
             format!(
                 "display_units: {}",
-                rf_types::units::ALL_QUANTITIES
+                rf_types::units::LEGACY_QUANTITIES
                     .iter()
                     .map(|quantity| {
                         format!(

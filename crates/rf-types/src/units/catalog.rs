@@ -43,6 +43,38 @@ const MOLAR_ENERGY: Dimension = Dimension {
     ..DIMENSIONLESS
 };
 
+const VOLUME_FLOW: Dimension = Dimension {
+    length: 3,
+    time: -1,
+    ..DIMENSIONLESS
+};
+const MASS_DENSITY: Dimension = Dimension {
+    mass: 1,
+    length: -3,
+    ..DIMENSIONLESS
+};
+const VELOCITY: Dimension = Dimension {
+    length: 1,
+    time: -1,
+    ..DIMENSIONLESS
+};
+const TIME: Dimension = Dimension {
+    time: 1,
+    ..DIMENSIONLESS
+};
+const LENGTH: Dimension = Dimension {
+    length: 1,
+    ..DIMENSIONLESS
+};
+const AREA: Dimension = Dimension {
+    length: 2,
+    ..DIMENSIONLESS
+};
+const VOLUME: Dimension = Dimension {
+    length: 3,
+    ..DIMENSIONLESS
+};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum QuantityKind {
     AbsoluteTemperature,
@@ -52,7 +84,26 @@ pub enum QuantityKind {
     MoleFraction,
     MolarPhaseFraction,
     MolarEnthalpy,
+    ActualVolumeFlow,
+    MassDensity,
+    Velocity,
+    Duration,
+    Length,
+    Area,
+    Volume,
+    DimensionlessRatio,
 }
+/// Frozen seven-quantity projection for project v2 and personal defaults v1.
+pub const LEGACY_QUANTITIES: &[QuantityKind] = &[
+    QuantityKind::AbsoluteTemperature,
+    QuantityKind::TemperatureDifference,
+    QuantityKind::AbsolutePressure,
+    QuantityKind::MolarFlow,
+    QuantityKind::MoleFraction,
+    QuantityKind::MolarPhaseFraction,
+    QuantityKind::MolarEnthalpy,
+];
+
 pub const ALL_QUANTITIES: &[QuantityKind] = &[
     QuantityKind::AbsoluteTemperature,
     QuantityKind::TemperatureDifference,
@@ -61,6 +112,14 @@ pub const ALL_QUANTITIES: &[QuantityKind] = &[
     QuantityKind::MoleFraction,
     QuantityKind::MolarPhaseFraction,
     QuantityKind::MolarEnthalpy,
+    QuantityKind::ActualVolumeFlow,
+    QuantityKind::MassDensity,
+    QuantityKind::Velocity,
+    QuantityKind::Duration,
+    QuantityKind::Length,
+    QuantityKind::Area,
+    QuantityKind::Volume,
+    QuantityKind::DimensionlessRatio,
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -84,6 +143,17 @@ pub enum MeasurementUnit {
     BarGauge,
     KilogramPerSecond,
     StandardCubicMetrePerHour,
+    CubicMetrePerSecond,
+    CubicMetrePerHour,
+    KilogramPerCubicMetre,
+    MetrePerSecond,
+    Second,
+    Minute,
+    Metre,
+    Millimetre,
+    SquareMetre,
+    CubicMetre,
+    One,
 }
 pub const ALL_UNITS: &[MeasurementUnit] = &[
     MeasurementUnit::Kelvin,
@@ -105,6 +175,17 @@ pub const ALL_UNITS: &[MeasurementUnit] = &[
     MeasurementUnit::BarGauge,
     MeasurementUnit::KilogramPerSecond,
     MeasurementUnit::StandardCubicMetrePerHour,
+    MeasurementUnit::CubicMetrePerSecond,
+    MeasurementUnit::CubicMetrePerHour,
+    MeasurementUnit::KilogramPerCubicMetre,
+    MeasurementUnit::MetrePerSecond,
+    MeasurementUnit::Second,
+    MeasurementUnit::Minute,
+    MeasurementUnit::Metre,
+    MeasurementUnit::Millimetre,
+    MeasurementUnit::SquareMetre,
+    MeasurementUnit::CubicMetre,
+    MeasurementUnit::One,
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -149,6 +230,18 @@ impl QuantityKind {
     pub const fn definition(self) -> QuantityDefinition {
         use MeasurementUnit::*;
         match self {
+            Self::ActualVolumeFlow => quantity(
+                "actual_volume_flow",
+                VOLUME_FLOW,
+                &[CubicMetrePerSecond, CubicMetrePerHour],
+            ),
+            Self::MassDensity => quantity("mass_density", MASS_DENSITY, &[KilogramPerCubicMetre]),
+            Self::Velocity => quantity("velocity", VELOCITY, &[MetrePerSecond]),
+            Self::Duration => quantity("duration", TIME, &[Second, Minute]),
+            Self::Length => quantity("length", LENGTH, &[Metre, Millimetre]),
+            Self::Area => quantity("area", AREA, &[SquareMetre]),
+            Self::Volume => quantity("volume", VOLUME, &[CubicMetre]),
+            Self::DimensionlessRatio => quantity("dimensionless_ratio", DIMENSIONLESS, &[One]),
             Self::AbsoluteTemperature => {
                 quantity("absolute_temperature", TEMPERATURE, &[Kelvin, Celsius])
             }
@@ -228,6 +321,38 @@ const fn contextual(
 impl MeasurementUnit {
     pub const fn definition(self) -> UnitDefinition {
         match self {
+            Self::CubicMetrePerSecond => affine(
+                "cubic_metre_per_second",
+                "m³/s",
+                &["m3/s"],
+                VOLUME_FLOW,
+                1.0,
+                0.0,
+            ),
+            Self::CubicMetrePerHour => affine(
+                "cubic_metre_per_hour",
+                "m³/h",
+                &["m3/h"],
+                VOLUME_FLOW,
+                1.0 / 3600.0,
+                0.0,
+            ),
+            Self::KilogramPerCubicMetre => affine(
+                "kilogram_per_cubic_metre",
+                "kg/m³",
+                &["kg/m3"],
+                MASS_DENSITY,
+                1.0,
+                0.0,
+            ),
+            Self::MetrePerSecond => affine("metre_per_second", "m/s", &[], VELOCITY, 1.0, 0.0),
+            Self::Second => affine("second", "s", &[], TIME, 1.0, 0.0),
+            Self::Minute => affine("minute", "min", &[], TIME, 60.0, 0.0),
+            Self::Metre => affine("metre", "m", &[], LENGTH, 1.0, 0.0),
+            Self::Millimetre => affine("millimetre", "mm", &[], LENGTH, 0.001, 0.0),
+            Self::SquareMetre => affine("square_metre", "m²", &["m2"], AREA, 1.0, 0.0),
+            Self::CubicMetre => affine("cubic_metre", "m³", &["m3"], VOLUME, 1.0, 0.0),
+            Self::One => affine("one", "1", &[], DIMENSIONLESS, 1.0, 0.0),
             Self::Kelvin => affine("kelvin", "K", &[], TEMPERATURE, 1.0, 0.0),
             Self::Celsius => affine("celsius", "°C", &["degC"], TEMPERATURE, 1.0, 273.15),
             Self::KelvinDifference => affine(

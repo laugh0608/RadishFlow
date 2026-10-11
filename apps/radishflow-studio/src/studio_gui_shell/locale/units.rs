@@ -104,6 +104,14 @@ impl StudioShellLocale {
             QuantityKind::MolarFlow => ("摩尔流量", "Molar flow"),
             QuantityKind::MoleFraction => ("摩尔分数", "Mole fraction"),
             QuantityKind::MolarPhaseFraction => ("相摩尔分率", "Molar phase fraction"),
+            QuantityKind::ActualVolumeFlow => ("实际体积流率", "Actual volume flow"),
+            QuantityKind::MassDensity => ("质量密度", "Mass density"),
+            QuantityKind::Velocity => ("速度", "Velocity"),
+            QuantityKind::Duration => ("时间", "Duration"),
+            QuantityKind::Length => ("长度", "Length"),
+            QuantityKind::Area => ("面积", "Area"),
+            QuantityKind::Volume => ("体积", "Volume"),
+            QuantityKind::DimensionlessRatio => ("无量纲比", "Dimensionless ratio"),
             QuantityKind::MolarEnthalpy => ("摩尔焓", "Molar enthalpy"),
         };
         match self {
