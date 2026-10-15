@@ -40,7 +40,7 @@ impl ReadyAppState {
             return false;
         }
 
-        let palette_items = commands.palette_items(&self.command_palette.query);
+        let palette_items = self.command_palette_items(commands, &self.command_palette.query);
         self.command_palette.sync_selection(&palette_items);
 
         if ctx.input(|input| input.key_pressed(egui::Key::Escape)) {
@@ -76,6 +76,50 @@ impl ReadyAppState {
             focus_context,
             StudioGuiFocusContext::CommandPalette | StudioGuiFocusContext::ModalDialog
         ) {
+            return;
+        }
+
+        if self.screen == StudioShellScreen::Equipment {
+            use rf_ui::engineering::editor::{EquipmentEditorCommand, EquipmentEditorTarget};
+            if focus_context != StudioGuiFocusContext::TextInput {
+                let history = ctx.input_mut(|i| {
+                    if i.consume_key(
+                        egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+                        egui::Key::Z,
+                    ) || i.consume_key(egui::Modifiers::COMMAND, egui::Key::Y)
+                    {
+                        Some(true)
+                    } else if i.consume_key(egui::Modifiers::COMMAND, egui::Key::Z) {
+                        Some(false)
+                    } else {
+                        None
+                    }
+                });
+                if let Some(redo) = history {
+                    self.equipment_command(EquipmentEditorCommand::History { redo });
+                }
+            }
+            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::F5))
+                && let Some(EquipmentEditorTarget::Task(id)) = self
+                    .platform_host
+                    .modeling_inputs()
+                    .workspace
+                    .equipment_editor
+                    .active()
+                    .cloned()
+            {
+                self.equipment_command(EquipmentEditorCommand::Calculate(id));
+                self.equipment.section = equipment::EquipmentSection::Results;
+            }
+            if !ctx.memory(|memory| memory.any_popup_open())
+                && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
+            {
+                self.return_from_equipment_source();
+            }
+            // Only file-save shortcuts are global on this page. TextEdit owns local history.
+            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::S)) {
+                self.save_project();
+            }
             return;
         }
 
@@ -115,7 +159,13 @@ impl ReadyAppState {
     }
 
     fn has_modal_dialog(&self) -> bool {
-        self.unit_settings.is_open()
+        self.platform_host
+            .modeling_inputs()
+            .workspace
+            .equipment_editor
+            .confirmation()
+            .is_some()
+            || self.unit_settings.is_open()
             || self.pending_format_upgrade.is_some()
             || self.variable_browser.open
             || self.pending_input_action.is_some()

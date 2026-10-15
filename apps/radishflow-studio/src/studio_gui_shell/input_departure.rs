@@ -7,6 +7,7 @@ pub(super) struct ProjectDepartureCheckpoint {
     inputs: InputEditCheckpoint,
     presentation: rf_ui::ProjectPresentationState,
     engineering: rf_ui::engineering::EngineeringCheckpoint,
+    equipment_editor: rf_ui::engineering::EngineeringCheckpoint,
     saved_revision: Option<u64>,
     project_path: Option<String>,
 }
@@ -37,6 +38,12 @@ impl ReadyAppState {
             ),
             presentation: document.presentation,
             engineering: self.platform_host.engineering_checkpoint(),
+            equipment_editor: self
+                .platform_host
+                .modeling_inputs()
+                .workspace
+                .equipment_editor
+                .checkpoint(),
             saved_revision: document.last_saved_revision,
             project_path: document.project_path,
         }
@@ -245,6 +252,18 @@ impl ReadyAppState {
     }
 
     pub(super) fn render_project_departure_inputs(&self, ui: &mut egui::Ui) {
+        let workspace = &self.platform_host.modeling_inputs().workspace;
+        for target in workspace.equipment_editor.pending_targets() {
+            ui.label(format!(
+                "{}：{}",
+                if self.locale == StudioShellLocale::ZhCn {
+                    "将放弃未提交设备输入（保存不会应用）"
+                } else {
+                    "Unsubmitted equipment input will be discarded (saving does not apply it)"
+                },
+                equipment::target_label(self.locale, &target, workspace.engineering.inputs())
+            ));
+        }
         let document = self.platform_host.snapshot().runtime.workspace_document;
         let affected = InputDiscardScope::All.pending_keys(&document.input_edits);
         if !affected.is_empty() {

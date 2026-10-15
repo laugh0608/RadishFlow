@@ -751,4 +751,5 @@ mod unit_settings_layout;
 mod unit_settings_localization;
 mod view_units;
 
+mod equipment_editor;
 mod equipment_storage;

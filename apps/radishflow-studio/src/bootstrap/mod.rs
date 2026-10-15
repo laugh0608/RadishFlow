@@ -61,6 +61,7 @@ pub enum StudioBootstrapTrigger {
     DocumentLifecycle(crate::StudioDocumentLifecycleCommand),
     ProjectPresentation(rf_ui::ProjectPresentationCommand),
     NumericEdit(rf_ui::NumericEditCommand),
+    Equipment(rf_ui::engineering::editor::EquipmentEditorCommand),
     NewProjectDisplayUnits(rf_types::units::DisplayUnitSet),
     InspectorTarget(rf_ui::InspectorTarget),
     ClearInspectorTarget,
@@ -151,6 +152,7 @@ pub enum StudioBootstrapDispatch {
     ProjectPresentation {
         changed: bool,
     },
+    Equipment,
     NumericEdit {
         generation: Option<u64>,
     },

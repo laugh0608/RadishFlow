@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::engineering::InputBinding;
 use rf_types::{EngineeringCaseId, EquipmentTaskId, SourceId, units::QuantityKind};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SeparatorInput {
     OperatingTemperature,
     OperatingPressure,
@@ -47,7 +47,7 @@ impl SeparatorInput {
 }
 
 /// Nonoverlapping intervals in addition to the calculated LLL -> NLL layer.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SeparatorAxialSection {
     LowerTangentToLowLiquidLevel,
     NormalToHighLiquidLevel,
@@ -113,7 +113,7 @@ pub enum SeparatorFlowBasis {
 }
 
 /// Explicit user declarations, not properties inferred from a fluid name or Flash.
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct SeparatorApplicability {
     pub orientation: Option<SeparatorOrientation>,
     pub gas_direction: Option<SeparatorGasDirection>,

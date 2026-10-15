@@ -18,7 +18,16 @@ impl ReadyAppState {
     }
 
     pub(super) fn close_current_window_for_viewport_request(&mut self) -> bool {
-        if self.unit_settings.is_open() || self.pending_format_upgrade.is_some() {
+        if self
+            .platform_host
+            .modeling_inputs()
+            .workspace
+            .equipment_editor
+            .confirmation()
+            .is_some()
+            || self.unit_settings.is_open()
+            || self.pending_format_upgrade.is_some()
+        {
             return false;
         }
         let Some(window_id) = self.current_window_id() else {

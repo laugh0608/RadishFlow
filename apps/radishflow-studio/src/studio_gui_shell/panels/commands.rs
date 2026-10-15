@@ -166,7 +166,8 @@ impl ReadyAppState {
             .open(&mut open)
             .show(ctx, |ui| {
                 ui.set_min_width(560.0);
-                let palette_items = commands.palette_items(&self.command_palette.query);
+                let palette_items =
+                    self.command_palette_items(commands, &self.command_palette.query);
                 let canvas_result = self
                     .canvas_command_result_command_surface()
                     .filter(|result| result.matches_query(&self.command_palette.query));

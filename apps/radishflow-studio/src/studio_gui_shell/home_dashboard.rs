@@ -198,6 +198,20 @@ impl ReadyAppState {
 
     fn render_home_start_actions(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         ui.heading(home_text(self.locale, HomeText::Start));
+        if ui
+            .add(
+                egui::Button::new(if self.locale == StudioShellLocale::ZhCn {
+                    "新建独立分离器"
+                } else {
+                    "New independent separator"
+                })
+                .min_size(egui::vec2(ui.available_width(), 40.0)),
+            )
+            .clicked()
+        {
+            self.start_independent_equipment_project();
+        }
+
         ui.add_space(8.0);
 
         if self.home_return_workspace_action_is_available() {
@@ -542,11 +556,23 @@ impl ReadyAppState {
     fn open_current_workspace_from_home(&mut self) {
         match self.current_workspace_home_entry_screen() {
             StudioShellScreen::Workbench => self.enter_flowsheet_modeling_from_property(),
+            StudioShellScreen::Equipment => self.enter_equipment(),
             screen => self.screen = screen,
         }
     }
 
     fn current_workspace_home_entry_screen(&self) -> StudioShellScreen {
+        if !self
+            .platform_host
+            .modeling_inputs()
+            .workspace
+            .engineering
+            .inputs()
+            .tasks
+            .is_empty()
+        {
+            return StudioShellScreen::Equipment;
+        }
         let flowsheet_modeling_enabled = self
             .platform_host
             .snapshot()

@@ -243,10 +243,12 @@ impl ReadyAppState {
                     self.create_blank_project_with_units(authoring, DisplayUnitSet::si());
                 }
                 if ui.button(locale.text(ShellText::Cancel)).clicked() {
+                    self.equipment.new_project = false;
                     self.unit_settings.pending_new = None;
                 }
             });
             if response.should_close() {
+                self.equipment.new_project = false;
                 self.unit_settings.pending_new = None;
             }
             return true;

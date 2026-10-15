@@ -62,6 +62,24 @@ impl Dependencies {
         }
     }
 }
+/// The same transitive provenance used for result invalidation also gates draft calculations.
+pub(super) fn task_references(
+    inputs: &EngineeringInputs,
+    task: &EquipmentTaskId,
+    record: &EngineeringRecordId,
+) -> bool {
+    let Some(task) = inputs.task(task) else {
+        return false;
+    };
+    let mut dependencies = Dependencies::default();
+    dependencies.add_task(inputs, task);
+    match record {
+        EngineeringRecordId::Task(id) => task.id == *id,
+        EngineeringRecordId::Case(id) => task.case.id == *id,
+        EngineeringRecordId::Source(id) => dependencies.sources.contains(id),
+        EngineeringRecordId::Basis(id) => dependencies.basis.contains(id),
+    }
+}
 fn task_recipe(task: &SeparatorSizingTask) -> SeparatorSizingTask {
     let mut recipe = task.clone();
     recipe.revision = 0;

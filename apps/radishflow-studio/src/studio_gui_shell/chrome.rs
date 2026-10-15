@@ -14,26 +14,28 @@ impl ReadyAppState {
                 ui.heading(window.header.title);
                 ui.separator();
                 render_wrapped_small(ui, &window.runtime.workspace_document.title);
-                render_status_chip(
-                    ui,
-                    self.locale
-                        .runtime_label(window.runtime.run_panel.view().mode_label)
-                        .as_ref(),
-                    egui::Color32::from_rgb(86, 118, 168),
-                );
-                render_status_chip(
-                    ui,
-                    self.locale
-                        .runtime_label(window.runtime.run_panel.view().status_label)
-                        .as_ref(),
-                    run_status_color(window.runtime.run_panel.view().status_label),
-                );
-                if let Some(pending) = window.runtime.run_panel.view().pending_label {
+                if self.screen != StudioShellScreen::Equipment {
                     render_status_chip(
                         ui,
-                        self.locale.runtime_label(pending).as_ref(),
-                        egui::Color32::from_rgb(160, 120, 40),
+                        self.locale
+                            .runtime_label(window.runtime.run_panel.view().mode_label)
+                            .as_ref(),
+                        egui::Color32::from_rgb(86, 118, 168),
                     );
+                    render_status_chip(
+                        ui,
+                        self.locale
+                            .runtime_label(window.runtime.run_panel.view().status_label)
+                            .as_ref(),
+                        run_status_color(window.runtime.run_panel.view().status_label),
+                    );
+                    if let Some(pending) = window.runtime.run_panel.view().pending_label {
+                        render_status_chip(
+                            ui,
+                            self.locale.runtime_label(pending).as_ref(),
+                            egui::Color32::from_rgb(160, 120, 40),
+                        );
+                    }
                 }
                 if window.runtime.workspace_document.has_unsaved_changes {
                     render_status_chip(
@@ -60,7 +62,7 @@ impl ReadyAppState {
                 StudioShellScreen::Workbench => Some(&window.flowsheet_context_toolbar),
                 StudioShellScreen::Run => Some(&window.run_context_toolbar),
                 StudioShellScreen::Results => Some(&window.result_context_toolbar),
-                StudioShellScreen::Home => None,
+                StudioShellScreen::Home | StudioShellScreen::Equipment => None,
             };
             if let Some(context_toolbar) = context_toolbar {
                 ui.separator();
@@ -69,9 +71,12 @@ impl ReadyAppState {
             if self.screen == StudioShellScreen::Results {
                 self.render_result_output_actions(ui, window);
             }
-            self.render_failure_recovery_action(ui, window);
+            if self.screen != StudioShellScreen::Equipment {
+                self.render_failure_recovery_action(ui, window);
+            }
             self.render_project_operation_strip(ui);
-            if !window.commands.menu_tree.is_empty()
+            if self.screen != StudioShellScreen::Equipment
+                && !window.commands.menu_tree.is_empty()
                 && window
                     .layout_state
                     .panel(StudioGuiWindowAreaId::Commands)
@@ -307,6 +312,19 @@ impl ReadyAppState {
             StudioShellScreen::Property,
             self.locale.text(ShellText::Property),
         );
+        if ui
+            .selectable_label(
+                self.screen == StudioShellScreen::Equipment,
+                if self.locale == StudioShellLocale::ZhCn {
+                    "设备"
+                } else {
+                    "Equipment"
+                },
+            )
+            .clicked()
+        {
+            self.enter_equipment();
+        }
         let flowsheet_response = ui
             .add_enabled(
                 window.property_page.flowsheet_modeling_enabled,

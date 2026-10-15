@@ -33,6 +33,7 @@ mod app;
 mod authoring;
 mod canvas_navigation;
 mod chrome;
+mod equipment;
 mod failure_recovery;
 mod fonts;
 mod home_dashboard;
@@ -147,6 +148,7 @@ struct ReadyAppState {
     active_authoring_case: Option<AuthoringCaseKind>,
     result_inspector: ResultInspectorState,
     screen: StudioShellScreen,
+    equipment: equipment::EquipmentPageState,
     left_sidebar_tab: StudioShellLeftSidebarTab,
     right_sidebar_tab: StudioShellRightSidebarTab,
     bottom_drawer_tab: StudioShellBottomDrawerTab,
@@ -175,6 +177,7 @@ enum StudioShellScreen {
     Home,
     Property,
     Workbench,
+    Equipment,
     Run,
     Results,
 }
@@ -492,6 +495,7 @@ impl ReadyAppState {
             active_authoring_case: None,
             result_inspector: ResultInspectorState::default(),
             screen: StudioShellScreen::default(),
+            equipment: equipment::EquipmentPageState::default(),
             left_sidebar_tab: StudioShellLeftSidebarTab::default(),
             right_sidebar_tab: StudioShellRightSidebarTab::default(),
             bottom_drawer_tab: StudioShellBottomDrawerTab::default(),

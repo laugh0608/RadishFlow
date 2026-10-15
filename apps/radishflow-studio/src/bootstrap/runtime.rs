@@ -204,6 +204,18 @@ fn dispatch_bootstrap_trigger(
                 "bootstrap run panel recovery action is unavailable in current widget model",
             )
         }),
+        StudioBootstrapTrigger::Equipment(command) => {
+            let workspace = &mut session.app_state.workspace;
+            workspace
+                .equipment_editor
+                .dispatch(
+                    &mut workspace.engineering,
+                    workspace.project_presentation.display_units(),
+                    command.clone(),
+                )
+                .map_err(|error| RfError::invalid_input(error.to_string()))?;
+            Ok(StudioBootstrapDispatch::Equipment)
+        }
         StudioBootstrapTrigger::NumericEdit(command) => {
             let generation = session
                 .app_state

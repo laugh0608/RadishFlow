@@ -40,7 +40,13 @@ impl ReadyAppState {
         self.request_open_project(project_path, "project picker");
     }
 
+    pub(super) fn start_independent_equipment_project(&mut self) {
+        self.equipment.new_project = true;
+        self.request_blank_project(None);
+    }
+
     pub(super) fn create_blank_project(&mut self) {
+        self.equipment.new_project = false;
         self.request_blank_project(None);
     }
 
@@ -67,10 +73,12 @@ impl ReadyAppState {
     }
 
     pub(super) fn start_mixer_flash_authoring_case(&mut self) {
+        self.equipment.new_project = false;
         self.request_blank_project(Some(AuthoringCaseKind::MixerFlash));
     }
 
     pub(super) fn start_heater_flash_authoring_case(&mut self) {
+        self.equipment.new_project = false;
         self.request_blank_project(Some(AuthoringCaseKind::HeaterFlash));
     }
 
@@ -118,6 +126,7 @@ impl ReadyAppState {
     }
 
     pub(super) fn cancel_pending_blank_project(&mut self) {
+        self.equipment.new_project = false;
         self.project_open.pending_blank_project_confirmation = false;
         self.project_open.pending_authoring_blank_project = None;
         self.project_open.notice = Some(ProjectOpenNotice {
@@ -211,6 +220,14 @@ impl ReadyAppState {
                 );
                 self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
                 self.initialize_new_project_units(units);
+                let equipment_project = self.equipment.new_project;
+                self.equipment = equipment::EquipmentPageState::default();
+                if equipment_project {
+                    self.equipment_command(
+                        rf_ui::engineering::editor::EquipmentEditorCommand::CreateTask,
+                    );
+                    self.enter_equipment();
+                }
                 if let Err(error) = self.apply_default_hidden_commands_panel_for_current_window() {
                     self.platform_host.record_activity_line(format!(
                         "apply default commands panel visibility failed [{}]: {}",
@@ -239,6 +256,7 @@ impl ReadyAppState {
     }
 
     pub(super) fn request_open_project(&mut self, project_path: PathBuf, source_label: &str) {
+        self.equipment.new_project = false;
         if self.unit_settings.is_open() {
             self.validate_project_departure();
             return;
@@ -379,6 +397,18 @@ impl ReadyAppState {
                     project_path.display()
                 ));
                 self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+                self.equipment = equipment::EquipmentPageState::default();
+                if !self
+                    .platform_host
+                    .modeling_inputs()
+                    .workspace
+                    .engineering
+                    .inputs()
+                    .tasks
+                    .is_empty()
+                {
+                    self.enter_equipment();
+                }
                 if let Err(error) = self.apply_default_hidden_commands_panel_for_current_window() {
                     self.platform_host.record_activity_line(format!(
                         "apply default commands panel visibility failed [{}]: {}",
@@ -488,6 +518,13 @@ impl ReadyAppState {
             &window,
             &mut hovered_drop_target,
         );
+        if self.screen == StudioShellScreen::Equipment {
+            self.render_equipment_page(ctx);
+            self.render_command_palette(ctx, &window.commands);
+            self.render_pending_close_window_dialog(ctx);
+            self.render_input_action_dialog(ctx);
+            return;
+        }
         if self.screen == StudioShellScreen::Property {
             self.render_bottom_status_bar(ctx, &window);
             self.render_property_page(ctx, &window);
@@ -541,6 +578,13 @@ impl ReadyAppState {
             &window,
             &mut hovered_drop_target,
         );
+        if self.screen == StudioShellScreen::Equipment {
+            self.render_equipment_page(ctx);
+            self.render_command_palette(ctx, &window.commands);
+            self.render_pending_close_window_dialog(ctx);
+            self.render_input_action_dialog(ctx);
+            return;
+        }
         if self.screen == StudioShellScreen::Property {
             self.render_bottom_status_bar(ctx, &window);
             self.render_property_page(ctx, &window);
@@ -595,6 +639,19 @@ impl ReadyAppState {
         }
         if command_id == "canvas.delete_selected_unit" {
             self.request_unit_deletion();
+            return;
+        }
+        if self.screen == StudioShellScreen::Equipment
+            && let Some(history) = radishflow_studio::document_history_command_from_id(&command_id)
+        {
+            self.equipment_command(
+                rf_ui::engineering::editor::EquipmentEditorCommand::History {
+                    redo: matches!(
+                        history,
+                        radishflow_studio::StudioDocumentHistoryCommand::Redo
+                    ),
+                },
+            );
             return;
         }
         if self.intercept_input_action(&command_id) {

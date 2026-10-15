@@ -227,7 +227,8 @@ impl super::WorkspaceState {
             document_dirty: self.last_saved_revision != Some(self.document.revision),
             presentation_dirty: self.project_presentation.is_dirty(),
             engineering_dirty: self.engineering.is_dirty(),
-            pending_input_count: self.drafts.pending_count(),
+            pending_input_count: self.drafts.pending_count()
+                + self.equipment_editor.pending_count(),
         }
     }
 }

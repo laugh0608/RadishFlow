@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-10-02
+更新时间：2026-10-15
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -71,10 +71,10 @@
 
 Studio 首页、工作台分区、运行后结果视图和项目切换确认流程已落地。shell UI 边界按以下稳定入口治理：
 
-- Home 是默认首页，不读取 `SolveSnapshot` 或编辑流程图。新建空白项目先进入 `物性`；小案例入口另展示只读建模清单，不自动生成流程或写入历史。
+- Home 是默认首页，不读取 `SolveSnapshot` 或编辑流程图。新建空白项目先进入 `物性`；独立设备入口创建空流程并进入 `设备`，不要求物性包；小案例入口另展示只读建模清单，不自动生成流程或写入历史。
 - 最近项目、当前工作区和示例项目统一由 `StudioGuiWindowHomeCaseTileModel` 承载流程缩影、路径 / 来源、物性包 label、组分和状态。当前工作区 tile 只从 `workspace_document` 派生，不写入 recent projects；保存过的当前项目应直接返回当前 workspace，而不是通过 recent path 重新打开自身。Home tile 的 `package_summary` 只从当前 document / builtin package choice 映射为可读 label，例如 `二元烃 Lite`；稳定 package id 只留在项目文件、command id、运行请求和内部状态边界。
 - 新建 / 打开 / 关闭消费 `ProjectSaveState`；确认绑定当前状态，过期重验，取消 / 失败保留现场，见 [生命周期](../topics/project-lifecycle-storage.md#u2-离开保护与保存状态)。Home 返回只切页；保存不提交草稿，有草稿不自动关闭。
-- 进入 case 后，第一层只保留 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` 八个主入口、当前项目摘要和必要状态。普通空白项目选齐 package 和至少一个项目组分前，`流程图` 入口不可用；禁用原因必须来自 Property page DTO 的同一 readiness。
+- 进入 case 后，第一层只保留 `文件 / 主页 / 物性 / 设备 / 流程图 / 运行 / 结果 / 工具 / 设置` 主入口、当前项目摘要和必要状态。普通空白项目选齐 package 和至少一个项目组分前，`流程图` 入口不可用；禁用原因必须来自 Property page DTO 的同一 readiness。
 - `物性 / 流程图 / 运行 / 结果` screen 下方分别消费 `window.property_context_toolbar`、`window.flowsheet_context_toolbar`、`window.run_context_toolbar` 和 `window.result_context_toolbar`。工具栏只展示当前 screen 的主路径命令和状态，不展开调试命令全集；`运行` 工具栏不重复 Monitor 状态 chip，`结果` 工具栏不把所有 stream / unit focus command 展开成长按钮。
 - 工作台分区固定为左侧 `模块 / 项目`、中央 Canvas、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 和状态汇总。`模块` 消费 Canvas place-unit palette 并按 `流股源 / 调节单元 / 汇合与分离` 分类；分类和选项 detail 可进入 hover / DTO，不作为首屏常驻说明。`项目` 负责项目输入、示例入口、对象树和审阅状态；项目级输入编辑主入口仍是独立 `物性` screen。左侧 `项目输入` 和独立 `物性` 页同样展示可读 package label，不从运行结果反推第二套物性包状态。
 - `模块设置` 只消费 `StudioGuiWindowModuleSettingsModel`，从 active unit Inspector detail 派生参数摘要、字段、端口、连接动作和诊断动作；参数摘要不得混入 latest-result。`模块结果` 只消费 `StudioGuiWindowModuleResultsModel`，从 current-revision latest `SolveSnapshot` 派生 selected unit result、consumed / produced stream、related steps、diagnostics 和 diagnostic actions。
@@ -83,6 +83,12 @@ Studio 首页、工作台分区、运行后结果视图和项目切换确认流�
 - 开发态 stderr 与 GUI activity 可继续服务 smoke，但正式 UI 只展示用户能采取行动的摘要，不把平台 timer、`TimerElapsed`、`SystemTime` 或 host internals 混入主路径。
 
 当前 Studio UI 主设计稿已收敛到 `docs/architecture/designs/studio-client-main.pen`。它是设计目标，不代表当前代码已达到最终视觉细化。实现时必须复用既有 `WorkspaceDocument`、inspector draft、command surface、run panel state 和 latest current-revision `SolveSnapshot`；布局变化不得新增私有选择、结果、诊断或参数缓存。
+
+### 独立设备编辑边界
+
+`WorkspaceState.engineering` 持有正式工程输入、设备历史和候选资格；`equipment_editor` 持有带版本的输入副本与确认状态。设备命令通过 bootstrap 路由至 `rf-ui::engineering::editor`，与流程 `DocumentCommand` 历史分离；保存成功仅更新正式输入基线，不应用设备草稿。设备页快捷键、按钮和命令面板共用该入口，文本框本地撤销不进入设备历史。
+
+shell `equipment/` 按导航、任务 / 基础输入、来源、结果与确认组织；仅保留页签、返回字段及焦点，计算和影响判断由应用层拥有。设备页不展示流程暂停 / 空闲 / snapshot 状态；设备结果由任务的 Missing / Current / Failed / Stale 控制。完整编辑、保存和验证边界见 [设备 UI](../topics/equipment/separator-sizing-and-rating.md#独立单工况设备-ui2026-10-15)。
 
 ### Studio Main Presentation 边界
 

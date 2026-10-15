@@ -1,6 +1,7 @@
 //! In-memory equipment transactions and result qualification, independent of flowsheet Run.
-//! No storage schema, editor drafts or global UI undo routing is enabled here.
+//! Formal data is separate from editor drafts and current-result qualification.
 mod commands;
+pub mod editor;
 mod impact;
 mod results;
 #[cfg(test)]

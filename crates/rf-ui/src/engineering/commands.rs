@@ -76,7 +76,7 @@ impl std::error::Error for EngineeringError {}
 
 /// Opaque proposal for one atomic transaction. The impact list is available before
 /// publication, and a proposal cannot be applied to a later or foreign session.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PreparedEngineeringEdit {
     identity: EngineeringCheckpoint,
     checkpoint: EngineeringCheckpoint,
