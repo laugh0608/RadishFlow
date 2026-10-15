@@ -62,14 +62,14 @@ fn temp_dir() -> std::path::PathBuf {
 fn foundation_round_trip_preserves_document_provenance_and_all_fifteen_units() {
     let expected = fixture();
     let data = foundation(&expected);
-    let ProjectV3Read::Foundation(project) = &data else {
+    let ProjectV3Read::Editable(project) = &data else {
         panic!("foundation expected")
     };
     assert_eq!(
         project.display_units.unit_for(QuantityKind::Duration),
         MeasurementUnit::Minute
     );
-    let basis = project.engineering.as_ref().unwrap();
+    let basis = &project.engineering.as_ref().unwrap().basis;
     assert_eq!(basis.basis_entries[0].revision, 7);
     assert_eq!(basis.sources[0].observations[0].original_unit, "min");
     assert_eq!(
@@ -252,10 +252,10 @@ fn unsupported_text(method: &str, version: u64) -> String {
 }
 
 #[test]
-fn all_equipment_tasks_are_opaque_read_only_with_exact_original_numeric_text() {
+fn unsupported_equipment_tasks_are_opaque_read_only_with_exact_original_numeric_text() {
     for (method, version) in [
         ("future.method", 99),
-        ("radishflow.separator.vertical-sb-working-volume", 1),
+        ("radishflow.separator.vertical-sb-working-volume", 99),
     ] {
         let text = unsupported_text(method, version);
         let read = parse(&text).unwrap();
@@ -285,10 +285,10 @@ fn safe_write_round_trips_and_protects_original_unsupported_or_legacy_files() {
     assert!(write(&path, &data, FileOverwritePolicy::Forbid).is_err());
     assert_eq!(fs::read(&path).unwrap(), original);
     let mut changed = data.clone();
-    let ProjectV3Read::Foundation(project) = &mut changed else {
+    let ProjectV3Read::Editable(project) = &mut changed else {
         unreachable!()
     };
-    project.engineering.as_mut().unwrap().basis_entries[0].name = "renamed".into();
+    project.engineering.as_mut().unwrap().basis.basis_entries[0].name = "renamed".into();
     write(&path, &changed, FileOverwritePolicy::Allow).unwrap();
     assert_eq!(read(&path).unwrap(), changed);
     let unknown = unsupported_text("future", 2);
@@ -319,10 +319,11 @@ fn invalid_writes_and_io_failures_leave_existing_data_and_no_staging_files() {
     let mut data = foundation(&fixture());
     write(&path, &data, FileOverwritePolicy::Forbid).unwrap();
     let before = fs::read(&path).unwrap();
-    let ProjectV3Read::Foundation(project) = &mut data else {
+    let ProjectV3Read::Editable(project) = &mut data else {
         unreachable!()
     };
-    project.engineering.as_mut().unwrap().sources[0].observations[0].canonical_value = f64::NAN;
+    project.engineering.as_mut().unwrap().basis.sources[0].observations[0].canonical_value =
+        f64::NAN;
     assert!(write(&path, &data, FileOverwritePolicy::Allow).is_err());
     assert_eq!(fs::read(&path).unwrap(), before);
     let data = foundation(&fixture());
@@ -338,3 +339,5 @@ fn invalid_writes_and_io_failures_leave_existing_data_and_no_staging_files() {
     assert_eq!(fs::read_dir(&root).unwrap().count(), 1);
     fs::remove_dir_all(root).unwrap();
 }
+
+mod equipment;

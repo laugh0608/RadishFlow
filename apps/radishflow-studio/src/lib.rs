@@ -89,8 +89,9 @@ pub use document_history_driver::{
 };
 pub use document_lifecycle_driver::{
     DocumentLifecycleOutcome, FILE_SAVE_AS_COMMAND_ID, FILE_SAVE_COMMAND_ID,
-    StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand, dispatch_document_lifecycle,
-    load_project_app_state,
+    StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand, StudioProjectOpen,
+    dispatch_document_lifecycle, load_project_app_state, project_save_requires_upgrade,
+    project_save_version, read_studio_project,
 };
 pub use entitlement_control::{
     StudioEntitlementAction, StudioEntitlementActionOutcome, StudioEntitlementFailure,

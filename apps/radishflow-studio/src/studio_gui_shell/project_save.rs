@@ -2,7 +2,8 @@ use super::*;
 use radishflow_studio::StudioDocumentLifecycleCommand;
 
 pub(super) struct PendingFormatUpgrade {
-    document_id: String,
+    checkpoint: input_departure::ProjectDepartureCheckpoint,
+    target_version: u32,
     path: PathBuf,
 }
 
@@ -40,10 +41,10 @@ impl ReadyAppState {
             });
             return;
         }
-        let document = self.platform_host.snapshot().runtime.workspace_document;
-        if document.presentation.source_file_version() == Some(1) {
+        if self.platform_host.project_save_requires_upgrade() {
             self.pending_format_upgrade = Some(PendingFormatUpgrade {
-                document_id: document.document_id,
+                checkpoint: self.project_departure_checkpoint(),
+                target_version: self.platform_host.project_save_version(),
                 path,
             });
             self.project_open.pending_save_as_overwrite = None;
@@ -56,8 +57,10 @@ impl ReadyAppState {
         let Some(pending) = self.pending_format_upgrade.take() else {
             return;
         };
-        if self.platform_host.document().metadata.document_id.as_str() != pending.document_id {
-            self.cancel_project_save("保存目标已失效", "工程已切换，请重新保存。");
+        if self.project_departure_checkpoint() != pending.checkpoint
+            || self.platform_host.project_save_version() != pending.target_version
+        {
+            self.cancel_project_save("保存目标已失效", "工程或输入已变化，请重新检查后保存。");
             return;
         }
         self.execute_project_save(pending.path, true);
@@ -173,14 +176,18 @@ impl ReadyAppState {
             return false;
         };
         let path = pending.path.display().to_string();
+        let version = pending.target_version;
+        let zh = self.locale == StudioShellLocale::ZhCn;
         let response = egui::Modal::new(egui::Id::new("project-format-upgrade")).show(ctx, |ui| {
-            ui.heading("保存为新版工程");
-            ui.label(
-                "此工程将升级为支持显示单位设置的新格式，旧版程序无法读取。可另存为以保留原件。",
-            );
+            ui.heading(if zh { "保存为新版工程" } else { "Upgrade project format" });
+            ui.label(if zh {
+                format!("此工程将保存为 v{version}，保留正式输入和显示设置，旧版程序无法读取。可另存为以保留原件。")
+            } else {
+                format!("Save as v{version} to preserve formal inputs and display settings. Older versions cannot read it. Use Save As to keep the original.")
+            });
             ui.label(path);
             ui.horizontal(|ui| {
-                if ui.button("升级并保存").clicked() {
+                if ui.button(if zh { "升级并保存" } else { "Upgrade and save" }).clicked() {
                     self.confirm_format_upgrade();
                     if !self
                         .platform_host
@@ -198,11 +205,11 @@ impl ReadyAppState {
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 }
-                if ui.button("另存为…").clicked() {
+                if ui.button(if zh { "另存为…" } else { "Save As…" }).clicked() {
                     self.pending_format_upgrade = None;
                     self.save_project_as_from_picker();
                 }
-                if ui.button("取消").clicked() {
+                if ui.button(if zh { "取消" } else { "Cancel" }).clicked() {
                     self.cancel_project_save("已取消升级", "文件、保存基线和草稿保持不变。");
                 }
             });

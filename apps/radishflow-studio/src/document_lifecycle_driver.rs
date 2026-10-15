@@ -35,14 +35,71 @@ pub struct DocumentLifecycleOutcome {
     pub save_state: rf_ui::ProjectSaveState,
 }
 
-/// Load project inputs and presentation; runtime, cache and window state belong to the caller.
+/// Parsed opening decision. Unsupported equipment never enters an editable runtime.
+#[derive(Debug)]
+pub enum StudioProjectOpen {
+    Editable(Box<AppState>),
+    ReadOnly(Box<rf_store::project_v3::ReadOnlyProjectV3>),
+}
+pub fn read_studio_project(project_path: &Path) -> RfResult<StudioProjectOpen> {
+    let contents = std::fs::read_to_string(project_path).map_err(|e| {
+        RfError::invalid_input(format!("read project {}: {e}", project_path.display()))
+    })?;
+    if rf_store::project_v3::probe_version(&contents)? != 3 {
+        let project = rf_store::parse_project_file_json(&contents)?;
+        return Ok(StudioProjectOpen::Editable(Box::new(
+            app_state_from_stored(
+                project.document,
+                project.presentation.display_units,
+                project.schema_version,
+                None,
+                project_path,
+            )?,
+        )));
+    }
+    match rf_store::project_v3::parse(&contents)? {
+        rf_store::project_v3::ProjectV3Read::ReadOnly(project) => {
+            Ok(StudioProjectOpen::ReadOnly(Box::new(project)))
+        }
+        rf_store::project_v3::ProjectV3Read::Editable(project) => Ok(StudioProjectOpen::Editable(
+            Box::new(app_state_from_stored(
+                project.document,
+                project.display_units,
+                3,
+                project.engineering,
+                project_path,
+            )?),
+        )),
+    }
+}
+/// Load supported project inputs and presentation. Unknown methods require the
+/// shell's separate read-only inspection surface, never a partial editable AppState.
 pub fn load_project_app_state(project_path: &Path) -> RfResult<AppState> {
+    match read_studio_project(project_path)? {
+        StudioProjectOpen::Editable(app) => Ok(*app),
+        StudioProjectOpen::ReadOnly(_) => Err(RfError::invalid_input(
+            "unsupported equipment method: entire project is read-only; inspect it in Studio",
+        )),
+    }
+}
+/// Kept for the existing headless protocol: v3 must fail before model operations.
+pub(crate) fn load_legacy_project_app_state(project_path: &Path) -> RfResult<AppState> {
     let project = read_project_file(project_path)?;
-    let presentation = rf_ui::ProjectPresentationState::from_loaded(
+    app_state_from_stored(
+        project.document,
         project.presentation.display_units,
         project.schema_version,
-    );
-    let stored = project.document;
+        None,
+        project_path,
+    )
+}
+fn app_state_from_stored(
+    stored: rf_store::StoredProjectDocument,
+    units: rf_types::units::DisplayUnitSet,
+    version: u32,
+    engineering: Option<rf_store::project_v3::StoredEngineeringInputs>,
+    path: &Path,
+) -> RfResult<AppState> {
     let metadata = stored.metadata;
     let mut document = FlowsheetDocument::new(
         stored.flowsheet,
@@ -51,11 +108,42 @@ pub fn load_project_app_state(project_path: &Path) -> RfResult<AppState> {
     document.revision = stored.revision;
     document.metadata.schema_version = metadata.schema_version;
     document.metadata.updated_at = metadata.updated_at;
-
-    let mut app_state = AppState::new(document);
-    app_state.workspace.project_presentation = presentation;
-    app_state.mark_saved(project_path.to_path_buf());
-    Ok(app_state)
+    let mut app = AppState::new(document);
+    app.workspace.project_presentation =
+        rf_ui::ProjectPresentationState::from_loaded(units, version);
+    if let Some(inputs) = engineering {
+        app.workspace.engineering = rf_ui::engineering::EngineeringSession::from_inputs(
+            app.workspace.document.metadata.document_id.clone(),
+            rf_ui::engineering::EngineeringInputs {
+                basis: inputs.basis,
+                tasks: inputs.tasks,
+            },
+        )
+        .map_err(|e| RfError::invalid_input(e.to_string()))?;
+    }
+    app.mark_saved(path.to_path_buf());
+    Ok(app)
+}
+/// Existing v3 stays v3. Engineering data or the eight added non-SI choices
+/// require v3; otherwise new/legacy projects retain the existing v2 writer.
+pub fn project_save_version(app: &AppState) -> u32 {
+    if app.workspace.project_presentation.source_file_version() == Some(3)
+        || !app.workspace.engineering.inputs().is_empty()
+        || (rf_store::StoredProjectPresentation {
+            display_units: app.workspace.project_presentation.display_units().clone(),
+        })
+        .validate_legacy_projection()
+        .is_err()
+    {
+        3
+    } else {
+        2
+    }
+}
+pub fn project_save_requires_upgrade(app: &AppState) -> bool {
+    let target = project_save_version(app);
+    let source = app.workspace.project_presentation.source_file_version();
+    source == Some(1) || (target == 3 && source != Some(3))
 }
 
 pub fn dispatch_document_lifecycle(
@@ -86,28 +174,57 @@ pub fn dispatch_document_lifecycle(
         }
     };
 
-    if app_state
-        .workspace
-        .project_presentation
-        .source_file_version()
-        == Some(1)
-        && !upgrade_confirmed
-    {
+    if project_save_requires_upgrade(app_state) && !upgrade_confirmed {
         return Err(RfError::invalid_input(
             "project format upgrade requires confirmation; older versions cannot read the upgraded file",
         ));
     }
-    if !app_state.workspace.engineering.inputs().is_empty() {
-        return Err(RfError::invalid_input(
-            "equipment and engineering basis persistence is not enabled; project was not written",
-        ));
-    }
+    let version = project_save_version(app_state);
+    let engineering = app_state.workspace.engineering.capture_save();
     let project_file = stored_project_file_from_app_state(app_state);
-    write_project_file(&path, &project_file)?;
-    app_state.workspace.project_presentation.record_saved(
-        project_file.presentation.display_units,
-        project_file.schema_version,
-    );
+    if version == 3 {
+        let inputs = engineering.inputs();
+        let project =
+            rf_store::project_v3::ProjectV3Read::Editable(rf_store::project_v3::StoredProjectV3 {
+                document: project_file.document,
+                display_units: project_file.presentation.display_units.clone(),
+                engineering: engineering.block_present().then(|| {
+                    rf_store::project_v3::StoredEngineeringInputs {
+                        basis: inputs.basis.clone(),
+                        tasks: inputs.tasks.clone(),
+                    }
+                }),
+            });
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| RfError::invalid_input(format!("create project directory: {e}")))?;
+        }
+        let write = if upgrade_confirmed {
+            rf_store::project_v3::write_upgraded
+        } else {
+            rf_store::project_v3::write
+        };
+        write(&path, &project, rf_store::FileOverwritePolicy::Allow)?;
+    } else {
+        // An older in-memory project must not strip a v3 target via Save As.
+        if let Ok(contents) = std::fs::read_to_string(&path)
+            && rf_store::project_v3::probe_version(&contents).is_ok_and(|v| v >= 3)
+        {
+            return Err(RfError::invalid_input(
+                "refusing to downgrade or strip an existing v3 project",
+            ));
+        }
+        write_project_file(&path, &project_file)?;
+    }
+    app_state
+        .workspace
+        .engineering
+        .record_saved(engineering)
+        .map_err(|e| RfError::invalid_input(e.to_string()))?;
+    app_state
+        .workspace
+        .project_presentation
+        .record_saved(project_file.presentation.display_units, version);
     app_state.mark_saved(path.clone());
     app_state.log_feed.push(
         AppLogLevel::Info,
@@ -164,7 +281,7 @@ mod tests {
 
     use super::*;
 
-    fn temp_project_path(name: &str) -> PathBuf {
+    pub(super) fn temp_project_path(name: &str) -> PathBuf {
         let unique = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("expected time after epoch")
@@ -172,7 +289,7 @@ mod tests {
         std::env::temp_dir().join(format!("radishflow-{name}-{unique}.rfproj.json"))
     }
 
-    fn app_state_from_example(path: &PathBuf) -> AppState {
+    pub(super) fn app_state_from_example(path: &PathBuf) -> AppState {
         let project_json = crate::test_support::official_heater_binary_hydrocarbon_project_json();
         fs::write(path, project_json).expect("expected temporary project file");
         app_state_from_project_file(path)
@@ -180,76 +297,6 @@ mod tests {
 
     fn app_state_from_project_file(path: &Path) -> AppState {
         load_project_app_state(path).expect("expected project app state")
-    }
-
-    #[test]
-    fn engineering_inputs_block_all_legacy_saves_without_touching_files_or_state() {
-        use rf_model::equipment::{EquipmentMethod, SeparatorCase, SeparatorSizingTask};
-        use rf_ui::engineering::EngineeringCommand;
-        let path = temp_project_path("engineering-save-guard");
-        let other = temp_project_path("engineering-save-as-guard");
-        let mut app = app_state_from_example(&path);
-        fs::write(&other, b"existing target").unwrap();
-        let original = fs::read(&path).unwrap();
-        let task = SeparatorSizingTask {
-            id: "task".into(),
-            revision: 0,
-            tag: "V-101".into(),
-            name: "Incomplete task".into(),
-            method: EquipmentMethod {
-                id: "unrecognized".into(),
-                version: 1,
-            },
-            case: SeparatorCase {
-                id: "case".into(),
-                name: String::new(),
-                purpose: String::new(),
-                fluid_system: String::new(),
-                applicability_source_ids: vec![],
-                inputs: Default::default(),
-                applicability: Default::default(),
-            },
-            axial_sections: Default::default(),
-        };
-        app.workspace
-            .engineering
-            .apply(vec![EngineeringCommand::CreateTask(Box::new(task))])
-            .unwrap();
-        assert!(app.workspace.project_save_state().engineering_dirty);
-        assert!(
-            app.workspace
-                .project_save_state()
-                .needs_close_confirmation()
-        );
-        // Exercise the v2 path too, rather than only the old-format consent guard.
-        app.workspace.project_presentation =
-            rf_ui::ProjectPresentationState::from_loaded(rf_types::units::DisplayUnitSet::si(), 2);
-        let before = app.clone();
-        for command in [
-            StudioDocumentLifecycleCommand::Save,
-            StudioDocumentLifecycleCommand::SaveAs {
-                path: other.clone(),
-            },
-            StudioDocumentLifecycleCommand::SaveUpgraded { path: path.clone() },
-        ] {
-            let error = dispatch_document_lifecycle(&mut app, command).unwrap_err();
-            assert!(error.to_string().contains("persistence is not enabled"));
-            assert_eq!(app, before);
-            assert_eq!(fs::read(&path).unwrap(), original);
-            assert_eq!(fs::read(&other).unwrap(), b"existing target");
-        }
-        // Even an initialized clean in-memory baseline must not be silently omitted.
-        app.workspace.engineering = rf_ui::engineering::EngineeringSession::from_inputs(
-            app.workspace.document.metadata.document_id.clone(),
-            app.workspace.engineering.inputs().clone(),
-        )
-        .unwrap();
-        assert!(!app.workspace.engineering.is_dirty());
-        assert!(
-            dispatch_document_lifecycle(&mut app, StudioDocumentLifecycleCommand::Save).is_err()
-        );
-        fs::remove_file(path).unwrap();
-        fs::remove_file(other).unwrap();
     }
 
     #[test]
@@ -463,3 +510,6 @@ mod tests {
 
 #[cfg(test)]
 mod presentation_tests;
+
+#[cfg(test)]
+mod equipment_tests;

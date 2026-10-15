@@ -51,9 +51,9 @@ pub(super) fn render_project_save_state(
             ui.colored_label(
                 StudioStateTokens::WARNING,
                 if zh {
-                    "设备与工程基准：有未保存修改，当前尚不支持保存"
+                    "设备与工程基准：待保存"
                 } else {
-                    "Equipment and basis: unsaved changes; saving is not yet supported"
+                    "Equipment and basis: unsaved changes"
                 },
             );
         }

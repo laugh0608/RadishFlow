@@ -10,21 +10,40 @@ pub fn read(path: impl AsRef<Path>) -> RfResult<ProjectV3Read> {
     parse(&contents)
 }
 
-/// Foundation storage only. The caller must explicitly allow replacement; this
-/// does not enable product upgrades. Existing legacy, invalid or unsupported-task
-/// files are protected even if the caller supplies a new task-free document.
+/// Replacement requires explicit consent. Legacy upgrades use write_upgraded;
+/// invalid and unsupported-task targets are protected by both entry points.
 /// Replacement uses the repository's existing staged-write concurrency semantics.
 pub fn write(
     path: impl AsRef<Path>,
     project: &ProjectV3Read,
     overwrite: FileOverwritePolicy,
 ) -> RfResult<()> {
+    write_with_upgrade(path.as_ref(), project, overwrite, false)
+}
+
+/// Explicit lifecycle consent to replace a validated v1/v2 target with v3.
+pub fn write_upgraded(
+    path: impl AsRef<Path>,
+    project: &ProjectV3Read,
+    overwrite: FileOverwritePolicy,
+) -> RfResult<()> {
+    write_with_upgrade(path.as_ref(), project, overwrite, true)
+}
+fn write_with_upgrade(
+    path: &Path,
+    project: &ProjectV3Read,
+    overwrite: FileOverwritePolicy,
+    upgrade: bool,
+) -> RfResult<()> {
     let contents = to_pretty_json(project)?;
-    let path = path.as_ref();
     let policy = if overwrite == FileOverwritePolicy::Allow {
         match fs::read_to_string(path) {
+            Ok(existing) if super::probe_version(&existing)? != super::VERSION && upgrade => {
+                crate::parse_project_file_json(&existing)?;
+                FileOverwritePolicy::Allow
+            }
             Ok(existing) => match parse(&existing)? {
-                ProjectV3Read::Foundation(_) => FileOverwritePolicy::Allow,
+                ProjectV3Read::Editable(_) => FileOverwritePolicy::Allow,
                 ProjectV3Read::ReadOnly(_) => {
                     return Err(RfError::invalid_input(
                         "engineering.tasks: existing project is read-only; overwriting or stripping tasks is prohibited",

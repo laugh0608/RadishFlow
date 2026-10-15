@@ -713,3 +713,25 @@ fn method_change_and_delete_restore_do_not_allow_previous_execution() {
     );
     assert_eq!(state.result_status(&id()), EquipmentResultStatus::Stale);
 }
+
+#[test]
+fn save_acknowledges_captured_inputs_and_rejects_foreign_session_without_losing_history() {
+    let mut state = session();
+    edit(&mut state, 1.1);
+    let written = state.capture_save();
+    edit(&mut state, 1.2);
+    state.record_saved(written).unwrap();
+    assert!(state.is_dirty());
+    state.undo().unwrap();
+    assert!(!state.is_dirty());
+    state.redo().unwrap();
+    assert!(state.is_dirty());
+    let foreign = state.capture_save();
+    let mut reopened = session();
+    let before = reopened.clone();
+    assert_eq!(
+        reopened.record_saved(foreign),
+        Err(EngineeringError::StalePreparation)
+    );
+    assert_eq!(reopened, before);
+}

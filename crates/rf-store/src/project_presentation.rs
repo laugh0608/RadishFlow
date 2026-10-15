@@ -24,7 +24,7 @@ struct DisplayUnitChoice {
 
 impl StoredProjectPresentation {
     /// Never silently discard a choice that requires project v3.
-    pub(crate) fn validate_legacy_projection(&self) -> Result<(), String> {
+    pub fn validate_legacy_projection(&self) -> Result<(), String> {
         for (quantity, unit) in self.display_units.entries() {
             if !LEGACY_QUANTITIES.contains(&quantity)
                 && unit != quantity.definition().canonical_unit

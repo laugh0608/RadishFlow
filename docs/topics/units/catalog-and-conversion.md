@@ -105,7 +105,7 @@ S1 字段映射：`operatingTemperature` → 原 `absolute_temperature`；`opera
 
 ### 版本投影与独立预期
 
-`ALL_QUANTITIES` / `DisplayUnitSet` 已包含 15 类；`LEGACY_QUANTITIES` 冻结原 7 类，现有项目 v2、个人默认 v1 与现有单位设置 / 流程轻量文本导出使用该投影。旧格式完整性校验后才在内存补新量 SI；写入前拒绝新量非 SI，防止静默丢失。v3 的 15 类投影已随第三批基础存储实现，产品未启用：
+`ALL_QUANTITIES` / `DisplayUnitSet` 已包含 15 类；`LEGACY_QUANTITIES` 冻结原 7 类，现有项目 v2、个人默认 v1 与现有单位设置 / 流程轻量文本导出使用该投影。旧格式完整性校验后才在内存补新量 SI；写入前拒绝新量非 SI，防止静默丢失。v3 的 15 类投影已实现，并于 2026-10-15 接通最小 Studio 生命周期；旧文件出现新增量非 SI 选择时须显式升级：
 
 - v1 不带 presentation；v2 的 `displayUnits` 始终是原 7 类，每类恰一次。读取旧文件在内存为新 8 类补 SI 显示选择，保留原 7 类，不据此升级或写盘。
 - v3 的同一 `presentation.displayUnits` 完整包含 15 类，不另建设备私有单位表；原 7 类编码不变。新增量非 SI 呈现也属于需要 v3 的内容，即使工程区当前为空。格式细则见 [v3 契约](../project-lifecycle-storage.md#v3-字段与兼容契约2026-10-11)。

@@ -524,7 +524,7 @@ pub struct StepSnapshot {
 
 ## 关键事件流
 
-设备事务与结果独立归 `WorkspaceState.engineering`，边界见 [工程基础](../topics/engineering-basis-and-cases.md)。
+`WorkspaceState.engineering` 管理设备状态；v3 边界见 [工程基础](../topics/engineering-basis-and-cases.md)。
 
 ### 参数提交流
 

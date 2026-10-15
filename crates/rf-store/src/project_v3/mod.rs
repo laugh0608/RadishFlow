@@ -1,10 +1,9 @@
-//! Foundation-only v3 codec, deliberately separate from the product project reader.
-//! Studio, CLI and StoredProjectFile continue to accept only v1/v2. No equipment
-//! method is registered here: every nonempty task array makes the entire file read-only.
+//! Complete v3 equipment storage; legacy readers and CLI retain their v1/v2 contract.
 mod engineering_wire;
 mod file_io;
 mod presentation_wire;
-pub use file_io::{read, write};
+mod task_wire;
+pub use file_io::{read, write, write_upgraded};
 
 use crate::{StoredProjectDocument, project::STORED_PROJECT_FILE_KIND};
 use engineering_wire::EngineeringWire;
@@ -13,20 +12,26 @@ use rf_model::engineering::EngineeringBasis;
 use rf_types::{RfError, RfResult, units::DisplayUnitSet};
 use serde::{Deserialize, Deserializer, Serialize};
 
-const VERSION: u32 = 3;
+pub const VERSION: u32 = 3;
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct StoredEngineeringInputs {
+    pub basis: EngineeringBasis,
+    pub tasks: Vec<rf_model::equipment::SeparatorSizingTask>,
+}
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct StoredProjectV3Foundation {
+pub struct StoredProjectV3 {
     pub document: StoredProjectDocument,
     pub display_units: DisplayUnitSet,
     /// None preserves an omitted engineering block. Some(empty) preserves an
     /// explicitly present block with three empty arrays, as required by v3.
-    pub engineering: Option<EngineeringBasis>,
+    pub engineering: Option<StoredEngineeringInputs>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProjectV3Read {
-    Foundation(StoredProjectV3Foundation),
+    Editable(StoredProjectV3),
     ReadOnly(ReadOnlyProjectV3),
 }
 
@@ -35,6 +40,7 @@ pub struct ReadOnlyProjectV3 {
     original_json: String,
     document: StoredProjectDocument,
     task_count: usize,
+    display_units: DisplayUnitSet,
 }
 impl ReadOnlyProjectV3 {
     /// Original UTF-8 text, including unsupported fields and numeric lexemes.
@@ -43,6 +49,9 @@ impl ReadOnlyProjectV3 {
     }
     pub fn document(&self) -> &StoredProjectDocument {
         &self.document
+    }
+    pub fn display_units(&self) -> &DisplayUnitSet {
+        &self.display_units
     }
     pub fn task_count(&self) -> usize {
         self.task_count
@@ -57,8 +66,12 @@ struct Header {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct ProjectWire {
+#[serde(
+    rename_all = "camelCase",
+    deny_unknown_fields,
+    bound(deserialize = "T: Deserialize<'de>")
+)]
+struct ProjectWire<T = engineering_wire::TaskProbe> {
     kind: String,
     schema_version: u32,
     #[serde(deserialize_with = "document")]
@@ -68,9 +81,10 @@ struct ProjectWire {
     #[serde(
         default,
         deserialize_with = "engineering",
+        bound(deserialize = "T: Deserialize<'de>"),
         skip_serializing_if = "Option::is_none"
     )]
-    engineering: Option<EngineeringWire>,
+    engineering: Option<EngineeringWire<T>>,
 }
 
 fn document<'de, D: Deserializer<'de>>(de: D) -> Result<StoredProjectDocument, D::Error> {
@@ -81,14 +95,16 @@ fn presentation<'de, D: Deserializer<'de>>(de: D) -> Result<PresentationWire, D:
     PresentationWire::deserialize(de)
         .map_err(|e| serde::de::Error::custom(format!("presentation: {e}")))
 }
-fn engineering<'de, D: Deserializer<'de>>(de: D) -> Result<Option<EngineeringWire>, D::Error> {
+fn engineering<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
+    de: D,
+) -> Result<Option<EngineeringWire<T>>, D::Error> {
     // A missing field is None; an explicit null cannot deserialize as EngineeringWire.
     EngineeringWire::deserialize(de)
         .map(Some)
         .map_err(|e| serde::de::Error::custom(format!("engineering: {e}")))
 }
 
-/// Parse original text twice: the version probe never converts JSON into Value,
+/// Decode in stages from original text: the version probe never converts into Value,
 /// so strict body decoding still sees duplicate keys and unknown-task numbers.
 pub fn parse(contents: &str) -> RfResult<ProjectV3Read> {
     let header: Header = serde_json::from_str(contents).map_err(json_error)?;
@@ -99,7 +115,7 @@ pub fn parse(contents: &str) -> RfResult<ProjectV3Read> {
     }
     if header.schema_version != VERSION {
         return Err(RfError::invalid_input(format!(
-            "schemaVersion: foundation v3 codec requires version 3, got {}",
+            "schemaVersion: v3 codec requires version 3, got {}",
             header.schema_version
         )));
     }
@@ -107,18 +123,28 @@ pub fn parse(contents: &str) -> RfResult<ProjectV3Read> {
     wire.document.validate()?;
     let display_units = wire.presentation.into_display_units()?;
     let task_count = wire.engineering.as_ref().map_or(0, |e| e.tasks.len());
+    let unsupported = wire
+        .engineering
+        .as_ref()
+        .is_some_and(|e| e.tasks.iter().any(|t| !t.supported()));
     let engineering = wire
         .engineering
         .map(EngineeringWire::into_basis)
         .transpose()?;
-    if task_count > 0 {
+    if unsupported || task_wire::legacy_payload(contents)? {
         return Ok(ProjectV3Read::ReadOnly(ReadOnlyProjectV3 {
             original_json: contents.to_string(),
             document: wire.document,
             task_count,
+            display_units,
         }));
     }
-    Ok(ProjectV3Read::Foundation(StoredProjectV3Foundation {
+    let tasks = task_wire::decode(contents)?;
+    let engineering = engineering.map(|basis| StoredEngineeringInputs { basis, tasks });
+    if let Some(inputs) = &engineering {
+        validate_engineering(inputs)?;
+    }
+    Ok(ProjectV3Read::Editable(StoredProjectV3 {
         document: wire.document,
         display_units,
         engineering,
@@ -126,25 +152,31 @@ pub fn parse(contents: &str) -> RfResult<ProjectV3Read> {
 }
 
 /// Reject read-only documents rather than reserializing a partially understood file.
-/// Only this scoped API emits v3; the product writer remains unchanged.
+/// Studio uses this API explicitly; legacy readers/writers remain separate.
 pub fn to_pretty_json(project: &ProjectV3Read) -> RfResult<String> {
-    let ProjectV3Read::Foundation(project) = project else {
+    let ProjectV3Read::Editable(project) = project else {
         return Err(RfError::invalid_input(
-            "engineering.tasks: equipment capability is not implemented; entire project is read-only",
+            "engineering.tasks: unsupported equipment capability; entire project is read-only",
         ));
     };
     project.document.validate()?;
-    if let Some(basis) = &project.engineering {
-        basis
-            .validate()
-            .map_err(|e| RfError::invalid_input(format!("engineering.{e}")))?;
+    if let Some(inputs) = &project.engineering {
+        validate_engineering(inputs)?;
     }
     let wire = ProjectWire {
         kind: STORED_PROJECT_FILE_KIND.into(),
         schema_version: VERSION,
         document: project.document.clone(),
         presentation: PresentationWire::from(&project.display_units),
-        engineering: project.engineering.as_ref().map(EngineeringWire::from),
+        engineering: project.engineering.as_ref().map(|e| {
+            EngineeringWire::with_tasks(
+                &e.basis,
+                e.tasks
+                    .iter()
+                    .map(task_wire::TaskWire::from)
+                    .collect::<Vec<_>>(),
+            )
+        }),
     };
     serde_json::to_string_pretty(&wire).map_err(json_error)
 }
@@ -155,3 +187,61 @@ fn json_error(error: serde_json::Error) -> RfError {
 
 #[cfg(test)]
 mod tests;
+
+fn validate_engineering(inputs: &StoredEngineeringInputs) -> RfResult<()> {
+    inputs
+        .basis
+        .validate()
+        .map_err(|e| RfError::invalid_input(format!("engineering.{e}")))?;
+    rf_model::equipment::validate_equipment_identities(&inputs.tasks).map_err(|e| {
+        RfError::invalid_input(format!("engineering.tasks[{}]: {:?}", e.task_index, e.kind))
+    })?;
+    for (index, task) in inputs.tasks.iter().enumerate() {
+        if task.method.id != task_wire::METHOD_ID
+            || task.method.version != task_wire::METHOD_VERSION
+        {
+            return Err(RfError::invalid_input(format!(
+                "engineering.tasks[{index}].method: unsupported method cannot be written"
+            )));
+        }
+        for (field, binding) in &task.case.inputs {
+            inputs
+                .basis
+                .resolve(field.quantity(), binding)
+                .map_err(|e| {
+                    RfError::invalid_input(format!(
+                        "engineering.tasks[{index}].inputs.{field:?}: {e}"
+                    ))
+                })?;
+        }
+        for (section, binding) in &task.axial_sections {
+            inputs
+                .basis
+                .resolve(rf_types::units::QuantityKind::Length, binding)
+                .map_err(|e| {
+                    RfError::invalid_input(format!(
+                        "engineering.tasks[{index}].axialSections.{section:?}: {e}"
+                    ))
+                })?;
+        }
+        for source in &task.case.applicability_source_ids {
+            if !inputs.basis.sources.iter().any(|s| &s.id == source) {
+                return Err(RfError::invalid_input(format!(
+                    "engineering.tasks[{index}].case.applicabilitySourceIds: missing source {source}"
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Version dispatch without a lossy JSON Value conversion. Body readers remain strict.
+pub fn probe_version(contents: &str) -> RfResult<u32> {
+    let header: Header = serde_json::from_str(contents).map_err(json_error)?;
+    if header.kind != STORED_PROJECT_FILE_KIND {
+        return Err(RfError::invalid_input(
+            "kind: unsupported project file kind",
+        ));
+    }
+    Ok(header.schema_version)
+}

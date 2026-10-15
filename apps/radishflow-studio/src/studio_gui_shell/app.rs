@@ -156,6 +156,7 @@ impl ReadyAppState {
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
                 self.platform_host = platform_host;
+                self.read_only_project = None;
                 self.modeling_problems
                     .replace_document(self.platform_host.document());
                 self.pending_format_upgrade = None;
@@ -294,11 +295,40 @@ impl ReadyAppState {
     }
 
     pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
+        match radishflow_studio::read_studio_project(&project_path) {
+            Ok(radishflow_studio::StudioProjectOpen::ReadOnly(project)) => {
+                self.read_only_project = Some(project_read_only::ReadOnlyProjectView {
+                    path: project_path,
+                    project,
+                });
+                self.command_palette.close();
+                self.pending_format_upgrade = None;
+                self.project_open.pending_confirmation = None;
+                self.project_open.departure_checkpoint = None;
+                return;
+            }
+            Err(error) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Error,
+                    title: "Project open failed".into(),
+                    detail: format!("{error}. Current workspace remains open."),
+                });
+                self.platform_host.record_activity_line(format!(
+                    "open {source_label} failed [{}]: {} ({})",
+                    error.code().as_str(),
+                    error.message(),
+                    project_path.display()
+                ));
+                return;
+            }
+            Ok(radishflow_studio::StudioProjectOpen::Editable(_)) => {}
+        }
         let config = studio_shell_runtime_config(Some(project_path.clone()));
 
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
                 self.platform_host = platform_host;
+                self.read_only_project = None;
                 self.modeling_problems
                     .replace_document(self.platform_host.document());
                 self.pending_format_upgrade = None;
@@ -408,6 +438,9 @@ impl ReadyAppState {
     }
 
     pub(super) fn update(&mut self, ctx: &egui::Context) {
+        if self.render_read_only_project(ctx) {
+            return;
+        }
         self.refresh_modeling_problems();
         let close_frame_snapshot = ctx
             .input(|input| input.viewport().close_requested())

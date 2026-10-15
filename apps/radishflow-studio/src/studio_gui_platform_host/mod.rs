@@ -566,6 +566,13 @@ impl StudioGuiPlatformHost {
         self.driver.document()
     }
 
+    pub fn project_save_version(&self) -> u32 {
+        crate::project_save_version(self.driver.host().app_state())
+    }
+    pub fn project_save_requires_upgrade(&self) -> bool {
+        crate::project_save_requires_upgrade(self.driver.host().app_state())
+    }
+
     /// Runtime identity for departure confirmation; not a presentation field.
     pub fn engineering_checkpoint(&self) -> rf_ui::engineering::EngineeringCheckpoint {
         self.driver

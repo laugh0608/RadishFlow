@@ -420,13 +420,13 @@ fn headless_v2_project_keeps_si_protocol_and_rejects_invalid_presentation() {
 }
 
 #[test]
-fn foundation_v3_is_rejected_before_inspection_modeling_or_solving() {
-    use rf_store::project_v3::{ProjectV3Read, StoredProjectV3Foundation};
+fn v3_is_rejected_before_headless_inspection_modeling_or_solving() {
+    use rf_store::project_v3::{ProjectV3Read, StoredProjectV3};
     let f = Fixture::new();
     let path = f.root.join("工程 example.rfproj.json");
     let legacy = rf_store::read_project_file(&path).unwrap();
     let index_before = fs::read(f.root.join("index.json")).unwrap();
-    let foundation = ProjectV3Read::Foundation(StoredProjectV3Foundation {
+    let foundation = ProjectV3Read::Editable(StoredProjectV3 {
         document: legacy.document,
         display_units: legacy.presentation.display_units,
         engineering: None,
@@ -451,7 +451,13 @@ fn foundation_v3_is_rejected_before_inspection_modeling_or_solving() {
         }
         let bytes = serde_json::to_vec(&value).unwrap();
         fs::write(&path, &bytes).unwrap();
-        assert!(load_project_app_state(&path).is_err());
+        // Studio opens supported v3; the existing headless protocol remains v1/v2.
+        assert_eq!(
+            load_project_app_state(&path).is_ok(),
+            value["engineering"]["tasks"]
+                .as_array()
+                .is_none_or(|tasks| tasks.is_empty())
+        );
         let (code, result) = f.command("inspect", &path);
         assert_eq!(code, 2, "{result}");
         assert_eq!(result["error"]["stage"], "project");

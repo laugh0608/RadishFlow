@@ -11,17 +11,17 @@ use std::{collections::BTreeSet, fmt, marker::PhantomData};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(super) struct EngineeringWire {
+pub(super) struct EngineeringWire<T = TaskProbe> {
     #[serde(deserialize_with = "basis_entries")]
     basis_entries: Vec<BasisWire>,
     #[serde(deserialize_with = "sources")]
     sources: Vec<SourceWire>,
-    #[serde(deserialize_with = "tasks")]
-    pub(super) tasks: Vec<TaskProbe>,
+    #[serde(deserialize_with = "tasks", bound(deserialize = "T: Deserialize<'de>"))]
+    pub(super) tasks: Vec<T>,
 }
 
 // Only the stable identity envelope is inspected. No device case/input/method
-// payload is decoded, and no task can be written by the foundation codec.
+// payload is decoded during the capability probe.
 // Unknown fields remain in the read-only original text, never in a lossy Value.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,6 +29,13 @@ pub(super) struct TaskProbe {
     id: String,
     kind: String,
     method: MethodProbe,
+}
+impl TaskProbe {
+    pub(super) fn supported(&self) -> bool {
+        self.kind == super::task_wire::TASK_KIND
+            && self.method.id == super::task_wire::METHOD_ID
+            && self.method.version == u64::from(super::task_wire::METHOD_VERSION)
+    }
 }
 #[derive(Serialize, Deserialize)]
 struct MethodProbe {
@@ -177,6 +184,17 @@ impl EngineeringWire {
     }
 }
 
+impl<T> EngineeringWire<T> {
+    pub(super) fn with_tasks(basis: &EngineeringBasis, tasks: Vec<T>) -> Self {
+        let wire = EngineeringWire::from(basis);
+        Self {
+            basis_entries: wire.basis_entries,
+            sources: wire.sources,
+            tasks,
+        }
+    }
+}
+
 impl From<&EngineeringBasis> for EngineeringWire {
     fn from(basis: &EngineeringBasis) -> Self {
         Self {
@@ -250,15 +268,17 @@ impl From<&EngineeringBasis> for EngineeringWire {
     }
 }
 
-mod quantity_id {
+pub(super) mod quantity_id {
     use super::*;
-    pub(super) fn serialize<S: Serializer>(
+    pub(in crate::project_v3) fn serialize<S: Serializer>(
         quantity: &QuantityKind,
         serializer: S,
     ) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(quantity.definition().id)
     }
-    pub(super) fn deserialize<'de, D: Deserializer<'de>>(de: D) -> Result<QuantityKind, D::Error> {
+    pub(in crate::project_v3) fn deserialize<'de, D: Deserializer<'de>>(
+        de: D,
+    ) -> Result<QuantityKind, D::Error> {
         let id = String::deserialize(de)?;
         ALL_QUANTITIES
             .iter()
@@ -281,7 +301,7 @@ fn operating_conditions<'de, D: Deserializer<'de>>(de: D) -> Result<ConditionsWi
 }
 
 // Contextualize array failures without adding a second JSON parser or losing duplicate keys.
-fn indexed<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
+pub(super) fn indexed<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
     de: D,
     field: &'static str,
 ) -> Result<Vec<T>, D::Error> {
@@ -318,7 +338,7 @@ fn basis_entries<'de, D: Deserializer<'de>>(de: D) -> Result<Vec<BasisWire>, D::
 fn sources<'de, D: Deserializer<'de>>(de: D) -> Result<Vec<SourceWire>, D::Error> {
     indexed(de, "sources")
 }
-fn tasks<'de, D: Deserializer<'de>>(de: D) -> Result<Vec<TaskProbe>, D::Error> {
+fn tasks<'de, D: Deserializer<'de>, T: Deserialize<'de>>(de: D) -> Result<Vec<T>, D::Error> {
     indexed(de, "tasks")
 }
 fn observations<'de, D: Deserializer<'de>>(de: D) -> Result<Vec<ObservationWire>, D::Error> {
