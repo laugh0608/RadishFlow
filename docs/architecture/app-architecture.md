@@ -86,17 +86,15 @@ Studio 首页、工作台分区、运行后结果视图和项目切换确认流�
 
 ### 独立设备编辑边界
 
-`WorkspaceState.engineering` 持有正式工程输入、设备历史和候选资格；`equipment_editor` 持有带版本的输入副本与确认状态。设备命令通过 bootstrap 路由至 `rf-ui::engineering::editor`，与流程 `DocumentCommand` 历史分离；保存成功仅更新正式输入基线，不应用设备草稿。设备页快捷键、按钮和命令面板共用该入口，文本框本地撤销不进入设备历史。
-
-shell `equipment/` 按导航、任务 / 基础输入、来源、结果与确认组织；仅保留页签、返回字段及焦点，计算和影响判断由应用层拥有。设备页不展示流程暂停 / 空闲 / snapshot 状态；设备结果由任务的 Missing / Current / Failed / Stale 控制。完整编辑、保存和验证边界见 [设备 UI](../topics/equipment/separator-sizing-and-rating.md#独立单工况设备-ui2026-10-15)。
+`WorkspaceState.engineering` 持有正式输入、设备历史和候选资格；`equipment_editor` 持有版本化草稿与确认状态。设备命令经 bootstrap 派发至 `rf-ui::engineering::editor`，与流程历史分离；保存不应用草稿，文本框本地撤销不进入设备历史。shell 仅保留页签、返回字段和焦点，结果消费设备资格，不显示流程运行状态。详见 [设备 UI](../topics/equipment/separator-sizing-and-rating.md#独立单工况设备-ui2026-10-15)。
 
 ### Studio Main Presentation 边界
 
-Studio UI 专题代码实现从 `StudioGuiWindowModel` 派生 DTO 开始，不先做 egui 大布局重排。当前 `studio_main` 已投影 Home case tile、Property page、四类 context toolbar、底部 status summary、Module Settings、Module Results 和结果表定位语义；详细映射见 `docs/architecture/designs/studio-client-main-brief.md`。
+`studio_main` 通过 `StudioGuiWindowModel` 投影 Home、Property、四类 context toolbar、底部状态、Module Settings / Results 和结果定位；详细映射见 `docs/architecture/designs/studio-client-main-brief.md`。
 
-egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、物性、运行、结果或诊断真相源。Home recent tile 当前仍由 shell preferences / `project_open` 映射为同一 DTO，当前工作区 tile 只从 `workspace_document` 派生；Property toolbar、Property page metric、Home case tile 和 Project input sweep 都应从同一 document / choice 状态映射可读 label，不能在 renderer 里直接铺 raw package id。后续细化 `物性`、`流程图`、`运行`、`结果` 与右侧三 tab 时，仍必须继续按正式 presentation / command / state 来源推进。
+shell 只消费 DTO，不建立第二套项目、物性、结果或诊断状态。recent tile 由 preferences / `project_open` 映射，当前工作区 tile 来自 `workspace_document`；各入口统一从 document / choice 映射可读物性包名称，不直接显示 raw package id。
 
-`studio_gui_shell/panels/runtime/` 当前拆为 `runtime/mod.rs`、`runtime/results.rs` 和 `runtime/inspector.rs`。Module Settings 和 Module Results 细化必须先补正式 window model DTO 和 focused 回归，再让 runtime 子模块消费；不得在 shell 中私造结果、诊断、端口、参数或帮助命令缓存。当前模块帮助没有正式 command surface，只允许在 DTO 中表达为空状态。
+`studio_gui_shell/panels/runtime/` 按 mod、results、inspector 拆分。模块设置 / 结果变更先补正式 DTO 与定向回归，再接渲染；没有正式命令的帮助区保持空状态，不伪造功能。
 
 ### `rf-ui`
 
