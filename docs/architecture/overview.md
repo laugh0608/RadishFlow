@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-10-11
+更新时间：2026-10-15
 
 ## 用途
 
@@ -55,10 +55,10 @@ flowchart TD
 | 模块 | 实际职责 | 说明 |
 | --- | --- | --- |
 | `rf-types` | ID、相标签、错误与诊断上下文、相区容差及量 / 单位目录与转换 | 单位基础无 UI、IO 或 COM 语义；规范 SI 不变 |
-| `rf-model` | 组分、流股、单元、端口、flowsheet 及最小工程基础 / 来源对象模型 | 不负责求解调度；工程结构解析不证明方法有效性 |
+| `rf-model` | 组分、流股、单元、端口、flowsheet 及工程基础 / 来源、独立设备任务与单工况对象模型 | 不负责求解调度；工程结构解析不证明方法有效性 |
 | `rf-thermo` | Antoine、理想 K 值、常热容相焓、泡露点估算、物性 provider | 目前还含缓存包装载，见下方依赖偏移说明 |
 | `rf-flash` | TP Flash、Rachford-Rice、相分率与相组成 | 数值假设与验证边界见 [热力学模型](../thermo/mvp-model.md) |
-| `rf-unitops` | canonical ports、六类单元行为及共享局部输入规格规则 | Mixer、Valve 和焓模型使用 MVP 简化假设 |
+| `rf-unitops` | canonical ports、六类单元及规格规则、独立分离器条件式尺寸计算 | Mixer、Valve 和焓模型使用 MVP 简化假设 |
 | `rf-flowsheet` | 端口、流股引用、一源一汇校验及文档侧有来源的入口压力上下文 | 终端产品流可没有 sink；不借用未运行模板伪造压力依据 |
 | `rf-solver` | 无回路顺序模块执行、步骤快照、诊断 | 环路报错，不代表已有 recycle 收敛器 |
 | `rf-store` | 项目、sidecar、偏好、授权缓存、物性包及独立 v3 基础编解码 / IO | 产品仍只读写 v1/v2；v3 非空任务整份只读，见 [存储专题](../topics/project-lifecycle-storage.md) |
@@ -70,6 +70,8 @@ flowchart TD
 | `xtask` | 仓库治理、文本门禁和 Rust 基线检查 | `.sh` / `.ps1` 是平台包装入口 |
 
 典型计算调用方向为 `Studio 或 rf-ffi -> rf-solver -> rf-unitops -> rf-flash / rf-thermo`；`rf-flowsheet` 提供连接校验，`rf-model / rf-types` 提供领域数据。该描述是职责路径，不是完整 Cargo 依赖图。
+
+`rf-model::equipment` 仅拥有任务与输入；`rf-unitops::separator_sizing` 复用来源绑定，纯函数检查并返回拥有输入 / 来源副本的只读候选，无 UI、IO、COM 或流程求解调用。尚未接入设备事务、结果资格、产品保存与界面；v3 基础隔离保持。
 
 Studio 的 `modeling_specifications` 提供只读 A1 报告与会话身份；`modeling_recommendations` 持有同一检查会话，负责候选、预览、忽略和正式接受，GUI 共用该状态。接受经 `rf-ui` 输入 / 连接事务写回，检查与推荐不自动求解、不持久化，也不新增 CLI 协议。共享规则在 UI、预检与 solver 各自阶段消费，保留既有外部失败分类。
 

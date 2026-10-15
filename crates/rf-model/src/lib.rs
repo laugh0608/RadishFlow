@@ -1,4 +1,5 @@
 pub mod engineering;
+pub mod equipment;
 
 use std::collections::BTreeMap;
 
