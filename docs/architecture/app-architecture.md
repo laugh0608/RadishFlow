@@ -524,6 +524,8 @@ pub struct StepSnapshot {
 
 ## 关键事件流
 
+设备事务与结果独立归 `WorkspaceState.engineering`，边界见 [工程基础](../topics/engineering-basis-and-cases.md)。
+
 ### 参数提交流
 
 实际变更才执行下列流程；输入事务先校验副本，相同有效值不改修订。写入不自动求解：

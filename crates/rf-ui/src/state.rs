@@ -461,6 +461,7 @@ pub struct WorkspaceState {
     pub document: FlowsheetDocument,
     pub document_path: Option<PathBuf>,
     pub project_presentation: ProjectPresentationState,
+    pub engineering: crate::engineering::EngineeringSession,
     pub last_saved_revision: Option<u64>,
     pub canvas_interaction: CanvasInteractionState,
     pub selection: SelectionState,
@@ -479,6 +480,9 @@ impl WorkspaceState {
         let run_panel = RunPanelState::from_runtime(&solve_session, None, None);
 
         Self {
+            engineering: crate::engineering::EngineeringSession::new(
+                document.metadata.document_id.clone(),
+            ),
             allocated_unit_ids: document.flowsheet.units.keys().cloned().collect(),
             document,
             document_path: None,

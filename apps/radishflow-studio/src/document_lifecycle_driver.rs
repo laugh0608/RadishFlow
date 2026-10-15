@@ -97,6 +97,11 @@ pub fn dispatch_document_lifecycle(
             "project format upgrade requires confirmation; older versions cannot read the upgraded file",
         ));
     }
+    if !app_state.workspace.engineering.inputs().is_empty() {
+        return Err(RfError::invalid_input(
+            "equipment and engineering basis persistence is not enabled; project was not written",
+        ));
+    }
     let project_file = stored_project_file_from_app_state(app_state);
     write_project_file(&path, &project_file)?;
     app_state.workspace.project_presentation.record_saved(
@@ -175,6 +180,76 @@ mod tests {
 
     fn app_state_from_project_file(path: &Path) -> AppState {
         load_project_app_state(path).expect("expected project app state")
+    }
+
+    #[test]
+    fn engineering_inputs_block_all_legacy_saves_without_touching_files_or_state() {
+        use rf_model::equipment::{EquipmentMethod, SeparatorCase, SeparatorSizingTask};
+        use rf_ui::engineering::EngineeringCommand;
+        let path = temp_project_path("engineering-save-guard");
+        let other = temp_project_path("engineering-save-as-guard");
+        let mut app = app_state_from_example(&path);
+        fs::write(&other, b"existing target").unwrap();
+        let original = fs::read(&path).unwrap();
+        let task = SeparatorSizingTask {
+            id: "task".into(),
+            revision: 0,
+            tag: "V-101".into(),
+            name: "Incomplete task".into(),
+            method: EquipmentMethod {
+                id: "unrecognized".into(),
+                version: 1,
+            },
+            case: SeparatorCase {
+                id: "case".into(),
+                name: String::new(),
+                purpose: String::new(),
+                fluid_system: String::new(),
+                applicability_source_ids: vec![],
+                inputs: Default::default(),
+                applicability: Default::default(),
+            },
+            axial_sections: Default::default(),
+        };
+        app.workspace
+            .engineering
+            .apply(vec![EngineeringCommand::CreateTask(Box::new(task))])
+            .unwrap();
+        assert!(app.workspace.project_save_state().engineering_dirty);
+        assert!(
+            app.workspace
+                .project_save_state()
+                .needs_close_confirmation()
+        );
+        // Exercise the v2 path too, rather than only the old-format consent guard.
+        app.workspace.project_presentation =
+            rf_ui::ProjectPresentationState::from_loaded(rf_types::units::DisplayUnitSet::si(), 2);
+        let before = app.clone();
+        for command in [
+            StudioDocumentLifecycleCommand::Save,
+            StudioDocumentLifecycleCommand::SaveAs {
+                path: other.clone(),
+            },
+            StudioDocumentLifecycleCommand::SaveUpgraded { path: path.clone() },
+        ] {
+            let error = dispatch_document_lifecycle(&mut app, command).unwrap_err();
+            assert!(error.to_string().contains("persistence is not enabled"));
+            assert_eq!(app, before);
+            assert_eq!(fs::read(&path).unwrap(), original);
+            assert_eq!(fs::read(&other).unwrap(), b"existing target");
+        }
+        // Even an initialized clean in-memory baseline must not be silently omitted.
+        app.workspace.engineering = rf_ui::engineering::EngineeringSession::from_inputs(
+            app.workspace.document.metadata.document_id.clone(),
+            app.workspace.engineering.inputs().clone(),
+        )
+        .unwrap();
+        assert!(!app.workspace.engineering.is_dirty());
+        assert!(
+            dispatch_document_lifecycle(&mut app, StudioDocumentLifecycleCommand::Save).is_err()
+        );
+        fs::remove_file(path).unwrap();
+        fs::remove_file(other).unwrap();
     }
 
     #[test]

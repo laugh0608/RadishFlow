@@ -6,6 +6,7 @@ use rf_ui::{InputDiscardScope, InputEditCheckpoint};
 pub(super) struct ProjectDepartureCheckpoint {
     inputs: InputEditCheckpoint,
     presentation: rf_ui::ProjectPresentationState,
+    engineering: rf_ui::engineering::EngineeringCheckpoint,
     saved_revision: Option<u64>,
     project_path: Option<String>,
 }
@@ -35,6 +36,7 @@ impl ReadyAppState {
                 &document.input_edits,
             ),
             presentation: document.presentation,
+            engineering: self.platform_host.engineering_checkpoint(),
             saved_revision: document.last_saved_revision,
             project_path: document.project_path,
         }

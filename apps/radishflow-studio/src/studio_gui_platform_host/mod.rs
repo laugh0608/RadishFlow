@@ -566,6 +566,16 @@ impl StudioGuiPlatformHost {
         self.driver.document()
     }
 
+    /// Runtime identity for departure confirmation; not a presentation field.
+    pub fn engineering_checkpoint(&self) -> rf_ui::engineering::EngineeringCheckpoint {
+        self.driver
+            .host()
+            .app_state()
+            .workspace
+            .engineering
+            .checkpoint()
+    }
+
     pub fn snapshot(&self) -> StudioGuiSnapshot {
         self.enrich_snapshot(self.driver.snapshot())
     }

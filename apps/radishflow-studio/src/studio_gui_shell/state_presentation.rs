@@ -37,7 +37,7 @@ pub(super) fn render_project_save_state(
 ) {
     let zh = locale == StudioShellLocale::ZhCn;
     light_state_surface(ui, |ui| {
-        // The three facts remain independent. Drafts and unsaved choices are not diagnostics.
+        // Save state and unsubmitted drafts remain independent.
         ui.colored_label(
             StudioStateTokens::SECONDARY,
             match (zh, state.document_dirty) {
@@ -47,6 +47,16 @@ pub(super) fn render_project_save_state(
                 (false, false) => "Project content: no unsaved changes",
             },
         );
+        if state.engineering_dirty {
+            ui.colored_label(
+                StudioStateTokens::WARNING,
+                if zh {
+                    "设备与工程基准：有未保存修改，当前尚不支持保存"
+                } else {
+                    "Equipment and basis: unsaved changes; saving is not yet supported"
+                },
+            );
+        }
         ui.colored_label(
             StudioStateTokens::SECONDARY,
             match (zh, state.presentation_dirty) {
