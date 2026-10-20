@@ -177,7 +177,7 @@ function Assert-PlainPackagePath {
 
 $repoRoot = Get-RepositoryRoot
 Set-Location -LiteralPath $repoRoot
-Invoke-CheckedCommand -Command 'cargo' -Arguments @('run', '--locked', '--offline', '--quiet', '-p', 'xtask', '--', 'check-private-resources')
+Invoke-CheckedCommand -Command 'cargo' -Arguments @('run', '--locked', '--quiet', '-p', 'xtask', '--', 'check-private-resources')
 $trackedOutput = (& git ls-files --cached -z) -join "`n"
 if ($LASTEXITCODE -ne 0) { throw 'Could not enumerate public package inputs.' }
 $script:packageTrackedFiles = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)

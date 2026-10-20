@@ -1,6 +1,6 @@
 # 私有工程资料管理
 
-更新时间：2026-10-15
+更新时间：2026-10-20
 
 用途：规定非公开标准、图书、物性数据、参考模拟与工程依据的本地管理，以及公开仓库的提交和打包边界。
 
@@ -32,7 +32,7 @@
 ## 防误提交
 
 - 主仓库 `.gitignore` 忽略整个 `/private-resources/`；`.gitattributes` 对该目录设置 `export-ignore`，作为 Git 源码归档的额外防线。
-- `cargo run --locked --offline --quiet -p xtask -- check-private-resources` 检查主仓库索引：拒绝私有路径、gitlink，以及指向私有目录的已暂存符号链接；同时确认忽略规则生效。检查在读取文件正文前停止，不打印私有文件名或内容。
+- `cargo run --locked --quiet -p xtask -- check-private-resources` 检查主仓库索引：拒绝私有路径、gitlink，以及指向私有目录的已暂存符号链接；同时确认忽略规则生效。检查在读取文件正文前停止，不打印私有文件名或内容。
 - 正式 `check-repository-governance` / `check-repo` 自动执行该检查，公开 CI 不需要访问私有仓库。
 - 当前维护工作区的 `.git/hooks/pre-commit` 调用版本化的 `scripts/hooks/pre-commit`。其他克隆需自行安装；若已有 hook，应合并调用，不覆盖原有规则。hook 使用离线锁定依赖的 xtask，缺少工具或缓存时提交失败，不自动下载。
 - 私有仓库当前安装本地 `pre-push` 拒绝推送，并保持没有远端。该 hook 不随克隆自动安装；今后获准上传时应重新审定共享范围和许可。
@@ -43,7 +43,7 @@
 
 `scripts/package.ps1` 保持显式选择入口文件和示例目录，不遍历整个工作区：
 
-- 打包前执行私有资料边界检查。
+- 打包前执行私有资料边界检查；与正式构建一致使用 `--locked`，允许缓存不全的公开 CI 下载锁定依赖。只有依赖缓存齐全时才适合额外指定离线模式，本地提交 hook 的强制离线约束独立保留。
 - 文档和示例只复制主仓库已跟踪文件；忽略示例目录里的未跟踪临时文件。
 - 输入、输出及其祖先路径不能包含 `private-resources`，也不能通过符号链接或 junction 绕转。
 - 拒绝复用已有 staging 目录；必须选择新输出位置，或显式传入原有 `-Clean` 参数清理，避免旧文件混入归档。
