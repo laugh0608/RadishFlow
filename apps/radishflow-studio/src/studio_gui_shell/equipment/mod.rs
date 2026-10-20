@@ -2,13 +2,16 @@
 use super::*;
 use rf_types::units::{DisplayUnitSet, QuantityKind};
 use rf_ui::engineering::{EngineeringInputs, editor::*};
+mod calculation_table;
 mod confirmation;
+mod export;
 mod labels;
 mod navigation;
 mod results;
 mod source;
 mod task;
 mod widgets;
+pub(super) use calculation_table::CalculationTableFormat;
 pub(super) use labels::target_label;
 use labels::*;
 use widgets::*;
@@ -22,6 +25,7 @@ pub(super) enum EquipmentSection {
 }
 #[derive(Default)]
 pub(super) struct EquipmentPageState {
+    pub(super) pending_export: Option<export::PendingEquipmentExport>,
     pub(super) section: EquipmentSection,
     source_return: Option<(EquipmentEditorTarget, Option<EquipmentField>)>,
     focus_field: Option<EquipmentField>,
@@ -107,6 +111,7 @@ impl ReadyAppState {
         let font_scale = ctx.style().text_styles[&egui::TextStyle::Body].size / 14.0;
         let sidebar = ctx.available_rect().width() >= 1000.0 * font_scale;
         let mut commands = Vec::new();
+        let mut export_request = None;
         let mut open_source = None;
         if sidebar {
             egui::SidePanel::left("equipment-project-navigation")
@@ -251,6 +256,37 @@ impl ReadyAppState {
                     }
                 }
             });
+            if let EquipmentEditorTarget::Task(id) = &target {
+                let enabled = session.current_candidate(id).is_some()
+                    && !editor.pending_for_task(id, &session);
+                ui.horizontal_wrapped(|ui| {
+                    for (format, label) in [
+                        (
+                            CalculationTableFormat::Csv,
+                            tr(locale, "导出 CSV", "Export CSV"),
+                        ),
+                        (
+                            CalculationTableFormat::Json,
+                            tr(locale, "导出 JSON", "Export JSON"),
+                        ),
+                    ] {
+                        if ui.add_enabled(enabled, egui::Button::new(label)).clicked() {
+                            export_request = Some((id.clone(), format));
+                        }
+                    }
+                    ui.label(tr(locale, "计算表使用项目单位", "Table uses project units"));
+                });
+                if !enabled {
+                    ui.label(tr(
+                        locale,
+                        "处理相关草稿并完成当前计算后可导出。",
+                        "Resolve related drafts and calculate before exporting.",
+                    ));
+                }
+            }
+            if let Some(notice) = &self.project_open.notice {
+                render_project_notice(ui, notice);
+            }
             if record.is_pending() {
                 ui.label(tr(
                     locale,
@@ -329,6 +365,9 @@ impl ReadyAppState {
         });
         for command in commands {
             self.equipment_command(command);
+        }
+        if let Some((id, format)) = export_request {
+            self.export_equipment_from_picker(&id, format);
         }
         self.render_equipment_confirmation(ctx);
     }

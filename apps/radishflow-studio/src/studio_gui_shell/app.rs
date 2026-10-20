@@ -509,7 +509,7 @@ impl ReadyAppState {
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
             self.render_input_action_dialog(ctx);
-            self.render_result_export_dialog(ctx);
+            self.render_export_dialogs(ctx);
             return;
         }
         self.render_top_bar(
@@ -523,6 +523,7 @@ impl ReadyAppState {
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
             self.render_input_action_dialog(ctx);
+            self.render_export_dialogs(ctx);
             return;
         }
         if self.screen == StudioShellScreen::Property {
@@ -533,7 +534,7 @@ impl ReadyAppState {
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
             self.render_input_action_dialog(ctx);
-            self.render_result_export_dialog(ctx);
+            self.render_export_dialogs(ctx);
             return;
         }
         self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
@@ -547,7 +548,7 @@ impl ReadyAppState {
         self.render_pending_close_window_dialog(ctx);
         self.render_unit_deletion_dialog(ctx);
         self.render_input_action_dialog(ctx);
-        self.render_result_export_dialog(ctx);
+        self.render_export_dialogs(ctx);
         self.finish_drop_preview_cycle(
             ctx,
             window.layout_state.scope.window_id,
@@ -568,7 +569,7 @@ impl ReadyAppState {
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
             self.render_input_action_dialog(ctx);
-            self.render_result_export_dialog(ctx);
+            self.render_export_dialogs(ctx);
             return;
         }
 
@@ -583,6 +584,7 @@ impl ReadyAppState {
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
             self.render_input_action_dialog(ctx);
+            self.render_export_dialogs(ctx);
             return;
         }
         if self.screen == StudioShellScreen::Property {
@@ -592,7 +594,7 @@ impl ReadyAppState {
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
             self.render_input_action_dialog(ctx);
-            self.render_result_export_dialog(ctx);
+            self.render_export_dialogs(ctx);
             return;
         }
         self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
@@ -605,7 +607,7 @@ impl ReadyAppState {
         self.render_pending_close_window_dialog(ctx);
         self.render_unit_deletion_dialog(ctx);
         self.render_input_action_dialog(ctx);
-        self.render_result_export_dialog(ctx);
+        self.render_export_dialogs(ctx);
     }
 
     pub(super) fn dispatch_run_panel_widget(&mut self, event: RunPanelWidgetEvent) {

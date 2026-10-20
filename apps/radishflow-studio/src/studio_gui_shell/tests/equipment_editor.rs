@@ -2,7 +2,7 @@ use super::*;
 use rf_model::{engineering::*, equipment::*};
 use rf_ui::engineering::{EquipmentResultStatus, editor::*};
 
-fn change(
+pub(super) fn change(
     app: &mut ReadyAppState,
     target: &EquipmentEditorTarget,
     edit: impl FnOnce(&mut EquipmentDraft),
@@ -39,7 +39,7 @@ fn pending(app: &ReadyAppState) -> usize {
         .equipment_editor
         .pending_count()
 }
-fn complete_case() -> (ReadyAppState, EquipmentEditorTarget, EquipmentEditorTarget) {
+pub(super) fn complete_case() -> (ReadyAppState, EquipmentEditorTarget, EquipmentEditorTarget) {
     let mut app = ready_app_state(&synced_workspace_config());
     app.start_independent_equipment_project();
     assert_eq!(app.screen, StudioShellScreen::Equipment);

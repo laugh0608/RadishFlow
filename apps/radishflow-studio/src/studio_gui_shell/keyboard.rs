@@ -171,6 +171,7 @@ impl ReadyAppState {
             || self.pending_input_action.is_some()
             || self.pending_unit_deletion.is_some()
             || self.pending_result_export.is_some()
+            || self.equipment.pending_export.is_some()
             || self.project_open.pending_confirmation.is_some()
             || self.project_open.pending_blank_project_confirmation
             || self.project_open.pending_save_as_overwrite.is_some()

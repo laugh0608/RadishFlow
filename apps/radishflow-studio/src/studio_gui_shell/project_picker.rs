@@ -1,6 +1,15 @@
 use std::path::PathBuf;
 
 pub(super) trait ProjectFilePicker {
+    fn supports_equipment_export_dialogs(&self) -> bool {
+        false
+    }
+    fn pick_equipment_export_file(
+        &mut self,
+        _format: super::equipment::CalculationTableFormat,
+    ) -> Option<PathBuf> {
+        None
+    }
     fn supports_project_dialogs(&self) -> bool {
         true
     }
@@ -16,6 +25,27 @@ pub(super) trait ProjectFilePicker {
 pub(super) struct NativeProjectFilePicker;
 
 impl ProjectFilePicker for NativeProjectFilePicker {
+    fn supports_equipment_export_dialogs(&self) -> bool {
+        cfg!(any(target_os = "windows", target_os = "macos"))
+    }
+    fn pick_equipment_export_file(
+        &mut self,
+        format: super::equipment::CalculationTableFormat,
+    ) -> Option<PathBuf> {
+        #[cfg(any(target_os = "windows", target_os = "macos"))]
+        {
+            rfd::FileDialog::new()
+                .set_title("Export RadishFlow equipment calculation")
+                .add_filter("Calculation table", &[format.extension()])
+                .set_file_name(format!("equipment-calculation.{}", format.extension()))
+                .save_file()
+        }
+        #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+        {
+            let _ = format;
+            None
+        }
+    }
     fn supports_project_dialogs(&self) -> bool {
         cfg!(any(target_os = "windows", target_os = "macos"))
     }

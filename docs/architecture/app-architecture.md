@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-10-15
+更新时间：2026-10-20
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -86,7 +86,7 @@ Studio 首页、工作台分区、运行后结果视图和项目切换确认流�
 
 ### 独立设备编辑边界
 
-`WorkspaceState.engineering` 持有正式输入、设备历史和候选资格；`equipment_editor` 持有版本化草稿与确认状态。设备命令经 bootstrap 派发至 `rf-ui::engineering::editor`，与流程历史分离；保存不应用草稿，文本框本地撤销不进入设备历史。shell 仅保留页签、返回字段和焦点，结果消费设备资格，不显示流程运行状态。详见 [设备 UI](../topics/equipment/separator-sizing-and-rating.md#独立单工况设备-ui2026-10-15)。
+`WorkspaceState.engineering` 持有正式输入、设备历史和候选资格；`equipment_editor` 持有版本化草稿与确认状态。设备命令经 bootstrap 派发至 `rf-ui::engineering::editor`，与流程历史分离；保存不应用草稿，文本框本地撤销不进入设备历史。shell 保留页签、返回字段、焦点及待确认的不可变导出；导出在选择路径前捕获当前候选与项目单位，写入前重验设备资格、计算身份及相关草稿，不更改工程历史。结果消费设备资格，不显示流程运行状态。详见 [设备 UI](../topics/equipment/separator-sizing-and-rating.md#独立单工况设备-ui2026-10-15)。
 
 ### Studio Main Presentation 边界
 

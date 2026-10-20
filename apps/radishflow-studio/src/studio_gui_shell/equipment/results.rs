@@ -3,20 +3,9 @@ use rf_ui::engineering::editor::separator_sizing::*;
 use rf_ui::engineering::{EngineeringSession, EquipmentResultStatus};
 
 pub(super) fn format_value(value: f64, q: QuantityKind, units: &DisplayUnitSet) -> String {
-    let unit = units.unit_for(q);
-    match rf_types::units::from_canonical(value, q, unit) {
-        Ok(value) => format!("{} {}", display_number(value), unit.definition().symbol),
-        Err(_) => format!(
-            "{value:.6} {}",
-            q.definition().canonical_unit.definition().symbol
-        ),
-    }
-}
-fn display_number(value: f64) -> String {
-    if value != 0.0 && (value.abs() < 0.0001 || value.abs() >= 1e7) {
-        format!("{value:.6e}")
-    } else {
-        format!("{value:.6}")
+    match rf_ui::format_quantity(value, q, units.unit_for(q)) {
+        Ok(text) => text,
+        Err(error) => format!("⚠ {error}"),
     }
 }
 pub(super) fn render(

@@ -252,7 +252,8 @@ impl ReadyAppState {
         });
     }
 
-    pub(super) fn render_result_export_dialog(&mut self, ctx: &egui::Context) {
+    pub(super) fn render_export_dialogs(&mut self, ctx: &egui::Context) {
+        self.render_equipment_export_dialog(ctx);
         let Some(pending) = self.pending_result_export.as_ref() else {
             return;
         };
