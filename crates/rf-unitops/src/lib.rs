@@ -1,3 +1,6 @@
+mod separator_evidence;
+mod separator_hydraulics;
+pub mod separator_rating;
 pub mod separator_sizing;
 pub mod specifications;
 

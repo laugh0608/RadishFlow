@@ -1,7 +1,6 @@
 use super::*;
-use rf_model::engineering::{
-    BindingOrigin, EngineeringBasis, InputBinding, SourceKind, SourcePhase, SourceReview,
-};
+use crate::separator_evidence::{self, EvidenceIssue, OperatingContext, SourceEvidence, SourceUse};
+use rf_model::engineering::{EngineeringBasis, InputBinding};
 use rf_types::units::QuantityKind;
 
 fn issue(issues: &mut Vec<SizingIssue>, target: IssueTarget, kind: SizingIssueKind) {
@@ -157,8 +156,8 @@ pub(super) fn prepare(
         );
     }
     for id in &task.case.applicability_source_ids {
-        capture_sources(
-            vec![(id.clone(), true)],
+        capture_source(
+            id,
             IssueTarget::Source(id.clone()),
             basis,
             &mut capture,
@@ -250,75 +249,43 @@ fn resolve(
     capture: &mut SizingInputCapture,
     issues: &mut Vec<SizingIssue>,
 ) -> Option<f64> {
-    match basis.resolve(quantity, binding) {
-        Err(error) => {
-            issue(issues, target, SizingIssueKind::InvalidBinding(error));
-            None
-        }
-        Ok(resolved) => {
-            let mut sources = vec![(resolved.source.id.clone(), true)];
-            if let BindingOrigin::Basis(entry) | BindingOrigin::Override { basis: entry, .. } =
-                resolved.origin
-            {
-                capture
-                    .basis_entries
-                    .insert(entry.id.clone(), entry.clone());
-                // An override's original source is traceability, not its active evidence.
-                sources.push((entry.source_id.clone(), false));
-            }
-            capture_sources(sources, target, basis, capture, issues);
-            Some(resolved.value.value_si)
-        }
+    let (value, problems) = SourceEvidence {
+        basis_entries: &mut capture.basis_entries,
+        sources: &mut capture.sources,
     }
+    .resolve(binding, quantity, basis);
+    append_evidence_issues(problems, target, issues);
+    value
 }
 
-fn capture_sources(
-    mut sources: Vec<(SourceId, bool)>,
+fn capture_source(
+    id: &SourceId,
     target: IssueTarget,
     basis: &EngineeringBasis,
     capture: &mut SizingInputCapture,
     issues: &mut Vec<SizingIssue>,
 ) {
-    let mut checked = std::collections::BTreeSet::new();
-    while let Some((id, active)) = sources.pop() {
-        if !checked.insert((id.clone(), active)) {
-            continue;
-        }
-        let Some(source) = basis.sources.iter().find(|s| s.id == id) else {
-            issue(issues, target.clone(), SizingIssueKind::MissingSource(id));
-            continue;
-        };
-        if active {
-            check_source(source, target.clone(), issues);
-        }
-        capture.sources.insert(id, source.clone());
-        for observation in &source.observations {
-            sources.extend(
-                observation
-                    .depends_on
-                    .iter()
-                    .map(|r| (r.source_id.clone(), active)),
-            );
-        }
+    let problems = SourceEvidence {
+        basis_entries: &mut capture.basis_entries,
+        sources: &mut capture.sources,
     }
+    .capture_source(id, basis);
+    append_evidence_issues(problems, target, issues);
 }
 
-fn check_source(source: &SourceRecord, target: IssueTarget, issues: &mut Vec<SizingIssue>) {
-    let has_reference = !source.reference.trim().is_empty() && !source.locator.trim().is_empty();
-    let has_assumption = !source.adoption_note.trim().is_empty();
-    if source.kind == SourceKind::Unknown
-        || source.applicability.scope.trim().is_empty()
-        || (source.kind == SourceKind::Assumed && !has_assumption)
-        || (source.kind != SourceKind::Assumed && !has_reference)
-    {
-        issue(
-            issues,
-            target.clone(),
-            SizingIssueKind::MissingSourceEvidence,
-        );
-    }
-    if source.review == SourceReview::Unreviewed {
-        issue(issues, target, SizingIssueKind::SourceNotAdopted);
+fn append_evidence_issues(
+    problems: Vec<EvidenceIssue>,
+    target: IssueTarget,
+    issues: &mut Vec<SizingIssue>,
+) {
+    for problem in problems {
+        let kind = match problem {
+            EvidenceIssue::InvalidBinding(error) => SizingIssueKind::InvalidBinding(error),
+            EvidenceIssue::MissingSource(id) => SizingIssueKind::MissingSource(id),
+            EvidenceIssue::MissingSourceEvidence => SizingIssueKind::MissingSourceEvidence,
+            EvidenceIssue::SourceNotAdopted => SizingIssueKind::SourceNotAdopted,
+        };
+        issue(issues, target.clone(), kind);
     }
 }
 
@@ -330,35 +297,22 @@ fn check_conditions(
     issues: &mut Vec<SizingIssue>,
 ) {
     use SeparatorInput::*;
-    let a = &source.applicability;
-    let phase = match field {
-        Some(GasVolumeFlow | GasDensity) => Some(SourcePhase::Gas),
-        Some(LiquidVolumeFlow | LiquidDensity) => Some(SourcePhase::Liquid),
-        _ => None,
+    let usage = match field {
+        Some(GasVolumeFlow | GasDensity) => SourceUse::Gas,
+        Some(LiquidVolumeFlow | LiquidDensity) => SourceUse::Liquid,
+        Some(EffectiveK) => SourceUse::EffectiveK,
+        _ => SourceUse::General,
     };
-    let needs_fluid = phase.is_some() || field == Some(EffectiveK);
-    let fluid_mismatch = (needs_fluid || !a.fluid_system.trim().is_empty())
-        && a.fluid_system.trim() != capture.task.case.fluid_system.trim();
-    let phase_mismatch = phase.is_some_and(|p| a.phase != p && a.phase != SourcePhase::Both);
-    let conditions_mismatch = match a.operating_conditions {
-        None => phase.is_some(),
-        Some(conditions) => [
-            (OperatingTemperature, conditions.temperature_k),
-            (OperatingPressure, conditions.pressure_pa),
-        ]
-        .iter()
-        .any(|(field, source_value)| {
-            capture
-                .values_si
-                .get(field)
-                .is_some_and(|value| !numerically_equal(*value, *source_value))
-        }),
+    let context = OperatingContext {
+        fluid_system: &capture.task.case.fluid_system,
+        temperature_k: capture.values_si.get(&OperatingTemperature).copied(),
+        pressure_pa: capture.values_si.get(&OperatingPressure).copied(),
     };
-    if fluid_mismatch || phase_mismatch || conditions_mismatch {
+    if !separator_evidence::conditions_match(source, usage, &context) {
         issue(issues, target, SizingIssueKind::SourceConditionMismatch);
     }
 }
 
 pub(super) fn numerically_equal(a: f64, b: f64) -> bool {
-    (a - b).abs() / a.abs().max(b.abs()) <= COMPARISON_RELATIVE_TOLERANCE
+    separator_evidence::numerically_equal(a, b)
 }

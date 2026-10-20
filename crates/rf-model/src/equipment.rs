@@ -1,4 +1,9 @@
 //! Independent equipment input records. No calculation, transaction or storage policy.
+mod rating;
+pub use rating::*;
+#[cfg(test)]
+mod tests;
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::engineering::InputBinding;
@@ -154,11 +159,20 @@ pub struct SeparatorSizingTask {
     pub axial_sections: BTreeMap<SeparatorAxialSection, InputBinding>,
 }
 
+/// Formal equipment inputs. Application sessions and storage opt into new
+/// variants separately; introducing a model does not enable a product capability.
+#[derive(Debug, Clone, PartialEq)]
+pub enum EquipmentTask {
+    SeparatorSizing(SeparatorSizingTask),
+    SeparatorRating(SeparatorRatingTask),
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EquipmentIdentityErrorKind {
     EmptyTaskId,
     DuplicateTaskId,
     EmptyCaseId,
+    EmptyCaseCollection,
     DuplicateCaseId,
     DuplicateTag,
 }
@@ -173,28 +187,82 @@ pub struct EquipmentIdentityError {
 pub fn validate_equipment_identities(
     tasks: &[SeparatorSizingTask],
 ) -> Result<(), EquipmentIdentityError> {
-    let mut ids = BTreeSet::new();
-    let mut cases = BTreeSet::new();
-    let mut tags = BTreeSet::new();
+    let mut identities = EquipmentIdentities::default();
     for (task_index, task) in tasks.iter().enumerate() {
-        use EquipmentIdentityErrorKind::*;
-        let kind = if task.id.as_str().trim().is_empty() {
-            Some(EmptyTaskId)
-        } else if !ids.insert(&task.id) {
-            Some(DuplicateTaskId)
-        } else if task.case.id.as_str().trim().is_empty() {
-            Some(EmptyCaseId)
-        } else if !cases.insert(&task.case.id) {
-            Some(DuplicateCaseId)
-        } else if !task.tag.trim().is_empty() && !tags.insert(task.tag.trim().to_ascii_lowercase())
-        {
-            Some(DuplicateTag)
-        } else {
-            None
-        };
-        if let Some(kind) = kind {
-            return Err(EquipmentIdentityError { task_index, kind });
-        }
+        identities
+            .check(&task.id, &task.tag, [&task.case.id])
+            .map_err(|kind| EquipmentIdentityError { task_index, kind })?;
     }
     Ok(())
+}
+
+/// Validate project-wide identities across both supported record types, without
+/// imposing a method's case-count or numerical applicability policy on the model.
+pub fn validate_equipment_task_identities(
+    tasks: &[EquipmentTask],
+) -> Result<(), EquipmentIdentityError> {
+    let mut identities = EquipmentIdentities::default();
+    for (task_index, task) in tasks.iter().enumerate() {
+        let result = match task {
+            EquipmentTask::SeparatorSizing(task) => {
+                identities.check(&task.id, &task.tag, [&task.case.id])
+            }
+            EquipmentTask::SeparatorRating(task) => {
+                identities.check(&task.id, &task.tag, task.cases.iter().map(|c| &c.id))
+            }
+        };
+        result.map_err(|kind| EquipmentIdentityError { task_index, kind })?;
+    }
+    Ok(())
+}
+
+pub fn validate_separator_rating_identities(
+    tasks: &[SeparatorRatingTask],
+) -> Result<(), EquipmentIdentityError> {
+    let mut identities = EquipmentIdentities::default();
+    for (task_index, task) in tasks.iter().enumerate() {
+        identities
+            .check(&task.id, &task.tag, task.cases.iter().map(|c| &c.id))
+            .map_err(|kind| EquipmentIdentityError { task_index, kind })?;
+    }
+    Ok(())
+}
+
+#[derive(Default)]
+struct EquipmentIdentities<'a> {
+    tasks: BTreeSet<&'a EquipmentTaskId>,
+    cases: BTreeSet<&'a EngineeringCaseId>,
+    tags: BTreeSet<String>,
+}
+impl<'a> EquipmentIdentities<'a> {
+    fn check(
+        &mut self,
+        id: &'a EquipmentTaskId,
+        tag: &str,
+        cases: impl IntoIterator<Item = &'a EngineeringCaseId>,
+    ) -> Result<(), EquipmentIdentityErrorKind> {
+        use EquipmentIdentityErrorKind::*;
+        if id.as_str().trim().is_empty() {
+            return Err(EmptyTaskId);
+        }
+        if !self.tasks.insert(id) {
+            return Err(DuplicateTaskId);
+        }
+        let mut cases = cases.into_iter().peekable();
+        if cases.peek().is_none() {
+            return Err(EmptyCaseCollection);
+        }
+        for case in cases {
+            if case.as_str().trim().is_empty() {
+                return Err(EmptyCaseId);
+            }
+            if !self.cases.insert(case) {
+                return Err(DuplicateCaseId);
+            }
+        }
+        if !tag.trim().is_empty() && !self.tags.insert(tag.trim().to_ascii_lowercase()) {
+            return Err(DuplicateTag);
+        }
+        Ok(())
+    }
 }

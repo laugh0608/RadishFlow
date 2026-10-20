@@ -1,6 +1,6 @@
 # 项目生命周期与存储
 
-更新时间：2026-10-15
+更新时间：2026-10-20
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -194,7 +194,7 @@ Windows 保存已有文件继续先移出备份，再提交 staged 文件。2026
 
 ## G0/S1 工程内容保存方案（2026-10-11，已认可）
 
-按 [G0 首批逻辑契约](engineering-basis-and-cases.md#g0-首批数据契约2026-10-11已认可)与 [E0/S0 范围](equipment/separator-sizing-and-rating.md#e0s0-首批方法方案2026-10-11已认可)定义完整持久化方向。2026-10-11 已按获准三批方案完成独立基础子集；2026-10-15 已依次完成设备数据 / 纯计算、正式事务 / 结果资格及完整设备保存与最小 Studio v3 生命周期，随后接通独立设备编辑页与设备页 Undo / Redo；计算表导出和多工况留后续。
+按 [G0 首批逻辑契约](engineering-basis-and-cases.md#g0-首批数据契约2026-10-11已认可)与 [E0/S0 范围](equipment/separator-sizing-and-rating.md#e0s0-首批方法方案2026-10-11已认可)定义完整持久化方向。2026-10-11 已按获准三批方案完成独立基础子集；2026-10-15 已依次完成设备数据 / 纯计算、正式事务 / 结果资格及完整设备保存与最小 Studio v3 生命周期，随后接通独立设备编辑页与设备页 Undo / Redo；2026-10-20 当前计算表导出已完成，多工况仍未实现。
 
 - 新增工程基础、来源与单工况设备任务属于正式项目数据，不落布局 sidecar。现有 `ProjectFileWire` 使用严格字段检查，已认可新增外层 v3，保留已有 document / presentation 语义，并增加明确的工程区；metadata 的版本含义不借机更改。
 - v1/v2 项目无工程内容时保持原打开 / 保存路径；首次保存工程内容须显式升级或另存为，提示旧程序不能读取。取消 / IO 失败保留正式输入、草稿及保存脏状态；不能静默丢工程区回存 v2。
@@ -272,7 +272,7 @@ v3 字段 / 缺省 / 必填 / 未知字段规则和迁移样本已冻结，覆�
 - Studio 以 `read_studio_project` 分派：已知 v3 恢复正式输入、单位和保存基线，创建新会话，候选 missing、历史为空；未知能力显示独立整份只读检查，隐藏编辑 / 计算 / 保存入口，拦截快捷键。检查期间不将文件部分装入可编辑 host，关闭检查返回原工作区；未知外层版本或格式错误保留原工作区并报错。
 - 现有 v3 始终保存 v3。旧项目有非空工程区或新增 8 类量的非 SI 显示选择时，提示升级 / 另存为 / 取消；无新增内容保持既有 v1/v2 规则。确认捕获项目离开 checkpoint 与目标版本，迟到确认失效。`write_upgraded` 仅允许显式升级合法旧文件，普通 v3 写入拒绝隐式覆盖旧文件；v3 写入均拒绝未知能力目标或损坏文件。旧保存路径也不得覆盖 v3。
 - 仍使用现有 staged write。写入成功后才将捕获的正式设备输入记为已保存基线，不清除历史、候选或草稿；迟到保存记账不能清除后续修改。取消及 IO 失败保持路径、输入、历史与脏状态。保存后 Undo / Redo 按内容重新比较基线，执行代次不回退；重开不恢复旧 token 或结果。
-- 旧 CLI 的 inspect / run / workflow 继续在建模或求解前拒绝所有实际 v3 文件，包括省略 / 空工程区；旧 SI 协议和 v1/v2 行为不变。设备编辑页与设备页 Undo / Redo 已由同日后续批次接通；计算表导出及多工况仍未实现。
+- 旧 CLI 的 inspect / run / workflow 继续在建模或求解前拒绝所有实际 v3 文件，包括省略 / 空工程区；旧 SI 协议和 v1/v2 行为不变。设备编辑页与设备页 Undo / Redo 已由同日后续批次接通；计算表导出于 2026-10-20 完成，多工况仍未实现。
 
 设备 UI 草稿已纳入保存提示与离开保护：保存仅写正式输入，未提交数值 / 来源仍留在会话；离开确认重验正式状态和草稿 checkpoint。保存后历史保持，重开清空草稿 / 历史并显示 Missing；详情见 [设备 UI](equipment/separator-sizing-and-rating.md#独立单工况设备-ui2026-10-15)。
 
@@ -323,3 +323,28 @@ v3 字段 / 缺省 / 必填 / 未知字段规则和迁移样本已冻结，覆�
 | GS-10 CLI 收到有 / 无 engineering 的 v3 | 在任何求解 / 建模 / 文件修改前失败，错误明确；旧 SI DTO 与 v1/v2 样本行为不变 |
 
 GS-01—10 的存储 / 生命周期自动回归已落实：完整字段与三种绑定、不完整 / 超适用域输入、严格结构与引用、未知方法原文、显式升级取消 / 迟到确认 / 成功、IO 失败不清脏、保存后 Undo / Redo、重开 missing 与旧 CLI 预操作拒绝。GS-08 继续复用 staged-write 故障注入，新增生命周期真实 IO 失败验证；设备草稿控件及全局 Undo 随后续 UI 验收。macOS 已实测已知 v3 原生打开、中文路径另存为 / 重开、未知方法只读及快捷键保护；升级对话框通过 shell 自动回归，未宣称设备编辑路径实窗完成。证据见 [W42](../devlogs/2026-10/2026-W42.md)，I5、Windows / Linux 未验路径及发布限制保持。
+
+## S2 校核任务保存扩展方案（2026-10-20，已确认）
+
+配套已确认的 [S2-D04](equipment/separator-sizing-and-rating.md#已确认决策)，待 S2-A2 实施；S2-A1 只新增内存模型与纯计算，当前 v3 codec 和文件行为未修改。保留外层 `schemaVersion=3`、既有 document / presentation / engineering 顶层字段及 S1 task payload，通过新的任务 kind / method 显式隔离校核含义。
+
+| 位置 | 已确认的 S2-A2 序列化合同 |
+| --- | --- |
+| 校核任务信封 | `id,revision,tag,name,kind,method,geometry,cases` 必需；`kind=verticalGasLiquidSeparatorRating`，`method.id=radishflow.separator.vertical-sb-working-volume-rating`、`version=1` |
+| `geometry` | `revision,applicability,applicabilitySourceIds,inputs` 必需，可选 `axialSections`；inputs 仅 `internalDiameter,workingLiquidHeight`，使用现有 Length 绑定；轴向键与 S1 同义，不储存派生面积 / 容积 / 总高 |
+| 几何 `applicability` | `orientation,gasDirection,geometry,internalsDescription`；未确认声明显式 null，文本可空。仅记录结构，不混入工况介质与 K |
+| `cases[]` | `id,revision,name,purpose,fluidSystem,applicabilitySourceIds,applicability,inputs` 必需；S2-A 的 version 1 必须恰一行，空或多行明确报错，不取首行继续 |
+| 工况 `applicability` | `service,kBasis,flowBasis`；工况 inputs 使用 S1 的九个同义键，排除 `maximumWorkingLiquidHeight`；绑定、源观察和量种规则复用既有契约 |
+
+新增字段继续拒绝未知 / 重复键；输入键缺省表示不完整，绑定一旦存在必须完整且量种正确，不能用 null 或默认值替代。所有 ID / revision / 位号与跨两类任务的 case 唯一性须一并验证；负值或域外有限输入可保存并标错，NaN / Inf 和悬空引用拒绝。几何、工况与来源只存正式输入，不存当前结果、执行令牌、汇总或草稿。重开新会话且所有结果 Missing。
+
+兼容策略：
+
+- 旧 S1 v3 文件原样进入 S1 分支，不自动改写成 Rating，也不把旧最大高度转为实际高度；新版本继续读写其原任务语义。
+- 新 kind 会使既有仅支持 S1 的 v3 读者进入整份原文只读；须用冻结旧读者的能力样本证明不丢未知字段或数字精度，不能只验证新读者自往返。
+- 首次将 Rating 写入已有 S1-only v3 时，增加明确的能力兼容确认：“含校核任务，旧版本将仅能只读检查”，提供继续 / 另存为 / 取消；这是能力变化提示，不冒称外层 v4。保存已有 Rating 文件无新增能力时不重复提示。旧 v1/v2 保存则合并进现有 v3 升级确认。
+- 确认绑定项目与输入 checkpoint、目标路径及拟写能力；等待期间新增内容、目标文件变化或工程切换须按安全写入规则重验。取消 / 失败不清脏，成功只确认实际捕获的基线；未知能力目标继续禁止覆盖。
+- G2-B 开放多工况时建议升级 Rating 的 `method.version` 到 `2`，由版本同时标识输入集合与算法契约，保证 S2-A 旧读者整份只读。相同代数公式不构成静默扩大 version 1 输入能力的理由；确切多行 payload 与转换在 G2-B 开工前审定。
+- 旧 CLI 继续在操作前拒绝所有 v3；独立设备协议、永久结果库、v4 与 sidecar 扩展不在本方案。未知未来 kind / method 继续整份原文只读，不提供丢任务的兼容保存。
+
+实施验收须包含 S1 / Rating 混合文件、已知 / 未知方法、空 / 多行 version 1、重复 case、错误量种、几何缺项、旧读者原文保护、能力提示取消 / 迟到 / 成功、目标失败回滚、保存后历史及重开 Missing。若旧读者不能满足上述安全行为，先回到 D04 重审版本选择，不放宽严格解析掩盖差异。
