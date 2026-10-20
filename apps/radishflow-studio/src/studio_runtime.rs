@@ -1,3 +1,7 @@
+use crate::modeling_recommendations::{
+    ModelingRecommendationSession, RecommendationError, RecommendationPreview,
+    RecommendationReceipt,
+};
 use rf_types::RfResult;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -387,6 +391,15 @@ impl StudioRuntime {
         position: rf_ui::CanvasPoint,
     ) -> RfResult<Option<rf_ui::CanvasEditCommitResult>> {
         self.session.commit_canvas_pending_edit_at(position)
+    }
+
+    pub fn accept_modeling_recommendation(
+        &mut self,
+        session: &mut ModelingRecommendationSession,
+        preview: &RecommendationPreview,
+    ) -> Result<RecommendationReceipt, RecommendationError> {
+        self.session
+            .accept_modeling_recommendation(session, preview)
     }
 
     pub fn accept_focused_canvas_suggestion_by_tab(
@@ -874,7 +887,9 @@ mod tests {
             StudioRuntimeDispatch::RunPanelRecovery(_) => {
                 panic!("expected entitlement session event dispatch")
             }
-            StudioRuntimeDispatch::NumericEdit { .. }
+            StudioRuntimeDispatch::Equipment
+            | StudioRuntimeDispatch::NumericEdit { .. }
+            | StudioRuntimeDispatch::ObjectDeletion { .. }
             | StudioRuntimeDispatch::ProjectPresentation { .. }
             | StudioRuntimeDispatch::DocumentLifecycle(_) => {
                 panic!("expected entitlement session event dispatch")

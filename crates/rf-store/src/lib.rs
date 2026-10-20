@@ -10,6 +10,7 @@ mod layout;
 mod package_cache;
 mod project;
 mod project_presentation;
+pub mod project_v3;
 pub use project_presentation::StoredProjectPresentation;
 mod staged_file;
 mod studio_layout;

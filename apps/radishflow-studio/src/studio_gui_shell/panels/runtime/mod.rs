@@ -29,6 +29,7 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         window: &StudioGuiWindowModel,
     ) {
+        self.render_modeling_problem_return(ui);
         if let Some(detail) = window.runtime.active_inspector_detail.as_ref() {
             ui.push_id(
                 format!("runtime:active-inspector:{}", detail.target.command_id),
@@ -54,6 +55,7 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         window: &StudioGuiWindowModel,
     ) {
+        self.render_modeling_problem_return(ui);
         ui.push_id(
             format!(
                 "runtime:module-settings:{}",
@@ -345,6 +347,8 @@ impl ReadyAppState {
         let run_panel = &window.runtime.run_panel;
         let run_panel_view = run_panel.view();
 
+        self.render_modeling_problem_entry(ui);
+
         egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new(self.locale.text(ShellText::Run)).strong());
@@ -549,13 +553,12 @@ impl ReadyAppState {
                 });
             });
             if let Some(notice) = self.project_open.notice.as_ref() {
-                let color = match notice.level {
-                    ProjectOpenNoticeLevel::Info => egui::Color32::from_rgb(66, 118, 92),
-                    ProjectOpenNoticeLevel::Warning => egui::Color32::from_rgb(160, 120, 40),
-                    ProjectOpenNoticeLevel::Error => egui::Color32::from_rgb(180, 40, 40),
-                };
-                ui.colored_label(color, &notice.title);
-                render_wrapped_small(ui, &notice.detail);
+                render_project_notice(ui, notice);
+            }
+            if self.project_open.pending_confirmation.is_some()
+                || self.project_open.pending_blank_project_confirmation
+            {
+                self.render_project_departure_inputs(ui);
             }
             if self.project_open.pending_confirmation.is_some() {
                 ui.horizontal_wrapped(|ui| {

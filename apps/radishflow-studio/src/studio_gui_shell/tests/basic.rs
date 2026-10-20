@@ -1567,7 +1567,7 @@ fn bottom_drawer_tabs_align_with_run_information_roles() {
 
     let texts = render_bottom_drawer_texts(&mut app);
 
-    for expected in ["消息", "运行日志", "收敛", "建议", "诊断", "结果表"] {
+    for expected in ["消息", "运行日志", "收敛", "建议", "当前问题", "结果表"] {
         assert!(
             texts.iter().any(|text| text == expected),
             "expected bottom drawer tab `{expected}`, rendered texts: {:?}",
@@ -1595,7 +1595,7 @@ fn bottom_workbench_renders_status_summary_as_right_split_role() {
         "运行",
         "收敛",
         "步骤",
-        "诊断",
+        "当前问题 · 0",
         "快照",
         "已保存",
         "顺序步骤",
@@ -3110,7 +3110,7 @@ fn home_dashboard_renders_pending_project_operation_actions() {
         .project_path
         .clone();
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     assert!(
         app.platform_host
             .snapshot()
@@ -3302,6 +3302,7 @@ fn bottom_convergence_tab_consumes_status_summary_and_current_snapshot() {
 fn bottom_suggestions_tab_consumes_canvas_suggestions() {
     let mut app = ready_app_state(&synced_workspace_config());
     app.create_blank_project();
+    select_builtin_binary_hydrocarbon_basis(&mut app);
     app.dispatch_ui_command("canvas.begin_place_unit.feed");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(64.0, 40.0));
     app.bottom_drawer_tab = StudioShellBottomDrawerTab::Suggestions;
@@ -3314,9 +3315,8 @@ fn bottom_suggestions_tab_consumes_canvas_suggestions() {
     let texts = render_bottom_drawer_texts(&mut app);
 
     assert!(
-        texts.iter().any(|text| text == "建议")
-            && texts.iter().any(|text| text == "已聚焦")
-            && texts.iter().any(|text| text == "创建流股"),
+        texts.iter().any(|text| text.contains("可执行推荐"))
+            && texts.iter().any(|text| text == "预览：创建出口流股"),
         "expected suggestions tab to render focused canvas suggestion action, rendered texts: {:?}",
         texts
     );

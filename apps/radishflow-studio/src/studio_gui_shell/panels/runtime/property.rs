@@ -7,6 +7,7 @@ impl ReadyAppState {
         window: &StudioGuiWindowModel,
     ) {
         let property_page = &window.property_page;
+        self.render_modeling_problem_return(ui);
         ui.horizontal_wrapped(|ui| {
             ui.heading(self.locale.runtime_label(property_page.title).as_ref());
             render_status_chip(
@@ -92,12 +93,19 @@ impl ReadyAppState {
         ui.add_space(8.0);
         egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.label(
-                egui::RichText::new(match self.locale {
-                    StudioShellLocale::En => "Project components",
-                    StudioShellLocale::ZhCn => "项目组分",
-                })
-                .strong(),
+            let components = ui.add(
+                egui::Label::new(
+                    egui::RichText::new(match self.locale {
+                        StudioShellLocale::En => "Project components",
+                        StudioShellLocale::ZhCn => "项目组分",
+                    })
+                    .strong(),
+                )
+                .sense(egui::Sense::focusable_noninteractive()),
+            );
+            self.focus_specification_section(
+                &components,
+                radishflow_studio::modeling_specifications::SpecificationTarget::ProjectComponents,
             );
             render_wrapped_small(
                 ui,

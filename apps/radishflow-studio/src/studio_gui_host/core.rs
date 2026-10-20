@@ -1,3 +1,7 @@
+use crate::modeling_recommendations::{
+    ModelingRecommendationSession, RecommendationError, RecommendationPreview,
+    RecommendationReceipt,
+};
 mod numeric_fields;
 mod unit_properties;
 use unit_properties::unit_property_fields;
@@ -37,6 +41,19 @@ impl StudioGuiHost {
             canvas_unit_positions,
             window_drop_previews: BTreeMap::new(),
         })
+    }
+
+    pub fn accept_modeling_recommendation(
+        &mut self,
+        session: &mut ModelingRecommendationSession,
+        preview: &RecommendationPreview,
+    ) -> Result<RecommendationReceipt, RecommendationError> {
+        self.controller
+            .accept_modeling_recommendation(session, preview)
+    }
+
+    pub(crate) fn app_state(&self) -> &rf_ui::AppState {
+        self.controller.app_state()
     }
 
     pub fn state(&self) -> &StudioAppHostState {
@@ -1175,7 +1192,9 @@ fn inspector_number_field(
                 ),
                 &format!("({})", session.input_unit().definition().symbol),
             ),
-            constraint_text: session.validation().as_ref().err().map(ToString::to_string),
+            // Validation is carried by the typed numeric projection; this slot is for
+            // stable field constraints, not a second stringified copy of the error.
+            constraint_text: None,
             value_kind: StudioGuiInspectorTargetFieldValueKindSnapshot::Number,
             original_value: rf_types::units::from_canonical(
                 original,

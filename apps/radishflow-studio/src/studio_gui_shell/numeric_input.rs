@@ -1,22 +1,10 @@
+use super::state_presentation::StudioStateTokens;
 use super::*;
 use rf_types::units::{ALL_UNITS, from_canonical};
 use rf_ui::{
     NumericEditCommand, NumericEditEvent, NumericFieldIssue, NumericFieldPresentation,
     NumericFieldSource,
 };
-
-/// The accepted light palette. Numeric controls consume roles, never status strings.
-struct StudioStateTokens;
-impl StudioStateTokens {
-    const SURFACE: egui::Color32 = egui::Color32::WHITE;
-    const EDIT: egui::Color32 = egui::Color32::from_rgb(239, 246, 255);
-    const TEXT: egui::Color32 = egui::Color32::from_rgb(31, 41, 55);
-    const SPECIFIED: egui::Color32 = egui::Color32::from_rgb(29, 78, 216);
-    const SECONDARY: egui::Color32 = egui::Color32::from_rgb(71, 85, 105);
-    const ERROR: egui::Color32 = egui::Color32::from_rgb(185, 28, 28);
-    const BORDER: egui::Color32 = egui::Color32::from_rgb(100, 116, 139);
-    const FOCUS: egui::Color32 = egui::Color32::from_rgb(37, 99, 235);
-}
 
 #[derive(Clone, Default)]
 struct TypingGroup {
@@ -34,7 +22,7 @@ impl ReadyAppState {
         {
             Ok(current) => *field = current,
             Err(error) => {
-                field.issue = Some(NumericFieldIssue::Rejected(error.to_string()));
+                field.issue = Some(NumericFieldIssue::Rejected(error));
                 field.can_apply = false;
                 field.can_undo = false;
                 field.can_redo = false;
@@ -212,9 +200,14 @@ impl ReadyAppState {
             egui::TextEdit::load_state(ui.ctx(), id).and_then(|state| state.cursor.char_range());
         let mut raw = field.text.clone();
         let input_width = ui.available_width().clamp(80.0, 240.0);
+        let input_margin = egui::Margin::symmetric(4, 2);
+        // Leave room for the independent focus ring on both sides of the control row.
+        ui.add_space(6.0);
         let output = ui
             .scope(|ui| {
                 let visuals = ui.visuals_mut();
+                visuals.selection.bg_fill = StudioStateTokens::TEXT_SELECTION;
+                visuals.selection.stroke = egui::Stroke::new(1.0, StudioStateTokens::BORDER);
                 visuals.extreme_bg_color = if focused {
                     StudioStateTokens::EDIT
                 } else {
@@ -226,9 +219,11 @@ impl ReadyAppState {
                     &mut visuals.widgets.active,
                 ] {
                     widget.bg_stroke = egui::Stroke::new(1.0, StudioStateTokens::BORDER);
+                    widget.expansion = 0.0;
                 }
                 egui::TextEdit::singleline(&mut raw)
                     .id(id)
+                    .margin(input_margin)
                     .desired_width(input_width)
                     .text_color(if field.source == NumericFieldSource::Specified {
                         StudioStateTokens::SPECIFIED
@@ -238,7 +233,11 @@ impl ReadyAppState {
                     .show(ui)
             })
             .inner;
+        // TextEdit::show returns the inner text rect, not the painted control frame.
+        let input_frame = output.response.rect + input_margin;
+        ui.add_space(6.0);
         let response = output.response;
+        let located = self.apply_specification_field_focus(&response, &field.variable);
         if response.has_focus() {
             ui.data_mut(|data| data.insert_temp(egui::Id::new("numeric-keyboard-owner"), id));
             ui.memory_mut(|memory| {
@@ -304,7 +303,7 @@ impl ReadyAppState {
         );
         if error {
             ui.painter().rect_stroke(
-                response.rect,
+                input_frame,
                 2.0,
                 egui::Stroke::new(1.0, StudioStateTokens::ERROR),
                 egui::StrokeKind::Inside,
@@ -312,56 +311,55 @@ impl ReadyAppState {
         }
         if response.has_focus() {
             ui.painter().rect_stroke(
-                response.rect.expand(2.0),
+                input_frame.expand(2.0),
                 3.0,
                 egui::Stroke::new(3.0, StudioStateTokens::SURFACE),
                 egui::StrokeKind::Outside,
             );
             ui.painter().rect_stroke(
-                response.rect.expand(5.0),
+                input_frame.expand(5.0),
                 4.0,
                 egui::Stroke::new(1.0, StudioStateTokens::FOCUS),
                 egui::StrokeKind::Outside,
             );
         }
-        let issue_text = field.issue.as_ref().map(|issue| match issue {
-            NumericFieldIssue::Incomplete => {
-                if zh {
-                    "输入未完成".into()
-                } else {
-                    "Input incomplete".into()
-                }
+        let issue_text = field
+            .issue
+            .as_ref()
+            .map(|issue| self.locale.numeric_issue(issue));
+        let composition_hint = ime_guard.then(|| {
+            let unit = field.input_unit.definition().symbol;
+            if zh {
+                format!("输入法正在处理文本（输入单位：{unit}）；完成后可切换单位、应用或撤销 / 重做。")
+            } else {
+                format!("Input method is composing (input unit: {unit}); finish composing to change units, apply, or undo / redo.")
             }
-            NumericFieldIssue::Conflict => {
-                if zh {
-                    "已提交值或来源已改变，请选择如何保留本次编辑".into()
-                } else {
-                    "Committed value or source changed; choose how to preserve this edit".into()
-                }
-            }
-            NumericFieldIssue::Rejected(reason) => format!(
-                "{}: {reason}",
-                if zh { "输入错误" } else { "Invalid input" }
-            ),
         });
         response.widget_info(|| {
-            let mut info = egui::WidgetInfo::labeled(
-                egui::WidgetType::TextEdit,
-                true,
-                format!(
-                    "{label} {} · {}{}",
-                    field.input_unit.definition().symbol,
-                    if field.pending {
-                        if zh { "未提交" } else { "Uncommitted" }
-                    } else {
-                        ""
-                    },
-                    issue_text.as_deref().unwrap_or("")
-                ),
-            );
+            let mut accessible_label = format!("{label} {}", field.input_unit.definition().symbol);
+            if field.pending {
+                accessible_label.push_str(if zh {
+                    " · 未提交"
+                } else {
+                    " · Uncommitted"
+                });
+            }
+            if let Some(issue) = &issue_text {
+                accessible_label.push_str(" · ");
+                accessible_label.push_str(issue);
+            }
+            if let Some(hint) = &composition_hint {
+                accessible_label.push_str(" · ");
+                accessible_label.push_str(hint);
+            }
+            let mut info =
+                egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, accessible_label);
             info.current_text_value = Some(field.text.clone());
             info
         });
+        if let Some(hint) = &composition_hint {
+            ui.colored_label(StudioStateTokens::SECONDARY, hint);
+        }
         if let Some(reason) = &issue_text {
             ui.colored_label(
                 if error {
@@ -372,26 +370,54 @@ impl ReadyAppState {
                 reason,
             );
         }
+        if let Some(NumericFieldIssue::Rejected(rf_ui::NumericEditError::Rejected(reason))) =
+            &field.issue
+        {
+            egui::CollapsingHeader::new(if zh {
+                "诊断详情"
+            } else {
+                "Diagnostic details"
+            })
+            .id_salt(id.with("rejection-details"))
+            .show(ui, |ui| {
+                ui.label(reason.to_string());
+            });
+        }
         let mut selected_unit = None;
         ui.horizontal_wrapped(|ui| {
             ui.label(if zh { "本次输入" } else { "Input unit" });
             ui.add_enabled_ui(!ime_guard, |ui| {
-                egui::ComboBox::from_id_salt(id.with("unit"))
-                    .selected_text(field.input_unit.definition().symbol)
-                    .show_ui(ui, |ui| {
-                        for unit in ALL_UNITS {
-                            if from_canonical(1.0, field.quantity, *unit).is_ok()
-                                && ui
-                                    .selectable_label(
-                                        *unit == field.input_unit,
-                                        unit.definition().symbol,
-                                    )
-                                    .clicked()
-                            {
-                                selected_unit = Some(*unit);
-                            }
-                        }
-                    });
+                let choices: Vec<_> = ALL_UNITS
+                    .iter()
+                    .filter(|unit| from_canonical(1.0, field.quantity, **unit).is_ok())
+                    .map(|unit| (*unit, unit.definition().symbol))
+                    .collect();
+                let accessible_label = if zh {
+                    format!("{label}本次输入单位")
+                } else {
+                    format!("{label} input unit")
+                };
+                let selection = super::unit_selector::unit_selector(
+                    ui,
+                    id.with("unit"),
+                    &accessible_label,
+                    field.input_unit,
+                    &choices,
+                );
+                selected_unit = selection.inner;
+                let selector_focused = selection.response.has_focus()
+                    || ui.memory(|memory| memory.had_focus_last_frame(selection.response.id));
+                if !popup_open
+                    && selector_focused
+                    && !ime_guard
+                    && ui.input_mut(|input| {
+                        input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)
+                    })
+                {
+                    self.cancel_numeric_field(&mut field);
+                    response.request_focus();
+                    group = TypingGroup::default();
+                }
             });
         });
         if let Some(unit) = selected_unit {
@@ -417,7 +443,8 @@ impl ReadyAppState {
                 field.display_unit.definition().symbol
             ),
         );
-        let enter = !ime_guard
+        let enter = !located
+            && !ime_guard
             && response.lost_focus()
             && ui.input(|input| {
                 input.key_pressed(egui::Key::Enter) && input.modifiers == egui::Modifiers::NONE

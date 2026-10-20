@@ -2,6 +2,12 @@ use std::collections::BTreeSet;
 
 mod drop_preview;
 mod result_inspector;
+mod result_presentation;
+pub use result_presentation::StudioGuiQuantityPresentationError;
+use result_presentation::{
+    ResultValuePresentation, solve_snapshot_model_from_ui, stream_result_numeric_summary,
+    stream_result_reference_model_from_window_stream,
+};
 mod snapshot_export;
 mod studio_main;
 use crate::{
@@ -195,6 +201,8 @@ pub struct StudioGuiWindowSolveSnapshotModel {
     pub step_count: usize,
     pub stream_count: usize,
     pub review_summary: StudioGuiWindowResultReviewSummaryModel,
+    pub display_units: rf_types::units::DisplayUnitSet,
+    pub presentation_errors: Vec<StudioGuiQuantityPresentationError>,
     pub streams: Vec<StudioGuiWindowStreamResultModel>,
     pub steps: Vec<StudioGuiWindowSolveStepModel>,
     pub diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
@@ -1416,7 +1424,16 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
         .runtime
         .latest_solve_snapshot
         .as_ref()
-        .map(solve_snapshot_model_from_ui);
+        .map(|result| {
+            solve_snapshot_model_from_ui(
+                result,
+                snapshot
+                    .runtime
+                    .workspace_document
+                    .presentation
+                    .display_units(),
+            )
+        });
     let stale_solve_snapshot =
         snapshot
             .runtime
@@ -1450,9 +1467,31 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
                 .filter(|diagnostic| {
                     diagnostic.document_revision == snapshot.runtime.workspace_document.revision
                 });
+            let presentation = &snapshot.runtime.workspace_document.presentation;
+            let view = snapshot
+                .layout_state
+                .scope
+                .window_id
+                .map(rf_ui::DisplayUnitViewId);
+            let units = rf_types::units::DisplayUnitSet::try_from_entries(
+                presentation
+                    .display_units()
+                    .entries()
+                    .map(|(quantity, _)| (quantity, presentation.effective_unit(view, quantity))),
+            )
+            .expect("project and view units are validated when applied");
+            let inspector_result = (units != *presentation.display_units())
+                .then(|| {
+                    snapshot
+                        .runtime
+                        .latest_solve_snapshot
+                        .as_ref()
+                        .map(|result| solve_snapshot_model_from_ui(result, &units))
+                })
+                .flatten();
             inspector_target_detail_model_from_snapshot(
                 detail,
-                latest_solve_snapshot.as_ref(),
+                inspector_result.as_ref().or(latest_solve_snapshot.as_ref()),
                 latest_diagnostic_for_document,
             )
         });
@@ -2051,95 +2090,6 @@ fn latest_unit_result_for_target(
         })
 }
 
-fn solve_snapshot_model_from_ui(
-    snapshot: &rf_ui::SolveSnapshot,
-) -> StudioGuiWindowSolveSnapshotModel {
-    let status_label = run_status_label(snapshot.status);
-    let streams = snapshot
-        .streams
-        .iter()
-        .map(stream_result_model_from_ui)
-        .collect::<Vec<_>>();
-    let steps = snapshot
-        .steps
-        .iter()
-        .map(|step| {
-            let produced_stream_results = step
-                .streams
-                .iter()
-                .map(stream_result_reference_model_from_ui)
-                .collect::<Vec<_>>();
-            let produced_streams = step
-                .streams
-                .iter()
-                .map(|stream| stream.stream_id.as_str().to_string())
-                .collect::<Vec<_>>();
-            let consumed_stream_results = step
-                .consumed_streams
-                .iter()
-                .map(stream_result_reference_model_from_ui)
-                .collect::<Vec<_>>();
-            let consumed_streams = step
-                .consumed_streams
-                .iter()
-                .map(|stream| stream.stream_id.as_str().to_string())
-                .collect::<Vec<_>>();
-            let unit_action = inspector_unit_action(step.unit_id.as_str());
-            let consumed_stream_actions = consumed_stream_results
-                .iter()
-                .map(|stream| stream.focus_action.clone())
-                .collect::<Vec<_>>();
-            let produced_stream_actions = produced_stream_results
-                .iter()
-                .map(|stream| stream.focus_action.clone())
-                .collect::<Vec<_>>();
-            let diagnostic_actions = solve_step_diagnostic_actions(
-                step.index,
-                &step.unit_id,
-                &unit_action,
-                &consumed_streams,
-                &consumed_stream_actions,
-                &produced_streams,
-                &produced_stream_actions,
-            );
-            StudioGuiWindowSolveStepModel {
-                index: step.index,
-                unit_id: step.unit_id.as_str().to_string(),
-                summary: step.summary.clone(),
-                execution_status_label: run_status_label(step.execution.status),
-                consumed_stream_results,
-                consumed_stream_actions,
-                unit_action,
-                produced_stream_results,
-                produced_stream_actions,
-                diagnostic_actions,
-            }
-        })
-        .collect::<Vec<_>>();
-    let diagnostics = snapshot
-        .diagnostics
-        .iter()
-        .map(|diagnostic| diagnostic_model_from_ui(diagnostic, &snapshot.streams))
-        .collect::<Vec<_>>();
-    let review_summary =
-        result_review_summary_model_from_parts(status_label, diagnostics.len(), &streams, &steps);
-
-    StudioGuiWindowSolveSnapshotModel {
-        snapshot_id: snapshot.id.as_str().to_string(),
-        sequence: snapshot.sequence,
-        document_revision: snapshot.document_revision,
-        status_label,
-        summary: snapshot.summary.primary_message.clone(),
-        diagnostic_count: diagnostics.len(),
-        step_count: steps.len(),
-        stream_count: streams.len(),
-        review_summary,
-        streams,
-        steps,
-        diagnostics,
-    }
-}
-
 fn stale_solve_snapshot_model_from_ui(
     snapshot: &rf_ui::SolveSnapshot,
     current_document_revision: u64,
@@ -2243,6 +2193,7 @@ fn latest_unit_steps_for_review(
 fn diagnostic_model_from_ui(
     diagnostic: &rf_ui::DiagnosticSnapshot,
     streams: &[rf_ui::StreamStateSnapshot],
+    presentation: &mut ResultValuePresentation<'_>,
 ) -> StudioGuiWindowDiagnosticModel {
     let related_unit_ids = diagnostic
         .related_unit_ids
@@ -2263,7 +2214,7 @@ fn diagnostic_model_from_ui(
     let related_stream_results = streams
         .iter()
         .filter(|stream| diagnostic.related_stream_ids.contains(&stream.stream_id))
-        .map(stream_result_reference_model_from_ui)
+        .map(|stream| presentation.reference(stream))
         .collect();
 
     StudioGuiWindowDiagnosticModel {
@@ -2415,131 +2366,18 @@ fn inspector_detail_diagnostic_actions(
     )
 }
 
-fn stream_result_model_from_ui(
-    stream: &rf_ui::StreamStateSnapshot,
-) -> StudioGuiWindowStreamResultModel {
-    let temperature_text = format_temperature(stream.temperature_k);
-    let pressure_text = format_pressure(stream.pressure_pa);
-    let molar_flow_text = format_molar_flow(stream.total_molar_flow_mol_s);
-    let molar_enthalpy_j_per_mol = overall_molar_enthalpy_j_per_mol(&stream.phases);
-    let molar_enthalpy_text = molar_enthalpy_j_per_mol.map(format_molar_enthalpy);
-    let mut summary_rows = vec![
-        StudioGuiWindowStreamSummaryRowModel {
-            label: "T",
-            detail_label: "Temperature",
-            value: temperature_text.clone(),
-        },
-        StudioGuiWindowStreamSummaryRowModel {
-            label: "P",
-            detail_label: "Pressure",
-            value: pressure_text.clone(),
-        },
-        StudioGuiWindowStreamSummaryRowModel {
-            label: "F",
-            detail_label: "Molar flow",
-            value: molar_flow_text.clone(),
-        },
-    ];
-    if let Some(value) = molar_enthalpy_text.clone() {
-        summary_rows.push(StudioGuiWindowStreamSummaryRowModel {
-            label: "H",
-            detail_label: "Molar enthalpy",
-            value,
-        });
-    }
-    StudioGuiWindowStreamResultModel {
-        stream_id: stream.stream_id.as_str().to_string(),
-        label: stream.label.clone(),
-        temperature_k: stream.temperature_k,
-        pressure_pa: stream.pressure_pa,
-        total_molar_flow_mol_s: stream.total_molar_flow_mol_s,
-        molar_enthalpy_j_per_mol,
-        temperature_text: temperature_text.clone(),
-        pressure_text: pressure_text.clone(),
-        molar_flow_text: molar_flow_text.clone(),
-        molar_enthalpy_text,
-        bubble_dew_window: stream
-            .bubble_dew_window
-            .as_ref()
-            .map(bubble_dew_window_model_from_ui),
-        summary_rows,
-        composition_rows: stream
-            .overall_mole_fractions
-            .iter()
-            .map(
-                |(component_id, fraction)| StudioGuiWindowCompositionResultModel {
-                    component_id: component_id.clone(),
-                    fraction: *fraction,
-                    fraction_text: format_fraction(*fraction),
-                },
-            )
-            .collect(),
-        phase_rows: stream
-            .phases
-            .iter()
-            .map(|phase| {
-                let molar_flow_mol_s = phase.phase_fraction * stream.total_molar_flow_mol_s;
-                StudioGuiWindowPhaseResultModel {
-                    label: phase.label.clone(),
-                    phase_fraction: phase.phase_fraction,
-                    phase_fraction_text: format_fraction(phase.phase_fraction),
-                    molar_flow_mol_s,
-                    molar_flow_text: format_molar_flow(molar_flow_mol_s),
-                    composition_text: format_phase_composition(&phase.composition),
-                    molar_enthalpy_j_per_mol: phase.molar_enthalpy_j_per_mol,
-                    molar_enthalpy_text: phase.molar_enthalpy_j_per_mol.map(format_molar_enthalpy),
-                }
-            })
-            .collect(),
-        composition_text: format_composition(&stream.overall_mole_fractions),
-        phase_text: format_phases(&stream.phases, stream.total_molar_flow_mol_s),
-    }
-}
-
-fn stream_result_reference_model_from_ui(
-    stream: &rf_ui::StreamStateSnapshot,
-) -> StudioGuiWindowStreamResultReferenceModel {
-    let temperature_text = format_temperature(stream.temperature_k);
-    let pressure_text = format_pressure(stream.pressure_pa);
-    let molar_flow_text = format_molar_flow(stream.total_molar_flow_mol_s);
-    let molar_enthalpy_text =
-        overall_molar_enthalpy_j_per_mol(&stream.phases).map(format_molar_enthalpy);
-    StudioGuiWindowStreamResultReferenceModel {
-        stream_id: stream.stream_id.as_str().to_string(),
-        summary: stream_result_numeric_summary(
-            &temperature_text,
-            &pressure_text,
-            &molar_flow_text,
-            molar_enthalpy_text.as_deref(),
-            None,
-        ),
-        focus_action: inspector_stream_action(stream.stream_id.as_str()),
-    }
-}
-
-fn stream_result_reference_model_from_window_stream(
-    stream: &StudioGuiWindowStreamResultModel,
-) -> StudioGuiWindowStreamResultReferenceModel {
-    StudioGuiWindowStreamResultReferenceModel {
-        stream_id: stream.stream_id.clone(),
-        summary: stream_result_numeric_summary(
-            &stream.temperature_text,
-            &stream.pressure_text,
-            &stream.molar_flow_text,
-            stream.molar_enthalpy_text.as_deref(),
-            Some(&stream.composition_text),
-        ),
-        focus_action: inspector_stream_action(&stream.stream_id),
-    }
-}
-
 fn stream_result_reference_model_from_diagnostic_snapshot(
     stream: &StudioGuiDiagnosticStreamSnapshot,
 ) -> StudioGuiWindowStreamResultReferenceModel {
     let temperature_text = format!("{:.2} K", stream.temperature_k);
     let pressure_text = format!("{:.0} Pa", stream.pressure_pa);
-    let molar_flow_text = format_molar_flow(stream.total_molar_flow_mol_s);
-    let composition_text = format_composition(&stream.overall_mole_fractions);
+    let molar_flow_text = format!("{:.6} mol/s", stream.total_molar_flow_mol_s);
+    let composition_text = stream
+        .overall_mole_fractions
+        .iter()
+        .map(|(id, value)| format!("{id}={value:.4}"))
+        .collect::<Vec<_>>()
+        .join(", ");
     StudioGuiWindowStreamResultReferenceModel {
         stream_id: stream.stream_id.clone(),
         summary: stream_result_numeric_summary(
@@ -2551,114 +2389,6 @@ fn stream_result_reference_model_from_diagnostic_snapshot(
         ),
         focus_action: inspector_stream_action(&stream.stream_id),
     }
-}
-
-fn overall_molar_enthalpy_j_per_mol(phases: &[rf_ui::PhaseStateSnapshot]) -> Option<f64> {
-    phases
-        .iter()
-        .find(|phase| phase.label == "overall")
-        .and_then(|phase| phase.molar_enthalpy_j_per_mol)
-}
-
-fn bubble_dew_window_model_from_ui(
-    window: &rf_ui::BubbleDewWindowSnapshot,
-) -> StudioGuiWindowBubbleDewWindowModel {
-    StudioGuiWindowBubbleDewWindowModel {
-        phase_region: window.phase_region.as_str().to_string(),
-        bubble_pressure_pa: window.bubble_pressure_pa,
-        dew_pressure_pa: window.dew_pressure_pa,
-        bubble_temperature_k: window.bubble_temperature_k,
-        dew_temperature_k: window.dew_temperature_k,
-        bubble_pressure_text: format_pressure(window.bubble_pressure_pa),
-        dew_pressure_text: format_pressure(window.dew_pressure_pa),
-        bubble_temperature_text: format_temperature(window.bubble_temperature_k),
-        dew_temperature_text: format_temperature(window.dew_temperature_k),
-    }
-}
-
-fn format_temperature(value: f64) -> String {
-    format!("{value:.2} K")
-}
-
-fn format_pressure(value: f64) -> String {
-    format!("{value:.0} Pa")
-}
-
-fn format_molar_enthalpy(value: f64) -> String {
-    format!("{value:.3} J/mol")
-}
-
-fn format_molar_flow(value: f64) -> String {
-    format!("{value:.6} mol/s")
-}
-
-fn stream_result_numeric_summary(
-    temperature_text: &str,
-    pressure_text: &str,
-    molar_flow_text: &str,
-    molar_enthalpy_text: Option<&str>,
-    composition_text: Option<&str>,
-) -> String {
-    let mut parts = vec![
-        format!("T {temperature_text}"),
-        format!("P {pressure_text}"),
-        format!("F {molar_flow_text}"),
-    ];
-    if let Some(molar_enthalpy_text) = molar_enthalpy_text {
-        parts.push(format!("H {molar_enthalpy_text}"));
-    }
-    if let Some(composition_text) = composition_text {
-        parts.push(composition_text.to_string());
-    }
-    parts.join(" | ")
-}
-
-fn format_composition(composition: &[(String, f64)]) -> String {
-    if composition.is_empty() {
-        return "none".to_string();
-    }
-
-    composition
-        .iter()
-        .map(|(component_id, fraction)| format!("{component_id}={fraction:.4}"))
-        .collect::<Vec<_>>()
-        .join(", ")
-}
-
-fn format_phases(phases: &[rf_ui::PhaseStateSnapshot], total_molar_flow_mol_s: f64) -> String {
-    if phases.is_empty() {
-        return "none".to_string();
-    }
-
-    phases
-        .iter()
-        .map(|phase| {
-            let molar_flow_mol_s = phase.phase_fraction * total_molar_flow_mol_s;
-            format!(
-                "{}={} ({})",
-                phase.label,
-                format_fraction(phase.phase_fraction),
-                format_molar_flow(molar_flow_mol_s)
-            )
-        })
-        .collect::<Vec<_>>()
-        .join(", ")
-}
-
-fn format_phase_composition(composition: &[(String, f64)]) -> String {
-    if composition.is_empty() {
-        return "none".to_string();
-    }
-
-    composition
-        .iter()
-        .map(|(component_id, fraction)| format!("{component_id}={}", format_fraction(*fraction)))
-        .collect::<Vec<_>>()
-        .join(", ")
-}
-
-fn format_fraction(value: f64) -> String {
-    format!("{value:.4}")
 }
 
 fn non_empty_join(values: Vec<&str>) -> Option<String> {

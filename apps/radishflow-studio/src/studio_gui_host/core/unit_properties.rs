@@ -141,12 +141,12 @@ fn unit_parameter_constraint_text(
         rf_ui::UnitInspectorDraftField::Name => "Name cannot be blank.".to_string(),
         rf_ui::UnitInspectorDraftField::OutletTemperatureK => {
             if unit.kind == "feed" {
-                return "Unit K; positive finite source outlet temperature; commit syncs the Feed outlet template.".to_string();
+                return "Absolute source outlet temperature must be finite and above 0 K; commit syncs the Feed outlet template.".to_string();
             }
             if unit.kind == "flash_drum" {
-                return "Unit K; positive finite flash temperature; commit syncs liquid/vapor outlet templates.".to_string();
+                return "Absolute flash temperature must be finite and above 0 K; commit syncs liquid/vapor outlet templates.".to_string();
             }
-            "Unit K; positive finite outlet temperature; commit syncs the outlet stream template."
+            "Absolute outlet temperature must be finite and above 0 K; commit syncs the outlet stream template."
                 .to_string()
         }
         rf_ui::UnitInspectorDraftField::OutletPressurePa => {
@@ -154,14 +154,14 @@ fn unit_parameter_constraint_text(
                 let inlet_limit = connected_inlet_pressure_limit(flowsheet, unit)
                     .map(|pressure_pa| format!(" Inlet limit: {pressure_pa:.0} Pa."));
                 return format!(
-                    "Unit Pa; positive finite outlet pressure; cannot exceed connected inlet pressure.{}",
+                    "Absolute outlet pressure must be finite and above 0 Pa; cannot exceed connected inlet pressure.{}",
                     inlet_limit.unwrap_or_default()
                 );
             }
             if unit.kind == "feed" {
-                return "Unit Pa; positive finite source outlet pressure; commit syncs the Feed outlet template.".to_string();
+                return "Absolute source outlet pressure must be finite and above 0 Pa; commit syncs the Feed outlet template.".to_string();
             }
-            "Unit Pa; positive finite flash pressure; commit syncs liquid/vapor outlet templates."
+            "Absolute flash pressure must be finite and above 0 Pa; commit syncs liquid/vapor outlet templates."
                 .to_string()
         }
     }

@@ -183,7 +183,7 @@ fn command_surface_interactions_converge_to_same_window_state_for_canvas_reject_
     let menu_window = command_surface_window(&apps.menu_app);
 
     assert!(!apps.palette_app.command_palette.open);
-    assert_eq!(menu_window.canvas.suggestion_count, 1);
+    assert_eq!(menu_window.canvas.suggestion_count, 0);
     assert_eq!(menu_window.canvas.focused_suggestion_id, None);
     assert_eq!(menu_window.canvas.widget.view().focused_suggestion_id, None);
     assert_command_surface_windows_equal(&apps, &menu_window);
@@ -220,26 +220,32 @@ fn command_surface_interactions_converge_to_same_window_state_for_canvas_accept_
         egui::Modifiers::NONE,
     );
 
+    let before = apps.menu_app.platform_host.document().clone();
+    for app in [
+        &mut apps.menu_app,
+        &mut apps.toolbar_app,
+        &mut apps.list_app,
+        &mut apps.palette_app,
+        &mut apps.shortcut_app,
+    ] {
+        assert!(app.modeling_problems.recommendation_ui.review.is_some());
+        assert_eq!(
+            app.platform_host.document(),
+            &before,
+            "every entry only previews"
+        );
+        app.accept_modeling_recommendation();
+        assert_eq!(app.platform_host.document().revision, before.revision + 1);
+        assert!(
+            app.platform_host
+                .snapshot()
+                .runtime
+                .latest_solve_snapshot
+                .is_none(),
+            "accepting never auto-solves in Active mode"
+        );
+    }
     let menu_window = command_surface_window(&apps.menu_app);
-
-    assert!(!apps.palette_app.command_palette.open);
-    assert_eq!(
-        menu_window.runtime.control_state.run_status,
-        rf_ui::RunStatus::Converged
-    );
-    assert_eq!(menu_window.runtime.control_state.pending_reason, None);
-    assert_eq!(
-        menu_window
-            .runtime
-            .control_state
-            .latest_snapshot_id
-            .as_deref(),
-        Some(OFFICIAL_HEATER_BINARY_HYDROCARBON_AUTORUN_SNAPSHOT_ID)
-    );
-    assert_eq!(
-        menu_window.runtime.run_panel.view().status_label,
-        "Converged"
-    );
     assert_command_surface_windows_equal(&apps, &menu_window);
 
     let _ = std::fs::remove_file(project_path);

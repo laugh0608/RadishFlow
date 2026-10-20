@@ -1,3 +1,7 @@
+use crate::modeling_recommendations::{
+    ModelingRecommendationSession, RecommendationError, RecommendationPreview,
+    RecommendationReceipt,
+};
 use std::time::SystemTime;
 
 use rf_types::{RfError, RfResult};
@@ -151,6 +155,14 @@ impl StudioGuiDriver {
             host: StudioGuiHost::new(config)?,
             native_timer_runtime: StudioGuiNativeTimerRuntime::default(),
         })
+    }
+
+    pub fn accept_modeling_recommendation(
+        &mut self,
+        session: &mut ModelingRecommendationSession,
+        preview: &RecommendationPreview,
+    ) -> Result<RecommendationReceipt, RecommendationError> {
+        self.host.accept_modeling_recommendation(session, preview)
     }
 
     pub fn state(&self) -> &StudioAppHostState {

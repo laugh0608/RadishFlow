@@ -6,6 +6,7 @@ use std::{
     process::Command,
 };
 
+mod private_resources;
 mod repository_governance;
 
 use repository_governance::check_repository_governance;
@@ -49,6 +50,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     match command.as_str() {
+        "check-private-resources" => {
+            ensure_no_extra_args(args)?;
+            private_resources::check_private_resources(&repo_root)?;
+        }
         "check-text-files" => {
             ensure_no_extra_args(args)?;
             check_text_files(&repo_root)?;
@@ -86,6 +91,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 fn usage() -> &'static str {
     "Usage:
   cargo run -p xtask -- check-text-files
+  cargo run -p xtask -- check-private-resources
   cargo run -p xtask -- validate-workspace [--skip-clippy]
   cargo run -p xtask -- check-repository-governance [--base-ref <ref>]
   cargo run -p xtask -- check-repo [--skip-clippy] [--skip-text-files] [--base-ref <ref>]"

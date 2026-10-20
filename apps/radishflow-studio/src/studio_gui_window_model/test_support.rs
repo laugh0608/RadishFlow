@@ -106,7 +106,8 @@ where
         .expect("expected solve snapshot");
     let ui_snapshot =
         rf_ui::SolveSnapshot::from_solver_snapshot("snapshot-window-model", 0, 1, &snapshot);
-    let window_snapshot = solve_snapshot_model_from_ui(&ui_snapshot);
+    let window_snapshot =
+        solve_snapshot_model_from_ui(&ui_snapshot, &rf_types::units::DisplayUnitSet::si());
     (ui_snapshot, window_snapshot)
 }
 

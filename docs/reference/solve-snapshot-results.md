@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-09-14
+更新时间：2026-10-07
 
 ## 目的
 
@@ -257,7 +257,9 @@ UI / shell 不应通过解析错误文本反推出这些分类；分类、summar
 
 当前快照复制和文本导出只消费同一份最新 `SolveSnapshot`，并把已物化的流股摘要、case-level review summary、单元结果、求解步骤和诊断格式化为纯文本。
 
-文本头包含 `snapshot_id`、`sequence`、`document_revision`、状态与摘要；默认结果页和 Runtime 复用输出操作，执行前重新校验当前快照身份和文档 revision。平台选择器、覆盖和失败恢复契约见 [B2-1](../topics/results-review-diagnostics.md#b2-1轻量结果输出闭环)。
+结果 DTO 数值始终为 SI。U3 呈现层根据量类型与单位目录生成 6 位有效数字文本；缺失和转换错误分开表示，温差不使用绝对温度偏移。`light_text_export()` 返回结构化错误或完整文本，转换失败不会生成带错误占位的成功产物。
+
+文本头包含 `snapshot_id`、`sequence`、`document_revision`、状态与摘要，以及 `display_units`、`number_format`。结果页和 Runtime 复用输出操作；发起时、剪贴板写入或文件选择器之前捕获工程身份、快照、项目单位和完整文本，不使用 Inspector 临时覆盖。等待期间显示单位变化不重写已捕获文本；文件写入前复验工程、当前快照身份和文档 revision。平台选择器、覆盖和失败恢复契约见 [B2-1](../topics/results-review-diagnostics.md#b2-1轻量结果输出闭环)。
 
 稳定 section 口径：
 
@@ -269,7 +271,7 @@ UI / shell 不应通过解析错误文本反推出这些分类；分类、summar
 
 稳定边界：
 
-- 不创建第二份结果缓存
+- 不创建独立的物理结果真相；待确认输出仅保留本次操作的不可变呈现数据
 - 不重新计算热力学、相平衡、焓值或诊断
 - 不写项目文件或 layout sidecar
 - 不进入 `CommandHistory`

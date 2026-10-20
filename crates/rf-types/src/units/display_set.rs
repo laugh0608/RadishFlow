@@ -138,12 +138,15 @@ mod tests {
     fn presets_are_complete_and_keep_temperature_difference_semantics() {
         let si = DisplayUnitSet::si();
         let engineering = DisplayUnitSet::engineering();
-        assert_eq!(si.entries().len(), 7);
+        assert_eq!(si.entries().len(), 15);
         for quantity in ALL_QUANTITIES {
             assert_eq!(si.unit_for(*quantity), quantity.definition().canonical_unit);
         }
         assert_eq!(
-            engineering.entries().collect::<Vec<_>>(),
+            engineering
+                .entries()
+                .filter(|(q, _)| super::super::LEGACY_QUANTITIES.contains(q))
+                .collect::<Vec<_>>(),
             vec![
                 (AbsoluteTemperature, Celsius),
                 (TemperatureDifference, KelvinDifference),

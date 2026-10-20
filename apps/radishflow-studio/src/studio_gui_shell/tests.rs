@@ -9,9 +9,6 @@ use rf_store::{
 use rf_types::{StreamId, UnitId};
 use std::{fs, path::PathBuf, time::UNIX_EPOCH};
 
-const OFFICIAL_HEATER_BINARY_HYDROCARBON_AUTORUN_SNAPSHOT_ID: &str =
-    "example-feed-heater-flash-binary-hydrocarbon-rev-1-seq-1";
-
 fn lease_expiring_config() -> StudioRuntimeConfig {
     StudioRuntimeConfig {
         entitlement_preflight: StudioRuntimeEntitlementPreflight::Auto,
@@ -239,6 +236,7 @@ fn ready_failed_command_surface_apps() -> CommandSurfaceApps {
 
 fn command_surface_window(app: &ReadyAppState) -> radishflow_studio::StudioGuiWindowModel {
     let mut window = app.platform_host.snapshot().window_model();
+    app.project_canvas_recommendations(&mut window);
     stabilize_command_surface_window(&mut window);
     window
 }
@@ -348,6 +346,9 @@ fn dispatch_enabled_command_surface_interactions(
                 .handle_command_palette_keyboard(ctx, &commands)
         );
     });
+    if command_id.starts_with("canvas.") {
+        apps.shortcut_app.last_area_focus = Some(StudioGuiWindowAreaId::Canvas);
+    }
     dispatch_shortcut_for_test(&mut apps.shortcut_app, shortcut_key, shortcut_modifiers);
 }
 
@@ -411,6 +412,9 @@ fn dispatch_disabled_command_surface_interactions(
                 .handle_command_palette_keyboard(ctx, &commands)
         );
     });
+    if command_id.starts_with("canvas.") {
+        apps.shortcut_app.last_area_focus = Some(StudioGuiWindowAreaId::Canvas);
+    }
     dispatch_shortcut_for_test(&mut apps.shortcut_app, shortcut_key, shortcut_modifiers);
 }
 
@@ -609,10 +613,18 @@ fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
         .expect("expected app state")
 }
 
+fn accept_focused_canvas_recommendation(app: &mut ReadyAppState) {
+    app.dispatch_ui_command("canvas.accept_focused");
+    app.accept_modeling_recommendation();
+    app.close_recommendation_review();
+}
+
 fn accept_canvas_suggestion_by_id(app: &mut ReadyAppState, suggestion_id: &str) {
     app.dispatch_event(StudioGuiEvent::CanvasSuggestionAcceptByIdRequested {
         suggestion_id: rf_ui::CanvasSuggestionId::new(suggestion_id),
     });
+    app.accept_modeling_recommendation();
+    app.close_recommendation_review();
 }
 
 fn select_builtin_binary_hydrocarbon_basis(app: &mut ReadyAppState) {
@@ -726,6 +738,18 @@ fn run_with_key_press_and_focus<R>(
 
 mod unit_rename;
 
+mod input_departure;
+mod keyboard_events;
+mod modeling_problems;
+mod modeling_recommendations;
 mod numeric_edits;
+mod unit_accessibility;
+mod unit_menu_keyboard;
 mod unit_presentation;
+mod unit_settings_contrast;
+mod unit_settings_layout;
+mod unit_settings_localization;
 mod view_units;
+
+mod equipment_editor;
+mod equipment_storage;

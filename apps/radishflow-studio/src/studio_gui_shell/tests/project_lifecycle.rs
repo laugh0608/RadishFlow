@@ -1091,7 +1091,7 @@ fn create_blank_project_requires_confirmation_when_workspace_has_unsaved_changes
         Box::new(TestProjectFilePicker::new(None)),
     )
     .expect("expected app state");
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let dirty_window = app.platform_host.snapshot().window_model();
     assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
 
@@ -1141,7 +1141,7 @@ fn create_blank_project_requires_confirmation_when_workspace_has_unsaved_changes
 fn cancel_pending_blank_project_keeps_dirty_workspace_active() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
     let mut app = ready_app_state(&config);
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let dirty_window = app.platform_host.snapshot().window_model();
     assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
 
@@ -1176,7 +1176,7 @@ fn closing_dirty_workspace_requires_explicit_confirmation() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
     let mut app = ready_app_state(&config);
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let dirty_window = app.platform_host.snapshot().window_model();
     assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
 
@@ -1203,7 +1203,7 @@ fn command_q_dirty_workspace_requires_explicit_confirmation() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
     let mut app = ready_app_state(&config);
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let dirty_window = app.platform_host.snapshot().window_model();
     assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
 
@@ -1234,7 +1234,7 @@ fn cancel_pending_close_keeps_dirty_workspace_active() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
     let mut app = ready_app_state(&config);
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let dirty_window = app.platform_host.snapshot().window_model();
     assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
     assert!(!app.close_current_window_for_viewport_request());
@@ -1269,7 +1269,7 @@ fn discard_pending_close_closes_dirty_workspace() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
     let mut app = ready_app_state(&config);
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     assert!(
         app.platform_host
             .snapshot()
@@ -1293,7 +1293,7 @@ fn save_pending_close_writes_existing_dirty_project_before_close() {
     let (config, project_path) = flash_drum_local_rules_synced_config();
     let mut app = ready_app_state(&config);
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     assert!(
         app.platform_host
             .snapshot()
@@ -1686,7 +1686,7 @@ fn open_project_from_input_requires_confirmation_when_workspace_has_unsaved_chan
         .project_path
         .clone();
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let dirty_window = app.platform_host.snapshot().window_model();
     assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
     assert_eq!(
@@ -1741,7 +1741,7 @@ fn open_project_from_picker_requires_confirmation_when_workspace_has_unsaved_cha
     )
     .expect("expected app state");
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let dirty_window = app.platform_host.snapshot().window_model();
     assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
 
@@ -1785,7 +1785,7 @@ fn open_recent_project_requires_confirmation_when_workspace_has_unsaved_changes(
     app.project_open
         .record_recent_project(target_project.clone());
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let dirty_window = app.platform_host.snapshot().window_model();
     assert!(dirty_window.runtime.workspace_document.has_unsaved_changes);
 
@@ -1835,7 +1835,7 @@ fn cancel_pending_project_open_keeps_dirty_workspace_active() {
         .project_path
         .clone();
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let dirty_window = app.platform_host.snapshot().window_model();
     app.project_open.path_input = target_project.display().to_string();
     app.open_project_from_input();

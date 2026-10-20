@@ -1,3 +1,8 @@
+pub mod pressure_context;
+
+// Shared built-in input contracts used by flowsheet consumers.
+pub use rf_unitops::specifications;
+
 use std::collections::BTreeMap;
 
 use rf_model::Flowsheet;

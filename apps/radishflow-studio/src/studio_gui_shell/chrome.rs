@@ -14,26 +14,28 @@ impl ReadyAppState {
                 ui.heading(window.header.title);
                 ui.separator();
                 render_wrapped_small(ui, &window.runtime.workspace_document.title);
-                render_status_chip(
-                    ui,
-                    self.locale
-                        .runtime_label(window.runtime.run_panel.view().mode_label)
-                        .as_ref(),
-                    egui::Color32::from_rgb(86, 118, 168),
-                );
-                render_status_chip(
-                    ui,
-                    self.locale
-                        .runtime_label(window.runtime.run_panel.view().status_label)
-                        .as_ref(),
-                    run_status_color(window.runtime.run_panel.view().status_label),
-                );
-                if let Some(pending) = window.runtime.run_panel.view().pending_label {
+                if self.screen != StudioShellScreen::Equipment {
                     render_status_chip(
                         ui,
-                        self.locale.runtime_label(pending).as_ref(),
-                        egui::Color32::from_rgb(160, 120, 40),
+                        self.locale
+                            .runtime_label(window.runtime.run_panel.view().mode_label)
+                            .as_ref(),
+                        egui::Color32::from_rgb(86, 118, 168),
                     );
+                    render_status_chip(
+                        ui,
+                        self.locale
+                            .runtime_label(window.runtime.run_panel.view().status_label)
+                            .as_ref(),
+                        run_status_color(window.runtime.run_panel.view().status_label),
+                    );
+                    if let Some(pending) = window.runtime.run_panel.view().pending_label {
+                        render_status_chip(
+                            ui,
+                            self.locale.runtime_label(pending).as_ref(),
+                            egui::Color32::from_rgb(160, 120, 40),
+                        );
+                    }
                 }
                 if window.runtime.workspace_document.has_unsaved_changes {
                     render_status_chip(
@@ -60,7 +62,7 @@ impl ReadyAppState {
                 StudioShellScreen::Workbench => Some(&window.flowsheet_context_toolbar),
                 StudioShellScreen::Run => Some(&window.run_context_toolbar),
                 StudioShellScreen::Results => Some(&window.result_context_toolbar),
-                StudioShellScreen::Home => None,
+                StudioShellScreen::Home | StudioShellScreen::Equipment => None,
             };
             if let Some(context_toolbar) = context_toolbar {
                 ui.separator();
@@ -69,9 +71,12 @@ impl ReadyAppState {
             if self.screen == StudioShellScreen::Results {
                 self.render_result_output_actions(ui, window);
             }
-            self.render_failure_recovery_action(ui, window);
+            if self.screen != StudioShellScreen::Equipment {
+                self.render_failure_recovery_action(ui, window);
+            }
             self.render_project_operation_strip(ui);
-            if !window.commands.menu_tree.is_empty()
+            if self.screen != StudioShellScreen::Equipment
+                && !window.commands.menu_tree.is_empty()
                 && window
                     .layout_state
                     .panel(StudioGuiWindowAreaId::Commands)
@@ -176,7 +181,11 @@ impl ReadyAppState {
         section_title: &str,
         item: &radishflow_studio::StudioGuiWindowContextToolbarItemModel,
     ) {
-        let label = self.locale.runtime_label(&item.label);
+        let label =
+            self.locale.runtime_label(self.recommendation_command_label(
+                item.command_id.as_deref().unwrap_or(""),
+                &item.label,
+            ));
         let detail = self.locale.runtime_label(&item.detail);
         let response = ui
             .add_enabled(item.enabled, egui::Button::new(label.as_ref()))
@@ -303,6 +312,19 @@ impl ReadyAppState {
             StudioShellScreen::Property,
             self.locale.text(ShellText::Property),
         );
+        if ui
+            .selectable_label(
+                self.screen == StudioShellScreen::Equipment,
+                if self.locale == StudioShellLocale::ZhCn {
+                    "设备"
+                } else {
+                    "Equipment"
+                },
+            )
+            .clicked()
+        {
+            self.enter_equipment();
+        }
         let flowsheet_response = ui
             .add_enabled(
                 window.property_page.flowsheet_modeling_enabled,
@@ -409,7 +431,13 @@ impl ReadyAppState {
     }
 
     pub(super) fn render_settings_top_menu_content(&mut self, ui: &mut egui::Ui) {
-        if ui.button("项目显示单位…").clicked() {
+        if ui
+            .button(
+                self.locale
+                    .unit_settings_text(locale::UnitSettingsText::Open),
+            )
+            .clicked()
+        {
             self.open_unit_settings();
             ui.close_menu();
         }
@@ -511,12 +539,17 @@ impl ReadyAppState {
             StudioGuiWindowDockRegion::RightSidebar,
         )
         .clamp(340.0, 420.0);
+        let problem_width = ctx.available_rect().width() - right_width - 16.0;
         egui::SidePanel::right("studio.right_sidebar")
             .default_width(right_width)
             .min_width(340.0)
             .max_width(420.0)
             .resizable(false)
             .show(ctx, |ui| {
+                self.prepare_modeling_problem_field_layout(
+                    problem_width,
+                    ui.text_style_height(&egui::TextStyle::Body),
+                );
                 self.render_right_workbench(ui, window);
             });
     }
@@ -541,10 +574,12 @@ impl ReadyAppState {
         window: &StudioGuiWindowModel,
     ) {
         egui::TopBottomPanel::bottom("studio.status_bar")
-            .exact_height(30.0)
+            .min_height(30.0)
             .resizable(false)
             .show(ctx, |ui| {
                 ui.horizontal_wrapped(|ui| {
+                    self.render_modeling_draft_access(ui);
+                    ui.separator();
                     ui.small(
                         egui::RichText::new(self.locale.runtime_label("Run").as_ref()).strong(),
                     );
@@ -575,7 +610,14 @@ impl ReadyAppState {
                         ),
                     );
                     ui.separator();
-                    ui.small(self.locale.text(ShellText::UnitsSi));
+                    ui.small(super::unit_settings::project_units_label(
+                        self.locale,
+                        window
+                            .runtime
+                            .workspace_document
+                            .presentation
+                            .display_units(),
+                    ));
                     ui.separator();
                     ui.small(self.locale.text(ShellText::SolverSequentialModular));
                     ui.separator();
@@ -957,6 +999,7 @@ impl ReadyAppState {
     }
 
     fn render_canvas_palette(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        self.render_modeling_problem_return(ui);
         let palette = &window.canvas.widget.view().place_unit_palette;
         ui.label(egui::RichText::new(self.locale.runtime_label(palette.title).as_ref()).strong());
         render_wrapped_small(
@@ -978,13 +1021,17 @@ impl ReadyAppState {
             ui.add_space(6.0);
         }
 
-        ui.add(
+        let filter = ui.add(
             egui::TextEdit::singleline(&mut self.module_palette_filter)
                 .hint_text(match self.locale {
                     StudioShellLocale::En => "Filter modules",
                     StudioShellLocale::ZhCn => "筛选模块",
                 })
                 .desired_width(ui.available_width()),
+        );
+        self.focus_specification_section(
+            &filter,
+            radishflow_studio::modeling_specifications::SpecificationTarget::Palette,
         );
         ui.add_space(6.0);
 
@@ -1142,6 +1189,19 @@ impl ReadyAppState {
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 self.render_right_sidebar_selection_context(ui, window);
+                if self.modeling_problem_fields_embedded() {
+                    self.render_modeling_problem_return(ui);
+                    render_wrapped_label(
+                        ui,
+                        match self.locale {
+                            StudioShellLocale::ZhCn => "字段已在下方“对象字段”页打开。",
+                            StudioShellLocale::En => {
+                                "Fields are open in the Object fields page below."
+                            }
+                        },
+                    );
+                    return;
+                }
                 match self.right_sidebar_tab {
                     StudioShellRightSidebarTab::Inspector => {
                         self.render_runtime_inspector_tab(ui, window)
@@ -1169,15 +1229,24 @@ impl ReadyAppState {
         }
 
         ui.separator();
+        if self.project_open.pending_confirmation.is_some()
+            || self.project_open.pending_blank_project_confirmation
+        {
+            self.render_project_departure_inputs(ui);
+        }
+        render_project_save_state(
+            ui,
+            &self
+                .platform_host
+                .snapshot()
+                .runtime
+                .workspace_document
+                .save_state,
+            self.locale,
+        );
         ui.horizontal_wrapped(|ui| {
             if let Some(notice) = self.project_open.notice.as_ref() {
-                let color = match notice.level {
-                    ProjectOpenNoticeLevel::Info => egui::Color32::from_rgb(66, 118, 92),
-                    ProjectOpenNoticeLevel::Warning => egui::Color32::from_rgb(160, 120, 40),
-                    ProjectOpenNoticeLevel::Error => egui::Color32::from_rgb(180, 40, 40),
-                };
-                ui.colored_label(color, &notice.title);
-                render_wrapped_small(ui, &notice.detail);
+                render_project_notice(ui, notice);
             }
             if self.project_open.pending_confirmation.is_some() {
                 if ui
@@ -1252,6 +1321,10 @@ impl ReadyAppState {
 
     fn render_bottom_workbench(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         let available_width = ui.available_width();
+        if self.bottom_drawer_tab == StudioShellBottomDrawerTab::Diagnostics {
+            self.render_bottom_run_information(ui, window);
+            return;
+        }
         let status_summary_width = if available_width >= 960.0 {
             320.0
         } else {
@@ -1299,7 +1372,10 @@ impl ReadyAppState {
             ui.selectable_value(
                 &mut self.bottom_drawer_tab,
                 StudioShellBottomDrawerTab::Diagnostics,
-                self.locale.text(ShellText::Diagnostics),
+                match self.locale {
+                    StudioShellLocale::ZhCn => "当前问题",
+                    StudioShellLocale::En => "Current problems",
+                },
             );
             ui.selectable_value(
                 &mut self.bottom_drawer_tab,
@@ -1310,8 +1386,9 @@ impl ReadyAppState {
         ui.separator();
         egui::ScrollArea::vertical()
             .id_salt(format!(
-                "scroll:{}:bottom-workbench",
-                window.layout_state.scope.layout_key
+                "scroll:{}:bottom-workbench:{}",
+                window.layout_state.scope.layout_key,
+                self.modeling_problem_scroll_page()
             ))
             .auto_shrink([false, false])
             .show(ui, |ui| match self.bottom_drawer_tab {
@@ -1324,7 +1401,7 @@ impl ReadyAppState {
                     self.render_bottom_suggestions(ui, window)
                 }
                 StudioShellBottomDrawerTab::Diagnostics => {
-                    self.render_bottom_diagnostics(ui, window)
+                    self.render_modeling_problems(ui, window)
                 }
                 StudioShellBottomDrawerTab::ResultsTable => {
                     self.render_bottom_results_table(ui, window)
@@ -1332,10 +1409,15 @@ impl ReadyAppState {
             });
     }
 
-    fn render_bottom_status_summary_card(&self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+    fn render_bottom_status_summary_card(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+    ) {
         egui::Frame::group(ui.style())
             .inner_margin(egui::Margin::symmetric(10, 8))
             .show(ui, |ui| {
+                self.render_modeling_problem_entry(ui);
                 ui.horizontal_wrapped(|ui| {
                     ui.label(
                         egui::RichText::new(
@@ -1393,15 +1475,7 @@ impl ReadyAppState {
 
     fn render_bottom_messages(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         if let Some(notice) = self.project_open.notice.as_ref() {
-            ui.colored_label(
-                match notice.level {
-                    ProjectOpenNoticeLevel::Info => egui::Color32::from_rgb(66, 118, 92),
-                    ProjectOpenNoticeLevel::Warning => egui::Color32::from_rgb(160, 120, 40),
-                    ProjectOpenNoticeLevel::Error => egui::Color32::from_rgb(180, 40, 40),
-                },
-                &notice.title,
-            );
-            render_wrapped_small(ui, &notice.detail);
+            render_project_notice(ui, notice);
             ui.add_space(4.0);
         }
         if let Some(failure) = window.runtime.latest_failure.as_ref() {
@@ -1543,20 +1617,9 @@ impl ReadyAppState {
     }
 
     fn render_bottom_suggestions(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
-        let canvas_view = window.canvas.widget.view();
+        self.render_modeling_recommendations(ui);
         let run_panel_view = window.runtime.run_panel.view();
-        ui.horizontal_wrapped(|ui| {
-            ui.label(egui::RichText::new(self.locale.text(ShellText::Suggestions)).strong());
-            render_status_chip(
-                ui,
-                &canvas_view.suggestion_count.to_string(),
-                egui::Color32::from_rgb(86, 118, 168),
-            );
-        });
-
-        let mut rendered_any = false;
         if let Some(notice) = run_panel_view.notice.as_ref() {
-            rendered_any = true;
             ui.add_space(4.0);
             ui.colored_label(notice_color(notice.level), &notice.title);
             render_wrapped_label(ui, &notice.message);
@@ -1572,148 +1635,13 @@ impl ReadyAppState {
                 }
             }
         }
-
-        for suggestion in canvas_view.suggestions.iter().take(6) {
-            rendered_any = true;
-            ui.add_space(6.0);
-            ui.horizontal_wrapped(|ui| {
-                render_status_chip(
-                    ui,
-                    self.locale.runtime_label(suggestion.status_label).as_ref(),
-                    egui::Color32::from_rgb(86, 118, 168),
-                );
-                ui.small(format!("{:.0}%", suggestion.confidence * 100.0));
-                if suggestion.is_focused {
-                    render_status_chip(
-                        ui,
-                        self.locale.runtime_label("Focused").as_ref(),
-                        egui::Color32::from_rgb(66, 118, 92),
-                    );
-                }
-            });
-            render_wrapped_small(ui, &suggestion.reason);
-            if ui
-                .add_enabled(
-                    suggestion.explicit_accept_enabled,
-                    egui::Button::new(self.locale.runtime_label(suggestion.action_label).as_ref()),
-                )
-                .on_hover_text(&suggestion.id)
-                .clicked()
-            {
-                match window.canvas.widget.activate_suggestion(&suggestion.id) {
-                    radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionRequested {
-                        event,
-                        ..
-                    } => self.dispatch_event(event),
-                    radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionDisabled {
-                        ..
-                    }
-                    | radishflow_studio::StudioGuiCanvasWidgetEvent::SuggestionMissing { .. }
-                    | radishflow_studio::StudioGuiCanvasWidgetEvent::Requested { .. }
-                    | radishflow_studio::StudioGuiCanvasWidgetEvent::Disabled { .. }
-                    | radishflow_studio::StudioGuiCanvasWidgetEvent::Missing { .. } => {}
-                }
-            }
-        }
-
-        if !rendered_any {
-            ui.small(match self.locale {
-                StudioShellLocale::En => "No current suggestions.",
-                StudioShellLocale::ZhCn => "暂无建议。",
-            });
-        }
     }
 
-    pub(in crate::studio_gui_shell) fn render_bottom_results_table(
+    pub(super) fn render_bottom_diagnostics(
         &mut self,
         ui: &mut egui::Ui,
         window: &StudioGuiWindowModel,
     ) {
-        let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() else {
-            if let Some(stale_snapshot) = window.runtime.stale_solve_snapshot.as_ref() {
-                self.render_stale_solve_snapshot_notice(ui, stale_snapshot);
-                return;
-            }
-            ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
-            return;
-        };
-        if snapshot.streams.is_empty() {
-            ui.small(self.locale.text(ShellText::NoStreamResults));
-            return;
-        }
-        egui::Grid::new(format!("bottom-results-table:{}", snapshot.snapshot_id))
-            .num_columns(6)
-            .striped(true)
-            .min_col_width(78.0)
-            .show(ui, |ui| {
-                ui.strong(result_table_header(self.locale, ResultTableHeader::Stream));
-                ui.strong("T (K)");
-                ui.strong("P (Pa)");
-                ui.strong("F (mol/s)");
-                ui.strong("H (J/mol)");
-                ui.strong(result_table_header(self.locale, ResultTableHeader::Phase));
-                ui.end_row();
-                for stream in &snapshot.streams {
-                    let response = ui
-                        .add(egui::Button::new(&stream.label).frame(false))
-                        .on_hover_text(&stream.stream_id);
-                    if response.clicked() {
-                        self.focus_result_table_stream(
-                            &snapshot.snapshot_id,
-                            stream.stream_id.clone(),
-                        );
-                    }
-                    ui.label(format!("{:.2}", stream.temperature_k));
-                    ui.label(format!("{:.0}", stream.pressure_pa));
-                    ui.label(format!("{:.6}", stream.total_molar_flow_mol_s));
-                    ui.label(
-                        stream
-                            .molar_enthalpy_j_per_mol
-                            .map(|value| format!("{value:.3}"))
-                            .unwrap_or_else(|| "-".to_string()),
-                    );
-                    ui.label(result_table_phase_summary(self.locale, stream))
-                        .on_hover_text(&stream.phase_text);
-                    ui.end_row();
-                }
-            });
-
-        if !snapshot.review_summary.unit_results.is_empty() {
-            ui.add_space(8.0);
-            ui.strong(self.locale.text(ShellText::Units));
-            egui::Grid::new(format!(
-                "bottom-results-units-table:{}",
-                snapshot.snapshot_id
-            ))
-            .num_columns(5)
-            .striped(true)
-            .min_col_width(78.0)
-            .show(ui, |ui| {
-                ui.strong(result_table_header(self.locale, ResultTableHeader::Unit));
-                ui.strong(result_table_header(self.locale, ResultTableHeader::Status));
-                ui.strong(result_table_header(self.locale, ResultTableHeader::Step));
-                ui.strong(self.locale.text(ShellText::InspectorConsumedStreams));
-                ui.strong(self.locale.text(ShellText::InspectorProducedStreams));
-                ui.end_row();
-
-                for unit in &snapshot.review_summary.unit_results {
-                    let unit_response = ui
-                        .add(egui::Button::new(&unit.unit_id).frame(false))
-                        .on_hover_text(&unit.summary);
-                    if unit_response.clicked() {
-                        self.focus_result_table_unit(&snapshot.snapshot_id, unit.unit_id.clone());
-                    }
-                    ui.label(self.locale.runtime_label(unit.status_label).as_ref());
-                    ui.label(format!("#{}", unit.step_index));
-                    render_wrapped_small(ui, result_table_stream_ids(&unit.consumed_stream_ids));
-                    render_wrapped_small(ui, result_table_stream_ids(&unit.produced_stream_ids));
-                    ui.end_row();
-                }
-            });
-        }
-    }
-
-    fn render_bottom_diagnostics(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
             if snapshot.diagnostics.is_empty() {
                 ui.small(self.locale.text(ShellText::NoDiagnostics));
@@ -2097,7 +2025,8 @@ fn workbench_bottom_drawer_height(
         StudioShellBottomDrawerTab::RunLog => 170.0,
         StudioShellBottomDrawerTab::Convergence => 230.0,
         StudioShellBottomDrawerTab::ResultsTable => 250.0,
-        StudioShellBottomDrawerTab::Suggestions | StudioShellBottomDrawerTab::Diagnostics => 190.0,
+        StudioShellBottomDrawerTab::Suggestions => 190.0,
+        StudioShellBottomDrawerTab::Diagnostics => 340.0,
     }
 }
 
@@ -2217,78 +2146,6 @@ fn context_toolbar_item_status_is_top_bar_summary_only(
     section_title: &str,
 ) -> bool {
     toolbar_title == "Run Context" && section_title == "Monitor"
-}
-
-#[derive(Debug, Clone, Copy)]
-enum ResultTableHeader {
-    Stream,
-    Unit,
-    Status,
-    Step,
-    Phase,
-}
-
-fn result_table_header(locale: StudioShellLocale, header: ResultTableHeader) -> &'static str {
-    match locale {
-        StudioShellLocale::En => match header {
-            ResultTableHeader::Stream => "Stream",
-            ResultTableHeader::Unit => "Unit",
-            ResultTableHeader::Status => "Status",
-            ResultTableHeader::Step => "Step",
-            ResultTableHeader::Phase => "Phase",
-        },
-        StudioShellLocale::ZhCn => match header {
-            ResultTableHeader::Stream => "流股",
-            ResultTableHeader::Unit => "单元",
-            ResultTableHeader::Status => "状态",
-            ResultTableHeader::Step => "步骤",
-            ResultTableHeader::Phase => "相态",
-        },
-    }
-}
-
-fn result_table_stream_ids(stream_ids: &[String]) -> String {
-    if stream_ids.is_empty() {
-        return "-".to_string();
-    }
-
-    stream_ids.join(", ")
-}
-
-fn result_table_phase_summary(
-    locale: StudioShellLocale,
-    stream: &radishflow_studio::StudioGuiWindowStreamResultModel,
-) -> String {
-    if stream.phase_rows.is_empty() {
-        return locale.text(ShellText::NoneValue).to_string();
-    }
-
-    let visible_rows = stream
-        .phase_rows
-        .iter()
-        .filter(|row| row.label != "overall")
-        .collect::<Vec<_>>();
-    let visible_rows = if visible_rows.is_empty() {
-        stream.phase_rows.iter().collect::<Vec<_>>()
-    } else {
-        visible_rows
-    };
-    let hidden_count = visible_rows.len().saturating_sub(2);
-    let mut parts = visible_rows
-        .iter()
-        .take(2)
-        .map(|row| {
-            format!(
-                "{} {:.3}",
-                locale.runtime_label(&row.label),
-                row.phase_fraction
-            )
-        })
-        .collect::<Vec<_>>();
-    if hidden_count > 0 {
-        parts.push(format!("+{hidden_count}"));
-    }
-    parts.join(" / ")
 }
 
 fn visible_panel_badge(area_id: StudioGuiWindowAreaId, badge: Option<&str>) -> Option<&str> {

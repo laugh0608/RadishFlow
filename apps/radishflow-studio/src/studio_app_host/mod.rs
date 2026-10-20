@@ -1,3 +1,7 @@
+use crate::modeling_recommendations::{
+    ModelingRecommendationSession, RecommendationError, RecommendationPreview,
+    RecommendationReceipt,
+};
 mod projection;
 use projection::*;
 use std::borrow::Borrow;
@@ -515,6 +519,15 @@ impl StudioAppHost {
             .commit_canvas_pending_edit_at(position)
     }
 
+    pub fn accept_modeling_recommendation(
+        &mut self,
+        session: &mut ModelingRecommendationSession,
+        preview: &RecommendationPreview,
+    ) -> Result<RecommendationReceipt, RecommendationError> {
+        self.window_host_manager
+            .accept_modeling_recommendation(session, preview)
+    }
+
     pub fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
@@ -660,6 +673,14 @@ impl StudioAppHost {
             .workspace
             .canvas_interaction
             .clone()
+    }
+
+    pub(crate) fn app_state(&self) -> &rf_ui::AppState {
+        self.window_host_manager
+            .session()
+            .host_port()
+            .runtime()
+            .app_state()
     }
 
     pub fn document(&self) -> &rf_ui::FlowsheetDocument {
@@ -887,6 +908,18 @@ impl StudioAppHostController {
         self.app_host.refresh_local_canvas_suggestions();
     }
 
+    pub fn accept_modeling_recommendation(
+        &mut self,
+        session: &mut ModelingRecommendationSession,
+        preview: &RecommendationPreview,
+    ) -> Result<RecommendationReceipt, RecommendationError> {
+        let receipt = self
+            .app_host
+            .accept_modeling_recommendation(session, preview)?;
+        self.store = StudioAppHostStore::from_snapshot(&self.app_host.snapshot());
+        Ok(receipt)
+    }
+
     pub fn accept_focused_canvas_suggestion_by_tab(
         &mut self,
     ) -> RfResult<Option<rf_ui::CanvasSuggestion>> {
@@ -1012,6 +1045,10 @@ impl StudioAppHostController {
 
     pub fn canvas_interaction(&self) -> rf_ui::CanvasInteractionState {
         self.app_host.canvas_interaction()
+    }
+
+    pub(crate) fn app_state(&self) -> &rf_ui::AppState {
+        self.app_host.app_state()
     }
 
     pub fn document(&self) -> &rf_ui::FlowsheetDocument {

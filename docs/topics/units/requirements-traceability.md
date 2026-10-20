@@ -1,6 +1,6 @@
 # 单位系统需求追踪表
 
-更新时间：2026-09-28
+更新时间：2026-10-07
 
 ## 用途与维护
 
@@ -10,7 +10,7 @@
 
 父专题：[单位系统](../units-and-quantity-system.md)。UNIT、UA、UD 编号各自稳定且不复用；替代或拆分保留去向。每项 UNIT 有规范、切片和至少一个 UA 场景，每个 UD 有负责领域与最迟时机；实施后在本表补代码 / 测试及带日期证据。
 
-设计、实施与验证分开记录：U1 已实现；U2 行为 / 兼容范围已接受、I1 / I2 项目层与 I3 会话 / 事务已接通，I4 首批原生控件已接，剩余范围按 I4 推进；U3 方向已确认且未实现；U2 完整用户路径仍待实现 / 待验证；U4 按需审定。所有权设计不等于持久化实现。跨阶段要求逐段记录，不用早期基础代替全部交付。
+设计、实施与验证分开记录：U1 已实现；U2 行为 / 兼容范围已接受、I1 / I2 项目层与 I3 会话 / 事务已接通，I4 首批原生控件、统一离开确认与设置 / 保存角色已接通；I5 首轮 macOS 抽样及 13 类字段提交 / 保存重开通过，完整交互与可访问性矩阵待续；U3 首批 A—C 已实现，macOS 代表路径通过；U2 完整用户路径仍待实现 / 待验证；U4 按需审定。所有权设计不等于持久化实现。跨阶段要求逐段记录，不用早期基础代替全部交付。
 
 U1 证据为 [W38 的 U1 记录](../../devlogs/2026-09/2026-W38.md) 与现有代码 / 测试，历史提交 `8ab9b98f`；2026-09-16 macOS 基线已验证，不代表本轮重跑、非 SI UI 或全平台验收。本轮静态核对代码与测试位置，文档检查写入 W39。
 
@@ -22,32 +22,101 @@ U1 证据为 [W38 的 U1 记录](../../devlogs/2026-09/2026-W38.md) 与现有代
 | UNIT-02 | [共享转换与明确拒绝](catalog-and-conversion.md) | U1 | [UA-02](catalog-and-conversion.md#目录与转换验收场景) | 已实现 / 已有历史验证；[转换](../../../crates/rf-types/src/units/mod.rs)、[转换测试](../../../crates/rf-types/src/units/tests.rs)；W38 |
 | UNIT-03 | [转换精度与物理约束分离](catalog-and-conversion.md) | U1 | [UA-03](catalog-and-conversion.md#目录与转换验收场景) | 已实现 / 已有历史验证；[转换测试](../../../crates/rf-types/src/units/tests.rs)、[变量写入测试](../../../crates/rf-ui/src/variable_browser/tests.rs)；W38 |
 | UNIT-04 | [变量量语义与规范标签](catalog-and-conversion.md) | U1 | [UA-04](catalog-and-conversion.md#目录与转换验收场景) | 已实现 / 已有历史验证；[变量元数据](../../../crates/rf-ui/src/variable_browser/variables.rs)、[浏览测试](../../../crates/rf-ui/src/variable_browser/tests.rs)；W38 |
-| UNIT-05 | [单位集与选择优先级](unit-sets-and-persistence.md) | U2 | [UA-05](unit-sets-and-persistence.md#单位集与保存验收场景) | 部分实现 / I1 单位集已验证；[实现与证据](unit-sets-and-persistence.md#i1-代码与验证范围)；I2 个人默认已接通，[I4 覆盖 / 生命周期已接](unit-sets-and-persistence.md#i4-视图覆盖与历史生命周期)，实窗待验；[I2 证据](unit-sets-and-persistence.md#i2-代码与验证范围) |
+| UNIT-05 | [单位集与选择优先级](unit-sets-and-persistence.md) | U2 | [UA-05](unit-sets-and-persistence.md#单位集与保存验收场景) | I1 单位集、I2 个人默认及 [I4 覆盖 / 生命周期](unit-sets-and-persistence.md#i4-视图覆盖与历史生命周期) 已接通；I5 已补项目 / 视图、默认恢复、新建继承与旧工程隔离 macOS 样本；跨逻辑窗口隔离 / 关闭清理已有原生样本 |
 | UNIT-06 | [独立保存脏标记与安全保存](unit-sets-and-persistence.md) | U2 | [UA-06](unit-sets-and-persistence.md#单位集与保存验收场景) | I2 已接通独立脏状态、呈现历史和失败基线保护；[证据](unit-sets-and-persistence.md#i2-代码与验证范围) |
 | UNIT-07 | [旧工程与未知单位兼容](unit-sets-and-persistence.md) | U2 | [UA-07](unit-sets-and-persistence.md#单位集与保存验收场景) | 部分实现 / I1 文件兼容、拒读与原件保护已验证；[证据](unit-sets-and-persistence.md#i1-代码与验证范围)；I2 已接通升级确认及取消 / 失败保护 |
-| UNIT-08 | [输入单位事件与拒绝保护](input-drafts-and-interactions.md) | U2 | [UA-08](input-drafts-and-interactions.md#交互验收场景) | I3 解析 / 换算事件已验证；[代码与范围](input-drafts-and-interactions.md#i3-代码与验证范围)；[I4 首批控件 / 合成事件证据](input-drafts-and-interactions.md#i4-首批控件与验证范围)，实窗待验 |
-| UNIT-09 | [显示单位事件与草稿解释](input-drafts-and-interactions.md) | U2 | [UA-09](input-drafts-and-interactions.md#交互验收场景) | I3 显示切换保留会话已验证；[代码与范围](input-drafts-and-interactions.md#i3-代码与验证范围)；[I4 首批控件 / 合成事件证据](input-drafts-and-interactions.md#i4-首批控件与验证范围)，实窗待验 |
-| UNIT-10 | [提交、取消与正式事务](input-drafts-and-interactions.md) | U2 | [UA-10](input-drafts-and-interactions.md#交互验收场景) | I3 提交 / 取消 / 来源重验已验证；[代码与范围](input-drafts-and-interactions.md#i3-代码与验证范围)；[I4 首批控件 / 合成事件证据](input-drafts-and-interactions.md#i4-首批控件与验证范围)，实窗待验 |
-| UNIT-11 | [撤销、保存与焦点路由](input-drafts-and-interactions.md) | U2 | [UA-11](input-drafts-and-interactions.md#交互验收场景) | I2 已接项目呈现独立历史 / 保存保留草稿；I4 数值焦点与会话历史已接，视图历史已接，统一离开确认和实窗待续 |
-| UNIT-12 | [未编辑值、候选精度与等价输入](input-drafts-and-interactions.md) | U2 | [UA-12](input-drafts-and-interactions.md#交互验收场景) | I3 精度直通 / 微小编辑 / 继承采用已验证；[代码与范围](input-drafts-and-interactions.md#i3-代码与验证范围)；[I4 首批控件 / 合成事件证据](input-drafts-and-interactions.md#i4-首批控件与验证范围)，实窗待验 |
-| UNIT-13 | [现有结果与输出一致性](output-and-consumer-consistency.md) | U3 | [UA-13](output-and-consumer-consistency.md#输出验收场景) | 待实现 / 待验证；— |
-| UNIT-14 | [输出资格与失败隔离](output-and-consumer-consistency.md) | U3 | [UA-14](output-and-consumer-consistency.md#输出验收场景) | 待实现 / 待验证；—；沿用结果门禁，新增转换路径未验证 |
-| UNIT-15 | [SI 协议兼容与后续消费者](output-and-consumer-consistency.md) | U3 / 后续 API、录制、N4 | [UA-15](output-and-consumer-consistency.md#输出验收场景) | 新增接入待实现 / 待验证；—；现有 SI 基础见 UNIT-04 |
+| UNIT-08 | [输入单位事件与拒绝保护](input-drafts-and-interactions.md) | U2 | [UA-08](input-drafts-and-interactions.md#交互验收场景) | I3 解析 / 换算及 I4 首批控件已接通；I5 已补字段、菜单与输入法抽样，完整原生时序待验；见下方证据 |
+| UNIT-09 | [显示单位事件与草稿解释](input-drafts-and-interactions.md) | U2 | [UA-09](input-drafts-and-interactions.md#交互验收场景) | I3 / I4 显示切换保留会话已接通；I5 已补项目 / 视图及多对象实窗，跨逻辑窗口 / 关闭清理已有代表证据；见下方证据 |
+| UNIT-10 | [提交、取消与正式事务](input-drafts-and-interactions.md) | U2 | [UA-10](input-drafts-and-interactions.md#交互验收场景) | I3 / I4 提交 / 取消 / 来源重验已接通；I5 已补首批字段提交 / 取消及拒绝抽样，完整原生矩阵待验；见下方证据 |
+| UNIT-11 | [撤销、保存与焦点路由](input-drafts-and-interactions.md) | U2 | [UA-11](input-drafts-and-interactions.md#交互验收场景) | I2 已接项目呈现独立历史 / 保存保留草稿；I4 数值焦点与会话历史已接，视图历史已接，[统一离开确认及应用回归已接通](input-drafts-and-interactions.md#i4-统一离开确认与失败保护)，实窗待续 |
+| UNIT-12 | [未编辑值、候选精度与等价输入](input-drafts-and-interactions.md) | U2 | [UA-12](input-drafts-and-interactions.md#交互验收场景) | I3 精度直通 / 微小编辑有回归；I5 已补 13 类字段 SI 文件读回、三类量高精度往返及流量微小编辑原生样本，更多组合待验；见下方证据 |
+| UNIT-13 | [现有结果与输出一致性](output-and-consumer-consistency.md) | U3 | [UA-13](output-and-consumer-consistency.md#输出验收场景) | 首批已实现 / macOS 代表路径通过；[实现与证据](output-and-consumer-consistency.md#u3-首批实现与验证2026-10-07)，W41；跨平台按既定节点 |
+| UNIT-14 | [输出资格与失败隔离](output-and-consumer-consistency.md) | U3 | [UA-14](output-and-consumer-consistency.md#输出验收场景) | 首批已实现 / 当前结果重验、转换失败原子拒绝和已有失败路径回归通过；[输出测试](../../../apps/radishflow-studio/src/studio_gui_shell/tests/result_export.rs)，W41 |
+| UNIT-15 | [SI 协议兼容与后续消费者](output-and-consumer-consistency.md) | U3 / 后续 API、录制、N4 | [UA-15](output-and-consumer-consistency.md#输出验收场景) | GUI 首批已接通、旧 CLI SI 回归通过；W41；未来 API / 录制 / N4 保持待实现 |
 | UNIT-16 | [上下文与基准转换扩展](catalog-and-conversion.md) | U4 | [UA-16](catalog-and-conversion.md#目录与转换验收场景) | 待实现 / 待验证；—；U1 仅识别并拒绝，见 UNIT-02 |
+
+### 2026-10-02 I5 原生抽样证据
+
+上表 I4 的原生待验范围已取得以下增量证据，完整场景尚未全部通过。详情见 [交互专题](input-drafts-and-interactions.md#i5-首轮-macos-原生验证) 与 [W40](../../devlogs/2026-09/2026-W40.md#2026-10-02-u2-i5-首轮原生验收与修复)。
+
+| 场景 | 本轮 macOS 证据 | 仍需补充 |
+| --- | --- | --- |
+| UA-05—07 | 工程集应用 / 保存 / 重开、v2 升级确认、独立保存摘要与呈现撤销；未应用设置阻止保存 / 关闭，损坏 JSON 打开保留原现场；SI 文件读回 | 个人默认恢复、未知单位拒读等完整原生路径 |
+| UA-08 / 10 | Feed 压力 bar ↔ kPa、本地历史、未完成 / 拼音非法输入保护；13 类非 SI 提交及四例保存重开 / 重跑；显式 kPa 与 bar 后缀冲突保护 | 全字段交互组合、更多后缀及输入法时序 |
+| UA-09 | 项目显示切换与撤销不改物理值或当前结果资格；双对象草稿跨 Inspector / 模块设置及项目 SI / 视图 MPa，提交一项保留另一项 | 更多语言 / 视图组合及跨逻辑窗口原生样本 |
+| UA-11 | 工程撤销取消 / 放弃、流股删除范围、创建出口修复、保存保留草稿及三类离开状态；打开失败 / 取消保留，成功替换清理；菜单键盘、⌘Q / ⌘K；关闭确认默认取消、Tab 循环 / Escape 保留；双语组合禁用说明与错误 / 焦点边界分离 | 其余对象 / 修复入口、迟到确认 / 失败事务的完整原生矩阵及跨平台 |
+| UA-12 | 13 类非 SI 字段的参数 / 出口模板与磁盘 SI 值一致；继承 Feed 温度同值确认采用显式来源 | 高精度反复往返、真实微小编辑等原生样本；现有自动回归保持 |
+
+后续字段批次另有 13 类 × 中英文共 26 个自动回归场景，覆盖提交、工程历史、保存重开及求解；原生语言仅按字段分组抽样。约束提示和继承字段草稿计数的修复与证据见 [交互专题](input-drafts-and-interactions.md#i5-首批字段矩阵与呈现一致性) 及 [W40](../../devlogs/2026-09/2026-W40.md#2026-10-02-u2-i5-字段矩阵与呈现一致性)，不等于完整 UA 通过。
+
+单位菜单焦点越界修复、三类菜单键盘回归和 48 个中英文 / 窄栏 / 字体组件场景见 [后续验证](input-drafts-and-interactions.md#i5-单位菜单键盘与窄栏验证)；原生宽度与组件宽度分别记录。
+
+同日补齐首批数值错误及项目单位 / 个人默认弹窗中英文，类型化拒绝载荷交由壳层呈现；20 个错误组件场景、默认保存 / 恢复失败回归和 macOS 实窗抽样见 [本地化证据](input-drafts-and-interactions.md#i5-数值错误与单位设置本地化)。UA-05 / 06 / 10 / 11 仅增加局部证据，完整语言 / 原生组合、系统缩放和读屏仍待验。
+
+多对象草稿、显示作用域、删除 / 修复 / 工程撤销及保存 / 打开 / 关闭的组合实窗证据见 [离开保护验证](input-drafts-and-interactions.md#i5-多对象草稿与离开保护原生验证)。本批无产品代码变更，另通过 14 项既有定向回归；自动与原生证据分别记录，未将代表路径扩为完整 I5 收口。
+
+关闭确认的键盘焦点修复、`1512×982` / `1024×665` 系统工作区抽样及实绘色对回归见 [可访问性增量](input-drafts-and-interactions.md#i5-键盘焦点系统缩放与实绘对比)。VoiceOver 自身窗口读取超时，未确认实际朗读；精确缩放及灰度 / 色觉矩阵仍待验。
+
+同日补数值状态实绘、60 组布局和双语非彩色样例；原生中英文拼音组合说明与取消保持通过，VoiceOver 未成功运行。范围与方法见 [I5 非颜色表达](input-drafts-and-interactions.md#i5-非颜色表达与边界分离)，其余待验项保持。
+
+### 2026-10-07 I5 增量证据
+
+UA-05—07 / 11 新增单元删除、工程撤销默认安全焦点及 `⌘S` 旧项目升级确认的 macOS 证据；两类确认双语键盘回归和保存 / 草稿保护回归通过，详见 [交互增量](input-drafts-and-interactions.md#i5-删除确认与保存快捷键增量) 与 [W41](../../devlogs/2026-10/2026-W41.md)。首批仍未取得 VoiceOver 播报，未补齐精确系统缩放、迟到确认等完整矩阵；高精度代表样本见下方续验，U2 / I5 阶段结论不变。
+
+同日续验补 UA-11 / 12：温度、压力、流量各三轮单位往返保持原 SI 和 revision，流量微小修改、Undo / Redo、保存重开与结果资格通过原生核对；F8、按钮、命令面板修复入口均有草稿保护，详情见 [精度与修复续验](input-drafts-and-interactions.md#i5-高精度往返与修复入口续验)。这核销对应代表样本，不将所有精度、修复及平台组合标为通过。
+
+UA-11 另补 [保存失败重试与关闭重验](input-drafts-and-interactions.md#i5-保存失败重试与关闭重验)：目录不可写时快捷保存 / 保存并关闭均保留现场和磁盘原件；恢复权限后只保存正式值，草稿不入文件；保存基线变化使旧关闭确认重新提示，再次确认才关闭。其余迟到确认和失败事务仍按场景保留待验，不扩大阶段通过范围。
+
+UA-11 / 12 再补 [温压微小编辑与英文交互](input-drafts-and-interactions.md#i5-温压微小编辑与英文交互)：温度 / 压力实际微小修改及工程 Undo / Redo 精确读回、英文撤销 / 删除确认安全焦点与取消、组合输入 Enter 后非法草稿的一次文本历史和保存保护通过。三类量微小修改已有代表证据；有效数字组合的后续原生样本见下文。
+
+UA-05 / 07 补 [个人默认与兼容拒读](unit-sets-and-persistence.md#i5-个人默认与兼容拒读原生续验)：损坏默认取消 / 原文备份恢复、新工程继承和旧工程 SI 隔离；未知单位 / 缺项 / 不兼容量 / 较新版本均拒读并保留工作区、草稿和原件。UA-08—11 补 [双语作用域与后缀冲突](input-drafts-and-interactions.md#i5-双语作用域与后缀冲突续验)：项目 bar / 视图 MPa / 临时输入 kPa、冲突 Undo / Redo、语言切换、跨对象返回和取消。两项原定下一批代表样本已完成，未扩大为完整 UA 通过。
+
+UA-05 / 09 / 11 补 [跨逻辑窗口与有效数字组合](input-drafts-and-interactions.md#i5-跨逻辑窗口与有效数字组合)：三个逻辑窗口的视图隔离、共享草稿与关闭历史清理；真实 `40e0` 组合第一次 Enter 仅确认，第二次才提交。另修复 [确认弹窗被命令面板快捷键穿透](input-drafts-and-interactions.md#i5-确认弹窗与命令面板隔离)，五类模态回归及原生撤销 / 关闭复验通过。两项原定代表样本从剩余表移除，不外推操作系统多窗口或全部输入法时序。
+
+单位设置另补 [放大布局与键盘可达性](../color-state/theme-and-accessibility.md#i5-单位设置放大布局与键盘可达性)：四类弹窗 24 组组件回归及 macOS 应用放大抽样，修复越界与焦点不可见；文件 / 草稿语义保持，不代替系统缩放。
+
+设置 / 恢复的 [实绘与非彩色代表样本](../color-state/theme-and-accessibility.md#i5-单位设置与恢复的实绘非彩色证据) 已补：六类场景双语色对、60 个离线视图及诊断入口焦点修复 / 原生复核。该下一批样本已核销，不将其扩为实际读屏或全平台通过。
+
+### I5 剩余项核对（2026-10-07）
+
+下表将既有待验范围转成可安排的下一批样本，不新增需求、不降低退出标准，也不把未测项改为通过。10 月 2 日表格是当批历史状态，最新证据以本节及上方增量为准。
+
+| 剩余范围 | 已有依据与具体缺口 | 后续执行条件 |
+| --- | --- | --- |
+| UA-11 删除目标变化及其他迟到 / 失败事务组合 | 保存基线变化和 [组合取消引发输入代次变化](input-drafts-and-interactions.md#i5-组合取消导致的迟到关闭确认) 已有原生证据；目标 / 修订变化及事务失败仍有领域 / 应用回归。当前单一原生 viewport、模态隔离和许可定时器链未提供已验证的后台目标变更入口 | Studio 维护者在发现可从产品触发的事件来源、或引入异步编辑 / 外部回调时执行目标变化样本；记录触发、旧确认拒绝和对象保持。当前记“原生待验，未找到触发入口”，不增加调试后门、不改为通过 |
+| VA-09 / 10 实际读屏 | 首批消费者已有可访问名称、键盘及非彩色代表样本；此前 VoiceOver 启动未取得播报，本批只读复核关闭状态 | 先在系统原生控件取得实际播报或 VoiceOver 生成的字幕 / 最近播报文本，再执行数值、单位、错误原因与安全确认；条件与证据见 [环境执行条件](../color-state/theme-and-accessibility.md#i5-读屏与系统缩放的执行条件)。可访问性树不替代播报 |
+| VA-09 / 10 精确系统缩放 | 两档 macOS 工作区与应用放大已有局部证据；本机分辨率档位不能直接核销精确 100% / 150% / 200% | 在可核实系统倍率的环境记录 OS 设置、窗口与键盘可达性；可随既定 Windows 阶段节点安排，但未据此授权提前放行 I5。结果 / 画布等未迁移消费者在所属阶段验收 |
+| Windows / Linux 原生路径 | macOS 证据不能替代其他平台；键盘、保存 / 输出路径尚未集中复验 | 按已批准的后续阶段节点执行，未测状态保持 |
+
+已完成的设置 / 恢复视觉和输入代次迟到代表样本不再列为待验；I5 仍未完整收口。事件来源审计与环境条件已记录，未出现新入口或环境变化时不重复相同尝试，也不以泛称“更多组合”无限追加范围。项目所有者已接受下节的有限开工例外与补验节点，并审定 UD-07 首批方案；按该范围推进 U3，未测项不改为通过。
+
+### I5 受控延期与 U3 开工安排
+
+2026-10-07 项目所有者明确确认以下有限例外与 UD-07 首批行为，允许 U3 首批结果呈现与已有输出接线开工。I5 仍保留未完整验收状态，不能据此宣称可访问性或全平台通过。
+
+| 已接受延期项 | 验证节点与责任 | 延期的实际影响 |
+| --- | --- | --- |
+| 删除目标变化及其他原生迟到 / 失败事务组合 | Studio 维护者在发现真实触发路径或接入异步编辑 / 外部回调的同批补验；首个对外候选前逐项复审适用性，仍无入口的项由项目所有者审定处理 | 继续依赖已有事务 / 应用回归及已取得的迟到关闭证据，不能声明这些原生组合已通过 |
+| 实际读屏 | 环境维护者先恢复系统原生控件播报，Studio 维护者随后检查 I5 首批及 U3 新消费者；安排在下一次可用原生验收节点，最迟首个对外候选前补齐 | 尚不能承诺真实读屏可用；仅有 AX 名称、键盘和非彩色证据 |
+| 精确 100% / 150% / 200% OS 倍率 | Studio / 平台维护者在后续 Windows 原生节点提供可核实倍率并执行矩阵，最迟首个对外候选前补齐；原有 macOS 抽样保留 | 精确系统倍率仍未测；不将应用放大当作系统倍率通过 |
+
+Windows / Linux 原生键盘、保存 / 输出继续按已有后续阶段节点执行，不扩张为本次必须启动虚拟机。首个对外候选前应复审全部残项，不将开发开工例外自动延伸为发布放行。
+
+本次已同时确认上述有限开工例外与 [UD-07 首批方案及切片](output-and-consumer-consistency.md#ud-07-首批输出方案)，含输出使用捕获的项目单位、只读显示 6 位有效数字、当前结果重验与旧 CLI SI 兼容。U3 首批已完成实现与 macOS 代表路径，见 UNIT-13—15；I5 残项按本节执行。
 
 ## 待决策清单
 
-2026-09-23 项目所有者接受 UD-01—06 的候选及五张 Pencil 局部画板；以下区分已接受内容与剩余决策。行为已回写所属规范；I1 按提案获授权并实现，U2 整体产品验收仍待完成；[局部画板与静态证据](../../architecture/designs/studio-client-main-brief.md#本轮画板与静态复核) 不等于接口冻结。UD-07 / UD-08 保持后续切片决策。
+2026-09-23 项目所有者接受 UD-01—06 的候选及五张 Pencil 局部画板；以下区分已接受内容与剩余决策。行为已回写所属规范；I1 按提案获授权并实现，U2 整体产品验收仍待完成；[局部画板与静态证据](../../architecture/designs/studio-client-main-brief.md#本轮画板与静态复核) 不等于接口冻结。UD-07 首批已于 2026-10-07 审定；未来协议与 UD-08 保持各自切片决策。
 
 | 编号 | 决策 / 规范归属 | 关联要求 | 最迟时机 / 负责领域 | 本轮结论与未完成项 |
 | --- | --- | --- | --- | --- |
 | UD-01 | [内置集、自定义范围、格式、视图覆盖生命周期与目录扩充](unit-sets-and-persistence.md#首版单位集与适用范围) | UNIT-01、05、08、09 | U2 单位集 / 菜单实施前；单位与 Studio | 首版范围已接受；扩展精度 / 本地化格式及新增目录后续另审 |
 | UD-02 | [呈现 DTO、版本、未知 ID 保留、旧版本往返与草稿保存范围](unit-sets-and-persistence.md#u2-存储接口) | UNIT-06、07、11 | U2 文件格式变更前；存储与单位 | 兼容方向已接受；外层 2 / metadata 1、完整 DTO 与严格读取已批准并实现；固定旧版本门禁证据已补；I2 独立个人默认 / 显式备份恢复与升级提示已授权并实现 |
-| UD-03 | [显示切换期间的草稿策略、失焦 / 跨对象 / 保存触发及事务重验](input-drafts-and-interactions.md#u2-编辑接口与接线边界) | UNIT-09、10、11 | U2 局部交互评审与接线前；Studio 与应用事务 | 显示切换、显式提交、导航 / 保存 / 离开策略已接受；I3 会话 / 重验及失败保护已接通；统一原生离开确认待 I4 |
-| UD-04 | [文本 / 工程 / 呈现历史的快捷键路由与分组](input-drafts-and-interactions.md#u2-编辑接口与接线边界) | UNIT-06、11 | U2 撤销交互实施前；编辑历史与 Studio | 三类历史路由已接受；I3 会话历史快照已实现；I4 首批连续输入分组 / 焦点路由已接，实窗待验 |
-| UD-05 | [数值语法、本地化、粘贴单位、空值 / 清除与校验时机](input-drafts-and-interactions.md#解析与精度规则) | UNIT-08、10、11 | U2 字段解析实施前；字段与单位 | 首版语法、后缀冲突与空白分类已接受；I3 解析结果 / 单位来源已实现；I4 首批原生非 SI 已接，实窗待验 |
+| UD-03 | [显示切换期间的草稿策略、失焦 / 跨对象 / 保存触发及事务重验](input-drafts-and-interactions.md#u2-编辑接口与接线边界) | UNIT-09、10、11 | U2 局部交互评审与接线前；Studio 与应用事务 | 显示切换、显式提交、导航 / 保存 / 离开策略已接受；I3 会话 / 重验及失败保护已接通；I4 统一原生离开确认已接通，原生组合验收待 I5 |
+| UD-04 | [文本 / 工程 / 呈现历史的快捷键路由与分组](input-drafts-and-interactions.md#u2-编辑接口与接线边界) | UNIT-06、11 | U2 撤销交互实施前；编辑历史与 Studio | 三类历史路由已接受并接通；I5 已补 macOS 快捷键 / 菜单 / 关闭焦点抽样，完整矩阵待验 |
+| UD-05 | [数值语法、本地化、粘贴单位、空值 / 清除与校验时机](input-drafts-and-interactions.md#解析与精度规则) | UNIT-08、10、11 | U2 字段解析实施前；字段与单位 | 首版语法、后缀冲突与空白分类已接受；I3 / I4 已接通，I5 补类型化中英文提示与原生非 SI / 输入法抽样，完整组合待验 |
 | UD-06 | [实际编辑后的等价值判定、容差及独立数值 / 平台用例](input-drafts-and-interactions.md#解析与精度规则) | UNIT-03、10、12 | U2 精度与提交实施前；事务、单位与验证 | 精确同值与未编辑 SI 保留已接受；I3 精度来源与独立数值回归已补；原生 / 平台证据待补 |
-| UD-07 | [输出捕获时点、格式、覆盖选择和对外协议兼容](output-and-consumer-consistency.md) | UNIT-13、14、15 | U3 输出接入前；新协议 / 回放 / N4 各自实施前另审；输出与 API | 待 U3 及后续消费者审定 |
+| UD-07 | [输出捕获时点、格式、覆盖选择和对外协议兼容](output-and-consumer-consistency.md) | UNIT-13、14、15 | U3 输出接入前；新协议 / 回放 / N4 各自实施前另审；输出与 API | [首批输出方案](output-and-consumer-consistency.md#ud-07-首批输出方案) 已审定，首批已实现并验证；未来协议 / 回放 / N4 不在本次授权内 |
 | UD-08 | [上下文来源 / 有效性、定义版本与独立工程依据](catalog-and-conversion.md) | UNIT-16 | U4 各基准转换实施前；单位、物性与工程基础 | 待 U4 具体转换审定 |
 
 ## 维护检查

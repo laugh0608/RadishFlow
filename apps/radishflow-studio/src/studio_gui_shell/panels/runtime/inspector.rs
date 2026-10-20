@@ -197,7 +197,14 @@ impl ReadyAppState {
                 ui.small(egui::RichText::new("Attention").strong());
                 ui.end_row();
                 for port in &settings.ports {
-                    render_wrapped_small(ui, &port.name);
+                    self.render_specification_port(
+                        ui,
+                        settings
+                            .selected_unit
+                            .as_ref()
+                            .map_or("", |unit| unit.target_id.as_str()),
+                        &port.name,
+                    );
                     render_wrapped_small(ui, &port.direction);
                     render_wrapped_small(ui, &port.kind);
                     match (&port.stream_id, &port.stream_action) {
@@ -361,12 +368,17 @@ impl ReadyAppState {
             if let Some(summary) = detail.property_composition_summary.as_ref() {
                 ui.add_space(4.0);
                 ui.horizontal_wrapped(|ui| {
-                    ui.small(
-                        egui::RichText::new(
-                            self.locale.text(ShellText::InspectorCompositionSummary),
-                        )
-                        .strong(),
-                    );
+                    let heading = ui.add(egui::Label::new(
+                        egui::RichText::new(self.locale.text(ShellText::InspectorCompositionSummary)).small().strong()
+                    ).sense(egui::Sense::focusable_noninteractive()));
+                    if !detail.property_fields.iter().any(|field| matches!(
+                        rf_ui::stream_inspector_draft_key_parts(&field.key),
+                        Some((_, rf_ui::StreamInspectorDraftField::OverallMoleFraction(_)))
+                    )) {
+                        self.focus_specification_section(&heading,
+                            radishflow_studio::modeling_specifications::SpecificationTarget::Composition(
+                                rf_types::StreamId::new(&detail.target.target_id)));
+                    }
                     render_status_chip(
                         ui,
                         self.locale.runtime_label(summary.status_label).as_ref(),
@@ -439,7 +451,7 @@ impl ReadyAppState {
                     ui.small(egui::RichText::new("Attention").strong());
                     ui.end_row();
                     for port in &detail.unit_ports {
-                        render_wrapped_small(ui, &port.name);
+                        self.render_specification_port(ui, &detail.target.target_id, &port.name);
                         render_wrapped_small(ui, &port.direction);
                         render_wrapped_small(ui, &port.kind);
                         match (&port.stream_id, &port.stream_action) {
@@ -577,6 +589,7 @@ impl ReadyAppState {
                 egui::TextEdit::singleline(&mut draft_value)
                     .id_salt(format!("inspector-property-field:{}", field.key)),
             );
+            self.apply_specification_key_focus(&response, &field.key);
             if response.changed() {
                 self.dispatch_inspector_field_draft_update(
                     field.draft_update_command_id.clone(),
@@ -694,33 +707,35 @@ fn localized_inspector_constraint<'a>(
     }
 
     match text {
-        "Unit K; positive finite source outlet temperature; commit syncs the Feed outlet template." => {
-            std::borrow::Cow::Borrowed("单位 K；输入正数，提交后同步 Feed outlet。")
+        "Absolute source outlet temperature must be finite and above 0 K; commit syncs the Feed outlet template." => {
+            std::borrow::Cow::Borrowed("绝对温度须为有限值且高于 0 K；提交后同步 Feed 出口。")
         }
-        "Unit K; positive finite flash temperature; commit syncs liquid/vapor outlet templates." => {
-            std::borrow::Cow::Borrowed("单位 K；输入正数，提交后同步液相 / 气相出口。")
+        "Absolute flash temperature must be finite and above 0 K; commit syncs liquid/vapor outlet templates." => {
+            std::borrow::Cow::Borrowed("绝对温度须为有限值且高于 0 K；提交后同步液相 / 气相出口。")
         }
-        "Unit K; positive finite outlet temperature; commit syncs the outlet stream template." => {
-            std::borrow::Cow::Borrowed("单位 K；输入正数，提交后同步出口流股。")
+        "Absolute outlet temperature must be finite and above 0 K; commit syncs the outlet stream template." => {
+            std::borrow::Cow::Borrowed("绝对温度须为有限值且高于 0 K；提交后同步出口流股。")
         }
-        "Unit Pa; positive finite source outlet pressure; commit syncs the Feed outlet template." => {
-            std::borrow::Cow::Borrowed("单位 Pa；输入正数，提交后同步 Feed outlet。")
+        "Absolute source outlet pressure must be finite and above 0 Pa; commit syncs the Feed outlet template." => {
+            std::borrow::Cow::Borrowed("绝对压力须为有限值且高于 0 Pa；提交后同步 Feed 出口。")
         }
-        "Unit Pa; positive finite flash pressure; commit syncs liquid/vapor outlet templates." => {
-            std::borrow::Cow::Borrowed("单位 Pa；输入正数，提交后同步液相 / 气相出口。")
+        "Absolute flash pressure must be finite and above 0 Pa; commit syncs liquid/vapor outlet templates." => {
+            std::borrow::Cow::Borrowed("绝对压力须为有限值且高于 0 Pa；提交后同步液相 / 气相出口。")
         }
         _ => {
             if let Some(limit) = text.strip_prefix(
-                "Unit Pa; positive finite outlet pressure; cannot exceed connected inlet pressure. Inlet limit: ",
+                "Absolute outlet pressure must be finite and above 0 Pa; cannot exceed connected inlet pressure. Inlet limit: ",
             ) {
                 return std::borrow::Cow::Owned(format!(
-                    "单位 Pa；输入正数，不能高于已连接入口压力。入口上限: {limit}"
+                    "绝对压力须为有限值且高于 0 Pa，不能高于已连接入口压力。入口上限: {limit}"
                 ));
             }
             if text
-                == "Unit Pa; positive finite outlet pressure; cannot exceed connected inlet pressure."
+                == "Absolute outlet pressure must be finite and above 0 Pa; cannot exceed connected inlet pressure."
             {
-                return std::borrow::Cow::Borrowed("单位 Pa；输入正数，不能高于已连接入口压力。");
+                return std::borrow::Cow::Borrowed(
+                    "绝对压力须为有限值且高于 0 Pa，不能高于已连接入口压力。",
+                );
             }
             locale.runtime_label(text)
         }

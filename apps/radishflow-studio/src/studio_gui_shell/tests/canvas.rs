@@ -593,7 +593,7 @@ fn canvas_feed_to_flash_minimal_path_surfaces_local_connection_suggestions() {
         Some("local.feed.create_outlet.feed-2")
     );
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let after_feed_outlet = app.platform_host.snapshot().window_model();
     assert_eq!(after_feed_outlet.canvas.suggestion_count, 0);
 
@@ -607,7 +607,7 @@ fn canvas_feed_to_flash_minimal_path_surfaces_local_connection_suggestions() {
     );
     assert_eq!(after_flash.canvas.suggestion_count, 1);
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let after_inlet = app.platform_host.snapshot().window_model();
     assert_eq!(
         after_inlet.canvas.focused_suggestion_id.as_deref(),
@@ -615,14 +615,14 @@ fn canvas_feed_to_flash_minimal_path_surfaces_local_connection_suggestions() {
     );
     assert_eq!(after_inlet.canvas.suggestion_count, 2);
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let after_liquid = app.platform_host.snapshot().window_model();
     assert_eq!(
         after_liquid.canvas.focused_suggestion_id.as_deref(),
         Some("local.flash_drum.create_outlet.flash-2.vapor")
     );
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let completed = app.platform_host.snapshot().window_model();
     assert_eq!(completed.canvas.suggestion_count, 0);
     assert!(completed.runtime.workspace_document.has_unsaved_changes);
@@ -744,7 +744,7 @@ fn blank_project_selects_thermo_basis_saves_reopens_and_runs_feed_flash_path() {
             .as_deref(),
         Some("local.feed.create_outlet.feed-1")
     );
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
 
     app.dispatch_ui_command("canvas.begin_place_unit.flash_drum");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(220.0, 40.0));
@@ -757,9 +757,9 @@ fn blank_project_selects_thermo_basis_saves_reopens_and_runs_feed_flash_path() {
             .as_deref(),
         Some("local.flash_drum.connect_inlet.flash-1.stream-feed-1-outlet")
     );
-    app.dispatch_ui_command("canvas.accept_focused");
-    app.dispatch_ui_command("canvas.accept_focused");
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
+    accept_focused_canvas_recommendation(&mut app);
+    accept_focused_canvas_recommendation(&mut app);
 
     normalize_stream_composition(
         &mut app,
@@ -1224,8 +1224,8 @@ fn blank_project_single_inlet_flash_paths_save_reopen_and_rerun() {
         assert!(exported.contains("stream-feed-1-outlet"));
         assert!(exported.contains("stream-flash-1-liquid"));
         assert!(exported.contains("stream-flash-1-vapor"));
-        assert!(exported.contains("methane=0.2500"));
-        assert!(exported.contains("ethane=0.7500"));
+        assert!(exported.contains("methane=0.25 mol/mol"));
+        assert!(exported.contains("ethane=0.75 mol/mol"));
         assert!(exported.contains("phase_region="));
         assert!(exported.contains("bubble_pressure="));
         assert!(exported.contains("dew_pressure="));
@@ -1952,7 +1952,7 @@ fn canvas_feed_heater_flash_minimal_path_can_run_after_parameters() {
             .as_deref(),
         Some("local.feed.create_outlet.feed-2")
     );
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
 
     app.dispatch_ui_command("canvas.begin_place_unit.heater");
     app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(180.0, 40.0));
@@ -1963,7 +1963,7 @@ fn canvas_feed_heater_flash_minimal_path_can_run_after_parameters() {
         Some("local.heater.connect_inlet.heater-2.stream-feed-2-outlet")
     );
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let after_heater_inlet = app.platform_host.snapshot().window_model();
     assert_eq!(
         after_heater_inlet.canvas.focused_suggestion_id.as_deref(),
@@ -1971,7 +1971,7 @@ fn canvas_feed_heater_flash_minimal_path_can_run_after_parameters() {
     );
     assert_eq!(after_heater_inlet.canvas.suggestion_count, 1);
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let after_heater_outlet = app.platform_host.snapshot().window_model();
     assert_eq!(after_heater_outlet.canvas.suggestion_count, 0);
 
@@ -1984,9 +1984,9 @@ fn canvas_feed_heater_flash_minimal_path_can_run_after_parameters() {
         Some("local.flash_drum.connect_inlet.flash-2.stream-heater-2-outlet")
     );
 
-    app.dispatch_ui_command("canvas.accept_focused");
-    app.dispatch_ui_command("canvas.accept_focused");
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
+    accept_focused_canvas_recommendation(&mut app);
+    accept_focused_canvas_recommendation(&mut app);
 
     commit_unit_parameter(
         &mut app,
@@ -2049,7 +2049,7 @@ fn canvas_feed_mixer_flash_minimal_path_can_run_after_parameters() {
     ] {
         app.dispatch_ui_command("canvas.begin_place_unit.feed");
         app.dispatch_canvas_pending_edit_commit(point);
-        app.dispatch_ui_command("canvas.accept_focused");
+        accept_focused_canvas_recommendation(&mut app);
     }
 
     app.dispatch_ui_command("canvas.begin_place_unit.mixer");
@@ -2061,21 +2061,21 @@ fn canvas_feed_mixer_flash_minimal_path_can_run_after_parameters() {
         Some("local.mixer.connect_inlet_a.mixer-1.stream-feed-2-outlet")
     );
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let after_mixer_inlet_a = app.platform_host.snapshot().window_model();
     assert_eq!(
         after_mixer_inlet_a.canvas.focused_suggestion_id.as_deref(),
         Some("local.mixer.connect_inlet_b.mixer-1.stream-feed-3-outlet")
     );
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let after_mixer_inlet_b = app.platform_host.snapshot().window_model();
     assert_eq!(
         after_mixer_inlet_b.canvas.focused_suggestion_id.as_deref(),
         Some("local.mixer.create_outlet.mixer-1")
     );
 
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
     let after_mixer_outlet = app.platform_host.snapshot().window_model();
     assert_eq!(after_mixer_outlet.canvas.suggestion_count, 0);
 
@@ -2087,9 +2087,9 @@ fn canvas_feed_mixer_flash_minimal_path_can_run_after_parameters() {
         Some("local.flash_drum.connect_inlet.flash-2.stream-mixer-1-outlet")
     );
 
-    app.dispatch_ui_command("canvas.accept_focused");
-    app.dispatch_ui_command("canvas.accept_focused");
-    app.dispatch_ui_command("canvas.accept_focused");
+    accept_focused_canvas_recommendation(&mut app);
+    accept_focused_canvas_recommendation(&mut app);
+    accept_focused_canvas_recommendation(&mut app);
 
     commit_unit_parameter(
         &mut app,

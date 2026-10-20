@@ -1,3 +1,7 @@
+use crate::modeling_recommendations::{
+    ModelingRecommendationSession, RecommendationError, RecommendationPreview,
+    RecommendationReceipt,
+};
 use std::{path::Path, time::SystemTime};
 
 use crate::remove_inspector_composition_component;
@@ -110,6 +114,9 @@ fn dispatch_bootstrap_trigger(
     session: &mut BootstrapSessionResources<'_>,
 ) -> RfResult<StudioBootstrapDispatch> {
     match trigger {
+        StudioBootstrapTrigger::ConfirmedInputAction(request) => {
+            crate::confirmed_input_action::apply_confirmed_input_action(session.app_state, request)
+        }
         StudioBootstrapTrigger::AppCommand(command) => {
             let context =
                 StudioAppAuthCacheContext::new(session.cache_root, &*session.auth_cache_index);
@@ -197,6 +204,18 @@ fn dispatch_bootstrap_trigger(
                 "bootstrap run panel recovery action is unavailable in current widget model",
             )
         }),
+        StudioBootstrapTrigger::Equipment(command) => {
+            let workspace = &mut session.app_state.workspace;
+            workspace
+                .equipment_editor
+                .dispatch(
+                    &mut workspace.engineering,
+                    workspace.project_presentation.display_units(),
+                    command.clone(),
+                )
+                .map_err(|error| RfError::invalid_input(error.to_string()))?;
+            Ok(StudioBootstrapDispatch::Equipment)
+        }
         StudioBootstrapTrigger::NumericEdit(command) => {
             let generation = session
                 .app_state
@@ -450,6 +469,15 @@ impl BootstrapSession {
             let mut session_resources = self.resources();
             dispatch_bootstrap_trigger(trigger, &mut session_resources)?
         };
+        if matches!(dispatch, StudioBootstrapDispatch::ObjectDeletion { .. }) {
+            self.refresh_local_canvas_suggestions();
+            if let Err(error) = self.dispatch_automatic_run_after_canvas_write_if_needed() {
+                self.app_state.log_feed.push(
+                    rf_ui::AppLogLevel::Error,
+                    format!("Object deletion committed, but automatic run failed: {error}"),
+                );
+            }
+        }
         self.build_report(dispatch)
     }
 
@@ -552,6 +580,16 @@ impl BootstrapSession {
             self.refresh_local_canvas_suggestions();
         }
         Ok(result)
+    }
+
+    pub(crate) fn accept_modeling_recommendation(
+        &mut self,
+        session: &mut ModelingRecommendationSession,
+        preview: &RecommendationPreview,
+    ) -> Result<RecommendationReceipt, RecommendationError> {
+        let receipt = session.accept(&mut self.app_state, preview, SystemTime::now())?;
+        self.refresh_local_canvas_suggestions();
+        Ok(receipt)
     }
 
     pub(crate) fn accept_focused_canvas_suggestion_by_tab(

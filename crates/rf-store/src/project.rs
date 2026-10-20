@@ -65,6 +65,13 @@ pub struct StoredProjectDocument {
     pub metadata: StoredDocumentMetadata,
 }
 
+impl StoredProjectDocument {
+    pub fn validate(&self) -> RfResult<()> {
+        self.metadata.validate()?;
+        validate_flowsheet_thermo_config(&self.flowsheet)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(try_from = "ProjectFileWire")]
 pub struct StoredProjectFile {
@@ -108,8 +115,10 @@ impl StoredProjectFile {
                 "project file version 1 cannot preserve non-SI presentation; upgrade explicitly before saving",
             ));
         }
-        self.document.metadata.validate()?;
-        validate_flowsheet_thermo_config(&self.document.flowsheet)
+        self.presentation
+            .validate_legacy_projection()
+            .map_err(RfError::invalid_input)?;
+        self.document.validate()
     }
 }
 

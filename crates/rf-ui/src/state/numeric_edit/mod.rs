@@ -10,7 +10,7 @@ use super::*;
 use crate::variable_browser::{BrowseError, VariableId};
 use rf_types::units::{ConversionError, MeasurementUnit, QuantityKind, from_canonical};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NumericEditError {
     Lookup(BrowseError),
     UnsupportedField,

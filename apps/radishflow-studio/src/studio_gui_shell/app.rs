@@ -40,7 +40,13 @@ impl ReadyAppState {
         self.request_open_project(project_path, "project picker");
     }
 
+    pub(super) fn start_independent_equipment_project(&mut self) {
+        self.equipment.new_project = true;
+        self.request_blank_project(None);
+    }
+
     pub(super) fn create_blank_project(&mut self) {
+        self.equipment.new_project = false;
         self.request_blank_project(None);
     }
 
@@ -67,14 +73,21 @@ impl ReadyAppState {
     }
 
     pub(super) fn start_mixer_flash_authoring_case(&mut self) {
+        self.equipment.new_project = false;
         self.request_blank_project(Some(AuthoringCaseKind::MixerFlash));
     }
 
     pub(super) fn start_heater_flash_authoring_case(&mut self) {
+        self.equipment.new_project = false;
         self.request_blank_project(Some(AuthoringCaseKind::HeaterFlash));
     }
 
     fn request_blank_project(&mut self, authoring_case: Option<AuthoringCaseKind>) {
+        if self.unit_settings.is_open() {
+            self.validate_project_departure();
+            return;
+        }
+        self.project_open.departure_checkpoint = Some(self.project_departure_checkpoint());
         if self
             .platform_host
             .snapshot()
@@ -103,6 +116,9 @@ impl ReadyAppState {
         if !self.project_open.pending_blank_project_confirmation {
             return;
         }
+        if !self.validate_project_departure() {
+            return;
+        }
         let authoring_case = self.project_open.pending_authoring_blank_project;
         self.project_open.pending_blank_project_confirmation = false;
         self.project_open.pending_authoring_blank_project = None;
@@ -110,6 +126,7 @@ impl ReadyAppState {
     }
 
     pub(super) fn cancel_pending_blank_project(&mut self) {
+        self.equipment.new_project = false;
         self.project_open.pending_blank_project_confirmation = false;
         self.project_open.pending_authoring_blank_project = None;
         self.project_open.notice = Some(ProjectOpenNotice {
@@ -138,16 +155,26 @@ impl ReadyAppState {
         authoring_case: Option<AuthoringCaseKind>,
         units: rf_types::units::DisplayUnitSet,
     ) {
+        if self.project_open.departure_checkpoint.is_some() && !self.validate_project_departure() {
+            self.project_open.pending_blank_project_confirmation = true;
+            self.project_open.pending_authoring_blank_project = authoring_case;
+            return;
+        }
         let config = studio_shell_blank_runtime_config();
 
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
                 self.platform_host = platform_host;
+                self.read_only_project = None;
+                self.modeling_problems
+                    .replace_document(self.platform_host.document());
                 self.pending_format_upgrade = None;
                 self.unit_settings.draft = None;
                 self.unit_settings.view_draft = None;
                 self.unit_settings.closed_inspectors.clear();
                 self.pending_unit_deletion = None;
+                self.pending_input_action = None;
+                self.project_open.departure_checkpoint = None;
                 self.pending_result_export = None;
                 self.platform_timer_executor = EguiPlatformTimerExecutor::default();
                 self.command_palette.close();
@@ -193,6 +220,14 @@ impl ReadyAppState {
                 );
                 self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
                 self.initialize_new_project_units(units);
+                let equipment_project = self.equipment.new_project;
+                self.equipment = equipment::EquipmentPageState::default();
+                if equipment_project {
+                    self.equipment_command(
+                        rf_ui::engineering::editor::EquipmentEditorCommand::CreateTask,
+                    );
+                    self.enter_equipment();
+                }
                 if let Err(error) = self.apply_default_hidden_commands_panel_for_current_window() {
                     self.platform_host.record_activity_line(format!(
                         "apply default commands panel visibility failed [{}]: {}",
@@ -221,6 +256,12 @@ impl ReadyAppState {
     }
 
     pub(super) fn request_open_project(&mut self, project_path: PathBuf, source_label: &str) {
+        self.equipment.new_project = false;
+        if self.unit_settings.is_open() {
+            self.validate_project_departure();
+            return;
+        }
+        self.project_open.departure_checkpoint = Some(self.project_departure_checkpoint());
         if self
             .platform_host
             .snapshot()
@@ -253,6 +294,9 @@ impl ReadyAppState {
     }
 
     pub(super) fn confirm_pending_project_open(&mut self) {
+        if self.project_open.pending_confirmation.is_none() || !self.validate_project_departure() {
+            return;
+        }
         let Some(request) = self.project_open.pending_confirmation.take() else {
             return;
         };
@@ -269,16 +313,49 @@ impl ReadyAppState {
     }
 
     pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
+        match radishflow_studio::read_studio_project(&project_path) {
+            Ok(radishflow_studio::StudioProjectOpen::ReadOnly(project)) => {
+                self.read_only_project = Some(project_read_only::ReadOnlyProjectView {
+                    path: project_path,
+                    project,
+                });
+                self.command_palette.close();
+                self.pending_format_upgrade = None;
+                self.project_open.pending_confirmation = None;
+                self.project_open.departure_checkpoint = None;
+                return;
+            }
+            Err(error) => {
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Error,
+                    title: "Project open failed".into(),
+                    detail: format!("{error}. Current workspace remains open."),
+                });
+                self.platform_host.record_activity_line(format!(
+                    "open {source_label} failed [{}]: {} ({})",
+                    error.code().as_str(),
+                    error.message(),
+                    project_path.display()
+                ));
+                return;
+            }
+            Ok(radishflow_studio::StudioProjectOpen::Editable(_)) => {}
+        }
         let config = studio_shell_runtime_config(Some(project_path.clone()));
 
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
                 self.platform_host = platform_host;
+                self.read_only_project = None;
+                self.modeling_problems
+                    .replace_document(self.platform_host.document());
                 self.pending_format_upgrade = None;
                 self.unit_settings.draft = None;
                 self.unit_settings.view_draft = None;
                 self.unit_settings.closed_inspectors.clear();
                 self.pending_unit_deletion = None;
+                self.pending_input_action = None;
+                self.project_open.departure_checkpoint = None;
                 self.pending_result_export = None;
                 self.platform_timer_executor = EguiPlatformTimerExecutor::default();
                 self.command_palette.close();
@@ -320,6 +397,18 @@ impl ReadyAppState {
                     project_path.display()
                 ));
                 self.dispatch_event(StudioGuiEvent::OpenWindowRequested);
+                self.equipment = equipment::EquipmentPageState::default();
+                if !self
+                    .platform_host
+                    .modeling_inputs()
+                    .workspace
+                    .engineering
+                    .inputs()
+                    .tasks
+                    .is_empty()
+                {
+                    self.enter_equipment();
+                }
                 if let Err(error) = self.apply_default_hidden_commands_panel_for_current_window() {
                     self.platform_host.record_activity_line(format!(
                         "apply default commands panel visibility failed [{}]: {}",
@@ -379,6 +468,10 @@ impl ReadyAppState {
     }
 
     pub(super) fn update(&mut self, ctx: &egui::Context) {
+        if self.render_read_only_project(ctx) {
+            return;
+        }
+        self.refresh_modeling_problems();
         let close_frame_snapshot = ctx
             .input(|input| input.viewport().close_requested())
             .then(|| self.platform_host.snapshot());
@@ -415,6 +508,7 @@ impl ReadyAppState {
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
+            self.render_input_action_dialog(ctx);
             self.render_result_export_dialog(ctx);
             return;
         }
@@ -424,6 +518,13 @@ impl ReadyAppState {
             &window,
             &mut hovered_drop_target,
         );
+        if self.screen == StudioShellScreen::Equipment {
+            self.render_equipment_page(ctx);
+            self.render_command_palette(ctx, &window.commands);
+            self.render_pending_close_window_dialog(ctx);
+            self.render_input_action_dialog(ctx);
+            return;
+        }
         if self.screen == StudioShellScreen::Property {
             self.render_bottom_status_bar(ctx, &window);
             self.render_property_page(ctx, &window);
@@ -431,6 +532,7 @@ impl ReadyAppState {
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
+            self.render_input_action_dialog(ctx);
             self.render_result_export_dialog(ctx);
             return;
         }
@@ -444,6 +546,7 @@ impl ReadyAppState {
         self.render_floating_drop_preview_overlay(ctx, &window);
         self.render_pending_close_window_dialog(ctx);
         self.render_unit_deletion_dialog(ctx);
+        self.render_input_action_dialog(ctx);
         self.render_result_export_dialog(ctx);
         self.finish_drop_preview_cycle(
             ctx,
@@ -464,6 +567,7 @@ impl ReadyAppState {
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
+            self.render_input_action_dialog(ctx);
             self.render_result_export_dialog(ctx);
             return;
         }
@@ -474,12 +578,20 @@ impl ReadyAppState {
             &window,
             &mut hovered_drop_target,
         );
+        if self.screen == StudioShellScreen::Equipment {
+            self.render_equipment_page(ctx);
+            self.render_command_palette(ctx, &window.commands);
+            self.render_pending_close_window_dialog(ctx);
+            self.render_input_action_dialog(ctx);
+            return;
+        }
         if self.screen == StudioShellScreen::Property {
             self.render_bottom_status_bar(ctx, &window);
             self.render_property_page(ctx, &window);
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
+            self.render_input_action_dialog(ctx);
             self.render_result_export_dialog(ctx);
             return;
         }
@@ -492,6 +604,7 @@ impl ReadyAppState {
         self.render_floating_drop_preview_overlay(ctx, &window);
         self.render_pending_close_window_dialog(ctx);
         self.render_unit_deletion_dialog(ctx);
+        self.render_input_action_dialog(ctx);
         self.render_result_export_dialog(ctx);
     }
 
@@ -517,6 +630,9 @@ impl ReadyAppState {
 
     pub(super) fn dispatch_ui_command(&mut self, command_id: impl Into<String>) {
         let command_id = command_id.into();
+        if self.intercept_recommendation_command(&command_id) {
+            return;
+        }
         if command_id == radishflow_studio::FILE_SAVE_COMMAND_ID {
             self.save_project();
             return;
@@ -525,10 +641,29 @@ impl ReadyAppState {
             self.request_unit_deletion();
             return;
         }
+        if self.screen == StudioShellScreen::Equipment
+            && let Some(history) = radishflow_studio::document_history_command_from_id(&command_id)
+        {
+            self.equipment_command(
+                rf_ui::engineering::editor::EquipmentEditorCommand::History {
+                    redo: matches!(
+                        history,
+                        radishflow_studio::StudioDocumentHistoryCommand::Redo
+                    ),
+                },
+            );
+            return;
+        }
+        if self.intercept_input_action(&command_id) {
+            return;
+        }
         self.dispatch_confirmed_ui_command(command_id);
     }
 
     pub(super) fn dispatch_confirmed_ui_command(&mut self, command_id: String) {
+        if self.intercept_recommendation_command(&command_id) {
+            return;
+        }
         if self.intercept_modeling_readiness_run_if_needed(&command_id) {
             return;
         }
@@ -858,6 +993,14 @@ impl ReadyAppState {
     }
 
     pub(super) fn dispatch_event(&mut self, event: StudioGuiEvent) {
+        if self.intercept_recommendation_event(&event) {
+            return;
+        }
+        if matches!(event, StudioGuiEvent::RunPanelRecoveryRequested)
+            && self.intercept_input_action("run_panel.recover_failure")
+        {
+            return;
+        }
         match self.dispatch_event_result(event.clone()) {
             Ok(_) => {
                 self.refresh_active_modeling_readiness_notice();
@@ -874,9 +1017,11 @@ impl ReadyAppState {
         &mut self,
         event: StudioGuiEvent,
     ) -> RfResult<StudioGuiPlatformExecutedDispatch> {
-        let dispatch = self
+        let result = self
             .platform_host
-            .dispatch_event_and_execute_platform_timer(event, &mut self.platform_timer_executor)?;
+            .dispatch_event_and_execute_platform_timer(event, &mut self.platform_timer_executor);
+        self.refresh_modeling_problems();
+        let dispatch = result?;
         self.follow_run_and_recovery_outcome(&dispatch);
         Ok(dispatch)
     }
@@ -1103,129 +1248,6 @@ impl ReadyAppState {
     pub(super) fn sync_viewport_lifecycle(&mut self, ctx: &egui::Context) {
         let focused = ctx.input(|input| input.viewport().focused.unwrap_or(input.focused));
         self.last_viewport_focused = Some(focused);
-    }
-
-    pub(super) fn handle_quit_shortcut(&mut self, ctx: &egui::Context) -> bool {
-        let quit_requested =
-            ctx.input(|input| input.modifiers.command && input.key_pressed(egui::Key::Q));
-        if !quit_requested {
-            return false;
-        }
-
-        if self.close_current_window_for_viewport_request() {
-            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-        }
-        true
-    }
-
-    pub(super) fn handle_command_palette_toggle_shortcut(&mut self, ctx: &egui::Context) -> bool {
-        if self.unit_settings.is_open() || self.pending_format_upgrade.is_some() {
-            return false;
-        }
-        let toggle_requested =
-            ctx.input(|input| input.modifiers.command && input.key_pressed(egui::Key::K));
-        if toggle_requested {
-            self.command_palette.toggle();
-        }
-        toggle_requested
-    }
-
-    pub(super) fn handle_command_palette_keyboard(
-        &mut self,
-        ctx: &egui::Context,
-        commands: &radishflow_studio::StudioGuiWindowCommandAreaModel,
-    ) -> bool {
-        if !self.command_palette.open {
-            return false;
-        }
-
-        let palette_items = commands.palette_items(&self.command_palette.query);
-        self.command_palette.sync_selection(&palette_items);
-
-        if ctx.input(|input| input.key_pressed(egui::Key::Escape)) {
-            self.command_palette.close();
-            return true;
-        }
-        if ctx.input(|input| input.key_pressed(egui::Key::ArrowDown)) {
-            self.command_palette.move_selection(1, &palette_items);
-            return true;
-        }
-        if ctx.input(|input| input.key_pressed(egui::Key::ArrowUp)) {
-            self.command_palette.move_selection(-1, &palette_items);
-            return true;
-        }
-        if ctx.input(|input| input.key_pressed(egui::Key::Enter)) {
-            let selected_command_id = selected_palette_item_command_id(
-                &palette_items,
-                self.command_palette.selected_index,
-            );
-            if let Some(command_id) = selected_command_id {
-                self.dispatch_ui_command(command_id);
-                self.command_palette.close();
-            }
-            return true;
-        }
-
-        false
-    }
-
-    pub(super) fn dispatch_shortcuts(&mut self, ctx: &egui::Context) {
-        let focus_context = self.focus_context(ctx);
-        if matches!(
-            focus_context,
-            StudioGuiFocusContext::CommandPalette | StudioGuiFocusContext::ModalDialog
-        ) {
-            return;
-        }
-
-        if self.drag_session.is_some() && ctx.input(|input| input.key_pressed(egui::Key::Escape)) {
-            self.cancel_drag_session(self.current_window_id());
-            return;
-        }
-
-        let shortcuts = ctx.input(collect_shortcuts);
-        for shortcut in shortcuts {
-            if self.intercept_modeling_readiness_shortcut_if_needed(&shortcut) {
-                continue;
-            }
-            self.dispatch_event(StudioGuiEvent::ShortcutPressed {
-                shortcut,
-                focus_context,
-            });
-        }
-    }
-
-    pub(super) fn focus_context(&self, ctx: &egui::Context) -> StudioGuiFocusContext {
-        if self.variable_browser.open
-            || self.pending_unit_deletion.is_some()
-            || self.pending_result_export.is_some()
-            || self.project_open.pending_confirmation.is_some()
-            || self.project_open.pending_blank_project_confirmation
-            || self.project_open.pending_save_as_overwrite.is_some()
-            || self
-                .project_open
-                .pending_close_window_confirmation
-                .is_some()
-        {
-            StudioGuiFocusContext::ModalDialog
-        } else if self.command_palette.open {
-            StudioGuiFocusContext::CommandPalette
-        } else if ctx.wants_keyboard_input() || numeric_input::owns_keyboard(ctx) {
-            StudioGuiFocusContext::TextInput
-        } else if self
-            .platform_host
-            .snapshot()
-            .window_model()
-            .canvas
-            .focused_suggestion_id
-            .is_some()
-        {
-            StudioGuiFocusContext::CanvasSuggestionFocused
-        } else if self.last_area_focus == Some(StudioGuiWindowAreaId::Canvas) {
-            StudioGuiFocusContext::Canvas
-        } else {
-            StudioGuiFocusContext::Global
-        }
     }
 
     pub(super) fn current_window_id(&self) -> Option<StudioWindowHostId> {

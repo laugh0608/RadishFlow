@@ -1,6 +1,6 @@
 # Review Solve Results
 
-更新时间：2026-09-14
+更新时间：2026-10-07
 
 > 本文用于运行与验证当前 MVP 用户路径。内置样例与历史 `official` 称谓表示仓库演示 / 回归案例，运行成功不构成工程精度验证；解释结果前请阅读 [模型与样例边界](../thermo/mvp-model.md)。
 
@@ -207,7 +207,7 @@ Module Results 当前还会把 selected unit result、consumed / produced stream
 - `复制当前结果` / `导出当前结果...` 只把当前同一份 `SolveSnapshot` 格式化为纯文本，覆盖流股摘要、Review 摘要、单元结果、求解步骤和诊断；它们不写项目文件、不进入 undo，也不是完整报表、模板系统或批量导出入口
 - 如果某个 section 没有 `诊断目标`，应先理解为“当前没有已物化目标”，而不是默认它被隐藏或漏显示
 
-底部 `结果表` 当前采用中文 `流股 / 相态` 表头。`相态` 列应显示短摘要，例如 `总体 1.000`、`气相 1.000`、`无`，过长的原始相态明细只适合放进 tooltip、日志或开发诊断，不应撑开表格或裁切主要数值列。
+底部 `结果表` 当前采用中文 `流股 / 相态` 表头。`相态` 列应显示短摘要，例如 `总体 1 mol/mol`、`气相 1 mol/mol`、`无`，过长的原始相态明细只适合放进 tooltip、日志或开发诊断，不应撑开表格或裁切主要数值列。
 
 ## 底部结果表
 
@@ -218,9 +218,15 @@ Module Results 当前还会把 selected unit result、consumed / produced stream
 
 点击结果表不会离开底部 `结果表` tab，也不会触发重新求解；它只通过正式 focus command 同步 Canvas 当前选择、右侧 `画布选择`、Inspector / Module Results。小案例作者路径运行后，建议先在流股表确认关键 outlet，再在单元表确认 upstream / downstream 消费关系是否正确。
 
+## 结果显示单位
+
+结果表、模块结果和只读变量浏览使用项目显示单位；Inspector 最新结果可使用已有的临时视图覆盖。例如同一结果 `300 K / 100000 Pa / 1 mol/s` 在工程单位集显示为 `26.85 °C / 1 bar / 3.6 kmol/h`。只读数量采用 6 位有效数字，组成与相分率保留摩尔基准标签；缺失、过期和转换失败不会变成有效结果。切换显示不修改原始 SI，也不使已有结果过期。
+
+比较先使用原始 SI 求差，再按差值量转换；温差不套用绝对温度的偏移。输入编辑原文和既有输入摘要不受本批只读格式调整影响。范围与验证见 [U3 输出一致性](../topics/units/output-and-consumer-consistency.md#u3-首批实现与验证2026-10-07)。
+
 ## 当前快照复制 / 导出
 
-顶部 `结果` 页提供 `复制当前结果` 与 `导出当前结果...`，与运行结果审阅区的输出入口共用同一份当前 revision 的最新 `SolveSnapshot`。尚未运行、重开后未重跑或结果已过期时，两个入口禁用；重新运行后再输出。文本头包含快照 ID、sequence 和 `document_revision`，内容覆盖：
+顶部 `结果` 页提供 `复制当前结果` 与 `导出当前结果...`，与运行结果审阅区的输出入口共用同一份当前 revision 的最新 `SolveSnapshot`。尚未运行、重开后未重跑或结果已过期时，两个入口禁用；重新运行后再输出。文本头包含快照 ID、sequence、`document_revision`、`display_units` 单位身份和 `number_format` 显示格式说明，内容覆盖：
 
 - 流股摘要
 - Review 摘要：source / intermediate / terminal streams、latest unit results、diagnostics count
@@ -230,6 +236,8 @@ Module Results 当前还会把 selected unit result、consumed / produced stream
 
 其中 `Review` 区按 case-level 审阅顺序汇总 source、intermediate、terminal stream，并列出 latest unit results 的状态、消费流股和产出流股；`Units` 区按单元列出最新 step、状态、summary、输入流股和输出流股，便于人工复核 unit-centric 结果。它们都从当前同一份 `SolveSnapshot` 派生，不是独立结果模型。
 
+复制 / 导出使用发起时捕获的项目单位，不使用 Inspector 临时覆盖。文件选择或覆盖确认等待期间切换显示单位，不改变这次输出；重新发起才使用新单位。文本按 6 位有效数字显示，不能作为无损 SI 数据交换格式。转换失败会明确报错，不打开保存选择器、不写目标文件或剪贴板，原始结果仍保留。
+
 稳定边界：
 
 - 不写 `*.rfproj.json`
@@ -238,7 +246,7 @@ Module Results 当前还会把 selected unit result、consumed / produced stream
 - 不触发重新求解
 - 不生成跨快照历史、模板化报表或批量导出任务
 
-文件导出在 macOS / Windows 接入原生保存对话框，文件名自动补齐 `.txt`；Linux 当前明确提示暂不支持，可使用复制。选择已有文件后，应用会显示具体路径并要求确认覆盖；取消不写入。若选路或确认期间结果发生变化，旧结果不能继续输出，应重新运行并从结果页重试。写入失败会报告错误，已有目标通过临时文件写入与安全替换保护；平台及故障验证范围见 [结果专题](../topics/results-review-diagnostics.md#b2-1轻量结果输出闭环)。
+文件导出在 macOS / Windows 接入原生保存对话框，文件名自动补齐 `.txt`；Linux 当前明确提示暂不支持，可使用复制。选择已有文件后，应用会显示具体路径并要求确认覆盖；取消不写入。若选路或确认期间切换工程、修改输入修订或重新运行导致快照变化，旧输出会被拒绝；应按当前结果状态重新发起，缺失或过期时先运行。写入失败会报告错误，已有目标通过临时文件写入与安全替换保护；平台及故障验证范围见 [结果专题](../topics/results-review-diagnostics.md#b2-1轻量结果输出闭环)。
 
 如果需要归档某次结果，这个文本可以作为轻量人工审阅材料；如果需要可复算的正式 case，仍应保存项目文件本身。
 

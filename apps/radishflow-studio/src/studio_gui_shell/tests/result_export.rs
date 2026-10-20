@@ -95,7 +95,7 @@ fn result_export_overwrite_requires_confirmation_and_rechecks_currentness() {
     app.confirm_result_export();
     assert_eq!(
         fs::read_to_string(&path).unwrap(),
-        current_snapshot(&app).light_text_export()
+        current_snapshot(&app).light_text_export().unwrap()
     );
     assert_eq!(
         app.platform_host.snapshot().runtime.workspace_document,
@@ -180,7 +180,7 @@ fn result_export_uses_fresh_payload_and_records_revision_without_changing_projec
     let path = output_path("current");
     app.export_solve_snapshot_to_path(&rendered, path.clone());
     let text = fs::read_to_string(&path).unwrap();
-    assert_eq!(text, current.light_text_export());
+    assert_eq!(text, current.light_text_export().unwrap());
     assert!(text.contains(&format!("document_revision: {}", before.revision)));
     for unit in [" K", " Pa", " mol/s", " J/mol"] {
         assert!(text.contains(unit), "missing {unit}");
@@ -190,4 +190,127 @@ fn result_export_uses_fresh_payload_and_records_revision_without_changing_projec
         before
     );
     fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn pending_export_keeps_invocation_units_and_new_copy_uses_current_project_units() {
+    use rf_types::units::DisplayUnitSet;
+    use rf_ui::ProjectPresentationCommand as P;
+    let mut app = solved_app();
+    let si = current_snapshot(&app);
+    app.apply_presentation_command(P::Apply(DisplayUnitSet::engineering()))
+        .unwrap();
+    let captured = current_snapshot(&app).light_text_export().unwrap();
+    let path = output_path("captured-units");
+    fs::write(&path, "original").unwrap();
+    // Even a prior render payload must use authoritative project units at invocation.
+    app.export_solve_snapshot_to_path(&si, path.clone());
+    app.apply_presentation_command(P::Apply(DisplayUnitSet::si()))
+        .unwrap();
+    app.confirm_result_export();
+    assert_eq!(fs::read_to_string(&path).unwrap(), captured);
+    let ctx = egui::Context::default();
+    let output = ctx.run(egui::RawInput::default(), |ctx| {
+        app.copy_solve_snapshot_to_clipboard(ctx, &si);
+    });
+    let expected = si.light_text_export().unwrap();
+    assert!(output.platform_output.commands.iter().any(
+        |command| matches!(command, egui::OutputCommand::CopyText(text) if text == &expected)
+    ));
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn pending_export_rejects_document_edits_and_is_cleared_on_project_switch() {
+    let mut app = solved_app();
+    let snapshot = current_snapshot(&app);
+    let path = output_path("revision-project");
+    fs::write(&path, "original").unwrap();
+    app.export_solve_snapshot_to_path(&snapshot, path.clone());
+    app.dispatch_ui_command("canvas.begin_place_unit.heater");
+    app.dispatch_canvas_pending_edit_commit(rf_ui::CanvasPoint::new(500.0, 200.0));
+    app.confirm_result_export();
+    assert_eq!(fs::read_to_string(&path).unwrap(), "original");
+
+    let mut app = solved_app();
+    app.export_solve_snapshot_to_path(&current_snapshot(&app), path.clone());
+    let (config, project) = blank_workspace_config();
+    app.open_project(config.project_path, "test");
+    assert!(app.pending_result_export.is_none());
+    app.confirm_result_export();
+    assert_eq!(fs::read_to_string(&path).unwrap(), "original");
+    fs::remove_file(path).unwrap();
+    fs::remove_file(project).unwrap();
+}
+
+#[test]
+fn conversion_failure_preserves_file_and_clipboard_without_invalidating_si_result() {
+    use rf_types::units::{DisplayUnitSet, MeasurementUnit as U, QuantityKind as Q};
+    let project_path = output_path("overflow-input").with_extension("rfproj.json");
+    let mut project = feed_heater_flash_binary_hydrocarbon_project();
+    project
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&StreamId::new("stream-feed"))
+        .unwrap()
+        .total_molar_flow_mol_s = 1e305;
+    write_project_file(&project_path, &project).unwrap();
+    let mut app = ready_app_state(&StudioRuntimeConfig {
+        project_path: project_path.clone(),
+        ..synced_workspace_config()
+    });
+    app.dispatch_ui_command("run_panel.run_manual");
+    let si = current_snapshot(&app);
+    assert!(si.presentation_errors.is_empty());
+    let before = app.platform_host.snapshot().runtime.latest_solve_snapshot;
+    let mut units = DisplayUnitSet::si();
+    units.set_unit(Q::MolarFlow, U::MolePerHour).unwrap();
+    app.apply_presentation_command(rf_ui::ProjectPresentationCommand::Apply(units))
+        .unwrap();
+    assert!(!current_snapshot(&app).presentation_errors.is_empty());
+    let path = output_path("overflow-protected");
+    fs::write(&path, "original").unwrap();
+    app.export_solve_snapshot_to_path(&si, path.clone());
+    assert!(app.pending_result_export.is_none());
+    assert_eq!(fs::read_to_string(&path).unwrap(), "original");
+    // A failed conversion must not open even a supported picker.
+    struct MustNotOpenPicker;
+    impl ProjectFilePicker for MustNotOpenPicker {
+        fn supports_result_export_dialogs(&self) -> bool {
+            true
+        }
+        fn pick_project_file(&mut self) -> Option<PathBuf> {
+            unreachable!()
+        }
+        fn pick_save_project_file(&mut self) -> Option<PathBuf> {
+            unreachable!()
+        }
+        fn pick_result_export_file(&mut self) -> Option<PathBuf> {
+            panic!("conversion must precede picker")
+        }
+    }
+    app.project_file_picker = Box::new(MustNotOpenPicker);
+    app.export_solve_snapshot_from_picker(&si);
+    let ctx = egui::Context::default();
+    let output = ctx.run(egui::RawInput::default(), |ctx| {
+        app.copy_solve_snapshot_to_clipboard(ctx, &si);
+    });
+    assert!(
+        !output
+            .platform_output
+            .commands
+            .iter()
+            .any(|command| matches!(command, egui::OutputCommand::CopyText(_)))
+    );
+    assert_eq!(
+        app.project_open.notice.as_ref().unwrap().level,
+        ProjectOpenNoticeLevel::Error
+    );
+    assert_eq!(
+        app.platform_host.snapshot().runtime.latest_solve_snapshot,
+        before
+    );
+    fs::remove_file(path).unwrap();
+    fs::remove_file(project_path).unwrap();
 }

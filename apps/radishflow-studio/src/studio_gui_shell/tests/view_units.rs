@@ -349,3 +349,48 @@ fn failed_open_keeps_view_state_and_successful_project_replacement_clears_it() {
     assert!(!presentation.can_undo());
     fs::remove_file(project).unwrap();
 }
+
+#[test]
+fn inspector_results_follow_view_units_while_result_page_and_output_follow_project() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.dispatch_ui_command("inspector.focus_stream:stream-feed");
+    let before = app.platform_host.snapshot().runtime.latest_solve_snapshot;
+    app.apply_presentation_command(P::Apply(DisplayUnitSet::engineering()))
+        .unwrap();
+    let view = DisplayUnitViewId(app.current_window_id().unwrap());
+    app.apply_presentation_command(P::ApplyView {
+        view,
+        units: override_temperature(U::Kelvin),
+    })
+    .unwrap();
+    let window = app.platform_host.snapshot().window_model();
+    let inspector = window
+        .runtime
+        .active_inspector_detail
+        .unwrap()
+        .latest_stream_result
+        .unwrap();
+    assert_eq!(inspector.temperature_text, "300 K");
+    assert_eq!(inspector.pressure_text, "1.2 bar");
+    let project = window.runtime.latest_solve_snapshot.unwrap();
+    let feed = project
+        .streams
+        .iter()
+        .find(|stream| stream.stream_id == "stream-feed")
+        .unwrap();
+    assert_eq!(feed.temperature_text, "26.85 °C");
+    assert_eq!(feed.molar_flow_text, "18 kmol/h");
+    let ctx = egui::Context::default();
+    let output = ctx.run(egui::RawInput::default(), |ctx| {
+        app.copy_solve_snapshot_to_clipboard(ctx, &project);
+    });
+    let expected = project.light_text_export().unwrap();
+    assert!(output.platform_output.commands.iter().any(
+        |command| matches!(command, egui::OutputCommand::CopyText(text) if text == &expected)
+    ));
+    assert_eq!(
+        app.platform_host.snapshot().runtime.latest_solve_snapshot,
+        before
+    );
+}

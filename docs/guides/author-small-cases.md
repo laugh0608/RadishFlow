@@ -1,6 +1,6 @@
 # Author Small Cases
 
-更新时间：2026-09-14
+更新时间：2026-10-11
 
 > 本文用于运行与验证当前 MVP 用户路径。内置样例与历史 `official` 称谓表示仓库演示 / 回归案例，运行成功不构成工程精度验证；解释结果前请阅读 [模型与样例边界](../thermo/mvp-model.md)。
 
@@ -198,7 +198,7 @@ Official demo case 的结果核对路径：
 
 - 作者入口不是自动建模系统：它只打开空白项目和清单。
 - 任务清单不是文档语义：它只从当前 canvas / solve snapshot 推导状态。
-- `Connect stream` / `Create stream` 仍是正式 suggestion action；接受后才会通过文档命令写回。
+- 本文“接受 `Connect stream` / `Create stream`”均指先打开预览、核对端点或完整模板，再显式接受。Canvas 点击或 Tab 只进入预览；有草稿或预览已过期时不能提交。接受后经正式文档命令写回一次，忽略不消除输入问题，也不自动运行。
 - 单元参数必须显式提交；仅在输入框中修改草稿不会改变运行结果。
 - 如果拓扑已完成但 Feed composition 未提交，普通 Studio 入口会先以“模型输入未完成”阻断，并聚焦到该 Feed outlet stream；`solver.step.stream_input` 仍保留给已经进入求解阶段的流股输入失败或外部不一致项目诊断。
 - 结果复制 / 导出只消费当前 `SolveSnapshot`，不写项目，也不是完整报表系统；其中 `Review` 只是对同一份快照的 case-level 摘要，不是第二套结果。

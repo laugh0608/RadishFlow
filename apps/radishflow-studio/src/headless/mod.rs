@@ -7,7 +7,7 @@ use crate::modeling_actions::{
 };
 use crate::{
     StudioAppAuthCacheContext, StudioAppFacade, StudioAppResultDispatch, StudioWorkspaceRunOutcome,
-    WorkspaceRunPackageSelection, load_project_app_state,
+    WorkspaceRunPackageSelection, document_lifecycle_driver::load_legacy_project_app_state,
 };
 use protocol::*;
 use rf_ui::variable_browser::{BrowseError, VariableBrowser, VariableValue};
@@ -92,7 +92,7 @@ fn browser(app: &AppState) -> VariableBrowser<'_> {
 }
 
 fn inspect(path: &Path, response: &mut Response) -> Result<(), Failure> {
-    let app = load_project_app_state(path).map_err(|e| domain_failure("project", e))?;
+    let app = load_legacy_project_app_state(path).map_err(|e| domain_failure("project", e))?;
     response.document = Some(document(&app));
     response.variables = browser(&app)
         .search("")
@@ -123,7 +123,7 @@ fn run_request_file(path: &Path, response: &mut Response) -> Result<(), Failure>
         }
     }
     let base = path.parent().unwrap_or(Path::new("."));
-    let mut app = load_project_app_state(&base.join(&request.project))
+    let mut app = load_legacy_project_app_state(&base.join(&request.project))
         .map_err(|e| domain_failure("project", e))?;
     response.document = Some(document(&app));
     if request.document_id != app.workspace.document.metadata.document_id.as_str() {

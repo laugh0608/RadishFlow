@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-09-23
+更新时间：2026-10-15
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -10,7 +10,7 @@
 读者：维护 Studio、`rf-ui`、求解桥接和项目生命周期的开发者。
 不包含：新的产品排期、完整商业化界面或逐日验证记录。
 
-单位目录、转换与变量标签已接通；单位交互 / 存储、规格辅助、设备及 UI 重评按 [平台规划](simulation-platform.md#单位辅助与设备工程的协作) 推进，复用既有状态。
+单位设计与状态见 [单位总纲](../topics/units-and-quantity-system.md)；辅助、设备及 UI 重评按 [平台规划](simulation-platform.md#单位辅助与设备工程的协作) 推进。
 
 长期边界见 [模拟平台规划](simulation-platform.md)：`SimulationMode::Active / Hold` 表示运行触发策略，工程模型、运行任务与数值状态分离。COM / 脚本及录制共用描述和应用命令；`CommandHistory` 只负责文档 Undo / Redo，运行、保存、导出与动态检查点另有契约。CLI 已支持参数化运行与有序建模，见 [Studio B3-5](../topics/studio-main-workflow.md#b3-5无界面创建连接与步骤身份引用)。
 
@@ -71,10 +71,10 @@
 
 Studio 首页、工作台分区、运行后结果视图和项目切换确认流程已落地。shell UI 边界按以下稳定入口治理：
 
-- Home Dashboard 是启动默认首页，只承载 Start actions、Recent Cases、Example Cases、Environment 和 Messages；不读取 `SolveSnapshot`，不直接承载流程图编辑。`新建项目` 创建普通空白项目后先进入独立 `物性` 页；小案例作者入口只创建空白项目并切到左侧 `模块` 清单，清单只读 canvas，不生成 flowsheet、不写项目、不进 undo。
+- Home 是默认首页，不读取 `SolveSnapshot` 或编辑流程图。新建空白项目先进入 `物性`；独立设备入口创建空流程并进入 `设备`，不要求物性包；小案例入口另展示只读建模清单，不自动生成流程或写入历史。
 - 最近项目、当前工作区和示例项目统一由 `StudioGuiWindowHomeCaseTileModel` 承载流程缩影、路径 / 来源、物性包 label、组分和状态。当前工作区 tile 只从 `workspace_document` 派生，不写入 recent projects；保存过的当前项目应直接返回当前 workspace，而不是通过 recent path 重新打开自身。Home tile 的 `package_summary` 只从当前 document / builtin package choice 映射为可读 label，例如 `二元烃 Lite`；稳定 package id 只留在项目文件、command id、运行请求和内部状态边界。
-- 新建、打开、case tile 双击、Home `返回工作区`、窗口关闭按钮和 macOS `Cmd+Q` / 应用退出请求共享同一条工作区生命周期语义。若有未保存变更，必须先进入保存并继续 / 舍弃并继续 / 取消确认；取消、保存失败、另存为取消或覆盖确认未完成时保持当前工作区、MRU 和 `FlowsheetDocument` 不变。
-- 进入 case 后，第一层只保留 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` 八个主入口、当前项目摘要和必要状态。普通空白项目选齐 package 和至少一个项目组分前，`流程图` 入口不可用；禁用原因必须来自 Property page DTO 的同一 readiness。
+- 新建 / 打开 / 关闭消费 `ProjectSaveState`；确认绑定当前状态，过期重验，取消 / 失败保留现场，见 [生命周期](../topics/project-lifecycle-storage.md#u2-离开保护与保存状态)。Home 返回只切页；保存不提交草稿，有草稿不自动关闭。
+- 进入 case 后，第一层只保留 `文件 / 主页 / 物性 / 设备 / 流程图 / 运行 / 结果 / 工具 / 设置` 主入口、当前项目摘要和必要状态。普通空白项目选齐 package 和至少一个项目组分前，`流程图` 入口不可用；禁用原因必须来自 Property page DTO 的同一 readiness。
 - `物性 / 流程图 / 运行 / 结果` screen 下方分别消费 `window.property_context_toolbar`、`window.flowsheet_context_toolbar`、`window.run_context_toolbar` 和 `window.result_context_toolbar`。工具栏只展示当前 screen 的主路径命令和状态，不展开调试命令全集；`运行` 工具栏不重复 Monitor 状态 chip，`结果` 工具栏不把所有 stream / unit focus command 展开成长按钮。
 - 工作台分区固定为左侧 `模块 / 项目`、中央 Canvas、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 和状态汇总。`模块` 消费 Canvas place-unit palette 并按 `流股源 / 调节单元 / 汇合与分离` 分类；分类和选项 detail 可进入 hover / DTO，不作为首屏常驻说明。`项目` 负责项目输入、示例入口、对象树和审阅状态；项目级输入编辑主入口仍是独立 `物性` screen。左侧 `项目输入` 和独立 `物性` 页同样展示可读 package label，不从运行结果反推第二套物性包状态。
 - `模块设置` 只消费 `StudioGuiWindowModuleSettingsModel`，从 active unit Inspector detail 派生参数摘要、字段、端口、连接动作和诊断动作；参数摘要不得混入 latest-result。`模块结果` 只消费 `StudioGuiWindowModuleResultsModel`，从 current-revision latest `SolveSnapshot` 派生 selected unit result、consumed / produced stream、related steps、diagnostics 和 diagnostic actions。
@@ -84,13 +84,17 @@ Studio 首页、工作台分区、运行后结果视图和项目切换确认流�
 
 当前 Studio UI 主设计稿已收敛到 `docs/architecture/designs/studio-client-main.pen`。它是设计目标，不代表当前代码已达到最终视觉细化。实现时必须复用既有 `WorkspaceDocument`、inspector draft、command surface、run panel state 和 latest current-revision `SolveSnapshot`；布局变化不得新增私有选择、结果、诊断或参数缓存。
 
+### 独立设备编辑边界
+
+`WorkspaceState.engineering` 持有正式输入、设备历史和候选资格；`equipment_editor` 持有版本化草稿与确认状态。设备命令经 bootstrap 派发至 `rf-ui::engineering::editor`，与流程历史分离；保存不应用草稿，文本框本地撤销不进入设备历史。shell 仅保留页签、返回字段和焦点，结果消费设备资格，不显示流程运行状态。详见 [设备 UI](../topics/equipment/separator-sizing-and-rating.md#独立单工况设备-ui2026-10-15)。
+
 ### Studio Main Presentation 边界
 
-Studio UI 专题代码实现从 `StudioGuiWindowModel` 派生 DTO 开始，不先做 egui 大布局重排。当前 `studio_main` 已投影 Home case tile、Property page、四类 context toolbar、底部 status summary、Module Settings、Module Results 和结果表定位语义；详细映射见 `docs/architecture/designs/studio-client-main-brief.md`。
+`studio_main` 通过 `StudioGuiWindowModel` 投影 Home、Property、四类 context toolbar、底部状态、Module Settings / Results 和结果定位；详细映射见 `docs/architecture/designs/studio-client-main-brief.md`。
 
-egui shell 可以消费这些 DTO，但不能把它们变成第二套项目、物性、运行、结果或诊断真相源。Home recent tile 当前仍由 shell preferences / `project_open` 映射为同一 DTO，当前工作区 tile 只从 `workspace_document` 派生；Property toolbar、Property page metric、Home case tile 和 Project input sweep 都应从同一 document / choice 状态映射可读 label，不能在 renderer 里直接铺 raw package id。后续细化 `物性`、`流程图`、`运行`、`结果` 与右侧三 tab 时，仍必须继续按正式 presentation / command / state 来源推进。
+shell 只消费 DTO，不建立第二套项目、物性、结果或诊断状态。recent tile 由 preferences / `project_open` 映射，当前工作区 tile 来自 `workspace_document`；各入口统一从 document / choice 映射可读物性包名称，不直接显示 raw package id。
 
-`studio_gui_shell/panels/runtime/` 当前拆为 `runtime/mod.rs`、`runtime/results.rs` 和 `runtime/inspector.rs`。Module Settings 和 Module Results 细化必须先补正式 window model DTO 和 focused 回归，再让 runtime 子模块消费；不得在 shell 中私造结果、诊断、端口、参数或帮助命令缓存。当前模块帮助没有正式 command surface，只允许在 DTO 中表达为空状态。
+`studio_gui_shell/panels/runtime/` 按 mod、results、inspector 拆分。模块设置 / 结果变更先补正式 DTO 与定向回归，再接渲染；没有正式命令的帮助区保持空状态，不伪造功能。
 
 ### `rf-ui`
 
@@ -524,6 +528,8 @@ pub struct StepSnapshot {
 
 ## 关键事件流
 
+`WorkspaceState.engineering` 管理设备状态；v3 边界见 [工程基础](../topics/engineering-basis-and-cases.md)。
+
 ### 参数提交流
 
 实际变更才执行下列流程；输入事务先校验副本，相同有效值不改修订。写入不自动求解：
@@ -544,11 +550,11 @@ pub struct StepSnapshot {
 推荐事件流如下：
 
 1. 用户触发 `edit.undo` 或 `edit.redo`
-2. UI 通过正式 command surface 派发命令，不直接修改文档
+2. UI 通过正式 command surface 派发；有待提交输入时先确认放弃，绑定工程身份、revision 和编辑代次，事务前重验
 3. 应用层读取 `CommandHistory.cursor` 对应的 `before` 或 `after` 快照
 4. `FlowsheetDocument` 替换为目标快照并递增新 `revision`
 5. `CommandHistory.cursor` 前移或后移
-6. 工程历史先拒绝待提交数值会话；其他草稿按原规则清理，失效目标清理
+6. 普通领域入口仍拒绝待提交数值会话；GUI 显式确认经受控事务同时发布历史变更与草稿放弃，取消 / 失败 / 空操作不丢输入，失效目标随成功事务清理
 7. `SolveSessionState` 进入 `DocumentRevisionAdvanced / Dirty`
 
 ### 自动求解流
@@ -595,13 +601,13 @@ pub struct StepSnapshot {
 - 用户输入过程中，UI 内部持有草稿值
 - 草稿值集中放在 `WorkspaceState.drafts`，而不是散落在控件私有状态里
 - 草稿值不立即写回 `FlowsheetDocument`
-- 当发生 `Enter`、失焦、点击应用等语义提交时，才生成命令并写回文档
+- 首批数值字段由有效 `Enter` 或“应用”显式提交；失焦、切页和跨对象保留草稿，具体字段策略以 [U2 事件表](../topics/units/input-drafts-and-interactions.md#u2-事件表) 为准
 - 写回文档后再决定是否触发结构检查与自动求解
 - 项目级物性包和组分选择属于文档语义输入；空白项目不自动补 package / components，Stream Inspector 只能从当前 `Flowsheet.components` 中添加组成条目
 - Stream Inspector 的 `T / P / F / composition` 也采用草稿提交；普通 Studio 运行入口会在缺少 Feed composition 时先走建模输入 readiness，已经进入求解阶段的 stream 输入不一致仍可归类为 `solver.step.stream_input`，并携带 stream / inlet target
 - Unit Inspector：Feed、Heater / Cooler、Flash Drum 提交出口温压，Mixer、Valve 提交出口压力；`SetUnitParameter` 同步出口模板。Mixer / Heater / Cooler / Valve 出口压力不高于入口；缺显式参数时，同值也须正式提交。
-- 数值会话统一持有原文、单位与全精度候选；提交复用 SI 事务，成功仅清目标会话，其他数值编辑保留并重验。工程历史先保护数值草稿，通用变更不静默丢弃。
-- GUI window-model 必须把“显示值有效但缺显式 unit parameter”的字段暴露为可提交状态，并提供正式 `commit_command_id`；这种状态不是普通已同步字段，也不是控件私有 fallback
+- 数值会话持有原文、单位与全精度候选；SI 提交仅清目标会话，其余保留重验。`NumericFieldIssue::Rejected` 保留 `NumericEditError`，shell 本地化说明并保留领域诊断，不反解析字符串。
+- 继承值可应用，提供 `commit_command_id`，未编辑不计作草稿；参数摘要消费数值投影的 `pending` 与类型化问题，不以可应用状态或旧 `is_dirty` 代替
 - Unit Inspector 携带量、输入 / 显示单位及约束，提交保持 SI；无效草稿不写文档/历史/模板。已入文档的无效参数由 `solver.step.parameter` 等诊断暴露，并携带 unit / port / stream context
 - 运行前 readiness 只读取已提交的文档态输入，不读取 Inspector 草稿，也不自动补写默认值；未就绪时 shell 显示“模型输入未完成”并聚焦到对应 stream / unit。缺物性包、缓存缺失或多包歧义继续交给正式 run package resolution 和 Run Panel 诊断
 
@@ -739,7 +745,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 
 - 手动运行已经进入真实 GUI 工作台主路径：`流程图` / `运行` 上下文工具栏中的 `运行当前流程` 派发 `run_panel.run_manual`，并通过 command registry 的 availability / disabled reason 控制按钮状态。`StudioAppFacade`、`WorkspaceControlAction`、`WorkspaceControlState`、`RunPanelWidgetModel` 与 `run_panel_driver` 构成稳定链路；后台调度、取消、自动运行与 `Hold -> Active` 恢复仍留给后续 GUI 交互细化。
 - Studio app-host GUI 动作入口统一为 `StudioAppHostController::dispatch_ui_command(command_id)`。run panel command registry 首批稳定命令为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；菜单、快捷键、命令面板、palette 和 runtime 小型 action button 都应复用这条派发链。
-- Canvas suggestion、layout nudge、单元拖动和流股恢复复用 command surface；移动只写 sidecar，断开 / 重连 / 流股删除进入文档历史。`canvas.delete_selected_unit` 先由 shell 确认影响，再派发领域事务；重命名复用 Inspector 草稿。取消、失效确认和无效草稿不提交，细则见 [建模专题](../topics/flowsheet-modeling-and-solve.md)。
+- Canvas 编辑复用 command surface；移动只写 sidecar，连接 / 删除进入工程历史。删除、历史和修复的显式放弃经 `StudioConfirmedInputAction` / `InputEditCheckpoint` 重验，事务成功才发布，对象删除保留范围外草稿，见 [离开保护](../topics/units/input-drafts-and-interactions.md#i4-统一离开确认与失败保护)。公开变量写入门禁不变。
 - 结果审阅、错误定位和诊断目标都必须复用 `StudioGuiWindowDiagnosticTargetActionModel`、`inspector.focus_stream:*`、`inspector.focus_unit:*` 或既有 focus action。`selected_stream / comparison_stream / selected_unit` 只是 shell-local selector state，不缓存第二份结果；comparison 复位不代表结果语义变化。
 - `StudioGuiCommandRegistry` 从最新 `SolveSnapshot` 派生 `Results` command section；result stream / unit navigation 只暴露为正式 focus command。顶部 `结果` 工具栏只扫读结果入口和状态，不承担所有对象定位按钮。
 - shell 输出重验当前快照，落盘复用 staged write；运行 / 恢复反馈按正式 dispatch 和 applied target 同步面板与画布，见 [结果与恢复专题](../topics/results-review-diagnostics.md)。
@@ -747,7 +753,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - 失败详情只消费 `latest_diagnostic`，显示 primary code、revision、severity、count 与相关 target；GUI 不从 message 文本反解析或私造端口级 command。Run Panel recovery action 必须区分聚焦与修复，用户主动选中流股后的恢复动作走对应 `canvas.*selected_stream*` 命令，不复用 failure-only recovery command。
 - `StudioAppHostController` 对 `DispatchCanvasInteraction` 不应无条件 `refresh_local_canvas_suggestions()`；local-rules refresh 只应发生在真正改写文档或显式要求重算 suggestion 的路径上，避免破坏 GUI 命令面的连续交互语义。
 - `studio_gui_shell` 已通过 shell 级等价回归锁定 run panel、canvas suggestion、layout nudge、选中流股恢复和 disabled gate 在菜单、工具栏、命令面板、Canvas / Inspector 入口之间的共享派发语义；后续提示应停留在 presentation 层，不越过 disabled gate 改状态。
-- 数值焦点消费会话历史；Enter 提交、Escape 取消，菜单 / IME 优先，见 [U2](../topics/units/input-drafts-and-interactions.md)。其他文本沿用控件历史；非文本走工程历史并保护数值草稿。键位以 `Primary` 表达平台主修饰键、`Ctrl` 表达物理 Control，绑定与标签同源；macOS 使用 ⌘S / ⌘Z / ⇧⌘Z，保留 ⌘Y 别名，Windows / Linux 使用 Ctrl+S / Ctrl+Z / Ctrl+Y。输入使用事件自身修饰键，文档确认状态优先阻断快捷键；平台证据见 [B1-4](../topics/flowsheet-modeling-and-solve.md#b1-4平台快捷键展示与文档重做)。
+- 数值焦点消费会话历史，其他文本沿用控件历史，非文本走工程历史；菜单 / IME 优先，确认状态阻断工程快捷键，见 [U2](../topics/units/input-drafts-and-interactions.md)。按键使用事件自身修饰键；`Primary` 与物理 `Ctrl` 分开，绑定及标签同源，平台键位和历史证据见 [B1-4](../topics/flowsheet-modeling-and-solve.md#b1-4平台快捷键展示与文档重做)。
 - Studio 源码按领域职责组织浅层模块；新增实现并入同域目录，避免继续扩大入口文件。
 
 ## 结果快照模型

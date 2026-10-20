@@ -1,3 +1,7 @@
+mod parameter_checks;
+
+use parameter_checks::validate_step_parameters;
+
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use rf_flash::TpFlashSolver;
@@ -7,10 +11,9 @@ use rf_thermo::ThermoProvider;
 use rf_types::{DiagnosticPortTarget, PortDirection, RfError, RfResult, StreamId, UnitId};
 use rf_unitops::{
     BuiltinUnitKind, COOLER_KIND, FEED_KIND, FEED_OUTLET_PORT, FLASH_DRUM_KIND,
-    FLASH_DRUM_LIQUID_PORT, FLASH_DRUM_VAPOR_PORT, Feed, FlashDrum, HEATER_COOLER_INLET_PORT,
-    HEATER_COOLER_OUTLET_PORT, HEATER_KIND, HeaterCooler, MIXER_INLET_A_PORT, MIXER_INLET_B_PORT,
-    MIXER_KIND, MIXER_OUTLET_PORT, Mixer, StreamTarget, UnitOperation, UnitOperationInputs,
-    UnitOperationServices, VALVE_KIND, Valve, validate_unit_node,
+    FLASH_DRUM_LIQUID_PORT, FLASH_DRUM_VAPOR_PORT, Feed, FlashDrum, HEATER_COOLER_OUTLET_PORT,
+    HEATER_KIND, HeaterCooler, MIXER_KIND, MIXER_OUTLET_PORT, Mixer, StreamTarget, UnitOperation,
+    UnitOperationInputs, UnitOperationServices, VALVE_KIND, Valve, validate_unit_node,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -197,7 +200,7 @@ impl FlowsheetSolver for SequentialModularSolver {
         services: &SolverServices<'_>,
         flowsheet: &Flowsheet,
     ) -> RfResult<SolveSnapshot> {
-        let execution_order = topological_unit_order(flowsheet)?;
+        let execution_order = sequential_execution_order(flowsheet)?;
         let mut solved_streams = BTreeMap::<StreamId, MaterialStreamState>::new();
         let mut steps = Vec::with_capacity(execution_order.len());
         let mut diagnostics = vec![SolveDiagnostic {
@@ -334,7 +337,9 @@ impl FlowsheetSolver for SequentialModularSolver {
     }
 }
 
-fn topological_unit_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
+/// Validate canonical connections and the current acyclic SM strategy without solving.
+/// Returned errors use the same structured codes and targets as execution.
+pub fn sequential_execution_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
     let connections = validate_connections(flowsheet)
         .map_err(|error| solver_stage_error(SolverDiagnosticCode::ConnectionValidation, error))?;
     let mut incoming_counts = flowsheet
@@ -696,255 +701,34 @@ fn validate_step_stream_inputs(
     unit: &UnitNode,
     consumed_streams: &[MaterialStreamState],
 ) -> RfResult<()> {
+    use rf_unitops::specifications::{CompositionCheck, CompositionPolicy, check_composition};
     for stream in consumed_streams {
-        if stream.overall_mole_fractions.is_empty() {
-            return Err(solver_step_invalid_input_with_context(
-                step_number,
-                unit,
-                SolverDiagnosticCode::StepStreamInput,
-                format!(
-                    "stream `{}` must define at least one overall mole fraction entry before it can be consumed by `{}`",
-                    stream.id, unit.id
-                ),
-                vec![stream.id.clone()],
-                inlet_port_targets_for_stream(unit, &stream.id),
-            ));
-        }
-
-        if stream
-            .overall_mole_fractions
-            .values()
-            .any(|value| !value.is_finite() || *value < 0.0)
-        {
-            return Err(solver_step_invalid_input_with_context(
-                step_number,
-                unit,
-                SolverDiagnosticCode::StepStreamInput,
-                format!(
-                    "stream `{}` overall mole fractions must be finite non-negative values before it can be consumed by `{}`",
-                    stream.id, unit.id
-                ),
-                vec![stream.id.clone()],
-                inlet_port_targets_for_stream(unit, &stream.id),
-            ));
-        }
-
-        let sum = stream.overall_mole_fractions.values().sum::<f64>();
-        if !sum.is_finite() || sum <= 0.0 {
-            return Err(solver_step_invalid_input_with_context(
-                step_number,
-                unit,
-                SolverDiagnosticCode::StepStreamInput,
-                format!(
-                    "stream `{}` overall mole fractions must sum to a positive finite value before it can be consumed by `{}`",
-                    stream.id, unit.id
-                ),
-                vec![stream.id.clone()],
-                inlet_port_targets_for_stream(unit, &stream.id),
-            ));
-        }
-    }
-
-    Ok(())
-}
-
-fn validate_step_parameters(
-    step_number: usize,
-    unit: &UnitNode,
-    inputs: &UnitOperationInputs,
-    consumed_stream_ids: &[StreamId],
-) -> RfResult<()> {
-    if let Some(outlet_temperature_k) = unit.parameters.outlet_temperature_k {
-        validate_unit_outlet_temperature_parameter(
-            step_number,
-            unit,
-            consumed_stream_ids,
-            outlet_temperature_k,
-        )?;
-    }
-
-    let Some(outlet_pressure_pa) = unit.parameters.outlet_pressure_pa else {
-        return Ok(());
-    };
-
-    if unit_supports_outlet_pressure_parameter(unit)
-        && (!outlet_pressure_pa.is_finite() || outlet_pressure_pa <= 0.0)
-    {
-        let related_stream_ids = unit_parameter_related_stream_ids(unit, consumed_stream_ids);
+        let message = match check_composition(
+            &stream.overall_mole_fractions,
+            CompositionPolicy::NonnegativeWeights,
+        ) {
+            CompositionCheck::Empty => "must define at least one overall mole fraction entry",
+            CompositionCheck::InvalidFractions(_) => {
+                "overall mole fractions must be finite non-negative values"
+            }
+            CompositionCheck::InvalidTotal { .. } | CompositionCheck::Unnormalized { .. } => {
+                "overall mole fractions must sum to a positive finite value"
+            }
+            CompositionCheck::Valid { .. } => continue,
+        };
         return Err(solver_step_invalid_input_with_context(
             step_number,
             unit,
-            SolverDiagnosticCode::StepParameter,
+            SolverDiagnosticCode::StepStreamInput,
             format!(
-                "outlet_pressure_pa `{outlet_pressure_pa}` Pa must be a positive finite pressure"
+                "stream `{}` {message} before it can be consumed by `{}`",
+                stream.id, unit.id
             ),
-            related_stream_ids,
-            unit_parameter_related_port_targets(unit),
+            vec![stream.id.clone()],
+            inlet_port_targets_for_stream(unit, &stream.id),
         ));
     }
-
-    let Some(limit) = outlet_pressure_limit(unit, inputs) else {
-        return Ok(());
-    };
-    if outlet_pressure_pa <= limit.pressure_pa {
-        return Ok(());
-    }
-
-    let mut related_stream_ids = consumed_stream_ids.to_vec();
-    for outlet_stream_id in outlet_stream_ids(unit) {
-        related_stream_ids.push(outlet_stream_id);
-    }
-
-    Err(solver_step_invalid_input_with_context(
-        step_number,
-        unit,
-        SolverDiagnosticCode::StepParameter,
-        format!(
-            "outlet_pressure_pa `{outlet_pressure_pa}` Pa cannot exceed {} `{}` Pa from stream `{}`",
-            limit.description, limit.pressure_pa, limit.stream_id
-        ),
-        dedupe_stream_ids(related_stream_ids),
-        limit.port_targets,
-    ))
-}
-
-fn validate_unit_outlet_temperature_parameter(
-    step_number: usize,
-    unit: &UnitNode,
-    consumed_stream_ids: &[StreamId],
-    outlet_temperature_k: f64,
-) -> RfResult<()> {
-    if !unit_supports_outlet_temperature_parameter(unit)
-        || (outlet_temperature_k.is_finite() && outlet_temperature_k > 0.0)
-    {
-        return Ok(());
-    }
-
-    Err(solver_step_invalid_input_with_context(
-        step_number,
-        unit,
-        SolverDiagnosticCode::StepParameter,
-        format!(
-            "outlet_temperature_k `{outlet_temperature_k}` K must be a positive finite temperature"
-        ),
-        unit_parameter_related_stream_ids(unit, consumed_stream_ids),
-        unit_parameter_related_port_targets(unit),
-    ))
-}
-
-fn unit_supports_outlet_temperature_parameter(unit: &UnitNode) -> bool {
-    matches!(
-        unit.kind.as_str(),
-        FEED_KIND | HEATER_KIND | COOLER_KIND | FLASH_DRUM_KIND
-    )
-}
-
-fn unit_supports_outlet_pressure_parameter(unit: &UnitNode) -> bool {
-    matches!(
-        unit.kind.as_str(),
-        FEED_KIND | MIXER_KIND | HEATER_KIND | COOLER_KIND | VALVE_KIND | FLASH_DRUM_KIND
-    )
-}
-
-fn unit_outlet_pressure_cannot_exceed_inlet(unit: &UnitNode) -> bool {
-    matches!(
-        unit.kind.as_str(),
-        MIXER_KIND | HEATER_KIND | COOLER_KIND | VALVE_KIND
-    )
-}
-
-struct OutletPressureLimit {
-    pressure_pa: f64,
-    stream_id: StreamId,
-    description: &'static str,
-    port_targets: Vec<DiagnosticPortTarget>,
-}
-
-fn outlet_pressure_limit(
-    unit: &UnitNode,
-    inputs: &UnitOperationInputs,
-) -> Option<OutletPressureLimit> {
-    if !unit_outlet_pressure_cannot_exceed_inlet(unit) {
-        return None;
-    }
-
-    match unit.kind.as_str() {
-        MIXER_KIND => mixer_outlet_pressure_limit(unit, inputs),
-        HEATER_KIND | COOLER_KIND | VALVE_KIND => single_inlet_outlet_pressure_limit(unit, inputs),
-        _ => None,
-    }
-}
-
-fn single_inlet_outlet_pressure_limit(
-    unit: &UnitNode,
-    inputs: &UnitOperationInputs,
-) -> Option<OutletPressureLimit> {
-    let inlet = inputs.stream(HEATER_COOLER_INLET_PORT)?;
-    Some(OutletPressureLimit {
-        pressure_pa: inlet.pressure_pa,
-        stream_id: inlet.id.clone(),
-        description: "inlet pressure",
-        port_targets: vec![
-            DiagnosticPortTarget::new(unit.id.clone(), HEATER_COOLER_OUTLET_PORT.to_string()),
-            DiagnosticPortTarget::new(unit.id.clone(), HEATER_COOLER_INLET_PORT.to_string()),
-        ],
-    })
-}
-
-fn mixer_outlet_pressure_limit(
-    unit: &UnitNode,
-    inputs: &UnitOperationInputs,
-) -> Option<OutletPressureLimit> {
-    let inlet_a = inputs.stream(MIXER_INLET_A_PORT)?;
-    let inlet_b = inputs.stream(MIXER_INLET_B_PORT)?;
-    let limit = if inlet_a.pressure_pa <= inlet_b.pressure_pa {
-        inlet_a
-    } else {
-        inlet_b
-    };
-    Some(OutletPressureLimit {
-        pressure_pa: limit.pressure_pa,
-        stream_id: limit.id.clone(),
-        description: "lowest inlet pressure",
-        port_targets: vec![
-            DiagnosticPortTarget::new(unit.id.clone(), MIXER_OUTLET_PORT.to_string()),
-            DiagnosticPortTarget::new(unit.id.clone(), MIXER_INLET_A_PORT.to_string()),
-            DiagnosticPortTarget::new(unit.id.clone(), MIXER_INLET_B_PORT.to_string()),
-        ],
-    })
-}
-
-fn unit_parameter_related_stream_ids(
-    unit: &UnitNode,
-    consumed_stream_ids: &[StreamId],
-) -> Vec<StreamId> {
-    let mut related_stream_ids = consumed_stream_ids.to_vec();
-    for port in unit
-        .ports
-        .iter()
-        .filter(|port| port.direction == rf_types::PortDirection::Outlet)
-    {
-        if let Some(stream_id) = &port.stream_id {
-            related_stream_ids.push(stream_id.clone());
-        }
-    }
-    dedupe_stream_ids(related_stream_ids)
-}
-
-fn unit_parameter_related_port_targets(unit: &UnitNode) -> Vec<DiagnosticPortTarget> {
-    unit.ports
-        .iter()
-        .filter(|port| port.direction == rf_types::PortDirection::Outlet)
-        .map(|port| DiagnosticPortTarget::new(unit.id.clone(), port.name.clone()))
-        .collect()
-}
-
-fn outlet_stream_ids(unit: &UnitNode) -> Vec<StreamId> {
-    unit.ports
-        .iter()
-        .filter(|port| port.direction == rf_types::PortDirection::Outlet)
-        .filter_map(|port| port.stream_id.clone())
-        .collect()
+    Ok(())
 }
 
 fn inlet_port_targets_for_stream(
@@ -1064,13 +848,12 @@ fn heater_cooler_outlet_template(
 }
 
 fn feed_outlet_template(unit: &UnitNode, flowsheet: &Flowsheet) -> RfResult<MaterialStreamState> {
+    use rf_unitops::specifications::{FeedInputField, effective_feed_input};
     let mut outlet = stream_for_port(unit, FEED_OUTLET_PORT, flowsheet)?.clone();
-    if let Some(temperature_k) = unit.parameters.outlet_temperature_k {
-        outlet.temperature_k = temperature_k;
-    }
-    if let Some(pressure_pa) = unit.parameters.outlet_pressure_pa {
-        outlet.pressure_pa = pressure_pa;
-    }
+    outlet.temperature_k =
+        effective_feed_input(&unit.parameters, &outlet, FeedInputField::Temperature).value;
+    outlet.pressure_pa =
+        effective_feed_input(&unit.parameters, &outlet, FeedInputField::Pressure).value;
     Ok(outlet)
 }
 

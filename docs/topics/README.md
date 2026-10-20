@@ -1,6 +1,6 @@
 # 开发专题索引
 
-更新时间：2026-09-29
+更新时间：2026-10-15
 
 ## 用途
 
@@ -19,9 +19,9 @@
 
 2026-09-14 补充 [插件系统](../architecture/simulation-platform.md#插件系统)、[许可与授权分层](../architecture/auth-entitlement-architecture.md#软件许可产品授权与操作权限) 和下表公共 API 专题。方向已确认，运行时、具体许可政策与接口仍待实施切片决策，不改变基础功能优先级。
 
-2026-09-16 确认单位系统、规格分析与确定性辅助、设备设计与校核三条主线，单位专题的 U1 已实现并进入 Active；其余新专题为 Draft / 规划已确认。UI 旧主稿需重审功能分区，见 [UI 重设计计划](../architecture/studio-ui-topic-plan.md)。B3-5 无界面建模已接通；近期顺序为 U2 / U3 单位输入输出→规格 / 推荐→首个可信设备任务。
+2026-09-16 确认单位系统、规格分析与确定性辅助、设备设计与校核三条主线，单位专题进入 Active，U1、U2-I1—I4 与 U3 首批结果 / 输出已接通；A1 已进入共享检查基础，其余新专题为 Draft / 规划已确认。UI 旧主稿需重审功能分区，见 [UI 重设计计划](../architecture/studio-ui-topic-plan.md)。B3-5 无界面建模已接通；2026-10-11 完成[六类盘点与 A1 首批范围](modeling-assistance-and-specifications.md#a1-首批范围与实现)，A1-I1 / I2 已完成共享检查、问题闭环和 macOS 代表验收；A2-I1 动作与生命周期基础已实现并通过自动回归，I2 局部 UI 已认可并通过 Pencil 静态复核，I2 接线与 I3 自动 / macOS 代表验收完成，I5 限制保持。
 
-本轮后续补充 [工程设计基础、工况与数据来源](engineering-basis-and-cases.md)。目标反算归建模求解，压力 / 公用工程与候选权衡归设备专题，工程检查 / 交付归结果专题；各切片见路线图，均未改变已实现能力声明。
+2026-10-11 [G0 + E0/S0 首批方案](equipment-design-and-rating.md#首批方案审定入口2026-10-11)已认可；单位兼容、[G0 数据基础](engineering-basis-and-cases.md)及 v3 基础存储已独立完成。B04 方法门禁已核销，Pencil 六图静态复核通过并获认可；2026-10-15 G1 / S1 数据 / 纯计算及正式事务与结果有效性已实现；完整设备保存、最小 Studio v3 生命周期与独立单工况设备 UI 已完成，设备页 Undo / Redo 已接通；后续为当前计算表导出及剩余验收，I5 不变。目标反算归建模求解，压力 / 公用工程与候选权衡归设备专题，工程检查 / 交付归结果专题；各切片见路线图，均未改变已实现能力声明。
 
 2026-09-26 确认 [装置工程与数字孪生愿景](../architecture/simulation-platform.md#装置工程与数字孪生愿景)：同一工厂 / 装置工程关联多模型、工况与运行任务。目录 / 交付包归 [生命周期规划](project-lifecycle-storage.md#装置工程容器规划)，配置及场景归 [工程基础](engineering-basis-and-cases.md#装置配置与运行场景规划)，未来 DT0—DT4 依赖与退出依据归 [路线图](../radishflow-mvp-roadmap.md#装置工程与数字孪生的演进切片)。均为规划，现场接入与在线优化未实现，近期顺序保持。
 
@@ -45,11 +45,11 @@
 | 运行、消息与诊断 | Draft | 当前问题、执行事件、状态联动及 N0—N5 运行控制规划；已有恢复保持 | [运行与诊断](runtime-messages-and-diagnostics.md) |
 | 项目生命周期与存储 | Active | 明确打开、保存、另存为、最近项目、sidecar 和脏改确认的长期边界 | `project-lifecycle-storage.md` |
 | CAPE-OPEN PMC 适配层 | Active | 完善 `.NET 10` PMC 生命周期与调用可靠性，保持 COM 注册和 PME 验证基线 | `capeopen-pmc-adapter.md` |
-| 工程设计基础、工况与数据来源 | Draft | 共享工程条件、来源 / 假设、工况矩阵、位号与复现依据 | [工程基础](engineering-basis-and-cases.md) |
-| 单位系统与输入显示 | Active | U1、U2 保存 / 会话及首批控件 / 视图已接通；剩余交互、验收与 U3 待续 | [单位系统](units-and-quantity-system.md) |
-| 颜色与状态系统 | Active | V0 首批数值字段已接通；设置 / 保存及其他消费者和运行态验收待续 | [颜色与状态](color-and-state-system.md) |
+| 工程设计基础、工况与数据来源 | Draft | 共享基础 / 来源、单工况与设备事务已实现；通用工况矩阵后续推进 | [工程基础](engineering-basis-and-cases.md) |
+| 单位系统与输入显示 | Active | U1、U2-I1—I4 与 U3 首批结果 / 输出已接通；I5 按确认节点补验 | [单位系统](units-and-quantity-system.md) |
+| 颜色与状态系统 | Active | V0 首批数值字段及设置 / 保存已接通；其他消费者和运行态验收待续 | [颜色与状态](color-and-state-system.md) |
 | 规格分析与建模辅助 | Draft | 分层规格 / 自由度检查、可解释规则与固定工作流、未来 Agent 入口 | [建模辅助](modeling-assistance-and-specifications.md) |
-| 设备设计与性能校核 | Draft | 独立设备及流程关联，初步选型、设计、校核与采纳 | [设备工程](equipment-design-and-rating.md) |
+| 设备设计与性能校核 | Draft | 独立分离器首批计算 / UI / 保存已实现；流程关联、校核与采纳后续推进 | [设备工程](equipment-design-and-rating.md) |
 
 UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-plan.md)，承载 R0—R2 功能分区重评与 Pencil 设计验收，不以画稿完成冒充代码实现。
 
@@ -77,7 +77,7 @@ UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-p
 
 ### 单位与颜色状态
 
-[单位总纲](units-and-quantity-system.md) 下按四项职责维护，U1 / U2-I1 已实现，其余按追踪表标注；[颜色总纲](color-and-state-system.md) 下四个子专题均为 Draft。需求 / 场景 / 决策与证据分别由 [单位追踪](units/requirements-traceability.md) 和 [颜色追踪](color-state/requirements-traceability.md) 维护。
+[单位总纲](units-and-quantity-system.md) 下按四项职责维护，U1、U2-I1—I4 与 U3 首批范围已接通，I5 按已确认条件延期补验，U4 未实现；[颜色总纲](color-and-state-system.md) 的 V0 已有局部实现，通用扩展和其余消费者仍待审定 / 迁移。逐项状态与证据分别由 [单位追踪](units/requirements-traceability.md) 和 [颜色追踪](color-state/requirements-traceability.md) 维护。
 
 | 一级专题 | 二级职责入口 |
 | --- | --- |

@@ -1,7 +1,13 @@
 use super::*;
 
-pub(super) struct PendingResultExport {
+struct CapturedResultOutput {
+    document_id: String,
     snapshot: radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    text: String,
+}
+
+pub(super) struct PendingResultExport {
+    output: CapturedResultOutput,
     path: PathBuf,
 }
 
@@ -11,10 +17,11 @@ impl ReadyAppState {
         ctx: &egui::Context,
         snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
     ) {
-        let Some(snapshot) = self.current_result_for_output(snapshot) else {
+        let Some(output) = self.capture_result_output(snapshot) else {
             return;
         };
-        ctx.copy_text(snapshot.light_text_export());
+        ctx.copy_text(output.text);
+        let snapshot = &output.snapshot;
         self.project_open.notice = Some(ProjectOpenNotice {
             level: ProjectOpenNoticeLevel::Info,
             title: solve_snapshot_copied_notice_title(self.locale).to_string(),
@@ -30,7 +37,7 @@ impl ReadyAppState {
         &mut self,
         snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
     ) {
-        let Some(snapshot) = self.current_result_for_output(snapshot) else {
+        let Some(output) = self.capture_result_output(snapshot) else {
             return;
         };
         if !self.project_file_picker.supports_result_export_dialogs() {
@@ -47,36 +54,50 @@ impl ReadyAppState {
             self.cancel_result_export();
             return;
         };
-        self.export_solve_snapshot_to_path(&snapshot, path);
+        self.export_captured_result_to_path(output, path);
     }
 
+    #[cfg(test)]
     pub(super) fn export_solve_snapshot_to_path(
         &mut self,
         snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
         path: PathBuf,
     ) {
-        let Some(snapshot) = self.current_result_for_output(snapshot) else {
+        let Some(output) = self.capture_result_output(snapshot) else {
             return;
         };
+        self.export_captured_result_to_path(output, path);
+    }
+
+    fn export_captured_result_to_path(&mut self, output: CapturedResultOutput, path: PathBuf) {
         let path = project_picker::ensure_text_file_extension(path);
         if path.is_file() {
-            self.pending_result_export = Some(PendingResultExport { snapshot, path });
+            self.pending_result_export = Some(PendingResultExport { output, path });
             return;
         }
-        self.write_result_export(&snapshot, path, rf_store::FileOverwritePolicy::Forbid);
+        self.write_result_export(output, path, rf_store::FileOverwritePolicy::Forbid);
     }
 
     fn write_result_export(
         &mut self,
-        snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+        output: CapturedResultOutput,
         path: PathBuf,
         overwrite: rf_store::FileOverwritePolicy,
     ) {
-        let Some(snapshot) = self.current_result_for_output(snapshot) else {
+        if self.platform_host.document().metadata.document_id.as_str() != output.document_id
+            || self.current_result_for_output(&output.snapshot).is_none()
+        {
+            self.result_output_notice(
+                ProjectOpenNoticeLevel::Warning,
+                "Current results unavailable",
+                "当前结果不可输出",
+                "The project or results changed. Start a new export.",
+                "工程或结果已变化，请重新发起导出。",
+            );
             return;
-        };
-        let snapshot_text = snapshot.light_text_export();
-        match rf_store::write_text_file(&path, &snapshot_text, overwrite) {
+        }
+        let snapshot = &output.snapshot;
+        match rf_store::write_text_file(&path, &output.text, overwrite) {
             Ok(()) => {
                 self.project_open.notice = Some(ProjectOpenNotice {
                     level: ProjectOpenNoticeLevel::Info,
@@ -107,6 +128,39 @@ impl ReadyAppState {
                 ));
             }
         }
+    }
+
+    fn capture_result_output(
+        &mut self,
+        requested: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    ) -> Option<CapturedResultOutput> {
+        // Re-read SI and project units at invocation, before opening the picker.
+        let snapshot = self.current_result_for_output(requested)?;
+        let text = match snapshot.light_text_export() {
+            Ok(text) => text,
+            Err(error) => {
+                let detail = error.to_string();
+                self.result_output_notice(
+                    ProjectOpenNoticeLevel::Error,
+                    "Result conversion failed",
+                    "结果单位转换失败",
+                    &detail,
+                    &detail,
+                );
+                return None;
+            }
+        };
+        Some(CapturedResultOutput {
+            document_id: self
+                .platform_host
+                .document()
+                .metadata
+                .document_id
+                .as_str()
+                .into(),
+            snapshot,
+            text,
+        })
     }
 
     fn current_result_for_output(
@@ -163,6 +217,11 @@ impl ReadyAppState {
                 ));
             }
         });
+        ui.small(result_output_text(
+            self.locale,
+            "Copy / export uses project units captured when requested.",
+            "复制 / 导出使用发起时的项目单位。",
+        ));
         if let Some(notice) = &self.project_open.notice {
             ui.label(format!("{}：{}", notice.title, notice.detail));
         }
@@ -173,7 +232,7 @@ impl ReadyAppState {
             return;
         };
         self.write_result_export(
-            &pending.snapshot,
+            pending.output,
             pending.path,
             rf_store::FileOverwritePolicy::Allow,
         );

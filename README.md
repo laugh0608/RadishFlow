@@ -18,7 +18,7 @@ RadishFlow 是一个以 Rust 为核心、以 Rust UI 为主界面、以 `.NET 10
 
 近期先完善基础功能与使用闭环；长期建设可独立组合的组分、物性与分析、画布、单元与反应、模拟、算法、报告及对外 API 系统，包含递归分块求解、间歇操作、变量浏览树、COM 自动化和脚本录制 / 回放。领域边界见 [模拟平台长期规划](docs/architecture/simulation-platform.md)，阶段与验收见 [开发路线图](docs/radishflow-mvp-roadmap.md)。目标能力按阶段实现，不代表现有产品已具备。
 
-单位元数据与统一转换、规格检查与确定性建模辅助是近期基础能力方向；设备工程支持独立计算和流程关联。未来 AI Agent 复用统一变量 / 动作 / 诊断接口，当前不接入大模型。Studio 功能分区进入重新设计评审，旧 `.pen` 保留为既有设计基线，不代表新增功能已定稿。
+单位转换、规格检查与确定性建模辅助已接通首批；独立单工况分离器已支持条件式尺寸计算、来源追溯、编辑与保存，流程关联和多工况尚未实现。未来 AI Agent 复用统一变量 / 动作 / 诊断接口，当前不接入大模型。Studio 功能分区进入重新设计评审，旧 `.pen` 保留为既有设计基线，不代表新增功能已定稿。
 
 现有模型使用简化物性与单元假设，内置样例用于演示和软件回归；求解收敛、α / β 验收和跨层一致性不构成工程工况准确性证明。模型假设、样例来源限制及独立验证缺口统一见 [热力学 MVP 模型](docs/thermo/mvp-model.md)。
 
@@ -108,3 +108,17 @@ pwsh ./scripts/normalize-text-files.ps1
 - [CapeOpenCore](https://github.com/laugh0608/CapeOpenCore): 当前用于提取 CAPE-OPEN 接口、GUID、异常语义与注册语义的参考仓库
 - [Radish](https://github.com/laugh0608/Radish): 当前用于参考 OIDC / Auth / Client Registration 能力的统一平台仓库
 - [DWSIM](https://github.com/DanWBR/dwsim): 当前用于参考模块拆分、求解组织和自动化入口的工程经验，不直接迁移源码
+
+## ❤️ 致谢
+
+感谢所有为 RadishFlow 的开发、讨论、测试和改进提供帮助的朋友。
+
+### GitHub 贡献者
+
+[![RadishFlow 的 GitHub 贡献者](https://contrib.rocks/image?repo=laugh0608/RadishFlow)](https://github.com/laugh0608/RadishFlow/graphs/contributors)
+
+### 其他协作者
+
+以下以花名列出，感谢他们对项目的支持与帮助（排名不分先后）：
+
+涛哥、宋工

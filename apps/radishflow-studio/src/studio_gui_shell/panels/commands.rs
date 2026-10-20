@@ -34,7 +34,12 @@ impl ReadyAppState {
         command: &radishflow_studio::StudioGuiWindowCommandListItemModel,
     ) {
         if ui
-            .add_enabled(command.enabled, egui::Button::new(&command.label))
+            .add_enabled(
+                command.enabled,
+                egui::Button::new(
+                    self.recommendation_command_label(&command.command_id, &command.label),
+                ),
+            )
             .clicked()
         {
             self.dispatch_ui_command(&command.command_id);
@@ -85,7 +90,12 @@ impl ReadyAppState {
     ) {
         if let Some(command) = node.command.as_ref() {
             if ui
-                .add_enabled(command.enabled, egui::Button::new(&command.label))
+                .add_enabled(
+                    command.enabled,
+                    egui::Button::new(
+                        self.recommendation_command_label(&command.command_id, &command.label),
+                    ),
+                )
                 .on_hover_text(&command.hover_text)
                 .clicked()
             {
@@ -124,7 +134,12 @@ impl ReadyAppState {
             );
             for command in &section.items {
                 let response = ui
-                    .add_enabled(command.enabled, egui::Button::new(&command.label))
+                    .add_enabled(
+                        command.enabled,
+                        egui::Button::new(
+                            self.recommendation_command_label(&command.command_id, &command.label),
+                        ),
+                    )
                     .on_hover_text(&command.hover_text);
                 if response.clicked() {
                     self.dispatch_ui_command(&command.command_id);
@@ -151,7 +166,8 @@ impl ReadyAppState {
             .open(&mut open)
             .show(ctx, |ui| {
                 ui.set_min_width(560.0);
-                let palette_items = commands.palette_items(&self.command_palette.query);
+                let palette_items =
+                    self.command_palette_items(commands, &self.command_palette.query);
                 let canvas_result = self
                     .canvas_command_result_command_surface()
                     .filter(|result| result.matches_query(&self.command_palette.query));
@@ -191,7 +207,11 @@ impl ReadyAppState {
                             let response = ui
                                 .add_enabled(
                                     item.enabled,
-                                    egui::Button::new(&item.label).selected(selected),
+                                    egui::Button::new(self.recommendation_command_label(
+                                        &item.command_id,
+                                        &item.label,
+                                    ))
+                                    .selected(selected),
                                 )
                                 .on_hover_text(&item.hover_text);
                             if selected {

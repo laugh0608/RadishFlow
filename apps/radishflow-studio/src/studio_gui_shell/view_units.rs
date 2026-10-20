@@ -117,54 +117,186 @@ impl ReadyAppState {
         }
         let zh = matches!(self.locale, StudioShellLocale::ZhCn);
         let mut close = false;
-        let response = egui::Modal::new(egui::Id::new("inspector-display-units")).show(ctx, |ui| {
-            ui.heading(if zh { "仅本视图：检查器显示单位" } else { "This view: Inspector display units" });
-            ui.label(if zh { "跨对象和标签页保持；关闭检查器或窗口后清除。项目设置、模块设置和结果页保持各自单位。当前输入不改写。" } else { "Kept across objects and tabs; cleared when this Inspector or window closes. Project settings, module settings and results keep their units. Active inputs are preserved." });
-            for (quantity, label) in [
-                (QuantityKind::AbsoluteTemperature, if zh { "温度" } else { "Temperature" }),
-                (QuantityKind::AbsolutePressure, if zh { "压力" } else { "Pressure" }),
-                (QuantityKind::MolarFlow, if zh { "摩尔流量" } else { "Molar flow" }),
-            ] {
-                ui.horizontal(|ui| {
-                    ui.label(label);
-                    let selected = draft.units.unit_for(quantity);
-                    egui::ComboBox::from_id_salt(quantity.definition().id)
-                        .selected_text(selected.map_or(if zh { "跟随项目" } else { "Follow project" }, |unit| unit.definition().symbol))
-                        .show_ui(ui, |ui| {
-                            if ui.selectable_label(selected.is_none(), if zh { "跟随项目" } else { "Follow project" }).clicked() { draft.units.set_unit(quantity, None).expect("clear is valid"); }
-                            for unit in ALL_UNITS {
-                                let mut candidate = draft.units.clone();
-                                if candidate.set_unit(quantity, Some(*unit)).is_ok() && ui.selectable_label(selected == Some(*unit), unit.definition().symbol).clicked() { draft.units = candidate; }
-                            }
-                        });
-                    ui.small(format!("{} {}", if zh { "项目" } else { "Project" }, snapshot.runtime.workspace_document.presentation.display_units().unit_for(quantity).definition().symbol));
+        let response = super::unit_settings::unit_settings_modal(
+            ctx,
+            "inspector-display-units",
+            |ui| {
+                ui.heading(if zh {
+                    "仅本视图：检查器显示单位"
+                } else {
+                    "This view: Inspector display units"
                 });
-            }
-            if ui.button(if zh { "全部跟随项目" } else { "Follow project for all" }).clicked() { draft.units = ViewDisplayUnits::default(); }
-            ui.horizontal(|ui| {
-                if ui.button(if zh { "应用本视图" } else { "Apply to this view" }).clicked() {
-                    match self.apply_presentation_command(ProjectPresentationCommand::ApplyView { view: draft.view, units: draft.units.clone() }) {
-                        Ok(()) => close = true,
-                        Err(error) => draft.notice = Some(error.to_string()),
+                ui.label(if zh { "跨对象和标签页保持；关闭检查器或窗口后清除。项目设置、模块设置和结果页保持各自单位。当前输入不改写。" } else { "Kept across objects and tabs; cleared when this Inspector or window closes. Project settings, module settings and results keep their units. Active inputs are preserved." });
+                for (quantity, label) in [
+                    (
+                        QuantityKind::AbsoluteTemperature,
+                        if zh { "温度" } else { "Temperature" },
+                    ),
+                    (
+                        QuantityKind::AbsolutePressure,
+                        if zh { "压力" } else { "Pressure" },
+                    ),
+                    (
+                        QuantityKind::MolarFlow,
+                        if zh { "摩尔流量" } else { "Molar flow" },
+                    ),
+                ] {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(label);
+                        let selected = draft.units.unit_for(quantity);
+                        let mut choices =
+                            vec![(None, if zh { "跟随项目" } else { "Follow project" })];
+                        choices.extend(
+                            ALL_UNITS
+                                .iter()
+                                .filter(|unit| {
+                                    draft.units.clone().set_unit(quantity, Some(**unit)).is_ok()
+                                })
+                                .map(|unit| (Some(*unit), unit.definition().symbol)),
+                        );
+                        let accessible_label = if zh {
+                            format!("检查器显示单位：{label}")
+                        } else {
+                            format!("Inspector display unit: {label}")
+                        };
+                        if let Some(unit) = super::unit_selector::unit_selector(
+                            ui,
+                            quantity.definition().id,
+                            &accessible_label,
+                            selected,
+                            &choices,
+                        )
+                        .inner
+                        {
+                            draft
+                                .units
+                                .set_unit(quantity, unit)
+                                .expect("menu contains valid units");
+                        }
+                        ui.small(format!(
+                            "{} {}",
+                            if zh { "项目" } else { "Project" },
+                            snapshot
+                                .runtime
+                                .workspace_document
+                                .presentation
+                                .display_units()
+                                .unit_for(quantity)
+                                .definition()
+                                .symbol
+                        ));
+                    });
+                }
+                if ui
+                    .button(if zh {
+                        "全部跟随项目"
+                    } else {
+                        "Follow project for all"
+                    })
+                    .clicked()
+                {
+                    draft.units = ViewDisplayUnits::default();
+                }
+                ui.horizontal_wrapped(|ui| {
+                    if ui
+                        .button(if zh {
+                            "应用本视图"
+                        } else {
+                            "Apply to this view"
+                        })
+                        .clicked()
+                    {
+                        match self.apply_presentation_command(
+                            ProjectPresentationCommand::ApplyView {
+                                view: draft.view,
+                                units: draft.units.clone(),
+                            },
+                        ) {
+                            Ok(()) => close = true,
+                            Err(error) => draft.notice = Some(error.to_string()),
+                        }
+                    }
+                    if ui.button(if zh { "取消" } else { "Cancel" }).clicked() {
+                        close = true;
+                    }
+                });
+                ui.separator();
+                ui.label(if zh { "呈现历史包含项目与检查器显示变更；工程输入历史独立。" } else { "Presentation history includes project and Inspector display changes; input history is separate." });
+                for (label, command, enabled) in [
+                    (
+                        if zh {
+                            "撤销呈现变更"
+                        } else {
+                            "Undo presentation"
+                        },
+                        ProjectPresentationCommand::Undo,
+                        snapshot.runtime.workspace_document.presentation.can_undo(),
+                    ),
+                    (
+                        if zh {
+                            "重做呈现变更"
+                        } else {
+                            "Redo presentation"
+                        },
+                        ProjectPresentationCommand::Redo,
+                        snapshot.runtime.workspace_document.presentation.can_redo(),
+                    ),
+                ] {
+                    if ui.add_enabled(enabled, egui::Button::new(label)).clicked() {
+                        match self.apply_presentation_command(command) {
+                            Ok(()) => {
+                                draft.units = self
+                                    .platform_host
+                                    .snapshot()
+                                    .runtime
+                                    .workspace_document
+                                    .presentation
+                                    .view_units(draft.view)
+                            }
+                            Err(error) => draft.notice = Some(error.to_string()),
+                        }
                     }
                 }
-                if ui.button(if zh { "取消" } else { "Cancel" }).clicked() { close = true; }
-            });
-            ui.separator();
-            ui.label(if zh { "呈现历史包含项目与检查器显示变更；工程输入历史独立。" } else { "Presentation history includes project and Inspector display changes; input history is separate." });
-            for (label, command, enabled) in [
-                (if zh { "撤销呈现变更" } else { "Undo presentation" }, ProjectPresentationCommand::Undo, snapshot.runtime.workspace_document.presentation.can_undo()),
-                (if zh { "重做呈现变更" } else { "Redo presentation" }, ProjectPresentationCommand::Redo, snapshot.runtime.workspace_document.presentation.can_redo()),
-            ] {
-                if ui.add_enabled(enabled, egui::Button::new(label)).clicked() {
-                    match self.apply_presentation_command(command) {
-                        Ok(()) => draft.units = self.platform_host.snapshot().runtime.workspace_document.presentation.view_units(draft.view),
-                        Err(error) => draft.notice = Some(error.to_string()),
-                    }
+                if draft.units
+                    != snapshot
+                        .runtime
+                        .workspace_document
+                        .presentation
+                        .view_units(draft.view)
+                {
+                    super::state_presentation::light_state_surface(ui, |ui| {
+                        ui.colored_label(
+                            super::state_presentation::StudioStateTokens::SECONDARY,
+                            if zh {
+                                "本视图选择尚未应用；不写入工程文件。"
+                            } else {
+                                "View choices not yet applied; not saved in the project file."
+                            },
+                        );
+                    });
                 }
-            }
-            if let Some(notice) = &draft.notice { ui.label(notice); }
-        });
+                render_project_save_state(
+                    ui,
+                    &snapshot.runtime.workspace_document.save_state,
+                    self.locale,
+                );
+                if let Some(detail) = &draft.notice {
+                    render_project_notice(
+                        ui,
+                        &ProjectOpenNotice {
+                            level: ProjectOpenNoticeLevel::Error,
+                            title: if zh {
+                                "视图设置未修改"
+                            } else {
+                                "View settings unchanged"
+                            }
+                            .into(),
+                            detail: detail.clone(),
+                        },
+                    );
+                }
+            },
+        );
         self.unit_settings.view_draft = if close || response.should_close() {
             None
         } else {

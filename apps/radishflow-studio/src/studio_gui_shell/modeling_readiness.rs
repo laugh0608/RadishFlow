@@ -1,9 +1,9 @@
 use super::*;
 use radishflow_studio::{
     StudioModelingFocusTarget as ModelingFocusTarget,
-    StudioModelingReadinessTask as ModelingReadinessTask, studio_modeling_run_blocked_detail_en,
-    studio_modeling_run_blocked_detail_zh, studio_modeling_run_blocked_title_en,
-    studio_modeling_run_blocked_title_zh, studio_modeling_run_blocker,
+    StudioModelingReadinessTask as ModelingReadinessTask, studio_modeling_report_run_blocker,
+    studio_modeling_run_blocked_detail_en, studio_modeling_run_blocked_detail_zh,
+    studio_modeling_run_blocked_title_en, studio_modeling_run_blocked_title_zh,
 };
 
 impl ReadyAppState {
@@ -12,10 +12,12 @@ impl ReadyAppState {
             return;
         }
 
-        let blocker = {
-            let document = self.platform_host.document();
-            studio_modeling_run_blocker(document)
-        };
+        self.refresh_modeling_problems();
+        let blocker = self
+            .modeling_problems
+            .checks()
+            .current_report()
+            .and_then(studio_modeling_report_run_blocker);
         match blocker {
             Some(blocker) => {
                 self.project_open.notice = Some(ProjectOpenNotice {
@@ -55,10 +57,15 @@ impl ReadyAppState {
             return false;
         }
 
-        let blocker = {
-            let document = self.platform_host.document();
-            studio_modeling_run_blocker(document)
-        };
+        self.modeling_problems
+            .recommendations
+            .recheck(self.platform_host.modeling_inputs());
+
+        let blocker = self
+            .modeling_problems
+            .checks()
+            .current_report()
+            .and_then(studio_modeling_report_run_blocker);
         let Some(blocker) = blocker else {
             return false;
         };

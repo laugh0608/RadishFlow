@@ -14,6 +14,9 @@ fn app() -> AppState {
     stream.pressure_pa = 200_000.0;
     stream.total_molar_flow_mol_s = 1.23456789012345;
     flowsheet.insert_stream(stream).unwrap();
+    flowsheet
+        .insert_unit(rf_unitops::build_feed_node("feed", "Feed", "s"))
+        .unwrap();
     let mut valve = UnitNode::new(
         "v",
         "Valve",
@@ -567,6 +570,61 @@ fn display_projection_keeps_active_input_and_engineering_history_independent() {
     assert_eq!(field.input_unit, U::Celsius);
     assert!(field.text.starts_with("26.973456"));
     assert_eq!(app.workspace.document.revision, revision);
+}
+
+#[test]
+fn display_projection_preserves_typed_rejection_and_diagnostic_payload() {
+    let mut app = app();
+    let id = id(&app, VariableField::Pressure);
+    app.begin_numeric_edit(id.clone(), Some(U::Kilopascal))
+        .unwrap();
+    let document = app.workspace.document.clone();
+    for raw in [
+        "1.4 bar",
+        "invalid",
+        "1 unknown",
+        "1 K",
+        "1 kelvin",
+        "1 barg",
+        "NaN",
+        "1e308 kPa",
+        "-1",
+    ] {
+        text(&mut app, &id, raw);
+        let rejection = app
+            .workspace
+            .numeric_edit(&id)
+            .unwrap()
+            .validation()
+            .as_ref()
+            .unwrap_err()
+            .clone();
+        let field = app.workspace.numeric_field_presentation(&id).unwrap();
+        assert_eq!(
+            field.issue,
+            Some(NumericFieldIssue::Rejected(rejection.clone()))
+        );
+        if raw == "1.4 bar" {
+            assert_eq!(
+                rejection,
+                NumericEditError::Invalid(NumericParseError::UnitConflict {
+                    selected: U::Kilopascal,
+                    suffix: U::Bar,
+                })
+            );
+        }
+        if raw == "-1" {
+            let NumericEditError::Rejected(error) = rejection else {
+                panic!("expected a domain rejection");
+            };
+            assert_eq!(error.code(), rf_types::ErrorCode::InvalidInput);
+            assert!(error.message().contains("pressure_pa"));
+        }
+        assert_eq!(field.text, raw);
+        assert_eq!(field.input_unit, U::Kilopascal);
+        assert!(!field.can_apply);
+        assert_eq!(app.workspace.document, document);
+    }
 }
 
 #[test]

@@ -33,19 +33,28 @@ mod app;
 mod authoring;
 mod canvas_navigation;
 mod chrome;
+mod equipment;
 mod failure_recovery;
 mod fonts;
 mod home_dashboard;
+mod input_departure;
+mod keyboard;
 mod locale;
+mod modeling_problems;
 mod modeling_readiness;
+mod modeling_recommendations;
 mod numeric_input;
 mod panels;
 mod project_close;
 mod project_layout_save;
 mod project_picker;
+mod project_read_only;
 mod project_save;
 mod result_export;
+mod result_table;
+mod state_presentation;
 mod unit_deletion;
+mod unit_selector;
 mod unit_settings;
 mod utils;
 mod variable_browser;
@@ -58,6 +67,7 @@ mod timer_tests;
 
 use self::locale::{ShellText, StudioShellLocale};
 use self::project_picker::{NativeProjectFilePicker, ProjectFilePicker};
+use self::state_presentation::{render_project_notice, render_project_save_state};
 use self::utils::*;
 
 const STUDIO_INITIAL_WINDOW_SIZE: [f32; 2] = [1280.0, 860.0];
@@ -126,8 +136,10 @@ struct ReadyAppState {
     command_palette: CommandPaletteState,
     project_open: ProjectOpenState,
     pending_unit_deletion: Option<unit_deletion::PendingUnitDeletion>,
+    pending_input_action: Option<input_departure::PendingInputAction>,
     pending_result_export: Option<result_export::PendingResultExport>,
     pending_format_upgrade: Option<project_save::PendingFormatUpgrade>,
+    read_only_project: Option<project_read_only::ReadOnlyProjectView>,
     unit_settings: unit_settings::UnitSettingsState,
     home_workspace_return_available: bool,
     home_selected_current_workspace: bool,
@@ -136,11 +148,13 @@ struct ReadyAppState {
     active_authoring_case: Option<AuthoringCaseKind>,
     result_inspector: ResultInspectorState,
     screen: StudioShellScreen,
+    equipment: equipment::EquipmentPageState,
     left_sidebar_tab: StudioShellLeftSidebarTab,
     right_sidebar_tab: StudioShellRightSidebarTab,
     bottom_drawer_tab: StudioShellBottomDrawerTab,
     module_palette_filter: String,
     variable_browser: variable_browser::VariableBrowserState,
+    modeling_problems: modeling_problems::ModelingProblemsState,
     canvas_viewport_navigation: CanvasViewportNavigationState,
     canvas_initial_viewport_fit: CanvasInitialViewportFitState,
     canvas_viewport_fit_to_content_requested: bool,
@@ -163,6 +177,7 @@ enum StudioShellScreen {
     Home,
     Property,
     Workbench,
+    Equipment,
     Run,
     Results,
 }
@@ -212,6 +227,7 @@ struct ProjectOpenState {
     pending_authoring_blank_project: Option<AuthoringCaseKind>,
     pending_save_as_overwrite: Option<PathBuf>,
     pending_close_window_confirmation: Option<StudioWindowHostId>,
+    departure_checkpoint: Option<input_departure::ProjectDepartureCheckpoint>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -435,13 +451,38 @@ impl ReadyAppState {
                     }),
                 ),
             };
+        let read_only_project = if config.untitled_blank_project.is_none() {
+            match radishflow_studio::read_studio_project(&config.project_path)? {
+                radishflow_studio::StudioProjectOpen::ReadOnly(project) => {
+                    Some(project_read_only::ReadOnlyProjectView {
+                        path: config.project_path.clone(),
+                        project,
+                    })
+                }
+                radishflow_studio::StudioProjectOpen::Editable(_) => None,
+            }
+        } else {
+            None
+        };
+        let fallback_config;
+        let host_config = if read_only_project.is_some() {
+            fallback_config = studio_shell_blank_runtime_config();
+            &fallback_config
+        } else {
+            config
+        };
+        let platform_host = StudioGuiPlatformHost::new(host_config)?;
+        let modeling_problems =
+            modeling_problems::ModelingProblemsState::new(platform_host.document());
         let mut ready = ReadyAppState {
-            platform_host: StudioGuiPlatformHost::new(config)?,
+            platform_host,
             platform_timer_executor: EguiPlatformTimerExecutor::default(),
             command_palette: CommandPaletteState::default(),
             pending_unit_deletion: None,
+            pending_input_action: None,
             pending_result_export: None,
             pending_format_upgrade: None,
+            read_only_project,
             unit_settings: unit_settings::UnitSettingsState::load(&preferences_path),
             project_open: ProjectOpenState::from_path_and_recent(
                 &config.project_path,
@@ -454,11 +495,13 @@ impl ReadyAppState {
             active_authoring_case: None,
             result_inspector: ResultInspectorState::default(),
             screen: StudioShellScreen::default(),
+            equipment: equipment::EquipmentPageState::default(),
             left_sidebar_tab: StudioShellLeftSidebarTab::default(),
             right_sidebar_tab: StudioShellRightSidebarTab::default(),
             bottom_drawer_tab: StudioShellBottomDrawerTab::default(),
             module_palette_filter: String::new(),
             variable_browser: variable_browser::VariableBrowserState::default(),
+            modeling_problems,
             canvas_viewport_navigation: CanvasViewportNavigationState::default(),
             canvas_initial_viewport_fit: canvas_initial_viewport_fit_from_config(config),
             canvas_viewport_fit_to_content_requested: false,
@@ -741,6 +784,7 @@ impl ProjectOpenState {
             pending_authoring_blank_project: None,
             pending_save_as_overwrite: None,
             pending_close_window_confirmation: None,
+            departure_checkpoint: None,
         };
         state.replace_recent_projects(recent_projects);
         state

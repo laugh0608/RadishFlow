@@ -203,3 +203,51 @@ fn equivalent_and_round_trip_conversions_preserve_computation_precision() {
         }
     }
 }
+
+#[test]
+fn engineering_quantities_have_independent_scale_references_and_semantic_boundaries() {
+    close(
+        to_canonical(3600.0, ActualVolumeFlow, CubicMetrePerHour).unwrap(),
+        1.0,
+    );
+    close(
+        to_canonical(18.0, ActualVolumeFlow, CubicMetrePerHour).unwrap(),
+        0.005,
+    );
+    close(to_canonical(2.0, Duration, Minute).unwrap(), 120.0);
+    close(to_canonical(1000.0, Length, Millimetre).unwrap(), 1.0);
+    assert_eq!(
+        to_canonical(998.0, MassDensity, KilogramPerCubicMetre),
+        Ok(998.0)
+    );
+    assert_eq!(to_canonical(0.8, DimensionlessRatio, One), Ok(0.8));
+    for (quantity, unit) in [
+        (DimensionlessRatio, MolePerMole),
+        (DimensionlessRatio, MolePercent),
+        (Area, Metre),
+        (Volume, SquareMetre),
+        (Velocity, Kelvin),
+        (ActualVolumeFlow, StandardCubicMetrePerHour),
+        (ActualVolumeFlow, KilogramPerSecond),
+        (ActualVolumeFlow, MolePerSecond),
+    ] {
+        assert!(matches!(
+            to_canonical(1.0, quantity, unit),
+            Err(ConversionError::IncompatibleUnit { .. })
+        ));
+    }
+    for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        assert_eq!(
+            to_canonical(value, Duration, Minute),
+            Err(ConversionError::NonFiniteValue)
+        );
+    }
+    assert_eq!(
+        to_canonical(f64::MAX, Duration, Minute),
+        Err(ConversionError::Overflow)
+    );
+    assert_eq!(
+        from_canonical(f64::MAX, ActualVolumeFlow, CubicMetrePerHour),
+        Err(ConversionError::Overflow)
+    );
+}

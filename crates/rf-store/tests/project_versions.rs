@@ -262,3 +262,39 @@ fn direct_serde_callers_share_version_validation_and_round_trip_both_versions() 
         assert!(parse_project_file_json(&value.to_string()).is_err());
     }
 }
+
+#[test]
+fn extended_non_si_choices_cannot_be_lost_in_legacy_project_or_personal_defaults() {
+    let root = std::env::temp_dir().join(format!(
+        "rf-legacy-units-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&root).unwrap();
+    let project_path = root.join("existing.rfproj.json");
+    let defaults_path = root.join(rf_store::UNIT_DEFAULTS_FILE_NAME);
+    std::fs::write(&project_path, V2).unwrap();
+    rf_store::write_unit_defaults(&defaults_path, &DisplayUnitSet::engineering()).unwrap();
+    let defaults_before = std::fs::read(&defaults_path).unwrap();
+    let mut project = parse_project_file_json(V2).unwrap();
+    project
+        .presentation
+        .display_units
+        .set_unit(
+            QuantityKind::ActualVolumeFlow,
+            MeasurementUnit::CubicMetrePerHour,
+        )
+        .unwrap();
+    assert!(project.validate().unwrap_err().message().contains("v3"));
+    assert!(write_project_file(&project_path, &project).is_err());
+    assert!(
+        rf_store::write_unit_defaults(&defaults_path, &project.presentation.display_units).is_err()
+    );
+    assert_eq!(std::fs::read_to_string(&project_path).unwrap(), V2);
+    assert_eq!(std::fs::read(&defaults_path).unwrap(), defaults_before);
+    assert_eq!(std::fs::read_dir(&root).unwrap().count(), 2);
+    std::fs::remove_dir_all(root).unwrap();
+}

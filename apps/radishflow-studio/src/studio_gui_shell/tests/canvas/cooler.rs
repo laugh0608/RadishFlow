@@ -134,8 +134,8 @@ fn cooler_temperature_edits_preserve_saved_input_and_refresh_downstream_results(
     let project_bytes = fs::read(&project_path).unwrap();
     app.export_solve_snapshot_to_path(&snapshot, export_path.clone());
     let exported = fs::read_to_string(&export_path).unwrap();
-    assert_eq!(exported, snapshot.light_text_export());
-    assert!(exported.contains("T 275.00 K | P 90000 Pa | F 1.000000 mol/s"));
+    assert_eq!(exported, snapshot.light_text_export().unwrap());
+    assert!(exported.contains("T 275 K | P 90000 Pa | F 1 mol/s"));
     assert_eq!(fs::read(&project_path).unwrap(), project_bytes);
     assert!(
         !app.platform_host

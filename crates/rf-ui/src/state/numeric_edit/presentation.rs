@@ -31,7 +31,8 @@ pub enum NumericFieldSource {
 pub enum NumericFieldIssue {
     Incomplete,
     Conflict,
-    Rejected(String),
+    /// Preserve the failure category and payload for localized controls and diagnostics.
+    Rejected(NumericEditError),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -89,7 +90,7 @@ impl WorkspaceState {
             .map(|error| match error {
                 NumericEditError::Incomplete => NumericFieldIssue::Incomplete,
                 NumericEditError::FieldConflict => NumericFieldIssue::Conflict,
-                error => NumericFieldIssue::Rejected(error.to_string()),
+                error => NumericFieldIssue::Rejected(error.clone()),
             });
         Ok(NumericFieldPresentation {
             variable: id.clone(),

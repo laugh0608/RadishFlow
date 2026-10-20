@@ -71,7 +71,6 @@ enum HomeText {
 
 #[derive(Debug, Clone, Copy)]
 enum HomeMessageTag {
-    Notice,
     Auth,
     Examples,
     Cache,
@@ -87,6 +86,7 @@ impl ReadyAppState {
         window.home.recent_case_tiles = self
             .project_open
             .recent_case_tiles_for_current(&window.runtime.workspace_document);
+        self.project_canvas_recommendations(&mut window);
         window
     }
 
@@ -183,7 +183,14 @@ impl ReadyAppState {
                                     .to_string(),
                             });
                         }
-                        ui.small(self.locale.text(ShellText::UnitsSi));
+                        ui.small(super::unit_settings::project_units_label(
+                            self.locale,
+                            window
+                                .runtime
+                                .workspace_document
+                                .presentation
+                                .display_units(),
+                        ));
                     });
                 });
             });
@@ -191,6 +198,20 @@ impl ReadyAppState {
 
     fn render_home_start_actions(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         ui.heading(home_text(self.locale, HomeText::Start));
+        if ui
+            .add(
+                egui::Button::new(if self.locale == StudioShellLocale::ZhCn {
+                    "新建独立分离器"
+                } else {
+                    "New independent separator"
+                })
+                .min_size(egui::vec2(ui.available_width(), 40.0)),
+            )
+            .clicked()
+        {
+            self.start_independent_equipment_project();
+        }
+
         ui.add_space(8.0);
 
         if self.home_return_workspace_action_is_available() {
@@ -535,11 +556,23 @@ impl ReadyAppState {
     fn open_current_workspace_from_home(&mut self) {
         match self.current_workspace_home_entry_screen() {
             StudioShellScreen::Workbench => self.enter_flowsheet_modeling_from_property(),
+            StudioShellScreen::Equipment => self.enter_equipment(),
             screen => self.screen = screen,
         }
     }
 
     fn current_workspace_home_entry_screen(&self) -> StudioShellScreen {
+        if !self
+            .platform_host
+            .modeling_inputs()
+            .workspace
+            .engineering
+            .inputs()
+            .tasks
+            .is_empty()
+        {
+            return StudioShellScreen::Equipment;
+        }
         let flowsheet_modeling_enabled = self
             .platform_host
             .snapshot()
@@ -689,13 +722,13 @@ impl ReadyAppState {
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
                         if let Some(notice) = self.project_open.notice.clone() {
-                            self.render_home_message_row(
-                                ui,
-                                HomeMessageTag::Notice,
-                                &notice.title,
-                                Some(&notice.detail),
-                            );
                             self.render_home_project_operation_actions(ui);
+                            render_project_notice(ui, &notice);
+                            render_project_save_state(
+                                ui,
+                                &window.runtime.workspace_document.save_state,
+                                self.locale,
+                            );
                         }
                         self.render_home_message_row(
                             ui,
@@ -809,6 +842,11 @@ impl ReadyAppState {
                 }
             }
         });
+        if self.project_open.pending_confirmation.is_some()
+            || self.project_open.pending_blank_project_confirmation
+        {
+            self.render_project_departure_inputs(ui);
+        }
     }
 
     fn render_home_message_row(
@@ -891,20 +929,17 @@ fn message_tag_color(tag: HomeMessageTag) -> egui::Color32 {
         HomeMessageTag::Auth => egui::Color32::from_rgb(160, 120, 40),
         HomeMessageTag::Examples => egui::Color32::from_rgb(56, 126, 214),
         HomeMessageTag::Cache => egui::Color32::from_rgb(52, 128, 89),
-        HomeMessageTag::Notice => egui::Color32::from_rgb(86, 118, 168),
     }
 }
 
 fn home_message_tag_text(locale: StudioShellLocale, tag: HomeMessageTag) -> &'static str {
     match locale {
         StudioShellLocale::En => match tag {
-            HomeMessageTag::Notice => "NOTICE",
             HomeMessageTag::Auth => "AUTH",
             HomeMessageTag::Examples => "EXAMPLES",
             HomeMessageTag::Cache => "CACHE",
         },
         StudioShellLocale::ZhCn => match tag {
-            HomeMessageTag::Notice => "提示",
             HomeMessageTag::Auth => "认证",
             HomeMessageTag::Examples => "示例",
             HomeMessageTag::Cache => "缓存",

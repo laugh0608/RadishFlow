@@ -1,8 +1,10 @@
 mod app_facade;
 mod auth_cache_sync;
 mod bootstrap;
+mod confirmed_input_action;
 mod control_plane_client;
 mod control_plane_sync;
+pub use confirmed_input_action::{StudioConfirmedInputAction, StudioInputAction};
 mod document_history_driver;
 mod document_lifecycle_driver;
 mod entitlement_control;
@@ -16,6 +18,8 @@ pub mod headless;
 mod inspector_draft_driver;
 mod inspector_target_driver;
 pub mod modeling_actions;
+pub mod modeling_recommendations;
+pub mod modeling_specifications;
 mod property_package_download;
 mod property_package_download_client;
 mod run_panel_driver;
@@ -85,8 +89,9 @@ pub use document_history_driver::{
 };
 pub use document_lifecycle_driver::{
     DocumentLifecycleOutcome, FILE_SAVE_AS_COMMAND_ID, FILE_SAVE_COMMAND_ID,
-    StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand, dispatch_document_lifecycle,
-    load_project_app_state,
+    StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand, StudioProjectOpen,
+    dispatch_document_lifecycle, load_project_app_state, project_save_requires_upgrade,
+    project_save_version, read_studio_project,
 };
 pub use entitlement_control::{
     StudioEntitlementAction, StudioEntitlementActionOutcome, StudioEntitlementFailure,
@@ -296,18 +301,19 @@ pub use studio_gui_window_layout::{
     StudioGuiWindowTitlebarModel,
 };
 pub use studio_gui_window_model::{
-    StudioGuiWindowCanvasAreaModel, StudioGuiWindowCommandActionModel,
-    StudioGuiWindowCommandAreaModel, StudioGuiWindowCommandListItemModel,
-    StudioGuiWindowCommandListSectionModel, StudioGuiWindowCommandPaletteItemModel,
-    StudioGuiWindowCompositionResultModel, StudioGuiWindowContextToolbarItemModel,
-    StudioGuiWindowContextToolbarItemTarget, StudioGuiWindowContextToolbarModel,
-    StudioGuiWindowContextToolbarSectionModel, StudioGuiWindowContextToolbarStatusModel,
-    StudioGuiWindowDiagnosticModel, StudioGuiWindowDiagnosticTargetActionModel,
-    StudioGuiWindowDropPreviewModel, StudioGuiWindowDropPreviewOverlayModel,
-    StudioGuiWindowDropPreviewState, StudioGuiWindowFailureDiagnosticDetailModel,
-    StudioGuiWindowFailureDiagnosticPortTargetModel, StudioGuiWindowFailureResultModel,
-    StudioGuiWindowHeaderModel, StudioGuiWindowHomeCaseTileModel,
-    StudioGuiWindowHomeCaseTileSource, StudioGuiWindowHomeCaseTileStatus, StudioGuiWindowHomeModel,
+    StudioGuiQuantityPresentationError, StudioGuiWindowCanvasAreaModel,
+    StudioGuiWindowCommandActionModel, StudioGuiWindowCommandAreaModel,
+    StudioGuiWindowCommandListItemModel, StudioGuiWindowCommandListSectionModel,
+    StudioGuiWindowCommandPaletteItemModel, StudioGuiWindowCompositionResultModel,
+    StudioGuiWindowContextToolbarItemModel, StudioGuiWindowContextToolbarItemTarget,
+    StudioGuiWindowContextToolbarModel, StudioGuiWindowContextToolbarSectionModel,
+    StudioGuiWindowContextToolbarStatusModel, StudioGuiWindowDiagnosticModel,
+    StudioGuiWindowDiagnosticTargetActionModel, StudioGuiWindowDropPreviewModel,
+    StudioGuiWindowDropPreviewOverlayModel, StudioGuiWindowDropPreviewState,
+    StudioGuiWindowFailureDiagnosticDetailModel, StudioGuiWindowFailureDiagnosticPortTargetModel,
+    StudioGuiWindowFailureResultModel, StudioGuiWindowHeaderModel,
+    StudioGuiWindowHomeCaseTileModel, StudioGuiWindowHomeCaseTileSource,
+    StudioGuiWindowHomeCaseTileStatus, StudioGuiWindowHomeModel,
     StudioGuiWindowInspectorCompositionComponentActionModel,
     StudioGuiWindowInspectorCompositionSummaryModel, StudioGuiWindowInspectorConnectionActionModel,
     StudioGuiWindowInspectorPropertyNoticeModel, StudioGuiWindowInspectorTargetDetailModel,
@@ -352,9 +358,10 @@ pub use studio_inspector_target_command::{
 };
 pub use studio_modeling_readiness::{
     StudioModelingFocusTarget, StudioModelingReadinessTask, StudioModelingRunBlocker,
-    StudioModelingUnitParameter, studio_modeling_run_blocked_detail_en,
-    studio_modeling_run_blocked_detail_zh, studio_modeling_run_blocked_title_en,
-    studio_modeling_run_blocked_title_zh, studio_modeling_run_blocker,
+    StudioModelingUnitParameter, studio_modeling_report_run_blocker,
+    studio_modeling_run_blocked_detail_en, studio_modeling_run_blocked_detail_zh,
+    studio_modeling_run_blocked_title_en, studio_modeling_run_blocked_title_zh,
+    studio_modeling_run_blocker,
 };
 pub use studio_project_component_selection::{
     PROJECT_COMPONENT_REMOVE_COMMAND_PREFIX, PROJECT_COMPONENT_SELECT_COMMAND_PREFIX,

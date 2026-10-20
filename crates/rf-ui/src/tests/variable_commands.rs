@@ -422,3 +422,129 @@ fn input_command_batch_rolls_back_earlier_values_when_later_validation_fails() {
     );
     assert_eq!(app.workspace, before);
 }
+
+#[test]
+fn pressure_writes_use_feed_overrides_and_upstream_specs_never_templates_or_stale_results() {
+    let mut app = input_app("valve");
+    let feed_id = app
+        .workspace
+        .document
+        .flowsheet
+        .units
+        .values()
+        .find(|unit| unit.kind == "feed")
+        .unwrap()
+        .id
+        .clone();
+    app.workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&feed_id)
+        .unwrap()
+        .parameters
+        .outlet_pressure_pa = Some(80_000.0);
+    let pressure_write = request(
+        &app,
+        ObjectId::Unit("target".into()),
+        VariableField::OutletPressure,
+        VariableValue::Number(90_000.0),
+    );
+    let before = app.clone();
+    assert!(app.write_variable(pressure_write, timestamp(20)).is_err());
+    assert_eq!(app, before);
+
+    // Intermediate explicit pressure controls the limit even with a lower template.
+    app.workspace
+        .document
+        .flowsheet
+        .insert_stream(MaterialStreamState::new("mid", "Template"))
+        .unwrap();
+    let mut upstream = rf_unitops::build_heater_node("upstream", "Upstream", "stream-feed", "mid");
+    upstream.parameters.outlet_pressure_pa = Some(70_000.0);
+    app.workspace
+        .document
+        .flowsheet
+        .insert_unit(upstream)
+        .unwrap();
+    app.workspace
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&StreamId::new("mid"))
+        .unwrap()
+        .pressure_pa = 20_000.0;
+    app.workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new("target"))
+        .unwrap()
+        .ports[0]
+        .stream_id = Some("mid".into());
+    let mut stale = SolveSnapshot::new(
+        "stale",
+        0,
+        1,
+        RunStatus::Converged,
+        DiagnosticSummary::new(0, DiagnosticSeverity::Info, "old"),
+    );
+    stale.streams.push(crate::StreamStateSnapshot {
+        stream_id: "mid".into(),
+        label: "Old".into(),
+        temperature_k: 300.0,
+        pressure_pa: 500_000.0,
+        total_molar_flow_mol_s: 1.0,
+        overall_mole_fractions: vec![],
+        phases: vec![],
+        bubble_dew_window: None,
+    });
+    app.store_snapshot(stale);
+    app.workspace.document.revision = 1;
+    let accepted = request(
+        &app,
+        ObjectId::Unit("target".into()),
+        VariableField::OutletPressure,
+        VariableValue::Number(60_000.0),
+    );
+    app.write_variable(accepted, timestamp(21)).unwrap();
+    let rejected = request(
+        &app,
+        ObjectId::Unit("target".into()),
+        VariableField::OutletPressure,
+        VariableValue::Number(70_001.0),
+    );
+    let before = app.clone();
+    assert!(app.write_variable(rejected, timestamp(22)).is_err());
+    assert_eq!(app, before);
+    assert_eq!(
+        app.workspace.document.flowsheet.streams[&StreamId::new("mid")].pressure_pa,
+        20_000.0
+    );
+
+    // Missing specification leaves only the scalar check; no template-derived bound.
+    app.workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new("upstream"))
+        .unwrap()
+        .parameters
+        .outlet_pressure_pa = None;
+    let accepted = request(
+        &app,
+        ObjectId::Unit("target".into()),
+        VariableField::OutletPressure,
+        VariableValue::Number(80_000.0),
+    );
+    app.write_variable(accepted, timestamp(23)).unwrap();
+    assert_eq!(
+        rf_flowsheet::pressure_context::document_pressure_context(
+            &app.workspace.document.flowsheet,
+            &app.workspace.document.flowsheet.units[&UnitId::new("target")],
+            BuiltinUnitKind::Valve
+        )
+        .limit(),
+        None
+    );
+}

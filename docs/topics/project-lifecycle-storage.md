@@ -1,6 +1,6 @@
 # 项目生命周期与存储
 
-更新时间：2026-09-26
+更新时间：2026-10-15
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -24,7 +24,7 @@
 
 ## 单位保存与后续规划衔接
 
-2026-09-16 规划新增 [单位偏好](units/unit-sets-and-persistence.md) 与 [设备任务](equipment-design-and-rating.md) 的保存恢复。单位配置所有权、独立保存脏标记与兼容规则只在单位子专题维护，本专题提供安全保存共用流程；U2-I1 / I2 已接通外层 v2 / metadata v1、旧 v1 显式升级、独立呈现脏标记与个人默认；普通保存只写已提交 SI 与项目单位选择，保留并提示未提交草稿。I4 临时视图覆盖、输入单位及编辑历史不进文件，统一离开确认与完整原生验收待续。设备几何 / 工况来源的持久化按各切片确定；候选与已采纳输入分开，恢复时重验模型 / 方法与源工况有效性，缺失能力不静默丢弃未知数据。
+2026-09-16 规划新增 [单位偏好](units/unit-sets-and-persistence.md) 与 [设备任务](equipment-design-and-rating.md) 的保存恢复。单位配置所有权、独立保存脏标记与兼容规则只在单位子专题维护，本专题提供安全保存共用流程；U2-I1 / I2 已接通外层 v2 / metadata v1、旧 v1 显式升级、独立呈现脏标记与个人默认；普通保存只写已提交 SI 与项目单位选择，保留并提示未提交草稿。I4 临时视图覆盖、输入单位及编辑历史不进文件，统一离开确认已接通，I5 按已确认条件补验。设备几何 / 工况来源的持久化按各切片确定；候选与已采纳输入分开，恢复时重验模型 / 方法与源工况有效性，缺失能力不静默丢弃未知数据。
 
 [工程基础与工况](engineering-basis-and-cases.md) 后续需要持久化共同条件、显式覆盖、来源、工程位号及案例身份；位号更名不改变内部引用。有效输入 / 方法变化与纯显示或说明变更分别管理，保存修订不自动等同求解输入修订。冻结运行依据与当前文档分离，来源更新不覆盖历史记录；具体 schema / 迁移及资产保存边界在 G1 / G3 和 Q2 / Q3 确定，旧工程来源缺失标为未记录，不伪造数据。
 
@@ -51,7 +51,7 @@
 
 已完成：
 
-- 单文档工作区；GUI 与无界面消费者共用 `load_project_app_state`，经正式存储读取 / 校验后恢复元数据和修订，运行态由各调用者建立。
+- 单文档工作区；Studio 按外层版本分派，支持已知 v3 的正式输入恢复及未知方法的整份只读检查；旧无界面协议保持独立 v1/v2 入口，运行态由各调用者建立。
 - 项目文件 staged write。
 - `Save` / `Save As` / 覆盖确认；macOS 原生项目打开、首次保存与另存为主路径已实窗验证，Windows / Linux 新增路径证据见下文。
 - 最近项目列表和当前工作区返回入口。
@@ -106,7 +106,13 @@ Windows 保存已有文件继续先移出备份，再提交 staged 文件。2026
 
 ## U2-I1 项目版本与呈现装载（2026-09-23）
 
-已接通 v1 / v2 明确读取、完整显示单位集与来源版本保留；实际格式、严格校验及兼容证据唯一维护在 [单位存储契约](units/unit-sets-and-persistence.md#u2-存储接口)。2026-09-28 I2 已接通独立呈现保存与历史、统一保存摘要和个人默认。新建保存 v2；来源 v1 首次保存须明确同意升级，取消不改盘；保存失败不更新任何基线。未提交草稿不随文件保存，关闭 / 新建 / 切工程另行保护。字段换算与完整 U2 验收待 I3 / I4 / I5。
+已接通 v1 / v2 明确读取、完整显示单位集与来源版本保留；实际格式、严格校验及兼容证据唯一维护在 [单位存储契约](units/unit-sets-and-persistence.md#u2-存储接口)。I2 已接通独立呈现保存与历史、统一保存摘要和个人默认。新建保存 v2；来源 v1 首次保存须明确同意升级，取消不改盘；保存失败不更新基线。I3 / I4 数值会话、首批非 SI 输入和离开保护已接通，I5 完整验收待续。
+
+### U2 离开保护与保存状态
+
+2026-10-02 新建 / 打开 / 关闭统一列出受影响的未提交输入，保存摘要分别表达工程内容、显示设置和未提交输入。确认绑定工程身份 / revision、输入代次及其他草稿、呈现状态、保存基线与路径；确认后现场变化须重验，取消或打开失败保留当前工程。设置候选仍打开时须先应用或取消。
+
+保存仅写入已提交内容和已应用项目配置，不应用或放弃字段草稿；有草稿时“保存并关闭”仍保持窗口，用户可返回处理或明确舍弃。关闭弹窗初始焦点为取消，Escape 取消关闭。保存快捷键复用菜单 / 命令面板的壳层流程，v1 升级确认不会被绕过；确认弹窗期间命令面板与全局快捷键保持隔离。代码 / 事务边界见 [统一离开确认](units/input-drafts-and-interactions.md#i4-统一离开确认与失败保护)，macOS 多对象、保存 / 打开 / 关闭增量证据见 [I5 原生组合](units/input-drafts-and-interactions.md#i5-多对象草稿与离开保护原生验证)；迟到确认与失败事务已有自动回归及部分原生证据，剩余原生组合按 [I5 延期节点](units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 补验。
 
 ## 用户路径
 
@@ -183,5 +189,137 @@ Windows 保存已有文件继续先移出备份，再提交 staged 文件。2026
 ## 状态记录
 
 - 当前状态：Active
-- 最近更新：2026-09-13，macOS 项目 picker 已实现；删除 / 恢复、中文重命名和快捷键保存均已完成实窗重开 / rerun，草稿不自动入盘、sidecar 保留和会话历史边界已复核，详见 [周志](../devlogs/2026-09/2026-W37.md)。
-- 下一步：随 B1-4 保持保存快捷键与文档生命周期一致；macOS 原生覆盖按钮组合 / 真实权限故障和 Windows / Linux 新增路径仍待验证，Linux 项目选择器实现另行定范围。
+- 最近更新：2026-10-07，保存快捷键与模态隔离修复、失败重试及迟到关闭等 macOS 增量证据见 [W41](../devlogs/2026-10/2026-W41.md)；I5 未完整收口。历史证据见 [W40](../devlogs/2026-09/2026-W40.md) / [W37](../devlogs/2026-09/2026-W37.md)。
+- 下一步：按 I5 已确认触发条件补齐剩余迟到事件、失败事务与原生组合；真实权限故障、Windows / Linux 新增路径保持待验证，Linux 项目选择器实现另行定范围。
+
+## G0/S1 工程内容保存方案（2026-10-11，已认可）
+
+按 [G0 首批逻辑契约](engineering-basis-and-cases.md#g0-首批数据契约2026-10-11已认可)与 [E0/S0 范围](equipment/separator-sizing-and-rating.md#e0s0-首批方法方案2026-10-11已认可)定义完整持久化方向。2026-10-11 已按获准三批方案完成独立基础子集；2026-10-15 已依次完成设备数据 / 纯计算、正式事务 / 结果资格及完整设备保存与最小 Studio v3 生命周期，随后接通独立设备编辑页与设备页 Undo / Redo；计算表导出和多工况留后续。
+
+- 新增工程基础、来源与单工况设备任务属于正式项目数据，不落布局 sidecar。现有 `ProjectFileWire` 使用严格字段检查，已认可新增外层 v3，保留已有 document / presentation 语义，并增加明确的工程区；metadata 的版本含义不借机更改。
+- v1/v2 项目无工程内容时保持原打开 / 保存路径；首次保存工程内容须显式升级或另存为，提示旧程序不能读取。取消 / IO 失败保留正式输入、草稿及保存脏状态；不能静默丢工程区回存 v2。
+- 工程区只保存稳定 ID、基础 / 来源、任务 / 工况 / 字段绑定、方法版本与准则，不保存活动候选、问题缓存、执行令牌或未提交草稿。重开校验引用与方法能力，结果 missing；未知方法保留数据、只读说明并禁止计算，未知外层版本明确拒绝，不做容错改写。
+- 设备正式输入与来源变更加入项目保存脏状态及既有离开保护；设备计算输入代次独立于 `FlowsheetDocument.revision`，无关设备编辑不旧化流程结果。Undo / Redo、会话重建及 late result 的行为由 G0 拥有。
+- S1 的 CSV / JSON 计算表是显式导出的冻结记录，捕获同一有效输入、来源、方法、单位、结果与未完成项；不是项目恢复缓存，也不承诺导入回放。首批不增加多文件工程容器、二进制资产、云上传或永久计算历史。
+
+v3 字段 / 缺省 / 必填 / 未知字段规则和迁移样本已冻结，覆盖 v1/v2 无损读取、升级取消、失败原文件恢复、缺引用 / 重复 ID、未知方法、保存重开及结果 missing；复用现有 staged write，不另造保存路径。新 CLI 推荐或设备协议不属于本批；旧 CLI v1/v2 遇所有 v3 文件，在任何操作前明确返回不支持的项目能力，且不得写文件；旧 v1/v2 输入、SI 与退出行为保持。随后有真实消费者时再审定新设备协议，不能吞掉工程区后另存。GE-D04 已认可，下节细化版本契约；已接通完整设备存储及最小 Studio 生命周期，验证范围见下节；I5 和对外候选前限制保持。
+
+### v3 字段与兼容契约（2026-10-11）
+
+以下为已认可 GE-D04 内的存储契约。旧 `StoredProjectFile` 常量仍为 2；Studio 通过独立 v3 DTO 分派，不扩大旧 CLI 能力。采用 UTF-8 JSON、camelCase，保持扩展名及 `kind=radishflow.project-file`；外层 `schemaVersion=3`，`document.metadata.schemaVersion=1`。先按外层版本分派，再交相应 DTO 验证，不能先把 v3 强行读进 v2 严格结构。读取始终不写盘。
+
+| 位置 | 必需字段 / 规则 |
+| --- | --- |
+| 外层 | `kind`、`schemaVersion`、`document`、`presentation` 必需；`engineering` 可缺省，缺省表示空工程区；显式 null 拒绝。所有外层未知 / 重复键拒绝 |
+| `document` | 原 v2 语义和字段保持；无设备专用虚构 unit / stream，不改变流程 revision 或 metadata 版本 |
+| `presentation` | 只含 `displayUnits`，每项 `quantityId/unitId`；完整 15 类，各恰一次，写出按固定目录顺序。v2 始终只有原 7 类，详见 [单位契约](units/catalog-and-conversion.md#g0s1-量与单位契约2026-10-11) |
+| `engineering` | 出现时必须包含 `basisEntries`、`sources`、`tasks` 三个数组，可为空；已知结构严格拒绝未知字段，不再增加同义版本号 |
+| `basisEntries[]` | `id`、`revision`、`name`、`quantityId`、`valueSi`、`sourceId` 必需；量种来自统一目录，valueSi 有限；来源与适用条件从 source 引用 |
+| `sources[]` | `id`、`revision`、`kind`、`title`、`reference`、`locator`、`publicationVersion`、`accessedOn`、`adoptionNote`、`review`、`applicability`、`observations` 必需；未取得的文本可为空，不能当作依据充分 |
+| `tasks[]` | `id`、`revision`、`tag`、`name`、`kind`、`method`、`case`、`inputs`、可选 `axialSections`；S1 的 kind 为 `verticalGasLiquidSeparatorSizing`，不含流程 unitId |
+| `method` | `id=radishflow.separator.vertical-sb-working-volume`、`version=1`；ID 和版本共同标识全部输入语义、公式及适用域，不按名称猜版本 |
+| `case` | `id`、`name`、`purpose`、`fluidSystem`、`applicabilitySourceIds`、`applicability` 必需；文本可空，适用性声明按下表逐项保存 |
+| `inputs` | 仅接受本节列明的十个字段键；字段缺省表示未填写，可保存但计算阻挡；存在时必须是完整绑定，不接受 null 或数字字符串 |
+| `axialSections` | 可缺省；出现时是下列区段键到 length 绑定的映射，允许不完整且总高度未确定；不保存派生 h_work 或 H_TT |
+
+全部实体 ID 非空、大小写敏感、项目内按记录种类唯一；case ID 在项目任务间唯一，数组顺序不构成身份。revision 为非负整数，保存记录版本而非执行凭据，变更单调推进。task/tag 唯一性按 G0；重复键、重复 ID、悬空引用、绑定量种不兼容或引用环拒绝装载，不丢掉坏项后打开。错误提供 JSON 路径及原因。有限但不符合设备方法范围的值可作为有问题的正式输入保留并定位，禁止产生候选；NaN/Inf、非法 JSON 和不完整绑定是格式错误。
+
+十个输入键固定为 `operatingTemperature`、`operatingPressure`、`gasActualVolumeFlow`、`liquidActualVolumeFlow`、`gasMassDensity`、`liquidMassDensity`、`effectiveK`、`gasUtilization`、`workingDuration`、`maximumWorkingLiquidHeight`，映射见单位契约。六个可选轴向区段为 `bottomTangentToLLL`、`nllToHLL`、`hllToInletCenter`、`inletCenterToInternalsBottom`、`internalsThickness`、`internalsTopToTopTangent`，按 S0 定义解释，不按字段顺序重复加工作液层。具体内件和有效面积适用性说明必须由 case 的依据及 K 来源承载，不能只凭一个总括标签放行。
+
+`case.applicability` 的六项枚举字段均必需；显式 `null` 表示未确认，缺字段是格式错误。已声明但不支持的值必须原样保存，不退化为“已确认 / 未确认”：
+
+| 字段 | 允许的非 null 值 |
+| --- | --- |
+| `orientation` | `vertical`、`horizontal` |
+| `gasDirection` | `upward`、`other` |
+| `service` | `cleanNonFoamingTwoPhase`、`singlePhase`、`foaming`、`solids`、`slugging`、`threePhase` |
+| `geometry` | `fullEqualDiameterCylinder`、`reducedEffectiveArea`、`nonCylindrical` |
+| `kBasis` | `effectiveWholeVesselForDeclaredInternals`、`mistEliminatorOnly`、`unmatchedInternals` |
+| `flowBasis` | `actualAtOperatingConditions`、`standardConditions` |
+
+另有必需字符串 `internalsDescription`，可空。10 月 11 日设计草案中的 `twoPhasesDeclared` / `configuration` 不能表达完整领域声明，未作为设备产品写出；检测到旧 `case.configuration` 结构时整份只读，不推断或自动迁移。方法 ID / 版本和数值算法保持不变。
+
+字段绑定采用带标签的联合，字段集合严格如下；quantityId 在 Direct/Override 值处必需，不从单位猜量种：
+
+```json
+[
+  {"kind":"direct","quantityId":"duration","valueSi":120.0,"sourceId":"src-assumption"},
+  {"kind":"basisRef","basisEntryId":"basis-working-time"},
+  {"kind":"override","basisEntryId":"basis-working-time","quantityId":"duration","valueSi":180.0,"sourceId":"src-override","reason":"独立工况明确覆盖"}
+]
+```
+
+上述仅演示三种编码，不是可计算工程样本。BasisRef 只指基础条目，不能指其他绑定；Override 必须保留同量种的原基础引用、本地来源和非空理由，不改原基础值。来源日期 accessedOn 为空或 ISO 8601 日期（YYYY-MM-DD），publicationVersion 保留来源发布日期或版本原文；review 变更须推进源 revision。来源 kind 枚举 `measured/vendor/literature/estimated/assumed/unknown`；review 枚举 `unreviewed/adopted/reviewed`。分类与 review 不自动证明可信度；unknown 可保存但不允许计算。
+
+`applicability` 包含必需 `fluidSystem`、`phase`、`operatingConditions`、`scope`，phase 为 `gas/liquid/both/notApplicable`；operatingConditions 为空对象表示未记录，或者含 `temperatureK` 与 `pressurePa` 两个有限正数，必须成对出现，不从 task 自动复制证明匹配。流量 / 密度要求同一物系与工况；准则用 scope 记录适用范围、内件与折减，无法机器确认的条件必须保留审阅说明。
+
+`observations` 是原始量记录数组，每项含 `id`、`quantityId`、`originalValue`（有限数）、`originalUnit`（来源原文）、`canonicalValue`（有限 SI）、`conversionNote` 及 `dependsOn`。dependsOn 为 `{sourceId, observationId}` 引用数组，支持有限的可追溯派生链，禁止环；不是可执行公式或第二套自动换算引擎。originalUnit 可保留不支持的外部单位，但只有统一目录可换算的值或注明外部方法并显式采用的 canonicalValue 才能使用，不从文本执行表达式。缺 observation 不等于缺 source：假设可仅以 adoptionNote 说明，分类始终为 assumed。引用绑定以 sourceId 关联当前来源，计算时捕获具体源 revision 与观察记录，不把捕获写回成输入。
+
+不保存计算 / 检查结果、候选、输入草稿、session ID、计算代次或执行 token。任务 / 来源持久 revision 不充当跨会话执行资格；重开建立新会话和运行时代次，设备候选 missing，显式重算。保存脏标记比较正式 document、presentation、engineering 各自已保存基线；仅设备变更不增加流程 revision。
+
+### v3 基础存储实施范围（2026-10-11）
+
+10 月 11 日先独立完成来源 / 基础、15 类显示单位及空任务往返，非空任务整份只读，产品入口继续拒绝 v3。这是基础阶段的历史范围；10 月 15 日扩展为下节完整设备存储，不建立第二种简化 v3。
+
+### 设备事务阶段的保存保护（2026-10-15）
+
+正式事务阶段先拒绝非空工程区进入旧格式保存，防止尚未持久化的输入被丢弃；该临时阻挡已由下节真实 v3 写入及保存记账替代。流程、呈现、设备分别管理保存基线，项目离开保护继续核验设备编辑 checkpoint。
+
+### 完整设备保存与最小 Studio 生命周期（2026-10-15）
+
+- `rf-store::project_v3` 的 `StoredProjectV3` / `StoredEngineeringInputs` 保存完整基础、来源、任务、单工况、适用性、十项输入及可选轴向区段。缺项、未确认及有限但超适用域的输入可保存，计算门禁仍由设备方法负责；不伪造 K、停留时间或适用声明。
+- 已知 kind / method / version 才解码完整任务；严格结构与重复键检查从原始文本执行，随后校验身份、位号、绑定量种、引用及来源链。任何未知方法或旧简化 case 结构均保留整份原始 UTF-8 JSON，禁止序列化和覆写；未知 payload 不经过数值转换，保留大整数、长小数及指数文本。
+- Studio 以 `read_studio_project` 分派：已知 v3 恢复正式输入、单位和保存基线，创建新会话，候选 missing、历史为空；未知能力显示独立整份只读检查，隐藏编辑 / 计算 / 保存入口，拦截快捷键。检查期间不将文件部分装入可编辑 host，关闭检查返回原工作区；未知外层版本或格式错误保留原工作区并报错。
+- 现有 v3 始终保存 v3。旧项目有非空工程区或新增 8 类量的非 SI 显示选择时，提示升级 / 另存为 / 取消；无新增内容保持既有 v1/v2 规则。确认捕获项目离开 checkpoint 与目标版本，迟到确认失效。`write_upgraded` 仅允许显式升级合法旧文件，普通 v3 写入拒绝隐式覆盖旧文件；v3 写入均拒绝未知能力目标或损坏文件。旧保存路径也不得覆盖 v3。
+- 仍使用现有 staged write。写入成功后才将捕获的正式设备输入记为已保存基线，不清除历史、候选或草稿；迟到保存记账不能清除后续修改。取消及 IO 失败保持路径、输入、历史与脏状态。保存后 Undo / Redo 按内容重新比较基线，执行代次不回退；重开不恢复旧 token 或结果。
+- 旧 CLI 的 inspect / run / workflow 继续在建模或求解前拒绝所有实际 v3 文件，包括省略 / 空工程区；旧 SI 协议和 v1/v2 行为不变。设备编辑页与设备页 Undo / Redo 已由同日后续批次接通；计算表导出及多工况仍未实现。
+
+设备 UI 草稿已纳入保存提示与离开保护：保存仅写正式输入，未提交数值 / 来源仍留在会话；离开确认重验正式状态和草稿 checkpoint。保存后历史保持，重开清空草稿 / 历史并显示 Missing；详情见 [设备 UI](equipment/separator-sizing-and-rating.md#独立单工况设备-ui2026-10-15)。
+
+### v3 结构样本与版本行为
+
+以下是可直接放入 v3 外层的 **engineering 子树**，示范可保存的不完整独立任务；没有 T/P、流量、密度或 K，必须返回缺项而不能计算。它不属于 S0-B04，也不替代有来源的工程方法验证。构造完整文件时复制任一合法旧样本的 document，外层版本改为 3，presentation 保留原 7 类再添加单位契约中 8 类的 SI 项；这是测试构造说明，不授权改写现有用户工程。
+
+```json
+{
+  "basisEntries": [],
+  "sources": [],
+  "tasks": [{
+    "id": "equipment-1",
+    "revision": 0,
+    "tag": "V-101",
+    "name": "待补依据的独立任务",
+    "kind": "verticalGasLiquidSeparatorSizing",
+    "method": {"id":"radishflow.separator.vertical-sb-working-volume","version":1},
+    "case": {
+      "id":"case-1", "name":"工况一", "purpose":"初步尺寸",
+      "fluidSystem":"", "applicabilitySourceIds":[],
+      "applicability": {
+        "orientation":null, "gasDirection":null, "service":null,
+        "geometry":null, "kBasis":null, "flowBasis":null,
+        "internalsDescription":""
+      }
+    },
+    "inputs": {}
+  }]
+}
+```
+
+未知外层版本拒绝打开且不写盘。已知 v3 内未知 task kind / method ID / method version 不按版本 1 解码其 payload：保留原始任务数据，提供只读检查并禁止计算。首批对此文件采用整个工程只读模式，避免不知道依赖关系却更改其基础 / 来源；原文件始终不覆写，不提供剥离未知任务的“兼容保存”。这属于未知能力保护，不能显示已恢复可编辑任务。已知方法的未知字段则为格式错误，防止拼写错误被当作扩展吞掉。
+
+旧 CLI v1/v2 对所有 v3 文件在建模、求解或写入前返回不支持项目版本 / 能力，沿用其结构化错误通道；即使工程区缺省或为空也不降格消费。新设备协议另行审定。无工程区且新增 8 类均为 SI 的旧文件保持原 v1/v2 保存资格；首次有工程内容或新增非 SI 呈现时，显式确认 v3 升级 / 另存为 / 取消。已有 v3 即使清空任务也不自动降级。
+
+| 样本编号 / 构造 | 契约预期（实现覆盖见上节） |
+| --- | --- |
+| GS-01 原 v1、原 v2 非 SI | 读取保持 document 身份 / 数值；v1 无 presentation，v2 恰 7 项；不因新目录失效或升级；原 CLI 结果一致 |
+| GS-02 上述 v3 不完整任务 | 可保存 / 重开，十项缺项明确，候选 missing，绝不补 K / 时间；document/flowsheet 无虚构对象 |
+| GS-03 增加来源、基础和三种绑定 | 来源链与一层覆盖无损往返；修改共享基础影响引用任务，Override 不反写；重开不恢复候选 |
+| GS-04 删除一项显示单位、重复 ID / 键、null、悬空来源、循环观察引用 | 各自有具体字段路径错误，原文件不变；不按合法部分装载 |
+| GS-05 method.version 改为未知值；增加未来 payload 字段 / 大整数 | 原始任务不丢字段或数字精度，工程只读、不可计算 / 覆写；不作为 v1 执行 |
+| GS-06 已知 method 添加拼错字段；未知外层 4 | 已知字段严格拒绝；外层不支持明确拒绝；均不写盘、不迁移 |
+| GS-07 v2 新建设备后选择取消、升级、另存为 | 取消保留输入 / 草稿 / 脏状态；升级成功才推进保存基线；另存为失败不切当前路径 |
+| GS-08 staged write / flush / replace 故障 | 按既有故障注入验证原文件可恢复且不被半写覆盖；失败不清脏，不丢工程数据 / 草稿 |
+| GS-09 工程输入、来源、呈现分别变更并 Undo / Redo | 保存基线与数值 / 证据身份正确；不旧化无关流程结果；设备旧 token 不复活 |
+| GS-10 CLI 收到有 / 无 engineering 的 v3 | 在任何求解 / 建模 / 文件修改前失败，错误明确；旧 SI DTO 与 v1/v2 样本行为不变 |
+
+GS-01—10 的存储 / 生命周期自动回归已落实：完整字段与三种绑定、不完整 / 超适用域输入、严格结构与引用、未知方法原文、显式升级取消 / 迟到确认 / 成功、IO 失败不清脏、保存后 Undo / Redo、重开 missing 与旧 CLI 预操作拒绝。GS-08 继续复用 staged-write 故障注入，新增生命周期真实 IO 失败验证；设备草稿控件及全局 Undo 随后续 UI 验收。macOS 已实测已知 v3 原生打开、中文路径另存为 / 重开、未知方法只读及快捷键保护；升级对话框通过 shell 自动回归，未宣称设备编辑路径实窗完成。证据见 [W42](../devlogs/2026-10/2026-W42.md)，I5、Windows / Linux 未验路径及发布限制保持。

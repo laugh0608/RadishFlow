@@ -277,10 +277,10 @@ pub(super) fn assert_bottom_result_table_contains_streams_and_steps(
     let texts = render_bottom_results_table_texts(app);
     for expected in [
         "流股",
-        "T (K)",
-        "P (Pa)",
-        "F (mol/s)",
-        "H (J/mol)",
+        "T",
+        "P",
+        "F",
+        "H",
         "相态",
         "单元",
         "消费流股",
@@ -297,21 +297,20 @@ pub(super) fn assert_bottom_result_table_contains_streams_and_steps(
         let stream = snapshot_stream(snapshot, stream_id);
         let expected_values = vec![
             stream.label.clone(),
-            format!("{:.2}", stream.temperature_k),
-            format!("{:.0}", stream.pressure_pa),
-            format!("{:.6}", stream.total_molar_flow_mol_s),
+            stream.temperature_text.clone(),
+            stream.pressure_text.clone(),
+            stream.molar_flow_text.clone(),
         ];
         for expected in expected_values {
             assert!(
-                texts.iter().any(|text| text.contains(&expected)),
+                texts.iter().any(|text| text.contains(expected.as_str())),
                 "expected bottom result table to render `{expected}` for `{stream_id}`, rendered texts: {:?}",
                 texts
             );
         }
-        if let Some(molar_enthalpy) = stream.molar_enthalpy_j_per_mol {
-            let expected = format!("{molar_enthalpy:.3}");
+        if let Some(expected) = &stream.molar_enthalpy_text {
             assert!(
-                texts.iter().any(|text| text.contains(&expected)),
+                texts.iter().any(|text| text.contains(expected.as_str())),
                 "expected bottom result table to render enthalpy `{expected}` for `{stream_id}`, rendered texts: {:?}",
                 texts
             );
@@ -667,5 +666,42 @@ fn assert_close(actual: f64, expected: f64, context: impl AsRef<str>) {
         (actual - expected).abs() <= RESULT_REVIEW_TOLERANCE,
         "{}: expected {actual} to equal {expected}",
         context.as_ref()
+    );
+}
+
+#[test]
+fn visible_result_table_consumes_project_units_and_molar_basis() {
+    use rf_types::units::{DisplayUnitSet, MeasurementUnit as U, QuantityKind as Q};
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.dispatch_ui_command("run_panel.run_manual");
+    let raw = app.platform_host.snapshot().runtime.latest_solve_snapshot;
+    let mut units = DisplayUnitSet::engineering();
+    units
+        .set_unit(Q::MolarPhaseFraction, U::MolePercent)
+        .unwrap();
+    app.apply_presentation_command(rf_ui::ProjectPresentationCommand::Apply(units.clone()))
+        .unwrap();
+    let texts = render_bottom_results_table_texts(&mut app);
+    for expected in ["26.85 °C", "1.2 bar", "18 kmol/h", "总体 100 mol%"] {
+        assert!(
+            texts.iter().any(|text| text == expected),
+            "missing {expected}: {texts:?}"
+        );
+    }
+    assert!(!texts.iter().any(|text| text == "T (K)"));
+    assert_eq!(
+        app.platform_host.snapshot().runtime.latest_solve_snapshot,
+        raw
+    );
+    assert_eq!(
+        super::super::unit_settings::project_units_label(StudioShellLocale::ZhCn, &units),
+        "单位: 自定义"
+    );
+    assert_eq!(
+        super::super::unit_settings::project_units_label(
+            StudioShellLocale::En,
+            &DisplayUnitSet::engineering()
+        ),
+        "Units: Engineering"
     );
 }

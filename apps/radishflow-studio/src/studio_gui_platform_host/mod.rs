@@ -1,3 +1,7 @@
+use crate::modeling_recommendations::{
+    ModelingRecommendationSession, RecommendationError, RecommendationPreview,
+    RecommendationReceipt,
+};
 use std::time::SystemTime;
 
 use rf_types::RfResult;
@@ -533,6 +537,19 @@ impl StudioGuiPlatformHost {
         })
     }
 
+    pub fn accept_modeling_recommendation(
+        &mut self,
+        session: &mut ModelingRecommendationSession,
+        preview: &RecommendationPreview,
+    ) -> Result<RecommendationReceipt, RecommendationError> {
+        self.driver.accept_modeling_recommendation(session, preview)
+    }
+
+    /// Read-only formal inputs, drafts and candidates for the shared modeling session.
+    pub fn modeling_inputs(&self) -> &rf_ui::AppState {
+        self.driver.host().app_state()
+    }
+
     pub fn state(&self) -> &StudioAppHostState {
         self.driver.state()
     }
@@ -547,6 +564,23 @@ impl StudioGuiPlatformHost {
 
     pub fn document(&self) -> &rf_ui::FlowsheetDocument {
         self.driver.document()
+    }
+
+    pub fn project_save_version(&self) -> u32 {
+        crate::project_save_version(self.driver.host().app_state())
+    }
+    pub fn project_save_requires_upgrade(&self) -> bool {
+        crate::project_save_requires_upgrade(self.driver.host().app_state())
+    }
+
+    /// Runtime identity for departure confirmation; not a presentation field.
+    pub fn engineering_checkpoint(&self) -> rf_ui::engineering::EngineeringCheckpoint {
+        self.driver
+            .host()
+            .app_state()
+            .workspace
+            .engineering
+            .checkpoint()
     }
 
     pub fn snapshot(&self) -> StudioGuiSnapshot {

@@ -3,8 +3,8 @@
 mod catalog;
 mod display_set;
 pub use catalog::{
-    ALL_QUANTITIES, ALL_UNITS, ConversionRule, Dimension, MeasurementUnit, QuantityDefinition,
-    QuantityKind, UnitDefinition,
+    ALL_QUANTITIES, ALL_UNITS, ConversionRule, Dimension, LEGACY_QUANTITIES, MeasurementUnit,
+    QuantityDefinition, QuantityKind, UnitDefinition,
 };
 pub use display_set::{DisplayUnitSet, DisplayUnitSetError};
 use std::fmt;

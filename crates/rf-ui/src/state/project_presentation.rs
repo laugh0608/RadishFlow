@@ -78,12 +78,13 @@ pub enum ProjectPresentationCommand {
 pub struct ProjectSaveState {
     pub document_dirty: bool,
     pub presentation_dirty: bool,
+    pub engineering_dirty: bool,
     pub pending_input_count: usize,
 }
 
 impl ProjectSaveState {
     pub fn has_unsaved_changes(self) -> bool {
-        self.document_dirty || self.presentation_dirty
+        self.document_dirty || self.presentation_dirty || self.engineering_dirty
     }
 
     pub fn needs_close_confirmation(self) -> bool {
@@ -225,7 +226,9 @@ impl super::WorkspaceState {
         ProjectSaveState {
             document_dirty: self.last_saved_revision != Some(self.document.revision),
             presentation_dirty: self.project_presentation.is_dirty(),
-            pending_input_count: self.drafts.pending_count(),
+            engineering_dirty: self.engineering.is_dirty(),
+            pending_input_count: self.drafts.pending_count()
+                + self.equipment_editor.pending_count(),
         }
     }
 }
