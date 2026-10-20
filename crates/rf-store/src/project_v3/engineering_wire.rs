@@ -32,9 +32,12 @@ pub(super) struct TaskProbe {
 }
 impl TaskProbe {
     pub(super) fn supported(&self) -> bool {
-        self.kind == super::task_wire::TASK_KIND
+        (self.kind == super::task_wire::TASK_KIND
             && self.method.id == super::task_wire::METHOD_ID
-            && self.method.version == u64::from(super::task_wire::METHOD_VERSION)
+            && self.method.version == u64::from(super::task_wire::METHOD_VERSION))
+            || (self.kind == super::rating_wire::TASK_KIND
+                && self.method.id == super::rating_wire::METHOD_ID
+                && self.method.version == u64::from(super::rating_wire::METHOD_VERSION))
     }
 }
 #[derive(Serialize, Deserialize)]

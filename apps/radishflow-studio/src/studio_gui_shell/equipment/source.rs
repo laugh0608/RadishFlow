@@ -300,6 +300,41 @@ pub(super) fn render_references(
                     target_label(l, &EquipmentEditorTarget::Task(task.clone()), inputs),
                     field_label(l, EquipmentField::Axial(*section))
                 ),
+                RatingGeometryInput { task, field } => format!(
+                    "{} · {}",
+                    target_label(l, &EquipmentEditorTarget::RatingTask(task.clone()), inputs),
+                    geometry_field_label(l, *field)
+                ),
+                RatingCaseInput { task, case, field } => format!(
+                    "{} · {} · {}",
+                    target_label(l, &EquipmentEditorTarget::RatingTask(task.clone()), inputs),
+                    target_label(
+                        l,
+                        &EquipmentEditorTarget::RatingCase(rf_ui::engineering::EquipmentCaseKey {
+                            task_id: task.clone(),
+                            case_id: case.clone()
+                        }),
+                        inputs
+                    ),
+                    rating_field_label(l, *field)
+                ),
+                RatingGeometryApplicability(id) => format!(
+                    "{} · {}",
+                    target_label(l, &EquipmentEditorTarget::RatingTask(id.clone()), inputs),
+                    tr(l, "结构适用性依据", "Geometry applicability evidence")
+                ),
+                RatingCaseApplicability { task, case } => format!(
+                    "{} · {}",
+                    target_label(
+                        l,
+                        &EquipmentEditorTarget::RatingCase(rf_ui::engineering::EquipmentCaseKey {
+                            task_id: task.clone(),
+                            case_id: case.clone()
+                        }),
+                        inputs
+                    ),
+                    tr(l, "工况适用性依据", "Case applicability evidence")
+                ),
                 TaskApplicability(id) => format!(
                     "{} · {}",
                     target_label(l, &EquipmentEditorTarget::Task(id.clone()), inputs),

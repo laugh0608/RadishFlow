@@ -54,10 +54,23 @@ pub(in super::super) fn target_label(
     inputs: &rf_ui::engineering::EngineeringInputs,
 ) -> String {
     match target {
-        EquipmentEditorTarget::Task(id) => inputs
-            .task(id)
+        EquipmentEditorTarget::Task(id)
+        | EquipmentEditorTarget::RatingTask(id)
+        | EquipmentEditorTarget::RatingGeometry(id) => inputs
+            .equipment_task(id)
             .map(|t| task_label(locale, t))
             .unwrap_or_else(|| tr(locale, "设备任务", "Equipment task").into()),
+        EquipmentEditorTarget::RatingCase(key) => inputs
+            .rating_task(&key.task_id)
+            .and_then(|t| t.cases.iter().find(|c| c.id == key.case_id))
+            .map(|c| {
+                nonempty(
+                    &c.name,
+                    tr(locale, "未命名校核工况", "Untitled rating case"),
+                )
+                .to_owned()
+            })
+            .unwrap_or_else(|| tr(locale, "校核工况", "Rating case").into()),
         EquipmentEditorTarget::Source(id) => inputs
             .basis
             .sources
@@ -87,15 +100,15 @@ pub(super) fn nonempty<'a>(value: &'a str, empty: &'a str) -> &'a str {
         value
     }
 }
-pub(super) fn task_label(locale: StudioShellLocale, task: &SeparatorSizingTask) -> String {
+pub(super) fn task_label(locale: StudioShellLocale, task: &EquipmentTask) -> String {
     let name = nonempty(
-        &task.name,
+        task.name(),
         tr(locale, "立式气液分离器", "Vertical gas–liquid separator"),
     );
-    if task.tag.trim().is_empty() {
+    if task.tag().trim().is_empty() {
         name.to_owned()
     } else {
-        format!("{} · {name}", task.tag)
+        format!("{} · {name}", task.tag())
     }
 }
 pub(super) fn status_label(
@@ -206,6 +219,27 @@ pub(super) fn edit_error(locale: StudioShellLocale, error: &EquipmentEditError) 
             field_label(locale, *field),
             edit_error(locale, inner)
         ),
+        RatingGeometryField(field, inner) => format!(
+            "{}：{}",
+            match field {
+                rf_ui::engineering::editor::RatingGeometryField::Input(i) =>
+                    geometry_field_label(locale, *i),
+                rf_ui::engineering::editor::RatingGeometryField::Axial(i) =>
+                    field_label(locale, EquipmentField::Axial(*i)),
+            },
+            edit_error(locale, inner)
+        ),
+        RatingInput(field, inner) => format!(
+            "{}：{}",
+            rating_field_label(locale, *field),
+            edit_error(locale, inner)
+        ),
+        UnsupportedEditorAction => tr(
+            locale,
+            "此记录不支持该操作。",
+            "This action is not supported for this record.",
+        )
+        .into(),
         Number(e) => locale.numeric_issue(&rf_ui::NumericFieldIssue::Rejected(
             rf_ui::NumericEditError::Invalid(e.clone()),
         )),
@@ -312,4 +346,36 @@ pub(super) fn edit_error(locale: StudioShellLocale, error: &EquipmentEditError) 
             .into(),
         },
     }
+}
+
+pub(super) fn geometry_field_label(
+    locale: StudioShellLocale,
+    field: SeparatorGeometryInput,
+) -> &'static str {
+    match field {
+        SeparatorGeometryInput::InternalDiameter => {
+            tr(locale, "给定内径", "Given internal diameter")
+        }
+        SeparatorGeometryInput::WorkingLiquidHeight => {
+            tr(locale, "给定工作液层高度", "Given working liquid height")
+        }
+    }
+}
+pub(super) fn rating_field_label(
+    locale: StudioShellLocale,
+    field: SeparatorRatingInput,
+) -> &'static str {
+    use SeparatorRatingInput::*;
+    let sizing = match field {
+        OperatingTemperature => SeparatorInput::OperatingTemperature,
+        OperatingPressure => SeparatorInput::OperatingPressure,
+        GasVolumeFlow => SeparatorInput::GasVolumeFlow,
+        LiquidVolumeFlow => SeparatorInput::LiquidVolumeFlow,
+        GasDensity => SeparatorInput::GasDensity,
+        LiquidDensity => SeparatorInput::LiquidDensity,
+        EffectiveK => SeparatorInput::EffectiveK,
+        GasVelocityUtilization => SeparatorInput::GasVelocityUtilization,
+        RequiredWorkingTime => return tr(locale, "要求工作时间", "Required working time"),
+    };
+    field_label(locale, EquipmentField::Input(sizing))
 }

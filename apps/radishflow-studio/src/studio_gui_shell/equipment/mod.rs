@@ -87,9 +87,12 @@ impl ReadyAppState {
         if workspace.equipment_editor.active().is_none()
             && let Some(task) = workspace.engineering.inputs().tasks.first()
         {
-            self.equipment_command(EquipmentEditorCommand::Select(EquipmentEditorTarget::Task(
-                task.id.clone(),
-            )));
+            let target = if task.as_sizing().is_some() {
+                EquipmentEditorTarget::Task(task.id().clone())
+            } else {
+                EquipmentEditorTarget::RatingTask(task.id().clone())
+            };
+            self.equipment_command(EquipmentEditorCommand::Select(target));
         }
     }
     pub(super) fn return_from_equipment_source(&mut self) -> bool {
@@ -186,6 +189,12 @@ impl ReadyAppState {
             let mut draft = record.value().clone();
             ui.separator();
             ui.heading(target_label(locale, &target, inputs));
+            if matches!(target, EquipmentEditorTarget::RatingTask(_) | EquipmentEditorTarget::RatingGeometry(_) | EquipmentEditorTarget::RatingCase(_)) {
+                ui.label(tr(locale,
+                    "校核任务已载入，将随工程完整保存。此版本暂不提供校核编辑与结果视图。",
+                    "The rating task is loaded and will be preserved when saving. Rating editing and result views are not available in this version."));
+                return;
+            }
             if let EquipmentEditorTarget::Task(id) = &target
                 && let Some(task) = inputs.task(id)
             {
@@ -218,6 +227,7 @@ impl ReadyAppState {
                         EquipmentEditorCommand::Delete(target.clone()),
                         match &target {
                             EquipmentEditorTarget::Task(id) => inputs.task(id).is_some(),
+                            EquipmentEditorTarget::RatingTask(_) | EquipmentEditorTarget::RatingGeometry(_) | EquipmentEditorTarget::RatingCase(_) => false,
                             EquipmentEditorTarget::Source(id) => {
                                 inputs.basis.sources.iter().any(|s| s.id == *id)
                             }
@@ -443,6 +453,15 @@ impl ReadyAppState {
                         self.equipment.focus_field.take(),
                         open_source,
                     ),
+                    EquipmentDraft::RatingTask(_)
+                    | EquipmentDraft::RatingGeometry(_)
+                    | EquipmentDraft::RatingCase(_) => {
+                        ui.label(tr(
+                            locale,
+                            "校核编辑暂不可用。",
+                            "Rating editing is not available.",
+                        ));
+                    }
                     EquipmentDraft::Source(draft) => {
                         let focus = std::mem::take(&mut self.equipment.focus_source);
                         source::render(ui, locale, draft, session.inputs(), units, focus);

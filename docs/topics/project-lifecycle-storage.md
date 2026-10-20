@@ -326,7 +326,7 @@ GS-01—10 的存储 / 生命周期自动回归已落实：完整字段与三种
 
 ## S2 校核任务保存扩展方案（2026-10-20，已确认）
 
-配套已确认的 [S2-D04](equipment/separator-sizing-and-rating.md#已确认决策)，待 S2-A2 实施；S2-A1 只新增内存模型与纯计算，当前 v3 codec 和文件行为未修改。保留外层 `schemaVersion=3`、既有 document / presentation / engineering 顶层字段及 S1 task payload，通过新的任务 kind / method 显式隔离校核含义。
+配套已确认的 [S2-D04](equipment/separator-sizing-and-rating.md#已确认决策)，S2-A2 已实现下列严格 codec、生命周期与兼容确认。保留外层 `schemaVersion=3`、既有 document / presentation / engineering 顶层字段及 S1 task payload，通过新的任务 kind / method 显式隔离校核含义。
 
 | 位置 | 已确认的 S2-A2 序列化合同 |
 | --- | --- |
@@ -347,4 +347,4 @@ GS-01—10 的存储 / 生命周期自动回归已落实：完整字段与三种
 - G2-B 开放多工况时建议升级 Rating 的 `method.version` 到 `2`，由版本同时标识输入集合与算法契约，保证 S2-A 旧读者整份只读。相同代数公式不构成静默扩大 version 1 输入能力的理由；确切多行 payload 与转换在 G2-B 开工前审定。
 - 旧 CLI 继续在操作前拒绝所有 v3；独立设备协议、永久结果库、v4 与 sidecar 扩展不在本方案。未知未来 kind / method 继续整份原文只读，不提供丢任务的兼容保存。
 
-实施验收须包含 S1 / Rating 混合文件、已知 / 未知方法、空 / 多行 version 1、重复 case、错误量种、几何缺项、旧读者原文保护、能力提示取消 / 迟到 / 成功、目标失败回滚、保存后历史及重开 Missing。若旧读者不能满足上述安全行为，先回到 D04 重审版本选择，不放宽严格解析掩盖差异。
+自动验收已覆盖 S1 / Rating 混合文件、已知 / 未知方法、空 / 多行 version 1、重复 case、错误量种、几何缺项、旧读者原文保护、能力提示取消 / 迟到 / 成功、目标失败回滚、保存后历史及重开 Missing。另以冻结的 `08509bd2` 旧读者实测新 kind 与超大未知数字，确认整份原文只读、序列化 / 两种写入均拒绝且原文件不变，见 [W43](../devlogs/2026-10/2026-W43.md)。

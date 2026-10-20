@@ -13,7 +13,7 @@ pub enum StudioDocumentLifecycleCommand {
     SaveAs {
         path: PathBuf,
     },
-    /// Explicit caller consent to write an older project using the current format.
+    /// Explicit caller consent to add format or equipment capability.
     SaveUpgraded {
         path: PathBuf,
     },
@@ -143,7 +143,80 @@ pub fn project_save_version(app: &AppState) -> u32 {
 pub fn project_save_requires_upgrade(app: &AppState) -> bool {
     let target = project_save_version(app);
     let source = app.workspace.project_presentation.source_file_version();
-    source == Some(1) || (target == 3 && source != Some(3))
+    source == Some(1)
+        || (target == 3 && source != Some(3))
+        || app.workspace.engineering.rating_capability_is_new()
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProjectSaveCompatibility {
+    Format { version: u32, includes_rating: bool },
+    RatingCapability,
+}
+/// Compatibility of both the loaded baseline and the actual save target.
+/// Save As must not bypass consent when replacing an older-capability file.
+pub fn project_save_compatibility(
+    app: &AppState,
+    path: &Path,
+) -> RfResult<Option<ProjectSaveCompatibility>> {
+    let version = project_save_version(app);
+    let source = app.workspace.project_presentation.source_file_version();
+    // Preserve the legacy save/overwrite contract; its writer independently
+    // protects v3 targets from being stripped by an older in-memory project.
+    if version < 3 {
+        return Ok(
+            (source == Some(1)).then_some(ProjectSaveCompatibility::Format {
+                version,
+                includes_rating: false,
+            }),
+        );
+    }
+    if path.exists() && !path.is_file() {
+        return Err(RfError::invalid_input(format!(
+            "inspect save target `{}`: target path exists and is not a file",
+            path.display()
+        )));
+    }
+    let rating = app.workspace.engineering.inputs().has_rating();
+    let mut format_upgrade = source == Some(1) || (version == 3 && source != Some(3));
+    let mut rating_upgrade = app.workspace.engineering.rating_capability_is_new();
+    match std::fs::read_to_string(path) {
+        Ok(contents) => {
+            let target_version = rf_store::project_v3::probe_version(&contents)?;
+            if target_version == 3 {
+                match rf_store::project_v3::parse(&contents)? {
+                    rf_store::project_v3::ProjectV3Read::Editable(target) => {
+                        rating_upgrade |= rating && !target.has_rating();
+                    }
+                    rf_store::project_v3::ProjectV3Read::ReadOnly(_) => {
+                        return Err(RfError::invalid_input(
+                            "existing project has unsupported equipment capabilities; overwriting is prohibited",
+                        ));
+                    }
+                }
+            } else {
+                rf_store::parse_project_file_json(&contents)?;
+                format_upgrade |= version > target_version;
+            }
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => {
+            return Err(RfError::invalid_input(format!(
+                "inspect save target {}: {e}",
+                path.display()
+            )));
+        }
+    }
+    Ok(if format_upgrade {
+        Some(ProjectSaveCompatibility::Format {
+            version,
+            includes_rating: rating,
+        })
+    } else if rating_upgrade {
+        Some(ProjectSaveCompatibility::RatingCapability)
+    } else {
+        None
+    })
 }
 
 pub fn dispatch_document_lifecycle(
@@ -174,9 +247,9 @@ pub fn dispatch_document_lifecycle(
         }
     };
 
-    if project_save_requires_upgrade(app_state) && !upgrade_confirmed {
+    if project_save_compatibility(app_state, &path)?.is_some() && !upgrade_confirmed {
         return Err(RfError::invalid_input(
-            "project format upgrade requires confirmation; older versions cannot read the upgraded file",
+            "project format or equipment capability upgrade requires confirmation; older versions cannot edit the upgraded file",
         ));
     }
     let version = project_save_version(app_state);
@@ -282,11 +355,16 @@ mod tests {
     use super::*;
 
     pub(super) fn temp_project_path(name: &str) -> PathBuf {
+        static NEXT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let sequence = NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let unique = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("expected time after epoch")
             .as_nanos();
-        std::env::temp_dir().join(format!("radishflow-{name}-{unique}.rfproj.json"))
+        std::env::temp_dir().join(format!(
+            "radishflow-{name}-{}-{unique}-{sequence}.rfproj.json",
+            std::process::id()
+        ))
     }
 
     pub(super) fn app_state_from_example(path: &PathBuf) -> AppState {
@@ -513,3 +591,5 @@ mod presentation_tests;
 
 #[cfg(test)]
 mod equipment_tests;
+#[cfg(test)]
+mod rating_tests;

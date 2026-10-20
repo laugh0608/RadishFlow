@@ -752,6 +752,7 @@ mod unit_settings_localization;
 mod view_units;
 
 mod equipment_editor;
+mod equipment_rating_storage;
 mod equipment_storage;
 
 mod equipment_export;

@@ -183,7 +183,7 @@ fn independent_equipment_checks_calculates_invalidates_and_reopens_without_prope
         workspace.engineering.result_status(id),
         EquipmentResultStatus::Missing
     );
-    assert_eq!(workspace.engineering.inputs().tasks[0].tag, "V-101");
+    assert_eq!(workspace.engineering.inputs().tasks[0].tag(), "V-101");
     assert!(workspace.document.flowsheet.units.is_empty());
     // A predictable external artifact is useful for the separately executed native smoke.
     if let Some(path) = std::env::var_os("RADISHFLOW_EQUIPMENT_NATIVE_FIXTURE") {
@@ -296,7 +296,7 @@ fn equipment_history_shortcuts_and_command_routes_do_not_touch_flowsheet_history
             .engineering
             .inputs()
             .tasks[0]
-            .name,
+            .name(),
         "Synthetic separator"
     );
     app.dispatch_ui_command(radishflow_studio::EDIT_REDO_COMMAND_ID);
@@ -307,7 +307,7 @@ fn equipment_history_shortcuts_and_command_routes_do_not_touch_flowsheet_history
             .engineering
             .inputs()
             .tasks[0]
-            .name,
+            .name(),
         "Renamed"
     );
     let checkpoint = app

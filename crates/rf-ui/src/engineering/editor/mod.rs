@@ -1,9 +1,12 @@
 //! Application-owned device editor. Formal inputs, text drafts, checks and history
 //! remain distinct; all shell actions use the same command boundary.
 mod drafts;
+mod rating_drafts;
+mod rating_editor;
 mod transaction;
 use super::*;
 pub use drafts::*;
+pub use rating_drafts::*;
 use rf_model::{
     engineering::{BasisEntry, SourceRecord},
     equipment::SeparatorSizingTask,
@@ -15,18 +18,27 @@ use separator_sizing::SizingIssue;
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum EquipmentEditorTarget {
     Task(EquipmentTaskId),
+    RatingTask(EquipmentTaskId),
+    RatingGeometry(EquipmentTaskId),
+    RatingCase(EquipmentCaseKey),
     Source(SourceId),
     Basis(BasisEntryId),
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EquipmentDraft {
     Task(SeparatorTaskDraft),
+    RatingTask(RatingLabelsDraft),
+    RatingGeometry(RatingGeometryDraft),
+    RatingCase(RatingCaseDraft),
     Source(SourceDraft),
     Basis(BasisDraft),
 }
 #[derive(Debug, Clone, PartialEq)]
 enum RecordBaseline {
     Task(SeparatorSizingTask),
+    RatingTask(SeparatorRatingTask),
+    RatingGeometry(rf_model::equipment::SeparatorGivenGeometry),
+    RatingCase(rf_model::equipment::SeparatorRatingCase),
     Source(SourceRecord),
     Basis(Option<BasisEntry>),
 }
@@ -60,6 +72,12 @@ pub enum EquipmentEditError {
     AccessDate,
     ObservationValue,
     Field(EquipmentField, Box<EquipmentEditError>),
+    RatingGeometryField(RatingGeometryField, Box<EquipmentEditError>),
+    RatingInput(
+        rf_model::equipment::SeparatorRatingInput,
+        Box<EquipmentEditError>,
+    ),
+    UnsupportedEditorAction,
     MissingEditor,
     StaleEditor,
     DraftTypeMismatch,
@@ -82,6 +100,7 @@ impl From<EngineeringError> for EquipmentEditError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EquipmentEditorCommand {
     CreateTask,
+    CreateRatingTask,
     CreateSource,
     NewBasis,
     Select(EquipmentEditorTarget),
@@ -100,6 +119,8 @@ pub enum EquipmentEditorCommand {
     CancelConfirmation,
     Check(EquipmentTaskId),
     Calculate(EquipmentTaskId),
+    CheckRating(EquipmentCaseKey),
+    CalculateRating(EquipmentCaseKey),
 }
 #[derive(Debug, Clone, PartialEq)]
 enum PendingOperation {
@@ -147,6 +168,11 @@ struct InputCheck {
     issues: Vec<SizingIssue>,
 }
 #[derive(Debug, Clone, PartialEq)]
+struct RatingInputCheck {
+    formal: EngineeringCheckpoint,
+    issues: Vec<rf_unitops::separator_rating::RatingIssue>,
+}
+#[derive(Debug, Clone, PartialEq)]
 pub struct EquipmentEditorState {
     active: Option<EquipmentEditorTarget>,
     drafts: BTreeMap<EquipmentEditorTarget, EquipmentDraftRecord>,
@@ -155,6 +181,7 @@ pub struct EquipmentEditorState {
     next_identity: u64,
     pending: Option<EquipmentConfirmation>,
     checks: BTreeMap<EquipmentTaskId, InputCheck>,
+    rating_checks: BTreeMap<EquipmentCaseKey, RatingInputCheck>,
     error: Option<EquipmentEditError>,
 }
 impl Default for EquipmentEditorState {
@@ -167,6 +194,7 @@ impl Default for EquipmentEditorState {
             next_identity: 0,
             pending: None,
             checks: BTreeMap::new(),
+            rating_checks: BTreeMap::new(),
             error: None,
         }
     }
@@ -203,12 +231,50 @@ impl EquipmentEditorState {
                 return false;
             }
             let record = match target {
-                EquipmentEditorTarget::Task(id) => return id == task,
+                EquipmentEditorTarget::Task(id)
+                | EquipmentEditorTarget::RatingTask(id)
+                | EquipmentEditorTarget::RatingGeometry(id) => return id == task,
+                EquipmentEditorTarget::RatingCase(key) => return key.task_id == *task,
                 EquipmentEditorTarget::Source(id) => EngineeringRecordId::Source(id.clone()),
                 EquipmentEditorTarget::Basis(id) => EngineeringRecordId::Basis(id.clone()),
             };
             super::impact::task_references(session.inputs(), task, &record)
         })
+    }
+    pub fn pending_for_case(
+        &self,
+        member: &EquipmentCaseKey,
+        session: &EngineeringSession,
+    ) -> bool {
+        self.drafts.iter().any(|(target, draft)| {
+            if !draft.is_pending() {
+                return false;
+            }
+            let record = match target {
+                EquipmentEditorTarget::Task(id) | EquipmentEditorTarget::RatingTask(id) => {
+                    EngineeringRecordId::Task(id.clone())
+                }
+                EquipmentEditorTarget::RatingGeometry(id) => {
+                    EngineeringRecordId::Geometry(id.clone())
+                }
+                EquipmentEditorTarget::RatingCase(key) => {
+                    return key == member;
+                }
+                EquipmentEditorTarget::Source(id) => EngineeringRecordId::Source(id.clone()),
+                EquipmentEditorTarget::Basis(id) => EngineeringRecordId::Basis(id.clone()),
+            };
+            super::impact::case_references(session.inputs(), member, &record)
+        })
+    }
+    pub fn checked_rating_issues(
+        &self,
+        member: &EquipmentCaseKey,
+        session: &EngineeringSession,
+    ) -> Option<&[rf_unitops::separator_rating::RatingIssue]> {
+        self.rating_checks
+            .get(member)
+            .filter(|c| c.formal == session.checkpoint())
+            .map(|c| c.issues.as_slice())
     }
     pub fn checked_issues(
         &self,
@@ -253,5 +319,7 @@ impl EquipmentEditorState {
     }
 }
 
+#[cfg(test)]
+mod rating_tests;
 #[cfg(test)]
 mod tests;

@@ -1,10 +1,7 @@
 use super::*;
 use rf_model::{
     engineering::{BasisEntry, EngineeringDataError, InputBinding, SourceRecord},
-    equipment::{
-        EquipmentIdentityError, SeparatorAxialSection, SeparatorInput,
-        validate_equipment_identities,
-    },
+    equipment::*,
 };
 use rf_types::units::QuantityKind;
 
@@ -21,6 +18,21 @@ pub enum EngineeringCommand {
     CreateTask(Box<SeparatorSizingTask>),
     UpdateTask(Box<SeparatorSizingTask>),
     DeleteTask(EquipmentTaskId),
+    CreateRatingTask(Box<SeparatorRatingTask>),
+    UpdateRatingLabels {
+        task: EquipmentTaskId,
+        revision: u64,
+        tag: String,
+        name: String,
+    },
+    UpdateRatingGeometry {
+        task: EquipmentTaskId,
+        geometry: Box<SeparatorGivenGeometry>,
+    },
+    UpdateRatingCase {
+        task: EquipmentTaskId,
+        case: Box<SeparatorRatingCase>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,6 +51,20 @@ pub enum EngineeringReference {
         section: SeparatorAxialSection,
     },
     TaskApplicability(EquipmentTaskId),
+    RatingGeometryInput {
+        task: EquipmentTaskId,
+        field: SeparatorGeometryInput,
+    },
+    RatingCaseInput {
+        task: EquipmentTaskId,
+        case: EngineeringCaseId,
+        field: SeparatorRatingInput,
+    },
+    RatingGeometryApplicability(EquipmentTaskId),
+    RatingCaseApplicability {
+        task: EquipmentTaskId,
+        case: EngineeringCaseId,
+    },
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EngineeringError {
@@ -46,7 +72,7 @@ pub enum EngineeringError {
     InvalidIdentity(EquipmentIdentityError),
     InvalidBinding {
         reference: EngineeringReference,
-        error: EngineeringDataError,
+        error: Box<EngineeringDataError>,
     },
     MissingApplicabilitySource {
         task: EquipmentTaskId,
@@ -63,6 +89,11 @@ pub enum EngineeringError {
         supplied: u64,
     },
     CaseIdentityChanged(EquipmentTaskId),
+    UnsupportedRatingMethod(EquipmentTaskId),
+    UnsupportedRatingCaseCount {
+        task: EquipmentTaskId,
+        actual: usize,
+    },
     CounterExhausted,
     StalePreparation,
     StaleCalculation,
@@ -153,7 +184,7 @@ impl EngineeringSession {
                         &mut reserved,
                         EngineeringRecordId::Case(record.case.id.clone()),
                     )?;
-                    next.tasks.push(*record);
+                    next.tasks.push((*record).into());
                 }
                 UpdateTask(record) => {
                     let previous = next.task(&record.id).ok_or_else(|| {
@@ -166,14 +197,32 @@ impl EngineeringSession {
                     }
                     update(
                         &mut next.tasks,
-                        *record,
-                        |r| &r.id,
-                        |r| r.revision,
+                        (*record).into(),
+                        EquipmentTask::id,
+                        EquipmentTask::revision,
                         EngineeringRecordId::Task,
                     )?;
                 }
+                CreateRatingTask(record) => {
+                    rating_commands::create(&mut next, &mut reserved, *record)?
+                }
+                UpdateRatingLabels {
+                    task,
+                    revision,
+                    tag,
+                    name,
+                } => rating_commands::labels(&mut next, &task, revision, tag, name)?,
+                UpdateRatingGeometry { task, geometry } => {
+                    rating_commands::geometry(&mut next, &task, *geometry)?
+                }
+                UpdateRatingCase { task, case } => rating_commands::case(&mut next, &task, *case)?,
                 DeleteTask(id) => {
-                    remove(&mut next.tasks, &id, |r| &r.id, EngineeringRecordId::Task)?;
+                    remove(
+                        &mut next.tasks,
+                        &id,
+                        EquipmentTask::id,
+                        EngineeringRecordId::Task,
+                    )?;
                 }
             }
         }
@@ -289,19 +338,14 @@ impl EngineeringSession {
             )?;
         }
         for record in &mut next.tasks {
-            let previous = self.current.task(&record.id);
-            let mut normalized = record.clone();
-            normalized.revision = previous.map_or(0, |r| r.revision);
-            record.revision = self.next_revision(
-                EngineeringRecordId::Task(record.id.clone()),
-                previous != Some(&normalized),
-            )?;
-            self.revisions
-                .entry(EngineeringRecordId::Case(record.case.id.clone()))
-                .or_insert(0);
+            self.publish_task(record)?;
         }
         for impact in impacts {
-            let generation = self.generations.entry(impact.task_id.clone()).or_default();
+            let key = EquipmentCaseKey {
+                task_id: impact.task_id.clone(),
+                case_id: impact.case_id.clone(),
+            };
+            let generation = self.generations.entry(key.clone()).or_default();
             if impact.input_changed {
                 generation.input = increment(generation.input)?;
             }
@@ -309,14 +353,14 @@ impl EngineeringSession {
                 generation.evidence = increment(generation.evidence)?;
             }
             self.eligibility
-                .insert(impact.task_id.clone(), EngineeringCheckpoint::fresh());
-            self.pending.remove(&impact.task_id);
+                .insert(key.clone(), EngineeringCheckpoint::fresh());
+            self.pending.remove(&key);
         }
         self.current = next;
         self.checkpoint = EngineeringCheckpoint::fresh();
         Ok(())
     }
-    fn next_revision(
+    pub(super) fn next_revision(
         &mut self,
         id: EngineeringRecordId,
         changed: bool,
@@ -333,7 +377,7 @@ fn increment(value: u64) -> Result<u64, EngineeringError> {
         .checked_add(1)
         .ok_or(EngineeringError::CounterExhausted)
 }
-fn reserve(
+pub(super) fn reserve(
     reserved: &mut BTreeMap<EngineeringRecordId, u64>,
     id: EngineeringRecordId,
 ) -> Result<(), EngineeringError> {
@@ -383,42 +427,124 @@ pub(super) fn validate(inputs: &EngineeringInputs) -> Result<(), EngineeringErro
         .basis
         .validate()
         .map_err(EngineeringError::InvalidBasis)?;
-    validate_equipment_identities(&inputs.tasks).map_err(EngineeringError::InvalidIdentity)?;
+    validate_equipment_task_identities(&inputs.tasks).map_err(EngineeringError::InvalidIdentity)?;
     for task in &inputs.tasks {
-        for (field, binding) in &task.case.inputs {
-            inputs
-                .basis
-                .resolve(field.quantity(), binding)
-                .map_err(|error| EngineeringError::InvalidBinding {
-                    reference: EngineeringReference::TaskInput {
-                        task: task.id.clone(),
-                        field: *field,
-                    },
-                    error,
-                })?;
+        if let EquipmentTask::SeparatorRating(task) = task {
+            rating_commands::validate_capability(task)?;
         }
-        for (section, binding) in &task.axial_sections {
-            inputs
-                .basis
-                .resolve(QuantityKind::Length, binding)
-                .map_err(|error| EngineeringError::InvalidBinding {
-                    reference: EngineeringReference::TaskAxialSection {
-                        task: task.id.clone(),
-                        section: *section,
-                    },
-                    error,
-                })?;
+        for (reference, quantity, binding) in task_bindings(task) {
+            inputs.basis.resolve(quantity, binding).map_err(|error| {
+                EngineeringError::InvalidBinding {
+                    reference,
+                    error: Box::new(error),
+                }
+            })?;
         }
-        for source in &task.case.applicability_source_ids {
-            if !inputs.basis.sources.iter().any(|r| r.id == *source) {
-                return Err(EngineeringError::MissingApplicabilitySource {
-                    task: task.id.clone(),
-                    source: source.clone(),
-                });
+        for (_, sources) in task_sources(task) {
+            for source in sources {
+                if !inputs.basis.sources.iter().any(|r| r.id == *source) {
+                    return Err(EngineeringError::MissingApplicabilitySource {
+                        task: task.id().clone(),
+                        source: source.clone(),
+                    });
+                }
             }
         }
     }
     Ok(())
+}
+
+pub(super) fn task_bindings(
+    task: &EquipmentTask,
+) -> Vec<(EngineeringReference, QuantityKind, &InputBinding)> {
+    let id = task.id();
+    match task {
+        EquipmentTask::SeparatorSizing(t) => t
+            .case
+            .inputs
+            .iter()
+            .map(|(field, binding)| {
+                (
+                    EngineeringReference::TaskInput {
+                        task: id.clone(),
+                        field: *field,
+                    },
+                    field.quantity(),
+                    binding,
+                )
+            })
+            .chain(t.axial_sections.iter().map(|(section, binding)| {
+                (
+                    EngineeringReference::TaskAxialSection {
+                        task: id.clone(),
+                        section: *section,
+                    },
+                    QuantityKind::Length,
+                    binding,
+                )
+            }))
+            .collect(),
+        EquipmentTask::SeparatorRating(t) => t
+            .geometry
+            .inputs
+            .iter()
+            .map(|(field, binding)| {
+                (
+                    EngineeringReference::RatingGeometryInput {
+                        task: id.clone(),
+                        field: *field,
+                    },
+                    field.quantity(),
+                    binding,
+                )
+            })
+            .chain(t.geometry.axial_sections.iter().map(|(section, binding)| {
+                (
+                    EngineeringReference::TaskAxialSection {
+                        task: id.clone(),
+                        section: *section,
+                    },
+                    QuantityKind::Length,
+                    binding,
+                )
+            }))
+            .chain(t.cases.iter().flat_map(|case| {
+                case.inputs.iter().map(move |(field, binding)| {
+                    (
+                        EngineeringReference::RatingCaseInput {
+                            task: id.clone(),
+                            case: case.id.clone(),
+                            field: *field,
+                        },
+                        field.quantity(),
+                        binding,
+                    )
+                })
+            }))
+            .collect(),
+    }
+}
+pub(super) fn task_sources(task: &EquipmentTask) -> Vec<(EngineeringReference, &[SourceId])> {
+    match task {
+        EquipmentTask::SeparatorSizing(t) => vec![(
+            EngineeringReference::TaskApplicability(t.id.clone()),
+            &t.case.applicability_source_ids,
+        )],
+        EquipmentTask::SeparatorRating(t) => std::iter::once((
+            EngineeringReference::RatingGeometryApplicability(t.id.clone()),
+            t.geometry.applicability_source_ids.as_slice(),
+        ))
+        .chain(t.cases.iter().map(|c| {
+            (
+                EngineeringReference::RatingCaseApplicability {
+                    task: t.id.clone(),
+                    case: c.id.clone(),
+                },
+                c.applicability_source_ids.as_slice(),
+            )
+        }))
+        .collect(),
+    }
 }
 
 fn binding_references(binding: &InputBinding, id: &EngineeringRecordId) -> bool {
@@ -458,26 +584,17 @@ fn references_to(
         }
     }
     for task in &inputs.tasks {
-        for (field, binding) in &task.case.inputs {
+        for (reference, _, binding) in task_bindings(task) {
             if binding_references(binding, id) {
-                found.push(EngineeringReference::TaskInput {
-                    task: task.id.clone(),
-                    field: *field,
-                });
+                found.push(reference);
             }
         }
-        for (section, binding) in &task.axial_sections {
-            if binding_references(binding, id) {
-                found.push(EngineeringReference::TaskAxialSection {
-                    task: task.id.clone(),
-                    section: *section,
-                });
+        if let EngineeringRecordId::Source(id) = id {
+            for (reference, sources) in task_sources(task) {
+                if sources.contains(id) {
+                    found.push(reference);
+                }
             }
-        }
-        if let EngineeringRecordId::Source(id) = id
-            && task.case.applicability_source_ids.contains(id)
-        {
-            found.push(EngineeringReference::TaskApplicability(task.id.clone()));
         }
     }
     found
@@ -495,12 +612,12 @@ pub(super) fn record_revisions(inputs: &EngineeringInputs) -> BTreeMap<Engineeri
                 .iter()
                 .map(|r| (EngineeringRecordId::Basis(r.id.clone()), r.revision)),
         )
-        .chain(inputs.tasks.iter().flat_map(|r| {
-            [
-                (EngineeringRecordId::Task(r.id.clone()), r.revision),
-                (EngineeringRecordId::Case(r.case.id.clone()), 0),
-            ]
-        }))
+        .chain(
+            inputs
+                .tasks
+                .iter()
+                .flat_map(rating_commands::task_revisions),
+        )
         .collect()
 }
 pub(super) fn same_content(a: &EngineeringInputs, b: &EngineeringInputs) -> bool {
@@ -513,7 +630,7 @@ pub(super) fn same_content(a: &EngineeringInputs, b: &EngineeringInputs) -> bool
             r.revision = 0;
         }
         for r in &mut value.tasks {
-            r.revision = 0;
+            rating_commands::clear_revisions(r);
         }
         value
     }

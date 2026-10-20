@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TaskImpact {
     pub task_id: EquipmentTaskId,
+    pub case_id: EngineeringCaseId,
     pub input_changed: bool,
     pub evidence_changed: bool,
 }
@@ -15,15 +16,11 @@ struct Dependencies {
     sources: BTreeSet<SourceId>,
 }
 impl Dependencies {
-    fn add_task(&mut self, inputs: &EngineeringInputs, task: &SeparatorSizingTask) {
-        self.sources
-            .extend(task.case.applicability_source_ids.iter().cloned());
-        for binding in task
-            .case
-            .inputs
-            .values()
-            .chain(task.axial_sections.values())
-        {
+    fn add_task(&mut self, inputs: &EngineeringInputs, task: &EquipmentTask) {
+        for (_, sources) in commands::task_sources(task) {
+            self.sources.extend(sources.iter().cloned());
+        }
+        for (_, _, binding) in commands::task_bindings(task) {
             match binding {
                 InputBinding::Direct { source_id, .. } => {
                     self.sources.insert(source_id.clone());
@@ -68,25 +65,72 @@ pub(super) fn task_references(
     task: &EquipmentTaskId,
     record: &EngineeringRecordId,
 ) -> bool {
-    let Some(task) = inputs.task(task) else {
+    inputs.equipment_task(task).is_some_and(|t| {
+        t.case_ids().any(|case| {
+            case_references(
+                inputs,
+                &EquipmentCaseKey {
+                    task_id: task.clone(),
+                    case_id: case.clone(),
+                },
+                record,
+            )
+        })
+    })
+}
+pub(super) fn case_references(
+    inputs: &EngineeringInputs,
+    key: &EquipmentCaseKey,
+    record: &EngineeringRecordId,
+) -> bool {
+    let Some(task) = case_projection(inputs.equipment_task(&key.task_id), &key.case_id) else {
         return false;
     };
     let mut dependencies = Dependencies::default();
-    dependencies.add_task(inputs, task);
+    dependencies.add_task(inputs, &task);
     match record {
-        EngineeringRecordId::Task(id) => task.id == *id,
-        EngineeringRecordId::Case(id) => task.case.id == *id,
+        EngineeringRecordId::Task(id) | EngineeringRecordId::Geometry(id) => task.id() == id,
+        EngineeringRecordId::Case(id) => key.case_id == *id,
         EngineeringRecordId::Source(id) => dependencies.sources.contains(id),
         EngineeringRecordId::Basis(id) => dependencies.basis.contains(id),
     }
 }
-fn task_recipe(task: &SeparatorSizingTask) -> SeparatorSizingTask {
+fn case_projection(
+    task: Option<&EquipmentTask>,
+    case: &EngineeringCaseId,
+) -> Option<EquipmentTask> {
+    let mut task = task?.clone();
+    match &mut task {
+        EquipmentTask::SeparatorSizing(t) if t.case.id != *case => return None,
+        EquipmentTask::SeparatorRating(t) => {
+            t.cases.retain(|c| c.id == *case);
+            if t.cases.is_empty() {
+                return None;
+            }
+        }
+        _ => {}
+    }
+    Some(task)
+}
+fn task_recipe(task: &EquipmentTask) -> EquipmentTask {
     let mut recipe = task.clone();
-    recipe.revision = 0;
-    recipe.tag.clear();
-    recipe.name.clear();
-    recipe.case.name.clear();
-    recipe.case.purpose.clear();
+    rating_commands::clear_revisions(&mut recipe);
+    match &mut recipe {
+        EquipmentTask::SeparatorSizing(t) => {
+            t.tag.clear();
+            t.name.clear();
+            t.case.name.clear();
+            t.case.purpose.clear();
+        }
+        EquipmentTask::SeparatorRating(t) => {
+            t.tag.clear();
+            t.name.clear();
+            for c in &mut t.cases {
+                c.name.clear();
+                c.purpose.clear();
+            }
+        }
+    }
     recipe
 }
 #[derive(PartialEq)]
@@ -107,36 +151,38 @@ fn binding_evidence(binding: &InputBinding) -> BindingEvidence<'_> {
         } => BindingEvidence::Override(basis_entry_id, source_id, reason),
     }
 }
-fn task_evidence_changed(
-    old: Option<&SeparatorSizingTask>,
-    new: Option<&SeparatorSizingTask>,
-) -> bool {
+fn task_evidence_changed(old: Option<&EquipmentTask>, new: Option<&EquipmentTask>) -> bool {
     let (Some(old), Some(new)) = (old, new) else {
         return true;
     };
-    old.case.id != new.case.id
-        || old.method != new.method
-        || old.case.fluid_system != new.case.fluid_system
-        || old.case.applicability != new.case.applicability
-        || old.case.applicability_source_ids != new.case.applicability_source_ids
-        || !old
-            .case
-            .inputs
-            .iter()
-            .map(|(field, binding)| (field, binding_evidence(binding)))
-            .eq(new
-                .case
-                .inputs
-                .iter()
-                .map(|(field, binding)| (field, binding_evidence(binding))))
-        || !old
-            .axial_sections
-            .iter()
-            .map(|(section, binding)| (section, binding_evidence(binding)))
-            .eq(new
-                .axial_sections
-                .iter()
-                .map(|(section, binding)| (section, binding_evidence(binding))))
+    let declarations_changed = match (old, new) {
+        (EquipmentTask::SeparatorSizing(a), EquipmentTask::SeparatorSizing(b)) => {
+            a.case.id != b.case.id
+                || a.case.fluid_system != b.case.fluid_system
+                || a.case.applicability != b.case.applicability
+        }
+        (EquipmentTask::SeparatorRating(a), EquipmentTask::SeparatorRating(b)) => {
+            a.geometry.applicability != b.geometry.applicability
+                || !a
+                    .cases
+                    .iter()
+                    .map(|c| (&c.id, &c.fluid_system, &c.applicability))
+                    .eq(b
+                        .cases
+                        .iter()
+                        .map(|c| (&c.id, &c.fluid_system, &c.applicability)))
+        }
+        _ => true,
+    };
+    declarations_changed
+        || old.method() != new.method()
+        || commands::task_sources(old) != commands::task_sources(new)
+        || !commands::task_bindings(old)
+            .into_iter()
+            .map(|(field, _, binding)| (field, binding_evidence(binding)))
+            .eq(commands::task_bindings(new)
+                .into_iter()
+                .map(|(field, _, binding)| (field, binding_evidence(binding))))
 }
 fn source_evidence(source: &SourceRecord) -> SourceRecord {
     let mut evidence = source.clone();
@@ -149,20 +195,25 @@ pub(super) fn between(before: &EngineeringInputs, after: &EngineeringInputs) -> 
         .tasks
         .iter()
         .chain(&after.tasks)
-        .map(|r| r.id.clone())
+        .flat_map(|r| {
+            r.case_ids().map(|case| EquipmentCaseKey {
+                task_id: r.id().clone(),
+                case_id: case.clone(),
+            })
+        })
         .collect::<BTreeSet<_>>();
     let mut impacts = Vec::new();
     for id in ids {
-        let old = before.task(&id);
-        let new = after.task(&id);
-        let mut input_changed = old.map(task_recipe) != new.map(task_recipe);
-        let mut evidence_changed = task_evidence_changed(old, new);
+        let old = case_projection(before.equipment_task(&id.task_id), &id.case_id);
+        let new = case_projection(after.equipment_task(&id.task_id), &id.case_id);
+        let mut input_changed = old.as_ref().map(task_recipe) != new.as_ref().map(task_recipe);
+        let mut evidence_changed = task_evidence_changed(old.as_ref(), new.as_ref());
         // Both sides matter when a binding or dependency has just been removed.
         let mut dependencies = Dependencies::default();
-        if let Some(task) = old {
+        if let Some(task) = &old {
             dependencies.add_task(before, task);
         }
-        if let Some(task) = new {
+        if let Some(task) = &new {
             dependencies.add_task(after, task);
         }
         for id in &dependencies.basis {
@@ -183,7 +234,8 @@ pub(super) fn between(before: &EngineeringInputs, after: &EngineeringInputs) -> 
         }
         if input_changed || evidence_changed {
             impacts.push(TaskImpact {
-                task_id: id,
+                task_id: id.task_id,
+                case_id: id.case_id,
                 input_changed,
                 evidence_changed,
             });

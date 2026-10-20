@@ -21,7 +21,8 @@ pub fn write(
     write_with_upgrade(path.as_ref(), project, overwrite, false)
 }
 
-/// Explicit lifecycle consent to replace a validated v1/v2 target with v3.
+/// Explicit lifecycle consent to upgrade a validated v1/v2 target or add rating
+/// capability to a known v3 target. Unknown capabilities can never be overwritten.
 pub fn write_upgraded(
     path: impl AsRef<Path>,
     project: &ProjectV3Read,
@@ -43,7 +44,17 @@ fn write_with_upgrade(
                 FileOverwritePolicy::Allow
             }
             Ok(existing) => match parse(&existing)? {
-                ProjectV3Read::Editable(_) => FileOverwritePolicy::Allow,
+                ProjectV3Read::Editable(existing) => {
+                    if !upgrade
+                        && !existing.has_rating()
+                        && matches!(project, ProjectV3Read::Editable(p) if p.has_rating())
+                    {
+                        return Err(RfError::invalid_input(
+                            "engineering.tasks: adding rating capability requires confirmation; older v3 readers will open the file read-only",
+                        ));
+                    }
+                    FileOverwritePolicy::Allow
+                }
                 ProjectV3Read::ReadOnly(_) => {
                     return Err(RfError::invalid_input(
                         "engineering.tasks: existing project is read-only; overwriting or stripping tasks is prohibited",

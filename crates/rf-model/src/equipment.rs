@@ -1,5 +1,6 @@
 //! Independent equipment input records. No calculation, transaction or storage policy.
 mod rating;
+mod task;
 pub use rating::*;
 #[cfg(test)]
 mod tests;

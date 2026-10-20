@@ -11,6 +11,33 @@ impl EquipmentEditorState {
     ) -> Result<(), EquipmentEditError> {
         use EquipmentEditorCommand::*;
         match command {
+            CreateRatingTask => self.create_rating(session, units)?,
+            CheckRating(member) => {
+                if self.pending_for_case(&member, session) {
+                    return Err(EquipmentEditError::PendingDrafts);
+                }
+                let task = session
+                    .inputs()
+                    .rating_task(&member.task_id)
+                    .ok_or(EquipmentEditError::MissingTask)?;
+                if !task.cases.iter().any(|c| c.id == member.case_id) {
+                    return Err(EquipmentEditError::MissingEditor);
+                }
+                self.rating_checks.insert(
+                    member,
+                    RatingInputCheck {
+                        formal: session.checkpoint(),
+                        issues: rf_unitops::separator_rating::check(task, &session.inputs().basis),
+                    },
+                );
+            }
+            CalculateRating(member) => {
+                if self.pending_for_case(&member, session) {
+                    return Err(EquipmentEditError::PendingDrafts);
+                }
+                session.calculate_rating(&member)?;
+                self.rating_checks.remove(&member);
+            }
             CreateTask => {
                 let id = self.next_id(session, "task")?;
                 let case_id = self.next_id(session, "case")?;
@@ -107,8 +134,12 @@ impl EquipmentEditorState {
                 let command = self.draft_command(session, &target)?;
                 let prepared = session.prepare(vec![command])?;
                 // Shared records are always reviewed with their affected tasks before commit.
-                if !matches!(target, EquipmentEditorTarget::Task(_))
-                    && !prepared.impacts().is_empty()
+                if !matches!(
+                    target,
+                    EquipmentEditorTarget::Task(_)
+                        | EquipmentEditorTarget::RatingTask(_)
+                        | EquipmentEditorTarget::RatingCase(_)
+                ) && !prepared.impacts().is_empty()
                 {
                     self.set_pending(session, PendingOperation::Apply { prepared, target });
                 } else {
@@ -121,7 +152,13 @@ impl EquipmentEditorState {
             }
             Delete(target) => {
                 let command = match &target {
-                    EquipmentEditorTarget::Task(id) => EngineeringCommand::DeleteTask(id.clone()),
+                    EquipmentEditorTarget::Task(id) | EquipmentEditorTarget::RatingTask(id) => {
+                        EngineeringCommand::DeleteTask(id.clone())
+                    }
+                    EquipmentEditorTarget::RatingGeometry(_)
+                    | EquipmentEditorTarget::RatingCase(_) => {
+                        return Err(EquipmentEditError::UnsupportedEditorAction);
+                    }
                     EquipmentEditorTarget::Source(id) => {
                         EngineeringCommand::DeleteSource(id.clone())
                     }
@@ -155,8 +192,13 @@ impl EquipmentEditorState {
                     }
                     PendingOperation::Delete { prepared, target } => {
                         session.commit(prepared)?;
-                        self.drafts.remove(&target);
-                        if self.active.as_ref() == Some(&target) {
+                        self.drafts
+                            .retain(|candidate, _| !Self::deleted_with(candidate, &target));
+                        if self
+                            .active
+                            .as_ref()
+                            .is_some_and(|candidate| Self::deleted_with(candidate, &target))
+                        {
                             self.active = None;
                         }
                         self.bump()?;
@@ -194,7 +236,7 @@ impl EquipmentEditorState {
         }
         Ok(())
     }
-    fn next_id(
+    pub(super) fn next_id(
         &mut self,
         session: &EngineeringSession,
         prefix: &str,
@@ -206,7 +248,7 @@ impl EquipmentEditorState {
                 .ok_or(EquipmentEditError::CounterExhausted)?;
             let id = format!("{prefix}-ui-{}", self.next_identity);
             if !session.revisions.keys().any(|r| match r {
-                EngineeringRecordId::Task(v) => v.as_str() == id,
+                EngineeringRecordId::Task(v) | EngineeringRecordId::Geometry(v) => v.as_str() == id,
                 EngineeringRecordId::Case(v) => v.as_str() == id,
                 EngineeringRecordId::Source(v) => v.as_str() == id,
                 EngineeringRecordId::Basis(v) => v.as_str() == id,
@@ -215,7 +257,7 @@ impl EquipmentEditorState {
             }
         }
     }
-    fn select(
+    pub(super) fn select(
         &mut self,
         session: &EngineeringSession,
         units: &DisplayUnitSet,
@@ -224,6 +266,11 @@ impl EquipmentEditorState {
         // Refresh clean records after an external formal edit; never overwrite a pending draft.
         if self.drafts.get(&target).is_none_or(|d| !d.is_pending()) {
             let (baseline, value) = match &target {
+                EquipmentEditorTarget::RatingTask(_)
+                | EquipmentEditorTarget::RatingGeometry(_)
+                | EquipmentEditorTarget::RatingCase(_) => {
+                    Self::rating_record(session, units, &target)?
+                }
                 EquipmentEditorTarget::Task(id) => {
                     let record = session
                         .inputs()
@@ -286,18 +333,7 @@ impl EquipmentEditorState {
     ) -> Result<(), EquipmentEditError> {
         self.drafts.remove(target);
         self.bump()?;
-        let exists = match target {
-            EquipmentEditorTarget::Task(id) => session.inputs().task(id).is_some(),
-            EquipmentEditorTarget::Source(id) => {
-                session.inputs().basis.sources.iter().any(|r| r.id == *id)
-            }
-            EquipmentEditorTarget::Basis(id) => session
-                .inputs()
-                .basis
-                .basis_entries
-                .iter()
-                .any(|r| r.id == *id),
-        };
+        let exists = Self::target_exists(session, target);
         if self.active.as_ref() == Some(target) {
             if exists {
                 self.select(session, units, target.clone())?;
@@ -328,6 +364,52 @@ impl EquipmentEditorState {
                 Ok(EngineeringCommand::UpdateTask(Box::new(
                     value.record(base)?,
                 )))
+            }
+            (
+                RecordBaseline::RatingTask(base),
+                EquipmentDraft::RatingTask(value),
+                EquipmentEditorTarget::RatingTask(id),
+            ) => {
+                if session.inputs().rating_task(id) != Some(base) {
+                    return Err(EquipmentEditError::StaleEditor);
+                }
+                Ok(EngineeringCommand::UpdateRatingLabels {
+                    task: id.clone(),
+                    revision: base.revision,
+                    tag: value.tag.clone(),
+                    name: value.name.clone(),
+                })
+            }
+            (
+                RecordBaseline::RatingGeometry(base),
+                EquipmentDraft::RatingGeometry(value),
+                EquipmentEditorTarget::RatingGeometry(id),
+            ) => {
+                if session.inputs().rating_task(id).map(|t| &t.geometry) != Some(base) {
+                    return Err(EquipmentEditError::StaleEditor);
+                }
+                Ok(EngineeringCommand::UpdateRatingGeometry {
+                    task: id.clone(),
+                    geometry: Box::new(value.record(base)?),
+                })
+            }
+            (
+                RecordBaseline::RatingCase(base),
+                EquipmentDraft::RatingCase(value),
+                EquipmentEditorTarget::RatingCase(key),
+            ) => {
+                if session
+                    .inputs()
+                    .rating_task(&key.task_id)
+                    .and_then(|t| t.cases.iter().find(|c| c.id == key.case_id))
+                    != Some(base)
+                {
+                    return Err(EquipmentEditError::StaleEditor);
+                }
+                Ok(EngineeringCommand::UpdateRatingCase {
+                    task: key.task_id.clone(),
+                    case: Box::new(value.record(base)?),
+                })
             }
             (
                 RecordBaseline::Source(base),
@@ -377,7 +459,7 @@ impl EquipmentEditorState {
             PendingOperation::Delete { target, .. } => self
                 .pending_targets()
                 .into_iter()
-                .filter(|t| t == target)
+                .filter(|t| Self::deleted_with(t, target))
                 .collect(),
             PendingOperation::History { .. } => self.pending_targets(),
         };
@@ -389,6 +471,18 @@ impl EquipmentEditorState {
             impacts,
             discarded_drafts,
         });
+    }
+    fn deleted_with(candidate: &EquipmentEditorTarget, deleted: &EquipmentEditorTarget) -> bool {
+        if let EquipmentEditorTarget::RatingTask(id) = deleted {
+            match candidate {
+                EquipmentEditorTarget::RatingTask(other)
+                | EquipmentEditorTarget::RatingGeometry(other) => other == id,
+                EquipmentEditorTarget::RatingCase(key) => key.task_id == *id,
+                _ => false,
+            }
+        } else {
+            candidate == deleted
+        }
     }
     fn restore_history(
         &mut self,
@@ -405,18 +499,7 @@ impl EquipmentEditorState {
         self.drafts.clear();
         self.bump()?;
         if let Some(target) = active {
-            let exists = match &target {
-                EquipmentEditorTarget::Task(id) => session.inputs().task(id).is_some(),
-                EquipmentEditorTarget::Source(id) => {
-                    session.inputs().basis.sources.iter().any(|r| r.id == *id)
-                }
-                EquipmentEditorTarget::Basis(id) => session
-                    .inputs()
-                    .basis
-                    .basis_entries
-                    .iter()
-                    .any(|r| r.id == *id),
-            };
+            let exists = Self::target_exists(session, &target);
             if exists {
                 self.select(session, units, target)?;
             }

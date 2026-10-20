@@ -1,7 +1,7 @@
 use super::*;
 use rf_types::units::DisplayUnitSet;
 use std::fs;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
 
 const V1: &str =
     include_str!("../../../../examples/flowsheets/feed-heater-flash-synthetic-demo.rfproj.json");
@@ -11,15 +11,8 @@ const V2: &str =
 struct Fixture(PathBuf);
 impl Fixture {
     fn new() -> Self {
-        let root = std::env::temp_dir().join(format!(
-            "rf-presentation-lifecycle-{}-{}",
-            std::process::id(),
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_nanos()
-        ));
-        fs::create_dir_all(&root).unwrap();
+        let root = super::tests::temp_project_path("presentation-lifecycle").with_extension("dir");
+        fs::create_dir(&root).unwrap();
         Self(root)
     }
     fn path(&self, name: &str) -> PathBuf {

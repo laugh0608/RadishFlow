@@ -1,9 +1,10 @@
 use super::*;
-use radishflow_studio::StudioDocumentLifecycleCommand;
+use radishflow_studio::{ProjectSaveCompatibility, StudioDocumentLifecycleCommand};
 
 pub(super) struct PendingFormatUpgrade {
     checkpoint: input_departure::ProjectDepartureCheckpoint,
-    target_version: u32,
+    compatibility: ProjectSaveCompatibility,
+    target_contents: Option<Vec<u8>>,
     path: PathBuf,
 }
 
@@ -41,10 +42,28 @@ impl ReadyAppState {
             });
             return;
         }
-        if self.platform_host.project_save_requires_upgrade() {
+        let compatibility = match self.platform_host.project_save_compatibility(&path) {
+            Ok(value) => value,
+            Err(error) => {
+                self.record_project_save_failure(path, &error);
+                return;
+            }
+        };
+        if let Some(compatibility) = compatibility {
+            let target_contents = match read_save_target(&path) {
+                Ok(value) => value,
+                Err(error) => {
+                    self.record_project_save_failure(
+                        path,
+                        &rf_types::RfError::invalid_input(format!("inspect save target: {error}")),
+                    );
+                    return;
+                }
+            };
             self.pending_format_upgrade = Some(PendingFormatUpgrade {
                 checkpoint: self.project_departure_checkpoint(),
-                target_version: self.platform_host.project_save_version(),
+                compatibility,
+                target_contents,
                 path,
             });
             self.project_open.pending_save_as_overwrite = None;
@@ -58,7 +77,12 @@ impl ReadyAppState {
             return;
         };
         if self.project_departure_checkpoint() != pending.checkpoint
-            || self.platform_host.project_save_version() != pending.target_version
+            || self
+                .platform_host
+                .project_save_compatibility(&pending.path)
+                .ok()
+                != Some(Some(pending.compatibility))
+            || read_save_target(&pending.path).ok().as_ref() != Some(&pending.target_contents)
         {
             self.cancel_project_save("保存目标已失效", "工程或输入已变化，请重新检查后保存。");
             return;
@@ -108,31 +132,42 @@ impl ReadyAppState {
                 }));
                 self.persist_saved_canvas_layout();
             }
-            Err(error) => {
-                if save_as {
-                    self.project_open.pending_save_as_overwrite = Some(path.clone());
-                }
-                self.platform_host.record_activity_line(format!(
-                    "{} failed: {error}",
-                    if save_as { "save as" } else { "save" }
-                ));
-                self.project_open.notice = Some(ProjectOpenNotice {
-                    level: ProjectOpenNoticeLevel::Error,
-                    title: if save_as {
-                        "Save As failed"
-                    } else {
-                        "Project save failed"
-                    }
-                    .into(),
-                    detail: format!(
-                        "[{}] {} ({}). Current workspace remains open; choose another target or retry.",
-                        error.code().as_str(),
-                        error.message(),
-                        path.display()
-                    ),
-                });
-            }
+            Err(error) => self.record_project_save_failure(path, &error),
         }
+    }
+
+    fn record_project_save_failure(&mut self, path: PathBuf, error: &rf_types::RfError) {
+        let save_as = self
+            .platform_host
+            .snapshot()
+            .runtime
+            .workspace_document
+            .project_path
+            .as_deref()
+            .is_none_or(|current| !paths_match(std::path::Path::new(current), &path));
+        self.pending_format_upgrade = None;
+        if save_as {
+            self.project_open.pending_save_as_overwrite = Some(path.clone());
+        }
+        self.platform_host.record_activity_line(format!(
+            "{} failed: {error}",
+            if save_as { "save as" } else { "save" }
+        ));
+        self.project_open.notice = Some(ProjectOpenNotice {
+            level: ProjectOpenNoticeLevel::Error,
+            title: if save_as {
+                "Save As failed"
+            } else {
+                "Project save failed"
+            }
+            .into(),
+            detail: format!(
+                "[{}] {} ({}). Current workspace remains open; choose another target or retry.",
+                error.code().as_str(),
+                error.message(),
+                path.display()
+            ),
+        });
     }
 
     pub(super) fn confirm_pending_save_as_overwrite(&mut self) {
@@ -176,18 +211,45 @@ impl ReadyAppState {
             return false;
         };
         let path = pending.path.display().to_string();
-        let version = pending.target_version;
+        let compatibility = pending.compatibility;
         let zh = self.locale == StudioShellLocale::ZhCn;
         let response = egui::Modal::new(egui::Id::new("project-format-upgrade")).show(ctx, |ui| {
-            ui.heading(if zh { "保存为新版工程" } else { "Upgrade project format" });
-            ui.label(if zh {
-                format!("此工程将保存为 v{version}，保留正式输入和显示设置，旧版程序无法读取。可另存为以保留原件。")
-            } else {
-                format!("Save as v{version} to preserve formal inputs and display settings. Older versions cannot read it. Use Save As to keep the original.")
+            ui.set_width((ctx.screen_rect().width() - 40.0).clamp(220.0, 520.0));
+            let capability_only = compatibility == ProjectSaveCompatibility::RatingCapability;
+            ui.heading(match (zh, capability_only) {
+                (true, true) => "确认校核任务兼容性", (false, true) => "Confirm rating compatibility",
+                (true, false) => "保存为新版工程", (false, false) => "Upgrade project format",
             });
+            match compatibility {
+                ProjectSaveCompatibility::RatingCapability => {
+                    ui.label(if zh { "工程仍为 v3，新增校核任务后，仅支持初步尺寸的旧版本将只能只读检查。可另存为以保留原件。" }
+                    else { "The project remains v3. Older versions that only support sizing will open the rating project read-only. Use Save As to keep the original." });
+                }
+                ProjectSaveCompatibility::Format { version, includes_rating } => {
+                    ui.label(if zh {
+                        format!("此工程将保存为 v{version}，保留正式输入和显示设置，旧版程序无法读取。可另存为以保留原件。")
+                    } else {
+                        format!("Save as v{version} to preserve formal inputs and display settings. Older versions cannot read it. Use Save As to keep the original.")
+                    });
+                    if includes_rating {
+                        ui.label(if zh { "含校核任务；仅支持初步尺寸的 v3 旧版本只能只读检查。" }
+                        else { "Contains rating tasks; v3 versions that only support sizing can inspect it read-only." });
+                    }
+                }
+            }
             ui.label(path);
-            ui.horizontal(|ui| {
-                if ui.button(if zh { "升级并保存" } else { "Upgrade and save" }).clicked() {
+            ui.horizontal_wrapped(|ui| {
+                let cancel = ui.button(if zh { "取消" } else { "Cancel" });
+                let save_as = ui.button(if zh { "另存为…" } else { "Save As…" });
+                let confirm = ui.button(match (zh, capability_only) {
+                    (true, true) => "继续保存", (false, true) => "Continue and save",
+                    (true, false) => "升级并保存", (false, false) => "Upgrade and save",
+                });
+                if !cancel.has_focus() && !save_as.has_focus() && !confirm.has_focus()
+                    && !save_as.lost_focus() && !confirm.lost_focus() {
+                    cancel.request_focus();
+                }
+                if confirm.clicked() {
                     self.confirm_format_upgrade();
                     if !self
                         .platform_host
@@ -205,18 +267,26 @@ impl ReadyAppState {
                         ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 }
-                if ui.button(if zh { "另存为…" } else { "Save As…" }).clicked() {
+                if save_as.clicked() {
                     self.pending_format_upgrade = None;
                     self.save_project_as_from_picker();
                 }
-                if ui.button(if zh { "取消" } else { "Cancel" }).clicked() {
+                if cancel.clicked() {
                     self.cancel_project_save("已取消升级", "文件、保存基线和草稿保持不变。");
                 }
             });
         });
-        if response.should_close() {
+        if response.should_close() && self.pending_format_upgrade.is_some() {
             self.cancel_project_save("已取消升级", "文件、保存基线和草稿保持不变。");
         }
         true
+    }
+}
+
+fn read_save_target(path: &std::path::Path) -> std::io::Result<Option<Vec<u8>>> {
+    match std::fs::read(path) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error),
     }
 }

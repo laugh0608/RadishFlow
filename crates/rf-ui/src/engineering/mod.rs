@@ -3,6 +3,9 @@
 mod commands;
 pub mod editor;
 mod impact;
+mod rating_commands;
+#[cfg(test)]
+mod rating_tests;
 mod results;
 #[cfg(test)]
 mod tests;
@@ -17,7 +20,10 @@ pub use results::{
 };
 
 use crate::DocumentId;
-use rf_model::{engineering::EngineeringBasis, equipment::SeparatorSizingTask};
+use rf_model::{
+    engineering::EngineeringBasis,
+    equipment::{EquipmentTask, SeparatorRatingTask, SeparatorSizingTask},
+};
 use rf_types::{BasisEntryId, EngineeringCaseId, EquipmentTaskId, SourceId};
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -40,7 +46,7 @@ impl Eq for EngineeringCheckpoint {}
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct EngineeringInputs {
     pub basis: EngineeringBasis,
-    pub tasks: Vec<SeparatorSizingTask>,
+    pub tasks: Vec<EquipmentTask>,
 }
 impl EngineeringInputs {
     pub fn is_empty(&self) -> bool {
@@ -49,7 +55,16 @@ impl EngineeringInputs {
             && self.tasks.is_empty()
     }
     pub fn task(&self, id: &EquipmentTaskId) -> Option<&SeparatorSizingTask> {
-        self.tasks.iter().find(|task| task.id == *id)
+        self.equipment_task(id)?.as_sizing()
+    }
+    pub fn equipment_task(&self, id: &EquipmentTaskId) -> Option<&EquipmentTask> {
+        self.tasks.iter().find(|task| task.id() == id)
+    }
+    pub fn rating_task(&self, id: &EquipmentTaskId) -> Option<&SeparatorRatingTask> {
+        self.equipment_task(id)?.as_rating()
+    }
+    pub fn has_rating(&self) -> bool {
+        self.tasks.iter().any(|task| task.as_rating().is_some())
     }
 }
 
@@ -59,6 +74,13 @@ pub enum EngineeringRecordId {
     Basis(BasisEntryId),
     Task(EquipmentTaskId),
     Case(EngineeringCaseId),
+    Geometry(EquipmentTaskId),
+}
+/// Result membership is explicit even while the supported rating method is single-case.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct EquipmentCaseKey {
+    pub task_id: EquipmentTaskId,
+    pub case_id: EngineeringCaseId,
 }
 #[derive(Debug, Clone, PartialEq)]
 struct HistoryEntry {
@@ -79,10 +101,10 @@ pub struct EngineeringSession {
     revisions: BTreeMap<EngineeringRecordId, u64>,
     undo: Vec<HistoryEntry>,
     redo: Vec<HistoryEntry>,
-    generations: BTreeMap<EquipmentTaskId, ResultGeneration>,
-    eligibility: BTreeMap<EquipmentTaskId, EngineeringCheckpoint>,
-    pending: BTreeMap<EquipmentTaskId, CalculationId>,
-    results: BTreeMap<EquipmentTaskId, results::CalculationRecord>,
+    generations: BTreeMap<EquipmentCaseKey, ResultGeneration>,
+    eligibility: BTreeMap<EquipmentCaseKey, EngineeringCheckpoint>,
+    pending: BTreeMap<EquipmentCaseKey, CalculationId>,
+    results: BTreeMap<EquipmentCaseKey, results::CalculationRecord>,
 }
 impl EngineeringSession {
     pub fn new(document_id: DocumentId) -> Self {
@@ -115,12 +137,18 @@ impl EngineeringSession {
         };
         state.revisions = commands::record_revisions(&state.current);
         for task in &state.current.tasks {
-            state
-                .generations
-                .insert(task.id.clone(), ResultGeneration::default());
-            state
-                .eligibility
-                .insert(task.id.clone(), EngineeringCheckpoint::fresh());
+            for case in task.case_ids() {
+                let key = EquipmentCaseKey {
+                    task_id: task.id().clone(),
+                    case_id: case.clone(),
+                };
+                state
+                    .generations
+                    .insert(key.clone(), ResultGeneration::default());
+                state
+                    .eligibility
+                    .insert(key, EngineeringCheckpoint::fresh());
+            }
         }
         Ok(state)
     }
@@ -138,6 +166,9 @@ impl EngineeringSession {
     }
     pub fn can_redo(&self) -> bool {
         !self.redo.is_empty()
+    }
+    pub fn rating_capability_is_new(&self) -> bool {
+        self.current.has_rating() && !self.baseline.has_rating()
     }
 }
 
