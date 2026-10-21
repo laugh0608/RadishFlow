@@ -22,6 +22,15 @@ pub use matrix::*;
 pub const METHOD_ID: &str = "radishflow.separator.vertical-sb-working-volume-rating";
 pub const METHOD_VERSION: u32 = 1;
 pub const MATRIX_METHOD_VERSION: u32 = 2;
+pub const ADOPTION_METHOD_VERSION: u32 = 3;
+
+/// Version 3 adds fixed design provenance, retaining the same physical relations.
+pub fn adoption_method() -> EquipmentMethod {
+    EquipmentMethod {
+        id: METHOD_ID.into(),
+        version: ADOPTION_METHOD_VERSION,
+    }
+}
 
 /// Version 2 extends membership, retaining the version 1 physical relations.
 pub fn matrix_method() -> EquipmentMethod {

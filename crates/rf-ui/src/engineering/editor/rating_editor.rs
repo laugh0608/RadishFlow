@@ -17,6 +17,7 @@ impl EquipmentEditorState {
                 name: String::new(),
                 method: rf_unitops::separator_rating::matrix_method(),
                 geometry: SeparatorGivenGeometry {
+                    adoption: None,
                     revision: 0,
                     applicability: SeparatorGeometryApplicability::default(),
                     applicability_source_ids: vec![],

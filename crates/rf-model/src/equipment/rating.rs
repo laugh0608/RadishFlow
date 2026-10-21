@@ -71,6 +71,8 @@ pub struct SeparatorRatingApplicability {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SeparatorGivenGeometry {
     pub revision: u64,
+    /// Historical design decision; ordinary geometry edits preserve this capture.
+    pub adoption: Option<Box<SeparatorGeometryAdoption>>,
     pub applicability: SeparatorGeometryApplicability,
     pub applicability_source_ids: Vec<SourceId>,
     pub inputs: BTreeMap<SeparatorGeometryInput, InputBinding>,
@@ -96,7 +98,8 @@ pub struct SeparatorRatingTask {
     pub method: EquipmentMethod,
     pub geometry: SeparatorGivenGeometry,
     /// Ordered, nonempty membership validated with the task identities. Method
-    /// version 1 accepts exactly one case; version 2 supports finite membership.
+    /// version 1 accepts exactly one case; versions 2/3 support finite membership.
+    /// Version 3 additionally permits fixed geometry adoption evidence.
     pub cases: Vec<SeparatorRatingCase>,
 }
 

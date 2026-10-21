@@ -11,6 +11,7 @@ fn rating(id: &str, case: &str, tag: &str) -> SeparatorRatingTask {
             version: 1,
         },
         geometry: SeparatorGivenGeometry {
+            adoption: None,
             revision: 1,
             applicability: SeparatorGeometryApplicability::default(),
             applicability_source_ids: vec![],

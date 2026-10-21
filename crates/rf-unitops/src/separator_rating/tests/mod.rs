@@ -52,6 +52,7 @@ fn fixture() -> (SeparatorRatingTask, EngineeringBasis) {
         name: "Given-geometry arithmetic fixture".into(),
         method: method(),
         geometry: SeparatorGivenGeometry {
+            adoption: None,
             revision: 4,
             applicability: SeparatorGeometryApplicability {
                 orientation: Some(SeparatorOrientation::Vertical),

@@ -1,3 +1,4 @@
+pub mod separator_adoption;
 mod separator_evidence;
 mod separator_hydraulics;
 pub mod separator_rating;

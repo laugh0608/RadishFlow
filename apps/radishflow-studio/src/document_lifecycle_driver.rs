@@ -153,6 +153,7 @@ pub enum ProjectSaveCompatibility {
     Format { version: u32, includes_rating: bool },
     RatingCapability,
     RatingMatrixCapability,
+    RatingAdoptionCapability,
 }
 /// Compatibility of both the loaded baseline and the actual save target.
 /// Save As must not bypass consent when replacing an older-capability file.
@@ -217,7 +218,9 @@ pub fn project_save_compatibility(
         })
     } else if rating_upgrade {
         Some(
-            if app.workspace.engineering.inputs().rating_method_version() >= 2 {
+            if app.workspace.engineering.inputs().rating_method_version() >= 3 {
+                ProjectSaveCompatibility::RatingAdoptionCapability
+            } else if app.workspace.engineering.inputs().rating_method_version() >= 2 {
                 ProjectSaveCompatibility::RatingMatrixCapability
             } else {
                 ProjectSaveCompatibility::RatingCapability

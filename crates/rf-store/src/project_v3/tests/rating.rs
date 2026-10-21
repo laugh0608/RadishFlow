@@ -191,7 +191,7 @@ fn future_rating_version_and_kind_preserve_original_text_without_partial_decodin
         let mut value = rating();
         let t = &mut value["engineering"]["tasks"][0];
         if field == "version" {
-            t["method"]["version"] = json!(3);
+            t["method"]["version"] = json!(4);
         } else {
             t["kind"] = json!("futureRating");
         }
@@ -222,7 +222,7 @@ fn adding_rating_requires_capability_consent_and_never_overwrites_unknown_target
     write(&path, &project, FileOverwritePolicy::Allow).unwrap();
     assert_eq!(read(&path).unwrap(), project);
     let mut future = rating();
-    future["engineering"]["tasks"][0]["method"]["version"] = json!(3);
+    future["engineering"]["tasks"][0]["method"]["version"] = json!(4);
     let future = future.to_string();
     fs::write(&path, &future).unwrap();
     assert!(write_upgraded(&path, &project, FileOverwritePolicy::Allow).is_err());

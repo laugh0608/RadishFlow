@@ -13,6 +13,7 @@ pub(super) const TASK_KIND: &str = "verticalGasLiquidSeparatorRating";
 pub(super) const METHOD_ID: &str = "radishflow.separator.vertical-sb-working-volume-rating";
 pub(super) const METHOD_VERSION: u32 = 1;
 pub(super) const MATRIX_METHOD_VERSION: u32 = 2;
+pub(super) const ADOPTION_METHOD_VERSION: u32 = 3;
 
 wire_enum!(GeometryKey, SeparatorGeometryInput, {
     InternalDiameter => "internalDiameter", WorkingLiquidHeight => "workingLiquidHeight"
@@ -39,6 +40,12 @@ pub(super) struct RatingWire {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct GeometryWire {
     revision: u64,
+    #[serde(
+        default,
+        deserialize_with = "present_adoption",
+        skip_serializing_if = "Option::is_none"
+    )]
+    adoption: Option<Box<super::adoption_wire::AdoptionWire>>,
     applicability: GeometryApplicabilityWire,
     applicability_source_ids: Vec<SourceId>,
     #[serde(deserialize_with = "bindings")]
@@ -49,6 +56,11 @@ struct GeometryWire {
         skip_serializing_if = "BTreeMap::is_empty"
     )]
     axial_sections: BTreeMap<AxialKey, BindingWire>,
+}
+fn present_adoption<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Box<super::adoption_wire::AdoptionWire>>, D::Error> {
+    super::adoption_wire::AdoptionWire::deserialize(deserializer).map(|value| Some(Box::new(value)))
 }
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -98,6 +110,7 @@ impl From<RatingWire> for SeparatorRatingTask {
             },
             geometry: SeparatorGivenGeometry {
                 revision: t.geometry.revision,
+                adoption: t.geometry.adoption.map(|a| Box::new(a.0)),
                 applicability: SeparatorGeometryApplicability {
                     orientation: a.orientation.map(Into::into),
                     gas_direction: a.gas_direction.map(Into::into),
@@ -157,6 +170,11 @@ impl From<&SeparatorRatingTask> for RatingWire {
             },
             geometry: GeometryWire {
                 revision: t.geometry.revision,
+                adoption: t
+                    .geometry
+                    .adoption
+                    .as_ref()
+                    .map(|a| Box::new(super::adoption_wire::AdoptionWire((**a).clone()))),
                 applicability: GeometryApplicabilityWire {
                     orientation: a.orientation.map(Into::into),
                     gas_direction: a.gas_direction.map(Into::into),

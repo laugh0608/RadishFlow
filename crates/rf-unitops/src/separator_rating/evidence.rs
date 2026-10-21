@@ -45,7 +45,9 @@ pub(super) fn validate_task(
             RatingIssueKind::InvalidIdentity(error.kind),
         );
     }
-    if task.method != method() && !(allow_matrix && task.method == matrix_method()) {
+    if task.method != method()
+        && !(allow_matrix && (task.method == matrix_method() || task.method == adoption_method()))
+    {
         issue(
             &mut issues,
             RatingIssueTarget::Method,

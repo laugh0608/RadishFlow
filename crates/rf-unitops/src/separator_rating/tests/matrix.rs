@@ -84,7 +84,7 @@ fn explicit_case_validation_preserves_versions_and_rejects_ambiguous_identities(
     task.cases.clear();
     assert!(summarize(&task, &[]).is_err());
     task = one_v2;
-    task.method.version = 3;
+    task.method.version = 4;
     assert!(calculate_case(&task, &task.cases[0].id, &basis).is_err());
 }
 

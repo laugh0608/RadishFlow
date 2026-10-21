@@ -2,6 +2,7 @@ use super::*;
 use rf_model::equipment::*;
 use rf_ui::engineering::{EngineeringCommand as C, EquipmentCaseKey, EquipmentResultStatus};
 use std::fs;
+mod adoption;
 
 const FIXTURE: &str =
     include_str!("../../../../crates/rf-store/tests/fixtures/project-v3-rating.json");
@@ -285,7 +286,7 @@ fn future_rating_is_entirely_read_only_and_cannot_be_replaced_by_known_rating() 
     let files = Files::new("rating-future");
     let mut app = files.rating();
     let path = files.path("future.rfproj.json");
-    let text = FIXTURE.replace("\"version\": 1", "\"version\": 3");
+    let text = FIXTURE.replace("\"version\": 1", "\"version\": 4");
     fs::write(&path, &text).unwrap();
     let StudioProjectOpen::ReadOnly(project) = read_studio_project(&path).unwrap() else {
         panic!("future method")

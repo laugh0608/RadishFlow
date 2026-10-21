@@ -347,7 +347,7 @@ impl EquipmentEditorState {
         self.active = Some(target);
         Ok(())
     }
-    fn reload_target(
+    pub(super) fn reload_target(
         &mut self,
         session: &EngineeringSession,
         units: &DisplayUnitSet,

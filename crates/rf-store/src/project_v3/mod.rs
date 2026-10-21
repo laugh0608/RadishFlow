@@ -1,4 +1,5 @@
 //! Complete v3 equipment storage; legacy readers and CLI retain their v1/v2 contract.
+mod adoption_wire;
 mod engineering_wire;
 mod equipment_wire;
 mod file_io;

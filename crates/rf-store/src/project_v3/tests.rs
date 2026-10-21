@@ -3,6 +3,7 @@ use crate::FileOverwritePolicy;
 use rf_types::units::{MeasurementUnit, QuantityKind};
 use serde_json::{Value, json};
 use std::fs;
+mod adoption;
 mod rating;
 
 // These are constructed storage fixtures, not real equipment data or B04 evidence.

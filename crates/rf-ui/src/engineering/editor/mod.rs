@@ -1,6 +1,8 @@
 //! Application-owned device editor. Formal inputs, text drafts, checks and history
 //! remain distinct; all shell actions use the same command boundary.
+mod adoption;
 mod drafts;
+pub use adoption::PreparedEditorGeometryAdoption;
 mod membership;
 mod rating_drafts;
 mod rating_editor;

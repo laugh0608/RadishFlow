@@ -215,12 +215,16 @@ impl ReadyAppState {
         let zh = self.locale == StudioShellLocale::ZhCn;
         let response = egui::Modal::new(egui::Id::new("project-format-upgrade")).show(ctx, |ui| {
             ui.set_width((ctx.screen_rect().width() - 40.0).clamp(220.0, 520.0));
-            let capability_only = matches!(compatibility, ProjectSaveCompatibility::RatingCapability | ProjectSaveCompatibility::RatingMatrixCapability);
+            let capability_only = matches!(compatibility, ProjectSaveCompatibility::RatingCapability | ProjectSaveCompatibility::RatingMatrixCapability | ProjectSaveCompatibility::RatingAdoptionCapability);
             ui.heading(match (zh, capability_only) {
                 (true, true) => "确认校核任务兼容性", (false, true) => "Confirm rating compatibility",
                 (true, false) => "保存为新版工程", (false, false) => "Upgrade project format",
             });
             match compatibility {
+                ProjectSaveCompatibility::RatingAdoptionCapability => {
+                    ui.label(if zh { "工程仍为 v3，校核方法升级为 v3 以保存固定采纳证据；不支持采纳的旧版本将整份只读打开。可另存为以保留原件。" }
+                    else { "The project remains v3 with rating method v3 to retain fixed adoption evidence. Older versions without adoption support will open the entire project read-only. Use Save As to keep the original." });
+                }
                 ProjectSaveCompatibility::RatingMatrixCapability => {
                     ui.label(if zh { "工程仍为 v3，校核方法升级为 v2；仅支持单工况校核的旧版本将整份只读打开。可另存为以保留原件。" }
                     else { "The project remains v3 with rating method v2. Versions supporting only single-case rating will open the entire project read-only. Use Save As to keep the original." });

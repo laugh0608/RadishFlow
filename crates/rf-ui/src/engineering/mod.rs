@@ -1,5 +1,9 @@
 //! In-memory equipment transactions and result qualification, independent of flowsheet Run.
 //! Formal data is separate from editor drafts and current-result qualification.
+mod adoption;
+#[cfg(test)]
+mod adoption_tests;
+pub use adoption::*;
 mod commands;
 pub mod editor;
 mod impact;

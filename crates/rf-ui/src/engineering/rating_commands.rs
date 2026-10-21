@@ -5,8 +5,17 @@ use rf_model::equipment::{SeparatorGivenGeometry, SeparatorRatingCase};
 pub(super) fn validate_capability(task: &SeparatorRatingTask) -> Result<(), EngineeringError> {
     if task.method != rf_unitops::separator_rating::method()
         && task.method != rf_unitops::separator_rating::matrix_method()
+        && task.method != rf_unitops::separator_rating::adoption_method()
     {
         return Err(EngineeringError::UnsupportedRatingMethod(task.id.clone()));
+    }
+    if let Some(adoption) = &task.geometry.adoption {
+        if task.method != rf_unitops::separator_rating::adoption_method() {
+            return Err(EngineeringError::UnsupportedRatingMethod(task.id.clone()));
+        }
+        adoption
+            .validate()
+            .map_err(EngineeringError::InvalidAdoption)?;
     }
     if task.cases.is_empty() || (task.method.version == 1 && task.cases.len() != 1) {
         return Err(EngineeringError::UnsupportedRatingCaseCount {
@@ -68,7 +77,7 @@ pub(super) fn labels(
 pub(super) fn geometry(
     inputs: &mut EngineeringInputs,
     id: &EquipmentTaskId,
-    geometry: SeparatorGivenGeometry,
+    mut geometry: SeparatorGivenGeometry,
 ) -> Result<(), EngineeringError> {
     let t = task_mut(inputs, id)?;
     revision(
@@ -76,6 +85,7 @@ pub(super) fn geometry(
         t.geometry.revision,
         geometry.revision,
     )?;
+    geometry.adoption = t.geometry.adoption.clone();
     t.geometry = geometry;
     Ok(())
 }
@@ -107,7 +117,9 @@ pub(super) fn upgrade(
 ) -> Result<(), EngineeringError> {
     let task = task_mut(inputs, id)?;
     validate_capability(task)?;
-    task.method = rf_unitops::separator_rating::matrix_method();
+    if task.method.version < 2 {
+        task.method = rf_unitops::separator_rating::matrix_method();
+    }
     Ok(())
 }
 pub(super) fn add(
@@ -117,7 +129,8 @@ pub(super) fn add(
     case: SeparatorRatingCase,
 ) -> Result<(), EngineeringError> {
     let task = task_mut(inputs, id)?;
-    if task.method != rf_unitops::separator_rating::matrix_method() {
+    validate_capability(task)?;
+    if task.method.version < 2 {
         return Err(EngineeringError::UnsupportedRatingMethod(id.clone()));
     }
     commands::reserve(reserved, EngineeringRecordId::Case(case.id.clone()))?;
@@ -243,4 +256,27 @@ impl EngineeringSession {
         }
         Ok(())
     }
+}
+
+pub(super) fn adopt_geometry(
+    inputs: &mut EngineeringInputs,
+    id: &EquipmentTaskId,
+    geometry: SeparatorGivenGeometry,
+) -> Result<(), EngineeringError> {
+    let task = task_mut(inputs, id)?;
+    validate_capability(task)?;
+    revision(
+        EngineeringRecordId::Geometry(id.clone()),
+        task.geometry.revision,
+        geometry.revision,
+    )?;
+    geometry
+        .adoption
+        .as_ref()
+        .ok_or(EngineeringError::StalePreparation)?
+        .validate()
+        .map_err(EngineeringError::InvalidAdoption)?;
+    task.geometry = geometry;
+    task.method = rf_unitops::separator_rating::adoption_method();
+    Ok(())
 }

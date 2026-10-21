@@ -20,6 +20,10 @@ pub enum EngineeringCommand {
     DeleteTask(EquipmentTaskId),
     CreateRatingTask(Box<SeparatorRatingTask>),
     UpgradeRatingMethod(EquipmentTaskId),
+    AdoptRatingGeometry {
+        task: EquipmentTaskId,
+        geometry: Box<SeparatorGivenGeometry>,
+    },
     AddRatingCase {
         task: EquipmentTaskId,
         case: Box<SeparatorRatingCase>,
@@ -105,6 +109,7 @@ pub enum EngineeringError {
         actual: usize,
     },
     InvalidCaseOrder(EquipmentTaskId),
+    InvalidAdoption(GeometryAdoptionError),
     CounterExhausted,
     StalePreparation,
     StaleCalculation,
@@ -216,6 +221,9 @@ impl EngineeringSession {
                 }
                 CreateRatingTask(record) => {
                     rating_commands::create(&mut next, &mut reserved, *record)?
+                }
+                AdoptRatingGeometry { task, geometry } => {
+                    rating_commands::adopt_geometry(&mut next, &task, *geometry)?
                 }
                 UpgradeRatingMethod(id) => rating_commands::upgrade(&mut next, &id)?,
                 AddRatingCase { task, case } => {

@@ -61,7 +61,9 @@ pub(super) fn validate(inputs: &StoredEngineeringInputs) -> RfResult<()> {
             EquipmentTask::SeparatorSizing(_) => (task_wire::METHOD_ID, task_wire::METHOD_VERSION),
             EquipmentTask::SeparatorRating(_) => (
                 rating_wire::METHOD_ID,
-                if task.method().version == rating_wire::MATRIX_METHOD_VERSION {
+                if task.method().version == rating_wire::ADOPTION_METHOD_VERSION {
+                    rating_wire::ADOPTION_METHOD_VERSION
+                } else if task.method().version == rating_wire::MATRIX_METHOD_VERSION {
                     rating_wire::MATRIX_METHOD_VERSION
                 } else {
                     rating_wire::METHOD_VERSION
@@ -92,6 +94,25 @@ pub(super) fn validate(inputs: &StoredEngineeringInputs) -> RfResult<()> {
                 )?;
             }
             EquipmentTask::SeparatorRating(t) => {
+                if let Some(adoption) = &t.geometry.adoption {
+                    if t.method.version != rating_wire::ADOPTION_METHOD_VERSION {
+                        return Err(error(
+                            "geometry.adoption",
+                            "requires rating method version 3".into(),
+                        ));
+                    }
+                    if adoption.source_task.method.id != task_wire::METHOD_ID
+                        || adoption.source_task.method.version != task_wire::METHOD_VERSION
+                    {
+                        return Err(error(
+                            "geometry.adoption",
+                            "unsupported source method".into(),
+                        ));
+                    }
+                    adoption
+                        .validate()
+                        .map_err(|e| error("geometry.adoption", e.to_string()))?;
+                }
                 if t.method.version == rating_wire::METHOD_VERSION && t.cases.len() != 1 {
                     return Err(error(
                         "cases",
