@@ -71,7 +71,7 @@ flowchart TD
 
 典型计算调用方向为 `Studio 或 rf-ffi -> rf-solver -> rf-unitops -> rf-flash / rf-thermo`；`rf-flowsheet` 提供连接校验，`rf-model / rf-types` 提供领域数据。该描述是职责路径，不是完整 Cargo 依赖图。
 
-`rf-model::equipment` 拥有任务、输入与固定采纳证据；`rf-unitops::separator_sizing` 复用来源绑定，纯函数检查并返回拥有输入 / 来源副本的只读候选，无 UI、IO、COM 或流程求解调用。`rf-ui::engineering` 管理正式事务、独立历史及结果资格，`editor` 管理草稿与影响确认；Studio 设备页消费同一应用状态，并通过 `rf-store::project_v3` 保存正式输入。设备检查 / 计算不依赖流程 Run 或物性包选择；重开后结果 Missing。单行 / 矩阵导出已接通；C1 的 `separator_adoption` 纯映射与应用 / 编辑器原子采纳、v3 保存已实现，采纳 UI 等待局部画板确认；流程关联未接入。
+`rf-model::equipment` 拥有任务、输入与固定采纳证据；`rf-unitops::separator_sizing` 复用来源绑定，纯函数检查并返回拥有输入 / 来源副本的只读候选，无 UI、IO、COM 或流程求解调用。`rf-ui::engineering` 管理正式事务、独立历史及结果资格，`editor` 管理草稿与影响确认；Studio 设备页消费同一应用状态，并通过 `rf-store::project_v3` 保存正式输入。设备检查 / 计算不依赖流程 Run 或物性包选择；重开后结果 Missing。单行 / 矩阵导出已接通；C1 的 `separator_adoption` 纯映射与应用 / 编辑器原子采纳、v3 保存已实现，局部画板已确认，采纳 UI 待接线；流程关联未接入。
 
 Studio 的 `modeling_specifications` 提供只读 A1 报告与会话身份；`modeling_recommendations` 持有同一检查会话，负责候选、预览、忽略和正式接受，GUI 共用该状态。接受经 `rf-ui` 输入 / 连接事务写回，检查与推荐不自动求解、不持久化，也不新增 CLI 协议。共享规则在 UI、预检与 solver 各自阶段消费，保留既有外部失败分类。
 

@@ -1,6 +1,6 @@
 # 结果审阅、诊断与恢复
 
-更新时间：2026-09-23
+更新时间：2026-10-21
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -22,9 +22,9 @@
 - Feed、Heater / Cooler、Flash Drum、Mixer、Valve 的单元结果语义见 `unitops/` 下对应专题。
 - 本专题只保留跨对象的 `SolveSnapshot`、结果表、模块结果、状态汇总、诊断和 recovery 统一口径。
 
-## 规划衔接（尚未实现）
+## 规划衔接与设备结果边界
 
-2026-09-16 [统一单位系统](units-and-quantity-system.md) U1 已接通共享目录 / 转换及变量浏览、CLI 的 SI 标签；2026-10-07 U3 首批已接入结果表 / 详情、比较和已有复制 / 导出，使用共享的 6 位有效数字显示；复制 / 导出捕获项目单位，Inspector 临时覆盖不改变输出。实现、错误与平台证据见 [输出专题](units/output-and-consumer-consistency.md#u3-首批实现与验证2026-10-07)。后续保持快照 SI 原值、身份及 stale / missing 契约，完整报告复用同一转换入口。[设备计算](equipment-design-and-rating.md) 新增独立任务结果与方法 / 工况来源时须单独定义结果契约，不将候选几何混入已有流股快照。[建模辅助](modeling-assistance-and-specifications.md) 复用诊断定位，规则依据与求解失败分别标识。
+2026-09-16 [统一单位系统](units-and-quantity-system.md) U1 已接通共享目录 / 转换及变量浏览、CLI 的 SI 标签；2026-10-07 U3 首批已接入结果表 / 详情、比较和已有复制 / 导出，使用共享的 6 位有效数字显示；复制 / 导出捕获项目单位，Inspector 临时覆盖不改变输出。实现、错误与平台证据见 [输出专题](units/output-and-consumer-consistency.md#u3-首批实现与验证2026-10-07)。后续保持快照 SI 原值、身份及 stale / missing 契约，完整报告复用同一转换入口。[设备计算](equipment/separator-sizing-and-rating.md)已有独立尺寸候选、逐行校核与有限矩阵输出，不混入流股快照。单行输出只消费 Current；矩阵保留所有成员及失败 / 过期 / 未运行原因，仅 Current 行带计算数值，覆盖率与子集结论分开。C1 固定采纳证据已可保存，UI 展示和 CSV / JSON 证据输出尚未接线。[建模辅助](modeling-assistance-and-specifications.md) 复用诊断定位，规则依据与求解失败分别标识。
 
 ## 当前实现快照
 
