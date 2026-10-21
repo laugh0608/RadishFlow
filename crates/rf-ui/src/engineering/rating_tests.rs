@@ -477,7 +477,7 @@ fn unsupported_case_membership_and_method_are_rejected_before_formal_publication
     let EquipmentTask::SeparatorRating(t) = &mut inputs.tasks[0] else {
         unreachable!()
     };
-    t.method.version = 2;
+    t.method.version = 3;
     assert!(matches!(
         EngineeringSession::from_inputs("test".into(), inputs),
         Err(EngineeringError::UnsupportedRatingMethod(_))

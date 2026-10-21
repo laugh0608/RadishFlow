@@ -191,7 +191,7 @@ fn future_rating_version_and_kind_preserve_original_text_without_partial_decodin
         let mut value = rating();
         let t = &mut value["engineering"]["tasks"][0];
         if field == "version" {
-            t["method"]["version"] = json!(2);
+            t["method"]["version"] = json!(3);
         } else {
             t["kind"] = json!("futureRating");
         }
@@ -222,7 +222,7 @@ fn adding_rating_requires_capability_consent_and_never_overwrites_unknown_target
     write(&path, &project, FileOverwritePolicy::Allow).unwrap();
     assert_eq!(read(&path).unwrap(), project);
     let mut future = rating();
-    future["engineering"]["tasks"][0]["method"]["version"] = json!(2);
+    future["engineering"]["tasks"][0]["method"]["version"] = json!(3);
     let future = future.to_string();
     fs::write(&path, &future).unwrap();
     assert!(write_upgraded(&path, &project, FileOverwritePolicy::Allow).is_err());
@@ -230,5 +230,85 @@ fn adding_rating_requires_capability_consent_and_never_overwrites_unknown_target
     fs::write(&path, b"damaged").unwrap();
     assert!(write_upgraded(&path, &project, FileOverwritePolicy::Allow).is_err());
     assert_eq!(fs::read(&path).unwrap(), b"damaged");
+    fs::remove_dir_all(root).unwrap();
+}
+
+fn matrix() -> Value {
+    let mut value = rating();
+    let t = &mut value["engineering"]["tasks"][0];
+    t["method"]["version"] = json!(2);
+    let mut c = t["cases"][0].clone();
+    c["id"] = json!("second-case");
+    c["name"] = json!("second row");
+    c["inputs"]["gasActualVolumeFlow"]["valueSi"] = json!(0.01);
+    t["cases"].as_array_mut().unwrap().push(c);
+    value
+}
+#[test]
+fn matrix_v2_preserves_order_and_mixed_v1_sizing_without_results_or_drafts() {
+    let mut value = matrix();
+    let mut v1 = rating()["engineering"]["tasks"][0].clone();
+    v1["id"] = json!("v1-task");
+    v1["tag"] = json!("V-103");
+    v1["cases"][0]["id"] = json!("v1-case");
+    value["engineering"]["tasks"]
+        .as_array_mut()
+        .unwrap()
+        .extend([v1, super::equipment::task()]);
+    let parsed = parse(&value.to_string()).unwrap();
+    let ProjectV3Read::Editable(project) = &parsed else {
+        panic!()
+    };
+    assert_eq!(project.rating_method_version(), 2);
+    let encoded = to_pretty_json(&parsed).unwrap();
+    assert_eq!(serde_json::from_str::<Value>(&encoded).unwrap(), value);
+    assert_eq!(parse(&encoded).unwrap(), parsed);
+    for forbidden in ["eligibility", "draft", "loadFraction", "summary"] {
+        assert!(!encoded.contains(forbidden));
+    }
+    // A v2 task with one remaining row stays v2 across storage.
+    value["engineering"]["tasks"][0]["cases"]
+        .as_array_mut()
+        .unwrap()
+        .remove(0);
+    let parsed = parse(&value.to_string()).unwrap();
+    assert_eq!(
+        serde_json::from_str::<Value>(&to_pretty_json(&parsed).unwrap()).unwrap(),
+        value
+    );
+}
+#[test]
+fn matrix_v2_strictly_rejects_empty_duplicate_identity_wrong_units_and_duplicate_keys() {
+    for mutation in 0..5 {
+        let mut value = matrix();
+        let t = &mut value["engineering"]["tasks"][0];
+        match mutation {
+            0 => t["cases"] = json!([]),
+            1 => t["cases"][1]["id"] = t["cases"][0]["id"].clone(),
+            2 => t["cases"][1]["inputs"]["gasActualVolumeFlow"]["quantityId"] = json!("length"),
+            3 => t["cases"][1]["inputs"]["gasActualVolumeFlow"]["sourceId"] = json!("absent"),
+            4 => t["method"]["version"] = json!(1),
+            _ => unreachable!(),
+        }
+        assert!(parse(&value.to_string()).is_err(), "mutation {mutation}");
+    }
+    let text = matrix().to_string();
+    assert!(parse(&text.replace("\"revision\":9", "\"revision\":9,\"revision\":9")).is_err());
+}
+#[test]
+fn matrix_v2_overwrite_of_v1_requires_explicit_consent_and_keeps_original_on_failure() {
+    let root = temp_dir();
+    let path = root.join("matrix.rfproj.json");
+    fs::write(&path, RATING).unwrap();
+    let project = parse(&matrix().to_string()).unwrap();
+    assert!(write(&path, &project, FileOverwritePolicy::Allow).is_err());
+    assert_eq!(fs::read_to_string(&path).unwrap(), RATING);
+    write_upgraded(&path, &project, FileOverwritePolicy::Allow).unwrap();
+    assert_eq!(read(&path).unwrap(), project);
+    write(&path, &project, FileOverwritePolicy::Allow).unwrap();
+    let bad = root.join("directory");
+    fs::create_dir(&bad).unwrap();
+    assert!(write_upgraded(&bad, &project, FileOverwritePolicy::Allow).is_err());
+    assert_eq!(read(&path).unwrap(), project);
     fs::remove_dir_all(root).unwrap();
 }

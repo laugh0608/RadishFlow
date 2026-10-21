@@ -285,7 +285,7 @@ fn future_rating_is_entirely_read_only_and_cannot_be_replaced_by_known_rating() 
     let files = Files::new("rating-future");
     let mut app = files.rating();
     let path = files.path("future.rfproj.json");
-    let text = FIXTURE.replace("\"version\": 1", "\"version\": 2");
+    let text = FIXTURE.replace("\"version\": 1", "\"version\": 3");
     fs::write(&path, &text).unwrap();
     let StudioProjectOpen::ReadOnly(project) = read_studio_project(&path).unwrap() else {
         panic!("future method")
@@ -301,4 +301,101 @@ fn future_rating_is_entirely_read_only_and_cannot_be_replaced_by_known_rating() 
     );
     assert_eq!(app, before);
     assert_eq!(fs::read_to_string(&path).unwrap(), text);
+}
+
+#[test]
+fn matrix_upgrade_save_as_failure_and_reopen_preserve_versioned_capability() {
+    let files = Files::new("matrix-lifecycle");
+    let mut app = files.rating();
+    let path = app.workspace.document_path.clone().unwrap();
+    let mut copy = rating_task().cases.remove(0);
+    copy.id = "second-case".into();
+    app.workspace
+        .engineering
+        .apply(vec![
+            C::UpgradeRatingMethod(member().task_id),
+            C::AddRatingCase {
+                task: member().task_id,
+                case: Box::new(copy),
+            },
+        ])
+        .unwrap();
+    app.workspace
+        .engineering
+        .calculate_rating(&member())
+        .unwrap();
+    let before = app.workspace.engineering.clone();
+    assert_eq!(
+        project_save_compatibility(&app, &path).unwrap(),
+        Some(ProjectSaveCompatibility::RatingMatrixCapability)
+    );
+    assert!(dispatch_document_lifecycle(&mut app, StudioDocumentLifecycleCommand::Save).is_err());
+    assert_eq!(fs::read_to_string(&path).unwrap(), FIXTURE);
+    assert_eq!(app.workspace.engineering, before);
+    let bad = files.path("directory");
+    fs::create_dir(&bad).unwrap();
+    assert!(
+        dispatch_document_lifecycle(
+            &mut app,
+            StudioDocumentLifecycleCommand::SaveUpgraded { path: bad }
+        )
+        .is_err()
+    );
+    assert_eq!(app.workspace.engineering, before);
+    let new_path = files.path("matrix.rfproj.json");
+    dispatch_document_lifecycle(
+        &mut app,
+        StudioDocumentLifecycleCommand::SaveUpgraded {
+            path: new_path.clone(),
+        },
+    )
+    .unwrap();
+    assert_eq!(fs::read_to_string(&path).unwrap(), FIXTURE);
+    assert!(!app.workspace.engineering.is_dirty());
+    assert_eq!(project_save_compatibility(&app, &new_path).unwrap(), None);
+    assert_eq!(
+        project_save_compatibility(&app, &path).unwrap(),
+        Some(ProjectSaveCompatibility::RatingMatrixCapability)
+    );
+    let reopened = load_project_app_state(&new_path).unwrap();
+    let t = reopened
+        .workspace
+        .engineering
+        .inputs()
+        .rating_task(&member().task_id)
+        .unwrap();
+    assert_eq!((t.method.version, t.cases.len()), (2, 2));
+    assert_eq!(
+        reopened.workspace.engineering.case_result_status(&member()),
+        EquipmentResultStatus::Missing
+    );
+    assert!(!reopened.workspace.engineering.can_undo());
+    app.workspace
+        .engineering
+        .apply(vec![C::DeleteRatingCase(EquipmentCaseKey {
+            task_id: member().task_id,
+            case_id: "second-case".into(),
+        })])
+        .unwrap();
+    dispatch_document_lifecycle(&mut app, StudioDocumentLifecycleCommand::Save).unwrap();
+    let reopened = load_project_app_state(&new_path).unwrap();
+    assert_eq!(
+        reopened
+            .workspace
+            .engineering
+            .inputs()
+            .rating_method_version(),
+        2
+    );
+    assert_eq!(
+        reopened
+            .workspace
+            .engineering
+            .inputs()
+            .rating_task(&member().task_id)
+            .unwrap()
+            .cases
+            .len(),
+        1
+    );
 }

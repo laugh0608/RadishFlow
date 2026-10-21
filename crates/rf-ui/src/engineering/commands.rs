@@ -19,6 +19,16 @@ pub enum EngineeringCommand {
     UpdateTask(Box<SeparatorSizingTask>),
     DeleteTask(EquipmentTaskId),
     CreateRatingTask(Box<SeparatorRatingTask>),
+    UpgradeRatingMethod(EquipmentTaskId),
+    AddRatingCase {
+        task: EquipmentTaskId,
+        case: Box<SeparatorRatingCase>,
+    },
+    DeleteRatingCase(EquipmentCaseKey),
+    ReorderRatingCases {
+        task: EquipmentTaskId,
+        cases: Vec<EngineeringCaseId>,
+    },
     UpdateRatingLabels {
         task: EquipmentTaskId,
         revision: u64,
@@ -94,6 +104,7 @@ pub enum EngineeringError {
         task: EquipmentTaskId,
         actual: usize,
     },
+    InvalidCaseOrder(EquipmentTaskId),
     CounterExhausted,
     StalePreparation,
     StaleCalculation,
@@ -205,6 +216,14 @@ impl EngineeringSession {
                 }
                 CreateRatingTask(record) => {
                     rating_commands::create(&mut next, &mut reserved, *record)?
+                }
+                UpgradeRatingMethod(id) => rating_commands::upgrade(&mut next, &id)?,
+                AddRatingCase { task, case } => {
+                    rating_commands::add(&mut next, &mut reserved, &task, *case)?
+                }
+                DeleteRatingCase(key) => rating_commands::delete(&mut next, &key)?,
+                ReorderRatingCases { task, cases } => {
+                    rating_commands::reorder(&mut next, &task, cases)?
                 }
                 UpdateRatingLabels {
                     task,
@@ -355,6 +374,26 @@ impl EngineeringSession {
             self.eligibility
                 .insert(key.clone(), EngineeringCheckpoint::fresh());
             self.pending.remove(&key);
+        }
+        for id in self
+            .current
+            .tasks
+            .iter()
+            .chain(&next.tasks)
+            .map(|t| t.id())
+            .collect::<std::collections::BTreeSet<_>>()
+        {
+            let members = |inputs: &EngineeringInputs| {
+                inputs.equipment_task(id).map(|t| {
+                    t.case_ids()
+                        .cloned()
+                        .collect::<std::collections::BTreeSet<_>>()
+                })
+            };
+            if members(&self.current) != members(&next) {
+                self.membership
+                    .insert(id.clone(), EngineeringCheckpoint::fresh());
+            }
         }
         self.current = next;
         self.checkpoint = EngineeringCheckpoint::fresh();

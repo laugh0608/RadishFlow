@@ -3,6 +3,8 @@
 mod commands;
 pub mod editor;
 mod impact;
+mod matrix;
+pub use matrix::{RatingMatrixCapture, RatingMatrixCaptureError, RatingMatrixRow};
 mod rating_commands;
 #[cfg(test)]
 mod rating_tests;
@@ -64,7 +66,14 @@ impl EngineeringInputs {
         self.equipment_task(id)?.as_rating()
     }
     pub fn has_rating(&self) -> bool {
-        self.tasks.iter().any(|task| task.as_rating().is_some())
+        self.rating_method_version() != 0
+    }
+    pub fn rating_method_version(&self) -> u32 {
+        self.tasks
+            .iter()
+            .filter_map(|t| t.as_rating().map(|r| r.method.version))
+            .max()
+            .unwrap_or(0)
     }
 }
 
@@ -76,7 +85,7 @@ pub enum EngineeringRecordId {
     Case(EngineeringCaseId),
     Geometry(EquipmentTaskId),
 }
-/// Result membership is explicit even while the supported rating method is single-case.
+/// Explicit result membership, independent of task display order and UI selection.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EquipmentCaseKey {
     pub task_id: EquipmentTaskId,
@@ -101,6 +110,7 @@ pub struct EngineeringSession {
     revisions: BTreeMap<EngineeringRecordId, u64>,
     undo: Vec<HistoryEntry>,
     redo: Vec<HistoryEntry>,
+    membership: BTreeMap<EquipmentTaskId, EngineeringCheckpoint>,
     generations: BTreeMap<EquipmentCaseKey, ResultGeneration>,
     eligibility: BTreeMap<EquipmentCaseKey, EngineeringCheckpoint>,
     pending: BTreeMap<EquipmentCaseKey, CalculationId>,
@@ -130,6 +140,7 @@ impl EngineeringSession {
             revisions: BTreeMap::new(),
             undo: Vec::new(),
             redo: Vec::new(),
+            membership: BTreeMap::new(),
             generations: BTreeMap::new(),
             eligibility: BTreeMap::new(),
             pending: BTreeMap::new(),
@@ -137,6 +148,9 @@ impl EngineeringSession {
         };
         state.revisions = commands::record_revisions(&state.current);
         for task in &state.current.tasks {
+            state
+                .membership
+                .insert(task.id().clone(), EngineeringCheckpoint::fresh());
             for case in task.case_ids() {
                 let key = EquipmentCaseKey {
                     task_id: task.id().clone(),
@@ -168,7 +182,7 @@ impl EngineeringSession {
         !self.redo.is_empty()
     }
     pub fn rating_capability_is_new(&self) -> bool {
-        self.current.has_rating() && !self.baseline.has_rating()
+        self.current.rating_method_version() > self.baseline.rating_method_version()
     }
 }
 

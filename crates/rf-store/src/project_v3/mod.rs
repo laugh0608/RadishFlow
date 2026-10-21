@@ -23,7 +23,14 @@ pub struct StoredEngineeringInputs {
 }
 impl StoredEngineeringInputs {
     pub fn has_rating(&self) -> bool {
-        self.tasks.iter().any(|task| task.as_rating().is_some())
+        self.rating_method_version() != 0
+    }
+    pub fn rating_method_version(&self) -> u32 {
+        self.tasks
+            .iter()
+            .filter_map(|t| t.as_rating().map(|r| r.method.version))
+            .max()
+            .unwrap_or(0)
     }
 }
 
@@ -36,6 +43,11 @@ pub struct StoredProjectV3 {
     pub engineering: Option<StoredEngineeringInputs>,
 }
 impl StoredProjectV3 {
+    pub fn rating_method_version(&self) -> u32 {
+        self.engineering
+            .as_ref()
+            .map_or(0, StoredEngineeringInputs::rating_method_version)
+    }
     pub fn has_rating(&self) -> bool {
         self.engineering
             .as_ref()

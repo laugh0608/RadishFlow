@@ -12,6 +12,7 @@ use std::collections::BTreeMap;
 pub(super) const TASK_KIND: &str = "verticalGasLiquidSeparatorRating";
 pub(super) const METHOD_ID: &str = "radishflow.separator.vertical-sb-working-volume-rating";
 pub(super) const METHOD_VERSION: u32 = 1;
+pub(super) const MATRIX_METHOD_VERSION: u32 = 2;
 
 wire_enum!(GeometryKey, SeparatorGeometryInput, {
     InternalDiameter => "internalDiameter", WorkingLiquidHeight => "workingLiquidHeight"

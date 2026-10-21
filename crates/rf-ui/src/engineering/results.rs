@@ -21,7 +21,7 @@ pub struct ResultStaleness {
     pub task_missing: bool,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct CalculationKey {
+pub(super) struct CalculationKey {
     document: DocumentId,
     session: EngineeringCheckpoint,
     member: EquipmentCaseKey,
@@ -63,9 +63,9 @@ impl CalculationRequest {
             EquipmentTask::SeparatorSizing(t) => {
                 CalculationOutcome::Sizing(separator_sizing::calculate(t, &self.basis))
             }
-            EquipmentTask::SeparatorRating(t) => {
-                CalculationOutcome::Rating(separator_rating::calculate(t, &self.basis))
-            }
+            EquipmentTask::SeparatorRating(t) => CalculationOutcome::Rating(
+                separator_rating::calculate_case(t, &self.key.member.case_id, &self.basis),
+            ),
         };
         CompletedCalculation {
             key: self.key,
@@ -95,8 +95,8 @@ pub enum EquipmentResultStatus {
 }
 
 impl EngineeringSession {
-    // Both currently supported application methods have exactly one case.
-    // Explicit case APIs below keep result identity independent of a UI selection.
+    // Task-only compatibility APIs require an unambiguous single member.
+    // Matrix consumers must use explicit case APIs.
     fn member(&self, task: &EquipmentTaskId) -> Option<EquipmentCaseKey> {
         let t = self.current.equipment_task(task)?;
         let mut cases = t.case_ids();
@@ -110,8 +110,11 @@ impl EngineeringSession {
         })
     }
     fn historical_member(&self, task: &EquipmentTaskId) -> Option<EquipmentCaseKey> {
-        self.member(task)
-            .or_else(|| self.results.keys().find(|k| k.task_id == *task).cloned())
+        if self.current.equipment_task(task).is_some() {
+            self.member(task)
+        } else {
+            self.results.keys().find(|k| k.task_id == *task).cloned()
+        }
     }
     pub fn generation(&self, task: &EquipmentTaskId) -> Option<ResultGeneration> {
         self.case_generation(&self.member(task)?)
@@ -119,7 +122,7 @@ impl EngineeringSession {
     pub fn case_generation(&self, member: &EquipmentCaseKey) -> Option<ResultGeneration> {
         self.calculation_key(member).map(|k| k.generation)
     }
-    fn calculation_key(&self, member: &EquipmentCaseKey) -> Option<CalculationKey> {
+    pub(super) fn calculation_key(&self, member: &EquipmentCaseKey) -> Option<CalculationKey> {
         let record = self.current.equipment_task(&member.task_id)?;
         if !record.case_ids().any(|id| *id == member.case_id) {
             return None;

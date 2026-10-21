@@ -59,9 +59,14 @@ pub(super) fn validate(inputs: &StoredEngineeringInputs) -> RfResult<()> {
         };
         let (method_id, version) = match task {
             EquipmentTask::SeparatorSizing(_) => (task_wire::METHOD_ID, task_wire::METHOD_VERSION),
-            EquipmentTask::SeparatorRating(_) => {
-                (rating_wire::METHOD_ID, rating_wire::METHOD_VERSION)
-            }
+            EquipmentTask::SeparatorRating(_) => (
+                rating_wire::METHOD_ID,
+                if task.method().version == rating_wire::MATRIX_METHOD_VERSION {
+                    rating_wire::MATRIX_METHOD_VERSION
+                } else {
+                    rating_wire::METHOD_VERSION
+                },
+            ),
         };
         if task.method().id != method_id || task.method().version != version {
             return Err(error(
@@ -87,7 +92,7 @@ pub(super) fn validate(inputs: &StoredEngineeringInputs) -> RfResult<()> {
                 )?;
             }
             EquipmentTask::SeparatorRating(t) => {
-                if t.cases.len() != 1 {
+                if t.method.version == rating_wire::METHOD_VERSION && t.cases.len() != 1 {
                     return Err(error(
                         "cases",
                         "method version 1 requires exactly one case".into(),

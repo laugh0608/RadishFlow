@@ -12,6 +12,12 @@ impl EquipmentEditorState {
         use EquipmentEditorCommand::*;
         match command {
             CreateRatingTask => self.create_rating(session, units)?,
+            AddRatingCase { task, copy_from } => {
+                self.add_rating_case(session, units, task, copy_from)?
+            }
+            ReorderRatingCases { task, cases } => {
+                session.apply(vec![EngineeringCommand::ReorderRatingCases { task, cases }])?;
+            }
             CheckRating(member) => {
                 if self.pending_for_case(&member, session) {
                     return Err(EquipmentEditError::PendingDrafts);
@@ -24,10 +30,17 @@ impl EquipmentEditorState {
                     return Err(EquipmentEditError::MissingEditor);
                 }
                 self.rating_checks.insert(
-                    member,
+                    member.clone(),
                     RatingInputCheck {
-                        formal: session.checkpoint(),
-                        issues: rf_unitops::separator_rating::check(task, &session.inputs().basis),
+                        session: session.identity.clone(),
+                        formal: session
+                            .case_generation(&member)
+                            .ok_or(EquipmentEditError::MissingEditor)?,
+                        issues: rf_unitops::separator_rating::check_case(
+                            task,
+                            &member.case_id,
+                            &session.inputs().basis,
+                        ),
                     },
                 );
             }
@@ -155,8 +168,10 @@ impl EquipmentEditorState {
                     EquipmentEditorTarget::Task(id) | EquipmentEditorTarget::RatingTask(id) => {
                         EngineeringCommand::DeleteTask(id.clone())
                     }
-                    EquipmentEditorTarget::RatingGeometry(_)
-                    | EquipmentEditorTarget::RatingCase(_) => {
+                    EquipmentEditorTarget::RatingCase(key) => {
+                        EngineeringCommand::DeleteRatingCase(key.clone())
+                    }
+                    EquipmentEditorTarget::RatingGeometry(_) => {
                         return Err(EquipmentEditError::UnsupportedEditorAction);
                     }
                     EquipmentEditorTarget::Source(id) => {
@@ -186,6 +201,11 @@ impl EquipmentEditorState {
                     return Err(EquipmentEditError::StaleEditor);
                 }
                 match pending.operation {
+                    PendingOperation::AddCase { prepared, target } => {
+                        session.commit(prepared)?;
+                        self.select(session, units, target)?;
+                        self.bump()?;
+                    }
                     PendingOperation::Apply { prepared, target } => {
                         session.commit(prepared)?;
                         self.reload_target(session, units, &target)?;
@@ -193,6 +213,8 @@ impl EquipmentEditorState {
                     PendingOperation::Delete { prepared, target } => {
                         session.commit(prepared)?;
                         self.drafts
+                            .retain(|candidate, _| !Self::deleted_with(candidate, &target));
+                        self.target_errors
                             .retain(|candidate, _| !Self::deleted_with(candidate, &target));
                         if self
                             .active
@@ -448,14 +470,19 @@ impl EquipmentEditorState {
             _ => Err(EquipmentEditError::DraftTypeMismatch),
         }
     }
-    fn set_pending(&mut self, session: &EngineeringSession, operation: PendingOperation) {
+    pub(super) fn set_pending(
+        &mut self,
+        session: &EngineeringSession,
+        operation: PendingOperation,
+    ) {
         let impacts = match &operation {
-            PendingOperation::Apply { prepared, .. }
+            PendingOperation::AddCase { prepared, .. }
+            | PendingOperation::Apply { prepared, .. }
             | PendingOperation::Delete { prepared, .. } => prepared.impacts().to_vec(),
             PendingOperation::History { .. } => vec![],
         };
         let discarded_drafts = match &operation {
-            PendingOperation::Apply { .. } => vec![],
+            PendingOperation::Apply { .. } | PendingOperation::AddCase { .. } => vec![],
             PendingOperation::Delete { target, .. } => self
                 .pending_targets()
                 .into_iter()
@@ -497,6 +524,7 @@ impl EquipmentEditorState {
         }
         let active = self.active.take();
         self.drafts.clear();
+        self.target_errors.clear();
         self.bump()?;
         if let Some(target) = active {
             let exists = Self::target_exists(session, &target);

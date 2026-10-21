@@ -152,6 +152,7 @@ pub fn project_save_requires_upgrade(app: &AppState) -> bool {
 pub enum ProjectSaveCompatibility {
     Format { version: u32, includes_rating: bool },
     RatingCapability,
+    RatingMatrixCapability,
 }
 /// Compatibility of both the loaded baseline and the actual save target.
 /// Save As must not bypass consent when replacing an older-capability file.
@@ -186,7 +187,9 @@ pub fn project_save_compatibility(
             if target_version == 3 {
                 match rf_store::project_v3::parse(&contents)? {
                     rf_store::project_v3::ProjectV3Read::Editable(target) => {
-                        rating_upgrade |= rating && !target.has_rating();
+                        rating_upgrade |=
+                            app.workspace.engineering.inputs().rating_method_version()
+                                > target.rating_method_version();
                     }
                     rf_store::project_v3::ProjectV3Read::ReadOnly(_) => {
                         return Err(RfError::invalid_input(
@@ -213,7 +216,13 @@ pub fn project_save_compatibility(
             includes_rating: rating,
         })
     } else if rating_upgrade {
-        Some(ProjectSaveCompatibility::RatingCapability)
+        Some(
+            if app.workspace.engineering.inputs().rating_method_version() >= 2 {
+                ProjectSaveCompatibility::RatingMatrixCapability
+            } else {
+                ProjectSaveCompatibility::RatingCapability
+            },
+        )
     } else {
         None
     })

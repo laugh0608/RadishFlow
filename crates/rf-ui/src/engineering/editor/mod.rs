@@ -1,6 +1,7 @@
 //! Application-owned device editor. Formal inputs, text drafts, checks and history
 //! remain distinct; all shell actions use the same command boundary.
 mod drafts;
+mod membership;
 mod rating_drafts;
 mod rating_editor;
 mod transaction;
@@ -101,6 +102,14 @@ impl From<EngineeringError> for EquipmentEditError {
 pub enum EquipmentEditorCommand {
     CreateTask,
     CreateRatingTask,
+    AddRatingCase {
+        task: EquipmentTaskId,
+        copy_from: Option<EngineeringCaseId>,
+    },
+    ReorderRatingCases {
+        task: EquipmentTaskId,
+        cases: Vec<EngineeringCaseId>,
+    },
     CreateSource,
     NewBasis,
     Select(EquipmentEditorTarget),
@@ -124,6 +133,10 @@ pub enum EquipmentEditorCommand {
 }
 #[derive(Debug, Clone, PartialEq)]
 enum PendingOperation {
+    AddCase {
+        prepared: PreparedEngineeringEdit,
+        target: EquipmentEditorTarget,
+    },
     Apply {
         prepared: PreparedEngineeringEdit,
         target: EquipmentEditorTarget,
@@ -158,6 +171,9 @@ impl EquipmentConfirmation {
     pub fn is_delete(&self) -> bool {
         matches!(self.operation, PendingOperation::Delete { .. })
     }
+    pub fn upgrades_rating_method(&self) -> bool {
+        matches!(self.operation, PendingOperation::AddCase { .. })
+    }
     pub fn is_history(&self) -> bool {
         matches!(self.operation, PendingOperation::History { .. })
     }
@@ -169,7 +185,8 @@ struct InputCheck {
 }
 #[derive(Debug, Clone, PartialEq)]
 struct RatingInputCheck {
-    formal: EngineeringCheckpoint,
+    session: EngineeringCheckpoint,
+    formal: ResultGeneration,
     issues: Vec<rf_unitops::separator_rating::RatingIssue>,
 }
 #[derive(Debug, Clone, PartialEq)]
@@ -183,6 +200,7 @@ pub struct EquipmentEditorState {
     checks: BTreeMap<EquipmentTaskId, InputCheck>,
     rating_checks: BTreeMap<EquipmentCaseKey, RatingInputCheck>,
     error: Option<EquipmentEditError>,
+    target_errors: BTreeMap<EquipmentEditorTarget, EquipmentEditError>,
 }
 impl Default for EquipmentEditorState {
     fn default() -> Self {
@@ -196,6 +214,7 @@ impl Default for EquipmentEditorState {
             checks: BTreeMap::new(),
             rating_checks: BTreeMap::new(),
             error: None,
+            target_errors: BTreeMap::new(),
         }
     }
 }
@@ -213,7 +232,9 @@ impl EquipmentEditorState {
         self.pending.as_ref()
     }
     pub fn error(&self) -> Option<&EquipmentEditError> {
-        self.error.as_ref()
+        self.error
+            .as_ref()
+            .or_else(|| self.active.as_ref().and_then(|t| self.target_errors.get(t)))
     }
     pub fn pending_targets(&self) -> Vec<EquipmentEditorTarget> {
         self.drafts
@@ -273,7 +294,9 @@ impl EquipmentEditorState {
     ) -> Option<&[rf_unitops::separator_rating::RatingIssue]> {
         self.rating_checks
             .get(member)
-            .filter(|c| c.formal == session.checkpoint())
+            .filter(|c| {
+                c.session == session.identity && Some(c.formal) == session.case_generation(member)
+            })
             .map(|c| c.issues.as_slice())
     }
     pub fn checked_issues(
@@ -294,17 +317,25 @@ impl EquipmentEditorState {
         units: &DisplayUnitSet,
         command: EquipmentEditorCommand,
     ) -> Result<(), EquipmentEditError> {
+        let target = command.error_target().or_else(|| self.active.clone());
+        let selecting = matches!(command, EquipmentEditorCommand::Select(_));
         let mut staged = self.clone();
         let mut formal = session.clone();
         match staged.execute(&mut formal, units, command) {
             Ok(()) => {
                 staged.error = None;
+                if !selecting && let Some(target) = &target {
+                    staged.target_errors.remove(target);
+                }
                 *self = staged;
                 *session = formal;
                 Ok(())
             }
             Err(error) => {
                 self.error = Some(error.clone());
+                if let Some(target) = target {
+                    self.target_errors.insert(target, error.clone());
+                }
                 Err(error)
             }
         }

@@ -215,12 +215,16 @@ impl ReadyAppState {
         let zh = self.locale == StudioShellLocale::ZhCn;
         let response = egui::Modal::new(egui::Id::new("project-format-upgrade")).show(ctx, |ui| {
             ui.set_width((ctx.screen_rect().width() - 40.0).clamp(220.0, 520.0));
-            let capability_only = compatibility == ProjectSaveCompatibility::RatingCapability;
+            let capability_only = matches!(compatibility, ProjectSaveCompatibility::RatingCapability | ProjectSaveCompatibility::RatingMatrixCapability);
             ui.heading(match (zh, capability_only) {
                 (true, true) => "确认校核任务兼容性", (false, true) => "Confirm rating compatibility",
                 (true, false) => "保存为新版工程", (false, false) => "Upgrade project format",
             });
             match compatibility {
+                ProjectSaveCompatibility::RatingMatrixCapability => {
+                    ui.label(if zh { "工程仍为 v3，校核方法升级为 v2；仅支持单工况校核的旧版本将整份只读打开。可另存为以保留原件。" }
+                    else { "The project remains v3 with rating method v2. Versions supporting only single-case rating will open the entire project read-only. Use Save As to keep the original." });
+                }
                 ProjectSaveCompatibility::RatingCapability => {
                     ui.label(if zh { "工程仍为 v3，新增校核任务后，仅支持初步尺寸的旧版本将只能只读检查。可另存为以保留原件。" }
                     else { "The project remains v3. Older versions that only support sizing will open the rating project read-only. Use Save As to keep the original." });
@@ -232,8 +236,8 @@ impl ReadyAppState {
                         format!("Save as v{version} to preserve formal inputs and display settings. Older versions cannot read it. Use Save As to keep the original.")
                     });
                     if includes_rating {
-                        ui.label(if zh { "含校核任务；仅支持初步尺寸的 v3 旧版本只能只读检查。" }
-                        else { "Contains rating tasks; v3 versions that only support sizing can inspect it read-only." });
+                        ui.label(if zh { "含校核任务；不支持对应校核方法版本的旧程序将整份只读打开。" }
+                        else { "Contains rating tasks; older programs without the required rating method version will open the entire project read-only." });
                     }
                 }
             }

@@ -46,11 +46,10 @@ fn write_with_upgrade(
             Ok(existing) => match parse(&existing)? {
                 ProjectV3Read::Editable(existing) => {
                     if !upgrade
-                        && !existing.has_rating()
-                        && matches!(project, ProjectV3Read::Editable(p) if p.has_rating())
+                        && matches!(project, ProjectV3Read::Editable(p) if p.rating_method_version() > existing.rating_method_version())
                     {
                         return Err(RfError::invalid_input(
-                            "engineering.tasks: adding rating capability requires confirmation; older v3 readers will open the file read-only",
+                            "engineering.tasks: raising rating capability requires confirmation; older v3 readers will open the file read-only",
                         ));
                     }
                     FileOverwritePolicy::Allow

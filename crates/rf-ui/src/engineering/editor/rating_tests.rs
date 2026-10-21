@@ -350,3 +350,259 @@ fn rating_unit_roundtrip_keeps_exact_formal_geometry_and_metadata_edits_keep_cur
         before.name
     );
 }
+
+#[test]
+fn membership_upgrade_copy_cancel_and_stale_confirmation_are_atomic() {
+    let mut s = session();
+    let mut e = EquipmentEditorState::default();
+    s.calculate_rating(&member()).unwrap();
+    let copy = EquipmentEditorCommand::AddRatingCase {
+        task: member().task_id,
+        copy_from: Some(member().case_id),
+    };
+    dispatch(&mut e, &mut s, copy.clone());
+    assert!(e.confirmation().unwrap().upgrades_rating_method());
+    assert_eq!(task(&s).method.version, 1);
+    assert_eq!(task(&s).cases.len(), 1);
+    assert_eq!(
+        s.case_result_status(&member()),
+        EquipmentResultStatus::Current
+    );
+    dispatch(&mut e, &mut s, EquipmentEditorCommand::CancelConfirmation);
+    assert_eq!(task(&s).method.version, 1);
+    dispatch(&mut e, &mut s, copy.clone());
+    let stale = e.confirmation().unwrap().key();
+    let mut t = task(&s);
+    t.tag.push_str("-renamed");
+    s.apply(vec![EngineeringCommand::UpdateRatingLabels {
+        task: t.id,
+        revision: t.revision,
+        tag: t.tag,
+        name: t.name,
+    }])
+    .unwrap();
+    assert!(
+        e.dispatch(
+            &mut s,
+            &DisplayUnitSet::si(),
+            EquipmentEditorCommand::Confirm(stale)
+        )
+        .is_err()
+    );
+    assert_eq!(task(&s).cases.len(), 1);
+    dispatch(&mut e, &mut s, copy);
+    let confirmation = e.confirmation().unwrap().key();
+    dispatch(
+        &mut e,
+        &mut s,
+        EquipmentEditorCommand::Confirm(confirmation),
+    );
+    let t = task(&s);
+    assert_eq!(t.method.version, 2);
+    assert_ne!(t.cases[0].id, t.cases[1].id);
+    assert_eq!(t.cases[0].inputs, t.cases[1].inputs);
+    assert_eq!(
+        t.cases[0].applicability_source_ids,
+        t.cases[1].applicability_source_ids
+    );
+    assert_eq!(
+        s.case_result_status(&member()),
+        EquipmentResultStatus::Stale
+    );
+    let key = EquipmentCaseKey {
+        task_id: t.id,
+        case_id: t.cases[1].id.clone(),
+    };
+    assert_eq!(s.case_result_status(&key), EquipmentResultStatus::Missing);
+    assert_eq!(e.active(), Some(&EquipmentEditorTarget::RatingCase(key)));
+}
+
+#[test]
+fn matrix_row_checks_errors_and_invalid_drafts_survive_other_row_edits() {
+    let mut s = session();
+    let mut e = EquipmentEditorState::default();
+    s.apply(vec![EngineeringCommand::UpgradeRatingMethod(
+        member().task_id,
+    )])
+    .unwrap();
+    dispatch(
+        &mut e,
+        &mut s,
+        EquipmentEditorCommand::AddRatingCase {
+            task: member().task_id,
+            copy_from: Some(member().case_id),
+        },
+    );
+    let second_target = e.active().unwrap().clone();
+    let EquipmentEditorTarget::RatingCase(second) = &second_target else {
+        panic!()
+    };
+    dispatch(
+        &mut e,
+        &mut s,
+        EquipmentEditorCommand::CheckRating(member()),
+    );
+    assert!(e.checked_rating_issues(&member(), &s).unwrap().is_empty());
+    change(&mut e, &mut s, &second_target, |d| {
+        let EquipmentDraft::RatingCase(c) = d else {
+            panic!()
+        };
+        c.inputs
+            .get_mut(&SeparatorRatingInput::GasVolumeFlow)
+            .unwrap()
+            .value
+            .set_text("1e-".into());
+    });
+    assert!(
+        e.dispatch(
+            &mut s,
+            &DisplayUnitSet::si(),
+            EquipmentEditorCommand::Apply(second_target.clone())
+        )
+        .is_err()
+    );
+    let error = e.error().cloned();
+    assert!(error.is_some());
+    let draft = e.draft(&second_target).unwrap().value().clone();
+    assert!(e.pending_for_case(second, &s));
+    assert!(!e.pending_for_case(&member(), &s));
+    assert!(e.pending_for_task(&member().task_id, &s));
+    dispatch(&mut e, &mut s, EquipmentEditorCommand::Select(case()));
+    assert!(e.error().is_none());
+    dispatch(
+        &mut e,
+        &mut s,
+        EquipmentEditorCommand::CalculateRating(member()),
+    );
+    dispatch(
+        &mut e,
+        &mut s,
+        EquipmentEditorCommand::CheckRating(member()),
+    );
+    dispatch(
+        &mut e,
+        &mut s,
+        EquipmentEditorCommand::Select(second_target.clone()),
+    );
+    assert_eq!(e.error().cloned(), error);
+    assert_eq!(e.draft(&second_target).unwrap().value(), &draft);
+    assert!(
+        e.dispatch(
+            &mut s,
+            &DisplayUnitSet::si(),
+            EquipmentEditorCommand::AddRatingCase {
+                task: second.task_id.clone(),
+                copy_from: Some(second.case_id.clone())
+            }
+        )
+        .is_err()
+    );
+    assert_eq!(task(&s).cases.len(), 2);
+    dispatch(
+        &mut e,
+        &mut s,
+        EquipmentEditorCommand::Discard(second_target.clone()),
+    );
+    change(&mut e, &mut s, &second_target, |d| {
+        let EquipmentDraft::RatingCase(c) = d else {
+            panic!()
+        };
+        c.inputs
+            .get_mut(&SeparatorRatingInput::GasVolumeFlow)
+            .unwrap()
+            .value
+            .set_text("0.02".into());
+    });
+    dispatch(&mut e, &mut s, EquipmentEditorCommand::Apply(second_target));
+    assert!(e.checked_rating_issues(&member(), &s).unwrap().is_empty());
+    assert_eq!(
+        s.case_result_status(&member()),
+        EquipmentResultStatus::Current
+    );
+    let reopened =
+        EngineeringSession::from_inputs("rating-project".into(), s.inputs().clone()).unwrap();
+    assert!(e.checked_rating_issues(&member(), &reopened).is_none());
+}
+
+#[test]
+fn matrix_delete_disposes_only_confirmed_row_and_last_member_is_protected() {
+    let mut s = session();
+    let mut e = EquipmentEditorState::default();
+    s.apply(vec![EngineeringCommand::UpgradeRatingMethod(
+        member().task_id,
+    )])
+    .unwrap();
+    dispatch(
+        &mut e,
+        &mut s,
+        EquipmentEditorCommand::AddRatingCase {
+            task: member().task_id,
+            copy_from: None,
+        },
+    );
+    let second = e.active().unwrap().clone();
+    for target in [&second, &case()] {
+        dispatch(
+            &mut e,
+            &mut s,
+            EquipmentEditorCommand::Select(target.clone()),
+        );
+        change(&mut e, &mut s, target, |d| {
+            let EquipmentDraft::RatingCase(c) = d else {
+                panic!()
+            };
+            c.name = "unsaved label".into();
+        });
+    }
+    let saved = s.capture_save();
+    assert!(
+        saved
+            .inputs()
+            .rating_task(&member().task_id)
+            .unwrap()
+            .cases
+            .iter()
+            .all(|c| c.name != "unsaved label")
+    );
+    dispatch(
+        &mut e,
+        &mut s,
+        EquipmentEditorCommand::Delete(second.clone()),
+    );
+    assert_eq!(
+        e.confirmation().unwrap().discarded_drafts(),
+        std::slice::from_ref(&second)
+    );
+    dispatch(&mut e, &mut s, EquipmentEditorCommand::CancelConfirmation);
+    assert_eq!(e.pending_count(), 2);
+    dispatch(
+        &mut e,
+        &mut s,
+        EquipmentEditorCommand::Delete(second.clone()),
+    );
+    let key = e.confirmation().unwrap().key();
+    dispatch(&mut e, &mut s, EquipmentEditorCommand::Confirm(key));
+    assert!(e.draft(&second).is_none());
+    assert!(e.draft(&case()).unwrap().is_pending());
+    assert_eq!(e.pending_count(), 1);
+    assert!(
+        e.dispatch(
+            &mut s,
+            &DisplayUnitSet::si(),
+            EquipmentEditorCommand::Delete(case())
+        )
+        .is_err()
+    );
+    assert_eq!(task(&s).cases.len(), 1);
+    assert_eq!(task(&s).method.version, 2);
+    dispatch(
+        &mut e,
+        &mut s,
+        EquipmentEditorCommand::History { redo: false },
+    );
+    assert!(e.confirmation().unwrap().is_history());
+    let key = e.confirmation().unwrap().key();
+    dispatch(&mut e, &mut s, EquipmentEditorCommand::Confirm(key));
+    assert_eq!(task(&s).cases.len(), 2);
+    assert_eq!(e.pending_count(), 0);
+}

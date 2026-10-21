@@ -37,7 +37,8 @@ impl TaskProbe {
             && self.method.version == u64::from(super::task_wire::METHOD_VERSION))
             || (self.kind == super::rating_wire::TASK_KIND
                 && self.method.id == super::rating_wire::METHOD_ID
-                && self.method.version == u64::from(super::rating_wire::METHOD_VERSION))
+                && (self.method.version == u64::from(super::rating_wire::METHOD_VERSION)
+                    || self.method.version == u64::from(super::rating_wire::MATRIX_METHOD_VERSION)))
     }
 }
 #[derive(Serialize, Deserialize)]

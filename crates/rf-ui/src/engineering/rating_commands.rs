@@ -1,13 +1,14 @@
-//! Rating edits address geometry and cases explicitly. Case membership and method
-//! expansion remain outside the version 1 application capability.
+//! Explicit geometry, case and membership edits with versioned capability checks.
 use super::*;
 use rf_model::equipment::{SeparatorGivenGeometry, SeparatorRatingCase};
 
 pub(super) fn validate_capability(task: &SeparatorRatingTask) -> Result<(), EngineeringError> {
-    if task.method != rf_unitops::separator_rating::method() {
+    if task.method != rf_unitops::separator_rating::method()
+        && task.method != rf_unitops::separator_rating::matrix_method()
+    {
         return Err(EngineeringError::UnsupportedRatingMethod(task.id.clone()));
     }
-    if task.cases.len() != 1 {
+    if task.cases.is_empty() || (task.method.version == 1 && task.cases.len() != 1) {
         return Err(EngineeringError::UnsupportedRatingCaseCount {
             task: task.id.clone(),
             actual: task.cases.len(),
@@ -97,6 +98,71 @@ pub(super) fn case(
         case.revision,
     )?;
     *old = case;
+    Ok(())
+}
+
+pub(super) fn upgrade(
+    inputs: &mut EngineeringInputs,
+    id: &EquipmentTaskId,
+) -> Result<(), EngineeringError> {
+    let task = task_mut(inputs, id)?;
+    validate_capability(task)?;
+    task.method = rf_unitops::separator_rating::matrix_method();
+    Ok(())
+}
+pub(super) fn add(
+    inputs: &mut EngineeringInputs,
+    reserved: &mut BTreeMap<EngineeringRecordId, u64>,
+    id: &EquipmentTaskId,
+    case: SeparatorRatingCase,
+) -> Result<(), EngineeringError> {
+    let task = task_mut(inputs, id)?;
+    if task.method != rf_unitops::separator_rating::matrix_method() {
+        return Err(EngineeringError::UnsupportedRatingMethod(id.clone()));
+    }
+    commands::reserve(reserved, EngineeringRecordId::Case(case.id.clone()))?;
+    task.cases.push(case);
+    Ok(())
+}
+pub(super) fn delete(
+    inputs: &mut EngineeringInputs,
+    key: &EquipmentCaseKey,
+) -> Result<(), EngineeringError> {
+    let task = task_mut(inputs, &key.task_id)?;
+    if task.cases.len() == 1 {
+        return Err(EngineeringError::UnsupportedRatingCaseCount {
+            task: key.task_id.clone(),
+            actual: 0,
+        });
+    }
+    let position = task
+        .cases
+        .iter()
+        .position(|c| c.id == key.case_id)
+        .ok_or_else(|| {
+            EngineeringError::MissingRecord(EngineeringRecordId::Case(key.case_id.clone()))
+        })?;
+    task.cases.remove(position);
+    Ok(())
+}
+pub(super) fn reorder(
+    inputs: &mut EngineeringInputs,
+    id: &EquipmentTaskId,
+    cases: Vec<EngineeringCaseId>,
+) -> Result<(), EngineeringError> {
+    let task = task_mut(inputs, id)?;
+    let requested: std::collections::BTreeSet<_> = cases.iter().collect();
+    if requested.len() != cases.len() || requested != task.cases.iter().map(|c| &c.id).collect() {
+        return Err(EngineeringError::InvalidCaseOrder(id.clone()));
+    }
+    let mut by_id: BTreeMap<_, _> = std::mem::take(&mut task.cases)
+        .into_iter()
+        .map(|c| (c.id.clone(), c))
+        .collect();
+    task.cases = cases
+        .into_iter()
+        .map(|id| by_id.remove(&id).expect("validated order"))
+        .collect();
     Ok(())
 }
 
