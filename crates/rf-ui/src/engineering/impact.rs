@@ -59,6 +59,28 @@ impl Dependencies {
         }
     }
 }
+/// Capture only this task's transitive basis and source records for review output.
+pub(super) fn captured_basis(inputs: &EngineeringInputs, task: &EquipmentTask) -> EngineeringBasis {
+    let mut dependencies = Dependencies::default();
+    dependencies.add_task(inputs, task);
+    EngineeringBasis {
+        basis_entries: inputs
+            .basis
+            .basis_entries
+            .iter()
+            .filter(|b| dependencies.basis.contains(&b.id))
+            .cloned()
+            .collect(),
+        sources: inputs
+            .basis
+            .sources
+            .iter()
+            .filter(|s| dependencies.sources.contains(&s.id))
+            .cloned()
+            .collect(),
+    }
+}
+
 /// The same transitive provenance used for result invalidation also gates draft calculations.
 pub(super) fn task_references(
     inputs: &EngineeringInputs,

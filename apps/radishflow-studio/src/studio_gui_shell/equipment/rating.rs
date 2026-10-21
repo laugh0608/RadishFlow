@@ -21,24 +21,43 @@ impl ReadyAppState {
         session: &EngineeringSession,
         units: &DisplayUnitSet,
         commands: &mut Vec<EquipmentEditorCommand>,
-        export: &mut Option<(rf_types::EquipmentTaskId, CalculationTableFormat)>,
+        export: &mut Option<(EquipmentExportTarget, CalculationTableFormat)>,
     ) {
         let l = self.locale;
         let Some(task) = task_id(target).and_then(|id| session.inputs().rating_task(id)) else {
             return;
         };
-        let [case] = task.cases.as_slice() else {
-            ui.label(tr(
-                l,
-                "此方法只支持一个校核工况。",
-                "This method supports exactly one rating case.",
-            ));
+        let Some(key) = self.selected_rating_member(task, Some(target)) else {
             return;
         };
-        let key = EquipmentCaseKey {
-            task_id: task.id.clone(),
-            case_id: case.id.clone(),
-        };
+        self.equipment
+            .rating_selection
+            .insert(task.id.clone(), key.case_id.clone());
+        let case = task
+            .cases
+            .iter()
+            .find(|c| c.id == key.case_id)
+            .expect("selected member");
+        let wide = ui.available_width()
+            >= 1000.0 * (ui.style().text_styles[&egui::TextStyle::Body].size / 14.0);
+        let overview = *self
+            .equipment
+            .rating_overview
+            .entry(task.id.clone())
+            .or_insert(task.method.version >= 2);
+        let show_overview = wide || overview;
+        let only_overview = !wide && overview;
+        let mut restored_focus = false;
+        if self.equipment.restore_rating_focus.as_ref() == Some(target)
+            && self.equipment.focus_field.is_none()
+            && let Some(id) = self.equipment.rating_focus.get(target)
+        {
+            ui.memory_mut(|m| m.request_focus(*id));
+            restored_focus = true;
+        }
+        let remember_focus =
+            self.equipment.last_rating_target.as_ref() == Some(target) || restored_focus;
+        self.equipment.restore_rating_focus = None;
         let Some(record) = editor.draft(target) else {
             return;
         };
@@ -48,13 +67,24 @@ impl ReadyAppState {
         let pending = editor.pending_for_case(&key, session);
         let focus = self.equipment.focus_field.take();
         let scroll_top = std::mem::take(&mut self.equipment.rating_scroll_top);
-        let mut scroll =
-            egui::ScrollArea::vertical().id_salt(("rating-page", target, self.equipment.section));
+        let mut scroll = egui::ScrollArea::vertical().id_salt((
+            "rating-page",
+            target,
+            self.equipment.section,
+            only_overview,
+        ));
         if scroll_top {
             scroll = scroll.vertical_scroll_offset(0.0);
         }
         scroll.show(ui, |ui| {
             ui.heading(format!("{} · {}", task_label(l, &task.clone().into()), tr(l, "已有几何校核", "Given-geometry rating",)));
+            if show_overview {
+                self.render_rating_matrix(ui, task, &key, editor, session, units, commands, export, wide);
+                if only_overview { return; }
+                ui.separator();
+            } else if ui.button(tr(l, "返回工况矩阵", "Back to case matrix")).clicked() {
+                self.equipment.rating_overview.insert(task.id.clone(), true);
+            }
             ui.label(format!(
                 "{} · {}",
                 nonempty(&case.name, tr(l, "未命名工况", "Untitled case",)),
@@ -79,11 +109,11 @@ impl ReadyAppState {
                     self.equipment.section = EquipmentSection::Results;
                 }
                 for (format, label) in [
-                    (CalculationTableFormat::Csv, tr(l, "导出 CSV", "Export CSV")),
-                    (CalculationTableFormat::Json, tr(l, "导出 JSON", "Export JSON")),
+                    (CalculationTableFormat::Csv, tr(l, "当前工况 CSV", "Current case CSV")),
+                    (CalculationTableFormat::Json, tr(l, "当前工况 JSON", "Current case JSON")),
                 ] {
                     if ui.add_enabled(!pending && session.current_rating(&key).is_some(), egui::Button::new(label)).clicked() {
-                        *export = Some((task.id.clone(), format));
+                        *export = Some((EquipmentExportTarget::Rating(key.clone()), format));
                     }
                 }
             });
@@ -172,6 +202,14 @@ impl ReadyAppState {
                 render_inputs(ui);
             }
         });
+        if remember_focus
+            && !only_overview
+            && let Some(id) = ui.memory(|m| m.focused())
+            && egui::TextEdit::load_state(ui.ctx(), id).is_some()
+        {
+            self.equipment.rating_focus.insert(target.clone(), id);
+        }
+        self.equipment.last_rating_target = Some(target.clone());
         if &draft != record.value() {
             commands.insert(
                 0,
@@ -202,6 +240,9 @@ impl ReadyAppState {
     ) {
         use RatingIssueTarget::*;
         self.equipment.section = EquipmentSection::Inputs;
+        self.equipment
+            .rating_overview
+            .insert(key.task_id.clone(), false);
         self.equipment.rating_scroll_top = true;
         let target = match issue {
             GeometryInput(field) => {

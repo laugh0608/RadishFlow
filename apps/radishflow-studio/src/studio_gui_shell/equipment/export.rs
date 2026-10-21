@@ -3,17 +3,29 @@ use super::*;
 use rf_types::EquipmentTaskId;
 use rf_ui::engineering::{CalculationId, EquipmentCaseKey};
 
+pub(super) enum EquipmentExportTarget {
+    Task(EquipmentTaskId),
+    Rating(EquipmentCaseKey),
+    Matrix(EquipmentTaskId),
+}
 enum EquipmentOutputKey {
-    Sizing(EquipmentTaskId),
+    Sizing {
+        task: EquipmentTaskId,
+        calculation_id: CalculationId,
+    },
     Rating {
         member: EquipmentCaseKey,
+        calculation_id: CalculationId,
+        units: DisplayUnitSet,
+    },
+    Matrix {
+        capture: Box<rf_ui::engineering::RatingMatrixCapture>,
         units: DisplayUnitSet,
     },
 }
 
 pub(in crate::studio_gui_shell) struct CapturedEquipmentOutput {
     key: EquipmentOutputKey,
-    calculation_id: CalculationId,
     format: CalculationTableFormat,
     text: String,
 }
@@ -30,82 +42,128 @@ impl ReadyAppState {
     ) -> Option<CapturedEquipmentOutput> {
         let workspace = &self.platform_host.modeling_inputs().workspace;
         let session = &workspace.engineering;
-        let Some(task) = session.inputs().equipment_task(id) else {
+        if let Some(task) = session.inputs().rating_task(id) {
+            let [case] = task.cases.as_slice() else {
+                self.equipment_export_unavailable();
+                return None;
+            };
+            let member = EquipmentCaseKey {
+                task_id: id.clone(),
+                case_id: case.id.clone(),
+            };
+            return self.capture_rating_output(&member, format);
+        }
+        let Some(task) = session.inputs().task(id) else {
+            self.equipment_export_unavailable();
+            return None;
+        };
+        let Some(candidate) = session
+            .current_candidate(id)
+            .filter(|_| !workspace.equipment_editor.pending_for_task(id, session))
+        else {
+            self.equipment_export_unavailable();
+            return None;
+        };
+        let key = EquipmentOutputKey::Sizing {
+            task: id.clone(),
+            calculation_id: session
+                .calculation_id(id)
+                .expect("current identity")
+                .clone(),
+        };
+        let encoded = calculation_table::encode(
+            candidate,
+            task,
+            workspace.document.metadata.document_id.as_str(),
+            session.generation(id).expect("current generation"),
+            workspace.project_presentation.display_units().clone(),
+            format,
+        );
+        self.finish_equipment_capture(key, format, encoded)
+    }
+    pub(in crate::studio_gui_shell) fn capture_rating_output(
+        &mut self,
+        member: &EquipmentCaseKey,
+        format: CalculationTableFormat,
+    ) -> Option<CapturedEquipmentOutput> {
+        let workspace = &self.platform_host.modeling_inputs().workspace;
+        let session = &workspace.engineering;
+        let Some(task) = session.inputs().rating_task(&member.task_id) else {
+            self.equipment_export_unavailable();
+            return None;
+        };
+        let Some(result) = session
+            .current_rating(member)
+            .filter(|_| !workspace.equipment_editor.pending_for_case(member, session))
+        else {
             self.equipment_export_unavailable();
             return None;
         };
         let units = workspace.project_presentation.display_units().clone();
-        let document_id = workspace.document.metadata.document_id.as_str();
-        let (key, calculation_id, encoded) = match task {
-            rf_model::equipment::EquipmentTask::SeparatorSizing(task) => {
-                let Some(candidate) = session
-                    .current_candidate(id)
-                    .filter(|_| !workspace.equipment_editor.pending_for_task(id, session))
-                else {
-                    self.equipment_export_unavailable();
-                    return None;
-                };
-                (
-                    EquipmentOutputKey::Sizing(id.clone()),
-                    session
-                        .calculation_id(id)
-                        .expect("current calculation identity")
-                        .clone(),
-                    calculation_table::encode(
-                        candidate,
-                        task,
-                        document_id,
-                        session.generation(id).expect("current generation"),
-                        units,
-                        format,
-                    ),
-                )
-            }
-            rf_model::equipment::EquipmentTask::SeparatorRating(task) => {
-                let [case] = task.cases.as_slice() else {
-                    self.equipment_export_unavailable();
-                    return None;
-                };
-                let member = EquipmentCaseKey {
-                    task_id: id.clone(),
-                    case_id: case.id.clone(),
-                };
-                let Some(result) = session.current_rating(&member).filter(|_| {
-                    !workspace
-                        .equipment_editor
-                        .pending_for_case(&member, session)
-                }) else {
-                    self.equipment_export_unavailable();
-                    return None;
-                };
-                let calculation_id = session
-                    .case_calculation_id(&member)
-                    .expect("current rating identity")
-                    .clone();
-                let encoded = calculation_table::encode_rating(
-                    result,
-                    task,
-                    document_id,
-                    session
-                        .case_generation(&member)
-                        .expect("current rating generation"),
-                    units.clone(),
-                    format,
+        let key = EquipmentOutputKey::Rating {
+            member: member.clone(),
+            calculation_id: session
+                .case_calculation_id(member)
+                .expect("current identity")
+                .clone(),
+            units: units.clone(),
+        };
+        let encoded = calculation_table::encode_rating(
+            result,
+            task,
+            workspace.document.metadata.document_id.as_str(),
+            session.case_generation(member).expect("current generation"),
+            units,
+            format,
+        );
+        self.finish_equipment_capture(key, format, encoded)
+    }
+    pub(in crate::studio_gui_shell) fn capture_matrix_output(
+        &mut self,
+        id: &EquipmentTaskId,
+        format: CalculationTableFormat,
+    ) -> Option<CapturedEquipmentOutput> {
+        let workspace = &self.platform_host.modeling_inputs().workspace;
+        let session = &workspace.engineering;
+        if workspace.equipment_editor.pending_for_task(id, session) {
+            self.equipment_export_unavailable();
+            return None;
+        }
+        let capture = match session.capture_rating_matrix(id) {
+            Ok(capture) => capture,
+            Err(error) => {
+                self.equipment_export_notice(
+                    ProjectOpenNoticeLevel::Error,
+                    tr(self.locale, "矩阵捕获失败", "Matrix capture failed"),
+                    error.to_string(),
                 );
-                (
-                    EquipmentOutputKey::Rating { member, units },
-                    calculation_id,
-                    encoded,
-                )
+                return None;
             }
         };
+        let units = workspace.project_presentation.display_units().clone();
+        let encoded = calculation_table::encode_matrix(
+            &capture,
+            workspace.document.metadata.document_id.as_str(),
+            units.clone(),
+            format,
+        );
+        self.finish_equipment_capture(
+            EquipmentOutputKey::Matrix {
+                capture: Box::new(capture),
+                units,
+            },
+            format,
+            encoded,
+        )
+    }
+    fn finish_equipment_capture(
+        &mut self,
+        key: EquipmentOutputKey,
+        format: CalculationTableFormat,
+        encoded: Result<String, calculation_table::TableError>,
+    ) -> Option<CapturedEquipmentOutput> {
         match encoded {
-            Ok(text) => Some(CapturedEquipmentOutput {
-                key,
-                calculation_id,
-                format,
-                text,
-            }),
+            Ok(text) => Some(CapturedEquipmentOutput { key, format, text }),
             Err(error) => {
                 self.equipment_export_notice(
                     ProjectOpenNoticeLevel::Error,
@@ -121,7 +179,19 @@ impl ReadyAppState {
         id: &EquipmentTaskId,
         format: CalculationTableFormat,
     ) {
-        let Some(output) = self.capture_equipment_output(id, format) else {
+        self.export_target_from_picker(&EquipmentExportTarget::Task(id.clone()), format);
+    }
+    pub(super) fn export_target_from_picker(
+        &mut self,
+        target: &EquipmentExportTarget,
+        format: CalculationTableFormat,
+    ) {
+        let output = match target {
+            EquipmentExportTarget::Task(id) => self.capture_equipment_output(id, format),
+            EquipmentExportTarget::Rating(key) => self.capture_rating_output(key, format),
+            EquipmentExportTarget::Matrix(id) => self.capture_matrix_output(id, format),
+        };
+        let Some(output) = output else {
             return;
         };
         if !self.project_file_picker.supports_equipment_export_dialogs() {
@@ -165,15 +235,29 @@ impl ReadyAppState {
         // CalculationId is session-local and non-reusable, including after an
         // identical recalculation or reopening the same document/task IDs.
         let qualified = match &output.key {
-            EquipmentOutputKey::Sizing(id) => {
+            EquipmentOutputKey::Sizing {
+                task: id,
+                calculation_id,
+            } => {
                 session.current_candidate(id).is_some()
-                    && session.calculation_id(id) == Some(&output.calculation_id)
+                    && session.calculation_id(id) == Some(calculation_id)
                     && !workspace.equipment_editor.pending_for_task(id, session)
             }
-            EquipmentOutputKey::Rating { member, units } => {
+            EquipmentOutputKey::Rating {
+                member,
+                calculation_id,
+                units,
+            } => {
                 session.current_rating(member).is_some()
-                    && session.case_calculation_id(member) == Some(&output.calculation_id)
+                    && session.case_calculation_id(member) == Some(calculation_id)
                     && !workspace.equipment_editor.pending_for_case(member, session)
+                    && workspace.project_presentation.display_units() == units
+            }
+            EquipmentOutputKey::Matrix { capture, units } => {
+                session.rating_matrix_is_current(capture)
+                    && !workspace
+                        .equipment_editor
+                        .pending_for_task(&capture.task().id, session)
                     && workspace.project_presentation.display_units() == units
             }
         };

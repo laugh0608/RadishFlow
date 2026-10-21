@@ -11,6 +11,16 @@ pub(in super::super) fn encode(
     units: DisplayUnitSet,
     format: CalculationTableFormat,
 ) -> Result<String, TableError> {
+    build(result, current_task, document_id, generation, units)?.encode(format)
+}
+
+pub(super) fn build(
+    result: &SeparatorRatingResult,
+    current_task: &SeparatorRatingTask,
+    document_id: &str,
+    generation: ResultGeneration,
+    units: DisplayUnitSet,
+) -> Result<CalculationTable, TableError> {
     let capture = result.capture();
     let task = &capture.input;
     let case = &task.case;
@@ -282,10 +292,10 @@ pub(in super::super) fn encode(
         );
     }
     evidence::unchecked(&mut table, result.unchecked_requirements());
-    table.encode(format)
+    Ok(table)
 }
 
-fn constraint_key(status: ConstraintStatus) -> &'static str {
+pub(super) fn constraint_key(status: ConstraintStatus) -> &'static str {
     match status {
         ConstraintStatus::WithinCriteria => "withinCriteria",
         ConstraintStatus::BoundaryReview => "boundaryReview",

@@ -9,6 +9,7 @@ mod fields;
 mod rating;
 mod rating_inputs;
 mod rating_labels;
+mod rating_matrix;
 mod rating_results;
 pub(super) use creation::EquipmentTaskMode;
 mod calculation_table;
@@ -21,6 +22,7 @@ mod source;
 mod task;
 mod widgets;
 pub(super) use calculation_table::CalculationTableFormat;
+use export::EquipmentExportTarget;
 use fields::EquipmentInputField;
 pub(super) use labels::target_label;
 use labels::*;
@@ -45,6 +47,14 @@ pub(super) struct EquipmentPageState {
     task_mode: EquipmentTaskMode,
     rating_scroll_top: bool,
     source_readonly: bool,
+    pub(super) rating_selection:
+        std::collections::BTreeMap<rf_types::EquipmentTaskId, rf_types::EngineeringCaseId>,
+    pub(super) rating_overview: std::collections::BTreeMap<rf_types::EquipmentTaskId, bool>,
+    rating_sections:
+        std::collections::BTreeMap<rf_ui::engineering::EquipmentCaseKey, EquipmentSection>,
+    rating_focus: std::collections::BTreeMap<EquipmentEditorTarget, egui::Id>,
+    last_rating_target: Option<EquipmentEditorTarget>,
+    restore_rating_focus: Option<EquipmentEditorTarget>,
 }
 impl ReadyAppState {
     pub(super) fn equipment_command(&mut self, command: EquipmentEditorCommand) {
@@ -61,6 +71,10 @@ impl ReadyAppState {
                     | EquipmentEditorTarget::RatingCase(_)
             )
         );
+        let selecting_case = matches!(
+            command,
+            EquipmentEditorCommand::Select(EquipmentEditorTarget::RatingCase(_))
+        );
         let focus_source = matches!(
             command,
             EquipmentEditorCommand::CreateSource
@@ -73,6 +87,11 @@ impl ReadyAppState {
             .equipment_editor
             .active()
             .cloned();
+        if let Some(EquipmentEditorTarget::RatingCase(key)) = &origin {
+            self.equipment
+                .rating_sections
+                .insert(key.clone(), self.equipment.section);
+        }
         let create_related = matches!(
             command,
             EquipmentEditorCommand::CreateSource | EquipmentEditorCommand::NewBasis
@@ -85,6 +104,7 @@ impl ReadyAppState {
             trigger: StudioRuntimeTrigger::Equipment(command),
         }) {
             Ok(_) => {
+                self.sync_rating_selection(origin.as_ref(), selecting_case);
                 if select_task {
                     self.equipment.source_return = None;
                     self.equipment.source_readonly = false;
@@ -120,18 +140,16 @@ impl ReadyAppState {
             }
             Some(target) => rating::task_id(target)
                 .and_then(|id| workspace.engineering.inputs().rating_task(id))
-                .and_then(|task| match task.cases.as_slice() {
-                    [case] => Some(EquipmentEditorCommand::CalculateRating(
-                        rf_ui::engineering::EquipmentCaseKey {
-                            task_id: task.id.clone(),
-                            case_id: case.id.clone(),
-                        },
-                    )),
-                    _ => None,
-                }),
+                .and_then(|task| self.selected_rating_member(task, Some(target)))
+                .map(EquipmentEditorCommand::CalculateRating),
             None => None,
         };
         if let Some(command) = command {
+            if let EquipmentEditorCommand::CalculateRating(key) = &command {
+                self.equipment
+                    .rating_overview
+                    .insert(key.task_id.clone(), false);
+            }
             self.equipment_command(command);
             self.equipment.section = EquipmentSection::Results;
         }
@@ -185,8 +203,8 @@ impl ReadyAppState {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading(tr(
                 locale,
-                "设备设计 · 独立单工况",
-                "Equipment design · independent single case",
+                "设备设计 · 独立工程任务",
+                "Equipment design · independent tasks",
             ));
             let compact = !sidebar
                 && editor
@@ -364,7 +382,8 @@ impl ReadyAppState {
                         ),
                     ] {
                         if ui.add_enabled(enabled, egui::Button::new(label)).clicked() {
-                            export_request = Some((id.clone(), format));
+                            export_request =
+                                Some((EquipmentExportTarget::Task(id.clone()), format));
                         }
                     }
                     ui.label(tr(locale, "计算表使用项目单位", "Table uses project units"));
@@ -459,8 +478,12 @@ impl ReadyAppState {
         for command in commands {
             self.equipment_command(command);
         }
-        if let Some((id, format)) = export_request {
-            self.export_equipment_from_picker(&id, format);
+        if let Some((target, format)) = export_request {
+            if let EquipmentExportTarget::Task(id) = target {
+                self.export_equipment_from_picker(&id, format);
+            } else {
+                self.export_target_from_picker(&target, format);
+            }
         }
         self.render_equipment_confirmation(ctx);
         self.render_equipment_creation(ctx);

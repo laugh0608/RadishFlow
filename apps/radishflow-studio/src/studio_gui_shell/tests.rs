@@ -756,5 +756,6 @@ mod equipment_rating_storage;
 mod equipment_storage;
 
 mod equipment_export;
+mod equipment_matrix;
 mod equipment_rating_editor;
 mod equipment_rating_export;

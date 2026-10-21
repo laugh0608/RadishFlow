@@ -9,7 +9,9 @@ use serde::Serialize;
 
 mod evidence;
 mod keys;
+mod matrix;
 mod rating;
+pub(super) use matrix::encode as encode_matrix;
 pub(super) use rating::encode as encode_rating;
 
 #[derive(Debug, Clone, Copy)]

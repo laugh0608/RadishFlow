@@ -12,7 +12,11 @@ impl ReadyAppState {
         let mut command = None;
         let response = egui::Modal::new(egui::Id::new("equipment-confirmation")).show(ctx, |ui| {
             ui.set_width((ctx.screen_rect().width() - 40.0).clamp(220.0, 520.0));
-            ui.heading(if pending.is_history() {
+            ui.heading(if pending.upgrades_rating_method() {
+                tr(locale, "升级校核方法并新增工况？", "Upgrade rating method and add case?")
+            } else if pending.deleted_rating_case().is_some() {
+                tr(locale, "删除工况并缩小覆盖范围？", "Delete case and reduce coverage?")
+            } else if pending.is_history() {
                 tr(
                     locale,
                     "确认设备历史操作",
@@ -30,6 +34,13 @@ impl ReadyAppState {
             egui::ScrollArea::vertical()
                 .max_height((ctx.screen_rect().height() - 180.0).max(100.0))
                 .show(ui, |ui| {
+                    if pending.upgrades_rating_method() {
+                        ui.label(tr(locale, "此任务将从校核 v1 升级为 v2，保留原输入并使原结果过期。仅支持 v1 的旧程序将整份工程只读打开；保存时可另存为保留原件。", "This task upgrades from rating v1 to v2, preserving its inputs and making previous results stale. Programs supporting only v1 open the entire project read-only; Save As can preserve the original."));
+                    }
+                    if let Some(member) = pending.deleted_rating_case() {
+                        ui.label(format!("{}: {}", tr(locale, "删除工况", "Delete case"), member.case_id));
+                        ui.label(tr(locale, "该行将移出必要工况集合；未改行的结果保留。撤销可恢复输入，但不会复活旧计算或待输出资格。", "This row leaves the required case set; unchanged rows retain their results. Undo restores inputs without reviving old executions or pending outputs."));
+                    }
                     if let Some(error) = &error {
                         ui.label(edit_error(locale, error));
                     }

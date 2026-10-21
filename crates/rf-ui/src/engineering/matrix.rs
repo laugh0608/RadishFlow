@@ -8,6 +8,7 @@ use rf_unitops::separator_rating::{
 pub struct RatingMatrixRow {
     pub member: EquipmentCaseKey,
     pub status: EquipmentResultStatus,
+    pub generation: ResultGeneration,
     pub result: Option<SeparatorRatingResult>,
     pub failure: Option<RatingFailure>,
     pub staleness: Option<ResultStaleness>,
@@ -24,11 +25,15 @@ pub struct RatingMatrixCapture {
     task: SeparatorRatingTask,
     rows: Vec<RatingMatrixRow>,
     summary: SeparatorRatingSummary,
+    basis: EngineeringBasis,
     identity: EngineeringCheckpoint,
     membership: EngineeringCheckpoint,
     qualification: BTreeMap<EquipmentCaseKey, RowQualification>,
 }
 impl RatingMatrixCapture {
+    pub fn basis(&self) -> &EngineeringBasis {
+        &self.basis
+    }
     pub fn task(&self) -> &SeparatorRatingTask {
         &self.task
     }
@@ -92,6 +97,7 @@ impl EngineeringSession {
                 };
                 RatingMatrixRow {
                     status: self.case_result_status(&member),
+                    generation: self.case_generation(&member).expect("validated member"),
                     result: self.current_rating(&member).cloned(),
                     failure: self.current_rating_failure(&member).cloned(),
                     staleness: self.case_staleness(&member),
@@ -109,6 +115,7 @@ impl EngineeringSession {
         .map_err(RatingMatrixCaptureError::Summary)?;
         Ok(RatingMatrixCapture {
             task: task.clone(),
+            basis: impact::captured_basis(&self.current, &task.clone().into()),
             rows,
             summary,
             identity: self.identity.clone(),

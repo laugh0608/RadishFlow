@@ -174,6 +174,15 @@ impl EquipmentConfirmation {
     pub fn upgrades_rating_method(&self) -> bool {
         matches!(self.operation, PendingOperation::AddCase { .. })
     }
+    pub fn deleted_rating_case(&self) -> Option<&EquipmentCaseKey> {
+        match &self.operation {
+            PendingOperation::Delete {
+                target: EquipmentEditorTarget::RatingCase(key),
+                ..
+            } => Some(key),
+            _ => None,
+        }
+    }
     pub fn is_history(&self) -> bool {
         matches!(self.operation, PendingOperation::History { .. })
     }
