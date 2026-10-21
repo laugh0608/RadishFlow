@@ -1,10 +1,18 @@
 //! File-dialog orchestration for an immutable, qualified equipment table.
 use super::*;
 use rf_types::EquipmentTaskId;
-use rf_ui::engineering::CalculationId;
+use rf_ui::engineering::{CalculationId, EquipmentCaseKey};
+
+enum EquipmentOutputKey {
+    Sizing(EquipmentTaskId),
+    Rating {
+        member: EquipmentCaseKey,
+        units: DisplayUnitSet,
+    },
+}
 
 pub(in crate::studio_gui_shell) struct CapturedEquipmentOutput {
-    task_id: EquipmentTaskId,
+    key: EquipmentOutputKey,
     calculation_id: CalculationId,
     format: CalculationTableFormat,
     text: String,
@@ -22,30 +30,78 @@ impl ReadyAppState {
     ) -> Option<CapturedEquipmentOutput> {
         let workspace = &self.platform_host.modeling_inputs().workspace;
         let session = &workspace.engineering;
-        if workspace.equipment_editor.pending_for_task(id, session)
-            || session.current_candidate(id).is_none()
-        {
+        let Some(task) = session.inputs().equipment_task(id) else {
             self.equipment_export_unavailable();
             return None;
-        }
-        let candidate = session
-            .current_candidate(id)
-            .expect("checked current candidate");
-        let calculation_id = session
-            .calculation_id(id)
-            .expect("current calculation identity")
-            .clone();
-        let encoded = calculation_table::encode(
-            candidate,
-            session.inputs().task(id).expect("current task"),
-            workspace.document.metadata.document_id.as_str(),
-            session.generation(id).expect("current generation"),
-            workspace.project_presentation.display_units().clone(),
-            format,
-        );
+        };
+        let units = workspace.project_presentation.display_units().clone();
+        let document_id = workspace.document.metadata.document_id.as_str();
+        let (key, calculation_id, encoded) = match task {
+            rf_model::equipment::EquipmentTask::SeparatorSizing(task) => {
+                let Some(candidate) = session
+                    .current_candidate(id)
+                    .filter(|_| !workspace.equipment_editor.pending_for_task(id, session))
+                else {
+                    self.equipment_export_unavailable();
+                    return None;
+                };
+                (
+                    EquipmentOutputKey::Sizing(id.clone()),
+                    session
+                        .calculation_id(id)
+                        .expect("current calculation identity")
+                        .clone(),
+                    calculation_table::encode(
+                        candidate,
+                        task,
+                        document_id,
+                        session.generation(id).expect("current generation"),
+                        units,
+                        format,
+                    ),
+                )
+            }
+            rf_model::equipment::EquipmentTask::SeparatorRating(task) => {
+                let [case] = task.cases.as_slice() else {
+                    self.equipment_export_unavailable();
+                    return None;
+                };
+                let member = EquipmentCaseKey {
+                    task_id: id.clone(),
+                    case_id: case.id.clone(),
+                };
+                let Some(result) = session.current_rating(&member).filter(|_| {
+                    !workspace
+                        .equipment_editor
+                        .pending_for_case(&member, session)
+                }) else {
+                    self.equipment_export_unavailable();
+                    return None;
+                };
+                let calculation_id = session
+                    .case_calculation_id(&member)
+                    .expect("current rating identity")
+                    .clone();
+                let encoded = calculation_table::encode_rating(
+                    result,
+                    task,
+                    document_id,
+                    session
+                        .case_generation(&member)
+                        .expect("current rating generation"),
+                    units.clone(),
+                    format,
+                );
+                (
+                    EquipmentOutputKey::Rating { member, units },
+                    calculation_id,
+                    encoded,
+                )
+            }
+        };
         match encoded {
             Ok(text) => Some(CapturedEquipmentOutput {
-                task_id: id.clone(),
+                key,
                 calculation_id,
                 format,
                 text,
@@ -108,12 +164,20 @@ impl ReadyAppState {
         let session = &workspace.engineering;
         // CalculationId is session-local and non-reusable, including after an
         // identical recalculation or reopening the same document/task IDs.
-        if session.current_candidate(&output.task_id).is_none()
-            || session.calculation_id(&output.task_id) != Some(&output.calculation_id)
-            || workspace
-                .equipment_editor
-                .pending_for_task(&output.task_id, session)
-        {
+        let qualified = match &output.key {
+            EquipmentOutputKey::Sizing(id) => {
+                session.current_candidate(id).is_some()
+                    && session.calculation_id(id) == Some(&output.calculation_id)
+                    && !workspace.equipment_editor.pending_for_task(id, session)
+            }
+            EquipmentOutputKey::Rating { member, units } => {
+                session.current_rating(member).is_some()
+                    && session.case_calculation_id(member) == Some(&output.calculation_id)
+                    && !workspace.equipment_editor.pending_for_case(member, session)
+                    && workspace.project_presentation.display_units() == units
+            }
+        };
+        if !qualified {
             self.equipment_export_unavailable();
             return;
         }
@@ -162,7 +226,7 @@ impl ReadyAppState {
     fn equipment_export_unavailable(&mut self) {
         self.equipment_export_notice(ProjectOpenNoticeLevel::Warning,
             tr(self.locale, "当前计算表不可导出", "Current calculation table unavailable"),
-            tr(self.locale, "请处理本任务及所引用依据的草稿，确认当前计算有效后重新导出。", "Resolve drafts for this task and its referenced evidence, then export a current calculation."));
+            tr(self.locale, "请处理本任务及所引用依据的草稿，确认当前计算与项目单位后重新导出。", "Resolve drafts for this task and its referenced evidence, then export a current calculation with the current project units."));
     }
     fn equipment_export_notice(
         &mut self,

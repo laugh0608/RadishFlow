@@ -16,7 +16,7 @@ fn task_id(target: &EquipmentEditorTarget) -> EquipmentTaskId {
     };
     id.clone()
 }
-fn apply(app: &mut ReadyAppState, target: &EquipmentEditorTarget) {
+pub(super) fn apply(app: &mut ReadyAppState, target: &EquipmentEditorTarget) {
     app.equipment_command(EquipmentEditorCommand::Apply(target.clone()));
     let confirmation = app
         .platform_host
@@ -59,7 +59,7 @@ fn export(app: &mut ReadyAppState, target: &EquipmentEditorTarget, format: Forma
         .unwrap();
     app.export_equipment_to_path(output, path.into());
 }
-fn row<'a>(table: &'a Value, section: &str, id: &str, field: &str) -> &'a Value {
+pub(super) fn row<'a>(table: &'a Value, section: &str, id: &str, field: &str) -> &'a Value {
     table["rows"]
         .as_array()
         .unwrap()
@@ -72,7 +72,7 @@ fn read(path: &Path) -> Value {
 }
 
 // Independent CSV reader used only to verify multiline, Unicode and quote escapes.
-fn csv_records(text: &str) -> Vec<Vec<String>> {
+pub(super) fn csv_records(text: &str) -> Vec<Vec<String>> {
     let mut records = Vec::new();
     let mut record = Vec::new();
     let mut cell = String::new();

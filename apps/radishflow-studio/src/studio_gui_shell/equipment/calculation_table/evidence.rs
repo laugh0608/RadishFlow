@@ -6,7 +6,44 @@ pub(super) fn append(
     candidate: &SeparatorCandidate,
 ) -> Result<(), TableError> {
     let capture = candidate.capture();
-    for basis in capture.basis_entries.values() {
+    records(table, &capture.basis_entries, &capture.sources)?;
+    for (field, ids) in [
+        ("assumedSource", candidate.assumed_sources()),
+        ("pendingReviewSource", candidate.pending_review_sources()),
+    ] {
+        for (index, id) in ids.iter().enumerate() {
+            table.text("limitation", "", &format!("{field}.{index}"), id);
+        }
+    }
+    for section in candidate.missing_axial_sections() {
+        table.text(
+            "limitation",
+            keys::axial(*section),
+            "unresolvedAxialSection",
+            "Missing or insufficient evidence; excluded from calculated total height.",
+        );
+    }
+    for (index, issue) in candidate.height_issues().iter().enumerate() {
+        table.text(
+            "heightIssue",
+            &index.to_string(),
+            "description",
+            issue_label(StudioShellLocale::En, issue),
+        );
+    }
+    unchecked(table, candidate.unchecked_requirements());
+    Ok(())
+}
+
+pub(super) fn records(
+    table: &mut CalculationTable,
+    basis_entries: &std::collections::BTreeMap<
+        rf_types::BasisEntryId,
+        rf_model::engineering::BasisEntry,
+    >,
+    sources: &std::collections::BTreeMap<rf_types::SourceId, rf_model::engineering::SourceRecord>,
+) -> Result<(), TableError> {
+    for basis in basis_entries.values() {
         let id = basis.id.as_str();
         table.text("basis", id, "name", &basis.name);
         table.text("basis", id, "revision", basis.revision);
@@ -19,7 +56,7 @@ pub(super) fn append(
             basis.value.quantity,
         )?;
     }
-    for source in capture.sources.values() {
+    for source in sources.values() {
         let id = source.id.as_str();
         table.text("source", id, "revision", source.revision);
         for (field, value) in [
@@ -126,31 +163,11 @@ pub(super) fn append(
             }
         }
     }
-    for (field, ids) in [
-        ("assumedSource", candidate.assumed_sources()),
-        ("pendingReviewSource", candidate.pending_review_sources()),
-    ] {
-        for (index, id) in ids.iter().enumerate() {
-            table.text("limitation", "", &format!("{field}.{index}"), id);
-        }
-    }
-    for section in candidate.missing_axial_sections() {
-        table.text(
-            "limitation",
-            keys::axial(*section),
-            "unresolvedAxialSection",
-            "Missing or insufficient evidence; excluded from calculated total height.",
-        );
-    }
-    for (index, issue) in candidate.height_issues().iter().enumerate() {
-        table.text(
-            "heightIssue",
-            &index.to_string(),
-            "description",
-            issue_label(StudioShellLocale::En, issue),
-        );
-    }
-    for requirement in candidate.unchecked_requirements() {
+    Ok(())
+}
+
+pub(super) fn unchecked(table: &mut CalculationTable, requirements: &[UncheckedRequirement]) {
+    for requirement in requirements {
         let (key, description) = match requirement {
             UncheckedRequirement::PhaseEquilibrium => (
                 "phaseEquilibrium",
@@ -175,5 +192,4 @@ pub(super) fn append(
         };
         table.text("unchecked", key, "description", description);
     }
-    Ok(())
 }

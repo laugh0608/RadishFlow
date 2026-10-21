@@ -42,6 +42,7 @@ fn pending(app: &ReadyAppState) -> usize {
 pub(super) fn complete_case() -> (ReadyAppState, EquipmentEditorTarget, EquipmentEditorTarget) {
     let mut app = ready_app_state(&synced_workspace_config());
     app.start_independent_equipment_project();
+    app.create_equipment_task(equipment::EquipmentTaskMode::Sizing);
     assert_eq!(app.screen, StudioShellScreen::Equipment);
     assert!(app.platform_host.document().flowsheet.units.is_empty());
     let task = active(&app);

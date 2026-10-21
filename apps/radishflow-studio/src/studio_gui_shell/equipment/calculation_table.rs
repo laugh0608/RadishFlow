@@ -9,6 +9,8 @@ use serde::Serialize;
 
 mod evidence;
 mod keys;
+mod rating;
+pub(super) use rating::encode as encode_rating;
 
 #[derive(Debug, Clone, Copy)]
 pub(in crate::studio_gui_shell) enum CalculationTableFormat {

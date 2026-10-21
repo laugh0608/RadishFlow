@@ -8,7 +8,7 @@ fn pending_rating(name: &str) -> (ReadyAppState, PathBuf, Vec<u8>) {
         project_path: path.clone(),
         ..synced_workspace_config()
     });
-    // Exercise the application command; the new UI mode is intentionally not exposed yet.
+    // Exercise the same application command as the rating creation UI.
     app.equipment_command(EquipmentEditorCommand::CreateRatingTask);
     assert!(
         app.platform_host
@@ -247,7 +247,7 @@ fn rating_compatibility_modal_is_readable_in_both_languages_and_defaults_to_canc
 }
 
 #[test]
-fn loaded_rating_is_visible_and_preserved_without_exposing_the_unreviewed_editor() {
+fn loaded_rating_is_visible_and_preserved_with_the_approved_editor() {
     let path = test_preferences_path("rating-shell-loaded").with_extension("rfproj.json");
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     fs::write(
@@ -286,7 +286,7 @@ fn loaded_rating_is_visible_and_preserved_without_exposing_the_unreviewed_editor
         );
     }
     assert!(labels.contains("已有几何校核"), "{labels}");
-    assert!(labels.contains("将随工程完整保存"), "{labels}");
+    assert!(labels.contains("校核当前工况"), "{labels}");
     assert!(!labels.contains("计算尺寸"));
     app.save_project();
     assert!(app.pending_format_upgrade.is_none());

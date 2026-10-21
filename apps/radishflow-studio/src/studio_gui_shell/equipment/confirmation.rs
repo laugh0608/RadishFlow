@@ -21,7 +21,11 @@ impl ReadyAppState {
             } else if pending.is_delete() {
                 tr(locale, "确认删除记录", "Confirm record deletion")
             } else {
-                tr(locale, "确认共享记录变更", "Confirm shared record change")
+                tr(
+                    locale,
+                    "确认几何或共享记录变更",
+                    "Confirm geometry or shared record change",
+                )
             });
             egui::ScrollArea::vertical()
                 .max_height((ctx.screen_rect().height() - 180.0).max(100.0))
@@ -30,6 +34,20 @@ impl ReadyAppState {
                         ui.label(edit_error(locale, error));
                     }
                     for impact in pending.impacts() {
+                        let case_name = inputs
+                            .equipment_task(&impact.task_id)
+                            .and_then(|task| match task {
+                                rf_model::equipment::EquipmentTask::SeparatorSizing(task) => {
+                                    Some(task.case.name.as_str())
+                                }
+                                rf_model::equipment::EquipmentTask::SeparatorRating(task) => task
+                                    .cases
+                                    .iter()
+                                    .find(|case| case.id == impact.case_id)
+                                    .map(|case| case.name.as_str()),
+                            })
+                            .filter(|name| !name.trim().is_empty())
+                            .unwrap_or(impact.case_id.as_str());
                         let change = match (impact.input_changed, impact.evidence_changed) {
                             (true, true) => {
                                 tr(locale, "输入与证据变化", "Inputs and evidence change")
@@ -39,12 +57,13 @@ impl ReadyAppState {
                             (false, false) => tr(locale, "记录变化", "Record changes"),
                         };
                         ui.label(format!(
-                            "{} · {change} · {}",
+                            "{} / {} · {change} · {}",
                             target_label(
                                 locale,
                                 &EquipmentEditorTarget::Task(impact.task_id.clone()),
                                 &inputs
                             ),
+                            case_name,
                             tr(locale, "已有结果将过期", "Existing results become stale")
                         ));
                     }

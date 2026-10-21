@@ -223,9 +223,7 @@ impl ReadyAppState {
                 let equipment_project = self.equipment.new_project;
                 self.equipment = equipment::EquipmentPageState::default();
                 if equipment_project {
-                    self.equipment_command(
-                        rf_ui::engineering::editor::EquipmentEditorCommand::CreateTask,
-                    );
+                    self.equipment.creating_task = true;
                     self.enter_equipment();
                 }
                 if let Err(error) = self.apply_default_hidden_commands_panel_for_current_window() {

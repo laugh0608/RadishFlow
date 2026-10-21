@@ -2,6 +2,15 @@
 use super::*;
 use rf_types::units::{DisplayUnitSet, QuantityKind};
 use rf_ui::engineering::{EngineeringInputs, editor::*};
+mod applicability;
+mod binding;
+mod creation;
+mod fields;
+mod rating;
+mod rating_inputs;
+mod rating_labels;
+mod rating_results;
+pub(super) use creation::EquipmentTaskMode;
 mod calculation_table;
 mod confirmation;
 mod export;
@@ -12,6 +21,7 @@ mod source;
 mod task;
 mod widgets;
 pub(super) use calculation_table::CalculationTableFormat;
+use fields::EquipmentInputField;
 pub(super) use labels::target_label;
 use labels::*;
 use widgets::*;
@@ -27,17 +37,29 @@ pub(super) enum EquipmentSection {
 pub(super) struct EquipmentPageState {
     pub(super) pending_export: Option<export::PendingEquipmentExport>,
     pub(super) section: EquipmentSection,
-    source_return: Option<(EquipmentEditorTarget, Option<EquipmentField>)>,
-    focus_field: Option<EquipmentField>,
+    source_return: Option<(EquipmentEditorTarget, Option<EquipmentInputField>)>,
+    focus_field: Option<EquipmentInputField>,
     focus_source: bool,
     pub(super) new_project: bool,
+    pub(super) creating_task: bool,
+    task_mode: EquipmentTaskMode,
+    rating_scroll_top: bool,
+    source_readonly: bool,
 }
 impl ReadyAppState {
     pub(super) fn equipment_command(&mut self, command: EquipmentEditorCommand) {
-        let reset_section = matches!(command, EquipmentEditorCommand::CreateTask);
+        let reset_section = matches!(
+            command,
+            EquipmentEditorCommand::CreateTask | EquipmentEditorCommand::CreateRatingTask
+        );
         let select_task = matches!(
             command,
-            EquipmentEditorCommand::Select(EquipmentEditorTarget::Task(_))
+            EquipmentEditorCommand::Select(
+                EquipmentEditorTarget::Task(_)
+                    | EquipmentEditorTarget::RatingTask(_)
+                    | EquipmentEditorTarget::RatingGeometry(_)
+                    | EquipmentEditorTarget::RatingCase(_)
+            )
         );
         let focus_source = matches!(
             command,
@@ -65,20 +87,53 @@ impl ReadyAppState {
             Ok(_) => {
                 if select_task {
                     self.equipment.source_return = None;
+                    self.equipment.source_readonly = false;
                 }
                 if reset_section {
                     self.equipment.section = EquipmentSection::Inputs;
+                    self.equipment.source_return = None;
+                    self.equipment.source_readonly = false;
+                    self.equipment.focus_field = None;
                 }
                 if focus_source {
                     self.equipment.focus_source = true;
                 }
-                if create_related && let Some(target @ EquipmentEditorTarget::Task(_)) = origin {
+                if create_related
+                    && let Some(target) = origin.filter(|t| {
+                        matches!(t, EquipmentEditorTarget::Task(_)) || rating::task_id(t).is_some()
+                    })
+                {
+                    self.equipment.source_readonly = false;
                     self.equipment.source_return = Some((target, None));
                 }
             }
             Err(error) => self
                 .platform_host
                 .record_activity_line(error.message().to_owned()),
+        }
+    }
+    pub(in crate::studio_gui_shell) fn calculate_active_equipment(&mut self) {
+        let workspace = &self.platform_host.modeling_inputs().workspace;
+        let command = match workspace.equipment_editor.active() {
+            Some(EquipmentEditorTarget::Task(id)) => {
+                Some(EquipmentEditorCommand::Calculate(id.clone()))
+            }
+            Some(target) => rating::task_id(target)
+                .and_then(|id| workspace.engineering.inputs().rating_task(id))
+                .and_then(|task| match task.cases.as_slice() {
+                    [case] => Some(EquipmentEditorCommand::CalculateRating(
+                        rf_ui::engineering::EquipmentCaseKey {
+                            task_id: task.id.clone(),
+                            case_id: case.id.clone(),
+                        },
+                    )),
+                    _ => None,
+                }),
+            None => None,
+        };
+        if let Some(command) = command {
+            self.equipment_command(command);
+            self.equipment.section = EquipmentSection::Results;
         }
     }
     pub(super) fn enter_equipment(&mut self) {
@@ -99,6 +154,7 @@ impl ReadyAppState {
         let Some((target, field)) = self.equipment.source_return.take() else {
             return false;
         };
+        self.equipment.source_readonly = false;
         self.equipment.focus_field = field;
         self.equipment.section = EquipmentSection::Inputs;
         self.equipment_command(EquipmentEditorCommand::Select(target));
@@ -132,42 +188,56 @@ impl ReadyAppState {
                 "设备设计 · 独立单工况",
                 "Equipment design · independent single case",
             ));
-            ui.horizontal_wrapped(|ui| {
-                for (label, command, enabled) in [
-                    (
-                        tr(locale, "新建设备", "New equipment"),
-                        EquipmentEditorCommand::CreateTask,
-                        true,
-                    ),
-                    (
-                        tr(locale, "新建来源", "New source"),
-                        EquipmentEditorCommand::CreateSource,
-                        true,
-                    ),
-                    (
-                        tr(locale, "新建基础条目", "New basis entry"),
-                        EquipmentEditorCommand::NewBasis,
-                        true,
-                    ),
-                    (
-                        tr(locale, "撤销设备修改", "Undo equipment change"),
-                        EquipmentEditorCommand::History { redo: false },
-                        session.can_undo(),
-                    ),
-                    (
-                        tr(locale, "重做设备修改", "Redo equipment change"),
-                        EquipmentEditorCommand::History { redo: true },
-                        session.can_redo(),
-                    ),
-                ] {
-                    if ui.add_enabled(enabled, egui::Button::new(label)).clicked() {
-                        commands.push(command);
+            let compact = !sidebar
+                && editor
+                    .active()
+                    .is_some_and(|t| rating::task_id(t).is_some());
+            let mut toolbar = |ui: &mut egui::Ui| {
+                ui.horizontal_wrapped(|ui| {
+                    if ui.button(tr(locale, "新建设备", "New equipment")).clicked() {
+                        self.equipment.creating_task = true;
                     }
-                }
-                if ui.button(tr(locale, "保存工程", "Save project")).clicked() {
-                    self.save_project();
-                }
-            });
+                    for (label, command, enabled) in [
+                        (
+                            tr(locale, "新建来源", "New source"),
+                            EquipmentEditorCommand::CreateSource,
+                            true,
+                        ),
+                        (
+                            tr(locale, "新建基础条目", "New basis entry"),
+                            EquipmentEditorCommand::NewBasis,
+                            true,
+                        ),
+                        (
+                            tr(locale, "撤销设备修改", "Undo equipment change"),
+                            EquipmentEditorCommand::History { redo: false },
+                            session.can_undo(),
+                        ),
+                        (
+                            tr(locale, "重做设备修改", "Redo equipment change"),
+                            EquipmentEditorCommand::History { redo: true },
+                            session.can_redo(),
+                        ),
+                    ] {
+                        if ui.add_enabled(enabled, egui::Button::new(label)).clicked() {
+                            commands.push(command);
+                        }
+                    }
+                    if ui.button(tr(locale, "保存工程", "Save project")).clicked() {
+                        self.save_project();
+                    }
+                });
+            };
+            if compact {
+                egui::CollapsingHeader::new(tr(
+                    locale,
+                    "任务与工程操作",
+                    "Task and project actions",
+                ))
+                .show(ui, toolbar);
+            } else {
+                toolbar(ui);
+            }
             if !sidebar {
                 egui::CollapsingHeader::new(tr(locale, "设备任务与工程基础", "Tasks and basis"))
                     .default_open(editor.active().is_none())
@@ -183,18 +253,29 @@ impl ReadyAppState {
                 ));
                 return;
             };
+            if rating::task_id(&target).is_some() {
+                self.render_equipment_rating(
+                    ui,
+                    &target,
+                    &editor,
+                    &session,
+                    &units,
+                    &mut commands,
+                    &mut export_request,
+                );
+                return;
+            }
+            if self.equipment.source_readonly && matches!(target, EquipmentEditorTarget::Source(_))
+            {
+                self.render_equipment_source_snapshot(ui, &target, inputs, &units, &mut commands);
+                return;
+            }
             let Some(record) = editor.draft(&target) else {
                 return;
             };
             let mut draft = record.value().clone();
             ui.separator();
             ui.heading(target_label(locale, &target, inputs));
-            if matches!(target, EquipmentEditorTarget::RatingTask(_) | EquipmentEditorTarget::RatingGeometry(_) | EquipmentEditorTarget::RatingCase(_)) {
-                ui.label(tr(locale,
-                    "校核任务已载入，将随工程完整保存。此版本暂不提供校核编辑与结果视图。",
-                    "The rating task is loaded and will be preserved when saving. Rating editing and result views are not available in this version."));
-                return;
-            }
             if let EquipmentEditorTarget::Task(id) = &target
                 && let Some(task) = inputs.task(id)
             {
@@ -227,7 +308,9 @@ impl ReadyAppState {
                         EquipmentEditorCommand::Delete(target.clone()),
                         match &target {
                             EquipmentEditorTarget::Task(id) => inputs.task(id).is_some(),
-                            EquipmentEditorTarget::RatingTask(_) | EquipmentEditorTarget::RatingGeometry(_) | EquipmentEditorTarget::RatingCase(_) => false,
+                            EquipmentEditorTarget::RatingTask(_)
+                            | EquipmentEditorTarget::RatingGeometry(_)
+                            | EquipmentEditorTarget::RatingCase(_) => false,
                             EquipmentEditorTarget::Source(id) => {
                                 inputs.basis.sources.iter().any(|s| s.id == *id)
                             }
@@ -380,6 +463,7 @@ impl ReadyAppState {
             self.export_equipment_from_picker(&id, format);
         }
         self.render_equipment_confirmation(ctx);
+        self.render_equipment_creation(ctx);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -393,7 +477,7 @@ impl ReadyAppState {
         session: &rf_ui::engineering::EngineeringSession,
         units: &DisplayUnitSet,
         allow_results: bool,
-        open_source: &mut Option<(rf_types::SourceId, Option<EquipmentField>)>,
+        open_source: &mut Option<(rf_types::SourceId, Option<EquipmentInputField>)>,
     ) {
         let section = if allow_results {
             self.equipment.section
@@ -412,7 +496,7 @@ impl ReadyAppState {
                     if let EquipmentEditError::Field(field, _) = error
                         && ui.button(tr(locale, "定位输入", "Go to input")).clicked()
                     {
-                        self.equipment.focus_field = Some(*field);
+                        self.equipment.focus_field = Some((*field).into());
                         self.equipment.section = EquipmentSection::Inputs;
                     }
                 }
@@ -456,11 +540,7 @@ impl ReadyAppState {
                     EquipmentDraft::RatingTask(_)
                     | EquipmentDraft::RatingGeometry(_)
                     | EquipmentDraft::RatingCase(_) => {
-                        ui.label(tr(
-                            locale,
-                            "校核编辑暂不可用。",
-                            "Rating editing is not available.",
-                        ));
+                        unreachable!("rating drafts are rendered by the dedicated rating page");
                     }
                     EquipmentDraft::Source(draft) => {
                         let focus = std::mem::take(&mut self.equipment.focus_source);
@@ -475,16 +555,16 @@ impl ReadyAppState {
     fn equipment_issue_target(
         &mut self,
         target: separator_sizing::IssueTarget,
-        open_source: &mut Option<(rf_types::SourceId, Option<EquipmentField>)>,
+        open_source: &mut Option<(rf_types::SourceId, Option<EquipmentInputField>)>,
     ) {
         use separator_sizing::IssueTarget;
         self.equipment.section = EquipmentSection::Inputs;
         match target {
             IssueTarget::Input(field) => {
-                self.equipment.focus_field = Some(EquipmentField::Input(field))
+                self.equipment.focus_field = Some(EquipmentField::Input(field).into())
             }
             IssueTarget::AxialSection(field) => {
-                self.equipment.focus_field = Some(EquipmentField::Axial(field))
+                self.equipment.focus_field = Some(EquipmentField::Axial(field).into())
             }
             IssueTarget::Source(id) => *open_source = Some((id, None)),
             _ => {}
@@ -497,9 +577,9 @@ impl ReadyAppState {
         issue: &separator_sizing::SizingIssue,
     ) {
         use separator_sizing::IssueTarget;
-        let field = match issue.target {
-            IssueTarget::Input(field) => Some(EquipmentField::Input(field)),
-            IssueTarget::AxialSection(field) => Some(EquipmentField::Axial(field)),
+        let field: Option<EquipmentInputField> = match issue.target {
+            IssueTarget::Input(field) => Some(EquipmentField::Input(field).into()),
+            IssueTarget::AxialSection(field) => Some(EquipmentField::Axial(field).into()),
             _ => None,
         };
         if let Some(field) = field {

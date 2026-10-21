@@ -1,4 +1,54 @@
 use super::*;
+
+impl ReadyAppState {
+    pub(super) fn render_equipment_source_snapshot(
+        &mut self,
+        ui: &mut egui::Ui,
+        target: &EquipmentEditorTarget,
+        inputs: &EngineeringInputs,
+        units: &DisplayUnitSet,
+        commands: &mut Vec<EquipmentEditorCommand>,
+    ) {
+        let EquipmentEditorTarget::Source(id) = target else {
+            return;
+        };
+        ui.heading(tr(
+            self.locale,
+            "来源详情 · 正式记录",
+            "Source details · committed record",
+        ));
+        ui.horizontal_wrapped(|ui| {
+            if ui
+                .button(tr(self.locale, "返回输入字段", "Return to input field"))
+                .clicked()
+                && let Some((target, field)) = self.equipment.source_return.take()
+            {
+                self.equipment.source_readonly = false;
+                self.equipment.focus_field = field;
+                self.equipment.section = EquipmentSection::Inputs;
+                commands.push(EquipmentEditorCommand::Select(target));
+            }
+            if ui
+                .button(tr(self.locale, "编辑来源", "Edit source"))
+                .clicked()
+            {
+                self.equipment.source_readonly = false;
+            }
+        });
+        if let Some(source) = inputs.basis.sources.iter().find(|s| s.id == *id) {
+            egui::ScrollArea::vertical()
+                .id_salt(("rating-source", id))
+                .show(ui, |ui| {
+                    results::render_sources(
+                        ui,
+                        self.locale,
+                        &std::collections::BTreeMap::from([(id.clone(), source.clone())]),
+                        units,
+                    );
+                });
+        }
+    }
+}
 use rf_model::engineering::*;
 
 pub(super) fn render(

@@ -12,7 +12,7 @@ use rf_model::{
     equipment::SeparatorSizingTask,
 };
 use rf_types::units::{ConversionError, DisplayUnitSet};
-pub use rf_unitops::separator_sizing;
+pub use rf_unitops::{separator_rating, separator_sizing};
 use separator_sizing::SizingIssue;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
