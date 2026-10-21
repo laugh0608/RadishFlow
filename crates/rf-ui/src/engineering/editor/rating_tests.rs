@@ -346,7 +346,7 @@ fn rating_unit_roundtrip_keeps_exact_formal_geometry_and_metadata_edits_keep_cur
         EquipmentResultStatus::Current
     );
     assert_eq!(
-        s.current_rating(&member()).unwrap().capture().task.name,
+        s.current_rating(&member()).unwrap().capture().input.name,
         before.name
     );
 }

@@ -161,8 +161,8 @@ fn labels_update_persisted_revisions_without_invalidating_current_rating() {
         EquipmentResultStatus::Current
     );
     assert_eq!(
-        s.current_rating(&member()).unwrap().capture().task,
-        original
+        s.current_rating(&member()).unwrap().capture().input,
+        original.case_input(&member().case_id).unwrap()
     );
     assert!(s.is_dirty());
 }

@@ -6,6 +6,23 @@ pub fn calculate(
     basis: &EngineeringBasis,
 ) -> Result<SeparatorRatingResult, RatingFailure> {
     let (capture, height_issues) = evidence::prepare(task, basis)?;
+    calculate_capture(capture, height_issues)
+}
+
+/// Calculate only the explicitly requested member of a version 1 or 2 task.
+pub fn calculate_case(
+    task: &SeparatorRatingTask,
+    case_id: &EngineeringCaseId,
+    basis: &EngineeringBasis,
+) -> Result<SeparatorRatingResult, RatingFailure> {
+    let (capture, height_issues) = evidence::prepare_case(task, case_id, basis)?;
+    calculate_capture(capture, height_issues)
+}
+
+fn calculate_capture(
+    capture: RatingInputCapture,
+    height_issues: Vec<RatingIssue>,
+) -> Result<SeparatorRatingResult, RatingFailure> {
     use CalculationStep::*;
     use SeparatorRatingInput::*;
     let v = |field| capture.values_si[&field];

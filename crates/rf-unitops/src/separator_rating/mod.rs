@@ -1,8 +1,9 @@
-//! Conditional single-case checks against given separator geometry. Exceeded
+//! Conditional explicit-case checks against given separator geometry. Exceeded
 //! criteria are successful calculations, not failures. No IO, session validity,
 //! persistence, flowsheet coupling or geometry adoption occurs here.
 mod calculation;
 mod evidence;
+mod matrix;
 #[cfg(test)]
 mod tests;
 
@@ -14,11 +15,21 @@ use rf_types::{BasisEntryId, EngineeringCaseId, SourceId};
 use std::collections::BTreeMap;
 
 pub use crate::separator_evidence::UncheckedRequirement;
-pub use calculation::calculate;
-pub use evidence::check;
+pub use calculation::{calculate, calculate_case};
+pub use evidence::{check, check_case};
+pub use matrix::*;
 
 pub const METHOD_ID: &str = "radishflow.separator.vertical-sb-working-volume-rating";
 pub const METHOD_VERSION: u32 = 1;
+pub const MATRIX_METHOD_VERSION: u32 = 2;
+
+/// Version 2 extends membership, retaining the version 1 physical relations.
+pub fn matrix_method() -> EquipmentMethod {
+    EquipmentMethod {
+        id: METHOD_ID.into(),
+        version: MATRIX_METHOD_VERSION,
+    }
+}
 /// Absolute distance from a dimensionless load of 1. Numerical comparison only,
 /// never an engineering margin or uncertainty budget.
 pub const LOAD_BOUNDARY_TOLERANCE: f64 = 1e-10;
@@ -175,7 +186,7 @@ impl SeparatorPerformance {
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct RatingInputCapture {
-    pub task: SeparatorRatingTask,
+    pub input: SeparatorRatingCaseInput,
     pub geometry_values_m: BTreeMap<SeparatorGeometryInput, f64>,
     pub values_si: BTreeMap<SeparatorRatingInput, f64>,
     pub axial_lengths_m: BTreeMap<SeparatorAxialSection, f64>,

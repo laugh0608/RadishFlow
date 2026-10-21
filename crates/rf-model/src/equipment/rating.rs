@@ -96,6 +96,33 @@ pub struct SeparatorRatingTask {
     pub method: EquipmentMethod,
     pub geometry: SeparatorGivenGeometry,
     /// Ordered, nonempty membership validated with the task identities. Method
-    /// version 1 accepts exactly one case; future methods must opt into more.
+    /// version 1 accepts exactly one case; version 2 supports finite membership.
     pub cases: Vec<SeparatorRatingCase>,
+}
+
+/// Owned input for one explicitly selected case. Other members are deliberately
+/// absent; this record carries neither execution policy nor result eligibility.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SeparatorRatingCaseInput {
+    pub task_id: EquipmentTaskId,
+    pub task_revision: u64,
+    pub tag: String,
+    pub name: String,
+    pub method: EquipmentMethod,
+    pub geometry: SeparatorGivenGeometry,
+    pub case: SeparatorRatingCase,
+}
+impl SeparatorRatingTask {
+    pub fn case_input(&self, id: &EngineeringCaseId) -> Option<SeparatorRatingCaseInput> {
+        let case = self.cases.iter().find(|case| case.id == *id)?;
+        Some(SeparatorRatingCaseInput {
+            task_id: self.id.clone(),
+            task_revision: self.revision,
+            tag: self.tag.clone(),
+            name: self.name.clone(),
+            method: self.method.clone(),
+            geometry: self.geometry.clone(),
+            case: case.clone(),
+        })
+    }
 }

@@ -40,7 +40,7 @@ fn override_preserves_original_basis_without_adopting_its_inactive_evidence() {
     task.geometry.inputs.insert(field, binding.clone());
     let result = calculate(&task, &basis).unwrap();
     near(result.performance().given_area_m2, 1.0);
-    assert_eq!(result.capture().task.geometry.inputs[&field], binding);
+    assert_eq!(result.capture().input.geometry.inputs[&field], binding);
     assert_eq!(result.capture().basis_entries[&entry.id], entry);
     assert_eq!(result.capture().sources[&original.id], original);
     assert!(result.pending_review_sources().contains(&original.id));
@@ -120,7 +120,10 @@ fn result_is_an_owned_snapshot_of_referenced_values_bindings_and_revisions() {
     unrelated.kind = SourceKind::Unknown;
     basis.sources.push(unrelated);
     let result = calculate(&task, &basis).unwrap();
-    assert_eq!(result.capture().task, task);
+    assert_eq!(
+        result.capture().input,
+        task.case_input(&task.cases[0].id).unwrap()
+    );
     assert_eq!(result.capture().basis_entries[&entry.id], entry);
     assert_eq!(result.capture().sources.len(), 2);
     assert_eq!(result.assumed_sources(), &["operating".into()]);

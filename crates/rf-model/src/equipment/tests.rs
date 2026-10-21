@@ -151,3 +151,23 @@ fn rating_identities_are_case_sensitive_and_labels_are_not_keys() {
         EquipmentIdentityErrorKind::DuplicateCaseId
     );
 }
+
+#[test]
+fn explicit_rating_case_input_owns_only_selected_member_and_shared_geometry() {
+    let mut task = rating("rating", "first", "V-101");
+    let mut second = task.cases[0].clone();
+    second.id = "second".into();
+    second.name = "Selected".into();
+    task.cases.push(second.clone());
+    let input = task.case_input(&second.id).unwrap();
+    assert_eq!(input.case, second);
+    assert_eq!(input.geometry, task.geometry);
+    assert_eq!(input.task_id, task.id);
+    assert!(task.case_input(&"absent".into()).is_none());
+    task.cases.reverse();
+    assert_eq!(input, task.case_input(&second.id).unwrap());
+    task.cases[0].name = "Changed".into();
+    task.geometry.revision += 1;
+    assert_eq!(input.case.name, "Selected");
+    assert_ne!(input.geometry, task.geometry);
+}

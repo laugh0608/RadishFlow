@@ -56,8 +56,8 @@ fn render_result(
 ) -> Option<RatingIssueTarget> {
     let p = result.performance();
     let capture = result.capture();
-    let task = &capture.task;
-    let case = task.cases.first().expect("single-case rating result");
+    let task = &capture.input;
+    let case = &task.case;
     let mut requested = None;
     ui.heading(rating_labels::conclusion(l, p.conclusion()));
     ui.label(tr(
@@ -209,7 +209,7 @@ fn render_result(
         .show(ui, |ui| {
             ui.label(format!("{} · {} · {}", task.tag, case.name, case.fluid_system));
             ui.label(format!("{} v{}", task.method.id, task.method.version));
-            ui.label(format!("{} / {} / {}", task.id, case.id, task.geometry.revision));
+            ui.label(format!("{} / {} / {}", task.task_id, case.id, task.geometry.revision));
             for (field, value) in &capture.geometry_values_m {
                 ui.label(format!("{}：{}", geometry_field_label(l, *field), results::format_value(*value, field.quantity(), units)));
                 if let Some(binding) = task.geometry.inputs.get(field) {

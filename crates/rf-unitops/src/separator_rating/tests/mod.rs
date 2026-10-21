@@ -3,6 +3,7 @@ use rf_model::engineering::*;
 use rf_types::{SourceObservationId, units::*};
 
 mod evidence;
+mod matrix;
 mod numerical;
 mod provenance;
 

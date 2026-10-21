@@ -22,10 +22,21 @@ pub fn check(task: &SeparatorRatingTask, basis: &EngineeringBasis) -> Vec<Rating
     }
 }
 
-pub(super) fn prepare(
+pub fn check_case(
     task: &SeparatorRatingTask,
+    case_id: &EngineeringCaseId,
     basis: &EngineeringBasis,
-) -> Result<(RatingInputCapture, Vec<RatingIssue>), RatingFailure> {
+) -> Vec<RatingIssue> {
+    match prepare_case(task, case_id, basis) {
+        Ok(_) => Vec::new(),
+        Err(failure) => failure.issues,
+    }
+}
+
+pub(super) fn validate_task(
+    task: &SeparatorRatingTask,
+    allow_matrix: bool,
+) -> Result<(), RatingFailure> {
     let mut issues = Vec::new();
     if let Err(error) = validate_separator_rating_identities(std::slice::from_ref(task)) {
         issue(
@@ -34,15 +45,17 @@ pub(super) fn prepare(
             RatingIssueKind::InvalidIdentity(error.kind),
         );
     }
-    if task.method != method() {
+    if task.method != method() && !(allow_matrix && task.method == matrix_method()) {
         issue(
             &mut issues,
             RatingIssueTarget::Method,
             RatingIssueKind::UnsupportedMethod,
         );
     }
-    // Version 1 is single-case. Never take the first row and discard other inputs.
-    if task.cases.len() != 1 {
+    if task.cases.is_empty()
+        || (task.method == method() && task.cases.len() != 1)
+        || (!allow_matrix && task.cases.len() != 1)
+    {
         issue(
             &mut issues,
             RatingIssueTarget::Task,
@@ -50,9 +63,42 @@ pub(super) fn prepare(
                 actual: task.cases.len(),
             },
         );
-        return Err(RatingFailure { issues });
     }
-    let case = &task.cases[0];
+    if issues.is_empty() {
+        Ok(())
+    } else {
+        Err(RatingFailure { issues })
+    }
+}
+
+/// Preserve the original single-case version 1 entry point.
+pub(super) fn prepare(
+    task: &SeparatorRatingTask,
+    basis: &EngineeringBasis,
+) -> Result<(RatingInputCapture, Vec<RatingIssue>), RatingFailure> {
+    validate_task(task, false)?;
+    prepare_case(task, &task.cases[0].id, basis)
+}
+pub(super) fn prepare_case(
+    task: &SeparatorRatingTask,
+    case_id: &EngineeringCaseId,
+    basis: &EngineeringBasis,
+) -> Result<(RatingInputCapture, Vec<RatingIssue>), RatingFailure> {
+    validate_task(task, true)?;
+    let input = task.case_input(case_id).ok_or_else(|| RatingFailure {
+        issues: vec![RatingIssue {
+            target: RatingIssueTarget::Case(case_id.clone()),
+            kind: RatingIssueKind::MissingInput,
+        }],
+    })?;
+    prepare_input(input, basis)
+}
+fn prepare_input(
+    input: SeparatorRatingCaseInput,
+    basis: &EngineeringBasis,
+) -> Result<(RatingInputCapture, Vec<RatingIssue>), RatingFailure> {
+    let mut issues = Vec::new();
+    let case = &input.case;
     if case.fluid_system.trim().is_empty() {
         issue(
             &mut issues,
@@ -60,7 +106,7 @@ pub(super) fn prepare(
             RatingIssueKind::MissingInput,
         );
     }
-    check_applicability(task, case, &mut issues);
+    check_applicability(&input.geometry, case, &mut issues);
     if let Err(error) = basis.validate() {
         issue(
             &mut issues,
@@ -70,7 +116,7 @@ pub(super) fn prepare(
         return Err(RatingFailure { issues });
     }
     let mut capture = RatingInputCapture {
-        task: task.clone(),
+        input: input.clone(),
         geometry_values_m: BTreeMap::new(),
         values_si: BTreeMap::new(),
         axial_lengths_m: BTreeMap::new(),
@@ -137,7 +183,7 @@ pub(super) fn prepare(
     }
     for field in SeparatorGeometryInput::ALL {
         let target = RatingIssueTarget::GeometryInput(field);
-        let Some(binding) = task.geometry.inputs.get(&field) else {
+        let Some(binding) = input.geometry.inputs.get(&field) else {
             issue(&mut issues, target, RatingIssueKind::MissingInput);
             continue;
         };
@@ -172,7 +218,7 @@ pub(super) fn prepare(
     // Optional documentary gaps leave height unknown. Structural errors and
     // invalid lengths remain blocking even when the source is also incomplete.
     let mut height_issues = Vec::new();
-    for (&section, binding) in &task.geometry.axial_sections {
+    for (&section, binding) in &input.geometry.axial_sections {
         let target = RatingIssueTarget::AxialSection(section);
         let mut section_issues = Vec::new();
         let value = resolve(
@@ -213,7 +259,7 @@ pub(super) fn prepare(
         }
     }
     scope_evidence(
-        &task.geometry.applicability_source_ids,
+        &input.geometry.applicability_source_ids,
         SourceUse::General,
         RatingIssueTarget::Geometry,
         basis,
@@ -236,7 +282,7 @@ pub(super) fn prepare(
 }
 
 fn check_applicability(
-    task: &SeparatorRatingTask,
+    geometry: &SeparatorGivenGeometry,
     case: &SeparatorRatingCase,
     issues: &mut Vec<RatingIssue>,
 ) {
@@ -255,7 +301,7 @@ fn check_applicability(
             issue(issues, target, kind);
         }
     }
-    let a = &task.geometry.applicability;
+    let a = &geometry.applicability;
     let geometry = RatingIssueTarget::GeometryApplicability;
     require(
         a.orientation,
@@ -388,7 +434,7 @@ fn check_conditions(
     issues: &mut Vec<RatingIssue>,
 ) {
     let context = OperatingContext {
-        fluid_system: &capture.task.cases[0].fluid_system,
+        fluid_system: &capture.input.case.fluid_system,
         temperature_k: capture
             .values_si
             .get(&SeparatorRatingInput::OperatingTemperature)

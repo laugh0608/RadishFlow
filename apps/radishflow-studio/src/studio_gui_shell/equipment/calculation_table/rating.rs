@@ -12,14 +12,14 @@ pub(in super::super) fn encode(
     format: CalculationTableFormat,
 ) -> Result<String, TableError> {
     let capture = result.capture();
-    let task = &capture.task;
-    let case = task.cases.first().expect("successful single-case rating");
+    let task = &capture.input;
+    let case = &task.case;
     let current_case = current_task
         .cases
         .iter()
         .find(|c| c.id == case.id)
         .expect("qualified current rating case");
-    let id = task.id.as_str();
+    let id = task.task_id.as_str();
     let case_id = case.id.as_str();
     let mut table = CalculationTable {
         format: "radishflow.separator-rating-table",
@@ -48,7 +48,7 @@ pub(in super::super) fn encode(
         table.text("task", id, key, value);
     }
     table.text("task", id, "revision", current_task.revision);
-    table.text("task", id, "capturedRevision", task.revision);
+    table.text("task", id, "capturedRevision", task.task_revision);
     table.text("task", id, "methodVersion", task.method.version);
     table.text("geometry", id, "revision", task.geometry.revision);
     table.text(

@@ -45,11 +45,11 @@
 | 运行、消息与诊断 | Draft | 当前问题、执行事件、状态联动及 N0—N5 运行控制规划；已有恢复保持 | [运行与诊断](runtime-messages-and-diagnostics.md) |
 | 项目生命周期与存储 | Active | 明确打开、保存、另存为、最近项目、sidecar 和脏改确认的长期边界 | `project-lifecycle-storage.md` |
 | CAPE-OPEN PMC 适配层 | Active | 完善 `.NET 10` PMC 生命周期与调用可靠性，保持 COM 注册和 PME 验证基线 | `capeopen-pmc-adapter.md` |
-| 工程设计基础、工况与数据来源 | Draft | 共享基础 / 来源、单工况与设备事务已实现；通用工况矩阵后续推进 | [工程基础](engineering-basis-and-cases.md) |
+| 工程设计基础、工况与数据来源 | Draft | 共享基础 / 来源、单工况与设备事务已实现；G2-B1 逐行计算 / 汇总完成，矩阵产品待接入 | [工程基础](engineering-basis-and-cases.md) |
 | 单位系统与输入显示 | Active | U1、U2-I1—I4 与 U3 首批结果 / 输出已接通；I5 按确认节点补验 | [单位系统](units-and-quantity-system.md) |
 | 颜色与状态系统 | Active | V0 首批数值字段及设置 / 保存已接通；其他消费者和运行态验收待续 | [颜色与状态](color-and-state-system.md) |
 | 规格分析与建模辅助 | Draft | 分层规格 / 自由度检查、可解释规则与固定工作流、未来 Agent 入口 | [建模辅助](modeling-assistance-and-specifications.md) |
-| 设备设计与性能校核 | Draft | 独立分离器首批计算 / UI / 保存 / 计算表导出已实现；流程关联、校核与采纳后续推进 | [设备工程](equipment-design-and-rating.md) |
+| 设备设计与性能校核 | Draft | 独立分离器尺寸 / 校核、UI / 保存 / 导出已实现；G2-B1 完成、矩阵画板待认可，流程关联与采纳后续 | [设备工程](equipment-design-and-rating.md) |
 
 UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-plan.md)，承载 R0—R2 功能分区重评与 Pencil 设计验收，不以画稿完成冒充代码实现。
 
