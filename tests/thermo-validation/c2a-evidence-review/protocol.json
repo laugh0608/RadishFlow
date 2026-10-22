@@ -1,0 +1,40 @@
+{
+  "schema": "radishflow.c2a-evidence-review-protocol",
+  "version": 1,
+  "frozen_on": "2026-10-22",
+  "baseline_commit": "196c5d54",
+  "baseline_manifest_sha256": "cfa4cece8569094645b4b4f7ef7f486b619a4d9fafd0b4c25acb1c2eeacd2015",
+  "scope": "Reference phase-label diagnosis and additional independent measurements only; no C2-B/C3 runtime implementation",
+  "domain_and_thresholds": "Use ../c2a-pr76/protocol.json unchanged; keep original results and all failed checks",
+  "phase_audit": {
+    "versions": [
+      "8.0.0",
+      "7.2.0"
+    ],
+    "version_comparison_role": "diagnostic, never an automatic replacement oracle",
+    "cases": "all baseline binary states and pure TP states, including originally excluded states",
+    "operations": [
+      "fresh unconstrained TP",
+      "same state repeated TP",
+      "imposed gas TP",
+      "imposed liquid TP",
+      "pure-fluid DmolarT round-trip only"
+    ],
+    "independent_algebra": "PR polynomial and homogeneous composition Gibbs ordering; not a new flash solver or global mixture stability proof"
+  },
+  "experimental_selection": {
+    "je0496701": [
+      1,
+      2
+    ],
+    "j.jct.2004.07.017": [
+      11,
+      13,
+      14
+    ]
+  },
+  "joins": "exact reported temperature and liquid propane mole fraction for VLE; keep unmatched pressure rows as unpaired, no interpolation",
+  "vle_selection": "paired rows: baseline T/P/z with z=(x+y)/2; retain every exclusion; bubble P and y plus TP x/y/beta",
+  "gas_density_selection": "n-butane: original measurement T/P domain; generic Fluid branch by measured density relative to frozen critical density; saturation rows by T and measured saturation P, no inferred pressure for scoring",
+  "policy": "New sources may extend evidence but cannot erase failures, relax criteria, fit parameters, relabel raw reference outputs, or authorize a validated domain."
+}

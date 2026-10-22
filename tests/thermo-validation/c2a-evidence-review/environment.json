@@ -1,0 +1,51 @@
+{
+  "python": "3.14.5",
+  "implementation": "CPython",
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "coolprop_git_revision": "ae81610e7d23efc57f9d051c8e70a4d66e87537f",
+  "packages": [
+    {
+      "name": "CoolProp",
+      "version": "8.0.0",
+      "download": {
+        "url": "https://files.pythonhosted.org/packages/33/d1/5eef80c184dc2ed99b01776ba0755f45248cddfd2e0d45e8accc025d6fd9/coolprop-8.0.0-cp312-abi3-macosx_11_0_arm64.whl",
+        "archive_info": {
+          "hashes": {
+            "sha256": "46de36f51330ce8c7f8384a7360e1058739d20604736158aac6bd2abf6ae26bd"
+          },
+          "hash": "sha256=46de36f51330ce8c7f8384a7360e1058739d20604736158aac6bd2abf6ae26bd"
+        }
+      }
+    },
+    {
+      "name": "numpy",
+      "version": "2.5.4",
+      "download": {
+        "url": "https://files.pythonhosted.org/packages/d5/b2/c6ce165acffceb15a82c07b9cc77d391f86b3f379ba62911908ae5d34b91/numpy-2.5.4-cp314-cp314-macosx_14_0_arm64.whl",
+        "archive_info": {
+          "hashes": {
+            "sha256": "956555e0603a4d38019ae6925711cb9dc43195c076a928accf7ea5d50bddfe53"
+          },
+          "hash": "sha256=956555e0603a4d38019ae6925711cb9dc43195c076a928accf7ea5d50bddfe53"
+        }
+      }
+    }
+  ],
+  "scope": "isolated offline validation; not product runtime; downloaded wheels used without source build",
+  "diagnostic_CoolProp_7_2": [
+    {
+      "name": "CoolProp",
+      "version": "7.2.0",
+      "download": {
+        "url": "https://files.pythonhosted.org/packages/56/8f/db1089a898c397e16ccdade6ad0d2ecb0fb401c5abb6753a4b17f05799d1/coolprop-7.2.0-cp314-cp314-macosx_11_0_arm64.whl",
+        "archive_info": {
+          "hashes": {
+            "sha256": "64e22e0c7f10151103105978732f2be8ffc2ed9412bcdc2af5ae2b5757581a06"
+          },
+          "hash": "sha256=64e22e0c7f10151103105978732f2be8ffc2ed9412bcdc2af5ae2b5757581a06"
+        }
+      }
+    }
+  ],
+  "isolation": "8.0.0 in target/c2a-venv; 7.2.0 via separate PYTHONPATH target/c2a-coolprop72, no product dependencies changed"
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "radishflow.c2a-evidence-review-integrity",
+  "version": 1,
+  "accepted_baseline_commit": "196c5d54",
+  "files": {
+    ".gitignore": "32dae3052f331ee34d628ef535709b301259a45df7c7522c4d35dcf49873f00b",
+    "README.md": "506bc34dcc8f36e7a72edb0755994a2813d5c61fae4c1eb9e82224b763669bf4",
+    "THIRD_PARTY_NOTICES.md": "c6afd80af0fb6cbc43cbe5441853add6e53e3b6d81c3daf08b18141c6b5c82cc",
+    "common.py": "e960c13a88b7a31bc7df429d34e4d7b03f098b0aec7b3bd66901b6155a780bf7",
+    "diagnostic-sources.json": "d5655cfeb4b0bca443c18b83434576a06b7b6b5d35f5148bf51c61d83367622f",
+    "environment.json": "60031f86d4dae2f55382c46ffc63ffd56155aae7ed6f8c58a3240d647e3f35a7",
+    "experimental-data.json": "2731d7dec89e71bfbd23227d41fe5a990d1d9954ea127c1e694130565a50f679",
+    "experimental-results.json": "87c3b3d1b41c7705972833ec44846127ff17ecca951ac65fa9d4024783bb9a28",
+    "experiments.py": "7d99a8e5762ab74b8b8ced1803a7f7fb4399b66d6b1b393c1edccf6f1c89088d",
+    "phase-7.2.0.json": "5da0fa1db0d8b5a6b761b30a6a57eba51ac19f5a39ba3c980569609310a06b8e",
+    "phase-8.0.0.json": "32cbc3ceca460e7f94c9e6f6e3300eeefe2275878a579ab5fc8e509a5e7170fc",
+    "phase_audit.py": "2b4357acbffd5f02d8d4568efc19757f3ad326e3a97e444e742cfbe0e5eb88b6",
+    "protocol.json": "d774c291ec7438fdb8d7a43a51232a695940eb2efd32ffc610d7af76a78d7a70",
+    "sources.json": "0f0f39fc4ba2ed9866d8ed72a8257901210a3ff2fea6634e43a36334ced5b6e7",
+    "summarize.py": "a3660e76f1fdef87e28b3c04471f1927af798aaef3b4ca59938c6ad69f7bd553",
+    "summary.json": "ce939f21bb5899159e59e41304e98618f115b28dd1e966a362233f9f99045a03",
+    "test_review.py": "f9c654ea12077a435e04f8a201a2fbf8be999631f9e9e2fc1de9dfd88006059d"
+  }
+}

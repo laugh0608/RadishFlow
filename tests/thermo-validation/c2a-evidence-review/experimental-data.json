@@ -1,0 +1,1279 @@
+{
+  "schema": "radishflow.c2a-experiments",
+  "version": 1,
+  "datasets": [
+    {
+      "id": "je0496701/d1",
+      "source_id": "je0496701",
+      "dataset_number": 1,
+      "components": [
+        "Propane",
+        "n-Butane"
+      ],
+      "property": "pressure_pa",
+      "original_property_label": "Vapor or sublimation pressure, kPa",
+      "conversion_factor": 1000.0,
+      "property_phase": "Liquid",
+      "phases": [
+        "Liquid",
+        "Gas"
+      ],
+      "method": "EBULLIO:UFactor:32",
+      "uncertainty": {
+        "nCombUncertLevOfConfid": 95,
+        "eCombUncertEvalMethod": "Propagation of evaluated standard uncertainties",
+        "sCombUncertEvaluator": "Data file compiler",
+        "nCombUncertAssessNum": 1
+      },
+      "rows": [
+        {
+          "id": "je0496701/d1/p1",
+          "point_number": 1,
+          "x_propane": 0.1692,
+          "temperature_k": 310.0,
+          "pressure_pa": 471100.0,
+          "expanded_uncertainty": 14200.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p2",
+          "point_number": 2,
+          "x_propane": 0.1734,
+          "temperature_k": 280.0,
+          "pressure_pa": 197900.0,
+          "expanded_uncertainty": 7400.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p3",
+          "point_number": 3,
+          "x_propane": 0.1744,
+          "temperature_k": 270.0,
+          "pressure_pa": 142600.0,
+          "expanded_uncertainty": 6000.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p4",
+          "point_number": 4,
+          "x_propane": 0.309,
+          "temperature_k": 300.0,
+          "pressure_pa": 449500.0,
+          "expanded_uncertainty": 13600.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p5",
+          "point_number": 5,
+          "x_propane": 0.3294,
+          "temperature_k": 290.0,
+          "pressure_pa": 371700.0,
+          "expanded_uncertainty": 11700.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p6",
+          "point_number": 6,
+          "x_propane": 0.3878,
+          "temperature_k": 300.0,
+          "pressure_pa": 532800.0,
+          "expanded_uncertainty": 15700.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p7",
+          "point_number": 7,
+          "x_propane": 0.4226,
+          "temperature_k": 270.0,
+          "pressure_pa": 231800.0,
+          "expanded_uncertainty": 8200.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p8",
+          "point_number": 8,
+          "x_propane": 0.4327,
+          "temperature_k": 280.0,
+          "pressure_pa": 319700.0,
+          "expanded_uncertainty": 10400.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p9",
+          "point_number": 9,
+          "x_propane": 0.4804,
+          "temperature_k": 300.0,
+          "pressure_pa": 593200.0,
+          "expanded_uncertainty": 17200.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p10",
+          "point_number": 10,
+          "x_propane": 0.5906,
+          "temperature_k": 280.0,
+          "pressure_pa": 394400.0,
+          "expanded_uncertainty": 12300.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p11",
+          "point_number": 11,
+          "x_propane": 0.5947,
+          "temperature_k": 290.0,
+          "pressure_pa": 525500.0,
+          "expanded_uncertainty": 15500.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p12",
+          "point_number": 12,
+          "x_propane": 0.6488,
+          "temperature_k": 300.0,
+          "pressure_pa": 720600.0,
+          "expanded_uncertainty": 20300.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p13",
+          "point_number": 13,
+          "x_propane": 0.6662,
+          "temperature_k": 270.0,
+          "pressure_pa": 317000.0,
+          "expanded_uncertainty": 10300.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p14",
+          "point_number": 14,
+          "x_propane": 0.6934,
+          "temperature_k": 290.0,
+          "pressure_pa": 586200.0,
+          "expanded_uncertainty": 17000.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p15",
+          "point_number": 15,
+          "x_propane": 0.8039,
+          "temperature_k": 290.0,
+          "pressure_pa": 675100.0,
+          "expanded_uncertainty": 19200.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p16",
+          "point_number": 16,
+          "x_propane": 0.8702,
+          "temperature_k": 270.0,
+          "pressure_pa": 388200.0,
+          "expanded_uncertainty": 12100.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d1/p17",
+          "point_number": 17,
+          "x_propane": 0.8704,
+          "temperature_k": 280.0,
+          "pressure_pa": 521799.99999999994,
+          "expanded_uncertainty": 15400.0,
+          "reported_significant_digits": 4
+        }
+      ]
+    },
+    {
+      "id": "je0496701/d2",
+      "source_id": "je0496701",
+      "dataset_number": 2,
+      "components": [
+        "Propane",
+        "n-Butane"
+      ],
+      "property": "y_propane",
+      "original_property_label": "Mole fraction",
+      "conversion_factor": 1.0,
+      "property_phase": "Gas",
+      "phases": [
+        "Gas",
+        "Liquid"
+      ],
+      "method": "CHROM:UFactor:8",
+      "uncertainty": {
+        "nCombUncertLevOfConfid": 95,
+        "eCombUncertEvalMethod": "Propagation of evaluated standard uncertainties",
+        "nCombUncertAssessNum": 1,
+        "sCombUncertEvaluator": "Data file compiler"
+      },
+      "rows": [
+        {
+          "id": "je0496701/d2/p1",
+          "point_number": 1,
+          "x_propane": 0.1692,
+          "temperature_k": 310.0,
+          "y_propane": 0.355,
+          "expanded_uncertainty": 0.0264,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p2",
+          "point_number": 2,
+          "x_propane": 0.1734,
+          "temperature_k": 280.0,
+          "y_propane": 0.4585,
+          "expanded_uncertainty": 0.0341,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p3",
+          "point_number": 3,
+          "x_propane": 0.1744,
+          "temperature_k": 270.0,
+          "y_propane": 0.4616,
+          "expanded_uncertainty": 0.0343,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p4",
+          "point_number": 4,
+          "x_propane": 0.309,
+          "temperature_k": 300.0,
+          "y_propane": 0.5339,
+          "expanded_uncertainty": 0.0347,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p5",
+          "point_number": 5,
+          "x_propane": 0.3294,
+          "temperature_k": 290.0,
+          "y_propane": 0.6425,
+          "expanded_uncertainty": 0.0266,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p6",
+          "point_number": 6,
+          "x_propane": 0.3878,
+          "temperature_k": 300.0,
+          "y_propane": 0.6703,
+          "expanded_uncertainty": 0.0245,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p7",
+          "point_number": 7,
+          "x_propane": 0.4226,
+          "temperature_k": 270.0,
+          "y_propane": 0.7558,
+          "expanded_uncertainty": 0.0182,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p8",
+          "point_number": 8,
+          "x_propane": 0.4327,
+          "temperature_k": 280.0,
+          "y_propane": 0.7427,
+          "expanded_uncertainty": 0.0191,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p9",
+          "point_number": 9,
+          "x_propane": 0.4804,
+          "temperature_k": 300.0,
+          "y_propane": 0.7433,
+          "expanded_uncertainty": 0.0191,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p10",
+          "point_number": 10,
+          "x_propane": 0.5906,
+          "temperature_k": 280.0,
+          "y_propane": 0.8484,
+          "expanded_uncertainty": 0.0113,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p11",
+          "point_number": 11,
+          "x_propane": 0.5947,
+          "temperature_k": 290.0,
+          "y_propane": 0.836,
+          "expanded_uncertainty": 0.0122,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p12",
+          "point_number": 12,
+          "x_propane": 0.6488,
+          "temperature_k": 300.0,
+          "y_propane": 0.8492,
+          "expanded_uncertainty": 0.0112,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p13",
+          "point_number": 13,
+          "x_propane": 0.6662,
+          "temperature_k": 270.0,
+          "y_propane": 0.8935,
+          "expanded_uncertainty": 0.0079,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p14",
+          "point_number": 14,
+          "x_propane": 0.6934,
+          "temperature_k": 290.0,
+          "y_propane": 0.8848,
+          "expanded_uncertainty": 0.0086,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p15",
+          "point_number": 15,
+          "x_propane": 0.8702,
+          "temperature_k": 270.0,
+          "y_propane": 0.9658,
+          "expanded_uncertainty": 0.0026,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "je0496701/d2/p16",
+          "point_number": 16,
+          "x_propane": 0.8704,
+          "temperature_k": 280.0,
+          "y_propane": 0.9603,
+          "expanded_uncertainty": 0.003,
+          "reported_significant_digits": 4
+        }
+      ]
+    },
+    {
+      "id": "j.jct.2004.07.017/d11",
+      "source_id": "j.jct.2004.07.017",
+      "dataset_number": 11,
+      "components": [
+        "n-Butane"
+      ],
+      "property": "pressure_pa",
+      "original_property_label": "Vapor or sublimation pressure, kPa",
+      "conversion_factor": 1000.0,
+      "property_phase": "Liquid",
+      "phases": [
+        "Liquid",
+        "Gas"
+      ],
+      "method": "Closed cell (Static) method",
+      "uncertainty": {
+        "nCombUncertAssessNum": 1,
+        "sCombUncertEvaluator": "Data file compiler",
+        "eCombUncertEvalMethod": "Propagation of evaluated standard uncertainties",
+        "nCombUncertLevOfConfid": 95
+      },
+      "rows": [
+        {
+          "id": "j.jct.2004.07.017/d11/p1",
+          "point_number": 1,
+          "temperature_k": 135.0,
+          "pressure_pa": 1.3,
+          "expanded_uncertainty": 1.3,
+          "reported_significant_digits": 2
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p2",
+          "point_number": 2,
+          "temperature_k": 140.0,
+          "pressure_pa": 2.1,
+          "expanded_uncertainty": 1.1,
+          "reported_significant_digits": 2
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p3",
+          "point_number": 3,
+          "temperature_k": 150.0,
+          "pressure_pa": 9.299999999999999,
+          "expanded_uncertainty": 3.3,
+          "reported_significant_digits": 2
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p4",
+          "point_number": 4,
+          "temperature_k": 160.0,
+          "pressure_pa": 35.0,
+          "expanded_uncertainty": 4.0,
+          "reported_significant_digits": 2
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p5",
+          "point_number": 5,
+          "temperature_k": 170.0,
+          "pressure_pa": 116.0,
+          "expanded_uncertainty": 6.0,
+          "reported_significant_digits": 3
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p6",
+          "point_number": 6,
+          "temperature_k": 180.0,
+          "pressure_pa": 335.0,
+          "expanded_uncertainty": 5.0,
+          "reported_significant_digits": 3
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p7",
+          "point_number": 7,
+          "temperature_k": 190.0,
+          "pressure_pa": 849.0,
+          "expanded_uncertainty": 6.0,
+          "reported_significant_digits": 3
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p8",
+          "point_number": 8,
+          "temperature_k": 200.0,
+          "pressure_pa": 1937.0,
+          "expanded_uncertainty": 11.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p9",
+          "point_number": 9,
+          "temperature_k": 210.0,
+          "pressure_pa": 4040.0,
+          "expanded_uncertainty": 11.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p10",
+          "point_number": 10,
+          "temperature_k": 220.0,
+          "pressure_pa": 7803.0,
+          "expanded_uncertainty": 12.0,
+          "reported_significant_digits": 4
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p11",
+          "point_number": 11,
+          "temperature_k": 230.0,
+          "pressure_pa": 14105.0,
+          "expanded_uncertainty": 16.0,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p12",
+          "point_number": 12,
+          "temperature_k": 240.0,
+          "pressure_pa": 24087.0,
+          "expanded_uncertainty": 17.0,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p13",
+          "point_number": 13,
+          "temperature_k": 250.0,
+          "pressure_pa": 39157.0,
+          "expanded_uncertainty": 18.0,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p14",
+          "point_number": 14,
+          "temperature_k": 260.0,
+          "pressure_pa": 60986.0,
+          "expanded_uncertainty": 18.0,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p15",
+          "point_number": 15,
+          "temperature_k": 270.0,
+          "pressure_pa": 91499.0,
+          "expanded_uncertainty": 23.0,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p16",
+          "point_number": 16,
+          "temperature_k": 275.0,
+          "pressure_pa": 110673.0,
+          "expanded_uncertainty": 25.0,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p17",
+          "point_number": 17,
+          "temperature_k": 285.0,
+          "pressure_pa": 158306.0,
+          "expanded_uncertainty": 35.0,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p18",
+          "point_number": 18,
+          "temperature_k": 290.0,
+          "pressure_pa": 187371.0,
+          "expanded_uncertainty": 37.0,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p19",
+          "point_number": 19,
+          "temperature_k": 300.0,
+          "pressure_pa": 257622.0,
+          "expanded_uncertainty": 44.0,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p20",
+          "point_number": 20,
+          "temperature_k": 310.0,
+          "pressure_pa": 346298.0,
+          "expanded_uncertainty": 55.0,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p21",
+          "point_number": 21,
+          "temperature_k": 320.0,
+          "pressure_pa": 456235.0,
+          "expanded_uncertainty": 68.0,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p22",
+          "point_number": 22,
+          "temperature_k": 330.0,
+          "pressure_pa": 590396.0,
+          "expanded_uncertainty": 71.0,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d11/p23",
+          "point_number": 23,
+          "temperature_k": 340.0,
+          "pressure_pa": 751896.0,
+          "expanded_uncertainty": 75.0,
+          "reported_significant_digits": 6
+        }
+      ]
+    },
+    {
+      "id": "j.jct.2004.07.017/d13",
+      "source_id": "j.jct.2004.07.017",
+      "dataset_number": 13,
+      "components": [
+        "n-Butane"
+      ],
+      "property": "density_kg_m3",
+      "original_property_label": "Mass density, kg/m3",
+      "conversion_factor": 1.0,
+      "property_phase": "Gas",
+      "phases": [
+        "Gas",
+        "Liquid"
+      ],
+      "method": "Buoyancy - hydrostatic balance with magnetic suspension - two sinkers",
+      "uncertainty": {
+        "eCombUncertEvalMethod": "Propagation of evaluated standard uncertainties",
+        "nCombUncertLevOfConfid": 95,
+        "nCombUncertAssessNum": 1,
+        "sCombUncertEvaluator": "Data file compiler"
+      },
+      "rows": [
+        {
+          "id": "j.jct.2004.07.017/d13/p1",
+          "point_number": 1,
+          "temperature_k": 270.0,
+          "density_kg_m3": 2.4628,
+          "expanded_uncertainty": 0.0048,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d13/p2",
+          "point_number": 2,
+          "temperature_k": 275.0,
+          "density_kg_m3": 2.9414,
+          "expanded_uncertainty": 0.0054,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d13/p3",
+          "point_number": 3,
+          "temperature_k": 285.0,
+          "density_kg_m3": 4.1131,
+          "expanded_uncertainty": 0.0061,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d13/p4",
+          "point_number": 4,
+          "temperature_k": 290.0,
+          "density_kg_m3": 4.8201,
+          "expanded_uncertainty": 0.0076,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d13/p5",
+          "point_number": 5,
+          "temperature_k": 300.0,
+          "density_kg_m3": 6.5149,
+          "expanded_uncertainty": 0.0092,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d13/p6",
+          "point_number": 6,
+          "temperature_k": 310.0,
+          "density_kg_m3": 8.6426,
+          "expanded_uncertainty": 0.0115,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d13/p7",
+          "point_number": 7,
+          "temperature_k": 320.0,
+          "density_kg_m3": 11.284,
+          "expanded_uncertainty": 0.0144,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d13/p8",
+          "point_number": 8,
+          "temperature_k": 330.0,
+          "density_kg_m3": 14.5357,
+          "expanded_uncertainty": 0.0181,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d13/p9",
+          "point_number": 9,
+          "temperature_k": 340.0,
+          "density_kg_m3": 18.5183,
+          "expanded_uncertainty": 0.0205,
+          "reported_significant_digits": 6
+        }
+      ]
+    },
+    {
+      "id": "j.jct.2004.07.017/d14",
+      "source_id": "j.jct.2004.07.017",
+      "dataset_number": 14,
+      "components": [
+        "n-Butane"
+      ],
+      "property": "density_kg_m3",
+      "original_property_label": "Mass density, kg/m3",
+      "conversion_factor": 1.0,
+      "property_phase": "Fluid (supercritical or subcritical phases)",
+      "phases": [
+        "Fluid (supercritical or subcritical phases)"
+      ],
+      "method": "Buoyancy - hydrostatic balance with magnetic suspension - two sinkers",
+      "uncertainty": {
+        "nCombUncertLevOfConfid": 95,
+        "eCombUncertEvalMethod": "Propagation of evaluated standard uncertainties",
+        "nCombUncertAssessNum": 1,
+        "sCombUncertEvaluator": "Data file compiler"
+      },
+      "rows": [
+        {
+          "id": "j.jct.2004.07.017/d14/p1",
+          "point_number": 1,
+          "temperature_k": 140.0,
+          "pressure_pa": 2002480.0,
+          "density_kg_m3": 731.069,
+          "expanded_uncertainty": 0.115,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p2",
+          "point_number": 2,
+          "temperature_k": 140.0,
+          "pressure_pa": 4003680.0,
+          "density_kg_m3": 731.913,
+          "expanded_uncertainty": 0.115,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p3",
+          "point_number": 3,
+          "temperature_k": 140.0,
+          "pressure_pa": 6004320.0,
+          "density_kg_m3": 732.746,
+          "expanded_uncertainty": 0.115,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p4",
+          "point_number": 4,
+          "temperature_k": 140.0,
+          "pressure_pa": 8005220.0,
+          "density_kg_m3": 733.572,
+          "expanded_uncertainty": 0.115,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p5",
+          "point_number": 5,
+          "temperature_k": 140.0,
+          "pressure_pa": 10005760.0,
+          "density_kg_m3": 734.386,
+          "expanded_uncertainty": 0.116,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p6",
+          "point_number": 6,
+          "temperature_k": 140.0,
+          "pressure_pa": 12006410.0,
+          "density_kg_m3": 735.195,
+          "expanded_uncertainty": 0.116,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p7",
+          "point_number": 7,
+          "temperature_k": 170.0,
+          "pressure_pa": 2003080.0,
+          "density_kg_m3": 703.28,
+          "expanded_uncertainty": 0.112,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p8",
+          "point_number": 8,
+          "temperature_k": 170.0,
+          "pressure_pa": 4004350.0,
+          "density_kg_m3": 704.327,
+          "expanded_uncertainty": 0.112,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p9",
+          "point_number": 9,
+          "temperature_k": 170.0,
+          "pressure_pa": 6005750.0,
+          "density_kg_m3": 705.36,
+          "expanded_uncertainty": 0.112,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p10",
+          "point_number": 10,
+          "temperature_k": 170.0,
+          "pressure_pa": 8006670.0,
+          "density_kg_m3": 706.38,
+          "expanded_uncertainty": 0.112,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p11",
+          "point_number": 11,
+          "temperature_k": 170.0,
+          "pressure_pa": 10007600.0,
+          "density_kg_m3": 707.386,
+          "expanded_uncertainty": 0.112,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p12",
+          "point_number": 12,
+          "temperature_k": 170.0,
+          "pressure_pa": 12008610.0,
+          "density_kg_m3": 708.378,
+          "expanded_uncertainty": 0.112,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p13",
+          "point_number": 13,
+          "temperature_k": 200.0,
+          "pressure_pa": 2002510.0,
+          "density_kg_m3": 675.323,
+          "expanded_uncertainty": 0.109,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p14",
+          "point_number": 14,
+          "temperature_k": 200.0,
+          "pressure_pa": 4005540.0,
+          "density_kg_m3": 676.638,
+          "expanded_uncertainty": 0.109,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p15",
+          "point_number": 15,
+          "temperature_k": 200.0,
+          "pressure_pa": 6003880.0,
+          "density_kg_m3": 677.928,
+          "expanded_uncertainty": 0.109,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p16",
+          "point_number": 16,
+          "temperature_k": 200.0,
+          "pressure_pa": 8006360.0,
+          "density_kg_m3": 679.195,
+          "expanded_uncertainty": 0.109,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p17",
+          "point_number": 17,
+          "temperature_k": 200.0,
+          "pressure_pa": 10009620.0,
+          "density_kg_m3": 680.443,
+          "expanded_uncertainty": 0.109,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p18",
+          "point_number": 18,
+          "temperature_k": 200.0,
+          "pressure_pa": 12008820.0,
+          "density_kg_m3": 681.665,
+          "expanded_uncertainty": 0.109,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p19",
+          "point_number": 19,
+          "temperature_k": 230.0,
+          "pressure_pa": 2002790.0,
+          "density_kg_m3": 646.694,
+          "expanded_uncertainty": 0.106,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p20",
+          "point_number": 20,
+          "temperature_k": 230.0,
+          "pressure_pa": 4003120.0,
+          "density_kg_m3": 648.369,
+          "expanded_uncertainty": 0.106,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p21",
+          "point_number": 21,
+          "temperature_k": 230.0,
+          "pressure_pa": 6004520.0,
+          "density_kg_m3": 650.003,
+          "expanded_uncertainty": 0.106,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p22",
+          "point_number": 22,
+          "temperature_k": 230.0,
+          "pressure_pa": 8004680.0,
+          "density_kg_m3": 651.599,
+          "expanded_uncertainty": 0.106,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p23",
+          "point_number": 23,
+          "temperature_k": 230.0,
+          "pressure_pa": 10004630.0,
+          "density_kg_m3": 653.164,
+          "expanded_uncertainty": 0.107,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p24",
+          "point_number": 24,
+          "temperature_k": 230.0,
+          "pressure_pa": 12005030.0,
+          "density_kg_m3": 654.692,
+          "expanded_uncertainty": 0.107,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p25",
+          "point_number": 25,
+          "temperature_k": 260.0,
+          "pressure_pa": 2019520.0,
+          "density_kg_m3": 616.844,
+          "expanded_uncertainty": 0.104,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p26",
+          "point_number": 26,
+          "temperature_k": 260.0,
+          "pressure_pa": 4006490.0,
+          "density_kg_m3": 619.013,
+          "expanded_uncertainty": 0.104,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p27",
+          "point_number": 27,
+          "temperature_k": 260.0,
+          "pressure_pa": 6006680.0,
+          "density_kg_m3": 621.134,
+          "expanded_uncertainty": 0.104,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p28",
+          "point_number": 28,
+          "temperature_k": 260.0,
+          "pressure_pa": 8007610.0,
+          "density_kg_m3": 623.188,
+          "expanded_uncertainty": 0.104,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p29",
+          "point_number": 29,
+          "temperature_k": 260.0,
+          "pressure_pa": 10004150.0,
+          "density_kg_m3": 625.174,
+          "expanded_uncertainty": 0.104,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p30",
+          "point_number": 30,
+          "temperature_k": 260.0,
+          "pressure_pa": 12005530.0,
+          "density_kg_m3": 627.108,
+          "expanded_uncertainty": 0.105,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p31",
+          "point_number": 31,
+          "temperature_k": 280.0,
+          "pressure_pa": 2002790.0,
+          "density_kg_m3": 595.863,
+          "expanded_uncertainty": 0.229,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p32",
+          "point_number": 32,
+          "temperature_k": 280.0,
+          "pressure_pa": 6002990.0,
+          "density_kg_m3": 601.077,
+          "expanded_uncertainty": 0.103,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p33",
+          "point_number": 33,
+          "temperature_k": 280.0,
+          "pressure_pa": 8007890.0,
+          "density_kg_m3": 603.537,
+          "expanded_uncertainty": 0.103,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p34",
+          "point_number": 34,
+          "temperature_k": 280.0,
+          "pressure_pa": 10004440.0,
+          "density_kg_m3": 605.897,
+          "expanded_uncertainty": 0.103,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p35",
+          "point_number": 35,
+          "temperature_k": 280.0,
+          "pressure_pa": 12005490.0,
+          "density_kg_m3": 608.181,
+          "expanded_uncertainty": 0.104,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p36",
+          "point_number": 36,
+          "temperature_k": 280.0,
+          "pressure_pa": 2002790.0,
+          "density_kg_m3": 598.524,
+          "expanded_uncertainty": 0.23,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p37",
+          "point_number": 37,
+          "temperature_k": 290.0,
+          "pressure_pa": 170308.0,
+          "density_kg_m3": 4.353,
+          "expanded_uncertainty": 0.0478,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p38",
+          "point_number": 38,
+          "temperature_k": 300.0,
+          "pressure_pa": 200575.0,
+          "density_kg_m3": 4.9721,
+          "expanded_uncertainty": 0.0387,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p39",
+          "point_number": 39,
+          "temperature_k": 300.0,
+          "pressure_pa": 2003900.0,
+          "density_kg_m3": 573.693,
+          "expanded_uncertainty": 0.208,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p40",
+          "point_number": 40,
+          "temperature_k": 300.0,
+          "pressure_pa": 4005120.0,
+          "density_kg_m3": 577.002,
+          "expanded_uncertainty": 0.102,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p41",
+          "point_number": 41,
+          "temperature_k": 300.0,
+          "pressure_pa": 6006810.0,
+          "density_kg_m3": 580.137,
+          "expanded_uncertainty": 0.102,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p42",
+          "point_number": 42,
+          "temperature_k": 300.0,
+          "pressure_pa": 8047330.0,
+          "density_kg_m3": 583.175,
+          "expanded_uncertainty": 0.102,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p43",
+          "point_number": 43,
+          "temperature_k": 300.0,
+          "pressure_pa": 10092220.0,
+          "density_kg_m3": 586.078,
+          "expanded_uncertainty": 0.103,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p44",
+          "point_number": 44,
+          "temperature_k": 300.0,
+          "pressure_pa": 12036900.0,
+          "density_kg_m3": 588.722,
+          "expanded_uncertainty": 0.103,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p45",
+          "point_number": 45,
+          "temperature_k": 310.0,
+          "pressure_pa": 202029.0,
+          "density_kg_m3": 4.8154,
+          "expanded_uncertainty": 0.0316,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p46",
+          "point_number": 46,
+          "temperature_k": 320.0,
+          "pressure_pa": 200863.0,
+          "density_kg_m3": 4.6087,
+          "expanded_uncertainty": 0.0047,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p47",
+          "point_number": 47,
+          "temperature_k": 320.0,
+          "pressure_pa": 298455.0,
+          "density_kg_m3": 7.0328,
+          "expanded_uncertainty": 0.0058,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p48",
+          "point_number": 48,
+          "temperature_k": 320.0,
+          "pressure_pa": 399703.0,
+          "density_kg_m3": 9.7079,
+          "expanded_uncertainty": 0.008,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p49",
+          "point_number": 49,
+          "temperature_k": 320.0,
+          "pressure_pa": 2002380.0,
+          "density_kg_m3": 549.841,
+          "expanded_uncertainty": 0.203,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p50",
+          "point_number": 50,
+          "temperature_k": 320.0,
+          "pressure_pa": 4003410.0,
+          "density_kg_m3": 554.071,
+          "expanded_uncertainty": 0.103,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p51",
+          "point_number": 51,
+          "temperature_k": 320.0,
+          "pressure_pa": 6005320.0,
+          "density_kg_m3": 558.008,
+          "expanded_uncertainty": 0.103,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p52",
+          "point_number": 52,
+          "temperature_k": 320.0,
+          "pressure_pa": 8005600.0,
+          "density_kg_m3": 561.695,
+          "expanded_uncertainty": 0.103,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p53",
+          "point_number": 53,
+          "temperature_k": 320.0,
+          "pressure_pa": 10010900.0,
+          "density_kg_m3": 565.181,
+          "expanded_uncertainty": 0.103,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p54",
+          "point_number": 54,
+          "temperature_k": 320.0,
+          "pressure_pa": 12007860.0,
+          "density_kg_m3": 568.462,
+          "expanded_uncertainty": 0.103,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p55",
+          "point_number": 55,
+          "temperature_k": 330.0,
+          "pressure_pa": 206698.0,
+          "density_kg_m3": 4.4515,
+          "expanded_uncertainty": 0.0044,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p56",
+          "point_number": 56,
+          "temperature_k": 330.0,
+          "pressure_pa": 401468.0,
+          "density_kg_m3": 8.9808,
+          "expanded_uncertainty": 0.0071,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p57",
+          "point_number": 57,
+          "temperature_k": 330.0,
+          "pressure_pa": 501526.0,
+          "density_kg_m3": 12.0126,
+          "expanded_uncertainty": 0.0103,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p58",
+          "point_number": 58,
+          "temperature_k": 340.0,
+          "pressure_pa": 201081.0,
+          "density_kg_m3": 4.4272,
+          "expanded_uncertainty": 0.0044,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p59",
+          "point_number": 59,
+          "temperature_k": 340.0,
+          "pressure_pa": 401468.0,
+          "density_kg_m3": 8.9808,
+          "expanded_uncertainty": 0.0068,
+          "reported_significant_digits": 5
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p60",
+          "point_number": 60,
+          "temperature_k": 340.0,
+          "pressure_pa": 600354.0,
+          "density_kg_m3": 14.1335,
+          "expanded_uncertainty": 0.01,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p61",
+          "point_number": 61,
+          "temperature_k": 340.0,
+          "pressure_pa": 2003060.0,
+          "density_kg_m3": 523.546,
+          "expanded_uncertainty": 0.586,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p62",
+          "point_number": 62,
+          "temperature_k": 340.0,
+          "pressure_pa": 4002690.0,
+          "density_kg_m3": 529.184,
+          "expanded_uncertainty": 0.104,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p63",
+          "point_number": 63,
+          "temperature_k": 340.0,
+          "pressure_pa": 6003590.0,
+          "density_kg_m3": 534.286,
+          "expanded_uncertainty": 0.103,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p64",
+          "point_number": 64,
+          "temperature_k": 340.0,
+          "pressure_pa": 8004560.0,
+          "density_kg_m3": 538.959,
+          "expanded_uncertainty": 0.103,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p65",
+          "point_number": 65,
+          "temperature_k": 340.0,
+          "pressure_pa": 10005370.0,
+          "density_kg_m3": 543.286,
+          "expanded_uncertainty": 0.103,
+          "reported_significant_digits": 6
+        },
+        {
+          "id": "j.jct.2004.07.017/d14/p66",
+          "point_number": 66,
+          "temperature_k": 340.0,
+          "pressure_pa": 12005950.0,
+          "density_kg_m3": 547.319,
+          "expanded_uncertainty": 0.104,
+          "reported_significant_digits": 6
+        }
+      ]
+    }
+  ]
+}

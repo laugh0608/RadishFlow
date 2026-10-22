@@ -1,0 +1,38 @@
+[
+  {
+    "file": "CubicBackend.cpp",
+    "url": "https://raw.githubusercontent.com/CoolProp/CoolProp/ae81610e7d23efc57f9d051c8e70a4d66e87537f/src/Backends/Cubics/CubicBackend.cpp",
+    "sha256": "cb68a84b045521d58841a7406e677e0bff48ae8e6b2e8ddff72c2cf85e608d46",
+    "purpose": "8.0.0 TP root and phase assignment"
+  },
+  {
+    "file": "HelmholtzEOSMixtureBackend.cpp",
+    "url": "https://raw.githubusercontent.com/CoolProp/CoolProp/ae81610e7d23efc57f9d051c8e70a4d66e87537f/src/Backends/Helmholtz/HelmholtzEOSMixtureBackend.cpp",
+    "sha256": "526a59c5797cdf3b0620e195e9149141de559711fe09a998035d3ab0d81ab65d",
+    "purpose": "8.0.0 phase recalculation and pre_update"
+  },
+  {
+    "file": "AbstractState.cpp",
+    "url": "https://raw.githubusercontent.com/CoolProp/CoolProp/ae81610e7d23efc57f9d051c8e70a4d66e87537f/src/AbstractState.cpp",
+    "sha256": "3af0c7c426306c675e5f941cd3e34f03742ee6fdffc0cf9f291efb45b56fb59e",
+    "purpose": "8.0.0 reset of density"
+  },
+  {
+    "file": "GeneralizedCubic-7.2.cpp",
+    "url": "https://raw.githubusercontent.com/CoolProp/CoolProp/98b3523d5daa98454618d381d2ae53f7471d216b/src/Backends/Cubics/GeneralizedCubic.cpp",
+    "sha256": "43879b30a5c9c635c2de88df5fb229915b95b93ce042bc9b3aaa4b2c2ed09e7f",
+    "purpose": "7.2.0 rounded PR constants, not an identical algebra baseline"
+  },
+  {
+    "file": "GERG-TM15.pdf",
+    "url": "https://www.gerg.eu/wp-content/uploads/2019/10/TM15.pdf",
+    "sha256": "eed3a0ded9d7fbd298c2a72c3ab1de8fde69da89407ce1034246b84f0e93dfde",
+    "purpose": "Read-only bibliography and fitting/evaluation metadata; PDF page 412 visually verified"
+  },
+  {
+    "file": "Nysewander_CW_1938.pdf",
+    "url": "https://thesis.caltech.edu/16876/1/Nysewander_CW_1938.pdf",
+    "sha256": "aa091dd0daad06eb8ed85a9d46ed3ab0c8eebe3b260d3ed17888fdc427ed8c80",
+    "purpose": "Read-only candidate mixture-density source; PDF pages 21\u201322 visually verified; no numerical density table used for scoring"
+  }
+]
