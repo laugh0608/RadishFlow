@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "coolprop_version": "8.0.0",
+  "coolprop_git_revision": "ae81610e7d23efc57f9d051c8e70a4d66e87537f",
+  "gas_constant_j_mol_k": 8.31446261815324,
+  "components": [
+    {
+      "coolprop_name": "Propane",
+      "cas": "74-98-6",
+      "molar_mass_kg_mol": 0.04409562,
+      "critical_temperature_k": 369.89,
+      "critical_pressure_pa": 4251200.0,
+      "acentric_factor": 0.1521,
+      "critical_molar_density_mol_m3": 5000.000000000001,
+      "source_units": {
+        "molar_mass": "kg/mol",
+        "temperature": "K",
+        "pressure": "Pa"
+      },
+      "conversion": "identity; all selected parameters already SI",
+      "heos_eos_bibtex": "Lemmon-JCED-2009",
+      "cubic_json_sha256": "4b810d84debe316d9cd3caf6282fa846fe2215c932460fa3d9005a059d19bf1b"
+    },
+    {
+      "coolprop_name": "n-Butane",
+      "cas": "106-97-8",
+      "molar_mass_kg_mol": 0.0581222,
+      "critical_temperature_k": 425.125,
+      "critical_pressure_pa": 3796000.0,
+      "acentric_factor": 0.200810094644,
+      "critical_molar_density_mol_m3": 3922.769612987809,
+      "source_units": {
+        "molar_mass": "kg/mol",
+        "temperature": "K",
+        "pressure": "Pa"
+      },
+      "conversion": "identity; all selected parameters already SI",
+      "heos_eos_bibtex": "Buecker-JPCRD-2006B",
+      "cubic_json_sha256": "58bbfb2225079e0078d29381effaa1127129d7e7d473229583a4d308ebe31879"
+    }
+  ],
+  "heos_pair": {
+    "cas_order": [
+      "106-97-8",
+      "74-98-6"
+    ],
+    "parameters": {
+      "BibTeX": "Kunz-JCED-2012",
+      "betaT": "0.9996898072493984",
+      "gammaT": "1.007392782",
+      "betaV": "1.000204173678381",
+      "gammaV": "1.003264179",
+      "F": "0.0312572600489"
+    },
+    "note": "HEOS reducing and departure parameters; NOT PR k_ij"
+  },
+  "pr_constants": {
+    "omega_a": 0.4572355289213822,
+    "omega_b": 0.07779607390388456,
+    "alpha": "[1 + m*(1-sqrt(T/Tc))]^2",
+    "m_coefficients": [
+      0.37464,
+      1.54226,
+      -0.26992
+    ],
+    "source": "https://github.com/CoolProp/CoolProp/blob/ae81610e7d23efc57f9d051c8e70a4d66e87537f/src/Backends/Cubics/GeneralizedCubic.cpp",
+    "note": "CoolProp uses exact critical constraints, not rounded 0.45724 / 0.07780; this convention must be matched for same-model comparisons."
+  }
+}

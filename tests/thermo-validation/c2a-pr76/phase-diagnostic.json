@@ -1,0 +1,42 @@
+{
+  "temperature_k": 300.0,
+  "pressure_pa": 200000.0,
+  "z_propane": 0.5,
+  "queries": [
+    {
+      "backend": "PR",
+      "gas_phase_imposed_for_diagnosis_only": false,
+      "raw_phase": "phases.iphase_liquid",
+      "raw_quality": -1.0,
+      "density_kg_m3": 4.284725264212426,
+      "compressibility_factor": 0.956418998546377
+    },
+    {
+      "backend": "PR",
+      "gas_phase_imposed_for_diagnosis_only": true,
+      "raw_phase": "phases.iphase_gas",
+      "raw_quality": -1.0,
+      "density_kg_m3": 4.284725264212426,
+      "compressibility_factor": 0.956418998546377
+    },
+    {
+      "backend": "HEOS",
+      "gas_phase_imposed_for_diagnosis_only": false,
+      "raw_phase": "phases.iphase_gas",
+      "raw_quality": -1.0,
+      "density_kg_m3": 4.287705638947079,
+      "compressibility_factor": 0.9557541938095409
+    },
+    {
+      "backend": "HEOS",
+      "gas_phase_imposed_for_diagnosis_only": true,
+      "raw_phase": "phases.iphase_gas",
+      "raw_quality": -1.0,
+      "density_kg_m3": 4.287705638947079,
+      "compressibility_factor": 0.9557541938095409
+    }
+  ],
+  "PR_bubble_pressure_pa": 605488.8460489799,
+  "PR_dew_pressure_pa": 414605.9420857094,
+  "policy": "Imposed gas branch is diagnostic only, never a replacement for frozen TP results or an acceptance oracle."
+}

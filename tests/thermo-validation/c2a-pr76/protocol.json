@@ -1,0 +1,348 @@
+{
+  "schema": "radishflow.c2a-protocol",
+  "version": 1,
+  "frozen_on": "2026-10-22",
+  "decision": "C2-D01—05 approved; C2-A only",
+  "domain": {
+    "temperature_k": [
+      280,
+      320
+    ],
+    "pressure_pa": [
+      200000,
+      1000000
+    ],
+    "propane_overall_mole_fraction": [
+      0.2,
+      0.8
+    ]
+  },
+  "model": {
+    "backend": "PR",
+    "equation": "PR76",
+    "mixing_rule": "classical quadratic a, linear b",
+    "k_ij": 0.0,
+    "volume_translation": false
+  },
+  "baseline_molar_flow_mol_s": 10.0,
+  "flow_scale_factors": [
+    0.1,
+    1,
+    10
+  ],
+  "pure_temperatures_k": [
+    280,
+    300,
+    320
+  ],
+  "grid": [
+    {
+      "id": "grid-01",
+      "temperature_k": 280,
+      "pressure_pa": 200000,
+      "z_propane": 0.2
+    },
+    {
+      "id": "grid-02",
+      "temperature_k": 280,
+      "pressure_pa": 200000,
+      "z_propane": 0.5
+    },
+    {
+      "id": "grid-03",
+      "temperature_k": 280,
+      "pressure_pa": 200000,
+      "z_propane": 0.8
+    },
+    {
+      "id": "grid-04",
+      "temperature_k": 280,
+      "pressure_pa": 500000,
+      "z_propane": 0.2
+    },
+    {
+      "id": "grid-05",
+      "temperature_k": 280,
+      "pressure_pa": 500000,
+      "z_propane": 0.5
+    },
+    {
+      "id": "grid-06",
+      "temperature_k": 280,
+      "pressure_pa": 500000,
+      "z_propane": 0.8
+    },
+    {
+      "id": "grid-07",
+      "temperature_k": 280,
+      "pressure_pa": 1000000,
+      "z_propane": 0.2
+    },
+    {
+      "id": "grid-08",
+      "temperature_k": 280,
+      "pressure_pa": 1000000,
+      "z_propane": 0.5
+    },
+    {
+      "id": "grid-09",
+      "temperature_k": 280,
+      "pressure_pa": 1000000,
+      "z_propane": 0.8
+    },
+    {
+      "id": "grid-10",
+      "temperature_k": 300,
+      "pressure_pa": 200000,
+      "z_propane": 0.2
+    },
+    {
+      "id": "grid-11",
+      "temperature_k": 300,
+      "pressure_pa": 200000,
+      "z_propane": 0.5
+    },
+    {
+      "id": "grid-12",
+      "temperature_k": 300,
+      "pressure_pa": 200000,
+      "z_propane": 0.8
+    },
+    {
+      "id": "grid-13",
+      "temperature_k": 300,
+      "pressure_pa": 500000,
+      "z_propane": 0.2
+    },
+    {
+      "id": "grid-14",
+      "temperature_k": 300,
+      "pressure_pa": 500000,
+      "z_propane": 0.5
+    },
+    {
+      "id": "grid-15",
+      "temperature_k": 300,
+      "pressure_pa": 500000,
+      "z_propane": 0.8
+    },
+    {
+      "id": "grid-16",
+      "temperature_k": 300,
+      "pressure_pa": 1000000,
+      "z_propane": 0.2
+    },
+    {
+      "id": "grid-17",
+      "temperature_k": 300,
+      "pressure_pa": 1000000,
+      "z_propane": 0.5
+    },
+    {
+      "id": "grid-18",
+      "temperature_k": 300,
+      "pressure_pa": 1000000,
+      "z_propane": 0.8
+    },
+    {
+      "id": "grid-19",
+      "temperature_k": 320,
+      "pressure_pa": 200000,
+      "z_propane": 0.2
+    },
+    {
+      "id": "grid-20",
+      "temperature_k": 320,
+      "pressure_pa": 200000,
+      "z_propane": 0.5
+    },
+    {
+      "id": "grid-21",
+      "temperature_k": 320,
+      "pressure_pa": 200000,
+      "z_propane": 0.8
+    },
+    {
+      "id": "grid-22",
+      "temperature_k": 320,
+      "pressure_pa": 500000,
+      "z_propane": 0.2
+    },
+    {
+      "id": "grid-23",
+      "temperature_k": 320,
+      "pressure_pa": 500000,
+      "z_propane": 0.5
+    },
+    {
+      "id": "grid-24",
+      "temperature_k": 320,
+      "pressure_pa": 500000,
+      "z_propane": 0.8
+    },
+    {
+      "id": "grid-25",
+      "temperature_k": 320,
+      "pressure_pa": 1000000,
+      "z_propane": 0.2
+    },
+    {
+      "id": "grid-26",
+      "temperature_k": 320,
+      "pressure_pa": 1000000,
+      "z_propane": 0.5
+    },
+    {
+      "id": "grid-27",
+      "temperature_k": 320,
+      "pressure_pa": 1000000,
+      "z_propane": 0.8
+    }
+  ],
+  "holdout": [
+    {
+      "id": "holdout-01",
+      "temperature_k": 290,
+      "pressure_pa": 350000,
+      "z_propane": 0.35
+    },
+    {
+      "id": "holdout-02",
+      "temperature_k": 290,
+      "pressure_pa": 350000,
+      "z_propane": 0.65
+    },
+    {
+      "id": "holdout-03",
+      "temperature_k": 290,
+      "pressure_pa": 700000,
+      "z_propane": 0.35
+    },
+    {
+      "id": "holdout-04",
+      "temperature_k": 290,
+      "pressure_pa": 700000,
+      "z_propane": 0.65
+    },
+    {
+      "id": "holdout-05",
+      "temperature_k": 290,
+      "pressure_pa": 900000,
+      "z_propane": 0.35
+    },
+    {
+      "id": "holdout-06",
+      "temperature_k": 290,
+      "pressure_pa": 900000,
+      "z_propane": 0.65
+    },
+    {
+      "id": "holdout-07",
+      "temperature_k": 310,
+      "pressure_pa": 350000,
+      "z_propane": 0.35
+    },
+    {
+      "id": "holdout-08",
+      "temperature_k": 310,
+      "pressure_pa": 350000,
+      "z_propane": 0.65
+    },
+    {
+      "id": "holdout-09",
+      "temperature_k": 310,
+      "pressure_pa": 700000,
+      "z_propane": 0.35
+    },
+    {
+      "id": "holdout-10",
+      "temperature_k": 310,
+      "pressure_pa": 700000,
+      "z_propane": 0.65
+    },
+    {
+      "id": "holdout-11",
+      "temperature_k": 310,
+      "pressure_pa": 900000,
+      "z_propane": 0.35
+    },
+    {
+      "id": "holdout-12",
+      "temperature_k": 310,
+      "pressure_pa": 900000,
+      "z_propane": 0.65
+    }
+  ],
+  "boundary_generation": {
+    "backend": "HEOS",
+    "temperatures_k": [
+      280,
+      300,
+      320
+    ],
+    "z_propane": [
+      0.2,
+      0.5,
+      0.8
+    ],
+    "pressure_multipliers": [
+      0.9999,
+      1.0001
+    ],
+    "include_midpoint": "arithmetic mean of HEOS bubble and dew pressures",
+    "retain_outside_domain": true
+  },
+  "experimental_selection": {
+    "retain_all_points_for_selected_datasets": true,
+    "score_temperature_k": [
+      280,
+      320
+    ],
+    "binary_density_composition": [
+      0.2,
+      0.8
+    ],
+    "pressure_pa": [
+      200000,
+      1000000
+    ],
+    "vle_overall_composition": "(measured liquid x + measured vapor y)/2; synthetic beta=0.5, not an experimental flow measurement",
+    "pure_saturation_pressure_domain": "temperature only; no TP flash pressure clipping"
+  },
+  "thresholds": {
+    "pressure_relative": 0.02,
+    "density_relative": 0.05,
+    "composition_absolute": 0.02,
+    "beta_absolute": 0.02,
+    "phase_flow_relative": 0.1,
+    "phase_flow_beta_window": [
+      0.1,
+      0.9
+    ],
+    "diameter_relative": 0.05,
+    "load_relative": 0.1,
+    "normalization_absolute": 1e-10,
+    "material_balance_relative": 1e-08,
+    "material_balance_absolute_mol_s": 1e-10
+  },
+  "engineering": {
+    "effective_k_m_s": 0.1,
+    "velocity_utilization": 0.8,
+    "working_time_s": 120,
+    "maximum_working_liquid_height_m": 1,
+    "rating_geometries": [
+      {
+        "id": "R01",
+        "area_m2": 1,
+        "height_m": 0.6
+      },
+      {
+        "id": "R03",
+        "area_m2": 2,
+        "height_m": 1
+      }
+    ],
+    "source": "Existing public S0-B01, S2 R01/R03 arithmetic fixtures; synthetic criteria, no separation performance validation"
+  },
+  "failure_policy": "Retain every failure, phase mismatch and excluded point. No parameter fitting, model fallback, threshold relaxation, or silent domain shrink."
+}
