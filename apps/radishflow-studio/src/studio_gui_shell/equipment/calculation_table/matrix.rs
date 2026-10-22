@@ -27,7 +27,11 @@ pub(in super::super) fn encode(
     let summary = capture.summary();
     let mut common = CalculationTable {
         format: "radishflow.separator-rating-matrix",
-        version: 1,
+        version: if task.geometry.adoption.is_some() {
+            2
+        } else {
+            1
+        },
         rows: vec![],
         units: units.clone(),
     };
@@ -197,6 +201,12 @@ pub(in super::super) fn encode(
             .map(|s| (s.id.clone(), s.clone()))
             .collect(),
     )?;
+    adoption::append(
+        &mut common,
+        task.id.as_str(),
+        &task.geometry,
+        capture.basis(),
+    )?;
     let mut table = MatrixTable {
         format: common.format,
         version: common.version,
@@ -258,7 +268,9 @@ pub(in super::super) fn encode(
             let details =
                 rating::build(result, task, document, captured.generation, units.clone())?;
             row.rows.extend(details.rows.into_iter().filter(|r| {
-                r.section != "metadata" || !matches!(r.field.as_str(), "format" | "version")
+                !r.section.starts_with("adoption")
+                    && (r.section != "metadata"
+                        || !matches!(r.field.as_str(), "format" | "version"))
             }));
         }
         table.rows.extend(row.rows.into_iter().map(|row| MatrixRow {

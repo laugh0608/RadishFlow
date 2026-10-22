@@ -280,13 +280,23 @@ impl EngineeringSession {
             previous_geometry,
         })
     }
-    pub fn commit_geometry_adoption(
-        &mut self,
-        prepared: PreparedGeometryAdoption,
+    pub fn validate_geometry_adoption(
+        &self,
+        prepared: &PreparedGeometryAdoption,
     ) -> Result<(), EngineeringError> {
         if self.adoption_calculation(&prepared.source_task)? != &prepared.calculation {
             return Err(EngineeringError::StaleCalculation);
         }
+        if !prepared.prepared.is_current(self) {
+            return Err(EngineeringError::StalePreparation);
+        }
+        Ok(())
+    }
+    pub fn commit_geometry_adoption(
+        &mut self,
+        prepared: PreparedGeometryAdoption,
+    ) -> Result<(), EngineeringError> {
+        self.validate_geometry_adoption(&prepared)?;
         self.commit(prepared.prepared).map(|_| ())
     }
 }

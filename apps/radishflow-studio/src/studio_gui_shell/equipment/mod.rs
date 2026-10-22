@@ -2,6 +2,9 @@
 use super::*;
 use rf_types::units::{DisplayUnitSet, QuantityKind};
 use rf_ui::engineering::{EngineeringInputs, editor::*};
+mod adoption;
+mod adoption_evidence;
+mod adoption_preview;
 mod applicability;
 mod binding;
 mod creation;
@@ -37,6 +40,10 @@ pub(super) enum EquipmentSection {
 }
 #[derive(Default)]
 pub(super) struct EquipmentPageState {
+    pub(super) adoption: Option<adoption::AdoptionForm>,
+    pub(super) adoption_evidence: Option<(rf_types::EquipmentTaskId, Option<egui::Id>)>,
+    adoption_evidence_first: bool,
+    adoption_return_focus: Option<egui::Id>,
     pub(super) pending_export: Option<export::PendingEquipmentExport>,
     pub(super) section: EquipmentSection,
     source_return: Option<(EquipmentEditorTarget, Option<EquipmentInputField>)>,
@@ -179,6 +186,8 @@ impl ReadyAppState {
         true
     }
     pub(super) fn render_equipment_page(&mut self, ctx: &egui::Context) {
+        // Restore after the closing modal's last layer has stopped owning input.
+        let return_focus = self.equipment.adoption_return_focus.take();
         let workspace = &self.platform_host.modeling_inputs().workspace;
         let session = workspace.engineering.clone();
         let editor = workspace.equipment_editor.clone();
@@ -190,6 +199,7 @@ impl ReadyAppState {
         let mut commands = Vec::new();
         let mut export_request = None;
         let mut open_source = None;
+        let mut adoption_request = None;
         if sidebar {
             egui::SidePanel::left("equipment-project-navigation")
                 .default_width(210.0 * font_scale)
@@ -371,6 +381,13 @@ impl ReadyAppState {
                 let enabled = session.current_candidate(id).is_some()
                     && !editor.pending_for_task(id, &session);
                 ui.horizontal_wrapped(|ui| {
+                    let adopt = ui.add_enabled(
+                        enabled,
+                        egui::Button::new(tr(locale, "采纳为设计几何", "Adopt as design geometry")),
+                    );
+                    if adopt.clicked() {
+                        adoption_request = Some((id.clone(), adopt.id));
+                    }
                     for (format, label) in [
                         (
                             CalculationTableFormat::Csv,
@@ -478,6 +495,12 @@ impl ReadyAppState {
         for command in commands {
             self.equipment_command(command);
         }
+        if let Some((id, focus)) = adoption_request {
+            self.begin_geometry_adoption(&id);
+            if let Some(form) = &mut self.equipment.adoption {
+                form.return_focus = Some(focus);
+            }
+        }
         if let Some((target, format)) = export_request {
             if let EquipmentExportTarget::Task(id) = target {
                 self.export_equipment_from_picker(&id, format);
@@ -487,6 +510,11 @@ impl ReadyAppState {
         }
         self.render_equipment_confirmation(ctx);
         self.render_equipment_creation(ctx);
+        self.render_geometry_adoption(ctx);
+        self.render_adoption_evidence(ctx);
+        if let Some(id) = return_focus {
+            ctx.memory_mut(|m| m.request_focus(id));
+        }
     }
 
     #[allow(clippy::too_many_arguments)]

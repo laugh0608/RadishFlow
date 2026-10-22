@@ -164,6 +164,8 @@ impl ReadyAppState {
             || self.pending_result_export.is_some()
             || self.equipment.pending_export.is_some()
             || self.equipment.creating_task
+            || self.equipment.adoption.is_some()
+            || self.equipment.adoption_evidence.is_some()
             || self.project_open.pending_confirmation.is_some()
             || self.project_open.pending_blank_project_confirmation
             || self.project_open.pending_save_as_overwrite.is_some()

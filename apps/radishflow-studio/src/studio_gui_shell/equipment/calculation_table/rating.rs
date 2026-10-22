@@ -33,7 +33,11 @@ pub(super) fn build(
     let case_id = case.id.as_str();
     let mut table = CalculationTable {
         format: "radishflow.separator-rating-table",
-        version: 1,
+        version: if task.geometry.adoption.is_some() {
+            2
+        } else {
+            1
+        },
         rows: Vec::new(),
         units,
     };
@@ -267,6 +271,15 @@ pub(super) fn build(
         table.text("method", &task.method.id, key, value);
     }
     evidence::records(&mut table, &capture.basis_entries, &capture.sources)?;
+    adoption::append(
+        &mut table,
+        id,
+        &task.geometry,
+        &rf_model::engineering::EngineeringBasis {
+            basis_entries: capture.basis_entries.values().cloned().collect(),
+            sources: capture.sources.values().cloned().collect(),
+        },
+    )?;
     for (field, sources) in [
         ("assumedSource", result.assumed_sources()),
         ("pendingReviewSource", result.pending_review_sources()),

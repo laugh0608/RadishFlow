@@ -1,6 +1,22 @@
 use super::*;
 use rf_model::equipment::*;
 
+pub(super) fn render_readonly(
+    ui: &mut egui::Ui,
+    l: StudioShellLocale,
+    value: &SeparatorApplicability,
+) {
+    let mut value = value.clone();
+    ui.add_enabled_ui(false, |ui| {
+        orientation(ui, l, &mut value.orientation);
+        gas_direction(ui, l, &mut value.gas_direction);
+        geometry(ui, l, &mut value.geometry);
+        service(ui, l, &mut value.service);
+        k_basis(ui, l, &mut value.k_basis);
+        flow_basis(ui, l, &mut value.flow_basis);
+    });
+}
+
 fn choice<T: Copy + PartialEq>(
     ui: &mut egui::Ui,
     locale: StudioShellLocale,

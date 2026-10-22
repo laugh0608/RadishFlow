@@ -78,6 +78,14 @@ impl ReadyAppState {
         }
         scroll.show(ui, |ui| {
             ui.heading(format!("{} · {}", task_label(l, &task.clone().into()), tr(l, "已有几何校核", "Given-geometry rating",)));
+            if task.geometry.adoption.is_some() {
+                ui.label(tr(l, "由初步尺寸候选采纳的设计几何", "Design geometry adopted from preliminary sizing"));
+                let details = ui.button(tr(l, "查看采纳证据", "View adoption evidence"));
+                if details.clicked() {
+                    let return_focus = self.equipment.rating_focus.get(target).copied().or(Some(details.id));
+                    self.open_adoption_evidence(task.id.clone(), return_focus);
+                }
+            }
             if show_overview {
                 self.render_rating_matrix(ui, task, &key, editor, session, units, commands, export, wide);
                 if only_overview { return; }

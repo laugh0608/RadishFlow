@@ -131,6 +131,9 @@ pub struct PreparedEngineeringEdit {
     impacts: Vec<TaskImpact>,
 }
 impl PreparedEngineeringEdit {
+    pub(super) fn is_current(&self, session: &EngineeringSession) -> bool {
+        self.identity == session.identity && self.checkpoint == session.checkpoint
+    }
     pub fn impacts(&self) -> &[TaskImpact] {
         &self.impacts
     }
@@ -274,7 +277,7 @@ impl EngineeringSession {
         &mut self,
         prepared: PreparedEngineeringEdit,
     ) -> Result<Vec<TaskImpact>, EngineeringError> {
-        if self.identity != prepared.identity || self.checkpoint != prepared.checkpoint {
+        if !prepared.is_current(self) {
             return Err(EngineeringError::StalePreparation);
         }
         if same_content(&self.current, &prepared.next) {

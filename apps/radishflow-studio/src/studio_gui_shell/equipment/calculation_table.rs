@@ -7,6 +7,7 @@ use rf_ui::engineering::ResultGeneration;
 use rf_ui::engineering::editor::separator_sizing::{ControllingConstraint, SeparatorCandidate};
 use serde::Serialize;
 
+mod adoption;
 mod evidence;
 mod keys;
 mod matrix;

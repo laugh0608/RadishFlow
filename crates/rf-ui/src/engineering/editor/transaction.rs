@@ -11,6 +11,9 @@ impl EquipmentEditorState {
     ) -> Result<(), EquipmentEditError> {
         use EquipmentEditorCommand::*;
         match command {
+            PreviewGeometryAdoption(draft) => self.preview_geometry_adoption(session, *draft)?,
+            ConfirmGeometryAdoption(key) => self.confirm_geometry_adoption(session, units, key)?,
+            CancelGeometryAdoption => self.adoption_preview = None,
             CreateRatingTask => self.create_rating(session, units)?,
             AddRatingCase { task, copy_from } => {
                 self.add_rating_case(session, units, task, copy_from)?

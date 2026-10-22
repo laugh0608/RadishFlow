@@ -302,6 +302,24 @@ pub(super) fn edit_error(locale: StudioShellLocale, error: &EquipmentEditError) 
         )
         .into(),
         Domain(error) => match error {
+            rf_ui::engineering::EngineeringError::InvalidAdoption(error) => match error {
+                rf_model::equipment::GeometryAdoptionError::InvalidDimension => tr(
+                    locale,
+                    "采用尺寸须为有限正数。",
+                    "Adopted dimensions must be finite and positive.",
+                ),
+                rf_model::equipment::GeometryAdoptionError::MissingAdjustmentReason => tr(
+                    locale,
+                    "请填写尺寸调整理由。",
+                    "Provide a reason for the dimension adjustment.",
+                ),
+                _ => tr(
+                    locale,
+                    "采纳证据不完整或无效，请检查当前候选。",
+                    "Adoption evidence is incomplete or invalid; check the current candidate.",
+                ),
+            }
+            .into(),
             rf_ui::engineering::EngineeringError::Referenced { references } => format!(
                 "{} ({})",
                 tr(

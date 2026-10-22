@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-10-20
+更新时间：2026-10-22
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -86,7 +86,7 @@ Studio 首页、工作台分区、运行后结果视图和项目切换确认流�
 
 ### 独立设备编辑边界
 
-`WorkspaceState.engineering` 持有正式输入、设备历史及逐行结果资格，`equipment_editor` 持有各目标草稿与确认；命令经 bootstrap 进入应用层，与流程历史分离。保存不应用草稿，文本撤销不进入设备历史。shell 管理选择、焦点 / 滚动及不可变输出捕获：单行只检查自身依赖，矩阵检查全体成员、执行、草稿和项目单位，写前重验；非 Current 行保留状态而不输出旧数值。F5 只校核所选行，切行不提交草稿。C1 固定证据与编辑器原子事务已实现，采纳 UI / 证据输出尚未接线。设备计算不依赖流程 Run，重开结果 Missing。详见 [工程基础](../topics/engineering-basis-and-cases.md)与[分离器输出](../topics/equipment/separator-sizing-and-rating.md)。
+`WorkspaceState.engineering` 持有正式输入、设备历史及逐行结果资格，`equipment_editor` 持有各目标草稿与确认；命令经 bootstrap 进入应用层，与流程历史分离。保存不应用草稿，文本撤销不进入设备历史。shell 管理选择、焦点 / 滚动及不可变输出捕获：单行只检查自身依赖，矩阵检查全体成员、执行、草稿和项目单位，写前重验；非 Current 行保留状态而不输出旧数值。F5 只校核所选行，切行不提交草稿。C1 预览 / 确认复用编辑器原子事务，固定证据展示与输出已接通。设备计算不依赖流程 Run，重开结果 Missing。详见 [工程基础](../topics/engineering-basis-and-cases.md)与[分离器输出](../topics/equipment/separator-sizing-and-rating.md)。
 
 ### Studio Main Presentation 边界
 

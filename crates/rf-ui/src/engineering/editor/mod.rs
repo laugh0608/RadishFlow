@@ -2,7 +2,10 @@
 //! remain distinct; all shell actions use the same command boundary.
 mod adoption;
 mod drafts;
-pub use adoption::PreparedEditorGeometryAdoption;
+pub use adoption::{
+    DimensionAdjustmentDraft, GeometryAdoptionDestination, GeometryAdoptionDraft,
+    GeometryAdoptionPreview, PreparedEditorGeometryAdoption,
+};
 mod membership;
 mod rating_drafts;
 mod rating_editor;
@@ -102,6 +105,9 @@ impl From<EngineeringError> for EquipmentEditError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EquipmentEditorCommand {
+    PreviewGeometryAdoption(Box<GeometryAdoptionDraft>),
+    ConfirmGeometryAdoption(EngineeringCheckpoint),
+    CancelGeometryAdoption,
     CreateTask,
     CreateRatingTask,
     AddRatingCase {
@@ -208,6 +214,7 @@ pub struct EquipmentEditorState {
     next_generation: u64,
     next_identity: u64,
     pending: Option<EquipmentConfirmation>,
+    adoption_preview: Option<GeometryAdoptionPreview>,
     checks: BTreeMap<EquipmentTaskId, InputCheck>,
     rating_checks: BTreeMap<EquipmentCaseKey, RatingInputCheck>,
     error: Option<EquipmentEditError>,
@@ -222,6 +229,7 @@ impl Default for EquipmentEditorState {
             next_generation: 0,
             next_identity: 0,
             pending: None,
+            adoption_preview: None,
             checks: BTreeMap::new(),
             rating_checks: BTreeMap::new(),
             error: None,
