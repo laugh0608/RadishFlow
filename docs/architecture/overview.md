@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-10-22
+更新时间：2026-10-23
 
 ## 用途
 
@@ -135,5 +135,31 @@ Bridge 包含 Interop、Adapter、UnitOp.Mvp、Registration、ContractTests、Sm
 Studio 已形成多层 host / driver / runtime / snapshot / window model，以便测试交互和平台状态。实际仍有大型实现与测试文件，以及同步求解路径；不能从层数推导出异步能力或性能保证。
 
 若以后允许调整实现，应先按真实用户行为审查调用链：保留有独立状态、平台隔离或跨消费者契约的层，评估纯转发和重复投影；按领域职责组织大文件与测试，不做机械切片。后台求解、取消、过期结果丢弃与快照成本应结合实际负载评估，当前没有由本次审阅得到的性能测量结论。
+
+## 工程基础链路审计（2026-10-23）
+
+基于 `9fd5650d` 的代码静态核对；本轮只修改文档，没有运行桌面窗口、性能测量或重新验收产品功能。下表的“已有”指代码中可定位的能力，自动测试位置是既有证据入口，不表示本轮重跑。原生保存症状来自 [W43 已有复现](../devlogs/2026-10/2026-W43.md#2026-10-22-原生保存定向复现与-c2-待审方案)。实施顺序和退出标准只在 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 维护。
+
+| 功能链路 | 代码已有基础 | 断点 / 扩展差距及影响 | 对应切片 |
+| --- | --- | --- | --- |
+| 编辑 → 命令 → 历史 → 修订 | [输入事务](../../crates/rf-ui/src/state/input_commands.rs) 先验证副本、再提交；无变化不增修订。[建模动作](../../apps/radishflow-studio/src/modeling_actions.rs) 检查文档身份、revision 和草稿 | 事务机制已存在；应用操作分布于 `rf-ui` 与 Studio，不能将其描述为已统一覆盖所有功能的公共应用 API。新入口应复用事务，逐项补能力发现和消费范围 | AF4 |
+| 输入 → 保存 → 重开 | [生命周期](../../apps/radishflow-studio/src/document_lifecycle_driver.rs) 支持 v3 与未知设备整份只读；[保存](../../apps/radishflow-studio/src/studio_gui_shell/project_save.rs) 有取消、覆盖、格式升级和失败处理 | [原生 picker](../../apps/radishflow-studio/src/studio_gui_shell/project_picker.rs) 同步调用 `rfd`；已有取消后再次导出无面板、主窗无响应记录，根因未定。Linux 原生 picker 当前返回不可用，不等同文件 IO 不支持 Linux | AF1 |
+| 组分 / 物性选择 → 可计算上下文 | [项目组分选择](../../apps/radishflow-studio/src/studio_project_component_selection.rs) 有内置身份和正式选择事务；[solver bridge](../../apps/radishflow-studio/src/solver_bridge.rs) 根据包加载 `ThermoSystem` | Studio 选择目录固定为甲烷 / 乙烷；数据包选择后仍固定构造 `PlaceholderThermoProvider` / `PlaceholderTpFlashSolver`。尚未形成由数据 / 能力驱动的组分和方法装配，包存在不表示任意所需性质已具备 | AF2 / AF4 |
+| 物性资源 → 纯计算服务 | [CachedPropertyPackageProvider](../../crates/rf-thermo/src/lib.rs) 检查缓存到期、读取 manifest / payload 并转换 | `rf-thermo` 直接依赖 `rf-store` 和授权缓存类型；加载、资格检查与数值职责尚未分离。影响任务冻结和计算服务复用，但不意味着每次物性求值都访问磁盘 | AF2 |
+| 单元定义 → 工程实例 → 计算实例 | [单元契约](../../crates/rf-unitops/src/lib.rs) 定义六类 kind、规范端口及 `UnitOperation::run`；[solver](../../crates/rf-solver/src/lib.rs) 负责执行 | `instantiate_operation` 在 solver 内按 kind 构造；单元 trait 返回固定 `BuiltinUnitKind`。增加模型会继续牵动调度层，尚无定义 / 工厂 / 实例版本的一致装配入口 | AF2 |
+| 运行请求 → 执行 → 完成 | [WorkspaceSolveService](../../apps/radishflow-studio/src/workspace_solve_service.rs) 已区分手动 / 自动触发；[桥接](../../apps/radishflow-studio/src/solver_bridge.rs) 同步完成求解后返回 | `Started` 在同步调用完成后才返回，不能解释成后台任务已启动；`FlowsheetSolver::solve` 无任务控制参数。缺不可变输入捕获、取消协议、进度与完成回传边界；`Hold` 不是在途暂停 | AF3 |
+| 计算结果 → 当前 / 过期 → 查询 | [UI 快照与会话](../../crates/rf-ui/src/run.rs) 有 snapshot ID、sequence、revision；[变量浏览器](../../crates/rf-ui/src/variable_browser/mod.rs) 过滤过期值 | 快照无显式文档身份，浏览器注释要求调用方保证同工作区；字符串 snapshot ID 不能替代跨会话资格验证。当前同步隔离可用，后台运行前必须防同 ID 重开、旧运行覆盖新运行，并冻结模型 / 参数来源 | AF3 / AF5 |
+| 问题 → 定位 → 修正 / 重算 | [solver 诊断](../../crates/rf-solver/src/lib.rs) 已含结构化代码、对象及端口；Run Panel 与 A1 / A2 已提供恢复路径 | `SolveFailureContext::from_error` 仍有从消息解析身份的兼容分支；尚非统一运行事件与过程记录。后续事件需携带结构化身份，不扩张文本解析来承担跨模块契约 | AF3 / AF5 |
+| 设备输入 → 计算 → 采纳 / 输出 | [EngineeringSession](../../crates/rf-ui/src/engineering/mod.rs)、[计算请求与结果](../../crates/rf-ui/src/engineering/results.rs) 已有输入冻结、请求身份、代次和结果资格；C1 与矩阵输出已接通 | 设备是独立功能链，尚未和流程结果建立物理工况关联；这部分属于 C3，不能当成本轮应直接修复的普通连线。基础阶段只复用生命周期经验、统一发现与结果来源呈现 | AF3 / AF4 / AF5；物理关联仍属 C3 |
+| GUI ↔ CLI ↔ 后续自动化 | [headless](../../apps/radishflow-studio/src/headless/mod.rs) 复用应用动作与变量写入；[动作元数据](../../crates/rf-ui/src/variable_browser/actions.rs) 已描述创建、连接和运行等能力 | CLI 明确调用 `load_legacy_project_app_state`，只读磁盘并限旧工程；v3 设备任务未进入该协议。浏览器对象仅 Unit / Stream，现有有序请求不等于 GUI 录制 / 回放，C ABI / PMC 也不等于完整 App 自动化 | AF4 |
+| 画布 → 工程对象 → 其他视图 | Studio 承担实际绘制与交互，正式操作通过模型 / 应用状态；[`rf-canvas`](../../crates/rf-canvas/src/lib.rs) 仅占位 | 功能已在 Studio，缺的是目标职责拆分，不能报告为“没有画布”。按功能联动和复用需要迁移绘制职责，不为补齐目录先整体搬家 | AF4 按实际需要 |
+| 工程图 → 执行计划 → 数学问题 | [顺序 solver](../../crates/rf-solver/src/lib.rs) 拓扑执行并拒绝回路；单元接收局部输入 / 服务 | 尚无循环块收敛、EO 残差装配、时间状态或空间离散。当前 `UnitOperation::run` / `ThermoProvider` 不是这些能力的通用接口；先检查边界，再按真实模型增加能力 | AF6；算法实施仍归 QS / P3—P6 |
+
+### 可复用基线与审计边界
+
+- 保留工程对象与结果分离、规范 SI、草稿 / 正式输入分离、正式事务、版本化存储、设备资格检查和 Rust / COM 隔离。参考 [变量写入回归](../../crates/rf-ui/src/tests/variable_commands.rs)、[无界面工作流回归](../../apps/radishflow-studio/tests/headless_cli/workflow.rs)、[v3 存储回归](../../crates/rf-store/src/project_v3/tests.rs)；这些基础无需为新框架重做。
+- 将已观察故障（原生保存）、目标实现偏移（装载职责、固定工厂）、能力覆盖差距（v3 CLI、通用任务）和后续领域能力（EO / 动态 / C3）分别处理。后者未实施本身不是现有功能缺陷。
+- 基础架构通过的证据是身份、状态、数据传递、失效、错误和恢复正确；科学计算通过的证据是所用模型的守恒、独立基准、适用域与精度。基础贯通可用现有受控模型验收，但不抹掉演示模型标识或工程门禁。
+- 不从本次静态审计推导线程安全、性能、平台稳定性或物理准确性结论；未测平台、I5 和原生保存问题继续保留。没有必要新建统一大服务或一 crate 对应一功能，模块拆分必须服务已确认消费者。
 
 维护优先级只由 [当前状态](../status/current.md) 管理。原始里程碑、Studio / CAPE-OPEN 计划演进见 [历史路线图](../radishflow-mvp-roadmap.md) 及 [周志索引](../devlogs/README.md)，不在架构入口重复维护。
