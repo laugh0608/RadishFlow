@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "frozen_on": "2026-10-22",
+  "accepted_commit": "0bc33f59",
+  "scope": "Three previously identified VLE conflicts; source and uncertainty audit only. No new physical density points obtained yet.",
+  "protected_manifests": {
+    "c2a-pr76": "cfa4cece8569094645b4b4f7ef7f486b619a4d9fafd0b4c25acb1c2eeacd2015",
+    "c2a-evidence-review": "c52e618e5b327bf17a182b0b32a72cff08ced2dd0f7767b9fb3f4181879b5224"
+  },
+  "criteria": "Reuse c2a-pr76/protocol.json unchanged; preserve both accepted packs and all failures.",
+  "sensitivity": "For each point/backend, nine bubble queries on T and liquid x at nominal and +/- author-declared uncertainty. Report sampled extrema and distance from measured P/y intervals. This is not a rigorous interval bound, covariance propagation, statistical confidence test, or a new acceptance criterion.",
+  "phase": "Only QT bubble calculations; no reliance on diagnosed free-TP phase labels.",
+  "source_limit": "Public article-preview text checked; publisher PDF and original table image not obtained. Blank cells cannot be safely reconstructed from flattened text."
+}

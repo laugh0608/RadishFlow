@@ -1,0 +1,18 @@
+{
+  "read_on": "2026-10-22",
+  "nist_report": {
+    "url": "https://nvlpubs.nist.gov/nistpubs/Legacy/IR/nistir5828.pdf",
+    "sha256": "ad0681fbfd9c46fe28792ee4dfd77d171f90565f5a9bb13b7ee0ce94237cde1d",
+    "size_bytes": 13444555,
+    "pdf_page": 143,
+    "printed_page": 133,
+    "visual_verified": true,
+    "role": "research scope only, no individual density records or uncertainty admitted"
+  },
+  "additional_bibliographic_lead": {
+    "title": "New Data and Correlations for the Custody Transfer of Natural Gas Liquids",
+    "authors": "Ely, Haynes, Holcomb, Magee",
+    "venue": "74th Gas Processors Association Annual Convention, 1995, pp.35\u201353",
+    "status": "citation in NIST report, not obtained; not a density dataset"
+  }
+}

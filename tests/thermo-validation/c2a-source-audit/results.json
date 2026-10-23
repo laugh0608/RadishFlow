@@ -1,0 +1,1207 @@
+{
+  "schema": "radishflow.c2a-source-audit",
+  "results": [
+    {
+      "point": {
+        "source": "Seong2008",
+        "pack": "c2a-pr76",
+        "pressure_id": "je800377b/d3/p17",
+        "composition_id": "je800377b/d4/p17",
+        "temperature_k": 283.15,
+        "pressure_pa": 216000.0,
+        "x_propane": 0.146,
+        "y_propane": 0.322
+      },
+      "table_values_match": true,
+      "compiler_uncertainty": {
+        "pressure_expanded_pa": 3000.0,
+        "y_expanded": 0.007,
+        "pressure_metadata": {
+          "sCombUncertEvaluator": "Data file compiler",
+          "nCombUncertAssessNum": 1,
+          "eCombUncertEvalMethod": "Propagation of evaluated standard uncertainties",
+          "nCombUncertLevOfConfid": 95
+        },
+        "y_metadata": {
+          "nCombUncertLevOfConfid": 95,
+          "eCombUncertEvalMethod": "Propagation of evaluated standard uncertainties",
+          "sCombUncertEvaluator": "Data file compiler",
+          "nCombUncertAssessNum": 1
+        }
+      },
+      "author_pressure_uncertainty_pa": 1000,
+      "backends": {
+        "PR": {
+          "summary": {
+            "sample_count": 9,
+            "error_count": 0,
+            "sampled_pressure_pa": [
+              213390.8096508745,
+              215363.4968612782
+            ],
+            "sampled_y": [
+              0.39225481019271263,
+              0.39989682031259943
+            ],
+            "pressure_interval_gap_pa": 0.0,
+            "y_interval_gap": 0.06825481019271262,
+            "nominal_pressure_relative_error": 0.007514874595855425,
+            "nominal_y_absolute_error": 0.0740912711920268,
+            "original_pressure_status": "pass",
+            "original_y_status": "fail"
+          },
+          "samples": [
+            {
+              "temperature_k": 283.14,
+              "x_propane": 0.144,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 213390.8096508745,
+                "x": [
+                  0.144,
+                  0.856
+                ],
+                "y": [
+                  0.39229600240926393,
+                  0.607703997590736
+                ],
+                "liquid_density_kg_m3": 612.6507246344801,
+                "vapor_density_kg_m3": 5.063454615376997
+              }
+            },
+            {
+              "temperature_k": 283.14,
+              "x_propane": 0.146,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 214308.6220526534,
+                "x": [
+                  0.146,
+                  0.854
+                ],
+                "y": [
+                  0.39611194382665416,
+                  0.603888056173346
+                ],
+                "liquid_density_kg_m3": 612.5242397770742,
+                "vapor_density_kg_m3": 5.080851928681215
+              }
+            },
+            {
+              "temperature_k": 283.14,
+              "x_propane": 0.148,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 215226.68568223141,
+                "x": [
+                  0.148,
+                  0.852
+                ],
+                "y": [
+                  0.39989682031259943,
+                  0.6001031796874005
+                ],
+                "liquid_density_kg_m3": 612.3976216308251,
+                "vapor_density_kg_m3": 5.098259500050557
+              }
+            },
+            {
+              "temperature_k": 283.15,
+              "x_propane": 0.144,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 213458.74260378376,
+                "x": [
+                  0.144,
+                  0.856
+                ],
+                "y": [
+                  0.39227540561483976,
+                  0.6077245943851601
+                ],
+                "liquid_density_kg_m3": 612.637762851978,
+                "vapor_density_kg_m3": 5.064992046814623
+              }
+            },
+            {
+              "temperature_k": 283.15,
+              "x_propane": 0.146,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 214376.78708729523,
+                "x": [
+                  0.146,
+                  0.854
+                ],
+                "y": [
+                  0.3960912711920268,
+                  0.6039087288079732
+                ],
+                "liquid_density_kg_m3": 612.5112694151651,
+                "vapor_density_kg_m3": 5.082393484313688
+              }
+            },
+            {
+              "temperature_k": 283.15,
+              "x_propane": 0.148,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 215295.08290718694,
+                "x": [
+                  0.148,
+                  0.852
+                ],
+                "y": [
+                  0.39987607491201005,
+                  0.6001239250879898
+                ],
+                "liquid_density_kg_m3": 612.3846426765448,
+                "vapor_density_kg_m3": 5.099805184043647
+              }
+            },
+            {
+              "temperature_k": 283.15999999999997,
+              "x_propane": 0.144,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 213526.6922076174,
+                "x": [
+                  0.144,
+                  0.856
+                ],
+                "y": [
+                  0.39225481019271263,
+                  0.6077451898072874
+                ],
+                "liquid_density_kg_m3": 612.6248002434385,
+                "vapor_density_kg_m3": 5.066529845062564
+              }
+            },
+            {
+              "temperature_k": 283.15999999999997,
+              "x_propane": 0.146,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 214444.96881214346,
+                "x": [
+                  0.146,
+                  0.854
+                ],
+                "y": [
+                  0.3960705999541705,
+                  0.6039294000458295
+                ],
+                "liquid_density_kg_m3": 612.4982982263606,
+                "vapor_density_kg_m3": 5.083935407425015
+              }
+            },
+            {
+              "temperature_k": 283.15999999999997,
+              "x_propane": 0.148,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 215363.4968612782,
+                "x": [
+                  0.148,
+                  0.852
+                ],
+                "y": [
+                  0.39985533086478403,
+                  0.6001446691352159
+                ],
+                "liquid_density_kg_m3": 612.3716628945081,
+                "vapor_density_kg_m3": 5.101351236278537
+              }
+            }
+          ]
+        },
+        "HEOS": {
+          "summary": {
+            "sample_count": 9,
+            "error_count": 0,
+            "sampled_pressure_pa": [
+              213240.06520688647,
+              215210.18554589077
+            ],
+            "sampled_y": [
+              0.3892353444617429,
+              0.396901703903463
+            ],
+            "pressure_interval_gap_pa": 0.0,
+            "y_interval_gap": 0.0652353444617429,
+            "nominal_pressure_relative_error": 0.00821904406861762,
+            "nominal_y_absolute_error": 0.07108374210596491,
+            "original_pressure_status": "pass",
+            "original_y_status": "fail"
+          },
+          "samples": [
+            {
+              "temperature_k": 283.14,
+              "x_propane": 0.144,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 213240.06520688647,
+                "x": [
+                  0.144,
+                  0.856
+                ],
+                "y": [
+                  0.38927681701961986,
+                  0.6107231829803802
+                ],
+                "liquid_density_kg_m3": 581.2552196427152,
+                "vapor_density_kg_m3": 5.08639500445329
+              }
+            },
+            {
+              "temperature_k": 283.14,
+              "x_propane": 0.146,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 214156.41604738092,
+                "x": [
+                  0.146,
+                  0.854
+                ],
+                "y": [
+                  0.39310455865596466,
+                  0.6068954413440353
+                ],
+                "liquid_density_kg_m3": 581.1315422876237,
+                "vapor_density_kg_m3": 5.103758747769589
+              }
+            },
+            {
+              "temperature_k": 283.14,
+              "x_propane": 0.148,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 215073.1659285327,
+                "x": [
+                  0.148,
+                  0.852
+                ],
+                "y": [
+                  0.396901703903463,
+                  0.6030982960965371
+                ],
+                "liquid_density_kg_m3": 581.0077390196922,
+                "vapor_density_kg_m3": 5.121135784483315
+              }
+            },
+            {
+              "temperature_k": 283.15,
+              "x_propane": 0.144,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 213308.10475356068,
+                "x": [
+                  0.144,
+                  0.856
+                ],
+                "y": [
+                  0.3892560799022341,
+                  0.610743920097766
+                ],
+                "liquid_density_kg_m3": 581.243861312148,
+                "vapor_density_kg_m3": 5.087943818112272
+              }
+            },
+            {
+              "temperature_k": 283.15,
+              "x_propane": 0.146,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 214224.6864811786,
+                "x": [
+                  0.146,
+                  0.854
+                ],
+                "y": [
+                  0.3930837421059649,
+                  0.6069162578940351
+                ],
+                "liquid_density_kg_m3": 581.1201795981302,
+                "vapor_density_kg_m3": 5.1053116305830235
+              }
+            },
+            {
+              "temperature_k": 283.15,
+              "x_propane": 0.148,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 215141.66738713707,
+                "x": [
+                  0.148,
+                  0.852
+                ],
+                "y": [
+                  0.3968808108085443,
+                  0.6031191891914558
+                ],
+                "liquid_density_kg_m3": 580.9963719642532,
+                "vapor_density_kg_m3": 5.122692741469016
+              }
+            },
+            {
+              "temperature_k": 283.15999999999997,
+              "x_propane": 0.144,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 213376.16092314295,
+                "x": [
+                  0.144,
+                  0.856
+                ],
+                "y": [
+                  0.3892353444617429,
+                  0.6107646555382571
+                ],
+                "liquid_density_kg_m3": 581.2325026214189,
+                "vapor_density_kg_m3": 5.08949299860317
+              }
+            },
+            {
+              "temperature_k": 283.15999999999997,
+              "x_propane": 0.146,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 214292.97357622595,
+                "x": [
+                  0.146,
+                  0.854
+                ],
+                "y": [
+                  0.3930629272286145,
+                  0.6069370727713854
+                ],
+                "liquid_density_kg_m3": 581.1088165479844,
+                "vapor_density_kg_m3": 5.106864880895839
+              }
+            },
+            {
+              "temperature_k": 283.15999999999997,
+              "x_propane": 0.148,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 215210.18554589077,
+                "x": [
+                  0.148,
+                  0.852
+                ],
+                "y": [
+                  0.3968599190166413,
+                  0.6031400809833587
+                ],
+                "liquid_density_kg_m3": 580.9850045476702,
+                "vapor_density_kg_m3": 5.12425006721688
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "point": {
+        "source": "Kayukawa2005",
+        "pack": "c2a-evidence-review",
+        "pressure_id": "je0496701/d1/p1",
+        "composition_id": "je0496701/d2/p1",
+        "temperature_k": 310.0,
+        "pressure_pa": 471100.0,
+        "x_propane": 0.1692,
+        "y_propane": 0.355
+      },
+      "table_values_match": true,
+      "compiler_uncertainty": {
+        "pressure_expanded_pa": 14200.0,
+        "y_expanded": 0.0264,
+        "pressure_metadata": {
+          "nCombUncertLevOfConfid": 95,
+          "eCombUncertEvalMethod": "Propagation of evaluated standard uncertainties",
+          "sCombUncertEvaluator": "Data file compiler",
+          "nCombUncertAssessNum": 1
+        },
+        "y_metadata": {
+          "nCombUncertLevOfConfid": 95,
+          "eCombUncertEvalMethod": "Propagation of evaluated standard uncertainties",
+          "nCombUncertAssessNum": 1,
+          "sCombUncertEvaluator": "Data file compiler"
+        }
+      },
+      "author_pressure_uncertainty_pa": 1167.1970000000001,
+      "backends": {
+        "PR": {
+          "summary": {
+            "sample_count": 9,
+            "error_count": 0,
+            "sampled_pressure_pa": [
+              485359.51741641236,
+              487303.6675707669
+            ],
+            "sampled_y": [
+              0.383004136629842,
+              0.3866593484286844
+            ],
+            "pressure_interval_gap_pa": 13092.320416412374,
+            "y_interval_gap": 0.026904136629842035,
+            "nominal_pressure_relative_error": 0.032331621022454016,
+            "nominal_y_absolute_error": 0.029834921218294563,
+            "original_pressure_status": "fail",
+            "original_y_status": "fail"
+          },
+          "samples": [
+            {
+              "temperature_k": 309.997,
+              "x_propane": 0.1681,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 485359.51741641236,
+                "x": [
+                  0.1681,
+                  0.8319
+                ],
+                "y": [
+                  0.3830152576435398,
+                  0.6169847423564602
+                ],
+                "liquid_density_kg_m3": 572.7005492637412,
+                "vapor_density_kg_m3": 11.13352119826098
+              }
+            },
+            {
+              "temperature_k": 309.997,
+              "x_propane": 0.1692,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 486293.2409882296,
+                "x": [
+                  0.1692,
+                  0.8308
+                ],
+                "y": [
+                  0.3848404930495429,
+                  0.6151595069504573
+                ],
+                "liquid_density_kg_m3": 572.615180923851,
+                "vapor_density_kg_m3": 11.151011418139516
+              }
+            },
+            {
+              "temperature_k": 309.997,
+              "x_propane": 0.17029999999999998,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 487227.1792296834,
+                "x": [
+                  0.17029999999999998,
+                  0.8297
+                ],
+                "y": [
+                  0.3866593484286844,
+                  0.6133406515713157
+                ],
+                "liquid_density_kg_m3": 572.529757840108,
+                "vapor_density_kg_m3": 11.168510468002129
+              }
+            },
+            {
+              "temperature_k": 310.0,
+              "x_propane": 0.1681,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 485397.6457466426,
+                "x": [
+                  0.1681,
+                  0.8319
+                ],
+                "y": [
+                  0.3830096970991322,
+                  0.6169903029008678
+                ],
+                "liquid_density_kg_m3": 572.6958472542652,
+                "vapor_density_kg_m3": 11.134384767181654
+              }
+            },
+            {
+              "temperature_k": 310.0,
+              "x_propane": 0.1692,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 486331.4266636781,
+                "x": [
+                  0.1692,
+                  0.8308
+                ],
+                "y": [
+                  0.38483492121829455,
+                  0.6151650787817056
+                ],
+                "liquid_density_kg_m3": 572.6104769844417,
+                "vapor_density_kg_m3": 11.15187608440713
+              }
+            },
+            {
+              "temperature_k": 310.0,
+              "x_propane": 0.17029999999999998,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 487265.4222721374,
+                "x": [
+                  0.17029999999999998,
+                  0.8297
+                ],
+                "y": [
+                  0.3866537654954978,
+                  0.6133462345045022
+                ],
+                "liquid_density_kg_m3": 572.525051968864,
+                "vapor_density_kg_m3": 11.169376232562769
+              }
+            },
+            {
+              "temperature_k": 310.003,
+              "x_propane": 0.1681,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 485435.77632839454,
+                "x": [
+                  0.1681,
+                  0.8319
+                ],
+                "y": [
+                  0.383004136629842,
+                  0.616995863370158
+                ],
+                "liquid_density_kg_m3": 572.6911451431835,
+                "vapor_density_kg_m3": 11.135248390549394
+              }
+            },
+            {
+              "temperature_k": 310.003,
+              "x_propane": 0.1692,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 486369.61459305265,
+                "x": [
+                  0.1692,
+                  0.8308
+                ],
+                "y": [
+                  0.3848293494617934,
+                  0.6151706505382066
+                ],
+                "liquid_density_kg_m3": 572.6057729433586,
+                "vapor_density_kg_m3": 11.152740805184264
+              }
+            },
+            {
+              "temperature_k": 310.003,
+              "x_propane": 0.17029999999999998,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 487303.6675707669,
+                "x": [
+                  0.17029999999999998,
+                  0.8297
+                ],
+                "y": [
+                  0.3866481826366791,
+                  0.6133518173633209
+                ],
+                "liquid_density_kg_m3": 572.520345995878,
+                "vapor_density_kg_m3": 11.170242051691444
+              }
+            }
+          ]
+        },
+        "HEOS": {
+          "summary": {
+            "sample_count": 9,
+            "error_count": 0,
+            "sampled_pressure_pa": [
+              485074.9418121567,
+              487012.763239497
+            ],
+            "sampled_y": [
+              0.3801654199742227,
+              0.38383142669018494
+            ],
+            "pressure_interval_gap_pa": 12807.744812156714,
+            "y_interval_gap": 0.024065419974222735,
+            "nominal_pressure_relative_error": 0.03172077360185854,
+            "nominal_y_absolute_error": 0.027001549739266995,
+            "original_pressure_status": "fail",
+            "original_y_status": "fail"
+          },
+          "samples": [
+            {
+              "temperature_k": 309.997,
+              "x_propane": 0.1681,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 485074.9418121567,
+                "x": [
+                  0.1681,
+                  0.8319
+                ],
+                "y": [
+                  0.3801764257423577,
+                  0.6198235742576422
+                ],
+                "liquid_density_kg_m3": 547.5878641752502,
+                "vapor_density_kg_m3": 11.172833961619093
+              }
+            },
+            {
+              "temperature_k": 309.997,
+              "x_propane": 0.1692,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 486005.5608799528,
+                "x": [
+                  0.1692,
+                  0.8308
+                ],
+                "y": [
+                  0.3820070641691563,
+                  0.6179929358308438
+                ],
+                "liquid_density_kg_m3": 547.511248225416,
+                "vapor_density_kg_m3": 11.190133709427394
+              }
+            },
+            {
+              "temperature_k": 309.997,
+              "x_propane": 0.17029999999999998,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 486936.4563514346,
+                "x": [
+                  0.17029999999999998,
+                  0.8297
+                ],
+                "y": [
+                  0.38383142669018494,
+                  0.616168573309815
+                ],
+                "liquid_density_kg_m3": 547.4345860364652,
+                "vapor_density_kg_m3": 11.207443376751005
+              }
+            },
+            {
+              "temperature_k": 310.0,
+              "x_propane": 0.1681,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 485112.98063541506,
+                "x": [
+                  0.1681,
+                  0.8319
+                ],
+                "y": [
+                  0.3801709228143801,
+                  0.61982907718562
+                ],
+                "liquid_density_kg_m3": 547.5840752233313,
+                "vapor_density_kg_m3": 11.173696235193479
+              }
+            },
+            {
+              "temperature_k": 310.0,
+              "x_propane": 0.1692,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 486043.6564438356,
+                "x": [
+                  0.1692,
+                  0.8308
+                ],
+                "y": [
+                  0.382001549739267,
+                  0.617998450260733
+                ],
+                "liquid_density_kg_m3": 547.5074582429825,
+                "vapor_density_kg_m3": 11.190997040984383
+              }
+            },
+            {
+              "temperature_k": 310.0,
+              "x_propane": 0.17029999999999998,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 486974.60868029064,
+                "x": [
+                  0.17029999999999998,
+                  0.8297
+                ],
+                "y": [
+                  0.3838259009436,
+                  0.6161740990564001
+                ],
+                "liquid_density_kg_m3": 547.4307950223908,
+                "vapor_density_kg_m3": 11.208307767249172
+              }
+            },
+            {
+              "temperature_k": 310.003,
+              "x_propane": 0.1681,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 485151.02168489946,
+                "x": [
+                  0.1681,
+                  0.8319
+                ],
+                "y": [
+                  0.3801654199742227,
+                  0.6198345800257773
+                ],
+                "liquid_density_kg_m3": 547.5802862211651,
+                "vapor_density_kg_m3": 11.17455856199909
+              }
+            },
+            {
+              "temperature_k": 310.003,
+              "x_propane": 0.1692,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 486081.75423584,
+                "x": [
+                  0.1692,
+                  0.8308
+                ],
+                "y": [
+                  0.3819960353968698,
+                  0.6180039646031302
+                ],
+                "liquid_density_kg_m3": 547.5036682102576,
+                "vapor_density_kg_m3": 11.191860425818009
+              }
+            },
+            {
+              "temperature_k": 310.003,
+              "x_propane": 0.17029999999999998,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 487012.763239497,
+                "x": [
+                  0.17029999999999998,
+                  0.8297
+                ],
+                "y": [
+                  0.3838203752841643,
+                  0.6161796247158358
+                ],
+                "liquid_density_kg_m3": 547.4270039579817,
+                "vapor_density_kg_m3": 11.209172211078219
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "point": {
+        "source": "Kayukawa2005",
+        "pack": "c2a-evidence-review",
+        "pressure_id": "je0496701/d1/p4",
+        "composition_id": "je0496701/d2/p4",
+        "temperature_k": 300.0,
+        "pressure_pa": 449500.0,
+        "x_propane": 0.309,
+        "y_propane": 0.5339
+      },
+      "table_values_match": true,
+      "compiler_uncertainty": {
+        "pressure_expanded_pa": 13600.0,
+        "y_expanded": 0.0347,
+        "pressure_metadata": {
+          "nCombUncertLevOfConfid": 95,
+          "eCombUncertEvalMethod": "Propagation of evaluated standard uncertainties",
+          "sCombUncertEvaluator": "Data file compiler",
+          "nCombUncertAssessNum": 1
+        },
+        "y_metadata": {
+          "nCombUncertLevOfConfid": 95,
+          "eCombUncertEvalMethod": "Propagation of evaluated standard uncertainties",
+          "nCombUncertAssessNum": 1,
+          "sCombUncertEvaluator": "Data file compiler"
+        }
+      },
+      "author_pressure_uncertainty_pa": 1161.365,
+      "backends": {
+        "PR": {
+          "summary": {
+            "sample_count": 9,
+            "error_count": 0,
+            "sampled_pressure_pa": [
+              467437.9580116243,
+              469063.376498512
+            ],
+            "sampled_y": [
+              0.5932253241565176,
+              0.5956634783121106
+            ],
+            "pressure_interval_gap_pa": 16776.593011624296,
+            "y_interval_gap": 0.0582253241565176,
+            "nominal_pressure_relative_error": 0.041714194136125204,
+            "nominal_y_absolute_error": 0.06054621325729548,
+            "original_pressure_status": "fail",
+            "original_y_status": "fail"
+          },
+          "samples": [
+            {
+              "temperature_k": 299.997,
+              "x_propane": 0.3079,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 467437.9580116243,
+                "x": [
+                  0.3079,
+                  0.6920999999999999
+                ],
+                "y": [
+                  0.5932373609955519,
+                  0.40676263900444815
+                ],
+                "liquid_density_kg_m3": 577.3440697909999,
+                "vapor_density_kg_m3": 10.3875409262699
+              }
+            },
+            {
+              "temperature_k": 299.997,
+              "x_propane": 0.309,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 468212.8916038282,
+                "x": [
+                  0.309,
+                  0.6910000000000001
+                ],
+                "y": [
+                  0.5944522273623171,
+                  0.4055477726376831
+                ],
+                "liquid_density_kg_m3": 577.2581250974199,
+                "vapor_density_kg_m3": 10.402503674048448
+              }
+            },
+            {
+              "temperature_k": 299.997,
+              "x_propane": 0.3101,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 468987.99223227333,
+                "x": [
+                  0.3101,
+                  0.6899
+                ],
+                "y": [
+                  0.5956634783121106,
+                  0.4043365216878894
+                ],
+                "liquid_density_kg_m3": 577.1721243644821,
+                "vapor_density_kg_m3": 10.417473386754828
+              }
+            },
+            {
+              "temperature_k": 300.0,
+              "x_propane": 0.3079,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 467475.54435100476,
+                "x": [
+                  0.3079,
+                  0.6920999999999999
+                ],
+                "y": [
+                  0.5932313425621191,
+                  0.4067686574378809
+                ],
+                "liquid_density_kg_m3": 577.3394545019595,
+                "vapor_density_kg_m3": 10.388361448467467
+              }
+            },
+            {
+              "temperature_k": 300.0,
+              "x_propane": 0.309,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 468250.53026418824,
+                "x": [
+                  0.309,
+                  0.6910000000000001
+                ],
+                "y": [
+                  0.5944462132572955,
+                  0.4055537867427045
+                ],
+                "liquid_density_kg_m3": 577.2535078623151,
+                "vapor_density_kg_m3": 10.403325214075323
+              }
+            },
+            {
+              "temperature_k": 300.0,
+              "x_propane": 0.3101,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 469025.68323257106,
+                "x": [
+                  0.3101,
+                  0.6899
+                ],
+                "y": [
+                  0.5956574685931701,
+                  0.40434253140682985
+                ],
+                "liquid_density_kg_m3": 577.1675051813554,
+                "vapor_density_kg_m3": 10.418295945429014
+              }
+            },
+            {
+              "temperature_k": 300.003,
+              "x_propane": 0.3079,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 467513.1329510623,
+                "x": [
+                  0.3079,
+                  0.6920999999999999
+                ],
+                "y": [
+                  0.5932253241565176,
+                  0.4067746758434823
+                ],
+                "liquid_density_kg_m3": 577.3348391146611,
+                "vapor_density_kg_m3": 10.389182022825658
+              }
+            },
+            {
+              "temperature_k": 300.003,
+              "x_propane": 0.309,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 468288.17118778155,
+                "x": [
+                  0.309,
+                  0.6910000000000001
+                ],
+                "y": [
+                  0.5944401991796558,
+                  0.40555980082034426
+                ],
+                "liquid_density_kg_m3": 577.248890528884,
+                "vapor_density_kg_m3": 10.40414680632548
+              }
+            },
+            {
+              "temperature_k": 300.003,
+              "x_propane": 0.3101,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 469063.376498512,
+                "x": [
+                  0.3101,
+                  0.6899
+                ],
+                "y": [
+                  0.595651458901164,
+                  0.404348541098836
+                ],
+                "liquid_density_kg_m3": 577.1628858998336,
+                "vapor_density_kg_m3": 10.419118556385525
+              }
+            }
+          ]
+        },
+        "HEOS": {
+          "summary": {
+            "sample_count": 9,
+            "error_count": 0,
+            "sampled_pressure_pa": [
+              467475.4007620418,
+              469106.6945883322
+            ],
+            "sampled_y": [
+              0.5913695216328877,
+              0.5938246165983329
+            ],
+            "pressure_interval_gap_pa": 16814.035762041807,
+            "y_interval_gap": 0.056369521632887665,
+            "nominal_pressure_relative_error": 0.04180400911419402,
+            "nominal_y_absolute_error": 0.05869889444445009,
+            "original_pressure_status": "fail",
+            "original_y_status": "fail"
+          },
+          "samples": [
+            {
+              "temperature_k": 299.997,
+              "x_propane": 0.3079,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 467475.4007620418,
+                "x": [
+                  0.3079,
+                  0.6920999999999999
+                ],
+                "y": [
+                  0.5913815784972511,
+                  0.4086184215027488
+                ],
+                "liquid_density_kg_m3": 550.2709403763265,
+                "vapor_density_kg_m3": 10.421111162178539
+              }
+            },
+            {
+              "temperature_k": 299.997,
+              "x_propane": 0.309,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 468253.32225623634,
+                "x": [
+                  0.309,
+                  0.6910000000000001
+                ],
+                "y": [
+                  0.5926049186208653,
+                  0.40739508137913455
+                ],
+                "liquid_density_kg_m3": 550.1918552317657,
+                "vapor_density_kg_m3": 10.436075734888403
+              }
+            },
+            {
+              "temperature_k": 299.997,
+              "x_propane": 0.3101,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 469031.4283874701,
+                "x": [
+                  0.3101,
+                  0.6899
+                ],
+                "y": [
+                  0.5938246165983329,
+                  0.4061753834016672
+                ],
+                "liquid_density_kg_m3": 550.1127234424881,
+                "vapor_density_kg_m3": 10.451047651573994
+              }
+            },
+            {
+              "temperature_k": 300.0,
+              "x_propane": 0.3079,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 467512.92848516395,
+                "x": [
+                  0.3079,
+                  0.6920999999999999
+                ],
+                "y": [
+                  0.5913755500439843,
+                  0.4086244499560156
+                ],
+                "liquid_density_kg_m3": 550.2671837179694,
+                "vapor_density_kg_m3": 10.42193044107679
+              }
+            },
+            {
+              "temperature_k": 300.0,
+              "x_propane": 0.309,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 468290.90209683025,
+                "x": [
+                  0.309,
+                  0.6910000000000001
+                ],
+                "y": [
+                  0.5925988944444501,
+                  0.40740110555554987
+                ],
+                "liquid_density_kg_m3": 550.1880975449003,
+                "vapor_density_kg_m3": 10.43689600909267
+              }
+            },
+            {
+              "temperature_k": 300.0,
+              "x_propane": 0.3101,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 469069.0603667308,
+                "x": [
+                  0.3101,
+                  0.6899
+                ],
+                "y": [
+                  0.5938185967582986,
+                  0.40618140324170143
+                ],
+                "liquid_density_kg_m3": 550.1089647259893,
+                "vapor_density_kg_m3": 10.451868921936969
+              }
+            },
+            {
+              "temperature_k": 300.003,
+              "x_propane": 0.3079,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 467550.4584466569,
+                "x": [
+                  0.3079,
+                  0.6920999999999999
+                ],
+                "y": [
+                  0.5913695216328877,
+                  0.4086304783671123
+                ],
+                "liquid_density_kg_m3": 550.2634270119554,
+                "vapor_density_kg_m3": 10.422749771014333
+              }
+            },
+            {
+              "temperature_k": 300.003,
+              "x_propane": 0.309,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 468328.4841783944,
+                "x": [
+                  0.309,
+                  0.6910000000000001
+                ],
+                "y": [
+                  0.5925928703097556,
+                  0.40740712969024445
+                ],
+                "liquid_density_kg_m3": 550.184339810336,
+                "vapor_density_kg_m3": 10.437716334397066
+              }
+            },
+            {
+              "temperature_k": 300.003,
+              "x_propane": 0.3101,
+              "result": {
+                "status": "ok",
+                "pressure_pa": 469106.6945883322,
+                "x": [
+                  0.3101,
+                  0.6899
+                ],
+                "y": [
+                  0.5938125769595107,
+                  0.4061874230404893
+                ],
+                "liquid_density_kg_m3": 550.1052059617468,
+                "vapor_density_kg_m3": 10.452690243430105
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "new_mixture_gas_density_measurements": 0,
+  "interpretation": "Sampled sensitivity only; no change to accepted counts, limits, model parameters or evidence qualification."
+}
