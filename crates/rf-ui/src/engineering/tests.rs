@@ -636,6 +636,7 @@ fn equipment_history_and_calculation_are_isolated_from_flow_and_presentation() {
         RunStatus::Converged,
         DiagnosticSummary::new(0, DiagnosticSeverity::Info, "ok"),
     ));
+    let mut flow_receipt = app.prepare_flow_run().into_receipt();
     let flow_before = app.workspace.solve_session.clone();
     let history_before = app.workspace.command_history.clone();
     edit(&mut app.workspace.engineering, 1.1);
@@ -655,6 +656,10 @@ fn equipment_history_and_calculation_are_isolated_from_flow_and_presentation() {
         .apply(ProjectPresentationCommand::Apply(
             DisplayUnitSet::engineering(),
         ));
+    assert_eq!(
+        app.accept_flow_run(&mut flow_receipt),
+        crate::FlowRunDisposition::Applied
+    );
     app.commit_document_change(
         DocumentCommand::MoveUnit {
             unit_id: "unrelated".into(),

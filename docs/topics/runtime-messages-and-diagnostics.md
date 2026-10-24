@@ -53,7 +53,7 @@
 
 开发者诊断与工程视图共享事实；按任务展开模型、数值及技术详情，不因隐藏详情解除工程阻断。独立模型 / 物性实验和调用证据可先于后台调试，参数对照与导数检查随模型能力建设；MSG-28—33 的字段与载荷由 D-11 / D-12 衔接既有采集、数值及存储决策。
 
-2026-10-24 已基于 AF2b 完成 [AF3 现状盘点与提案](runtime-messages/run-control-and-watch-conditions.md#af3-任务身份取消与完成接收提案待确认)，包含会话 / 输入 / RunId、单 worker、取消竞争、迟到成功 / 失败、资源与退出收尾；[专项验收矩阵](runtime-messages/scenarios-and-acceptance.md#af3-专项验收边界待执行)单列确定性竞争、真实后台、UI 与跨端门槛。接口及行为变化待确认，未改产品代码；AF1 独立跟踪，暂停 / 单步与完整 N 轨道仍未实现。
+2026-10-24 已基于 AF2b 完成 [AF3 现状盘点与提案](runtime-messages/run-control-and-watch-conditions.md#af3-任务身份取消与完成接收方案)，包含会话 / 输入 / RunId、单 worker、取消竞争、迟到成功 / 失败、资源与退出收尾；[专项验收矩阵](runtime-messages/scenarios-and-acceptance.md#af3-专项验收边界)单列确定性竞争、真实后台、UI 与跨端门槛。方案已确认，AF3a 同步身份、冻结输入与完成接收已实现；AF3b / AF3c 后台 / 取消与产品闭环尚未实施。AF1 独立跟踪，暂停 / 单步与完整 N 轨道仍未实现。
 
 ## 实施与验收入口
 

@@ -185,7 +185,8 @@ pub use run_panel_driver::{
     dispatch_run_panel_widget_action_with_auth_cache, snapshot_run_panel_driver_state,
 };
 pub use solver_bridge::{
-    StudioSolveRequest, next_solver_snapshot_sequence, solve_workspace_from_auth_cache,
+    CompletedWorkspaceSolve, PreparedWorkspaceSolve, StudioSolveRequest, complete_workspace_solve,
+    next_solver_snapshot_sequence, prepare_workspace_solve, solve_workspace_from_auth_cache,
     solve_workspace_with_property_package,
 };
 pub use studio_app_host::{

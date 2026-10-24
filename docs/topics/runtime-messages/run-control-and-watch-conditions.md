@@ -57,11 +57,11 @@
 - 验证见 [S-11—S-17](scenarios-and-acceptance.md#运行控制与条件)：请求竞争、黑箱延迟、单位等价、NaN、过滤不影响触发及修改输入。
 
 
-## AF3 任务身份、取消与完成接收提案（待确认）
+## AF3 任务身份、取消与完成接收方案
 
-2026-10-24 基于 `b09873b2` 盘点。所有者要求先细化方案，**本节尚未获实施确认，未改产品代码**；AF1 保留独立故障跟踪。AF2a / AF2b 已提供内建工厂与冻结物性数据，本轮设计只补现有流程求解和独立设备计算的任务基础，不实现暂停 / 单步、条件监视、算法内强杀、任务持久化、插件、远程计算、新 EOS 或 C2-B / C3。
+2026-10-24 基于 `b09873b2` 盘点后，所有者确认方案并授权实施 AF3a。**AF3a 身份、冻结输入与接收已接通，同步执行保持；AF3b / AF3c 后台、取消、设备与生命周期接线尚未实施**；AF1 保留独立故障跟踪。AF2a / AF2b 已提供内建工厂与冻结物性数据，本轮设计只补现有流程求解和独立设备计算的任务基础，不实现暂停 / 单步、条件监视、算法内强杀、任务持久化、插件、远程计算、新 EOS 或 C2-B / C3。
 
-### 已有链路与缺口
+### AF3 实施前盘点（`b09873b2`）
 
 | 链路 / 代码定位 | 当前可复用事实 | AF3 要解决的缺口 |
 | --- | --- | --- |
@@ -115,11 +115,22 @@ worker 仅拥有 flowsheet 副本或设备 `CalculationRequest`、选包来源�
 
 身份由拥有者签发、字段私有；建议复用设备不透明实例标识的方式，数值序号只用于有界记录和展示，计数耗尽返回结构化失败、不回绕。事务临时 clone 保留同一会话，只有获准提交的状态才能登记任务；独立 fork / 重开要显式新会话，不能将 Clone 当作创建独立运行宿主。测试须覆盖未修改 clone 与分叉修改两种情况。
 
-流程拟提供 `prepare / execute / complete` 三段能力，已冻结请求不含可变 AppState；完成包携带原凭据和 `Succeeded / Failed / Cancelled` 执行事实。接收时同时检查当前会话、输入 checkpoint、接收 epoch、待接收 RunId 和取消 / 授权撤销位；通过后使用捕获的 revision 构造 UI 快照，再推进当前状态。成功和失败使用同一接收门禁；迟到失败不能把新工程改成 Error / Hold，迟到进度也不能改当前运行栏。
+流程采用 `prepare / execute / complete` 三段能力，已冻结请求不含可变 AppState；完成包携带原凭据和 `Succeeded / Failed / Cancelled` 执行事实。接收时同时检查当前会话、输入 checkpoint、接收 epoch、待接收 RunId 和取消 / 授权撤销位；通过后使用捕获的 revision 构造 UI 快照，再推进当前状态。成功和失败使用同一接收门禁；迟到失败不能把新工程改成 Error / Hold，迟到进度也不能改当前运行栏。
 
 接收须一次性消费凭据：重复完成为 AlreadySettled，无第二次插入、日志计数、快照序号或状态变化；异会话 / 旧输入 / 已清结果分别给结构化拒绝原因，不解析文本推断。旧请求失败也不能清掉较新请求的 pending；当前输入未匹配时不得调用现有无条件 `store_solver_snapshot` 或 `record_failure`。snapshot 原显示命名与序号在同步兼容路径保持，任务身份与之独立。
 
-### 执行状态、取消与竞争
+### AF3a 已实现契约（2026-10-24）
+
+- [rf-ui 流程接收](../../../crates/rf-ui/src/flow_run.rs)持有私有会话、输入 checkpoint、接收 epoch 与 `FlowRunId`，身份采用不可伪造实例；显示快照序号独立，`next_solver_snapshot_sequence` 返回 `RfResult<u64>`，耗尽返回 `workspace.run.snapshot_sequence_exhausted`，不回绕。
+- `AppState::prepare_flow_run` 捕获正式 Flowsheet、DocumentId、revision 与凭据；正式提交、Inspector 提交和 Undo / Redo 更新输入 checkpoint，清结果和显式登出撤销接收 epoch。撤销本身不抹掉先前有效结果；保存 / 另存为、Hold、显示设置、未提交草稿、设备独立编辑不使流程凭据失效。
+- 新建 / 打开构造新的 `WorkspaceState`；事务 Clone 保留身份。独立流程拥有者使用新 WorkspaceState，或在 clone 上显式 `reset_flow_run_session`；该接口只重置流程接收与结果，不承担设备 fork 或 Shell 生命周期。正式输入必须通过已有事务入口更新；公开模型字段的初始化写入不作为运行中编辑接口。
+- [Studio 执行边界](../../../apps/radishflow-studio/src/solver_bridge/execution.rs)提供 `prepare_workspace_solve → PreparedWorkspaceSolve::execute_* → complete_workspace_solve`。准备复制选包 / 快照参数，执行只读取冻结输入、不持有 AppState；加载仍按 AF2b 开始时资格校验，完成保留实际包描述、版本、指纹和执行成功 / 失败事实。输入副本执行后释放，不留完整任务历史。
+- 完成接收以一个独占 AppState 借用串行核验并发布；成功、求解错误、包错误和日志均经过同一门禁。通过后用捕获 revision 写快照 / 诊断；拒绝返回 `DifferentSession / InputChanged / AcceptanceRevoked / Superseded / AlreadySettled`，不清较新 pending，不改变当前 Error / Hold、快照或日志。
+- prepared / completed / receipt 不实现 Clone；凭据第一次处置后即消费，重复传入同一完成对象返回 `AlreadySettled`，不靠全局可变状态或无限 settled 集合。普通事务 Clone 不共享可变消费标记；只有正式拥有者登记和接收任务，不能把 Clone 当作第二个调度宿主。
+- 原 `StudioSolveRequest` 保留同步调用参数含义；旧同步函数内部串行调用同一三段链路，Facade 的草稿 / 选包 / readiness / entitlement 检查和 Started 最终回执保持。缓存准备错误保留原诊断与状态语义，原 headless / FFI JSON 和工程格式未扩展。
+- 本层 pending 是结果资格，允许测试顺序提交 A / B 后交错交付；不代表已有队列或并发许可。worker 单槽、Ready 握手、协作取消、取消位、进度、摘要、缓存根租用与退出回收归 AF3b / AF3c，AF3a 未新增线程或 GUI 操作。
+
+### 执行状态、取消与竞争（AF3b / AF3c）
 
 任务生命周期与结果资格分开：`Preparing → Running → Finished`，任一未终结阶段可进入 `CancelRequested`，只有执行者返回并收尾后才是 `Cancelled / Failed / Succeeded`。`Preparing` 包括资源加载 / Ready 握手；不增加没有真实队列的 Queued 状态。每条任务另记录结果处置 `Applied / Discarded(reason)`，执行成功但接收失效仍如实记录执行事实，不伪称发生数值失败。
 
@@ -156,7 +167,7 @@ AF1 的原生文件面板仍可能占用 UI 事件循环；后台数值不依赖
 - RunStatus 的旧数值状态不用于塞入 CancelRequested 等控制状态；运行栏单独投影任务状态，最终结果格式不加字段。任务记录只在内存，不进项目格式、sidecar、Undo 或保存脏状态；AF5 再决定正式结果来源与导出。
 - 新取消入口、Busy、等待收尾与退出提示需最小局部 UI / 双语 / 键盘 / 读屏设计，复用已有运行区域，不重绘完整工作台；按现有 UI 门禁先评审状态组合与操作路径。后台执行测试不替代这项产品验收。
 
-### 建议实施切片与确认范围
+### 已确认实施切片
 
 | 切片 | 可独立评审交付 | 退出条件 |
 | --- | --- | --- |
@@ -164,6 +175,6 @@ AF1 的原生文件面板仍可能占用 UI 事件循环；后台数值不依赖
 | AF3b 后台流程与协作取消 | 应用所有者 / 资源租用、worker、Ready 握手、单槽策略、solver 安全点、进度 / 完成通道和故障回收 | 可控执行器竞争测试及真实顺序求解通过；UI 线程不执行加载 / 求解，不阻塞 join，无无限 worker / 队列 |
 | AF3c 设备接入与产品闭环 | 拆开既有设备同步调用，沿原领域 key 完成接收；连接 GUI 取消、文档切换 / 只读覆盖 / 关闭与自动触发策略 | 保留 Sizing / Rating / 矩阵 / 草稿 / 采纳 / 导出的领域资格；局部 UI 评审、macOS 代表实窗和正式基线通过 |
 
-本提案需要确认的行为变化为：GUI Run 改为提交回执、单 worker / Busy 策略、运行中修改使旧任务取消且不可发布、显式取消流程时转 Hold、关闭确认后的异步收尾等待，以及上述开始握手 / 授权撤销边界。字段与模块按此职责实施，不将架构方案视为已经通过运行态验收。建议先确认 AF3a，再顺序接入 AF3b / AF3c；不以 AF3a 的纯状态测试宣布整个 AF3 完成。
+本方案已确认的后续行为变化为：GUI Run 改为提交回执、单 worker / Busy 策略、运行中修改使旧任务取消且不可发布、显式取消流程时转 Hold、关闭确认后的异步收尾等待，以及上述开始握手 / 授权撤销边界。字段与模块按此职责实施，不将架构方案视为已经通过运行态验收。本轮只实施 AF3a，后续顺序接入 AF3b / AF3c；不以 AF3a 的纯状态测试宣布整个 AF3 完成。
 
-验收案例与通过门槛唯一维护在 [AF3 验收边界](scenarios-and-acceptance.md#af3-专项验收边界待执行)，关联 MSG-02 / 06 / 07 / 10 / 12 / 13 / 20 / 21 / 23 / 25 / 26 的必要子集；完整暂停、单步、trace、条件和持久化要求继续待实施。
+验收案例与通过门槛唯一维护在 [AF3 验收边界](scenarios-and-acceptance.md#af3-专项验收边界)，关联 MSG-02 / 06 / 07 / 10 / 12 / 13 / 20 / 21 / 23 / 25 / 26 的必要子集；完整暂停、单步、trace、条件和持久化要求继续待实施。

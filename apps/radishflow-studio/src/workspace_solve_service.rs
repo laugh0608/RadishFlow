@@ -109,11 +109,10 @@ impl WorkspaceSolveService {
             return Ok(WorkspaceSolveDispatch::Skipped(skip_reason));
         }
 
+        let request = self.build_request(app_state, package_id)?;
         if matches!(trigger, WorkspaceSolveTrigger::Manual) {
             app_state.request_manual_run();
         }
-
-        let request = self.build_request(app_state, package_id)?;
         solve_workspace_with_property_package(app_state, package_provider, &request)?;
         Ok(WorkspaceSolveDispatch::Started(request))
     }
@@ -130,11 +129,10 @@ impl WorkspaceSolveService {
             return Ok(WorkspaceSolveDispatch::Skipped(skip_reason));
         }
 
+        let request = self.build_request(app_state, package_id)?;
         if matches!(trigger, WorkspaceSolveTrigger::Manual) {
             app_state.request_manual_run();
         }
-
-        let request = self.build_request(app_state, package_id)?;
         solve_workspace_from_auth_cache(app_state, cache_root, auth_cache_index, &request)?;
         Ok(WorkspaceSolveDispatch::Started(request))
     }
@@ -145,7 +143,7 @@ pub fn build_workspace_solve_request(
     package_id: impl Into<String>,
 ) -> RfResult<StudioSolveRequest> {
     let revision = app_state.workspace.document.revision;
-    let sequence = next_solver_snapshot_sequence(app_state);
+    let sequence = next_solver_snapshot_sequence(app_state)?;
     let snapshot_id = format!(
         "{}-rev-{}-seq-{}",
         app_state.workspace.document.metadata.document_id.as_str(),

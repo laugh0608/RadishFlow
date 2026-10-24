@@ -454,6 +454,7 @@ impl AppLogFeed {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceState {
+    pub(crate) flow_run_acceptance: crate::flow_run::FlowRunAcceptance,
     // Retain identities across deletion and history branching for this document session.
     allocated_unit_ids: BTreeSet<UnitId>,
     pub document: FlowsheetDocument,
@@ -479,6 +480,7 @@ impl WorkspaceState {
         let run_panel = RunPanelState::from_runtime(&solve_session, None, None);
 
         Self {
+            flow_run_acceptance: crate::flow_run::FlowRunAcceptance::new(),
             engineering: crate::engineering::EngineeringSession::new(
                 document.metadata.document_id.clone(),
             ),
@@ -515,6 +517,7 @@ impl WorkspaceState {
                 revision, command, before, after,
             ));
         self.canvas_interaction.invalidate_all();
+        self.flow_run_acceptance.input_changed();
         self.solve_session.mark_document_revision_advanced(revision);
         self.drafts
             .fields
@@ -537,6 +540,7 @@ impl WorkspaceState {
                 revision, command, before, after,
             ));
         self.canvas_interaction.invalidate_all();
+        self.flow_run_acceptance.input_changed();
         self.solve_session.mark_document_revision_advanced(revision);
         self.refresh_numeric_edits();
         revision
@@ -545,6 +549,7 @@ impl WorkspaceState {
     fn apply_history_flowsheet(&mut self, flowsheet: Flowsheet, changed_at: DateTimeUtc) -> u64 {
         let revision = self.document.replace_flowsheet(flowsheet, changed_at);
         self.canvas_interaction.invalidate_all();
+        self.flow_run_acceptance.input_changed();
         self.solve_session.mark_document_revision_advanced(revision);
         self.prune_focus_against_document();
         self.drafts
@@ -595,6 +600,7 @@ impl WorkspaceState {
     }
 
     pub fn clear_results(&mut self) {
+        self.revoke_flow_run_acceptance();
         self.snapshot_history.clear();
         self.solve_session.latest_snapshot = None;
         self.solve_session.pending_reason = Some(SolvePendingReason::SnapshotMissing);
@@ -1302,6 +1308,7 @@ impl AppState {
     }
 
     pub fn clear_auth_session(&mut self) {
+        self.workspace.revoke_flow_run_acceptance();
         self.auth_session.clear();
         self.entitlement.clear();
     }

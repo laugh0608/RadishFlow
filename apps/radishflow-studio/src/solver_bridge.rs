@@ -1,3 +1,11 @@
+mod execution;
+#[cfg(test)]
+mod execution_tests;
+pub use execution::{
+    CompletedWorkspaceSolve, PreparedWorkspaceSolve, complete_workspace_solve,
+    prepare_workspace_solve,
+};
+
 use std::path::Path;
 
 use rf_property_package::{
@@ -58,13 +66,16 @@ impl StudioSolveRequest {
     }
 }
 
-pub fn next_solver_snapshot_sequence(app_state: &AppState) -> u64 {
+pub fn next_solver_snapshot_sequence(app_state: &AppState) -> RfResult<u64> {
     app_state
         .workspace
         .snapshot_history
         .back()
-        .map(|snapshot| snapshot.sequence + 1)
-        .unwrap_or(1)
+        .map_or(Some(1), |snapshot| snapshot.sequence.checked_add(1))
+        .ok_or_else(|| {
+            RfError::invalid_input("solver snapshot sequence exhausted")
+                .with_diagnostic_code("workspace.run.snapshot_sequence_exhausted")
+        })
 }
 
 pub fn solve_workspace_with_property_package<P>(
@@ -75,79 +86,10 @@ pub fn solve_workspace_with_property_package<P>(
 where
     P: PropertyPackageProvider,
 {
-    request.validate()?;
-
-    let context = package_provider
-        .load_package(&request.package_id, SystemTime::now())
-        .and_then(prepare_local_context);
-    solve_workspace_with_context(app_state, request, context)
-}
-
-fn solve_workspace_with_context(
-    app_state: &mut AppState,
-    request: &StudioSolveRequest,
-    context: PackageResult<LocalThermoContext>,
-) -> RfResult<()> {
-    let revision = app_state.workspace.document.revision;
-    let package_id = request.package_id.as_str();
-    app_state.workspace.solve_session.begin_checking(revision);
-    app_state.workspace.solve_session.mark_runnable();
-    app_state.workspace.solve_session.begin_solving();
-
-    let context = match context {
-        Ok(system) => system,
-        Err(error) => {
-            if error.kind != PackageFailureKind::Missing {
-                log_package_failure(app_state, &error);
-            }
-            let error = workspace_property_package_load_error(error);
-            record_solve_failure(
-                app_state,
-                revision,
-                format!(
-                    "failed to load property package `{package_id}`: {}",
-                    error.message()
-                ),
-                SolveFailureContext::from_error(&error),
-            );
-            return Err(error);
-        }
-    };
-
-    let services = SolverServices {
-        thermo: context.thermo(),
-        flash_solver: context.tp_flash(),
-    };
-    let solver_snapshot =
-        match SequentialModularSolver.solve(&services, &app_state.workspace.document.flowsheet) {
-            Ok(snapshot) => snapshot,
-            Err(error) => {
-                record_solve_failure(
-                    app_state,
-                    revision,
-                    format!(
-                        "flowsheet solve failed with package `{package_id}`: {}",
-                        error.message()
-                    ),
-                    SolveFailureContext::from_error(&error),
-                );
-                return Err(error);
-            }
-        };
-
-    app_state.store_solver_snapshot(
-        request.snapshot_id.as_str(),
-        request.sequence,
-        &solver_snapshot,
-    );
-    app_state.push_log(
-        AppLogLevel::Info,
-        format!(
-            "Solved document revision {} with property package `{}` into snapshot `{}`",
-            revision, package_id, request.snapshot_id
-        ),
-    );
-    Ok(())
+    let mut completion = prepare_workspace_solve(app_state, request)?
+        .execute_with_property_package(package_provider);
+    complete_workspace_solve(app_state, &mut completion);
+    completion.result().map(|_| ())
 }
 
 fn workspace_property_package_load_error(error: PackageLoadError) -> RfError {
@@ -174,41 +116,10 @@ pub fn solve_workspace_from_auth_cache(
     auth_cache_index: &StoredAuthCacheIndex,
     request: &StudioSolveRequest,
 ) -> RfResult<()> {
-    let provider =
-        CachedPropertyPackageProvider::new(cache_root, auth_cache_index).map_err(|error| {
-            error
-                .source
-                .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE)
-        })?;
-    request.validate()?;
-    let context = provider
-        .load_package(&request.package_id, SystemTime::now())
-        .and_then(prepare_local_context);
-    // Resource preparation failures historically leave the solve session untouched.
-    // Missing / filtered packages still enter the existing solve-failure path.
-    if let Err(error) = &context
-        && !matches!(
-            error.kind,
-            PackageFailureKind::Missing
-                | PackageFailureKind::Expired
-                | PackageFailureKind::UnsupportedSource
-        )
-    {
-        log_package_failure(app_state, error);
-        return Err(workspace_property_package_load_error(error.clone()));
-    }
-    solve_workspace_with_context(app_state, request, context)
-}
-
-fn log_package_failure(app_state: &mut AppState, error: &PackageLoadError) {
-    app_state.push_log(
-        AppLogLevel::Error,
-        format!(
-            "{}: {}",
-            error.kind.diagnostic_code(),
-            error.source.message()
-        ),
-    );
+    let mut completion = prepare_workspace_solve(app_state, request)?
+        .execute_from_auth_cache(cache_root, auth_cache_index);
+    complete_workspace_solve(app_state, &mut completion);
+    completion.result().map(|_| ())
 }
 
 fn record_solve_failure(
@@ -294,7 +205,7 @@ mod tests {
             DocumentMetadata::new("doc-2", "Heater Demo", timestamp(20)),
         );
 
-        assert_eq!(next_solver_snapshot_sequence(&app_state), 1);
+        assert_eq!(next_solver_snapshot_sequence(&app_state).unwrap(), 1);
         solve_workspace_with_property_package(
             &mut app_state,
             &provider,
@@ -302,7 +213,7 @@ mod tests {
         )
         .expect("expected solve");
 
-        assert_eq!(next_solver_snapshot_sequence(&app_state), 2);
+        assert_eq!(next_solver_snapshot_sequence(&app_state).unwrap(), 2);
     }
 
     #[test]
