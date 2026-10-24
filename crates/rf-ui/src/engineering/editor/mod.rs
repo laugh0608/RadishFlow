@@ -1,6 +1,8 @@
 //! Application-owned device editor. Formal inputs, text drafts, checks and history
 //! remain distinct; all shell actions use the same command boundary.
+mod actions;
 mod adoption;
+pub use actions::*;
 mod drafts;
 pub use adoption::{
     DimensionAdjustmentDraft, GeometryAdoptionDestination, GeometryAdoptionDraft,

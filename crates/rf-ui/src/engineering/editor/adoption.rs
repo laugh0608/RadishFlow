@@ -105,7 +105,16 @@ impl EquipmentEditorState {
                 SeparatorGeometryInput::WorkingLiquidHeight,
             )?,
         };
-        let target = match draft.target {
+        self.preview_typed_adoption(session, draft.source_task, draft.target, adjustments)
+    }
+    pub(super) fn preview_typed_adoption(
+        &mut self,
+        session: &EngineeringSession,
+        source: EquipmentTaskId,
+        destination: GeometryAdoptionDestination,
+        adjustments: GeometryAdjustments,
+    ) -> Result<(), EquipmentEditError> {
+        let target = match destination {
             GeometryAdoptionDestination::New {
                 tag,
                 name,
@@ -122,7 +131,7 @@ impl EquipmentEditorState {
         let proposal = self.prepare_geometry_adoption(
             session,
             GeometryAdoptionRequest {
-                source_task: draft.source_task,
+                source_task: source,
                 target,
                 adjustments,
             },

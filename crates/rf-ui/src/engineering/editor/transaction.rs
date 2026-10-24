@@ -145,20 +145,7 @@ impl EquipmentEditorState {
             }
             Apply(target) => {
                 let command = self.draft_command(session, &target)?;
-                let prepared = session.prepare(vec![command])?;
-                // Shared records are always reviewed with their affected tasks before commit.
-                if !matches!(
-                    target,
-                    EquipmentEditorTarget::Task(_)
-                        | EquipmentEditorTarget::RatingTask(_)
-                        | EquipmentEditorTarget::RatingCase(_)
-                ) && !prepared.impacts().is_empty()
-                {
-                    self.set_pending(session, PendingOperation::Apply { prepared, target });
-                } else {
-                    session.commit(prepared)?;
-                    self.reload_target(session, units, &target)?;
-                }
+                self.submit_input(session, units, target, command)?;
             }
             Discard(target) => {
                 self.reload_target(session, units, &target)?;
