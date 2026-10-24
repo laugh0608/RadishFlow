@@ -167,6 +167,16 @@ impl EquipmentEditorState {
             return Err(EquipmentActionError::ReadOnly);
         }
         context.validate(session)?;
+        self.commit_action(session, units, action)
+            .map_err(Into::into)
+    }
+
+    pub(super) fn commit_action(
+        &mut self,
+        session: &mut EngineeringSession,
+        units: &DisplayUnitSet,
+        action: EquipmentAction,
+    ) -> Result<EquipmentActionReceipt, EquipmentEditError> {
         let before = EquipmentActionContext::capture(session);
         let old_inputs = session.inputs().clone();
         let mut editor = self.clone();
@@ -182,34 +192,45 @@ impl EquipmentEditorState {
             editor.adoption_preview = None;
         }
         let (target, check) = editor.perform_action(&mut formal, units, action)?;
-        let mut impacts = super::super::impact::between(&old_inputs, formal.inputs());
+        let receipt = editor.action_receipt(&formal, before, &old_inputs, target, check);
+        editor.error = None;
+        *self = editor;
+        *session = formal;
+        Ok(receipt)
+    }
+
+    pub(super) fn action_receipt(
+        &self,
+        session: &EngineeringSession,
+        before: EquipmentActionContext,
+        old_inputs: &EngineeringInputs,
+        target: Option<EquipmentEditorTarget>,
+        check: Option<EquipmentActionOutcome>,
+    ) -> EquipmentActionReceipt {
+        let mut impacts = super::super::impact::between(old_inputs, session.inputs());
         let outcome = if let Some(check) = check {
             check
-        } else if let Some(pending) = &editor.pending {
+        } else if let Some(pending) = &self.pending {
             impacts = pending.impacts.clone();
             EquipmentActionOutcome::ConfirmationRequired {
                 key: pending.key(),
                 discarded_drafts: pending.discarded_drafts.clone(),
             }
-        } else if let Some(preview) = &editor.adoption_preview {
+        } else if let Some(preview) = &self.adoption_preview {
             impacts = preview.proposal().impacts().to_vec();
             EquipmentActionOutcome::AdoptionConfirmationRequired { key: preview.key() }
-        } else if before == EquipmentActionContext::capture(&formal) {
+        } else if before == EquipmentActionContext::capture(session) {
             EquipmentActionOutcome::Unchanged
         } else {
             EquipmentActionOutcome::Committed
         };
-        let receipt = EquipmentActionReceipt {
+        EquipmentActionReceipt {
             before,
-            after: EquipmentActionContext::capture(&formal),
+            after: EquipmentActionContext::capture(session),
             outcome,
             target,
             impacts,
-        };
-        editor.error = None;
-        *self = editor;
-        *session = formal;
-        Ok(receipt)
+        }
     }
 
     /// Shared by validated GUI drafts and typed program inputs. No public flag

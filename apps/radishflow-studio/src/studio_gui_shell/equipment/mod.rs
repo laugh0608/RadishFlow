@@ -40,6 +40,8 @@ pub(super) enum EquipmentSection {
 }
 #[derive(Default)]
 pub(super) struct EquipmentPageState {
+    pub(super) last_action: Option<EquipmentActionReceipt>,
+    pub(super) last_run_reply: Option<radishflow_studio::run_actions::StudioRunReply>,
     pub(super) adoption: Option<adoption::AdoptionForm>,
     pub(super) adoption_evidence: Option<(rf_types::EquipmentTaskId, Option<egui::Id>)>,
     adoption_evidence_first: bool,
@@ -64,6 +66,10 @@ pub(super) struct EquipmentPageState {
     restore_rating_focus: Option<EquipmentEditorTarget>,
 }
 impl ReadyAppState {
+    pub(super) fn equipment_edit_error(&self, error: &EquipmentEditError) -> String {
+        edit_error(self.locale, error)
+    }
+
     pub(super) fn equipment_command(&mut self, command: EquipmentEditorCommand) {
         let reset_section = matches!(
             command,
@@ -110,7 +116,28 @@ impl ReadyAppState {
             window_id,
             trigger: StudioRuntimeTrigger::Equipment(command),
         }) {
-            Ok(_) => {
+            Ok(dispatch) => {
+                use radishflow_studio::run_actions::StudioEquipmentDispatch;
+                if let Some(radishflow_studio::StudioRuntimeDispatch::Equipment(reply)) =
+                    super::failure_recovery::runtime_dispatch_from_gui(&dispatch)
+                {
+                    match reply.as_ref() {
+                        StudioEquipmentDispatch::Action(receipt) => {
+                            self.equipment.last_action = Some(receipt.clone())
+                        }
+                        StudioEquipmentDispatch::Run(reply) => {
+                            self.equipment.last_run_reply = Some(reply.clone());
+                            self.record_run_reply(reply);
+                            return;
+                        }
+                        StudioEquipmentDispatch::Rejected(error) => {
+                            self.platform_host
+                                .record_activity_line(edit_error(self.locale, error));
+                            return;
+                        }
+                        StudioEquipmentDispatch::Interaction => {}
+                    }
+                }
                 self.sync_rating_selection(origin.as_ref(), selecting_case);
                 if select_task {
                     self.equipment.source_return = None;

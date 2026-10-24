@@ -720,7 +720,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 当前桥接行为：
 
 - 以 `AppState.workspace.document` 作为当前求解输入
-- 由 `StudioAppFacade` 作为当前明确的桌面应用命令入口，统一承接 auth cache 上下文、运行命令执行、结果派发摘要和后续异步执行边界占位
+- `StudioAppFacade` 统一承接 auth cache 与运行；AF4b 的 `run_actions` 区分受理、拒绝、启动失败、执行终态和接收，运行身份不序列化
 - `StudioAppCommand` 当前已显式区分 `RunWorkspace`、`ResumeWorkspace` 和 `SetWorkspaceSimulationMode` 三类应用命令，便于后续 UI 直接绑定运行控制动作
 - `workspace_control` 模块当前已把这三类应用命令进一步收口为更接近运行栏/状态栏的 `WorkspaceControlAction`
 - 由 `WorkspaceRunCommand` 承接“触发类型 + package 选择”这一层更接近 UI 的运行请求
@@ -874,6 +874,6 @@ App 不应直接操作底层求解细节，而应通过稳定的数据结构与�
 优先级归 AF 与当前状态；以下契约在对应实施切片细化：
 
 - 保存失败恢复、跨平台文件选择与偏好范围见 [项目生命周期专题](../topics/project-lifecycle-storage.md)。
-- Inspector 多字段提交与草稿继续复用正式命令，不在 shell 建立另一份输入状态。
-- `AppLogFeed` 的脚本导出用途、真实授权刷新 UI 和后台求解仍需在实际需求进入范围时确认。
+- Inspector 多字段 / 数值提交沿正式输入事务；设备 `EquipmentAction` 与 GUI 草稿 Apply 共用提交和影响确认，程序写入拒绝相关草稿。
+- `AppLogFeed` 脚本导出和真实授权刷新 UI 仍待细化。
 - 画布视图与 suggestion 的目标契约见 [Canvas 交互边界](canvas-interaction-contract.md)，当前不扩展复杂 Dock、多文档或运行时插件化 UI。

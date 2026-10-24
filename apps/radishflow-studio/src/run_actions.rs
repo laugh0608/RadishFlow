@@ -217,7 +217,11 @@ impl StudioAppFacade {
                 }
                 let previous = flow_execution_id(app);
                 match self.run_workspace_from_auth_cache(app, cache, &command) {
-                    Ok(dispatch) => normalize_flow_dispatch(app, previous, dispatch),
+                    Ok(mut dispatch) => dispatch
+                        .formal_receipt
+                        .take()
+                        .map(|receipt| *receipt)
+                        .unwrap_or_else(|| normalize_flow_dispatch(app, previous, dispatch)),
                     Err(error) => StudioRunReply::StartFailed {
                         id: None,
                         error: StudioRunStartFailure::Infrastructure(error),
@@ -228,7 +232,7 @@ impl StudioAppFacade {
     }
 }
 
-fn flow_execution_id(app: &AppState) -> Option<StudioRunId> {
+pub(crate) fn flow_execution_id(app: &AppState) -> Option<StudioRunId> {
     use rf_ui::result_query::FlowResultView;
     match app.workspace.flow_result() {
         FlowResultView::Current { origin, .. } | FlowResultView::Failed { origin, .. } => origin
@@ -237,7 +241,7 @@ fn flow_execution_id(app: &AppState) -> Option<StudioRunId> {
         _ => None,
     }
 }
-fn normalize_flow_dispatch(
+pub(crate) fn normalize_flow_dispatch(
     app: &AppState,
     previous: Option<StudioRunId>,
     dispatch: StudioWorkspaceRunDispatch,

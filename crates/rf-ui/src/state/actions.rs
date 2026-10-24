@@ -883,3 +883,14 @@ pub(super) fn canvas_suggestion_source_label(source: SuggestionSource) -> &'stat
         SuggestionSource::RadishMind => "RadishMind",
     }
 }
+
+impl CanvasEditIntent {
+    pub fn builtin_unit_kind(&self) -> RfResult<BuiltinUnitKind> {
+        let Self::PlaceUnit { unit_kind } = self;
+        parse_canvas_unit_kind(unit_kind).ok_or_else(|| {
+            RfError::invalid_input(format!(
+                "canvas place unit intent uses unsupported unit kind `{unit_kind}`"
+            ))
+        })
+    }
+}

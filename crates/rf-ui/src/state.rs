@@ -924,17 +924,36 @@ impl AppState {
             return Ok(None);
         };
 
-        let CanvasEditIntent::PlaceUnit { unit_kind } = &intent;
-        let kind = parse_canvas_unit_kind(unit_kind).ok_or_else(|| {
-            RfError::invalid_input(format!(
-                "canvas place unit intent uses unsupported unit kind `{unit_kind}`"
-            ))
-        })?;
+        let kind = intent.builtin_unit_kind()?;
         let UnitCreateResult {
             command,
             unit_id,
             revision,
         } = self.create_builtin_unit(kind, changed_at)?;
+        Ok(Some(self.finish_canvas_unit_placement(
+            intent,
+            UnitCreateResult {
+                command,
+                unit_id,
+                revision,
+            },
+            position,
+        )))
+    }
+
+    /// Finish the selection and viewport-facing part of an already committed creation.
+    /// Both canvas and formal-action adapters use this presentation-only step.
+    pub fn finish_canvas_unit_placement(
+        &mut self,
+        intent: CanvasEditIntent,
+        created: UnitCreateResult,
+        position: CanvasPoint,
+    ) -> CanvasEditCommitResult {
+        let UnitCreateResult {
+            command,
+            unit_id,
+            revision,
+        } = created;
         self.workspace.selection.selected_units.clear();
         self.workspace.selection.selected_streams.clear();
         self.workspace
@@ -948,13 +967,13 @@ impl AppState {
             format_canvas_edit_commit_message(&intent, &unit_id, position),
         );
 
-        Ok(Some(CanvasEditCommitResult {
+        CanvasEditCommitResult {
             intent,
             command,
             revision,
             unit_id,
             position,
-        }))
+        }
     }
 
     pub fn accept_focused_canvas_suggestion_by_tab(

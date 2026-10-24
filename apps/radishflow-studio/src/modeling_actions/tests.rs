@@ -340,14 +340,40 @@ fn run_with_gui_comparison(
     else {
         panic!("expected run outcome");
     };
-    let gui_outcome = dispatch_workspace_control_action_with_auth_cache(
+    let mut gui_outcome = dispatch_workspace_control_action_with_auth_cache(
         &StudioAppFacade::new(),
         &mut gui,
         context,
         &WorkspaceControlAction::run_manual(WorkspaceRunPackageSelection::Preferred),
     )
     .unwrap();
-    assert_eq!(*outcome, gui_outcome);
+    let mut comparison = *outcome.clone();
+    if let (
+        crate::StudioAppResultDispatch::WorkspaceRun(left),
+        crate::StudioAppResultDispatch::WorkspaceRun(right),
+    ) = (&mut comparison.dispatch, &mut gui_outcome.dispatch)
+    {
+        match (
+            left.formal_receipt.take().map(|r| *r),
+            right.formal_receipt.take().map(|r| *r),
+        ) {
+            (
+                Some(crate::run_actions::StudioRunReply::Completed(left)),
+                Some(crate::run_actions::StudioRunReply::Completed(right)),
+            ) => {
+                assert_ne!(
+                    left.id, right.id,
+                    "independent executions have distinct identities"
+                );
+                assert_eq!(left.outcome, right.outcome);
+                assert_eq!(left.applied, right.applied);
+                assert_eq!(left.cancellation, right.cancellation);
+                assert_eq!(left.diagnostic_code, right.diagnostic_code);
+            }
+            (left, right) => assert_eq!(left, right),
+        }
+    }
+    assert_eq!(comparison, gui_outcome);
     assert_eq!(app.workspace.document, document);
     assert_eq!(app.workspace.command_history, history);
     *outcome

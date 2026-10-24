@@ -156,6 +156,7 @@ pub enum StudioBootstrapDispatch {
     Equipment(Box<crate::run_actions::StudioEquipmentDispatch>),
     NumericEdit {
         generation: Option<u64>,
+        committed: Option<crate::flow_actions::FlowInputCommitSummary>,
     },
     InspectorTarget(crate::InspectorTargetFocusOutcome),
     ClearInspectorTarget(crate::InspectorTargetClearOutcome),

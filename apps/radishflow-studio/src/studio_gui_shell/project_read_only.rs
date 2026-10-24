@@ -45,3 +45,38 @@ impl ReadyAppState {
         true
     }
 }
+
+impl ReadyAppState {
+    pub(super) fn check_project_event_access(&self, event: &StudioGuiEvent) -> RfResult<()> {
+        if self.read_only_project.is_some() && event_requires_editable_workspace(event) {
+            return Err(rf_types::RfError::invalid_input(match self.locale {
+                StudioShellLocale::ZhCn => "当前工程只读，不能编辑或启动计算。",
+                StudioShellLocale::En => {
+                    "This project is read-only; editing and calculation are unavailable."
+                }
+            }));
+        }
+        Ok(())
+    }
+}
+
+fn event_requires_editable_workspace(event: &StudioGuiEvent) -> bool {
+    matches!(
+        event,
+        StudioGuiEvent::WindowTriggerRequested { .. }
+            | StudioGuiEvent::UiCommandRequested { .. }
+            | StudioGuiEvent::ShortcutPressed { .. }
+            | StudioGuiEvent::InspectorFieldDraftUpdateRequested { .. }
+            | StudioGuiEvent::InspectorFieldDraftCommitRequested { .. }
+            | StudioGuiEvent::InspectorFieldDraftBatchCommitRequested { .. }
+            | StudioGuiEvent::InspectorFieldDraftDiscardRequested { .. }
+            | StudioGuiEvent::InspectorFieldDraftBatchDiscardRequested { .. }
+            | StudioGuiEvent::InspectorCompositionNormalizeRequested { .. }
+            | StudioGuiEvent::InspectorCompositionComponentAddRequested { .. }
+            | StudioGuiEvent::InspectorCompositionComponentRemoveRequested { .. }
+            | StudioGuiEvent::CanvasSuggestionAcceptRequested
+            | StudioGuiEvent::CanvasSuggestionAcceptByIdRequested { .. }
+            | StudioGuiEvent::CanvasPendingEditCommitRequested { .. }
+            | StudioGuiEvent::CanvasUnitLayoutMoveRequested { .. }
+    )
+}

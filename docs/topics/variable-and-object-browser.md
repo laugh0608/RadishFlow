@@ -213,7 +213,7 @@ VB2 的单值完成不代表批量事务完成；VB3 按消费者逐项记录覆
 
 ## AF4b 正式动作契约与实施切片（2026-10-24）
 
-所有者已确认以下契约和切片；AF4b-1 已完成，现已授权把 **AF4b-2—4 作为完整开发批次**，先细化并同步正式文档，再连续实现、GUI 接线和验证，按阶段提交。应用动作统一类型化请求、执行门禁与回执，复用现有领域事务及 AF3 运行拥有者，不新增通用反射执行框架。
+所有者已确认以下契约和切片；AF4b-1—4 已完成。AF4b-2—4 按完整批次先细化正式文档，再连续实现、GUI 接线和验证，按阶段提交。应用动作统一类型化请求、执行门禁与回执，复用现有领域事务及 AF3 运行拥有者，不新增通用反射执行框架。
 
 ### 共同契约
 
@@ -229,9 +229,9 @@ VB2 的单值完成不代表批量事务完成；VB3 按消费者逐项记录覆
 | 切片 | 范围 | 退出证据 |
 | --- | --- | --- |
 | AF4b-1 共同契约与流程动作 | 写入、创建、受控连接与精确端口断开；按领域限定的上下文、当前编辑资格、草稿 / 画布门禁、只读预检和类型化回执；状态：已实现并通过正式基线 | 同 ID 重开 / 等 revision 分叉拒绝，设备独立编辑与运行取消不误伤；失败原子，同值无历史；身份分配与连接拒绝正确，描述不承诺未接入能力 |
-| AF4b-2 设备正式输入与检查 | 分离编辑器交互和正式输入 / 检查，复用影响确认、历史与采纳保护；已实现，GUI 接线在 AF4b-4 | 应用内设备编辑闭环、无关草稿保留、过期确认拒绝和具体检查报告 |
-| AF4b-3 计算与控制回执 | 流程 / 设备同步与后台提交、取消及终态映射，保留 bootstrap 提交信息；已实现，GUI 消费在 AF4b-4 | Busy、重复、精确取消、启动失败、迟到完成与接收处置均可结构化判断 |
-| AF4b-4 消费者接线与闭环 | 受影响 GUI 正式提交接线、旧适配兼容与流程 / 设备代表链路；未开工 | GUI 与应用内调用的语义一致，旧 CLI / FFI 回归与代表实窗通过 |
+| AF4b-2 设备正式输入与检查 | 分离编辑器交互和正式输入 / 检查，复用影响确认、历史与采纳保护；已实现并接入 GUI | 应用内设备编辑闭环、无关草稿保留、过期确认拒绝和具体检查报告 |
+| AF4b-3 计算与控制回执 | 流程 / 设备同步与后台提交、取消及终态映射，保留 bootstrap 提交信息；已实现并由 GUI 消费 | Busy、重复、精确取消、启动失败、迟到完成与接收处置均可结构化判断 |
+| AF4b-4 消费者接线与闭环 | 受影响 GUI 正式提交接线、旧适配兼容与流程 / 设备代表链路；已完成正式基线及 macOS 代表实窗 | GUI 与应用内调用的语义一致，旧 CLI / FFI 回归与代表实窗通过 |
 
 ### AF4b-1 实施边界
 
@@ -243,7 +243,7 @@ VB2 的单值完成不代表批量事务完成；VB3 按消费者逐项记录覆
 
 AF4b-1 实现入口：[`flow_actions`](../../apps/radishflow-studio/src/flow_actions/mod.rs)。`FlowEditContext` 绑定流程输入，`FlowEditAccess` 由宿主在每次调用时提供；`preflight_flow_action` / `execute_flow_action` 共用隔离事务校验。回执包含 before / after、Committed / Unchanged、类型化 effect 与原正式命令；`callable_flow_action` 显式将 AF4a 描述映射到本入口支持的子集。
 
-2026-10-24 AF4b-1 收口：新增 12 项定向回归通过，正式仓库基线 1,749 项测试、workspace 构建与全 targets clippy 通过；本批未启动原生窗口，AF4b-2—4 未开工。
+2026-10-24 AF4b-1 收口：新增 12 项定向回归通过，正式仓库基线 1,749 项测试、workspace 构建与全 targets clippy 通过；该阶段未启动原生窗口；AF4b-2—4 的后续成果见下文。
 
 
 ### AF4b-2—4 批次契约（2026-10-24）
@@ -264,6 +264,10 @@ AF4b-1 实现入口：[`flow_actions`](../../apps/radishflow-studio/src/flow_act
 
 **批次验收。** 覆盖来源 → 依据 → 任务 / 工况编辑 → 检查 → 尺寸 / 校核 → 既有采纳；流程编辑与运行；草稿冲突、无变化、引用删除、过期提案、重开 / 分叉、历史、无关行与双领域隔离。同步 / 后台对照、Busy、精确取消、启动失败、迟到结果和 runtime 信息透传均有自动回归。各阶段运行相关测试并提交，批次收口执行正式仓库基线；先告知后进行 macOS 代表实窗，AF1 / I5 / 其他平台未验项仍单独记录。
 
-AF4b-2 实现入口：[`EquipmentAction`](../../crates/rf-ui/src/engineering/editor/actions.rs)。正式 SI 记录、身份分配、检查与提案使用类型化请求；`EquipmentActionContext` 绑定设备文档 / 会话 / 输入，`EquipmentEditAccess` 每次调用重验。`preflight_action` 仅验证隔离副本，`execute_action` 原子发布正式状态及必要编辑器刷新；GUI 草稿 Apply 已共用 `submit_input`，完整消费者回执迁移留在 AF4b-4。采纳继续使用既有来源资格和调整语义，新增类型化预览复用同一准备流程。7 项入口回归及全部 74 项 engineering 相关测试通过，包含确认等待期间的无关计算保留。
+AF4b-2 实现入口：[`EquipmentAction`](../../crates/rf-ui/src/engineering/editor/actions.rs)。正式 SI 记录、身份分配、检查与提案使用类型化请求；`EquipmentActionContext` 绑定设备文档 / 会话 / 输入，`EquipmentEditAccess` 每次调用重验。`preflight_action` 仅验证隔离副本，`execute_action` 原子发布正式状态及必要编辑器刷新；GUI 草稿 Apply 已共用 `submit_input`，消费者回执迁移已由 AF4b-4 接通。采纳继续使用既有来源资格和调整语义，新增类型化预览复用同一准备流程。7 项入口回归及全部 74 项 engineering 相关测试通过，包含确认等待期间的无关计算保留。
 
 AF4b-3 实现入口：[`run_actions`](../../apps/radishflow-studio/src/run_actions.rs)。`StudioRunRequest` 分别绑定流程 / 设备上下文，`execute_run_action` 重验宿主运行资格后复用既有 Facade 与运行拥有者；`StudioRunReply` 统一受理、重复、Busy、Closing、跳过、类型化拒绝、启动失败与执行终态。同步终态只关联本次新增执行身份，旧结果不能冒充本次完成；后台终态从有界历史投影，接收状态和当前结果资格分开。设备回执及精确取消回复已穿过 bootstrap / runtime / host 链，旧 `submit_equipment` 和 CLI Started 适配保留。
+
+AF4b-4 消费接线：设备 GUI 的 `dispatch_with_receipt` 将正式创建 / 检查 / 历史等映射到同一类型化动作，文本 Apply / 采纳预览保留 GUI 自有草稿校验并共用准备 / 提交；运行与拒绝回执由界面明确消费。流程画布放置在隔离副本中处理其自有 pending intent，再调用正式创建；建议连接调用正式 Connect；流股整体 / 单端断开以新增 `DisconnectStream` 请求保留原有单事务语义及实际断开端口回执。数值 Apply 保留当前代次 / 输入基线校验，与 `write_variable` 共用输入事务，runtime 新增前后输入与 Committed / Unchanged 摘要；旧 Inspector 批量提交保持原回执。
+
+GUI 调用入口根据当前只读视图拒绝编辑与运行事件，不能仅依靠按钮禁用；后台取消和未启动状态提供本地化说明。流程旧 Run dispatch 增加可选正式回执，旧 Started / CLI 输出保持；独立执行的 RunId 本来不同，对照测试比较终态、接收与诊断而不抹平运行身份。正式仓库检查与 macOS 实窗的最终证据归 W43。

@@ -756,6 +756,7 @@ mod equipment_adoption;
 mod equipment_editor;
 mod equipment_rating_storage;
 mod equipment_storage;
+mod formal_actions;
 
 mod equipment_export;
 mod equipment_matrix;

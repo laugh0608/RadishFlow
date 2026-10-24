@@ -19,10 +19,141 @@ impl ReadyAppState {
         self.background_runs = Some(owner);
     }
     pub(super) fn background_action(&mut self, action: Action) {
-        if let Err(error) = self.platform_host.background_run_action(action) {
-            self.platform_host
-                .record_activity_line(format!("Background calculation: {error}"));
+        match self.platform_host.background_run_action(action) {
+            Ok(reply) => {
+                if let Some(submission) = reply.submission {
+                    self.record_run_reply(&submission);
+                }
+                let zh = self.locale == StudioShellLocale::ZhCn;
+                let message = match reply.cancellation {
+                    Some(radishflow_studio::WorkspaceRunCancelReply::AlreadyFinished) => {
+                        Some(if zh {
+                            "该次运行已结束。"
+                        } else {
+                            "This run has already finished."
+                        })
+                    }
+                    Some(radishflow_studio::WorkspaceRunCancelReply::UnknownRun) => Some(if zh {
+                        "目标运行不在当前运行记录中。"
+                    } else {
+                        "The target run is not in the current run history."
+                    }),
+                    _ => None,
+                };
+                if let Some(message) = message {
+                    self.platform_host.record_activity_line(message);
+                }
+            }
+            Err(error) => self
+                .platform_host
+                .record_activity_line(format!("Background calculation: {error}")),
         }
+    }
+    pub(super) fn record_run_reply(
+        &mut self,
+        reply: &radishflow_studio::run_actions::StudioRunReply,
+    ) {
+        use radishflow_studio::run_actions::{
+            StudioRunRejection as Rejection, StudioRunReply as Reply,
+        };
+        let zh = self.locale == StudioShellLocale::ZhCn;
+        let message: String = match reply {
+            Reply::Accepted(_) => {
+                self.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
+                if zh {
+                    "计算已受理。"
+                } else {
+                    "Calculation accepted."
+                }
+                .into()
+            }
+            Reply::AlreadyRunning(_) => if zh {
+                "本次输入已有计算正在运行。"
+            } else {
+                "A calculation for these inputs is already running."
+            }
+            .into(),
+            Reply::Busy(_) => if zh {
+                "已有计算占用运行名额，本次未启动。"
+            } else {
+                "Another calculation occupies the worker. This request did not start."
+            }
+            .into(),
+            Reply::Closing => if zh {
+                "正在关闭工作区，本次计算未启动。"
+            } else {
+                "The workspace is closing. This calculation did not start."
+            }
+            .into(),
+            Reply::Skipped(reason) => match reason {
+                radishflow_studio::WorkspaceSolveSkipReason::HoldMode => {
+                    if zh {
+                        "当前为保持模式，未启动计算。"
+                    } else {
+                        "Calculation skipped in Hold mode."
+                    }
+                }
+                radishflow_studio::WorkspaceSolveSkipReason::NoPendingRequest => {
+                    if zh {
+                        "没有待处理的计算请求。"
+                    } else {
+                        "No calculation request is pending."
+                    }
+                }
+            }
+            .into(),
+            Reply::Blocked(Rejection::Equipment(error)) => self.equipment_edit_error(error),
+            Reply::Blocked(Rejection::Flow(radishflow_studio::WorkspaceRunBlock::Preflight(
+                blocked,
+            ))) => blocked.message.clone(),
+            Reply::Blocked(Rejection::ReadOnly) => if zh {
+                "只读工程不能启动计算。"
+            } else {
+                "Read-only projects cannot start calculations."
+            }
+            .into(),
+            Reply::Blocked(Rejection::FlowContext(_) | Rejection::EquipmentContext(_)) => if zh {
+                "输入上下文已变化，请重新发起计算。"
+            } else {
+                "The input context changed. Submit the calculation again."
+            }
+            .into(),
+            Reply::Blocked(Rejection::Flow(_)) => if zh {
+                "当前运行资格不允许启动计算。"
+            } else {
+                "The current run authorization does not allow this calculation."
+            }
+            .into(),
+            Reply::StartFailed { error, .. } => format!(
+                "{} {error}",
+                if zh {
+                    "计算未能启动："
+                } else {
+                    "Calculation could not start:"
+                }
+            ),
+            Reply::Completed(completed) => if !completed.applied {
+                if zh {
+                    "计算已结束，结果未接收。"
+                } else {
+                    "Calculation finished; the result was not accepted."
+                }
+            } else if completed.outcome == radishflow_studio::StudioRunOutcome::Succeeded {
+                if zh {
+                    "计算完成，结果已接收。"
+                } else {
+                    "Calculation completed and its result was accepted."
+                }
+            } else {
+                if zh {
+                    "计算失败，请查看检查与诊断。"
+                } else {
+                    "Calculation failed. Review the checks and diagnostics."
+                }
+            }
+            .into(),
+        };
+        self.platform_host.record_activity_line(message);
     }
     pub(super) fn background_busy(&self) -> bool {
         self.background_runs

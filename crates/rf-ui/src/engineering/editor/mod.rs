@@ -4,6 +4,7 @@ mod actions;
 mod adoption;
 pub use actions::*;
 mod drafts;
+mod gui_actions;
 pub use adoption::{
     DimensionAdjustmentDraft, GeometryAdoptionDestination, GeometryAdoptionDraft,
     GeometryAdoptionPreview, PreparedEditorGeometryAdoption,

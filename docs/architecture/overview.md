@@ -109,7 +109,7 @@ AF2b 已将 [CachedPropertyPackageProvider](../../crates/rf-property-package/src
 - 项目使用 `*.rfproj.json`，布局使用 `<project>.rfstudio-layout.json`；授权缓存与 token 不进入项目文件。
 - Studio 已内嵌 Inter / SourceHanSansSC 字体，不依赖固定的系统 CJK 字体名称。
 
-变量查询 / 写入置于 `rf-ui`，受控创建 / 连接 / 运行调用和本地 CLI 置于 Studio 应用层。CLI 复用现有事务与运行链路，不启动窗口；仍链接桌面依赖。接口范围见 [无界面参考](../reference/headless-cli.md)。 AF4b-1 的 `Studio::flow_actions` 为应用内流程编辑提供会话 / 输入守卫、只读预检和结构化回执，不需要物性缓存；复用原正式事务与实时连接规则，旧 CLI 适配保持。
+变量查询 / 写入置于 `rf-ui`，受控创建 / 连接 / 运行调用和本地 CLI 置于 Studio 应用层。CLI 复用现有事务与运行链路，不启动窗口；仍链接桌面依赖。接口范围见 [无界面参考](../reference/headless-cli.md)。 AF4b 的 `Studio::flow_actions`、`rf-ui::EquipmentAction` 与 `Studio::run_actions` 分别承接流程编辑、设备输入 / 检查和计算回执；各自校验领域输入上下文，编辑不需要物性缓存。GUI 复用正式事务与草稿守卫，旧 CLI 适配保持。
 
 U1 的公共单位定义与转换位于 `rf-types::units`；`rf-ui` 变量元数据引用量类型。U2 已接通项目呈现保存、个人默认、数值会话及首批控件 / 视图覆盖，剩余交互与验收见 [单位专题](../topics/units-and-quantity-system.md)；CLI 保持规范 SI 契约。
 

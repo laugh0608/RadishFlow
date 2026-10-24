@@ -112,6 +112,7 @@ impl<'a> StudioAppMutableAuthCacheContext<'a> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioWorkspaceRunDispatch {
+    pub formal_receipt: Option<Box<crate::run_actions::StudioRunReply>>,
     pub package_id: Option<String>,
     pub outcome: StudioWorkspaceRunOutcome,
     pub simulation_mode: SimulationMode,
@@ -296,6 +297,22 @@ impl StudioAppFacade {
     }
 
     pub fn run_workspace_from_auth_cache(
+        &self,
+        app_state: &mut AppState,
+        context: &StudioAppAuthCacheContext<'_>,
+        command: &WorkspaceRunCommand,
+    ) -> RfResult<StudioWorkspaceRunDispatch> {
+        let previous = crate::run_actions::flow_execution_id(app_state);
+        let mut dispatch = self.run_workspace_legacy(app_state, context, command)?;
+        dispatch.formal_receipt = Some(Box::new(crate::run_actions::normalize_flow_dispatch(
+            app_state,
+            previous,
+            dispatch.clone(),
+        )));
+        Ok(dispatch)
+    }
+
+    fn run_workspace_legacy(
         &self,
         app_state: &mut AppState,
         context: &StudioAppAuthCacheContext<'_>,
@@ -723,6 +740,7 @@ fn map_workspace_run_dispatch(
     outcome: StudioWorkspaceRunOutcome,
 ) -> StudioWorkspaceRunDispatch {
     StudioWorkspaceRunDispatch {
+        formal_receipt: None,
         package_id,
         outcome,
         simulation_mode: app_state.workspace.solve_session.mode,

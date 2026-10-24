@@ -232,23 +232,45 @@ fn dispatch_bootstrap_trigger(
                 ))
             } else {
                 let workspace = &mut session.app_state.workspace;
-                match workspace.equipment_editor.dispatch(
+                match workspace.equipment_editor.dispatch_with_receipt(
                     &mut workspace.engineering,
                     workspace.project_presentation.display_units(),
                     command.clone(),
                 ) {
-                    Ok(()) => StudioEquipmentDispatch::Interaction,
+                    Ok(Some(receipt)) => StudioEquipmentDispatch::Action(receipt),
+                    Ok(None) => StudioEquipmentDispatch::Interaction,
                     Err(error) => StudioEquipmentDispatch::Rejected(error),
                 }
             };
             Ok(StudioBootstrapDispatch::Equipment(Box::new(dispatch)))
         }
         StudioBootstrapTrigger::NumericEdit(command) => {
-            let generation = session
-                .app_state
-                .dispatch_numeric_edit(command.clone(), normalized_system_time_now()?)
+            let (generation, committed) = if let rf_ui::NumericEditCommand::Commit {
+                variable,
+                generation,
+            } = command
+            {
+                let receipt = crate::flow_actions::commit_numeric_flow_input(
+                    session.app_state,
+                    variable,
+                    *generation,
+                    normalized_system_time_now()?,
+                )
                 .map_err(|error| RfError::invalid_input(error.to_string()))?;
-            Ok(StudioBootstrapDispatch::NumericEdit { generation })
+                (None, Some(receipt))
+            } else {
+                (
+                    session
+                        .app_state
+                        .dispatch_numeric_edit(command.clone(), normalized_system_time_now()?)
+                        .map_err(|error| RfError::invalid_input(error.to_string()))?,
+                    None,
+                )
+            };
+            Ok(StudioBootstrapDispatch::NumericEdit {
+                generation,
+                committed,
+            })
         }
         StudioBootstrapTrigger::ProjectPresentation(command) => {
             let changed = session
@@ -689,13 +711,50 @@ impl BootstrapSession {
         &mut self,
         position: rf_ui::CanvasPoint,
     ) -> RfResult<Option<rf_ui::CanvasEditCommitResult>> {
-        let result = self
+        use crate::flow_actions::{
+            FlowAction, FlowActionEffect, FlowActionRequest, FlowEditAccess, FlowEditContext,
+            execute_flow_action,
+        };
+        let Some(intent) = self
             .app_state
-            .commit_canvas_pending_edit_at(position, SystemTime::now())?;
-        if result.is_some() {
-            self.refresh_local_canvas_suggestions();
-        }
-        Ok(result)
+            .workspace
+            .canvas_interaction
+            .pending_edit
+            .clone()
+        else {
+            return Ok(None);
+        };
+        let kind = intent.builtin_unit_kind()?;
+        // This adapter owns the pending placement. Clear only that intent in the
+        // staged copy; all other draft and input guards remain in the formal action.
+        let mut next = self.app_state.clone();
+        next.cancel_canvas_pending_edit();
+        let request = FlowActionRequest {
+            expected: FlowEditContext::capture(&next.workspace),
+            action: FlowAction::CreateUnit(kind),
+        };
+        let receipt = execute_flow_action(
+            &mut next,
+            FlowEditAccess::Editable,
+            &request,
+            SystemTime::now(),
+        )
+        .map_err(|e| RfError::invalid_input(e.to_string()))?;
+        let FlowActionEffect::Created(unit_id) = receipt.effect else {
+            unreachable!("creation action")
+        };
+        let result = next.finish_canvas_unit_placement(
+            intent,
+            rf_ui::UnitCreateResult {
+                unit_id,
+                command: receipt.command.expect("created command"),
+                revision: receipt.after.revision(),
+            },
+            position,
+        );
+        self.app_state = next;
+        self.refresh_local_canvas_suggestions();
+        Ok(Some(result))
     }
 
     pub(crate) fn accept_modeling_recommendation(
@@ -752,19 +811,7 @@ impl BootstrapSession {
     pub(crate) fn disconnect_selected_stream_connections(
         &mut self,
     ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
-        let Some(rf_ui::InspectorTarget::Stream(stream_id)) =
-            self.app_state.workspace.drafts.active_target.clone()
-        else {
-            return Ok(None);
-        };
-        let result = self
-            .app_state
-            .disconnect_stream_connections(&stream_id, SystemTime::now())?;
-        if result.is_some() {
-            self.refresh_local_canvas_suggestions();
-            self.dispatch_automatic_run_after_canvas_write_if_needed()?;
-        }
-        Ok(result)
+        self.disconnect_selected_stream(None)
     }
 
     pub(crate) fn disconnect_selected_stream_source_connection(
@@ -783,19 +830,51 @@ impl BootstrapSession {
         &mut self,
         direction: rf_types::PortDirection,
     ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.disconnect_selected_stream(Some(direction))
+    }
+
+    fn disconnect_selected_stream(
+        &mut self,
+        direction: Option<rf_types::PortDirection>,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        use crate::flow_actions::{
+            FlowAction, FlowActionEffect, FlowActionRequest, FlowEditAccess, FlowEditContext,
+            execute_flow_action,
+        };
         let Some(rf_ui::InspectorTarget::Stream(stream_id)) =
             self.app_state.workspace.drafts.active_target.clone()
         else {
             return Ok(None);
         };
-        let result =
-            self.app_state
-                .disconnect_stream_endpoint(&stream_id, direction, SystemTime::now())?;
-        if result.is_some() {
-            self.refresh_local_canvas_suggestions();
-            self.dispatch_automatic_run_after_canvas_write_if_needed()?;
-        }
-        Ok(result)
+        let request = FlowActionRequest {
+            expected: FlowEditContext::capture(&self.app_state.workspace),
+            action: FlowAction::DisconnectStream {
+                stream: stream_id.clone(),
+                direction,
+            },
+        };
+        let receipt = execute_flow_action(
+            &mut self.app_state,
+            FlowEditAccess::Editable,
+            &request,
+            SystemTime::now(),
+        )
+        .map_err(|e| RfError::invalid_input(e.to_string()))?;
+        let Some(command) = receipt.command else {
+            return Ok(None);
+        };
+        let FlowActionEffect::StreamDisconnected { ports, .. } = receipt.effect else {
+            unreachable!("stream disconnect action")
+        };
+        let result = rf_ui::StreamConnectionEditResult {
+            stream_id,
+            disconnected_ports: ports,
+            command,
+            revision: receipt.after.revision(),
+        };
+        self.refresh_local_canvas_suggestions();
+        self.dispatch_automatic_run_after_canvas_write_if_needed()?;
+        Ok(Some(result))
     }
 
     pub(crate) fn reconnect_selected_stream_to_unique_available_endpoint(

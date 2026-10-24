@@ -1044,6 +1044,7 @@ impl ReadyAppState {
         &mut self,
         event: StudioGuiEvent,
     ) -> RfResult<StudioGuiPlatformExecutedDispatch> {
+        self.check_project_event_access(&event)?;
         let result = self
             .platform_host
             .dispatch_event_and_execute_platform_timer(event, &mut self.platform_timer_executor);

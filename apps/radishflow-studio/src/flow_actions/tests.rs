@@ -318,6 +318,63 @@ fn controlled_connection_and_exact_disconnect_preserve_stream_other_endpoint_and
     );
 }
 #[test]
+fn stream_disconnect_consumes_both_endpoints_in_one_transaction_and_repeated_call_is_unchanged() {
+    let mut app = app();
+    let feed = create(&mut app, BuiltinUnitKind::Feed);
+    let outlet = available_material_connections(&app)
+        .into_iter()
+        .find(|c| c.source.unit_id == feed && c.sink.is_none())
+        .unwrap();
+    execute(&mut app, FlowAction::Connect(outlet));
+    let heater = create(&mut app, BuiltinUnitKind::Heater);
+    let target = available_material_connections(&app)
+        .into_iter()
+        .find(|c| c.source.unit_id == feed && c.sink.as_ref().is_some_and(|p| p.unit_id == heater))
+        .unwrap();
+    execute(&mut app, FlowAction::Connect(target.clone()));
+    let before = app.workspace.document.revision;
+    let receipt = execute(
+        &mut app,
+        FlowAction::DisconnectStream {
+            stream: target.stream_id.clone(),
+            direction: None,
+        },
+    );
+    assert_eq!(receipt.after.revision(), before + 1);
+    assert!(
+        matches!(receipt.effect, FlowActionEffect::StreamDisconnected { ports, .. } if ports.len() == 2)
+    );
+    assert!(
+        app.workspace
+            .document
+            .flowsheet
+            .streams
+            .contains_key(&target.stream_id)
+    );
+    let receipt = execute(
+        &mut app,
+        FlowAction::DisconnectStream {
+            stream: target.stream_id.clone(),
+            direction: None,
+        },
+    );
+    assert_eq!(receipt.outcome, FlowEditOutcome::Unchanged);
+    assert_eq!(receipt.before, receipt.after);
+    app.undo_document_command(UNIX_EPOCH).unwrap().unwrap();
+    assert_eq!(
+        app.workspace.document.flowsheet.units[&feed].ports[0]
+            .stream_id
+            .as_ref(),
+        Some(&target.stream_id)
+    );
+    assert_eq!(
+        app.workspace.document.flowsheet.units[&heater].ports[0]
+            .stream_id
+            .as_ref(),
+        Some(&target.stream_id)
+    );
+}
+#[test]
 fn invalid_connections_and_missing_ports_are_atomic_and_not_string_classified() {
     let mut app = app();
     let id = create(&mut app, BuiltinUnitKind::Feed);

@@ -36,7 +36,7 @@
 ### 当前优先级
 
 1. 按 [代码链路审计](../architecture/overview.md#工程基础链路审计2026-10-23) 和 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 推进。AF0 已完成；AF2a 内建目录 / 工厂、AF2b 单包上下文已接通。AF1 未定因，独立跟踪。
-2. AF3c 已接设备 / GUI；[局部六图](../architecture/designs/studio-background-run-brief.md)、回归及 macOS 代表实窗完成。AF4a＋AF5a 完成；AF4b-1 完成；2—4 批次推进。
+2. AF3c 已接设备 / GUI；[局部六图](../architecture/designs/studio-background-run-brief.md)、回归及 macOS 代表实窗完成。AF4a＋AF5a、AF4b 已完成。
 3. C2-A 后续方法对比方案已认可，排期服从基础主线；原精度失败不变。C2-B / C3 暂不实施，不以共享基础为名接入新 PR 产品链或流程设备物理关联。
 4. 基础契约中提前审查 EO / 动态 / 瞬态的扩展边界，具体物性、单元、递归分块 / recycle 和高级算法按真实场景逐步填入；每项另做物理验证。
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
@@ -123,7 +123,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-10-24：AF4b-1 1,749 项与 clippy 通过；AF3c macOS 代表实窗证据保留，范围见 [W43](../devlogs/2026-10/2026-W43.md)。
+- 2026-10-24：AF4b 1,770 项与 clippy、macOS 代表实窗通过；范围见 [W43](../devlogs/2026-10/2026-W43.md)。
 
 - 既有功能与实窗证据见 [W38](../devlogs/2026-09/2026-W38.md)，跨平台、native 与 `.NET` 历史基线见 [W37](../devlogs/2026-09/2026-W37.md)，更早记录见 [W36](../devlogs/2026-09/2026-W36.md)；历史证据不替代新增路径或发布验收。
 

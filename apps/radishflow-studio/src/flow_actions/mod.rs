@@ -3,7 +3,7 @@
 use crate::modeling_actions::{
     MaterialConnectionTarget, MaterialPortTarget, ModelingActionError, connect_material_target,
 };
-use rf_types::{RfError, UnitId};
+use rf_types::{PortDirection, RfError, StreamId, UnitId};
 use rf_ui::project_query::ProjectActionDescriptor;
 use rf_ui::variable_browser::{ActionKind, VariableId, VariableValue};
 use rf_ui::variable_commands::{VariableWriteError, VariableWriteRequest};
@@ -93,6 +93,12 @@ pub enum FlowAction {
     CreateUnit(BuiltinUnitKind),
     Connect(MaterialConnectionTarget),
     Disconnect(MaterialPortTarget),
+    /// The existing GUI stream operation stays one history transaction, even
+    /// when both endpoints (or malformed duplicate bindings) are disconnected.
+    DisconnectStream {
+        stream: StreamId,
+        direction: Option<PortDirection>,
+    },
 }
 impl FlowAction {
     pub fn kind(&self) -> FlowActionKind {
@@ -100,7 +106,7 @@ impl FlowAction {
             Self::Write { .. } => FlowActionKind::Write,
             Self::CreateUnit(_) => FlowActionKind::CreateUnit,
             Self::Connect(_) => FlowActionKind::Connect,
-            Self::Disconnect(_) => FlowActionKind::Disconnect,
+            Self::Disconnect(_) | Self::DisconnectStream { .. } => FlowActionKind::Disconnect,
         }
     }
 }
@@ -157,6 +163,11 @@ pub enum FlowActionEffect {
     Created(UnitId),
     Connected(MaterialConnectionTarget),
     Disconnected(MaterialPortTarget),
+    StreamDisconnected {
+        stream: StreamId,
+        direction: Option<PortDirection>,
+        ports: Vec<rf_ui::StreamPortBinding>,
+    },
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct FlowActionReceipt {
@@ -166,6 +177,36 @@ pub struct FlowActionReceipt {
     pub effect: FlowActionEffect,
     /// The existing domain command; absent for a validated no-op. This is not a replay DTO.
     pub command: Option<DocumentCommand>,
+}
+/// GUI summary of a validated numeric draft commit. The complete domain command
+/// remains in the existing NumericEditReceipt and document history.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FlowInputCommitSummary {
+    pub before: FlowEditContext,
+    pub after: FlowEditContext,
+    pub variable: VariableId,
+    pub outcome: FlowEditOutcome,
+}
+pub(crate) fn commit_numeric_flow_input(
+    app: &mut AppState,
+    variable: &VariableId,
+    generation: u64,
+    changed_at: DateTimeUtc,
+) -> Result<FlowInputCommitSummary, rf_ui::NumericEditError> {
+    let before = FlowEditContext::capture(&app.workspace);
+    // The numeric editor owns and checks this specific draft generation. It uses
+    // the same prepare/commit_input_document_command path as write_variable.
+    let receipt = app.commit_numeric_edit(variable, generation, changed_at)?;
+    Ok(FlowInputCommitSummary {
+        before,
+        after: FlowEditContext::capture(&app.workspace),
+        variable: receipt.variable,
+        outcome: if receipt.command.is_some() {
+            FlowEditOutcome::Committed
+        } else {
+            FlowEditOutcome::Unchanged
+        },
+    })
 }
 impl FlowActionReceipt {
     /// Changes revoke flow result/input qualification; equipment eligibility is untouched.
@@ -253,6 +294,35 @@ fn stage_flow_edit(
             (
                 FlowActionEffect::Disconnected(target.clone()),
                 Some(command),
+            )
+        }
+        FlowAction::DisconnectStream { stream, direction } => {
+            if !next
+                .workspace
+                .document
+                .flowsheet
+                .streams
+                .contains_key(stream)
+            {
+                return Err(FlowActionError::Rejected(RfError::missing_entity(
+                    "stream", stream,
+                )));
+            }
+            let result = match direction {
+                Some(direction) => next.disconnect_stream_endpoint(stream, *direction, changed_at),
+                None => next.disconnect_stream_connections(stream, changed_at),
+            }
+            .map_err(FlowActionError::Rejected)?;
+            let (ports, command) = result
+                .map(|result| (result.disconnected_ports, Some(result.command)))
+                .unwrap_or_default();
+            (
+                FlowActionEffect::StreamDisconnected {
+                    stream: stream.clone(),
+                    direction: *direction,
+                    ports,
+                },
+                command,
             )
         }
     };
