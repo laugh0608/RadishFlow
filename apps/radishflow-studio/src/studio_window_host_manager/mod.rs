@@ -201,7 +201,7 @@ impl StudioAppWindowHostManager {
     pub fn background_run_action(
         &mut self,
         action: crate::StudioBackgroundRunAction,
-    ) -> RfResult<bool> {
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
         self.session.background_run_action(action)
     }
 

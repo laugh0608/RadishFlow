@@ -2,6 +2,8 @@ mod runtime;
 mod seed;
 
 #[cfg(test)]
+mod run_receipt_tests;
+#[cfg(test)]
 mod tests;
 
 use std::path::PathBuf;
@@ -151,7 +153,7 @@ pub enum StudioBootstrapDispatch {
     ProjectPresentation {
         changed: bool,
     },
-    Equipment,
+    Equipment(Box<crate::run_actions::StudioEquipmentDispatch>),
     NumericEdit {
         generation: Option<u64>,
     },

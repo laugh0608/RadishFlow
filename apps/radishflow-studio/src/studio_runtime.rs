@@ -325,7 +325,7 @@ impl StudioRuntime {
     pub fn background_run_action(
         &mut self,
         action: crate::StudioBackgroundRunAction,
-    ) -> RfResult<bool> {
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
         self.session.background_run_action(action)
     }
 
@@ -894,7 +894,7 @@ mod tests {
             StudioRuntimeDispatch::RunPanelRecovery(_) => {
                 panic!("expected entitlement session event dispatch")
             }
-            StudioRuntimeDispatch::Equipment
+            StudioRuntimeDispatch::Equipment(_)
             | StudioRuntimeDispatch::NumericEdit { .. }
             | StudioRuntimeDispatch::ObjectDeletion { .. }
             | StudioRuntimeDispatch::ProjectPresentation { .. }

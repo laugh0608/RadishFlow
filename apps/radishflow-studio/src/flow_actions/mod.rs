@@ -33,7 +33,7 @@ impl FlowEditContext {
     pub fn revision(&self) -> u64 {
         self.0.revision()
     }
-    fn validate(&self, workspace: &WorkspaceState) -> Result<(), FlowEditConflict> {
+    pub(crate) fn validate(&self, workspace: &WorkspaceState) -> Result<(), FlowEditConflict> {
         let current = workspace.flow_run_qualification();
         if self.document_id() != current.document_id() {
             return Err(FlowEditConflict::DifferentDocument);

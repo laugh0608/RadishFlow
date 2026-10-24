@@ -205,35 +205,43 @@ fn dispatch_bootstrap_trigger(
             )
         }),
         StudioBootstrapTrigger::Equipment(command) => {
-            if matches!(
-                command,
-                rf_ui::engineering::editor::EquipmentEditorCommand::Calculate(_)
-                    | rf_ui::engineering::editor::EquipmentEditorCommand::CalculateRating(_)
-            ) && let Some(background) = &session.facade.background
-            {
-                let submission = background.owner.borrow_mut().submit_equipment(
-                    session.app_state,
-                    command,
-                    SystemTime::now(),
-                )?;
-                if matches!(
-                    submission,
-                    crate::StudioRunSubmission::Busy(_) | crate::StudioRunSubmission::Closing
-                ) {
-                    session.app_state.push_log(rf_ui::AppLogLevel::Warning, "Calculation not started: another task is still running or the application is closing");
+            use crate::run_actions::{
+                EquipmentCalculationTarget, StudioEquipmentDispatch, StudioRunAccess,
+                StudioRunRequest,
+            };
+            use rf_ui::engineering::editor::{EquipmentActionContext, EquipmentEditorCommand};
+            let calculation = match command {
+                EquipmentEditorCommand::Calculate(task) => {
+                    Some(EquipmentCalculationTarget::Sizing(task.clone()))
                 }
-                return Ok(StudioBootstrapDispatch::Equipment);
-            }
-            let workspace = &mut session.app_state.workspace;
-            workspace
-                .equipment_editor
-                .dispatch(
+                EquipmentEditorCommand::CalculateRating(member) => {
+                    Some(EquipmentCalculationTarget::Rating(member.clone()))
+                }
+                _ => None,
+            };
+            let dispatch = if let Some(target) = calculation {
+                let expected =
+                    EquipmentActionContext::capture(&session.app_state.workspace.engineering);
+                let context =
+                    StudioAppAuthCacheContext::new(session.cache_root, session.auth_cache_index);
+                StudioEquipmentDispatch::Run(session.facade.execute_run_action(
+                    session.app_state,
+                    &context,
+                    StudioRunAccess::Allowed,
+                    StudioRunRequest::Equipment { expected, target },
+                ))
+            } else {
+                let workspace = &mut session.app_state.workspace;
+                match workspace.equipment_editor.dispatch(
                     &mut workspace.engineering,
                     workspace.project_presentation.display_units(),
                     command.clone(),
-                )
-                .map_err(|error| RfError::invalid_input(error.to_string()))?;
-            Ok(StudioBootstrapDispatch::Equipment)
+                ) {
+                    Ok(()) => StudioEquipmentDispatch::Interaction,
+                    Err(error) => StudioEquipmentDispatch::Rejected(error),
+                }
+            };
+            Ok(StudioBootstrapDispatch::Equipment(Box::new(dispatch)))
         }
         StudioBootstrapTrigger::NumericEdit(command) => {
             let generation = session
@@ -435,7 +443,7 @@ impl BootstrapSession {
     pub(crate) fn background_run_action(
         &mut self,
         action: crate::StudioBackgroundRunAction,
-    ) -> RfResult<bool> {
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
         use crate::StudioBackgroundRunAction;
         if let StudioBackgroundRunAction::Install(owner) = action {
             if let Some(existing) = &self.facade.background
@@ -450,12 +458,17 @@ impl BootstrapSession {
                 owner,
                 root: self.cache_root.clone(),
             });
-            return Ok(false);
+            return Ok(crate::StudioBackgroundRunReply::default());
         }
         let Some(background) = &self.facade.background else {
-            return Ok(false);
+            return Ok(crate::StudioBackgroundRunReply {
+                cancellation: matches!(action, StudioBackgroundRunAction::Cancel(_))
+                    .then_some(crate::WorkspaceRunCancelReply::UnknownRun),
+                ..Default::default()
+            });
         };
         let mut owner = background.owner.borrow_mut();
+        let mut reply = crate::StudioBackgroundRunReply::default();
         let changed = match action {
             StudioBackgroundRunAction::Poll { attached } => {
                 let changed = owner.poll(
@@ -472,19 +485,31 @@ impl BootstrapSession {
                         self.cache_root.path(),
                         &self.auth_cache_index,
                     );
-                    self.facade.run_workspace_from_auth_cache(
+                    let expected =
+                        crate::flow_actions::FlowEditContext::capture(&self.app_state.workspace);
+                    reply.submission = Some(self.facade.execute_run_action(
                         &mut self.app_state,
                         &context,
-                        &crate::WorkspaceRunCommand::automatic_preferred(),
-                    )?;
-                    return Ok(true);
+                        crate::run_actions::StudioRunAccess::Allowed,
+                        crate::run_actions::StudioRunRequest::Flow {
+                            expected,
+                            command: crate::WorkspaceRunCommand::automatic_preferred(),
+                        },
+                    ));
+                    reply.changed = true;
+                    return Ok(reply);
                 } else {
                     changed
                 }
             }
             StudioBackgroundRunAction::Cancel(id) => {
-                owner.cancel(&mut self.app_state, &id);
-                true
+                let cancellation = owner.cancel(&mut self.app_state, &id);
+                reply.cancellation = Some(cancellation);
+                matches!(
+                    cancellation,
+                    crate::WorkspaceRunCancelReply::Requested
+                        | crate::WorkspaceRunCancelReply::AlreadyRequested
+                )
             }
             StudioBackgroundRunAction::Detach => {
                 owner.detach(&mut self.app_state);
@@ -500,7 +525,8 @@ impl BootstrapSession {
             }
             StudioBackgroundRunAction::Install(_) => unreachable!(),
         };
-        Ok(changed)
+        reply.changed = changed;
+        Ok(reply)
     }
 
     pub(crate) fn new(config: &StudioBootstrapConfig) -> RfResult<Self> {

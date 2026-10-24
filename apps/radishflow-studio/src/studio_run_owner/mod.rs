@@ -180,6 +180,26 @@ impl StudioRunOwner {
         command: &EquipmentEditorCommand,
         now: SystemTime,
     ) -> RfResult<StudioRunSubmission> {
+        self.submit_equipment_typed(app, command, now)
+            .map_err(crate::run_actions::EquipmentRunError::legacy_error)
+    }
+    pub fn submit_equipment_typed(
+        &mut self,
+        app: &mut AppState,
+        command: &EquipmentEditorCommand,
+        now: SystemTime,
+    ) -> Result<StudioRunSubmission, crate::run_actions::EquipmentRunError> {
+        self.submit_equipment_with(app, command, now, EquipmentRun::spawn)
+    }
+    fn submit_equipment_with(
+        &mut self,
+        app: &mut AppState,
+        command: &EquipmentEditorCommand,
+        now: SystemTime,
+        spawn: impl FnOnce(rf_ui::engineering::CalculationRequest) -> std::io::Result<EquipmentRun>,
+    ) -> Result<StudioRunSubmission, crate::run_actions::EquipmentRunError> {
+        use crate::run_actions::EquipmentRunError;
+        use rf_ui::engineering::editor::EquipmentEditError;
         if !self.accepting {
             return Ok(StudioRunSubmission::Closing);
         }
@@ -192,14 +212,14 @@ impl StudioRunOwner {
                 .equipment_editor
                 .pending_for_case(member, &workspace.engineering),
             _ => {
-                return Err(RfError::invalid_input(
-                    "not an equipment calculation command",
+                return Err(EquipmentRunError::Rejected(
+                    EquipmentEditError::UnsupportedEditorAction,
                 ));
             }
         };
         if pending_drafts {
-            return Err(RfError::invalid_input(
-                "resolve related equipment drafts before calculating",
+            return Err(EquipmentRunError::Rejected(
+                EquipmentEditError::PendingDrafts,
             ));
         }
         if let Some(activity) = self.activity() {
@@ -229,7 +249,7 @@ impl StudioRunOwner {
         let request = workspace
             .equipment_editor
             .prepare_calculation(&mut workspace.engineering, command)
-            .map_err(|error| RfError::invalid_input(error.to_string()))?;
+            .map_err(EquipmentRunError::Rejected)?;
         let qualification = request.qualification();
         let id = StudioRunId::Equipment(qualification.id().clone());
         let target = format!(
@@ -239,21 +259,29 @@ impl StudioRunOwner {
             qualification.member().task_id.as_str(),
             qualification.member().case_id.as_str()
         );
-        match EquipmentRun::spawn(request) {
+        match spawn(request) {
             Ok(run) => {
                 self.equipment = Some(run);
                 self.set_activity(id.clone(), target, now);
             }
             Err(error) => {
                 workspace.engineering.revoke_calculation(&qualification);
-                return Err(RfError::invalid_input(format!(
-                    "Could not start equipment worker: {error}"
-                )));
+                return Err(EquipmentRunError::StartFailed {
+                    id,
+                    error: RfError::invalid_input(format!(
+                        "Could not start equipment worker: {error}"
+                    )),
+                });
             }
         }
         Ok(StudioRunSubmission::Accepted(id))
     }
-    pub fn cancel(&mut self, app: &mut AppState, id: &StudioRunId) {
+    pub fn cancel(
+        &mut self,
+        app: &mut AppState,
+        id: &StudioRunId,
+    ) -> crate::WorkspaceRunCancelReply {
+        use crate::WorkspaceRunCancelReply as Reply;
         if let Some(activity) = &mut self.activity
             && &activity.id == id
         {
@@ -262,14 +290,24 @@ impl StudioRunOwner {
                 .get_or_insert_with(SystemTime::now);
         }
         match id {
-            StudioRunId::Flow(id) => {
-                self.flow.cancel(app, id);
-            }
+            StudioRunId::Flow(id) => self.flow.cancel(app, id),
             StudioRunId::Equipment(id) => {
                 if let Some(run) = &mut self.equipment
                     && run.qualification.id() == id
                 {
+                    if run.cancel_reason.is_some() {
+                        return Reply::AlreadyRequested;
+                    }
                     run.cancel(Some(app), crate::WorkspaceRunCancelReason::UserRequested);
+                    Reply::Requested
+                } else if self
+                    .history
+                    .iter()
+                    .any(|summary| summary.activity.id == StudioRunId::Equipment(id.clone()))
+                {
+                    Reply::AlreadyFinished
+                } else {
+                    Reply::UnknownRun
                 }
             }
         }
@@ -452,3 +490,11 @@ pub enum StudioBackgroundRunAction {
 
 #[cfg(test)]
 mod tests;
+
+/// State refresh and a control receipt travel independently through host adapters.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct StudioBackgroundRunReply {
+    pub changed: bool,
+    pub cancellation: Option<crate::WorkspaceRunCancelReply>,
+    pub submission: Option<crate::run_actions::StudioRunReply>,
+}

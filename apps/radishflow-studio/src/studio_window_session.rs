@@ -43,7 +43,7 @@ impl StudioWindowSession {
     pub fn background_run_action(
         &mut self,
         action: crate::StudioBackgroundRunAction,
-    ) -> RfResult<bool> {
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
         self.host_port.background_run_action(action)
     }
 

@@ -484,7 +484,7 @@ impl StudioAppHost {
     pub fn background_run_action(
         &mut self,
         action: crate::StudioBackgroundRunAction,
-    ) -> RfResult<bool> {
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
         self.window_host_manager.background_run_action(action)
     }
 
@@ -880,12 +880,12 @@ impl StudioAppHostController {
     pub fn background_run_action(
         &mut self,
         action: crate::StudioBackgroundRunAction,
-    ) -> RfResult<bool> {
-        let changed = self.app_host.background_run_action(action)?;
-        if changed {
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
+        let reply = self.app_host.background_run_action(action)?;
+        if reply.changed {
             self.store = StudioAppHostStore::from_snapshot(&self.app_host.snapshot());
         }
-        Ok(changed)
+        Ok(reply)
     }
 
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {

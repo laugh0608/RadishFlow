@@ -16,6 +16,18 @@ impl EquipmentActionContext {
             input: session.checkpoint(),
         }
     }
+    pub fn validate(&self, session: &EngineeringSession) -> Result<(), EquipmentActionError> {
+        if self.document != session.document_id {
+            return Err(EquipmentActionError::DifferentDocument);
+        }
+        if self.session != session.identity {
+            return Err(EquipmentActionError::DifferentSession);
+        }
+        if self.input != session.checkpoint() {
+            return Err(EquipmentActionError::StaleInput);
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -154,15 +166,7 @@ impl EquipmentEditorState {
         if access != EquipmentEditAccess::Editable {
             return Err(EquipmentActionError::ReadOnly);
         }
-        if context.document != session.document_id {
-            return Err(EquipmentActionError::DifferentDocument);
-        }
-        if context.session != session.identity {
-            return Err(EquipmentActionError::DifferentSession);
-        }
-        if context.input != session.checkpoint() {
-            return Err(EquipmentActionError::StaleInput);
-        }
+        context.validate(session)?;
         let before = EquipmentActionContext::capture(session);
         let old_inputs = session.inputs().clone();
         let mut editor = self.clone();

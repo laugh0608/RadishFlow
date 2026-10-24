@@ -25,7 +25,7 @@ impl StudioGuiHost {
     pub fn background_run_action(
         &mut self,
         action: crate::StudioBackgroundRunAction,
-    ) -> RfResult<bool> {
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
         self.controller.background_run_action(action)
     }
 

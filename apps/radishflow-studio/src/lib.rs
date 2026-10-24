@@ -25,6 +25,7 @@ pub mod modeling_specifications;
 mod property_package_cache_root;
 mod property_package_download;
 mod property_package_download_client;
+pub mod run_actions;
 mod run_panel_driver;
 mod solver_bridge;
 mod studio_app_host;
@@ -62,8 +63,8 @@ mod workspace_control;
 mod workspace_run_command;
 mod workspace_run_owner;
 pub use studio_run_owner::{
-    SharedStudioRunOwner, StudioBackgroundRunAction, StudioRunActivity, StudioRunId,
-    StudioRunOutcome, StudioRunOwner, StudioRunSubmission, StudioRunSummary,
+    SharedStudioRunOwner, StudioBackgroundRunAction, StudioBackgroundRunReply, StudioRunActivity,
+    StudioRunId, StudioRunOutcome, StudioRunOwner, StudioRunSubmission, StudioRunSummary,
 };
 mod workspace_solve_service;
 

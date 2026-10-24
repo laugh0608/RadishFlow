@@ -1,3 +1,4 @@
+mod action_receipts;
 use super::*;
 use crate::test_support::{
     OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID as PACKAGE,

@@ -1063,7 +1063,7 @@ fn app_command(report: &super::StudioBootstrapReport) -> &crate::StudioAppComman
         StudioBootstrapDispatch::RunPanelRecovery(_) => {
             panic!("expected app command dispatch")
         }
-        StudioBootstrapDispatch::Equipment
+        StudioBootstrapDispatch::Equipment(_)
         | StudioBootstrapDispatch::NumericEdit { .. }
         | StudioBootstrapDispatch::ObjectDeletion { .. }
         | StudioBootstrapDispatch::ProjectPresentation { .. }
@@ -1129,7 +1129,7 @@ fn session_event(
         StudioBootstrapDispatch::RunPanelRecovery(_) => {
             panic!("expected entitlement session event dispatch")
         }
-        StudioBootstrapDispatch::Equipment
+        StudioBootstrapDispatch::Equipment(_)
         | StudioBootstrapDispatch::NumericEdit { .. }
         | StudioBootstrapDispatch::ObjectDeletion { .. }
         | StudioBootstrapDispatch::ProjectPresentation { .. }
