@@ -13,6 +13,7 @@ publish.workspace = true
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
+rf-property-package = { path = "../rf-property-package" }
 rf-flash = { path = "../rf-flash" }
 rf-model = { path = "../rf-model" }
 rf-solver = { path = "../rf-solver" }

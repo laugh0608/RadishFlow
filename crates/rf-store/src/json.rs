@@ -189,10 +189,22 @@ pub fn auth_cache_index_to_pretty_json(
 pub fn read_property_package_manifest(
     path: impl AsRef<Path>,
 ) -> RfResult<StoredPropertyPackageManifest> {
+    read_property_package_manifest_detailed(path).map_err(|failure| failure.error)
+}
+
+pub fn read_property_package_manifest_detailed(
+    path: impl AsRef<Path>,
+) -> Result<StoredPropertyPackageManifest, crate::StoredPackageError> {
+    use crate::{StoredPackageError, StoredPackageFailureStage};
     let path = path.as_ref();
-    let contents = fs::read_to_string(path)
-        .map_err(|error| map_io_error("read stored property package manifest", path, &error))?;
+    let contents = fs::read_to_string(path).map_err(|error| {
+        StoredPackageError::new(
+            StoredPackageFailureStage::Resource,
+            map_io_error("read stored property package manifest", path, &error),
+        )
+    })?;
     parse_property_package_manifest_json(&contents)
+        .map_err(|error| StoredPackageError::new(StoredPackageFailureStage::InvalidData, error))
 }
 
 pub fn write_property_package_manifest(
@@ -233,10 +245,22 @@ pub fn property_package_manifest_to_pretty_json(
 pub fn read_property_package_payload(
     path: impl AsRef<Path>,
 ) -> RfResult<StoredPropertyPackagePayload> {
+    read_property_package_payload_detailed(path).map_err(|failure| failure.error)
+}
+
+pub fn read_property_package_payload_detailed(
+    path: impl AsRef<Path>,
+) -> Result<StoredPropertyPackagePayload, crate::StoredPackageError> {
+    use crate::{StoredPackageError, StoredPackageFailureStage};
     let path = path.as_ref();
-    let contents = fs::read_to_string(path)
-        .map_err(|error| map_io_error("read stored property package payload", path, &error))?;
+    let contents = fs::read_to_string(path).map_err(|error| {
+        StoredPackageError::new(
+            StoredPackageFailureStage::Resource,
+            map_io_error("read stored property package payload", path, &error),
+        )
+    })?;
     parse_property_package_payload_json(&contents)
+        .map_err(|error| StoredPackageError::new(StoredPackageFailureStage::InvalidData, error))
 }
 
 pub fn write_property_package_payload(

@@ -1645,7 +1645,7 @@ fn workspace_document_snapshot_from_controller(
                 crate::StudioGuiProjectComponentChoiceSnapshot {
                     component_id: component.component_id.to_string(),
                     name: component.name.to_string(),
-                    formula: Some(component.formula.to_string()),
+                    formula: component.formula.map(str::to_string),
                     selected,
                     select_command_id: crate::project_component_select_command_id(
                         component.component_id,

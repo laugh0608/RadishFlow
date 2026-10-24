@@ -1,6 +1,6 @@
 # Auth And Entitlement Architecture
 
-更新时间：2026-09-14
+更新时间：2026-10-24
 
 > 本文保留历史目标架构。当前已有客户端 DTO、HTTP transport、缓存与租约编排，但本仓库未交付控制面服务端，也没有由这些单元测试证明的真实登录、授权和资产分发完整闭环。后续实现按当前优先级与专题范围推进，见 [当前状态](../status/current.md) 与 [控制面专题](../topics/platform/control-plane-service.md)。
 
@@ -777,12 +777,12 @@ RadishFlow Studio
 - 本地 `payload.rfpkg` 当前第一版内部仍采用带 `kind` / `schemaVersion` 的 JSON DTO，承载 `ThermoSystem` 所需的组分、Antoine 参数占位和相模型信息；后续若改为压缩包或二进制格式，必须通过显式迁移切换
 - 授权缓存索引是“运行态缓存真相源”，项目文件仍然只描述用户编辑的流程图语义
 
-### `rf-thermo`
+### `rf-thermo` 与 `rf-property-package`
 
 职责：
 
-- 通过稳定接口读取本地已授权派生物性包
-- 对上层隐藏包格式细节
+- `rf-thermo` 通过 `ThermoProvider` 消费已解析数据，提供本地数值求值
+- `rf-property-package` 通过稳定接口装载受检包、隐藏格式细节并构造本地上下文；应用层仍负责先执行授权政策
 
 不应承担：
 
@@ -800,8 +800,8 @@ RadishFlow Studio
 当前进一步冻结以下本地缓存 provider 行为：
 
 - `PropertyPackageProvider` 的本地缓存实现必须显式接收应用私有缓存根目录和 `StoredAuthCacheIndex`，而不是自己推断登录态或联网刷新授权
-- provider 构造阶段就应校验 `StoredAuthCacheIndex`、本地 `manifest.json` 和本地 `payload.rfpkg` 三者是否一致，不把索引漂移问题拖进求解热路径
-- provider 当前只暴露“未过期、存在本地 payload、manifest/payload 与索引一致”的本地包；`RemoteEvaluationService` 记录不进入本地 provider 列表
+- AF2b 起构造只校验 `StoredAuthCacheIndex`；装载时校验选定包的索引 / manifest / payload 一致性，进入数值热路径前冻结数据，无关包损坏不阻断已选包
+- `list_packages` 报告各条 manifest 的可用性，包括到期 / 远端 / 资源错误；不预读 payload。`load_package` 拒绝到期或远端求值来源，仅返回已校验的本地数据；发现成功不等同于运行资格或授权通过
 - 当前仓库已在 `examples/sample-components/property-packages/` 提供首个真实样例包和对应下载 JSON，用于校验上述本地缓存链路、协议映射和 provider 装载行为
 
 ### `rf-solver`

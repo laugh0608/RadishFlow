@@ -4,7 +4,6 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use crate::{
     RadishFlowControlPlaneClient, RadishFlowControlPlaneClientError,
     RadishFlowControlPlaneClientErrorKind, RadishFlowControlPlaneResponse,
-    parse_property_package_download_json,
 };
 use rf_model::Flowsheet;
 use rf_store::{
@@ -24,9 +23,6 @@ use rf_ui::{
 use super::StudioBootstrapEntitlementSeed;
 
 pub(super) const BOOTSTRAP_MVP_PROPERTY_PACKAGE_ID: &str = "binary-hydrocarbon-lite-v1";
-const BOOTSTRAP_MVP_PROPERTY_PACKAGE_DOWNLOAD_JSON: &str = include_str!(
-    "../../../../examples/sample-components/property-packages/binary-hydrocarbon-lite-v1/download.json"
-);
 
 #[derive(Debug, Clone)]
 pub(super) struct BootstrapSeedState {
@@ -319,9 +315,7 @@ fn build_bootstrap_payload(
     package_id: &str,
 ) -> RfResult<StoredPropertyPackagePayload> {
     let flowsheet_components = flowsheet.components.values().collect::<Vec<_>>();
-    let mut payload =
-        parse_property_package_download_json(BOOTSTRAP_MVP_PROPERTY_PACKAGE_DOWNLOAD_JSON)?
-            .to_stored_payload()?;
+    let mut payload = crate::builtin_property_package_data::payload().clone();
     if flowsheet_components.is_empty() {
         payload.package_id = package_id.to_string();
         payload.validate()?;

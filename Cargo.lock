@@ -2683,6 +2683,7 @@ dependencies = [
  "rf-flash",
  "rf-flowsheet",
  "rf-model",
+ "rf-property-package",
  "rf-solver",
  "rf-store",
  "rf-thermo",
@@ -2842,6 +2843,7 @@ version = "0.1.0"
 dependencies = [
  "rf-flash",
  "rf-model",
+ "rf-property-package",
  "rf-solver",
  "rf-store",
  "rf-thermo",
@@ -2880,12 +2882,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "rf-property-package"
+version = "0.1.0"
+dependencies = [
+ "rf-flash",
+ "rf-store",
+ "rf-thermo",
+ "rf-types",
+]
+
+[[package]]
 name = "rf-rust-integration"
 version = "0.1.0"
 dependencies = [
  "radishflow-studio",
  "rf-flash",
  "rf-model",
+ "rf-property-package",
  "rf-solver",
  "rf-store",
  "rf-thermo",
@@ -2921,7 +2934,6 @@ dependencies = [
 name = "rf-thermo"
 version = "0.1.0"
 dependencies = [
- "rf-store",
  "rf-types",
  "serde",
  "serde_json",

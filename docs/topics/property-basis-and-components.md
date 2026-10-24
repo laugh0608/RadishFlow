@@ -53,9 +53,9 @@
 
 | 职责 | 当前实现 | 目标边界 |
 | --- | --- | --- |
-| 包发现与解析 | `PropertyPackageProvider::list_manifests / load_system`，内存或缓存数据装载 | 枚举描述、校验版本与来源、解析数据由加载职责拥有；计算层不处理授权缓存 IO |
+| 包发现与解析 | `rf-property-package::PropertyPackageProvider::list_packages / load_package`，受检的内存 / 缓存 / 文件数据装载 | 枚举描述、校验版本与来源、解析数据由加载职责拥有；计算层不处理授权缓存 IO |
 | 工程物性配置 | 流程级 package ID 与项目组分 | 明确选用模型 / 数据版本、组分、允许相态、参数及参考态；变更经命令使旧结果失效 |
-| 运行热力学服务 | Studio 用 `ThermoSystem` 构造固定 provider / TP Flash；单次求解使用一套服务 | 输入快照解析到明确实现与数据；不可变参数可共享，可变上下文按任务 / 实例拥有 |
+| 运行热力学服务 | Studio / FFI 共用 `prepare_local_context`；每次运行冻结一套现有物性 / TP Flash 服务 | 输入快照解析到明确实现与数据；不可变参数可共享，可变上下文按任务 / 实例拥有 |
 | 多物性绑定 | 尚未实现 | 有真实工段 / 单元需求时再定义绑定优先级、映射和跨包衡算，不默认为每条流股任意选包 |
 
 现有 manifest 与数据 payload 不等于可执行物性插件，也不等于 CAPE-OPEN Property Package Manager。当前换包不代表能任意替换物性算法；完整第三方加载仍由后续宿主 / 插件切片定义。
@@ -66,13 +66,13 @@
 
 MC2 首先验证单包装配、缓存职责迁出、跨消费者一致性与任务隔离；增加多包时再验证上述映射、缺包恢复和跨包衡算。数值精度仍依 [热力学模型](../thermo/mvp-model.md) 的独立证据，不由目录加载成功推导。
 
-## AF2b 物性装配提案（待确认）
+## AF2b 物性装配与运行上下文
 
-2026-10-24 基于 `de4d7980` 细化 MC2。AF2a 已交付内建单元目录，本节仅提出物性装配方案，未修改代码、依赖或格式。范围为现有本地 / 内存数据包、单包装配、发现描述和 GUI / headless / FFI 消费者；AF1 保留跟踪。新 EOS、网络求值、完整插件、多包、后台任务和 C2-B / C3 不纳入。
+2026-10-24 所有者确认 MC2 的 AF2b 接口迁移与三项行为变化，已按下述边界实现。AF2a 已交付内建单元目录。范围为现有本地 / 内存数据包、单包装配、发现描述和 GUI / headless / FFI 消费者；AF1 保留跟踪。新 EOS、网络求值、完整插件、多包、后台任务和 C2-B / C3 不纳入。
 
-### 现状与需要解决的问题
+### 迁移前问题与本轮目标
 
-| 链路 | 已核对事实 | 本轮目标 |
+| 链路 | 迁移前事实（`de4d7980`） | 本轮已实现目标 |
 | --- | --- | --- |
 | 缓存 → 领域数据 | [`rf-thermo`](../../crates/rf-thermo/src/lib.rs) 直接依赖 `rf-store`；`CachedPropertyPackageProvider::new_at` 校验索引、跳过到期 / 远端求值条目，并预读其余所有 manifest / payload | 将缓存 IO、DTO 转换和包资格检查迁出数值 crate；运行只装载指定包，无关包损坏不阻断它 |
 | manifest / payload 一致性 | [`rf-store`](../../crates/rf-store/src/package_cache.rs) 已检查包 ID、版本、组分顺序、可选 hash / size；hash 对应规范化 payload JSON，不是任意原始文件字节 | 复用既有校验及摘要口径，不重复实现解析或完整性算法 |
@@ -84,7 +84,7 @@ MC2 首先验证单包装配、缓存职责迁出、跨消费者一致性与任�
 
 ### 职责与依赖方向
 
-建议新增一个 workspace crate **`rf-property-package`**。这是 Studio 和 FFI 两个实际消费者共享的包资源与运行装配边界；不把它放进 `rf-store` 或 `rf-thermo`，避免存储依赖数值实现，或数值层继续依赖缓存。只新增仓库内依赖，不新增外部库；`Cargo.lock` 仅记录 workspace 包和依赖关系变化。
+已新增 workspace crate **`rf-property-package`**。这是 Studio 和 FFI 两个实际消费者共享的包资源与运行装配边界；不把它放进 `rf-store` 或 `rf-thermo`，避免存储依赖数值实现，或数值层继续依赖缓存。只新增仓库内依赖，不新增外部库；`Cargo.lock` 仅记录 workspace 包和依赖关系变化。
 
 | 归属 | 拥有的职责 | 不拥有的职责 |
 | --- | --- | --- |
@@ -99,9 +99,9 @@ MC2 首先验证单包装配、缓存职责迁出、跨消费者一致性与任�
 
 现有 `PropertyPackageManifest / Source / Classification`、`PropertyPackageProvider` 及内存 / 缓存实现迁入新 crate；`ThermoSystem` 等数值类型不移动。仓库 Rust 消费者统一调整 import 和 trait 调用，不从 `rf-thermo` 反向 re-export 新 crate 来伪装兼容。C ABI、COM 及 JSON 协议另按下述兼容要求保持。
 
-### 拟定接口与所有权
+### 接口与所有权
 
-以下为待确认 Rust 接口骨架，类型字段按职责列明；不在本轮写入公共 wire schema：
+当前 Rust 入口如下；类型字段按职责列明，不写入公共 wire schema：
 
 ```rust
 trait PropertyPackageProvider {
@@ -127,15 +127,15 @@ fn prepare_local_context(package: LoadedPropertyPackage)
 
 ### 资格、能力与错误顺序
 
-装配链路拟为：**现有跳过 / readiness / 授权 → 解析选包 → 校验该来源的资源资格 → 读取并冻结该包 → 构造本地上下文 → 既有 solver 校验与计算 → 原入口发布结果**。
+装配链路为：**现有跳过 / readiness / 授权 → 解析选包 → 校验该来源的资源资格 → 读取并冻结该包 → 构造本地上下文 → 既有 solver 校验与计算 → 原入口发布结果**。
 
 - 应用继续决定 entitlement、离线租约及是否允许某来源；包层只校验资源自身的到期、来源模式、结构与完整性。`LoadedPropertyPackage` 不是授权凭据，不能让“在磁盘上找到包”绕过入口许可。FFI 本地文件入口不被强加 Studio 的账户政策。
 - 缓存索引先整体结构校验；选定条目的到期与远端求值属性在触盘前检查。将每次运行使用的时间显式传入，杜绝数值方法中读取系统时钟。已冻结的同步运行不因中途到期而改变结果；下一次运行拒绝到期资源。
 - 能力描述区分“实现支持”与“所需数据齐全”：当前理想液相 / 理想气相、K 值、泡露点、TP Flash、液 / 气相常热容显热分别描述；Antoine 与各相热容按组分报告缺口。无密度、输运、PH Flash、EO / 导数、动态或工程准确性声明；`Overall` 物流焓由当前 Flash 组合得到，不能标成 `phase_molar_enthalpy(Overall)` 能力。
 - 目录发现与工厂构造不试算物性。能力描述不为现有求解新增“必须提供全部性质”的总门禁；缺少 Antoine / 热容及工况数值失败仍由实际调用路径明确拒绝，保持旧 `solver.step.*` 诊断。未来新增能力请求接口时再依据明确请求做预检。
 - `PackageLoadError` 至少区分 Missing、Expired、UnsupportedSource、MetadataMismatch、IntegrityMismatch、ResourceUnavailable、InvalidData；统一领域投影使用 `property_package.*` 诊断码。未支持的存储 schema 仍由 store 拒绝，归 InvalidData 并保留原错误；完整性与元数据错误不可按缺包 fallback。分类在校验点形成，不从 store 消息猜测错误类型。
-- store 现有综合校验只返回 `RfError`，迁移时为其增加有类型的校验阶段出口（身份 / 组分、完整性、schema / 数据），包层复用该结果。旧 `validate_* -> RfResult` 入口保留为兼容投影，原文本不变；不在新 crate 再复制一套存储校验，也不靠重复尝试来推断失败原因。
-- Studio 保留既有 `workspace.run.*` 投影及恢复动作：缓存损坏仍归本地缓存不可用，到期 / 仅远端包沿用旧“物性包不可用”外层语义，内部保留具体包原因。FFI 文件缺失等已有 `ffi.property_package.*` 文本和代码保持；新增拒绝场景才新增对应码。实现前以现有测试冻结旧映射，不通过字符串解析新原因。
+- store 已增加有类型的校验阶段出口（身份 / 组分、完整性、schema / 数据），包层复用该结果。旧 `validate_* -> RfResult` 入口保留为兼容投影，原文本不变；不在新 crate 再复制一套存储校验，也不靠重复尝试来推断失败原因。
+- Studio 保留既有 `workspace.run.*` 投影及恢复动作：缓存损坏仍归本地缓存不可用，到期 / 仅远端包沿用旧“物性包不可用”外层语义，内部保留具体包原因。FFI 文件缺失等已有 `ffi.property_package.*` 文本和代码保持；新增拒绝场景才新增对应码。现有回归保持旧映射，不通过字符串解析新原因。
 
 ### 兼容要求与显式行为变化
 
@@ -146,9 +146,9 @@ fn prepare_local_context(package: LoadedPropertyPackage)
 | 组分与数值 | manifest / payload 顺序严格一致；物流字典按包序转成向量，仍要求完整组分集合，不自动补零、取交集、排序包、裁剪数据包或把单组分编辑 readiness 当单组分可计算证明。SI、Antoine 约定、298.15 K 显热参考及旧数值结果保持 |
 | UI / 命令 | 只替换现有内置元数据来源，保留 label、command ID、未选包时的现有组分候选和草稿 / Undo / Redo / 保存语义；不自动选择、删除或改写工程组分。新包身份先用于非 UI 目录测试，不扩大 GUI 可建模包集合 |
 | FFI / headless | C 符号、调用参数、对象所有权、manifest / 结果 JSON、headless v1 / v2 与磁盘只读契约保持；FFI 原有相同 package ID 显式重新装入的替换语义保持，已准备上下文仍持有旧数据 |
-| 指定包按需加载（拟改变） | 现在缓存构造会因任意未过期本地包损坏失败；新运行只读取已选包。发现报告各条 manifest 的可读性，payload 损坏在该包加载时报告；无关包资源损坏不阻断已选健康包。不可为了避开坏包静默换选另一个包 |
-| 来源与到期统一检查（拟改变） | 当前缓存会过滤到期 / 远端求值，而 FFI 文件入口和内存注册缺少同等资源检查。新本地装配拒绝显式到期和 `RemoteEvaluationService / RemoteOnly`，保留原包和工程；这属于新增拒绝条件，不能作为纯搬迁隐藏 |
-| 内存来源一致性（拟改变） | 原内存构造可接受不匹配 manifest / system，重复 ID 后者覆盖。新增受检构造拒绝这些输入；FFI 的显式替换操作单独保留，不与重复批量登记混淆 |
+| 指定包按需加载（已改变） | 原缓存构造会因任意未过期本地包损坏失败；当前运行只读取已选包。发现报告各条 manifest 的可读性，payload 损坏在该包加载时报告；无关包资源损坏不阻断已选健康包。不可为了避开坏包静默换选另一个包 |
+| 来源与到期统一检查（已改变） | 原缓存会过滤到期 / 远端求值，而 FFI 文件入口和内存注册缺少同等资源检查。当前本地装配拒绝显式到期和 `RemoteEvaluationService / RemoteOnly`，保留原包和工程；这属于新增拒绝条件，不能作为纯搬迁隐藏 |
+| 内存来源一致性（已改变） | 原内存构造可接受不匹配 manifest / system，重复 ID 后者覆盖。新增受检构造拒绝这些输入；FFI 的显式替换操作单独保留，不与重复批量登记混淆 |
 
 首批界面可消费一次性加载的描述快照；不得在每帧渲染、Home 展示或普通工程打开时暗中读全部缓存 / 求值。新增不可用状态的呈现沿用既有 notice，若需新交互或画板，另按 UI 局部评审；本提案不授权全物性页重绘。
 
@@ -169,7 +169,9 @@ fn prepare_local_context(package: LoadedPropertyPackage)
 | 跨端与存储 | GUI 创建 / 改包 / 组分事务与旧化、Undo / Redo、保存重开；headless 只读请求及 golden、FFI JSON / ABI 回归通过；选中包不可用时保留原输入和文件 |
 | 正式收口 | 按实际迁移运行 package / thermo / flash / unitops / solver / store / UI / FFI / Studio 定向测试及 `./scripts/check-repo.sh`；已有 UI 元数据接通后复核 macOS Home / Property / Workbench。Windows / Linux 与 PME 按既定节点保留未验项 |
 
-待确认范围：新增共享 crate 及 Rust 接口迁移；上述三项行为变化；只读来源证据与现有内置 UI 元数据接通。确认后按顺序实施；不要求先实现 AF3 任务系统，也不把软件装配通过视为物理模型准确性验收。
+实现定位：[包资源与发现](../../crates/rf-property-package/src/provider.rs)、[冻结数据与本地上下文](../../crates/rf-property-package/src/runtime.rs)、[数据缺口与来源证据](../../crates/rf-property-package/src/descriptor.rs)。`rf-store` 的详细校验出口保留阶段类型，原 `RfResult` 接口继续投影同一错误文本；`rf-thermo` 已移除 store 依赖。`InMemoryPropertyPackageProvider::try_new_at` 校验批量输入，`insert` 仅接受已校验包并保留显式替换。
+
+Studio / headless 与 FFI 共用工厂；缓存准备失败仍保留旧运行状态，应用日志保留具体 `property_package.*` 原因。内建 UI 目录从 bootstrap 同源内嵌 payload 的不可变描述生成，只保留甲烷 / 乙烷既有展示标签；不做逐帧 IO 或自动放开新包。共享层测试覆盖来源、完整性、资格、按需隔离和冻结，跨端兼容与正式验收记录见 [W43](../devlogs/2026-10/2026-W43.md)。AF3 任务身份和物理准确性仍独立验收。
 
 ## B2 配置复核（2026-09-14）
 
@@ -250,5 +252,5 @@ macOS 普通“新建项目”进入物性页时 package / component 均未选�
 ## 状态记录
 
 - 当前状态：Active
-- 最近更新：2026-10-24，AF2b 共享资源边界、单包上下文、兼容要求与验证矩阵已形成待确认提案；未实施。
-- 下一步：确认 AF2b 接口迁移与显式行为变化，再按切片实施；完整数据库、估算和物性分析按独立专题推进。
+- 最近更新：2026-10-24，AF2b 共享包装载、单包上下文、来源证据及内置展示已接通，兼容和三项行为变化按本节验收。
+- 下一步：按 AF3 / AF5 明确任务与结果来源契约；完整数据库、估算和物性分析按独立专题推进。

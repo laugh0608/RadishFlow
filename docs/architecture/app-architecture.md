@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-10-23
+更新时间：2026-10-24
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -728,9 +728,8 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - 由 `WorkspaceSolveService` 负责生成默认 `snapshot_id` / `sequence`
 - `WorkspaceSolveService` 明确区分 `Manual` / `Automatic` 触发，并把 `SimulationMode` 与 `pending_reason` 的运行门控收口在应用层
 - `ResumeWorkspace` 当前会先复用同一层 package / readiness preflight；如果建模输入未就绪则保持 `Hold` / pending 状态并返回 modeling notice，只有 preflight 通过后才切到 `Active` 并按 Automatic 语义发起运行
-- 先把 `SolveSessionState` 推进到 `Checking -> Runnable -> Solving`
-- 通过 `PropertyPackageProvider` 或 `CachedPropertyPackageProvider` 加载 `ThermoSystem`
-- 组装 `PlaceholderThermoProvider + PlaceholderTpFlashSolver + SequentialModularSolver`
+- 通过 `rf-property-package` 的内存或缓存 provider 按需装载指定包，调用 `prepare_local_context` 冻结本地服务；缓存准备失败仍不改变旧运行状态
+- 把 `SolveSessionState` 推进到 `Checking -> Runnable -> Solving`，借用上下文物性 / TP Flash 服务供 `SequentialModularSolver` 使用；包不可用沿用旧 workspace 诊断，内部日志保留具体原因
 - 成功时调用 `AppState::store_solver_snapshot(...)`，把求解结果映射为 UI 层 `SolveSnapshot`
 - 失败时调用 `record_failure(...)` 并追加 `AppLogFeed` 错误日志
 - Automatic 命中 `HoldMode` / `NoPendingRequest` 的 skip 当前也会写入 `AppLogFeed`

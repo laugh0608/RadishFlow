@@ -1,6 +1,7 @@
 mod app_facade;
 mod auth_cache_sync;
 mod bootstrap;
+mod builtin_property_package_data;
 mod confirmed_input_action;
 mod control_plane_client;
 mod control_plane_sync;

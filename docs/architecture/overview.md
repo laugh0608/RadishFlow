@@ -56,7 +56,8 @@ flowchart TD
 | --- | --- | --- |
 | `rf-types` | ID、相标签、错误与诊断上下文、相区容差及量 / 单位目录与转换 | 单位基础无 UI、IO 或 COM 语义；规范 SI 不变 |
 | `rf-model` | 组分、流股、单元、端口、flowsheet 及工程基础 / 来源、独立设备任务、有限工况矩阵与固定几何采纳证据 | 不负责求解调度；工程结构解析不证明方法有效性 |
-| `rf-thermo` | Antoine、理想 K 值、常热容相焓、泡露点估算、物性 provider | 目前还含缓存包装载，见下方依赖偏移说明 |
+| `rf-thermo` | Antoine、理想 K 值、常热容相焓、泡露点估算、物性 provider | 只接收已解析数值数据，不依赖 store |
+| `rf-property-package` | 包发现、资源资格、stored 转换、冻结数据、本地服务装配和来源描述 | Studio / FFI 共享；不拥有应用选包 / 授权与结果发布 |
 | `rf-flash` | TP Flash、Rachford-Rice、相分率与相组成 | 数值假设与验证边界见 [热力学模型](../thermo/mvp-model.md) |
 | `rf-unitops` | canonical ports、六类单元及规格规则、独立分离器尺寸 / 校核与候选纯映射 | Mixer、Valve 和焓模型使用 MVP 简化假设 |
 | `rf-flowsheet` | 端口、流股引用、一源一汇校验及文档侧有来源的入口压力上下文 | 终端产品流可没有 sink；不借用未运行模板伪造压力依据 |
@@ -82,7 +83,7 @@ Studio 的 `modeling_specifications` 提供只读 A1 报告与会话身份；`mo
 | 方向 | 当前实现 | 限制 |
 | --- | --- | --- |
 | 内建单元 | `rf-unitops::catalog` 静态描述与工厂统一六类模型、规格和服务需求；solver 委托构造 | 六类固定模型，不扫描插件或加载第三方库 |
-| 物性包 | `PropertyPackageProvider` 枚举 manifest 并装载 `ThermoSystem` | 当前 Studio 仍构造固定物性 / TP Flash 实现；数据包不是通用可执行插件 |
+| 物性包 | `rf-property-package` 发现 manifest、按需装载指定包并冻结本地上下文 | 现有简化物性 / TP Flash 共用工厂；数据包不是通用可执行插件 |
 | 物性绑定 | 流程保存一个 package ID，单次求解注入一套服务 | 尚无完整工段 / 单元多物性绑定 |
 | 对外 CAPE-OPEN | 外部 PME 发现和调用自有 Unit Operation PMC | 与 RadishFlow 加载外部 PMC 的宿主方向不同，后者未实现 |
 
@@ -94,9 +95,9 @@ Studio 的 `modeling_specifications` 提供只读 A1 报告与会话身份；`mo
 
 目标边界仍是：热力学计算与 provider 接口不承担网络、授权流程或文件缓存编排；缓存布局和持久化属于 `rf-store`，应用层负责组合。
 
-实际 [CachedPropertyPackageProvider](../../crates/rf-thermo/src/lib.rs) 位于 `rf-thermo`，直接依赖 `rf-store`，读取授权缓存记录、判断到期时间并装载 manifest / payload。这是尚未消除的目标与实现偏移，不应表述为纯计算层隔离已经完成。
+AF2b 已将 [CachedPropertyPackageProvider](../../crates/rf-property-package/src/provider.rs)、资格、DTO 转换与服务工厂迁入 `rf-property-package`；依赖方向为应用 / FFI → 包装配 → store + thermo + flash。`rf-thermo` 不再依赖 `rf-store`；运行只装载已选包，独立上下文拥有数据，后续求值不读磁盘或时钟。
 
-该边界按 [MC2](../topics/modeling/model-catalog-and-runtime.md#分阶段切片) 规划将装载与 DTO 转换归于应用装配或明确的加载职责，让计算层接收已解析数据。方向已确认，具体模块拆分仍在实施切片决定，当前依赖未改变。
+包描述区分实现支持与数据缺口，来源证据保存规范化 payload 指纹和实现标识；不承担 entitlement、用户选包或后台任务身份。接口、兼容变化与验收见 [AF2b](../topics/property-basis-and-components.md#af2b-物性装配与运行上下文)。
 
 ### 文档、编辑与结果
 
@@ -138,7 +139,7 @@ Studio 已形成多层 host / driver / runtime / snapshot / window model，以�
 
 ## 工程基础链路审计（2026-10-23）
 
-2026-10-24 后续：AF2a 已将六类构造移至 `rf-unitops::catalog`，UI 创建与 solver 共用描述，保留原 kind / 参数 / 诊断；下表仍保留 10 月 23 日审计基线。实现与验收归 [模型目录专题](../topics/modeling/model-catalog-and-runtime.md#af2a-内建目录与工厂)。
+2026-10-24 后续：AF2a 已将六类构造移至 `rf-unitops::catalog`，UI 创建与 solver 共用描述，保留原 kind / 参数 / 诊断；AF2b 另已迁出物性资源职责并接通共享上下文；下表仍保留 10 月 23 日审计基线。实现与验收归 [模型目录专题](../topics/modeling/model-catalog-and-runtime.md#af2a-内建目录与工厂)。
 
 基于 `9fd5650d` 的代码静态核对；本轮只修改文档，没有运行桌面窗口、性能测量或重新验收产品功能。下表的“已有”指代码中可定位的能力，自动测试位置是既有证据入口，不表示本轮重跑。原生保存症状来自 [W43 已有复现](../devlogs/2026-10/2026-W43.md#2026-10-22-原生保存定向复现与-c2-待审方案)。实施顺序和退出标准只在 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 维护。
 

@@ -1,0 +1,16 @@
+[package]
+name = "rf-property-package"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license-file.workspace = true
+repository.workspace = true
+homepage.workspace = true
+publish.workspace = true
+
+[dependencies]
+rf-store = { path = "../rf-store" }
+rf-thermo = { path = "../rf-thermo" }
+rf-flash = { path = "../rf-flash" }
+rf-types = { path = "../rf-types" }

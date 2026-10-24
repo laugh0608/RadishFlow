@@ -11,6 +11,7 @@ mod package_cache;
 mod project;
 mod project_presentation;
 pub mod project_v3;
+pub use json::{read_property_package_manifest_detailed, read_property_package_payload_detailed};
 pub use project_presentation::StoredProjectPresentation;
 mod staged_file;
 mod studio_layout;
@@ -44,8 +45,9 @@ pub use layout::{
 pub use package_cache::{
     STORED_PROPERTY_PACKAGE_MANIFEST_KIND, STORED_PROPERTY_PACKAGE_PAYLOAD_KIND,
     STORED_PROPERTY_PACKAGE_SCHEMA_VERSION, StoredAntoineCoefficients, StoredLiquidPhaseModel,
-    StoredPropertyPackageClassification, StoredPropertyPackageManifest,
-    StoredPropertyPackagePayload, StoredThermoComponent, StoredThermoMethod, StoredVaporPhaseModel,
+    StoredPackageError, StoredPackageFailureStage, StoredPropertyPackageClassification,
+    StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredThermoComponent,
+    StoredThermoMethod, StoredVaporPhaseModel,
 };
 pub use project::{
     DateTimeUtc, STORED_DOCUMENT_SCHEMA_VERSION, STORED_PROJECT_FILE_EXTENSION,

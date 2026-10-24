@@ -8,7 +8,7 @@
 读者：维护模型、求解器、物性包、模块面板、项目存储与互操作适配的协作者。
 不包含：具体插件 ABI、运行时选型、完整 SDK、市场、安装器或第三方 CAPE-OPEN 宿主实现。
 
-- 状态：部分实现 / AF2a 六类内建目录与工厂已接通；物性上下文和外部扩展仍按切片推进。
+- 状态：部分实现 / AF2a 六类目录 / 工厂、AF2b 单包上下文已接通；外部扩展仍按切片推进。
 - 层级：二级功能；父专题为 [流程图建模与求解](../flowsheet-modeling-and-solve.md)，关联 [物性基础](../property-basis-and-components.md)。
 - 总体扩展与权限原则归 [平台规划](../../architecture/simulation-platform.md#插件系统)，实施依赖归 [路线图](../../radishflow-mvp-roadmap.md#模型装配与物性上下文的配套切片)，当前优先级归 [当前状态](../../status/current.md)。
 
@@ -27,8 +27,8 @@
 | 单元类型与描述 | `rf-unitops::catalog` 枚举六类内建模型，关联规范端口、输入规格和服务需求 | 开放模型身份、版本与扩展能力描述 |
 | 工程实例 | `rf-model::UnitNode` 保存 ID、kind、端口和出口温压参数 | 任意模型配置、版本绑定与缺模型恢复契约 |
 | 计算实例 | `catalog::instantiate_builtin` 构造独立实例；solver 编排并调用 `UnitOperation::run` | 外部实现解析与任务的显式生命周期 |
-| 物性包 | `PropertyPackageProvider` 枚举 manifest、装载 `ThermoSystem`；支持内存与本地缓存来源 | 可替换计算实现的工厂及能力协商；现有数据包不等于可执行插件 |
-| 物性上下文 | 流程保存一个 package ID；Studio 构造固定 provider / TP Flash，一次求解共享一套服务 | 工段 / 单元多物性绑定、明确映射和跨包基准一致性 |
+| 物性包 | `rf-property-package` 发现可用性、装载受检包；支持内存 / 缓存 / 文件来源 | 任意计算实现解析及能力协商；现有数据包不等于可执行插件 |
+| 物性上下文 | 流程保存一个 package ID；Studio / FFI 共用工厂，独立上下文冻结数据与来源 | 工段 / 单元多物性绑定、明确映射和跨包基准一致性 |
 | CAPE-OPEN | 自有单元 PMC 可由外部 PME 发现和调用 | RadishFlow 作为宿主发现、激活第三方单元或物性包 |
 
 实现定位：[单元契约](../../../crates/rf-unitops/src/lib.rs)、[内建目录与工厂](../../../crates/rf-unitops/src/catalog.rs)、[调度](../../../crates/rf-solver/src/lib.rs)、[物性装配](../../../apps/radishflow-studio/src/solver_bridge.rs)。当前固定枚举和温压参数是 MVP 范围，不应被包装成已稳定的第三方模型协议。
@@ -81,7 +81,7 @@ flowchart LR
 
 多包绑定不是首个目录切片的前置。若实际工段需要不同物性包，应先定义绑定优先级、组分映射、相标签、单位 / 基准与焓参考态，再决定如何跨边界传递状态和验证衡算；不能只给流股增加一个任意 package 字符串。
 
-AF2b 的资源加载 / 资格、共享服务工厂、冻结数据和组分发现接口已细化为[物性装配提案](../property-basis-and-components.md#af2b-物性装配提案待确认)，待确认，尚未实施；本专题不重复维护其包协议与验证矩阵。
+AF2b 的资源加载 / 资格、共享服务工厂、冻结数据和组分发现已由 `rf-property-package` 实现，接口与兼容验收见[物性装配](../property-basis-and-components.md#af2b-物性装配与运行上下文)；本专题不重复维护其包协议与验证矩阵。
 
 ## 分阶段切片
 
@@ -128,7 +128,7 @@ MC0—MC3 是细化模型装配的切片，不另建平行插件路线；与 P2 
 | Mixer / Heater / Cooler / Valve | 必需 | 可选 | 基本单元计算需要物性；TP Flash 用于现有附加结果，不升级为所有路径必需 |
 | FlashDrum | 必需 | 必需 | 现有 TP 分相路径明确要求两者 |
 
-“可选”表示现有算法允许服务缺省，不表示提供服务后可吞掉计算失败；组分、相态、零流量等条件仍按实现判定。AF2a 仅描述已有稳态局部执行能力，不虚构 PH Flash、残差 / 导数、EO 或时间状态支持。AF2b 再处理物性包身份、资格和上下文冻结。
+“可选”表示现有算法允许服务缺省，不表示提供服务后可吞掉计算失败；组分、相态、零流量等条件仍按实现判定。AF2a 仅描述已有稳态局部执行能力，不虚构 PH Flash、残差 / 导数、EO 或时间状态支持。AF2b 物性包身份、资格和上下文冻结见上节路由。
 
 ### 兼容与模块归属
 
@@ -150,7 +150,7 @@ MC0—MC3 是细化模型装配的切片，不另建平行插件路线；与 P2 
 | 跨端与存储 | 六类创建 / Undo / Redo；代表链路求解；保存重开再求解；headless / FFI 既有诊断与结果 golden；不扩大协议范围 |
 | 收口 | 定向覆盖 `rf-unitops`、`rf-solver`、`rf-ui`、`rf-store`、`rf-ffi` 及 Studio 相关回归，随后正式 `check-repo`；真实窗口和未验平台按既定节点留证 |
 
-验证定位：[目录 / 工厂回归](../../../crates/rf-unitops/src/catalog/tests.rs)、[求解兼容回归](../../../crates/rf-solver/src/tests/catalog_compatibility.rs)、[创建 / 历史 / 存储回归](../../../crates/rf-ui/src/tests/catalog.rs)，跨层与正式检查记录见 [W43](../../devlogs/2026-10/2026-W43.md)。上述证据只证明装配与兼容行为，物理准确性仍独立验收；AF2b、AF3、外部扩展及未验平台保持各自边界。
+验证定位：[目录 / 工厂回归](../../../crates/rf-unitops/src/catalog/tests.rs)、[求解兼容回归](../../../crates/rf-solver/src/tests/catalog_compatibility.rs)、[创建 / 历史 / 存储回归](../../../crates/rf-ui/src/tests/catalog.rs)，跨层与正式检查记录见 [W43](../../devlogs/2026-10/2026-W43.md)。上述证据只证明装配与兼容行为，物理准确性仍独立验收；AF3、外部扩展及未验平台保持各自边界。
 
 ## 验收与最小验证
 

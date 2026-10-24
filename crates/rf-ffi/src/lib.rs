@@ -769,6 +769,75 @@ mod tests {
         (manifest_path, payload_path)
     }
 
+    #[test]
+    fn package_file_registration_rejects_expired_and_remote_without_replacing_package() {
+        let root = unique_temp_path("ffi-package-eligibility");
+        let (manifest_path, payload_path) =
+            write_runtime_package_files(&root, "runtime-binary-package");
+        let mut engine = Engine::new();
+        engine
+            .load_property_package_files(&manifest_path, &payload_path)
+            .unwrap();
+        let before = engine.property_package_list_json().unwrap();
+        let mut manifest = rf_store::read_property_package_manifest(&manifest_path).unwrap();
+        manifest.expires_at = Some(UNIX_EPOCH);
+        write_property_package_manifest(&manifest_path, &manifest).unwrap();
+        let error = engine
+            .load_property_package_files(&manifest_path, &payload_path)
+            .unwrap_err();
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("property_package.expired")
+        );
+        assert_eq!(engine.property_package_list_json().unwrap(), before);
+        manifest = StoredPropertyPackageManifest::new(
+            &manifest.package_id,
+            &manifest.version,
+            StoredPropertyPackageSource::RemoteEvaluationService,
+            manifest.component_ids,
+        );
+        write_property_package_manifest(&manifest_path, &manifest).unwrap();
+        let error = engine
+            .load_property_package_files(&manifest_path, &payload_path)
+            .unwrap_err();
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("property_package.unsupported_source")
+        );
+        assert_eq!(engine.property_package_list_json().unwrap(), before);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn explicit_package_file_reload_replaces_registered_data() {
+        let root = unique_temp_path("ffi-package-replacement");
+        let (manifest_path, payload_path) =
+            write_runtime_package_files(&root, "runtime-binary-package");
+        let mut engine = Engine::new();
+        engine
+            .load_flowsheet_json(&sample_runtime_project_json())
+            .unwrap();
+        engine
+            .load_property_package_files(&manifest_path, &payload_path)
+            .unwrap();
+        engine.solve_flowsheet("runtime-binary-package").unwrap();
+        let before = engine.flowsheet_snapshot_json().unwrap();
+        write_runtime_package_files_with_vapor_heat_capacity(
+            &root,
+            "runtime-binary-package",
+            Some(165.0),
+        );
+        engine
+            .load_property_package_files(&manifest_path, &payload_path)
+            .unwrap();
+        engine.solve_flowsheet("runtime-binary-package").unwrap();
+        assert_ne!(engine.flowsheet_snapshot_json().unwrap(), before);
+        let manifests: serde_json::Value =
+            serde_json::from_str(&engine.property_package_list_json().unwrap()).unwrap();
+        assert_eq!(manifests.as_array().unwrap().len(), 2);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     fn call_stream_snapshot_json(engine: *mut Engine, stream_id: &[u8]) -> serde_json::Value {
         let mut output = ptr::null_mut::<c_char>();
         let status =

@@ -1,7 +1,7 @@
 use std::path::Path;
 
+use rf_property_package::PropertyPackageProvider;
 use rf_store::StoredAuthCacheIndex;
-use rf_thermo::PropertyPackageProvider;
 use rf_types::RfResult;
 use rf_ui::AppState;
 
@@ -185,8 +185,8 @@ mod tests {
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use rf_model::Flowsheet;
+    use rf_property_package::InMemoryPropertyPackageProvider;
     use rf_store::{StoredAuthCacheIndex, StoredCredentialReference, parse_project_file_json};
-    use rf_thermo::InMemoryPropertyPackageProvider;
     use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, RunStatus};
 
     use super::{

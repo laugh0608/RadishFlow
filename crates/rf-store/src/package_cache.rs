@@ -7,6 +7,27 @@ use serde::{Deserialize, Serialize};
 
 use crate::auth_cache::{StoredPropertyPackageRecord, StoredPropertyPackageSource};
 
+/// Failure stage retained independently of human-readable validation messages.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StoredPackageFailureStage {
+    Resource,
+    InvalidData,
+    Metadata,
+    Integrity,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoredPackageError {
+    pub stage: StoredPackageFailureStage,
+    pub error: RfError,
+}
+
+impl StoredPackageError {
+    pub(crate) fn new(stage: StoredPackageFailureStage, error: RfError) -> Self {
+        Self { stage, error }
+    }
+}
+
 pub const STORED_PROPERTY_PACKAGE_MANIFEST_KIND: &str = "radishflow.property-package-manifest";
 pub const STORED_PROPERTY_PACKAGE_PAYLOAD_KIND: &str = "radishflow.property-package-payload";
 pub const STORED_PROPERTY_PACKAGE_SCHEMA_VERSION: u32 = 1;
@@ -106,9 +127,25 @@ impl StoredPropertyPackageManifest {
     }
 
     pub fn validate_against_record(&self, record: &StoredPropertyPackageRecord) -> RfResult<()> {
-        self.validate()?;
-        record.validate()?;
+        self.validate_against_record_detailed(record)
+            .map_err(|failure| failure.error)
+    }
 
+    pub fn validate_against_record_detailed(
+        &self,
+        record: &StoredPropertyPackageRecord,
+    ) -> Result<(), StoredPackageError> {
+        self.validate().map_err(|error| {
+            StoredPackageError::new(StoredPackageFailureStage::InvalidData, error)
+        })?;
+        record.validate().map_err(|error| {
+            StoredPackageError::new(StoredPackageFailureStage::InvalidData, error)
+        })?;
+        self.validate_record_metadata(record)
+            .map_err(|error| StoredPackageError::new(StoredPackageFailureStage::Metadata, error))
+    }
+
+    fn validate_record_metadata(&self, record: &StoredPropertyPackageRecord) -> RfResult<()> {
         if record.package_id != self.package_id {
             return Err(RfError::invalid_input(format!(
                 "stored property package record package_id `{}` does not match manifest package_id `{}`",
@@ -346,9 +383,31 @@ impl StoredPropertyPackagePayload {
         &self,
         manifest: &StoredPropertyPackageManifest,
     ) -> RfResult<()> {
-        self.validate()?;
-        manifest.validate()?;
+        self.validate_against_manifest_detailed(manifest)
+            .map_err(|failure| failure.error)
+    }
 
+    pub fn validate_against_manifest_detailed(
+        &self,
+        manifest: &StoredPropertyPackageManifest,
+    ) -> Result<(), StoredPackageError> {
+        self.validate().map_err(|error| {
+            StoredPackageError::new(StoredPackageFailureStage::InvalidData, error)
+        })?;
+        manifest.validate().map_err(|error| {
+            StoredPackageError::new(StoredPackageFailureStage::InvalidData, error)
+        })?;
+        self.validate_manifest_metadata(manifest)
+            .map_err(|error| StoredPackageError::new(StoredPackageFailureStage::Metadata, error))?;
+        crate::integrity::validate_property_package_payload_integrity(
+            self,
+            &manifest.hash,
+            manifest.size_bytes,
+        )
+        .map_err(|error| StoredPackageError::new(StoredPackageFailureStage::Integrity, error))
+    }
+
+    fn validate_manifest_metadata(&self, manifest: &StoredPropertyPackageManifest) -> RfResult<()> {
         if self.package_id != manifest.package_id {
             return Err(RfError::invalid_input(format!(
                 "stored property package payload package_id `{}` does not match manifest package_id `{}`",
@@ -370,12 +429,6 @@ impl StoredPropertyPackagePayload {
                 payload_component_ids, manifest.component_ids
             )));
         }
-
-        crate::integrity::validate_property_package_payload_integrity(
-            self,
-            &manifest.hash,
-            manifest.size_bytes,
-        )?;
 
         Ok(())
     }

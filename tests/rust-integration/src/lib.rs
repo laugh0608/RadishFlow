@@ -2,16 +2,16 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rf_flash::{PlaceholderTpFlashSolver, TpFlashInput, TpFlashSolver, estimate_bubble_dew_window};
+use rf_property_package::{
+    InMemoryPropertyPackageProvider, PropertyPackageManifest, PropertyPackageSource,
+};
 use rf_store::{
     StoredAntoineCoefficients, StoredAuthCacheIndex, StoredCredentialReference,
     StoredPropertyPackageManifest, StoredPropertyPackagePayload, StoredPropertyPackageRecord,
     StoredPropertyPackageSource, StoredThermoComponent, property_package_payload_integrity,
     write_property_package_manifest, write_property_package_payload,
 };
-use rf_thermo::{
-    AntoineCoefficients, InMemoryPropertyPackageProvider, PlaceholderThermoProvider,
-    PropertyPackageManifest, PropertyPackageSource, ThermoComponent, ThermoSystem,
-};
+use rf_thermo::{AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem};
 use rf_types::{ComponentId, PhaseEquilibriumRegion};
 
 pub const BINARY_HYDROCARBON_LITE_PACKAGE_ID: &str = "binary-hydrocarbon-lite-v1";
@@ -412,7 +412,7 @@ pub fn build_synthetic_demo_package_provider() -> InMemoryPropertyPackageProvide
     second.liquid_heat_capacity_j_per_mol_k = Some(52.0);
     second.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
-    InMemoryPropertyPackageProvider::new(vec![(
+    InMemoryPropertyPackageProvider::try_new(vec![(
         PropertyPackageManifest::new(
             SYNTHETIC_DEMO_PACKAGE_ID,
             "2026.03.1",
@@ -421,6 +421,7 @@ pub fn build_synthetic_demo_package_provider() -> InMemoryPropertyPackageProvide
         ),
         ThermoSystem::binary([first, second]),
     )])
+    .expect("valid test property packages")
 }
 
 pub fn build_binary_hydrocarbon_lite_package_provider() -> InMemoryPropertyPackageProvider {
@@ -434,7 +435,7 @@ pub fn build_binary_hydrocarbon_lite_package_provider() -> InMemoryPropertyPacka
     ethane.liquid_heat_capacity_j_per_mol_k = Some(52.0);
     ethane.vapor_heat_capacity_j_per_mol_k = Some(65.0);
 
-    InMemoryPropertyPackageProvider::new(vec![(
+    InMemoryPropertyPackageProvider::try_new(vec![(
         PropertyPackageManifest::new(
             BINARY_HYDROCARBON_LITE_PACKAGE_ID,
             "2026.03.1",
@@ -443,6 +444,7 @@ pub fn build_binary_hydrocarbon_lite_package_provider() -> InMemoryPropertyPacka
         ),
         ThermoSystem::binary([methane, ethane]),
     )])
+    .expect("valid test property packages")
 }
 
 pub fn build_synthetic_liquid_only_package_provider() -> InMemoryPropertyPackageProvider {
@@ -457,7 +459,7 @@ fn build_synthetic_package_provider(
     package_id: &'static str,
     k_values: [f64; 2],
 ) -> InMemoryPropertyPackageProvider {
-    InMemoryPropertyPackageProvider::new(vec![(
+    InMemoryPropertyPackageProvider::try_new(vec![(
         PropertyPackageManifest::new(
             package_id,
             "2026.03.1",
@@ -466,6 +468,7 @@ fn build_synthetic_package_provider(
         ),
         build_synthetic_system(k_values, SYNTHETIC_NEAR_BOUNDARY_REFERENCE_PRESSURE_PA),
     )])
+    .expect("valid test property packages")
 }
 
 pub fn near_boundary_package_provider_for_case(

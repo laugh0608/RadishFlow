@@ -1,13 +1,14 @@
 use std::path::Path;
 
-use rf_flash::PlaceholderTpFlashSolver;
+use rf_property_package::{
+    CachedPropertyPackageProvider, LocalThermoContext, PackageFailureKind, PackageLoadError,
+    PackageResult, PropertyPackageProvider, prepare_local_context,
+};
 use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolveFailureContext, SolverServices};
 use rf_store::StoredAuthCacheIndex;
-use rf_thermo::{
-    CachedPropertyPackageProvider, PlaceholderThermoProvider, PropertyPackageProvider,
-};
-use rf_types::{ErrorCode, RfError, RfResult};
+use rf_types::{RfError, RfResult};
 use rf_ui::{AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, RunStatus};
+use std::time::SystemTime;
 
 pub(crate) const WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE: &str =
     "workspace.run.local_cache_unavailable";
@@ -76,15 +77,29 @@ where
 {
     request.validate()?;
 
+    let context = package_provider
+        .load_package(&request.package_id, SystemTime::now())
+        .and_then(prepare_local_context);
+    solve_workspace_with_context(app_state, request, context)
+}
+
+fn solve_workspace_with_context(
+    app_state: &mut AppState,
+    request: &StudioSolveRequest,
+    context: PackageResult<LocalThermoContext>,
+) -> RfResult<()> {
     let revision = app_state.workspace.document.revision;
     let package_id = request.package_id.as_str();
     app_state.workspace.solve_session.begin_checking(revision);
     app_state.workspace.solve_session.mark_runnable();
     app_state.workspace.solve_session.begin_solving();
 
-    let thermo_system = match package_provider.load_system(package_id) {
+    let context = match context {
         Ok(system) => system,
         Err(error) => {
+            if error.kind != PackageFailureKind::Missing {
+                log_package_failure(app_state, &error);
+            }
             let error = workspace_property_package_load_error(error);
             record_solve_failure(
                 app_state,
@@ -99,11 +114,9 @@ where
         }
     };
 
-    let thermo_provider = PlaceholderThermoProvider::new(thermo_system);
-    let flash_solver = PlaceholderTpFlashSolver;
     let services = SolverServices {
-        thermo: &thermo_provider,
-        flash_solver: &flash_solver,
+        thermo: context.thermo(),
+        flash_solver: context.tp_flash(),
     };
     let solver_snapshot =
         match SequentialModularSolver.solve(&services, &app_state.workspace.document.flowsheet) {
@@ -137,13 +150,21 @@ where
     Ok(())
 }
 
-fn workspace_property_package_load_error(error: RfError) -> RfError {
-    if error.context().diagnostic_code().is_none()
-        && matches!(error.code(), ErrorCode::MissingEntity)
-    {
-        error.with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_PROPERTY_PACKAGE_MISSING)
-    } else {
-        error
+fn workspace_property_package_load_error(error: PackageLoadError) -> RfError {
+    match error.kind {
+        PackageFailureKind::Missing => error
+            .source
+            .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_PROPERTY_PACKAGE_MISSING),
+        PackageFailureKind::Expired | PackageFailureKind::UnsupportedSource => {
+            RfError::missing_entity(
+                "property package",
+                error.package_id.as_deref().unwrap_or_default(),
+            )
+            .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_PROPERTY_PACKAGE_MISSING)
+        }
+        _ => error
+            .source
+            .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE),
     }
 }
 
@@ -155,14 +176,39 @@ pub fn solve_workspace_from_auth_cache(
 ) -> RfResult<()> {
     let provider =
         CachedPropertyPackageProvider::new(cache_root, auth_cache_index).map_err(|error| {
-            match error.context().diagnostic_code() {
-                Some(_) => error,
-                None => {
-                    error.with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE)
-                }
-            }
+            error
+                .source
+                .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE)
         })?;
-    solve_workspace_with_property_package(app_state, &provider, request)
+    request.validate()?;
+    let context = provider
+        .load_package(&request.package_id, SystemTime::now())
+        .and_then(prepare_local_context);
+    // Resource preparation failures historically leave the solve session untouched.
+    // Missing / filtered packages still enter the existing solve-failure path.
+    if let Err(error) = &context
+        && !matches!(
+            error.kind,
+            PackageFailureKind::Missing
+                | PackageFailureKind::Expired
+                | PackageFailureKind::UnsupportedSource
+        )
+    {
+        log_package_failure(app_state, error);
+        return Err(workspace_property_package_load_error(error.clone()));
+    }
+    solve_workspace_with_context(app_state, request, context)
+}
+
+fn log_package_failure(app_state: &mut AppState, error: &PackageLoadError) {
+    app_state.push_log(
+        AppLogLevel::Error,
+        format!(
+            "{}: {}",
+            error.kind.diagnostic_code(),
+            error.source.message()
+        ),
+    );
 }
 
 fn record_solve_failure(
@@ -195,11 +241,11 @@ mod tests {
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use rf_model::Flowsheet;
+    use rf_property_package::InMemoryPropertyPackageProvider;
     use rf_store::{
         StoredAuthCacheIndex, StoredCredentialReference, StoredPropertyPackageRecord,
         StoredPropertyPackageSource, parse_project_file_json,
     };
-    use rf_thermo::InMemoryPropertyPackageProvider;
     use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, RunStatus};
 
     use super::{
