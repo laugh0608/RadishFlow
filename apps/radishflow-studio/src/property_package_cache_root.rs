@@ -1,19 +1,26 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use rf_types::{RfError, RfResult};
 
+/// A cache path lease. Temporary directories are deleted only after the last
+/// loading task and owning session release their lease.
+#[derive(Debug, Clone)]
+pub struct PropertyPackageCacheRoot(Arc<CacheRootStorage>);
+
 #[derive(Debug)]
-pub(super) struct TemporaryCacheRoot {
+struct CacheRootStorage {
     path: PathBuf,
+    temporary: bool,
 }
 
 static TEMPORARY_CACHE_ROOT_SEQUENCE: AtomicU64 = AtomicU64::new(1);
 
-impl TemporaryCacheRoot {
-    pub(super) fn new(prefix: &str) -> RfResult<Self> {
+impl PropertyPackageCacheRoot {
+    pub fn temporary(prefix: &str) -> RfResult<Self> {
         let temp_dir = std::env::temp_dir();
         for _ in 0..32 {
             let timestamp = SystemTime::now()
@@ -30,7 +37,12 @@ impl TemporaryCacheRoot {
                 std::process::id()
             ));
             match fs::create_dir(&path) {
-                Ok(()) => return Ok(Self { path }),
+                Ok(()) => {
+                    return Ok(Self(Arc::new(CacheRootStorage {
+                        path,
+                        temporary: true,
+                    })));
+                }
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
                 Err(error) => {
                     return Err(RfError::invalid_input(format!(
@@ -46,13 +58,23 @@ impl TemporaryCacheRoot {
         )))
     }
 
-    pub(super) fn path(&self) -> &Path {
-        &self.path
+    /// Persistent cache lifetime is controlled by its external owner.
+    pub fn persistent(path: impl Into<PathBuf>) -> Self {
+        Self(Arc::new(CacheRootStorage {
+            path: path.into(),
+            temporary: false,
+        }))
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.0.path
     }
 }
 
-impl Drop for TemporaryCacheRoot {
+impl Drop for CacheRootStorage {
     fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.path);
+        if self.temporary {
+            let _ = fs::remove_dir_all(&self.path);
+        }
     }
 }

@@ -1,7 +1,63 @@
 use super::*;
 use rf_model::Flowsheet;
 use rf_property_package::{PackageProvenance, PropertyPackageDescriptor};
+use rf_solver::{ControlledSolveOutcome, SolveProgress, SolverControl};
 use rf_ui::{FlowRunDisposition, FlowRunId, FlowRunReceipt, FrozenFlowRun, SolveSnapshot};
+use std::ops::ControlFlow;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WorkspaceSolveProgress {
+    Preparing,
+    Ready,
+    Solving(SolveProgress),
+}
+
+pub(crate) trait WorkspaceSolveControl: SolverControl {
+    fn before_load(&mut self) -> ControlFlow<()>;
+    fn ready(&mut self) -> RfResult<ControlFlow<()>>;
+}
+
+struct InlineControl;
+impl SolverControl for InlineControl {
+    fn checkpoint(&mut self, _: SolveProgress) -> ControlFlow<()> {
+        ControlFlow::Continue(())
+    }
+}
+impl WorkspaceSolveControl for InlineControl {
+    fn before_load(&mut self) -> ControlFlow<()> {
+        ControlFlow::Continue(())
+    }
+    fn ready(&mut self) -> RfResult<ControlFlow<()>> {
+        Ok(ControlFlow::Continue(()))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkspaceExecutionOutcome {
+    Succeeded,
+    Failed,
+    Cancelled,
+    InfrastructureFailed,
+}
+
+/// Worker-owned numeric input. The acceptance receipt stays on the owner thread.
+#[derive(Debug)]
+pub(crate) struct WorkspaceSolveJob {
+    flowsheet: Flowsheet,
+    request: StudioSolveRequest,
+}
+
+pub(crate) enum WorkspacePackageLoadError {
+    Provider(RfError),
+    Package(PackageLoadError),
+}
+
+#[derive(Debug)]
+pub(crate) struct WorkspaceSolveOutput {
+    request: StudioSolveRequest,
+    outcome: SolveOutcome,
+    package: Option<ExecutedPackage>,
+}
 
 /// Immutable formal inputs and the actual selected package ID. This value is
 /// intentionally not Clone and never retains a mutable application reference.
@@ -13,6 +69,8 @@ pub struct PreparedWorkspaceSolve {
 
 #[derive(Debug)]
 enum SolveOutcome {
+    Cancelled,
+    InfrastructureFailed(RfError),
     Succeeded(Box<rf_solver::SolveSnapshot>),
     Failed {
         error: RfError,
@@ -70,49 +128,90 @@ impl PreparedWorkspaceSolve {
         &self.request
     }
 
+    pub(crate) fn into_job(self) -> (FlowRunReceipt, WorkspaceSolveJob) {
+        let (flowsheet, receipt) = self.input.into_parts();
+        (
+            receipt,
+            WorkspaceSolveJob {
+                flowsheet,
+                request: self.request,
+            },
+        )
+    }
+
     pub fn execute_with_property_package<P: PropertyPackageProvider>(
         self,
         provider: &P,
     ) -> CompletedWorkspaceSolve {
-        let context = provider
-            .load_package(&self.request.package_id, SystemTime::now())
-            .and_then(prepare_local_context);
-        self.execute_with_context(context, false)
+        let (receipt, job) = self.into_job();
+        let output = job.execute(
+            |id| {
+                provider
+                    .load_package(id, SystemTime::now())
+                    .and_then(prepare_local_context)
+                    .map_err(WorkspacePackageLoadError::Package)
+            },
+            false,
+            &mut InlineControl,
+        );
+        CompletedWorkspaceSolve::from_output(receipt, output)
     }
 
     pub fn execute_from_auth_cache(
         self,
         cache_root: impl AsRef<Path>,
-        auth_cache_index: &StoredAuthCacheIndex,
+        index: &StoredAuthCacheIndex,
     ) -> CompletedWorkspaceSolve {
-        let provider = match CachedPropertyPackageProvider::new(cache_root, auth_cache_index) {
-            Ok(provider) => provider,
-            Err(error) => {
-                return self.completed(
+        let (receipt, job) = self.into_job();
+        let output = job.execute(
+            |id| load_cached_context(cache_root.as_ref(), index, id),
+            true,
+            &mut InlineControl,
+        );
+        CompletedWorkspaceSolve::from_output(receipt, output)
+    }
+}
+
+pub(crate) fn load_cached_context(
+    root: &Path,
+    index: &StoredAuthCacheIndex,
+    id: &str,
+) -> Result<LocalThermoContext, WorkspacePackageLoadError> {
+    let provider = CachedPropertyPackageProvider::new(root, index).map_err(|error| {
+        WorkspacePackageLoadError::Provider(
+            error
+                .source
+                .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE),
+        )
+    })?;
+    provider
+        .load_package(id, SystemTime::now())
+        .and_then(prepare_local_context)
+        .map_err(WorkspacePackageLoadError::Package)
+}
+
+impl WorkspaceSolveJob {
+    pub(crate) fn execute(
+        self,
+        load: impl FnOnce(&str) -> Result<LocalThermoContext, WorkspacePackageLoadError>,
+        cached: bool,
+        control: &mut impl WorkspaceSolveControl,
+    ) -> WorkspaceSolveOutput {
+        if control.before_load().is_break() {
+            return self.output(SolveOutcome::Cancelled, None);
+        }
+        let context = match load(&self.request.package_id) {
+            Ok(context) => context,
+            Err(WorkspacePackageLoadError::Provider(error)) => {
+                return self.output(
                     SolveOutcome::PreparationFailed {
-                        error: error
-                            .source
-                            .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE),
+                        error,
                         package_log: None,
                     },
                     None,
                 );
             }
-        };
-        let context = provider
-            .load_package(&self.request.package_id, SystemTime::now())
-            .and_then(prepare_local_context);
-        self.execute_with_context(context, true)
-    }
-
-    fn execute_with_context(
-        self,
-        context: PackageResult<LocalThermoContext>,
-        cached: bool,
-    ) -> CompletedWorkspaceSolve {
-        let context = match context {
-            Ok(context) => context,
-            Err(error) => {
+            Err(WorkspacePackageLoadError::Package(error)) => {
                 let package_log = (error.kind != PackageFailureKind::Missing)
                     .then(|| package_failure_message(&error));
                 let preparation_failure = cached
@@ -136,41 +235,47 @@ impl PreparedWorkspaceSolve {
                         package_log,
                     }
                 };
-                return self.completed(outcome, None);
+                return self.output(outcome, None);
             }
         };
+        let package = Some(ExecutedPackage {
+            descriptor: context.descriptor().clone(),
+            provenance: context.provenance().clone(),
+        });
+        match control.ready() {
+            Ok(ControlFlow::Continue(())) => {}
+            Ok(ControlFlow::Break(())) => return self.output(SolveOutcome::Cancelled, package),
+            Err(error) => return self.output(SolveOutcome::InfrastructureFailed(error), package),
+        }
         let services = SolverServices {
             thermo: context.thermo(),
             flash_solver: context.tp_flash(),
         };
-        let outcome = match SequentialModularSolver.solve(&services, self.flowsheet()) {
-            Ok(snapshot) => SolveOutcome::Succeeded(Box::new(snapshot)),
-            Err(error) => SolveOutcome::Failed {
-                message: format!(
-                    "flowsheet solve failed with package `{}`: {}",
-                    self.request.package_id,
-                    error.message()
-                ),
-                error,
-                package_log: None,
-            },
-        };
-        self.completed(
-            outcome,
-            Some(ExecutedPackage {
-                descriptor: context.descriptor().clone(),
-                provenance: context.provenance().clone(),
-            }),
-        )
+        let outcome =
+            match SequentialModularSolver.solve_controlled(&services, &self.flowsheet, control) {
+                Ok(ControlledSolveOutcome::Completed(snapshot)) => {
+                    SolveOutcome::Succeeded(Box::new(snapshot))
+                }
+                Ok(ControlledSolveOutcome::Cancelled) => SolveOutcome::Cancelled,
+                Err(error) => SolveOutcome::Failed {
+                    message: format!(
+                        "flowsheet solve failed with package `{}`: {}",
+                        self.request.package_id,
+                        error.message()
+                    ),
+                    error,
+                    package_log: None,
+                },
+            };
+        self.output(outcome, package)
     }
 
-    fn completed(
+    fn output(
         self,
         outcome: SolveOutcome,
         package: Option<ExecutedPackage>,
-    ) -> CompletedWorkspaceSolve {
-        CompletedWorkspaceSolve {
-            receipt: self.input.into_receipt(),
+    ) -> WorkspaceSolveOutput {
+        WorkspaceSolveOutput {
             request: self.request,
             outcome,
             package,
@@ -179,12 +284,48 @@ impl PreparedWorkspaceSolve {
 }
 
 impl CompletedWorkspaceSolve {
+    pub(crate) fn from_output(receipt: FlowRunReceipt, output: WorkspaceSolveOutput) -> Self {
+        Self {
+            receipt,
+            request: output.request,
+            outcome: output.outcome,
+            package: output.package,
+        }
+    }
+
+    pub(crate) fn infrastructure_failure(
+        receipt: FlowRunReceipt,
+        request: StudioSolveRequest,
+        error: RfError,
+    ) -> Self {
+        Self {
+            receipt,
+            request,
+            outcome: SolveOutcome::InfrastructureFailed(error),
+            package: None,
+        }
+    }
+
+    pub fn execution_outcome(&self) -> WorkspaceExecutionOutcome {
+        match self.outcome {
+            SolveOutcome::Succeeded(_) => WorkspaceExecutionOutcome::Succeeded,
+            SolveOutcome::Cancelled => WorkspaceExecutionOutcome::Cancelled,
+            SolveOutcome::InfrastructureFailed(_) => {
+                WorkspaceExecutionOutcome::InfrastructureFailed
+            }
+            _ => WorkspaceExecutionOutcome::Failed,
+        }
+    }
+
     pub fn run_id(&self) -> &FlowRunId {
         self.receipt.run_id()
     }
 
     pub fn result(&self) -> RfResult<&rf_solver::SolveSnapshot> {
         match &self.outcome {
+            SolveOutcome::Cancelled => Err(RfError::invalid_input("workspace solve cancelled")
+                .with_diagnostic_code("workspace.run.cancelled")),
+            SolveOutcome::InfrastructureFailed(error) => Err(error.clone()),
             SolveOutcome::Succeeded(snapshot) => Ok(snapshot),
             SolveOutcome::Failed { error, .. } | SolveOutcome::PreparationFailed { error, .. } => {
                 Err(error.clone())
@@ -207,12 +348,36 @@ pub fn complete_workspace_solve(
     app_state: &mut AppState,
     completion: &mut CompletedWorkspaceSolve,
 ) -> FlowRunDisposition {
+    complete_with_publication(app_state, completion, false)
+}
+
+/// Background completion has no later synchronous Facade error-dispatch pass.
+/// It therefore publishes a current preparation failure through the same guard.
+pub(crate) fn complete_background_workspace_solve(
+    app_state: &mut AppState,
+    completion: &mut CompletedWorkspaceSolve,
+) -> FlowRunDisposition {
+    complete_with_publication(app_state, completion, true)
+}
+
+fn complete_with_publication(
+    app_state: &mut AppState,
+    completion: &mut CompletedWorkspaceSolve,
+    publish_preparation_failure: bool,
+) -> FlowRunDisposition {
     let disposition = app_state.accept_flow_run(&mut completion.receipt);
     if disposition != FlowRunDisposition::Applied {
         return disposition;
     }
     let revision = completion.receipt.revision();
     match &completion.outcome {
+        SolveOutcome::Cancelled => {}
+        SolveOutcome::InfrastructureFailed(error) => record_solve_failure(
+            app_state,
+            revision,
+            error.message().into(),
+            SolveFailureContext::from_error(error),
+        ),
         SolveOutcome::Succeeded(snapshot) => {
             app_state.store_snapshot(SolveSnapshot::from_solver_snapshot(
                 completion.request.snapshot_id.as_str(),
@@ -243,9 +408,21 @@ pub fn complete_workspace_solve(
                 SolveFailureContext::from_error(error),
             );
         }
-        SolveOutcome::PreparationFailed { package_log, .. } => {
+        SolveOutcome::PreparationFailed { error, package_log } => {
             if let Some(message) = package_log {
                 app_state.push_log(AppLogLevel::Error, message);
+            }
+            if publish_preparation_failure {
+                record_solve_failure(
+                    app_state,
+                    revision,
+                    format!(
+                        "failed to prepare local property package cache for `{}`: {}",
+                        completion.request.package_id,
+                        error.message()
+                    ),
+                    SolveFailureContext::from_error(error),
+                );
             }
         }
     }

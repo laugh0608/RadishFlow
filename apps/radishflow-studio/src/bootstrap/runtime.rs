@@ -30,12 +30,12 @@ use super::seed::{
     app_state_from_untitled_blank_project, normalized_system_time_now,
     seed_bootstrap_runtime_state, seed_sample_auth_cache,
 };
-use super::temp_cache::TemporaryCacheRoot;
 use super::{
     BootstrapSession, StudioBootstrapConfig, StudioBootstrapDispatch,
     StudioBootstrapEntitlementPreflight, StudioBootstrapEntitlementSessionEvent,
     StudioBootstrapReport, StudioBootstrapTrigger,
 };
+use crate::PropertyPackageCacheRoot;
 
 struct BootstrapSessionResources<'a> {
     facade: &'a crate::StudioAppFacade,
@@ -422,7 +422,7 @@ impl BootstrapSession {
             ),
             None => crate::load_project_app_state(&config.project_path)?,
         };
-        let cache_root = TemporaryCacheRoot::new("studio-bootstrap")?;
+        let cache_root = PropertyPackageCacheRoot::temporary("studio-bootstrap")?;
         let seeded_auth_cache = seed_sample_auth_cache(
             cache_root.path(),
             &app_state.workspace.document.flowsheet,

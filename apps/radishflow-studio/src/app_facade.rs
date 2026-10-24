@@ -286,41 +286,23 @@ impl StudioAppFacade {
         context: &StudioAppAuthCacheContext<'_>,
         command: &WorkspaceRunCommand,
     ) -> RfResult<StudioWorkspaceRunDispatch> {
-        if let Some(blocked) = workspace_pending_inspector_draft_block(app_state) {
-            let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
-            record_workspace_run_outcome(app_state, &outcome);
-            return Ok(map_workspace_run_dispatch(app_state, None, outcome));
-        }
-
-        if let Some(skip_reason) = self.solve_service.skip_reason(app_state, command.trigger) {
-            let outcome = StudioWorkspaceRunOutcome::Skipped(skip_reason);
-            record_workspace_run_outcome(app_state, &outcome);
-            return Ok(map_workspace_run_dispatch(app_state, None, outcome));
-        }
-
-        let package_id = match resolve_workspace_run_package_id(
-            app_state,
-            context.auth_cache_index,
-            &command.package,
-        ) {
-            Ok(package_id) => package_id,
-            Err(error) => {
-                let blocked = map_workspace_run_blocked(&error);
-                let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
+        let package_id = match preflight_workspace_run(app_state, context.auth_cache_index, command)
+        {
+            WorkspaceRunPreflight::Ready(package_id) => package_id,
+            WorkspaceRunPreflight::Skipped(reason) => {
+                let outcome = StudioWorkspaceRunOutcome::Skipped(reason);
                 record_workspace_run_outcome(app_state, &outcome);
                 return Ok(map_workspace_run_dispatch(app_state, None, outcome));
             }
+            WorkspaceRunPreflight::Blocked {
+                package_id,
+                blocked,
+            } => {
+                let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
+                record_workspace_run_outcome(app_state, &outcome);
+                return Ok(map_workspace_run_dispatch(app_state, package_id, outcome));
+            }
         };
-
-        if let Some(blocked) = workspace_modeling_readiness_block(app_state) {
-            let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
-            record_workspace_run_outcome(app_state, &outcome);
-            return Ok(map_workspace_run_dispatch(
-                app_state,
-                Some(package_id),
-                outcome,
-            ));
-        }
 
         match self.solve_service.dispatch_from_auth_cache(
             app_state,
@@ -412,6 +394,49 @@ impl StudioAppFacade {
         );
         map_workspace_mode_dispatch(app_state)
     }
+}
+
+pub(crate) enum WorkspaceRunPreflight {
+    Ready(String),
+    Skipped(WorkspaceSolveSkipReason),
+    Blocked {
+        package_id: Option<String>,
+        blocked: StudioWorkspaceRunBlocked,
+    },
+}
+
+/// Shared read-only gates for synchronous and background submission. Logging
+/// and result publication remain the responsibility of their respective owner.
+pub(crate) fn preflight_workspace_run(
+    app: &AppState,
+    index: &StoredAuthCacheIndex,
+    command: &WorkspaceRunCommand,
+) -> WorkspaceRunPreflight {
+    if let Some(blocked) = workspace_pending_inspector_draft_block(app) {
+        return WorkspaceRunPreflight::Blocked {
+            package_id: None,
+            blocked,
+        };
+    }
+    if let Some(reason) = WorkspaceSolveService::new().skip_reason(app, command.trigger) {
+        return WorkspaceRunPreflight::Skipped(reason);
+    }
+    let package_id = match resolve_workspace_run_package_id(app, index, &command.package) {
+        Ok(id) => id,
+        Err(error) => {
+            return WorkspaceRunPreflight::Blocked {
+                package_id: None,
+                blocked: map_workspace_run_blocked(&error),
+            };
+        }
+    };
+    if let Some(blocked) = workspace_modeling_readiness_block(app) {
+        return WorkspaceRunPreflight::Blocked {
+            package_id: Some(package_id),
+            blocked,
+        };
+    }
+    WorkspaceRunPreflight::Ready(package_id)
 }
 
 fn record_workspace_run_outcome(app_state: &mut AppState, outcome: &StudioWorkspaceRunOutcome) {

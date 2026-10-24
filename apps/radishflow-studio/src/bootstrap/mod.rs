@@ -1,6 +1,5 @@
 mod runtime;
 mod seed;
-mod temp_cache;
 
 #[cfg(test)]
 mod tests;
@@ -19,7 +18,7 @@ use rf_types::RfResult;
 use rf_ui::{AppLogEntry, AppState, RunPanelWidgetModel};
 
 use self::seed::BootstrapControlPlaneClient;
-use self::temp_cache::TemporaryCacheRoot;
+use crate::PropertyPackageCacheRoot;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioBootstrapConfig {
@@ -123,7 +122,7 @@ impl Default for StudioBootstrapConfig {
 
 pub(crate) struct BootstrapSession {
     app_state: AppState,
-    cache_root: TemporaryCacheRoot,
+    cache_root: PropertyPackageCacheRoot,
     auth_cache_index: StoredAuthCacheIndex,
     control_plane_client: BootstrapControlPlaneClient,
     facade: StudioAppFacade,

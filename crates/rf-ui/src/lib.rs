@@ -104,5 +104,6 @@ pub use state::{DisplayUnitViewId, ViewDisplayUnits};
 pub use state::{InputDiscardScope, InputEditCheckpoint};
 
 pub use flow_run::{
-    FlowRunDiscardReason, FlowRunDisposition, FlowRunId, FlowRunReceipt, FrozenFlowRun,
+    FlowRunDiscardReason, FlowRunDisposition, FlowRunId, FlowRunQualification, FlowRunReceipt,
+    FrozenFlowRun,
 };

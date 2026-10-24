@@ -1,3 +1,6 @@
+mod control;
+pub use control::{ControlledSolveOutcome, SolveProgress, SolveStage, SolverControl};
+
 mod parameter_checks;
 
 use parameter_checks::validate_step_parameters;
@@ -197,7 +200,44 @@ impl FlowsheetSolver for SequentialModularSolver {
         services: &SolverServices<'_>,
         flowsheet: &Flowsheet,
     ) -> RfResult<SolveSnapshot> {
+        match self.solve_controlled(services, flowsheet, &mut control::UncontrolledSolve)? {
+            ControlledSolveOutcome::Completed(snapshot) => Ok(snapshot),
+            ControlledSolveOutcome::Cancelled => unreachable!("uncontrolled solve cannot cancel"),
+        }
+    }
+}
+
+impl SequentialModularSolver {
+    pub fn solve_controlled(
+        &self,
+        services: &SolverServices<'_>,
+        flowsheet: &Flowsheet,
+        control: &mut impl SolverControl,
+    ) -> RfResult<ControlledSolveOutcome> {
+        if control
+            .checkpoint(SolveProgress {
+                stage: SolveStage::Validating,
+                total_units: None,
+                completed_units: 0,
+                current_unit: None,
+            })
+            .is_break()
+        {
+            return Ok(ControlledSolveOutcome::Cancelled);
+        }
         let execution_order = sequential_execution_order(flowsheet)?;
+        let total_units = execution_order.len();
+        if control
+            .checkpoint(SolveProgress {
+                stage: SolveStage::Planned,
+                total_units: Some(total_units),
+                completed_units: 0,
+                current_unit: None,
+            })
+            .is_break()
+        {
+            return Ok(ControlledSolveOutcome::Cancelled);
+        }
         let mut solved_streams = BTreeMap::<StreamId, MaterialStreamState>::new();
         let mut steps = Vec::with_capacity(execution_order.len());
         let mut diagnostics = vec![SolveDiagnostic {
@@ -221,6 +261,17 @@ impl FlowsheetSolver for SequentialModularSolver {
         };
 
         for (step_index, unit_id) in execution_order.iter().enumerate() {
+            if control
+                .checkpoint(SolveProgress {
+                    stage: SolveStage::UnitStarted,
+                    total_units: Some(total_units),
+                    completed_units: step_index,
+                    current_unit: Some(unit_id.clone()),
+                })
+                .is_break()
+            {
+                return Ok(ControlledSolveOutcome::Cancelled);
+            }
             let step_number = step_index + 1;
             let unit = flowsheet
                 .unit(unit_id)
@@ -305,8 +356,30 @@ impl FlowsheetSolver for SequentialModularSolver {
                 produced_streams,
                 summary,
             });
+            if control
+                .checkpoint(SolveProgress {
+                    stage: SolveStage::UnitCompleted,
+                    total_units: Some(total_units),
+                    completed_units: step_index + 1,
+                    current_unit: Some(unit_id.clone()),
+                })
+                .is_break()
+            {
+                return Ok(ControlledSolveOutcome::Cancelled);
+            }
         }
 
+        if control
+            .checkpoint(SolveProgress {
+                stage: SolveStage::Completing,
+                total_units: Some(total_units),
+                completed_units: total_units,
+                current_unit: None,
+            })
+            .is_break()
+        {
+            return Ok(ControlledSolveOutcome::Cancelled);
+        }
         let related_unit_ids = steps
             .iter()
             .map(|step| step.unit_id.clone())
@@ -324,13 +397,13 @@ impl FlowsheetSolver for SequentialModularSolver {
             related_stream_ids: solved_streams.keys().cloned().collect(),
         };
 
-        Ok(SolveSnapshot {
+        Ok(ControlledSolveOutcome::Completed(SolveSnapshot {
             status: SolveStatus::Converged,
             summary,
             diagnostics,
             streams: solved_streams,
             steps,
-        })
+        }))
     }
 }
 

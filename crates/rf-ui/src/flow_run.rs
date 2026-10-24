@@ -61,22 +61,39 @@ impl FlowRunAcceptance {
 /// consumption or share mutable settlement flags with the committed owner.
 #[derive(Debug)]
 pub struct FlowRunReceipt {
-    session: Identity,
-    input: Identity,
-    epoch: Identity,
+    qualification: FlowRunQualification,
     run_id: FlowRunId,
-    document_id: DocumentId,
-    revision: u64,
     settled: bool,
 }
 
+/// Read-only identity used for duplicate submissions and the start handshake.
+/// Cloning this key does not grant completion or cancellation ownership.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FlowRunQualification {
+    session: Identity,
+    input: Identity,
+    epoch: Identity,
+    document_id: DocumentId,
+    revision: u64,
+}
+
+impl FlowRunQualification {
+    pub fn same_session(&self, other: &Self) -> bool {
+        self.session == other.session && self.document_id == other.document_id
+    }
+}
+
 impl FlowRunReceipt {
+    pub fn qualification(&self) -> &FlowRunQualification {
+        &self.qualification
+    }
+
     pub fn run_id(&self) -> &FlowRunId {
         &self.run_id
     }
 
     pub fn revision(&self) -> u64 {
-        self.revision
+        self.qualification.revision
     }
 }
 
@@ -95,6 +112,10 @@ impl FrozenFlowRun {
 
     pub fn receipt(&self) -> &FlowRunReceipt {
         &self.receipt
+    }
+
+    pub fn into_parts(self) -> (Flowsheet, FlowRunReceipt) {
+        (self.flowsheet, self.receipt)
     }
 
     pub fn into_receipt(self) -> FlowRunReceipt {
@@ -130,28 +151,45 @@ impl WorkspaceState {
         self.flow_run_acceptance.revoke();
     }
 
+    /// Revoke exactly this attempt; an old task cannot revoke a newer pending run.
+    pub fn revoke_flow_run(&mut self, id: &FlowRunId) -> bool {
+        if self.flow_run_acceptance.pending.as_ref() != Some(id) {
+            return false;
+        }
+        self.revoke_flow_run_acceptance();
+        true
+    }
+
     pub fn pending_flow_run(&self) -> Option<&FlowRunId> {
         self.flow_run_acceptance.pending.as_ref()
     }
 }
 
 impl AppState {
+    pub fn flow_run_qualification(&self) -> FlowRunQualification {
+        let state = &self.workspace.flow_run_acceptance;
+        FlowRunQualification {
+            session: state.session.clone(),
+            input: state.input.clone(),
+            epoch: state.epoch.clone(),
+            document_id: self.workspace.document.metadata.document_id.clone(),
+            revision: self.workspace.document.revision,
+        }
+    }
+
     /// Called only after the owning application's preflight succeeds. The
     /// synchronous adapter submits one attempt at a time; scheduling and Busy
     /// belong to the application owner, not to this result qualification layer.
     pub fn prepare_flow_run(&mut self) -> FrozenFlowRun {
+        let qualification = self.flow_run_qualification();
         let run_id = FlowRunId(Identity::fresh());
         let state = &mut self.workspace.flow_run_acceptance;
         state.pending = Some(run_id.clone());
         FrozenFlowRun {
             flowsheet: self.workspace.document.flowsheet.clone(),
             receipt: FlowRunReceipt {
-                session: state.session.clone(),
-                input: state.input.clone(),
-                epoch: state.epoch.clone(),
+                qualification,
                 run_id,
-                document_id: self.workspace.document.metadata.document_id.clone(),
-                revision: self.workspace.document.revision,
                 settled: false,
             },
         }
@@ -167,15 +205,15 @@ impl AppState {
         }
         receipt.settled = true;
         let state = &mut self.workspace.flow_run_acceptance;
-        let reason = if state.session != receipt.session
-            || self.workspace.document.metadata.document_id != receipt.document_id
+        let reason = if state.session != receipt.qualification.session
+            || self.workspace.document.metadata.document_id != receipt.qualification.document_id
         {
             Some(Reason::DifferentSession)
-        } else if state.input != receipt.input
-            || self.workspace.document.revision != receipt.revision
+        } else if state.input != receipt.qualification.input
+            || self.workspace.document.revision != receipt.qualification.revision
         {
             Some(Reason::InputChanged)
-        } else if state.epoch != receipt.epoch {
+        } else if state.epoch != receipt.qualification.epoch {
             Some(Reason::AcceptanceRevoked)
         } else if state.pending.as_ref() != Some(&receipt.run_id) {
             Some(Reason::Superseded)

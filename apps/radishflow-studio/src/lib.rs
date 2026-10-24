@@ -21,6 +21,7 @@ mod inspector_target_driver;
 pub mod modeling_actions;
 pub mod modeling_recommendations;
 pub mod modeling_specifications;
+mod property_package_cache_root;
 mod property_package_download;
 mod property_package_download_client;
 mod run_panel_driver;
@@ -57,6 +58,7 @@ mod studio_window_timer_driver;
 pub mod test_support;
 mod workspace_control;
 mod workspace_run_command;
+mod workspace_run_owner;
 mod workspace_solve_service;
 
 pub use app_facade::{
@@ -185,8 +187,9 @@ pub use run_panel_driver::{
     dispatch_run_panel_widget_action_with_auth_cache, snapshot_run_panel_driver_state,
 };
 pub use solver_bridge::{
-    CompletedWorkspaceSolve, PreparedWorkspaceSolve, StudioSolveRequest, complete_workspace_solve,
-    next_solver_snapshot_sequence, prepare_workspace_solve, solve_workspace_from_auth_cache,
+    CompletedWorkspaceSolve, PreparedWorkspaceSolve, StudioSolveRequest, WorkspaceExecutionOutcome,
+    WorkspaceSolveProgress, complete_workspace_solve, next_solver_snapshot_sequence,
+    prepare_workspace_solve, solve_workspace_from_auth_cache,
     solve_workspace_with_property_package,
 };
 pub use studio_app_host::{
@@ -431,4 +434,12 @@ pub use workspace_run_command::{
 pub use workspace_solve_service::{
     WorkspaceSolveDispatch, WorkspaceSolveService, WorkspaceSolveSkipReason, WorkspaceSolveTrigger,
     build_workspace_solve_request,
+};
+
+pub use property_package_cache_root::PropertyPackageCacheRoot;
+
+pub use workspace_run_owner::{
+    RunAuthorizationRefusal, WorkspaceRunBlock, WorkspaceRunCancelReason, WorkspaceRunCancelReply,
+    WorkspaceRunOwner, WorkspaceRunPhase, WorkspaceRunProgress, WorkspaceRunState,
+    WorkspaceRunSubmission, WorkspaceRunSummary,
 };

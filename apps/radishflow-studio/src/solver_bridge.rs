@@ -1,18 +1,18 @@
-mod execution;
+pub(crate) mod execution;
 #[cfg(test)]
 mod execution_tests;
 pub use execution::{
-    CompletedWorkspaceSolve, PreparedWorkspaceSolve, complete_workspace_solve,
-    prepare_workspace_solve,
+    CompletedWorkspaceSolve, PreparedWorkspaceSolve, WorkspaceExecutionOutcome,
+    WorkspaceSolveProgress, complete_workspace_solve, prepare_workspace_solve,
 };
 
 use std::path::Path;
 
 use rf_property_package::{
     CachedPropertyPackageProvider, LocalThermoContext, PackageFailureKind, PackageLoadError,
-    PackageResult, PropertyPackageProvider, prepare_local_context,
+    PropertyPackageProvider, prepare_local_context,
 };
-use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolveFailureContext, SolverServices};
+use rf_solver::{SequentialModularSolver, SolveFailureContext, SolverServices};
 use rf_store::StoredAuthCacheIndex;
 use rf_types::{RfError, RfResult};
 use rf_ui::{AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, RunStatus};

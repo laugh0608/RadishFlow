@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
 mod catalog_compatibility;
+mod control;
 
 use rf_flash::PlaceholderTpFlashSolver;
 use rf_model::{
