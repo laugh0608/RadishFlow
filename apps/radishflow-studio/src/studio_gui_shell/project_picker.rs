@@ -22,7 +22,49 @@ pub(super) trait ProjectFilePicker {
 }
 
 #[derive(Debug, Default)]
-pub(super) struct NativeProjectFilePicker;
+pub(super) struct NativeProjectFilePicker {
+    dialog_sequence: u64,
+}
+
+impl NativeProjectFilePicker {
+    fn trace_selection(
+        &mut self,
+        operation: &str,
+        select: impl FnOnce() -> Option<PathBuf>,
+    ) -> Option<PathBuf> {
+        if !cfg!(any(target_os = "windows", target_os = "macos")) {
+            return select();
+        }
+        use std::io::Write;
+
+        self.dialog_sequence += 1;
+        let sequence = self.dialog_sequence;
+        let process = std::process::id();
+        let thread = std::thread::current().id();
+        let started = std::time::Instant::now();
+        // Diagnostic sequence only; never used as a document or request identity.
+        // Release stderr before entering the modal loop. Logging failures must not
+        // change picker behavior, and selected paths must not enter this trace.
+        let _ = writeln!(
+            std::io::stderr().lock(),
+            "[radishflow-studio] native dialog started process={process} sequence={sequence} operation={operation} thread={thread:?}"
+        );
+        let selection = select();
+        // rfd returns None for no selection; it does not expose a structured
+        // failure reason, so do not claim that every None was a user cancellation.
+        let outcome = if selection.is_some() {
+            "selected"
+        } else {
+            "no_selection"
+        };
+        let _ = writeln!(
+            std::io::stderr().lock(),
+            "[radishflow-studio] native dialog returned process={process} sequence={sequence} operation={operation} outcome={outcome} elapsed_ms={}",
+            started.elapsed().as_millis()
+        );
+        selection
+    }
+}
 
 impl ProjectFilePicker for NativeProjectFilePicker {
     fn supports_equipment_export_dialogs(&self) -> bool {
@@ -34,11 +76,17 @@ impl ProjectFilePicker for NativeProjectFilePicker {
     ) -> Option<PathBuf> {
         #[cfg(any(target_os = "windows", target_os = "macos"))]
         {
-            rfd::FileDialog::new()
-                .set_title("Export RadishFlow equipment calculation")
-                .add_filter("Calculation table", &[format.extension()])
-                .set_file_name(format!("equipment-calculation.{}", format.extension()))
-                .save_file()
+            let operation = match format {
+                super::equipment::CalculationTableFormat::Csv => "equipment_export_csv",
+                super::equipment::CalculationTableFormat::Json => "equipment_export_json",
+            };
+            self.trace_selection(operation, || {
+                rfd::FileDialog::new()
+                    .set_title("Export RadishFlow equipment calculation")
+                    .add_filter("Calculation table", &[format.extension()])
+                    .set_file_name(format!("equipment-calculation.{}", format.extension()))
+                    .save_file()
+            })
         }
         #[cfg(not(any(target_os = "windows", target_os = "macos")))]
         {
@@ -50,11 +98,11 @@ impl ProjectFilePicker for NativeProjectFilePicker {
         cfg!(any(target_os = "windows", target_os = "macos"))
     }
     fn pick_project_file(&mut self) -> Option<PathBuf> {
-        pick_native_project_file()
+        self.trace_selection("project_open", pick_native_project_file)
     }
 
     fn pick_save_project_file(&mut self) -> Option<PathBuf> {
-        pick_native_save_project_file()
+        self.trace_selection("project_save", pick_native_save_project_file)
     }
 
     fn supports_result_export_dialogs(&self) -> bool {
@@ -62,7 +110,7 @@ impl ProjectFilePicker for NativeProjectFilePicker {
     }
 
     fn pick_result_export_file(&mut self) -> Option<PathBuf> {
-        pick_native_result_export_file()
+        self.trace_selection("result_export", pick_native_result_export_file)
     }
 }
 
