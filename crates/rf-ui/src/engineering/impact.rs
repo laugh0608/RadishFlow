@@ -117,7 +117,7 @@ pub(super) fn case_references(
         EngineeringRecordId::Basis(id) => dependencies.basis.contains(id),
     }
 }
-fn case_projection(
+pub(super) fn case_projection(
     task: Option<&EquipmentTask>,
     case: &EngineeringCaseId,
 ) -> Option<EquipmentTask> {

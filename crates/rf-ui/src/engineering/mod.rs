@@ -24,7 +24,9 @@ pub use commands::{
 pub use impact::TaskImpact;
 pub use results::{
     CalculationId, CalculationQualification, CalculationRequest, CompletedCalculation,
-    EquipmentResultStatus, ResultGeneration, ResultStaleness,
+    EquipmentResultFailure, EquipmentResultOrigin, EquipmentResultStatus,
+    EquipmentResultUnavailable, EquipmentResultValue, EquipmentResultView, ResultGeneration,
+    ResultStaleness,
 };
 
 use crate::DocumentId;

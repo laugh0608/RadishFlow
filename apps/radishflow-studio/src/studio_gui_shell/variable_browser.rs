@@ -19,11 +19,13 @@ impl ReadyAppState {
         }
         // Query after frame commands: do not combine an old result projection with new inputs.
         let snapshot = self.platform_host.snapshot();
-        let browser = VariableBrowser::new(
-            self.platform_host.document(),
-            snapshot.runtime.latest_solve_snapshot.as_ref(),
-            snapshot.runtime.stale_solve_snapshot.as_ref(),
-        );
+        let browser =
+            VariableBrowser::from_workspace(&self.platform_host.modeling_inputs().workspace);
+        let execution = if self.background_runs.is_some() {
+            rf_ui::variable_browser::ActionExecution::Background
+        } else {
+            rf_ui::variable_browser::ActionExecution::Inline
+        };
         let units = snapshot
             .runtime
             .workspace_document
@@ -96,7 +98,7 @@ impl ReadyAppState {
                                 ui,
                                 |ui| {
                                     for action in browser
-                                        .actions(None)
+                                        .actions_with_execution(None, execution)
                                         .expect("flowsheet actions require no object")
                                     {
                                         render_action(ui, &action);
@@ -185,7 +187,7 @@ impl ReadyAppState {
                             }
                             egui::CollapsingHeader::new("动作描述 / Actions").show(ui, |ui| {
                                 for action in browser
-                                    .actions(Some(&id))
+                                    .actions_with_execution(Some(&id), execution)
                                     .expect("selected object was checked")
                                 {
                                     render_action(ui, &action);

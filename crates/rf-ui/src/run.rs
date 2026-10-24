@@ -79,6 +79,7 @@ pub struct StepSnapshot {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SolveSnapshot {
+    pub origin: Option<crate::result_query::FlowResultOrigin>,
     pub id: SolveSnapshotId,
     pub document_revision: u64,
     pub sequence: u64,
@@ -98,6 +99,7 @@ impl SolveSnapshot {
         summary: DiagnosticSummary,
     ) -> Self {
         Self {
+            origin: None,
             id: id.into(),
             document_revision,
             sequence,
@@ -116,6 +118,7 @@ impl SolveSnapshot {
         snapshot: &rf_solver::SolveSnapshot,
     ) -> Self {
         Self {
+            origin: None,
             id: id.into(),
             document_revision,
             sequence,

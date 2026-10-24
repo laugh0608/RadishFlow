@@ -78,6 +78,16 @@ pub struct FlowRunQualification {
 }
 
 impl FlowRunQualification {
+    pub fn document_id(&self) -> &DocumentId {
+        &self.document_id
+    }
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+    pub fn same_input(&self, other: &Self) -> bool {
+        self.same_session(other) && self.input == other.input && self.revision == other.revision
+    }
+
     pub fn same_session(&self, other: &Self) -> bool {
         self.session == other.session && self.document_id == other.document_id
     }
@@ -165,16 +175,21 @@ impl WorkspaceState {
     }
 }
 
-impl AppState {
+impl WorkspaceState {
     pub fn flow_run_qualification(&self) -> FlowRunQualification {
-        let state = &self.workspace.flow_run_acceptance;
+        let state = &self.flow_run_acceptance;
         FlowRunQualification {
             session: state.session.clone(),
             input: state.input.clone(),
             epoch: state.epoch.clone(),
-            document_id: self.workspace.document.metadata.document_id.clone(),
-            revision: self.workspace.document.revision,
+            document_id: self.document.metadata.document_id.clone(),
+            revision: self.document.revision,
         }
+    }
+}
+impl AppState {
+    pub fn flow_run_qualification(&self) -> FlowRunQualification {
+        self.workspace.flow_run_qualification()
     }
 
     /// Called only after the owning application's preflight succeeds. The

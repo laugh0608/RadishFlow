@@ -139,10 +139,35 @@ fn real_cached_background_matches_sync_without_executing_on_the_submitter() {
     assert_eq!(result.outcome, WorkspaceExecutionOutcome::Succeeded);
     assert_eq!(result.disposition, FlowRunDisposition::Applied);
     assert!(result.started_at.is_some());
+    let rf_ui::result_query::FlowResultView::Current {
+        snapshot: actual,
+        origin: actual_origin,
+    } = app.workspace.flow_result()
+    else {
+        panic!("background current")
+    };
+    let rf_ui::result_query::FlowResultView::Current {
+        snapshot: expected,
+        origin: expected_origin,
+    } = synchronous.workspace.flow_result()
+    else {
+        panic!("inline current")
+    };
+    let actual_execution = actual_origin.execution().unwrap();
+    let expected_execution = expected_origin.execution().unwrap();
+    assert_ne!(actual_execution.run_id, expected_execution.run_id);
+    assert_eq!(actual_execution.package, expected_execution.package);
     assert_eq!(
-        app.workspace.snapshot_history,
-        synchronous.workspace.snapshot_history
+        actual_execution.solver_implementation,
+        expected_execution.solver_implementation
     );
+    assert_eq!(actual_origin.document_id(), expected_origin.document_id());
+    assert_eq!(actual_origin.revision(), expected_origin.revision());
+    let mut actual = actual.clone();
+    actual.origin = None;
+    let mut expected = expected.clone();
+    expected.origin = None;
+    assert_eq!(actual, expected);
     assert!(owner.try_close().is_ok());
 }
 

@@ -525,3 +525,54 @@ fn display_projection_preserves_canonical_values_provenance_and_missing_states()
     assert_eq!(stale.display_value(&units).unwrap(), "— kmol/h");
     assert_eq!(stale.state, ValueState::Stale);
 }
+
+#[test]
+fn workspace_browser_rejects_foreign_origin_and_hides_same_revision_fork_values() {
+    let mut left = crate::AppState::new(document());
+    let mut right = left.clone();
+    for (app, name) in [(&mut left, "left"), (&mut right, "right")] {
+        let mut flow = app.workspace.document.flowsheet.clone();
+        flow.units.get_mut(&UnitId::new("heater")).unwrap().name = name.into();
+        app.commit_document_change(
+            crate::DocumentCommand::RenameUnit {
+                unit_id: "heater".into(),
+                new_name: name.into(),
+            },
+            flow,
+            std::time::UNIX_EPOCH,
+        );
+    }
+    let snapshot = result(&left.workspace.document);
+    left.store_snapshot(snapshot);
+    let snapshot = crate::latest_snapshot(&left.workspace).unwrap().clone();
+    let query_id = id(
+        &left.workspace.document,
+        ObjectId::Stream("s".into()),
+        VariableSection::Results,
+        VariableField::Temperature,
+    );
+    assert!(snapshot.origin.as_ref().unwrap().execution().is_none());
+    right.store_snapshot(snapshot.clone());
+    assert_eq!(
+        left.workspace.document.revision,
+        right.workspace.document.revision
+    );
+    let stale = VariableBrowser::from_workspace(&right.workspace)
+        .read(&query_id)
+        .unwrap();
+    assert_eq!(stale.state, ValueState::Stale);
+    assert_eq!(stale.value, None);
+    right.workspace.reset_flow_run_session();
+    right.store_snapshot(snapshot);
+    let missing = VariableBrowser::from_workspace(&right.workspace)
+        .read(&query_id)
+        .unwrap();
+    assert_eq!(missing.state, ValueState::Missing);
+    assert_eq!(missing.value, None);
+    let before = left.clone();
+    let valid = VariableBrowser::from_workspace(&left.workspace)
+        .read(&query_id)
+        .unwrap();
+    assert_eq!(valid.value, Some(VariableValue::Number(310.0)));
+    assert_eq!(left, before);
+}

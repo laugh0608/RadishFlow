@@ -1,4 +1,6 @@
+mod query;
 use super::*;
+pub use query::*;
 use rf_model::equipment::EquipmentMethod;
 use rf_unitops::{
     separator_rating::{self, RatingFailure, SeparatorRatingResult},
@@ -46,6 +48,7 @@ impl CalculationOutcome {
 /// session mutation. Completion must return through the owning session.
 #[derive(Debug)]
 pub struct CalculationRequest {
+    origin: EquipmentResultOrigin,
     key: CalculationKey,
     request: CalculationId,
     task: EquipmentTask,
@@ -89,6 +92,7 @@ impl CalculationRequest {
             ),
         };
         CompletedCalculation {
+            origin: self.origin,
             key: self.key,
             request: self.request,
             outcome,
@@ -97,6 +101,7 @@ impl CalculationRequest {
 }
 #[derive(Debug)]
 pub struct CompletedCalculation {
+    origin: EquipmentResultOrigin,
     key: CalculationKey,
     request: CalculationId,
     outcome: CalculationOutcome,
@@ -108,6 +113,7 @@ impl CompletedCalculation {
 }
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct CalculationRecord {
+    origin: EquipmentResultOrigin,
     id: CalculationId,
     key: CalculationKey,
     outcome: CalculationOutcome,
@@ -215,6 +221,7 @@ impl EngineeringSession {
         let request = CalculationId(EngineeringCheckpoint::fresh());
         self.pending.insert(member.clone(), request.clone());
         Ok(CalculationRequest {
+            origin: EquipmentResultOrigin::capture(self, &key, &request),
             key,
             request,
             task: self
@@ -239,6 +246,7 @@ impl EngineeringSession {
         self.results.insert(
             member.clone(),
             CalculationRecord {
+                origin: completed.origin,
                 id: completed.request,
                 key: completed.key,
                 outcome: completed.outcome,

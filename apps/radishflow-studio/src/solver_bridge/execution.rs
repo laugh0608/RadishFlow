@@ -370,6 +370,13 @@ fn complete_with_publication(
         return disposition;
     }
     let revision = completion.receipt.revision();
+    let origin = completion.receipt.result_origin(
+        concat!(
+            "rf-solver::SequentialModularSolver@",
+            env!("CARGO_PKG_VERSION")
+        ),
+        completion.package.as_ref().map(executed_package_evidence),
+    );
     match &completion.outcome {
         SolveOutcome::Cancelled => {}
         SolveOutcome::InfrastructureFailed(error) => record_solve_failure(
@@ -379,12 +386,14 @@ fn complete_with_publication(
             SolveFailureContext::from_error(error),
         ),
         SolveOutcome::Succeeded(snapshot) => {
-            app_state.store_snapshot(SolveSnapshot::from_solver_snapshot(
+            let mut accepted = SolveSnapshot::from_solver_snapshot(
                 completion.request.snapshot_id.as_str(),
                 revision,
                 completion.request.sequence,
                 snapshot,
-            ));
+            );
+            accepted.origin = Some(origin.clone());
+            app_state.store_snapshot(accepted);
             app_state.push_log(
                 AppLogLevel::Info,
                 format!(
@@ -426,7 +435,46 @@ fn complete_with_publication(
             }
         }
     }
+    if matches!(
+        completion.outcome,
+        SolveOutcome::Failed { .. } | SolveOutcome::InfrastructureFailed(_)
+    ) || (publish_preparation_failure
+        && matches!(completion.outcome, SolveOutcome::PreparationFailed { .. }))
+    {
+        app_state.attach_flow_failure_origin(origin);
+    }
     disposition
+}
+
+fn executed_package_evidence(
+    package: &ExecutedPackage,
+) -> rf_ui::result_query::ExecutedPropertyPackage {
+    use rf_property_package::PackageDataOrigin;
+    use rf_ui::result_query::{ExecutedPropertyPackage, ResultDataOrigin};
+    let descriptor = &package.descriptor;
+    let source = &package.provenance;
+    ExecutedPropertyPackage {
+        package_id: descriptor.manifest.package_id.clone(),
+        version: descriptor.manifest.version.clone(),
+        origin: match source.origin {
+            PackageDataOrigin::InMemory => ResultDataOrigin::InMemory,
+            PackageDataOrigin::Cache => ResultDataOrigin::Cache,
+            PackageDataOrigin::LocalFiles => ResultDataOrigin::LocalFiles,
+            PackageDataOrigin::Bundled => ResultDataOrigin::Bundled,
+        },
+        manifest_schema_version: source.manifest_schema_version,
+        payload_schema_version: source.payload_schema_version,
+        payload_fingerprint: source.payload_fingerprint.clone(),
+        canonical_payload_size_bytes: source.canonical_payload_size_bytes,
+        liquid_model: match descriptor.method.liquid_phase_model {
+            rf_thermo::LiquidPhaseModel::IdealSolution => "ideal-solution",
+        },
+        vapor_model: match descriptor.method.vapor_phase_model {
+            rf_thermo::VaporPhaseModel::IdealGas => "ideal-gas",
+        },
+        thermo_implementation: source.thermo_implementation,
+        flash_implementation: source.flash_implementation,
+    }
 }
 
 fn package_failure_message(error: &PackageLoadError) -> String {

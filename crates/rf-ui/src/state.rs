@@ -454,6 +454,7 @@ impl AppLogFeed {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceState {
+    pub(crate) flow_failure: Option<crate::result_query::FlowFailureRecord>,
     pub(crate) flow_run_acceptance: crate::flow_run::FlowRunAcceptance,
     // Retain identities across deletion and history branching for this document session.
     allocated_unit_ids: BTreeSet<UnitId>,
@@ -497,6 +498,7 @@ impl WorkspaceState {
             command_history: CommandHistory::new(),
             solve_session,
             snapshot_history: VecDeque::new(),
+            flow_failure: None,
             run_panel,
         }
     }
@@ -593,7 +595,11 @@ impl WorkspaceState {
         }
     }
 
-    pub fn store_snapshot(&mut self, snapshot: SolveSnapshot, limit: usize) {
+    pub fn store_snapshot(&mut self, mut snapshot: SolveSnapshot, limit: usize) {
+        if snapshot.origin.is_none() {
+            snapshot.origin = Some(crate::result_query::FlowResultOrigin::local(self));
+        }
+        self.flow_failure = None;
         self.snapshot_history.push_back(snapshot.clone());
         self.apply_snapshot_history_limit(limit);
         self.solve_session.complete_with_snapshot(&snapshot);
@@ -602,6 +608,7 @@ impl WorkspaceState {
     pub fn clear_results(&mut self) {
         self.revoke_flow_run_acceptance();
         self.snapshot_history.clear();
+        self.flow_failure = None;
         self.solve_session.latest_snapshot = None;
         self.solve_session.pending_reason = Some(SolvePendingReason::SnapshotMissing);
         self.run_panel = RunPanelState::from_runtime(&self.solve_session, None, None);
@@ -765,6 +772,10 @@ impl AppState {
     }
 
     pub fn record_failure(&mut self, revision: u64, status: RunStatus, summary: DiagnosticSummary) {
+        self.workspace.flow_failure = Some(crate::result_query::FlowFailureRecord {
+            origin: crate::result_query::FlowResultOrigin::local(&self.workspace),
+            diagnostic: summary.clone(),
+        });
         self.workspace
             .solve_session
             .hold_with_failure(revision, status, summary);

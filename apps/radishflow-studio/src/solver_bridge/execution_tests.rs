@@ -486,3 +486,158 @@ fn cached_preparation_errors_are_guarded_without_changing_legacy_status_semantic
     }
     assert!(!root.exists(), "preparation must remain read-only");
 }
+
+#[test]
+fn accepted_flow_query_carries_actual_execution_and_survives_cancelled_rerun() {
+    use rf_ui::result_query::{FlowResultView, ResultDataOrigin};
+    let mut app = app();
+    let mut completed = execute(prepare(&mut app, false));
+    let run_id = completed.run_id().clone();
+    let fingerprint = completed.provenance().unwrap().payload_fingerprint.clone();
+    assert_eq!(
+        complete_workspace_solve(&mut app, &mut completed),
+        FlowRunDisposition::Applied
+    );
+    let FlowResultView::Current { origin, .. } = app.workspace.flow_result() else {
+        panic!("current")
+    };
+    let original = origin.clone();
+    let execution = origin.execution().unwrap();
+    assert_eq!(execution.run_id, run_id);
+    let package = execution.package.as_ref().unwrap();
+    assert_eq!(package.package_id, OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID);
+    assert_eq!(package.payload_fingerprint, fingerprint);
+    assert_eq!(package.origin, ResultDataOrigin::InMemory);
+    let mut pending = execute(prepare(&mut app, false));
+    app.workspace.revoke_flow_run(pending.run_id());
+    rejected(&mut app, &mut pending, Reason::AcceptanceRevoked);
+    let FlowResultView::Current { origin, .. } = app.workspace.flow_result() else {
+        panic!("current survives cancelled rerun")
+    };
+    assert_eq!(*origin, original);
+}
+
+#[test]
+fn flow_query_rejects_foreign_snapshots_and_keeps_stale_origin_without_values() {
+    use rf_ui::result_query::{FlowResultUnavailable, FlowResultView};
+    let mut app = app();
+    let mut completed = execute(prepare(&mut app, false));
+    complete_workspace_solve(&mut app, &mut completed);
+    let FlowResultView::Current { snapshot, origin } = app.workspace.flow_result() else {
+        panic!("current")
+    };
+    let snapshot = snapshot.clone();
+    let original = origin.clone();
+    let mut other = app.clone();
+    other.workspace.reset_flow_run_session();
+    other.store_snapshot(snapshot);
+    assert!(matches!(
+        other.workspace.flow_result(),
+        FlowResultView::Missing {
+            reason: FlowResultUnavailable::DifferentSession
+        }
+    ));
+    rename(&mut app, "Edited");
+    let FlowResultView::Stale {
+        origin: Some(origin),
+        ..
+    } = app.workspace.flow_result()
+    else {
+        panic!("stale")
+    };
+    assert_eq!(*origin, original);
+    app.workspace.clear_results();
+    assert!(matches!(
+        app.workspace.flow_result(),
+        FlowResultView::Missing {
+            reason: FlowResultUnavailable::NoResult
+        }
+    ));
+}
+
+#[test]
+fn failure_query_is_qualified_and_late_failure_cannot_replace_new_evidence() {
+    use rf_ui::result_query::FlowResultView;
+    let mut app = app();
+    let mut failed = execute(prepare(&mut app, true));
+    let failed_id = failed.run_id().clone();
+    complete_workspace_solve(&mut app, &mut failed);
+    let FlowResultView::Failed { origin, .. } = app.workspace.flow_result() else {
+        panic!("failed")
+    };
+    assert_eq!(origin.execution().unwrap().run_id, failed_id);
+    assert!(origin.execution().unwrap().package.is_none());
+    rename(&mut app, "New input");
+    let mut good = execute(prepare(&mut app, false));
+    complete_workspace_solve(&mut app, &mut good);
+    let before = app.clone();
+    complete_workspace_solve(&mut app, &mut failed);
+    assert_eq!(app, before);
+    assert!(matches!(
+        app.workspace.flow_result(),
+        FlowResultView::Current { .. }
+    ));
+}
+
+#[test]
+fn replacing_the_same_package_asset_never_rewrites_prior_result_evidence() {
+    use rf_property_package::LoadedPropertyPackage;
+    use rf_ui::result_query::FlowResultView;
+    let mut app = app();
+    let mut provider = build_official_binary_hydrocarbon_in_memory_provider(
+        OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+    );
+    let mut old = prepare(&mut app, false).execute_with_property_package(&provider);
+    complete_workspace_solve(&mut app, &mut old);
+    let FlowResultView::Current { origin, .. } = app.workspace.flow_result() else {
+        panic!("current")
+    };
+    let original = origin.clone();
+    let loaded = provider
+        .load_package(OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID, SystemTime::now())
+        .unwrap();
+    let mut system = loaded.system().clone();
+    system.components[0].vapor_heat_capacity_j_per_mol_k = Some(170.0);
+    let replacement =
+        LoadedPropertyPackage::from_runtime(loaded.manifest().clone(), system, SystemTime::now())
+            .unwrap();
+    assert_ne!(
+        replacement.provenance().payload_fingerprint,
+        loaded.provenance().payload_fingerprint
+    );
+    provider.insert(replacement);
+    let FlowResultView::Current { origin, .. } = app.workspace.flow_result() else {
+        panic!("current")
+    };
+    assert_eq!(*origin, original);
+    let mut next = prepare(&mut app, false).execute_with_property_package(&provider);
+    complete_workspace_solve(&mut app, &mut next);
+    let FlowResultView::Current { origin, .. } = app.workspace.flow_result() else {
+        panic!("current")
+    };
+    assert_ne!(
+        origin
+            .execution()
+            .unwrap()
+            .package
+            .as_ref()
+            .unwrap()
+            .payload_fingerprint,
+        original
+            .execution()
+            .unwrap()
+            .package
+            .as_ref()
+            .unwrap()
+            .payload_fingerprint
+    );
+    assert_eq!(
+        app.workspace
+            .snapshot_history
+            .front()
+            .unwrap()
+            .origin
+            .as_ref(),
+        Some(&original)
+    );
+}

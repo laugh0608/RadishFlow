@@ -53,6 +53,7 @@
 - 负责 `AuthSessionState` / `EntitlementState` 与 `StoredAuthCacheIndex` 之间的桥接与同步
 - 负责控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的协议映射、下载租约与本地缓存落盘编排
 - [AF3](../topics/runtime-messages/run-control-and-watch-conditions.md)已接 GUI 流程 / 设备后台、精确取消、守卫接收与退出收尾；兼容入口仍同步。
+- AF4a / AF5a 的 `rf-ui::project_query` 只读发现工程对象；流程 / 设备分别检查结果资格，执行来源随结果保留，见[查询契约](../topics/variable-and-object-browser.md#af4a-工程发现与上下文契约2026-10-24)。
 - 负责把 Studio shell 入口组织为可复现的 MVP α / β 工作流：默认显示 Home，普通空白项目先进入独立 `物性` 页，小案例作者入口可从空白项目直接进入左侧 `模块` 清单，进入 case 后暴露主路径命令
 - 负责让 `流程图` / `运行` 上下文工具栏、Run Panel `Resume`、`F5 / Shift+F5`、AppHost、StudioGuiDriver、StudioGuiHost command registry 等正式运行入口复用同一层建模输入 readiness；shell 只负责 notice、focus 和用户反馈，不在各入口复制另一套输入判断
 - 负责在 GUI shell 层提供用户操作与求解审计输出；默认 stderr 日志只作为开发态 smoke 和诊断入口，不替代未来正式审计 / telemetry 设计
@@ -742,7 +743,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 
 当前已落地与仍待细化的边界：
 
-- 手动运行已经进入真实 GUI 工作台主路径：`流程图` / `运行` 上下文工具栏中的 `运行当前流程` 派发 `run_panel.run_manual`，并通过 command registry 的 availability / disabled reason 控制按钮状态。`StudioAppFacade`、`WorkspaceControlAction`、`WorkspaceControlState`、`RunPanelWidgetModel` 与 `run_panel_driver` 构成稳定链路；后台调度、取消、自动运行与 `Hold -> Active` 恢复仍留给后续 GUI 交互细化。
+- GUI 的 `运行当前流程` / F5 经 command registry 与 Facade 提交给 AF3 后台拥有者；控制模型描述可用性，拥有者负责取消、接收和自动最新输入，兼容调用保留同步返回。
 - Studio app-host GUI 动作入口统一为 `StudioAppHostController::dispatch_ui_command(command_id)`。run panel command registry 首批稳定命令为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；菜单、快捷键、命令面板、palette 和 runtime 小型 action button 都应复用这条派发链。
 - Canvas 编辑复用 command surface；移动只写 sidecar，连接 / 删除进入工程历史。删除、历史和修复的显式放弃经 `StudioConfirmedInputAction` / `InputEditCheckpoint` 重验，事务成功才发布，对象删除保留范围外草稿，见 [离开保护](../topics/units/input-drafts-and-interactions.md#i4-统一离开确认与失败保护)。公开变量写入门禁不变。
 - 结果审阅、错误定位和诊断目标都必须复用 `StudioGuiWindowDiagnosticTargetActionModel`、`inspector.focus_stream:*`、`inspector.focus_unit:*` 或既有 focus action。`selected_stream / comparison_stream / selected_unit` 只是 shell-local selector state，不缓存第二份结果；comparison 复位不代表结果语义变化。
