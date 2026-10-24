@@ -48153,6 +48153,4236 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "o7Gt6",
+      "x": 0,
+      "y": 13646,
+      "name": "AF3c-01 / 流程运行与常驻摘要",
+      "clip": true,
+      "width": 1440,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "UhmYo",
+          "name": "设计评审说明",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "yiBa9",
+              "name": "评审标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "AF3c-01 / 流程运行与常驻摘要",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 24,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "Eh6Ym",
+              "name": "评审范围",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "运行阶段、计算对象与结果当前性分别呈现 · AF3c 待评审 / 未接线 · 公开合成样本 · 2026-10-24",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "KCda1",
+          "name": "复用应用导航",
+          "width": "fill_container",
+          "fill": "#FFFFFF",
+          "stroke": "#CBD5E1",
+          "strokeWidth": {
+            "bottom": 1
+          },
+          "gap": 12,
+          "padding": [
+            12,
+            24
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "U7Owmm",
+              "name": "项目名称",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "RadishFlow / Heater–Flash 示例",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 18,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "hXfrT",
+              "name": "主页",
+              "fill": "#FFFFFF",
+              "cornerRadius": 4,
+              "stroke": "$r1-border",
+              "strokeWidth": 1,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "VKYk8",
+                  "name": "主页文字",
+                  "fill": "$r1-text",
+                  "content": "主页",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "y5wugD",
+              "name": "流程图",
+              "fill": "$r1-focus",
+              "cornerRadius": 4,
+              "stroke": "$r1-focus",
+              "strokeWidth": 1,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "q37Hs",
+                  "name": "流程图文字",
+                  "fill": "#FFFFFF",
+                  "content": "流程图",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "PLt03",
+              "name": "设备",
+              "fill": "#FFFFFF",
+              "cornerRadius": 4,
+              "stroke": "$r1-border",
+              "strokeWidth": 1,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "spbpJ",
+                  "name": "设备文字",
+                  "fill": "$r1-text",
+                  "content": "设备",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ptAOe",
+              "name": "设置",
+              "fill": "#FFFFFF",
+              "cornerRadius": 4,
+              "stroke": "$r1-border",
+              "strokeWidth": 1,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "p4LP1j",
+                  "name": "设置文字",
+                  "fill": "$r1-text",
+                  "content": "设置",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "odhel",
+          "name": "跨页面常驻运行摘要",
+          "width": "fill_container",
+          "fill": "#EFF6FF",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": [
+            12,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "kjO9c",
+              "name": "当前任务与控制",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "CO92u",
+                  "name": "任务摘要",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "◌ 流程运行中  ·  Heater–Flash 示例  ·  已完成 2 / 3 个单元",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "JOKCQ",
+                  "name": "查看运行",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "WwNmF",
+                      "name": "查看运行文字",
+                      "fill": "$r1-text",
+                      "content": "查看运行",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "nVTkG",
+                  "name": "取消运行",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "YB6zC",
+                      "name": "取消运行文字",
+                      "fill": "$r1-text",
+                      "content": "取消运行",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ic99p",
+          "name": "流程命令栏",
+          "width": "fill_container",
+          "gap": 12,
+          "padding": [
+            12,
+            20
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "Q5y4G",
+              "name": "模式与触发",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "流程图  /  自动运行：开启",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "PSTJT",
+              "name": "运行中 · F5",
+              "fill": "#F1F5F9",
+              "cornerRadius": 4,
+              "stroke": "$r1-border",
+              "strokeWidth": 1,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "amBkY",
+                  "name": "运行中 · F5文字",
+                  "fill": "$r1-secondary",
+                  "content": "运行中 · F5",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "L1q5zp",
+              "name": "关闭自动运行",
+              "fill": "#FFFFFF",
+              "cornerRadius": 4,
+              "stroke": "$r1-border",
+              "strokeWidth": 1,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "rp45P",
+                  "name": "关闭自动运行文字",
+                  "fill": "$r1-text",
+                  "content": "关闭自动运行",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "aPFhI",
+              "name": "保存",
+              "fill": "#FFFFFF",
+              "cornerRadius": 4,
+              "stroke": "$r1-border",
+              "strokeWidth": 1,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "WCUJ3",
+                  "name": "保存文字",
+                  "fill": "$r1-text",
+                  "content": "保存",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "QG0VD",
+          "name": "流程与正式输入",
+          "width": "fill_container",
+          "gap": 24,
+          "padding": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "L5pN2",
+              "name": "流程建模区域",
+              "width": 850,
+              "height": 260,
+              "fill": "#F8FAFC",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "U0kim4",
+                  "name": "当前流程",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Heater–Flash  /  当前正式输入 r42",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "Cuvm0",
+                  "name": "三个单元的流程关系",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "rcAII",
+                      "name": "F-101  进料",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "F-101  进料",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "E1Vhxg",
+                      "name": "→",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "→",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "WGOS9",
+                      "name": "H-101  加热器",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "H-101  加热器",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "KrW7U",
+                      "name": "→",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "→",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "uLUWN",
+                      "name": "V-101  闪蒸罐",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "V-101  闪蒸罐",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "g9IQJ8",
+                  "name": "查看与编辑",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "可继续选中对象、检查参数、保存或切页。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "bsQa0",
+                  "name": "运行中的结果",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "上次结果：仍对应 r42  ·  本次运行尚未发布新结果",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "K6TWM",
+              "name": "当前单元设置",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "MkBeZ",
+                  "name": "字段标题",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "H-101 / 正式输入",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "gGavd",
+                  "name": "出口温度",
+                  "fill": "$r1-specified",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "出口温度   345 K",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "BtpYR",
+                  "name": "输入草稿",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "草稿修改不会改变本次计算输入；应用后旧任务将取消。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "zckC6",
+          "name": "现有运行日志中的任务详情",
+          "width": "fill_container",
+          "stroke": "#CBD5E1",
+          "strokeWidth": {
+            "top": 1
+          },
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "Pi5kN",
+              "name": "运行详情标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "运行日志  /  当前任务",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "V0MA1r",
+              "name": "阶段",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "正在计算 V-101 闪蒸罐   ·   已完成 2 / 3 个单元   ·   已用时 00:08",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "ncwrk",
+              "name": "运行来源",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "流程：Heater–Flash 示例   /   输入 r42   /   本地物性包",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "P7sv4B",
+              "name": "进度解释",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "按完整单元报告进度；单元耗时不同，不显示预计完成时间。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Fb6Gn",
+          "name": "准备阶段替代状态",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "yIcPM",
+              "name": "准备中样例",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "◌ 准备运行  ·  正在加载物性数据",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "e8lIS",
+              "name": "准备阶段行为",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "显示取消入口，不展示虚构百分比；准备失败时在此显示原因及查看详情。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "T8j4UA",
+              "name": "评审备注",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "评审：全局只保留一条运行摘要；详情复用运行日志区域。F5 重复触发只定位当前任务，不重算、不排队。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "KuQAp",
+          "name": "准备失败替代状态",
+          "width": "fill_container",
+          "stroke": "#CBD5E1",
+          "strokeWidth": {
+            "top": 1
+          },
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "t3f5sN",
+              "name": "准备失败与恢复入口",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Pj9Mh",
+                  "name": "准备失败",
+                  "fill": "$r1-error",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "! 运行未开始  ·  所选物性包不可用",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 15,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "a4cXPl",
+                  "name": "查看详情",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ME8ai",
+                      "name": "查看详情文字",
+                      "fill": "$r1-text",
+                      "content": "查看详情",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "tUiLU",
+                  "name": "选择物性包",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "p7NJI",
+                      "name": "选择物性包文字",
+                      "fill": "$r1-text",
+                      "content": "选择物性包",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "tM6P2",
+              "name": "恢复说明",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "输入保持不变；修正原因后重新运行。授权变化时显示授权原因，不提供无效的重试按钮。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "adpct",
+      "x": 1560,
+      "y": 13646,
+      "name": "AF3c-02 / 取消、输入变化与最近运行",
+      "clip": true,
+      "width": 1440,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "hXi6N",
+          "name": "设计评审说明",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "AVJgU",
+              "name": "评审标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "AF3c-02 / 取消、输入变化与最近运行",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 24,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "z6UbBq",
+              "name": "评审范围",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "取消请求与实际终止分开；保留用户编辑和已有效结果 · AF3c 待评审 / 未接线 · 公开合成样本 · 2026-10-24",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "EMYQf",
+          "name": "取消请求后的界面",
+          "width": "fill_container",
+          "fill": "#FFF7ED",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "X2ST2v",
+              "name": "取消中操作",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "t2S0iH",
+                  "name": "取消状态",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "◌ 正在取消流程运行  ·  等待 V-101 当前调用返回",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "W3lO9",
+                  "name": "正在取消…",
+                  "fill": "#F1F5F9",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Qz9Um",
+                      "name": "正在取消…文字",
+                      "fill": "$r1-secondary",
+                      "content": "正在取消…",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "Ew4Zq",
+              "name": "取消后模式",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "自动运行：关闭  ·  可继续编辑和保存，收尾完成后可重新运行。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "wiRR4",
+              "name": "长等待提示",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "等待已超过 5 秒：当前调用尚未返回。结果不会应用到工程。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "B9yNw8",
+          "name": "正式输入变化",
+          "width": "fill_container",
+          "stroke": "#CBD5E1",
+          "strokeWidth": {
+            "top": 1
+          },
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "BiIrt",
+              "name": "修改后的摘要",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "◌ 输入已改变，正在结束上次运行",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 17,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "J6ffbA",
+              "name": "新旧输入",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "本次计算 r42 → 当前正式输入 r43  ·  上次结果已过期",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "Mjmzf",
+              "name": "自动运行提示",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "自动运行开启：收尾后检查并运行最新输入；相关草稿未处理时暂不运行。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "eNIbw",
+              "name": "自动运行控制",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "s46zdk",
+                  "name": "草稿状态",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "H-101 出口温度：有未提交输入",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "vXVpS",
+                  "name": "处理草稿",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "W7E03",
+                      "name": "处理草稿文字",
+                      "fill": "$r1-text",
+                      "content": "处理草稿",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "gaWDj",
+                  "name": "关闭自动运行",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "w1YNf",
+                      "name": "关闭自动运行文字",
+                      "fill": "$r1-text",
+                      "content": "关闭自动运行",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "w6u3X",
+          "name": "取消完成回执",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "o4gfKd",
+              "name": "完成取消",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "已取消  ·  本次未更新结果",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 17,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "qli1C",
+              "name": "上次结果",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "上次结果：仍对应当前正式输入时可查看；输入已改变时保持过期。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "iM8s5",
+              "name": "完成后动作",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "zRljz",
+                  "name": "重新运行提示",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "准备就绪后，可手动发起一次新运行。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "AOzYc",
+                  "name": "重新运行",
+                  "fill": "$r1-focus",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-focus",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Bifsi",
+                      "name": "重新运行文字",
+                      "fill": "#FFFFFF",
+                      "content": "重新运行",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "b9Z18r",
+          "name": "最近运行摘要",
+          "width": "fill_container",
+          "stroke": "#CBD5E1",
+          "strokeWidth": {
+            "top": 1
+          },
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "T1PZ9Q",
+              "name": "摘要标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "运行日志 / 最近运行",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 17,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "HtIVX",
+              "name": "运行记录 流程 · r42",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "h8iBe",
+                  "name": "目标",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "流程 · r42",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "AoDPT",
+                  "name": "处置",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "已取消",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "RxSzD",
+                  "name": "说明",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "计算已返回，结果未接收",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GvKlC",
+              "name": "运行记录 流程 · r41",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "A7gov",
+                  "name": "目标",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "流程 · r41",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "hcHzX",
+                  "name": "处置",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "完成",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "pnG1T",
+                  "name": "说明",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "结果已更新",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fM03a",
+              "name": "运行记录 旧工程 · r18",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Vm5wc",
+                  "name": "目标",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "旧工程 · r18",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "j4T6f",
+                  "name": "处置",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "未更新",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "x2B4k",
+                  "name": "说明",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "工程已切换；该次错误未影响当前工程",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "uAolR",
+              "name": "摘要范围",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "最多展示最近 8 次运行。数值错误或应用错误可展开详情；切页和新消息不抢焦点。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "FoEEl",
+          "name": "边界说明",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "JFSNZ",
+              "name": "评审边界",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "评审：关闭自动运行仅影响后续触发，不暂停当前任务。取消按钮明确指向当前任务；完成已被接收后再点取消，不撤回已发布结果。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "n9cLl",
+              "name": "提示阈值",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "建议 5 秒后追加等待说明；这是提示阈值，不是停止时限。没有“强制停止”或“继续该次运行”按钮。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "a2u0hw",
+      "x": 3120,
+      "y": 13646,
+      "name": "AF3c-03 / 设备计算、矩阵切行与占用",
+      "clip": true,
+      "width": 1440,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "BsQaj",
+          "name": "设计评审说明",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "sENE5",
+              "name": "评审标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "AF3c-03 / 设备计算、矩阵切行与占用",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 24,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "yhnQx",
+              "name": "评审范围",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "只计算指定工况，流程与设备共用一个运行槽位 · AF3c 待评审 / 未接线 · 公开合成样本 · 2026-10-24",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "x5qW29",
+          "name": "设备应用导航",
+          "width": "fill_container",
+          "fill": "#FFFFFF",
+          "stroke": "#CBD5E1",
+          "strokeWidth": {
+            "bottom": 1
+          },
+          "gap": 12,
+          "padding": [
+            12,
+            24
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "rgn0g",
+              "name": "项目名称",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "RadishFlow / 独立设备工程",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 18,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "K1ALb",
+              "name": "主页",
+              "fill": "#FFFFFF",
+              "cornerRadius": 4,
+              "stroke": "$r1-border",
+              "strokeWidth": 1,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ghDeB",
+                  "name": "主页文字",
+                  "fill": "$r1-text",
+                  "content": "主页",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "q6iAj",
+              "name": "流程图",
+              "fill": "#FFFFFF",
+              "cornerRadius": 4,
+              "stroke": "$r1-border",
+              "strokeWidth": 1,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ORnuZ",
+                  "name": "流程图文字",
+                  "fill": "$r1-text",
+                  "content": "流程图",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ldc23",
+              "name": "设备",
+              "fill": "#2563EB",
+              "cornerRadius": 4,
+              "stroke": "#2563EB",
+              "strokeWidth": 1,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "LVLX6",
+                  "name": "设备文字",
+                  "fill": "#FFFFFF",
+                  "content": "设备",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "W2ryi",
+              "name": "设置",
+              "fill": "#FFFFFF",
+              "cornerRadius": 4,
+              "stroke": "$r1-border",
+              "strokeWidth": 1,
+              "padding": [
+                8,
+                14
+              ],
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Cgkvd",
+                  "name": "设置文字",
+                  "fill": "$r1-text",
+                  "content": "设置",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "DeI3x",
+          "name": "全局设备任务摘要",
+          "width": "fill_container",
+          "fill": "#EFF6FF",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": [
+            12,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "vgGDJ",
+              "name": "活动设备运行",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "NrlbC",
+                  "name": "正在计算的精确目标",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "◌ V-202 / 工况 B  ·  正在校核",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "yotxy",
+                  "name": "查看运行",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Oafvu",
+                      "name": "查看运行文字",
+                      "fill": "$r1-text",
+                      "content": "查看运行",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Jx6e1",
+                  "name": "取消 V-202 / B",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "RpSAM",
+                      "name": "取消 V-202 / B文字",
+                      "fill": "$r1-text",
+                      "content": "取消 V-202 / B",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Z5NC09",
+          "name": "工况矩阵",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "A7pHvc",
+              "name": "矩阵标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "V-202 / 工况矩阵",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 18,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "ZYF9k",
+              "name": "说明",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "同一给定几何，逐行手动校核。切换行只改变查看对象。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "xJ3jI",
+              "name": "矩阵行 工况",
+              "width": "fill_container",
+              "fill": "#F8FAFC",
+              "gap": 12,
+              "padding": [
+                10,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "btGSu",
+                  "name": "列 0",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "工况",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Y2vRi",
+                  "name": "列 1",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "计算状态",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "k0dDN",
+                  "name": "列 2",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "结果资格",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Q4PLz",
+                  "name": "列 3",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "操作",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "rfe2y",
+              "name": "矩阵行 A · 正常负荷",
+              "width": "fill_container",
+              "fill": "#F8FAFC",
+              "gap": 12,
+              "padding": [
+                10,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "L529E",
+                  "name": "列 0",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "A · 正常负荷",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "GqlfG",
+                  "name": "列 1",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "空闲",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "bnGQb",
+                  "name": "列 2",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "当前 · 边界需复核",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "WziL1",
+                  "name": "列 3",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "查看结果",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nteS4",
+              "name": "矩阵行 B · 低负荷",
+              "width": "fill_container",
+              "fill": "#F8FAFC",
+              "gap": 12,
+              "padding": [
+                10,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "FFiXL",
+                  "name": "列 0",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "B · 低负荷",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "sd7V4",
+                  "name": "列 1",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "正在校核",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "N0a3x",
+                  "name": "列 2",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "过期 · 上次结果不可导出",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "ST3Fd",
+                  "name": "列 3",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "查看 / 取消",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "q1SN9V",
+              "name": "矩阵行 C · 高负荷（选中）",
+              "width": "fill_container",
+              "fill": "#EFF6FF",
+              "gap": 12,
+              "padding": [
+                10,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "t0TVzC",
+                  "name": "列 0",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "C · 高负荷（选中）",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "O67od",
+                  "name": "列 1",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "空闲",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "yzD95",
+                  "name": "列 2",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "尚未校核",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "naUWK",
+                  "name": "列 3",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "等待 B 收尾",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "NHVr6",
+          "name": "当前查看工况与活动目标分离",
+          "width": "fill_container",
+          "stroke": "#CBD5E1",
+          "strokeWidth": {
+            "top": 1
+          },
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "Kz8F5",
+              "name": "工况C操作",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "e7HPY",
+                  "name": "当前查看",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "当前查看：工况 C  /  输入可编辑",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 16,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "cfPBb",
+                  "name": "校核当前工况 · F5",
+                  "fill": "#F1F5F9",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "pHaQh",
+                      "name": "校核当前工况 · F5文字",
+                      "fill": "$r1-secondary",
+                      "content": "校核当前工况 · F5",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "cccqk",
+              "name": "占用原因",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "V-202 / 工况 B 正在计算。结束后请再次校核 C；本次操作未排队。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "yFhDZ",
+              "name": "动作范围",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "修改 C 不取消 B；修改共同几何或 B 的正式输入会使 B 取消。切行不改变取消按钮的目标。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "k4NQD",
+          "name": "流程占用时的设备入口",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "U1uCmx",
+              "name": "另一个领域占用",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "另一种状态：流程正在运行，设备计算暂不可用",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "o6A2GS",
+              "name": "占用处理",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "N8FPt",
+                  "name": "占用摘要",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Heater–Flash / 流程运行中  ·  可继续填写设备输入",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "ZasUZ",
+                  "name": "查看运行",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "CdtAV",
+                      "name": "查看运行文字",
+                      "fill": "$r1-text",
+                      "content": "查看运行",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "EuJqc",
+                  "name": "取消流程运行",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "k99P0n",
+                      "name": "取消流程运行文字",
+                      "fill": "$r1-text",
+                      "content": "取消流程运行",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "KQvbB",
+          "name": "结果与输出边界",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "JGPUf",
+              "name": "结果分开显示",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "评审：计算阶段与 Current / Failed / Stale / Missing 分列，运行中不伪称成功。设备无内部百分比或 ETA。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "F0M4Q8",
+              "name": "导出和采纳",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "正在重算的源对象不开放采纳 / 单行导出；不相关的有效行可沿原规则导出。矩阵仍可导出覆盖不完整的审阅表，标明各行资格，不采集未完成数据。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "k1Uij0",
+              "name": "领域差异",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "尺寸计算与校核保留原有旧结果资格差异；取消不能清空其他工况。设备取消不改变流程自动运行模式；没有“全部校核”、并行或排队入口。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "pPzrO",
+      "x": 4680,
+      "y": 13646,
+      "name": "AF3c-04 / 工程切换、只读查看与运行归属",
+      "clip": true,
+      "width": 1440,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "Z7H3Z",
+          "name": "设计评审说明",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "b5Am8H",
+              "name": "评审标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "AF3c-04 / 工程切换、只读查看与运行归属",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 24,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "U36Xy9",
+              "name": "评审范围",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "切页保留任务；真正替换工程后，旧计算仅收尾 · AF3c 待评审 / 未接线 · 公开合成样本 · 2026-10-24",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "mc7Ck",
+          "name": "切换成功后的新工程",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "JdLkq",
+              "name": "新工程身份",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "RadishFlow / 新工程 B",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "P8kvra",
+              "name": "旧任务常驻摘要",
+              "width": "fill_container",
+              "fill": "#FFF7ED",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ujPlD",
+                  "name": "旧任务与新任务资格",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "qcjnB",
+                      "name": "旧工程收尾",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "◌ 工程 A 的运行正在结束  ·  结果不会写入工程 B",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "L8Cwi4",
+                      "name": "查看运行",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-border",
+                      "strokeWidth": 1,
+                      "padding": [
+                        8,
+                        14
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "V5jow",
+                          "name": "查看运行文字",
+                          "fill": "$r1-text",
+                          "content": "查看运行",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "z66r1o",
+                      "name": "运行工程 B",
+                      "fill": "#F1F5F9",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-border",
+                      "strokeWidth": 1,
+                      "padding": [
+                        8,
+                        14
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "sG2sU",
+                          "name": "运行工程 B文字",
+                          "fill": "$r1-secondary",
+                          "content": "运行工程 B",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "Wv5q5",
+              "name": "新工程可用行为",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "工程 B 可继续编辑、保存和浏览。收尾完成后手动运行；不会自动接续工程 A 的运行意图。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "CRAv3",
+          "name": "两种打开结局",
+          "width": "fill_container",
+          "gap": 24,
+          "padding": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "K8B7Fh",
+              "name": "未完成切换",
+              "width": "fill_container",
+              "fill": "#F8FAFC",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "xdUZI",
+                  "name": "失败或取消",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "读取失败 / 打开取消",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "EW0NG",
+                  "name": "失败文案",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "读取失败：无法打开所选工程，查看原因。\n打开取消：返回原页，不显示失败。\n两种情况均保留工程 A 的任务。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "FdcBA",
+                  "name": "查看原因",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "JuJeh",
+                      "name": "查看原因文字",
+                      "fill": "$r1-text",
+                      "content": "查看原因",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "RNPGy",
+                  "name": "失败边界",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "关闭确认取消、保存失败同样保留原会话和任务；不提前发取消。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "t3c5h",
+              "name": "只读覆盖",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "rDloq",
+                  "name": "只读标题",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "只读查看 / 示例工程",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "pVGdS",
+                  "name": "只读摘要",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "原工作区运行正在结束；返回后不会恢复旧计算。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "ZYSYf",
+                  "name": "返回原工作区",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "PrAry",
+                      "name": "返回原工作区文字",
+                      "fill": "$r1-text",
+                      "content": "返回原工作区",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "aohRY",
+                  "name": "只读边界",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "保留原输入、草稿与脏状态；只读视图不接收旧任务结果。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "f8jiK7",
+          "name": "操作与影响",
+          "width": "fill_container",
+          "stroke": "#CBD5E1",
+          "strokeWidth": {
+            "top": 1
+          },
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "A3Vuh",
+              "name": "影响标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "哪些操作会结束当前运行",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 17,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "VjABk",
+              "name": "切换主页 / 物性 / 流程图 / 设备；切设备工况",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "KD0JJ",
+                  "name": "操作",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "切换主页 / 物性 / 流程图 / 设备；切设备工况",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Xjnjq",
+                  "name": "影响",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "保持原任务与目标",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "qrVmz",
+              "name": "保存 / 另存为；切换显示单位或语言",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ArOVb",
+                  "name": "操作",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "保存 / 另存为；切换显示单位或语言",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "N1H74J",
+                  "name": "影响",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "保持原任务；保存只写正式输入",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "D1xHY",
+              "name": "正式提交新建 / 打开；切入只读覆盖",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "b7CClB",
+                  "name": "操作",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "正式提交新建 / 打开；切入只读覆盖",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "o24s5",
+                  "name": "影响",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "撤销旧任务结果接收，旧计算继续收尾",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "S5sXN",
+              "name": "关闭一个观察窗口，仍有窗口拥有同一文档",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "E7K1y",
+                  "name": "操作",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "关闭一个观察窗口，仍有窗口拥有同一文档",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Z8Vjs",
+                  "name": "影响",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "保持共享任务；常驻摘要显示在其他窗口",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "TIaZr",
+              "name": "显式登出或授权被撤销",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "fwzJf",
+                  "name": "操作",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "显式登出或授权被撤销",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "QzkYj",
+                  "name": "影响",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "结束尚未接收的任务，不在新会话发布",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "zy8aP",
+          "name": "设计注释",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "U3YB0L",
+              "name": "确认沿用",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "评审：复用既有草稿、未保存修改、格式升级与读取失败保护，不叠加第二套保存确认。旧任务的失败只进入旧记录，不把新工程标成失败。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "be40t",
+              "name": "原生面板边界",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "原生文件选择器仍可能阻塞界面更新；不以静态后台画板宣称 AF1 已修复。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "vq6gb",
+      "x": 6240,
+      "y": 13646,
+      "name": "AF3c-05 / 最后窗口关闭与退出等待",
+      "clip": true,
+      "width": 1440,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "phahw",
+          "name": "设计评审说明",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "LW6kY",
+              "name": "评审标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "AF3c-05 / 最后窗口关闭与退出等待",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 24,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "DbFcR",
+              "name": "评审范围",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "先保护输入，再请求取消；返回编辑不复活旧运行 · AF3c 待评审 / 未接线 · 公开合成样本 · 2026-10-24",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "loIJD",
+          "name": "关闭流程的两阶段",
+          "width": "fill_container",
+          "gap": 28,
+          "padding": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "exvFY",
+              "name": "第一阶段保留原关闭确认",
+              "width": "fill_container",
+              "cornerRadius": 8,
+              "stroke": "#CBD5E1",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Bj9QE",
+                  "name": "阶段一",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "01 / 先处理尚未保存的修改",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "xLxWV",
+                  "name": "工程",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Heater–Flash 示例",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 20,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Y36kct",
+                  "name": "输入状态",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "有 2 项未提交输入、已提交修改尚未保存。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "B9jWW",
+                  "name": "保存范围",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "保存只写已提交内容。请返回处理草稿，或明确放弃后关闭。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "cSAuD",
+                  "name": "在途提示",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "流程正在运行；确认离开后将取消并等待收尾。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "yPWTa",
+                  "name": "关闭操作",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "B9paR",
+                      "name": "取消关闭 · 初始焦点",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-border",
+                      "strokeWidth": 1,
+                      "padding": [
+                        8,
+                        14
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "aakX0",
+                          "name": "取消关闭 · 初始焦点文字",
+                          "fill": "$r1-text",
+                          "content": "取消关闭 · 初始焦点",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "EwNtJ",
+                      "name": "保存并关闭",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-border",
+                      "strokeWidth": 1,
+                      "padding": [
+                        8,
+                        14
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "UcawO",
+                          "name": "保存并关闭文字",
+                          "fill": "$r1-text",
+                          "content": "保存并关闭",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "nXGtx",
+                      "name": "放弃并关闭",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-border",
+                      "strokeWidth": 1,
+                      "padding": [
+                        8,
+                        14
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "hekFl",
+                          "name": "放弃并关闭文字",
+                          "fill": "$r1-text",
+                          "content": "放弃并关闭",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "avoQN",
+              "name": "第二阶段等待收尾",
+              "width": "fill_container",
+              "cornerRadius": 8,
+              "stroke": "$r1-focus",
+              "strokeWidth": 2,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "vIVXp",
+                  "name": "阶段二",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "02 / 正在结束运行",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 17,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "VnB7B",
+                  "name": "等待目标",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Heater–Flash / 流程运行",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 20,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "kAI4j",
+                  "name": "等待事实",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "已请求取消，等待当前调用返回。收尾完成后将关闭窗口。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "i7XHb",
+                  "name": "长等待",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "等待超过 5 秒：当前计算尚未返回，仍在等待。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "oZ1E5",
+                  "name": "取消退出，返回编辑",
+                  "fill": "#FFFFFF",
+                  "cornerRadius": 4,
+                  "stroke": "$r1-border",
+                  "strokeWidth": 1,
+                  "padding": [
+                    8,
+                    14
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "OEf8m",
+                      "name": "取消退出，返回编辑文字",
+                      "fill": "$r1-text",
+                      "content": "取消退出，返回编辑",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "rPGt8",
+                  "name": "返回解释",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "已请求的运行取消不会撤回；返回后可继续编辑，收尾结束后重新运行。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "c7aHoo",
+          "name": "关闭与返回的保留规则",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "cuwz2",
+              "name": "数据保护标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "数据保护保持到真正离开",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 17,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "LuCv2",
+              "name": "确认前取消 / 保存失败",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "lEnFn",
+                  "name": "情境",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "确认前取消 / 保存失败",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "lC04l",
+                  "name": "行为",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "保持原任务、工程和全部草稿；不进入等待",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "O69Vy",
+              "name": "等待期间取消退出",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Eb4sO",
+                  "name": "情境",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "等待期间取消退出",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Q2YNB",
+                  "name": "行为",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "保留输入和草稿；已成功保存的文件保持已保存",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "z2RJxG",
+              "name": "曾选择放弃，但又返回编辑",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "JnG1p",
+                  "name": "情境",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "曾选择放弃，但又返回编辑",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "pPe53",
+                  "name": "行为",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "放弃意图撤回，内容不提前清空；下次关闭重新确认",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "BfGrW",
+              "name": "等待完成",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "V6PVVl",
+                  "name": "情境",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "等待完成",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "idz5c",
+                  "name": "行为",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "回收已退出的任务，再关闭最后窗口；不在界面线程阻塞等待",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jU3Rq",
+              "name": "工程干净且有任务",
+              "width": "fill_container",
+              "gap": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "qN5Z3",
+                  "name": "情境",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "工程干净且有任务",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "MAl4q",
+                  "name": "行为",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "不新增无意义的保存确认，直接进入取消收尾，可返回编辑",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "q0WFJ",
+          "name": "键盘与异常注释",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "hCPUQ",
+              "name": "键盘",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "评审：第一阶段 Escape = 取消关闭；等待阶段 Escape = 返回编辑。Enter / Space 仅激活焦点按钮，确认按键不透传到后续弹窗。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "LVAIY",
+              "name": "永久等待",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "等待界面继续响应、更新阶段和用时；没有“强制停止”或虚构倒计时。不可中断调用永久不返回时，首批不保证优雅退出。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "aAjj1",
+              "name": "其他窗口",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "仅关闭一个观察窗口且仍有拥有窗口时，不取消共享任务，也不显示此等待。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "vCUxF",
+      "x": 7800,
+      "y": 13646,
+      "name": "AF3c-06 / 400 宽、双语与键盘",
+      "clip": true,
+      "width": 1440,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "children": [
+        {
+          "type": "frame",
+          "id": "MH2Y7",
+          "name": "设计评审说明",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "NVMIb",
+              "name": "评审标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "AF3c-06 / 400 宽、双语与键盘",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 24,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "vFH8T",
+              "name": "评审范围",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "状态文本换行，操作纵排，不用颜色替代状态 · AF3c 待评审 / 未接线 · 公开合成样本 · 2026-10-24",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "nRtgB",
+          "name": "三个400宽样例",
+          "width": "fill_container",
+          "gap": 32,
+          "padding": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "hwbWA",
+              "name": "中文 100%",
+              "width": 400,
+              "fill": "#F8FAFC",
+              "stroke": "#CBD5E1",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "TZ5sT",
+                  "name": "样例尺寸",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "400 px / 中文 / 100%",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "o2BOn",
+                  "name": "状态标题",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "◌ 正在取消",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "bYQ7D",
+                  "name": "明确对象",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "设备 V-202 / 工况 B",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "cBAJ9",
+                  "name": "等待信息",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "等待当前计算返回；取消请求已接受。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "nS15p",
+                  "name": "当前查看对象",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "当前查看：工况 C",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "i6hBmq",
+                  "name": "纵排操作",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "d5OvS",
+                      "name": "查看运行",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-focus",
+                      "strokeWidth": 2,
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "y9b7N",
+                          "name": "按钮文字",
+                          "fill": "$r1-text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "查看运行",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "YNyQu",
+                      "name": "正在取消…",
+                      "width": "fill_container",
+                      "fill": "#F1F5F9",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-border",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "vS4Ae",
+                          "name": "按钮文字",
+                          "fill": "$r1-secondary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "正在取消…",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "lud6F",
+                      "name": "校核当前工况",
+                      "width": "fill_container",
+                      "fill": "#F1F5F9",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-border",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "iqPys",
+                          "name": "按钮文字",
+                          "fill": "$r1-secondary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "校核当前工况",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "eUZg4",
+                  "name": "不可计算原因",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "B 尚未结束，C 暂不可计算；不会自动排队。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "ikHvb",
+                  "name": "结果资格",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "上次结果：已过期",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "kCCao",
+                  "name": "焦点样例",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "蓝色描边：键盘焦点。状态同时使用文字和图标。",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "TUZZu",
+              "name": "English 100%",
+              "width": 400,
+              "fill": "#F8FAFC",
+              "stroke": "#CBD5E1",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "o6ytPm",
+                  "name": "样例尺寸",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "400 px / English / 100%",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "p6KSK4",
+                  "name": "状态标题",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "◌ Cancellation requested",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 18,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "z1lj3",
+                  "name": "明确对象",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Equipment V-202 / Case B",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "FJIWL",
+                  "name": "等待信息",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Waiting for the current calculation to return. The cancellation request was accepted.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "dZ4bR",
+                  "name": "当前查看对象",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Viewing: Case C",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "q6rz2",
+                  "name": "纵排操作",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "gr1E3",
+                      "name": "View run",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-focus",
+                      "strokeWidth": 2,
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "i8pQz",
+                          "name": "按钮文字",
+                          "fill": "$r1-text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "View run",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "yF43g",
+                      "name": "Cancellation requested…",
+                      "width": "fill_container",
+                      "fill": "#F1F5F9",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-border",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "sTSO4",
+                          "name": "按钮文字",
+                          "fill": "$r1-secondary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Cancellation requested…",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jfRTb",
+                      "name": "Rate current case",
+                      "width": "fill_container",
+                      "fill": "#F1F5F9",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-border",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "r5rCd",
+                          "name": "按钮文字",
+                          "fill": "$r1-secondary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Rate current case",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "SqANh",
+                  "name": "不可计算原因",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Case B is still finishing. Case C cannot start yet and has not been queued.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "e1TcE",
+                  "name": "结果资格",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Previous result: stale",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "uVE4n",
+                  "name": "焦点样例",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Blue outline: keyboard focus. Text and icons also identify the state.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "eIgkA",
+              "name": "English 200%",
+              "width": 400,
+              "fill": "#F8FAFC",
+              "stroke": "#CBD5E1",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 12,
+              "padding": 16,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "YEWvc",
+                  "name": "样例尺寸",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "400 px / English / 200%",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "IoFOG",
+                  "name": "状态标题",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "◌ Cancellation requested",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 36,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "TCEgL",
+                  "name": "明确对象",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Equipment V-202 / Case B",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 28,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "JOupr",
+                  "name": "等待信息",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Waiting for the current calculation to return. The cancellation request was accepted.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 28,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "dgmhy",
+                  "name": "当前查看对象",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Viewing: Case C",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 28,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "CjkFS",
+                  "name": "纵排操作",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "uuV59",
+                      "name": "View run",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-focus",
+                      "strokeWidth": 2,
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "r7EXAw",
+                          "name": "按钮文字",
+                          "fill": "$r1-text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "View run",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 28,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "firmn",
+                      "name": "Cancellation requested…",
+                      "width": "fill_container",
+                      "fill": "#F1F5F9",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-border",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "cjr8T",
+                          "name": "按钮文字",
+                          "fill": "$r1-secondary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Cancellation requested…",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 28,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "HTYCe",
+                      "name": "Rate current case",
+                      "width": "fill_container",
+                      "fill": "#F1F5F9",
+                      "cornerRadius": 4,
+                      "stroke": "$r1-border",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": [
+                        10,
+                        12
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "HO1GA",
+                          "name": "按钮文字",
+                          "fill": "$r1-secondary",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Rate current case",
+                          "lineHeight": 1.5,
+                          "fontFamily": "Noto Sans SC",
+                          "fontSize": 28,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "d50sur",
+                  "name": "不可计算原因",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Case B is still finishing. Case C cannot start yet and has not been queued.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 28,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "EmfvC",
+                  "name": "结果资格",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Previous result: stale",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 28,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Dk3MI",
+                  "name": "焦点样例",
+                  "fill": "$r1-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Blue outline: keyboard focus. Text and icons also identify the state.",
+                  "lineHeight": 1.5,
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 26,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "uo8sq",
+          "name": "快捷键契约",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 20,
+          "children": [
+            {
+              "type": "text",
+              "id": "Gi1qX",
+              "name": "键盘标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "键盘与焦点",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 17,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "iaW7N",
+              "name": "快捷键",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "F5：当前页面的流程运行 / 当前设备工况；Shift+F5：保留既有流程“恢复运行”含义，不改成取消。取消从可见按钮或命令面板进入。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "vs2WJ",
+              "name": "焦点规则",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Tab / Shift+Tab 可到取消与查看运行；Enter / Space 激活焦点项；Escape 仅关闭浮层或返回原编辑位置，不在普通工作区静默取消计算。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "g57nE",
+              "name": "长文布局",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "窄区状态和按钮分行，正文自然换行；详情纵向滚动。200% 为设计文字放大样例，原生 OS 倍率与读屏仍待验证。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "O36wFd",
+              "name": "通知规则",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "进度更新与终态通知不自动夺焦点；运行详情关闭后返回原入口，草稿保持。",
+              "lineHeight": 1.5,
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
