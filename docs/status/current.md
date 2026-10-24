@@ -36,7 +36,7 @@
 ### 当前优先级
 
 1. 按 [代码链路审计](../architecture/overview.md#工程基础链路审计2026-10-23) 和 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 推进。AF0 已完成；AF2a 内建目录 / 工厂、AF2b 单包上下文已接通。AF1 未定因，独立跟踪。
-2. [AF2b](../topics/property-basis-and-components.md#af2b-物性装配与运行上下文)已分离资源加载与数值服务；下一步先细化 AF3 任务身份和结果接收，再补命令与结果链路。
+2. [AF3 提案](../topics/runtime-messages/run-control-and-watch-conditions.md#af3-任务身份取消与完成接收提案待确认)已细化身份、取消和迟到接收；待确认，暂不改代码。
 3. C2-A 后续方法对比方案已认可，排期服从基础主线；原精度失败不变。C2-B / C3 暂不实施，不以共享基础为名接入新 PR 产品链或流程设备物理关联。
 4. 基础契约中提前审查 EO / 动态 / 瞬态的扩展边界，具体物性、单元、递归分块 / recycle 和高级算法按真实场景逐步填入；每项另做物理验证。
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
@@ -97,7 +97,7 @@
 
 ## 已知差异与风险路由
 
-- 架构目标与实际实现差异：`rf-thermo` 缓存装载依赖、`rf-canvas` 占位和 Studio 同步求解见 [架构总览](../architecture/overview.md)。
+- 架构差异：`rf-canvas` 占位与 Studio 同步求解见 [架构总览](../architecture/overview.md)。
 - 原生句柄释放与并发调用契约及验证范围见 [CAPE-OPEN 专题](../topics/capeopen-pmc-adapter.md)。
 - Windows 保存替换与回滚失败的恢复契约见 [项目生命周期专题](../topics/project-lifecycle-storage.md)。
 

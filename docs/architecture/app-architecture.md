@@ -52,7 +52,7 @@
 - 将 `rf-ui`、`rf-canvas`、`rf-store`、`rf-solver` 能力组装成桌面应用
 - 负责 `AuthSessionState` / `EntitlementState` 与 `StoredAuthCacheIndex` 之间的桥接与同步
 - 负责控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的协议映射、下载租约与本地缓存落盘编排
-- 负责从 `PropertyPackageProvider` 或本地 auth cache 组装最小真实求解链路，并把 `rf-solver::SolveSnapshot` 回写到 `rf-ui::AppState`
+- 负责包装配、同步求解与结果回写；[AF3 后台方案](../topics/runtime-messages-and-diagnostics.md)待确认。
 - 负责把 Studio shell 入口组织为可复现的 MVP α / β 工作流：默认显示 Home，普通空白项目先进入独立 `物性` 页，小案例作者入口可从空白项目直接进入左侧 `模块` 清单，进入 case 后暴露主路径命令
 - 负责让 `流程图` / `运行` 上下文工具栏、Run Panel `Resume`、`F5 / Shift+F5`、AppHost、StudioGuiDriver、StudioGuiHost command registry 等正式运行入口复用同一层建模输入 readiness；shell 只负责 notice、focus 和用户反馈，不在各入口复制另一套输入判断
 - 负责在 GUI shell 层提供用户操作与求解审计输出；默认 stderr 日志只作为开发态 smoke 和诊断入口，不替代未来正式审计 / telemetry 设计
