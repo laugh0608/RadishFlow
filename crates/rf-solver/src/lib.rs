@@ -10,10 +10,7 @@ use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
 use rf_thermo::ThermoProvider;
 use rf_types::{DiagnosticPortTarget, PortDirection, RfError, RfResult, StreamId, UnitId};
 use rf_unitops::{
-    BuiltinUnitKind, COOLER_KIND, FEED_KIND, FEED_OUTLET_PORT, FLASH_DRUM_KIND,
-    FLASH_DRUM_LIQUID_PORT, FLASH_DRUM_VAPOR_PORT, Feed, FlashDrum, HEATER_COOLER_OUTLET_PORT,
-    HEATER_KIND, HeaterCooler, MIXER_KIND, MIXER_OUTLET_PORT, Mixer, StreamTarget, UnitOperation,
-    UnitOperationInputs, UnitOperationServices, VALVE_KIND, Valve, validate_unit_node,
+    BuiltinUnitKind, UnitOperation, UnitOperationInputs, UnitOperationServices, validate_unit_node,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -755,20 +752,6 @@ fn dedupe_stream_ids(stream_ids: Vec<StreamId>) -> Vec<StreamId> {
         .collect()
 }
 
-fn solver_context_error(context: impl AsRef<str>, error: RfError) -> RfError {
-    let mut wrapped = RfError::new(
-        error.code(),
-        format!("{}: {}", context.as_ref(), error.message()),
-    )
-    .with_related_unit_ids(error.context().related_unit_ids().to_vec())
-    .with_related_stream_ids(error.context().related_stream_ids().to_vec())
-    .with_related_port_targets(error.context().related_port_targets().to_vec());
-    if let Some(code) = error.context().diagnostic_code() {
-        wrapped = wrapped.with_diagnostic_code(code.to_string());
-    }
-    wrapped
-}
-
 fn unit_context(unit: &UnitNode) -> String {
     format!("unit `{}` (`{}`)", unit.id, unit.kind)
 }
@@ -781,115 +764,15 @@ fn instantiate_operation(
     unit: &UnitNode,
     flowsheet: &Flowsheet,
 ) -> RfResult<Box<dyn UnitOperation>> {
-    match unit.kind.as_str() {
-        FEED_KIND => {
-            let outlet = feed_outlet_template(unit, flowsheet)?;
-            Ok(Box::new(Feed::new(outlet.clone())))
-        }
-        MIXER_KIND => {
-            let outlet = stream_target_for_port(unit, MIXER_OUTLET_PORT, flowsheet)?;
-            let mut operation = Mixer::new(outlet);
-            if let Some(pressure_pa) = unit.parameters.outlet_pressure_pa {
-                operation = operation.with_outlet_pressure_pa(pressure_pa);
-            }
-            Ok(Box::new(operation))
-        }
-        HEATER_KIND => {
-            let outlet = heater_cooler_outlet_template(unit, flowsheet)?;
-            Ok(Box::new(HeaterCooler::new(
-                BuiltinUnitKind::Heater,
-                outlet,
-            )?))
-        }
-        COOLER_KIND => {
-            let outlet = heater_cooler_outlet_template(unit, flowsheet)?;
-            Ok(Box::new(HeaterCooler::new(
-                BuiltinUnitKind::Cooler,
-                outlet,
-            )?))
-        }
-        VALVE_KIND => {
-            let outlet = valve_outlet_template(unit, flowsheet)?;
-            Ok(Box::new(Valve::new(outlet)))
-        }
-        FLASH_DRUM_KIND => {
-            let liquid = stream_target_for_port(unit, FLASH_DRUM_LIQUID_PORT, flowsheet)?;
-            let vapor = stream_target_for_port(unit, FLASH_DRUM_VAPOR_PORT, flowsheet)?;
-            let mut operation = FlashDrum::new(liquid, vapor);
-            if let Some(temperature_k) = unit.parameters.outlet_temperature_k {
-                operation = operation.with_outlet_temperature_k(temperature_k);
-            }
-            if let Some(pressure_pa) = unit.parameters.outlet_pressure_pa {
-                operation = operation.with_outlet_pressure_pa(pressure_pa);
-            }
-            Ok(Box::new(operation))
-        }
-        _ => Err(RfError::invalid_input(format!(
+    if BuiltinUnitKind::parse(&unit.kind).is_none() {
+        return Err(RfError::invalid_input(format!(
             "{} uses unsupported solver kind `{}`",
             unit_context(unit),
-            unit.kind
+            unit.kind,
         ))
-        .with_related_unit_id(unit.id.clone())),
+        .with_related_unit_id(unit.id.clone()));
     }
-}
-
-fn heater_cooler_outlet_template(
-    unit: &UnitNode,
-    flowsheet: &Flowsheet,
-) -> RfResult<MaterialStreamState> {
-    let mut outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?.clone();
-    if let Some(temperature_k) = unit.parameters.outlet_temperature_k {
-        outlet.temperature_k = temperature_k;
-    }
-    if let Some(pressure_pa) = unit.parameters.outlet_pressure_pa {
-        outlet.pressure_pa = pressure_pa;
-    }
-    Ok(outlet)
-}
-
-fn feed_outlet_template(unit: &UnitNode, flowsheet: &Flowsheet) -> RfResult<MaterialStreamState> {
-    use rf_unitops::specifications::{FeedInputField, effective_feed_input};
-    let mut outlet = stream_for_port(unit, FEED_OUTLET_PORT, flowsheet)?.clone();
-    outlet.temperature_k =
-        effective_feed_input(&unit.parameters, &outlet, FeedInputField::Temperature).value;
-    outlet.pressure_pa =
-        effective_feed_input(&unit.parameters, &outlet, FeedInputField::Pressure).value;
-    Ok(outlet)
-}
-
-fn valve_outlet_template(unit: &UnitNode, flowsheet: &Flowsheet) -> RfResult<MaterialStreamState> {
-    let mut outlet = stream_for_port(unit, HEATER_COOLER_OUTLET_PORT, flowsheet)?.clone();
-    if let Some(pressure_pa) = unit.parameters.outlet_pressure_pa {
-        outlet.pressure_pa = pressure_pa;
-    }
-    Ok(outlet)
-}
-
-fn stream_for_port<'a>(
-    unit: &UnitNode,
-    port_name: &str,
-    flowsheet: &'a Flowsheet,
-) -> RfResult<&'a MaterialStreamState> {
-    let stream_id = port_stream_id(unit, port_name)?;
-    flowsheet.stream(stream_id).map_err(|error| {
-        solver_context_error(
-            format!(
-                "{} references missing stream `{}`",
-                unit_port_context(unit, port_name),
-                stream_id
-            ),
-            error,
-        )
-    })
-}
-
-fn stream_target_for_port(
-    unit: &UnitNode,
-    port_name: &str,
-    flowsheet: &Flowsheet,
-) -> RfResult<StreamTarget> {
-    let stream = stream_for_port(unit, port_name, flowsheet)?;
-    Ok(StreamTarget::new(stream.id.clone(), stream.name.clone()))
+    rf_unitops::catalog::instantiate_builtin(unit, &flowsheet.streams)
 }
 
 fn resolved_stream_for_port<'a>(

@@ -5,7 +5,7 @@ pub(super) fn prepare_builtin_unit_creation(
     builtin_kind: BuiltinUnitKind,
     allocated_unit_ids: &BTreeSet<UnitId>,
 ) -> RfResult<(DocumentCommand, Flowsheet, UnitId)> {
-    let spec = builtin_unit_spec(builtin_kind);
+    let spec = rf_unitops::catalog::builtin_model(builtin_kind).spec;
     let unit_id = next_canvas_unit_id(flowsheet, builtin_kind, allocated_unit_ids);
     let unit = UnitNode::new(
         unit_id.clone(),

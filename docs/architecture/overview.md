@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-10-23
+更新时间：2026-10-24
 
 ## 用途
 
@@ -81,7 +81,7 @@ Studio 的 `modeling_specifications` 提供只读 A1 报告与会话身份；`mo
 
 | 方向 | 当前实现 | 限制 |
 | --- | --- | --- |
-| 内建单元 | `BuiltinUnitKind / UnitOperationSpec` 静态定义，solver 的 `instantiate_operation` 按 kind 构造 | 六类固定模型，不扫描插件或加载第三方库 |
+| 内建单元 | `rf-unitops::catalog` 静态描述与工厂统一六类模型、规格和服务需求；solver 委托构造 | 六类固定模型，不扫描插件或加载第三方库 |
 | 物性包 | `PropertyPackageProvider` 枚举 manifest 并装载 `ThermoSystem` | 当前 Studio 仍构造固定物性 / TP Flash 实现；数据包不是通用可执行插件 |
 | 物性绑定 | 流程保存一个 package ID，单次求解注入一套服务 | 尚无完整工段 / 单元多物性绑定 |
 | 对外 CAPE-OPEN | 外部 PME 发现和调用自有 Unit Operation PMC | 与 RadishFlow 加载外部 PMC 的宿主方向不同，后者未实现 |
@@ -137,6 +137,8 @@ Studio 已形成多层 host / driver / runtime / snapshot / window model，以�
 若以后允许调整实现，应先按真实用户行为审查调用链：保留有独立状态、平台隔离或跨消费者契约的层，评估纯转发和重复投影；按领域职责组织大文件与测试，不做机械切片。后台求解、取消、过期结果丢弃与快照成本应结合实际负载评估，当前没有由本次审阅得到的性能测量结论。
 
 ## 工程基础链路审计（2026-10-23）
+
+2026-10-24 后续：AF2a 已将六类构造移至 `rf-unitops::catalog`，UI 创建与 solver 共用描述，保留原 kind / 参数 / 诊断；下表仍保留 10 月 23 日审计基线。实现与验收归 [模型目录专题](../topics/modeling/model-catalog-and-runtime.md#af2a-内建目录与工厂)。
 
 基于 `9fd5650d` 的代码静态核对；本轮只修改文档，没有运行桌面窗口、性能测量或重新验收产品功能。下表的“已有”指代码中可定位的能力，自动测试位置是既有证据入口，不表示本轮重跑。原生保存症状来自 [W43 已有复现](../devlogs/2026-10/2026-W43.md#2026-10-22-原生保存定向复现与-c2-待审方案)。实施顺序和退出标准只在 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 维护。
 

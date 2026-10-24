@@ -1,3 +1,4 @@
+pub mod catalog;
 pub mod separator_adoption;
 mod separator_evidence;
 mod separator_hydraulics;
@@ -163,14 +164,7 @@ const FLASH_DRUM_SPEC: UnitOperationSpec = UnitOperationSpec {
 };
 
 pub fn builtin_unit_spec(kind: BuiltinUnitKind) -> &'static UnitOperationSpec {
-    match kind {
-        BuiltinUnitKind::Feed => &FEED_SPEC,
-        BuiltinUnitKind::Mixer => &MIXER_SPEC,
-        BuiltinUnitKind::Heater => &HEATER_SPEC,
-        BuiltinUnitKind::Cooler => &COOLER_SPEC,
-        BuiltinUnitKind::Valve => &VALVE_SPEC,
-        BuiltinUnitKind::FlashDrum => &FLASH_DRUM_SPEC,
-    }
+    catalog::builtin_model(kind).spec
 }
 
 pub fn builtin_unit_spec_by_name(kind: &str) -> Option<&'static UnitOperationSpec> {
@@ -1186,7 +1180,10 @@ mod tests {
         )
     }
 
-    fn build_provider(k_values: [f64; 2], pressure_pa: f64) -> PlaceholderThermoProvider {
+    pub(super) fn build_provider(
+        k_values: [f64; 2],
+        pressure_pa: f64,
+    ) -> PlaceholderThermoProvider {
         let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
         first.antoine = Some(build_test_antoine_coefficients(k_values[0], pressure_pa));
         first.liquid_heat_capacity_j_per_mol_k = Some(35.0);

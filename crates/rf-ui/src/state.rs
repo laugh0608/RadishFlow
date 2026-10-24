@@ -26,9 +26,7 @@ pub use unit_inspector::{
 
 use rf_model::{Component, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
 use rf_types::{ComponentId, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId};
-use rf_unitops::{
-    BuiltinUnitKind, UnitOperationSpec, builtin_unit_spec, builtin_unit_spec_by_name,
-};
+use rf_unitops::{BuiltinUnitKind, UnitOperationSpec, builtin_unit_spec_by_name};
 
 use crate::auth::{
     AuthSessionState, AuthenticatedUser, EntitlementSnapshot, EntitlementState,
