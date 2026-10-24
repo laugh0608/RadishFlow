@@ -1,6 +1,6 @@
 # 多策略求解与问题装配
 
-更新时间：2026-10-23
+更新时间：2026-10-24
 
 ## 用途与状态
 
@@ -26,7 +26,7 @@
 | 流程求解 | `SequentialModularSolver` 按拓扑顺序执行，回路报错 | 撕裂 / recycle、联立模块、EO 与混合分区 |
 | 单元 | `UnitOperation::run` 输入局部状态与服务，返回出口 | 模型残差、通用响应导数、方程元数据 |
 | 热力学 | `ThermoProvider` 与 `TpFlashSolver` 支持简化物性和 TP 路径 | 通用求导契约、完整焓基准、PH / PS 与相态切换策略 |
-| 运行与结果 | 同步求解，结果与文档修订分离 | 通用任务取消、多策略计划及迭代证据 |
+| 运行与结果 | AF3 已接后台、协作取消及守卫接收；AF5a 提供结果资格 / 来源，兼容调用保持同步 | 多策略计划、算法内部安全点、暂停 / 单步及完整迭代证据 |
 
 代码入口：[solver](../../../crates/rf-solver/src/lib.rs)、[unitops](../../../crates/rf-unitops/src/lib.rs)、[thermo](../../../crates/rf-thermo/src/lib.rs)。既有模型的物理限制见 [热力学模型](../../thermo/mvp-model.md)，不因引入新求解器而消失。
 

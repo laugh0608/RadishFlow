@@ -42,7 +42,7 @@
 | 项目物性基础与组分选择 | Active | 稳定内置 package、项目组分、保存 / 重开和运行请求之间的同一事实源 | `property-basis-and-components.md` |
 | 流程图建模与求解闭环 | Active | 维护受控单元、连接、readiness、Run Panel 和 solver 之间的边界 | `flowsheet-modeling-and-solve.md` |
 | 结果审阅、诊断与恢复 | Active | 结果与恢复保持同源；V1—V4 流向、着色、设备三维和回放为新增规划 | [结果与可视化](results-review-diagnostics.md) |
-| 运行、消息与诊断 | Draft / AF3c 已接线 | GUI 流程 / 设备后台、取消与生命周期已接通；完整 N0—N5 待续 | [运行与诊断](runtime-messages-and-diagnostics.md) |
+| 运行、消息与诊断 | 部分实现 | AF3 后台 / 取消 / 生命周期及 AF4b 类型化回执已接通；完整 N0—N5 待续 | [运行与诊断](runtime-messages-and-diagnostics.md) |
 | 项目生命周期与存储 | Active | 明确打开、保存、另存为、最近项目、sidecar 和脏改确认的长期边界 | `project-lifecycle-storage.md` |
 | CAPE-OPEN PMC 适配层 | Active | 完善 `.NET 10` PMC 生命周期与调用可靠性，保持 COM 注册和 PME 验证基线 | `capeopen-pmc-adapter.md` |
 | 工程设计基础、工况与数据来源 | Draft | 共享基础 / 来源、单工况与设备事务已实现；G2-B1—B3 完成；C1 固定采纳、UI / 保存 / 证据输出及代表验证完成 | [工程基础](engineering-basis-and-cases.md) |
@@ -59,7 +59,7 @@ UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-p
 
 | 专题 | 当前状态 | 父专题与范围 | 入口 |
 | --- | --- | --- | --- |
-| 统一变量与对象浏览器 | Draft / 2026-09-28 方向已确认 | Studio 主工作流；工程视图、变量树、稳定引用、受控编辑和跨端消费，复用已有 B3 基础；VB0—VB3 待实施 | [变量与对象浏览器](variable-and-object-browser.md) |
+| 统一变量与对象浏览器 | 部分实现 / AF4a、AF4b 已完成 | 工程发现与正式动作已接通；完整浏览工作区、路径协议、关注项和新版 CLI 待续 | [变量与对象浏览器](variable-and-object-browser.md) |
 
 ### 运行、消息与诊断
 

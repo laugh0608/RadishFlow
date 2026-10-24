@@ -497,7 +497,7 @@ RadishFlow Studio
 - 下载 DTO 是控制面 / 资产分发协议对象，不直接等同于本地 `StoredPropertyPackagePayload`
 - 当前协议映射层正式收口到 `apps/radishflow-studio`，由应用层把下载 JSON 映射为 `StoredPropertyPackagePayload` 并继续走本地缓存落盘
 - `PropertyPackageLeaseGrant.hash` / `PropertyPackageManifest.hash` 与 `sizeBytes` 当前正式绑定“协议映射后的 `StoredPropertyPackagePayload` 规范化 JSON 字节”，不绑定原始 HTTP 响应外壳
-- 桌面端当前先在 `apps/radishflow-studio` 收口下载获取抽象；后续真实 HTTP 客户端只负责实现 fetcher，不再改动本地缓存 DTO 或 `rf-thermo` provider 口径
+- 桌面端当前先在 `apps/radishflow-studio` 收口下载获取抽象；后续真实 HTTP 客户端只负责实现 fetcher，不再改动本地缓存 DTO 或 `rf-property-package` 装载口径
 - 当前也已补 `PropertyPackageDownloadHttpRequest` / `Response` 与 transport 端口，把原始 HTTP 请求、响应头/状态码与下载协议映射层显式分开
 - 当前仓库已补首个基于 `reqwest + rustls` 的 blocking HTTP transport，作为 `PropertyPackageDownloadHttpTransport` 的默认真实实现
 - 下载抓取错误当前正式区分 `timeout`、连接失败、限流/服务不可用、鉴权失败、找不到资源、无效响应和其他瞬时/永久错误，由 `apps/radishflow-studio` 负责收口
@@ -506,7 +506,7 @@ RadishFlow Studio
 - 当前下载 transport 默认直接对 `downloadUrl` 发起 `GET` 请求，并发送 `Accept: application/json`；不额外叠加长期 bearer token 到下载通道
 - 下载落盘当前正式要求失败回滚：若 `payload.rfpkg`、`manifest.json` 或 `index.json` 任一步写入失败，必须恢复或清理已写半成品，避免损坏现有缓存
 - `rf-store` 继续只理解本地持久化 DTO，不直接理解控制面下载协议
-- `rf-thermo` 继续只理解本地缓存结果，不直接解析下载响应 JSON
+- `rf-property-package` 装载本地受检数据，`rf-thermo` 只消费解析后的数值数据；两者不解析下载响应 JSON
 
 ### `OfflineLeaseRefreshRequest`
 
@@ -597,7 +597,7 @@ RadishFlow Studio
 
 职责：
 
-- 作为应用组合根装配 `rf-ui`、`rf-store`、`rf-thermo` 与后续控制面客户端
+- 作为应用组合根装配 `rf-ui`、`rf-store`、`rf-property-package` 与后续控制面客户端
 - 承接 `AuthSessionState` / `EntitlementState` 与 `StoredAuthCacheIndex` 之间的桥接和同步
 - 负责把离线刷新、下载完成和缓存索引更新收口成单一路径
 - 负责 entitlement panel driver、启动预检、会话内调度策略与 session event 宿主
