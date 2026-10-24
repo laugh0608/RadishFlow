@@ -40,6 +40,10 @@ impl ReadyAppState {
         id: &EquipmentTaskId,
         format: CalculationTableFormat,
     ) -> Option<CapturedEquipmentOutput> {
+        if self.equipment_target_busy(id, None) {
+            self.equipment_export_unavailable();
+            return None;
+        }
         let workspace = &self.platform_host.modeling_inputs().workspace;
         let session = &workspace.engineering;
         if let Some(task) = session.inputs().rating_task(id) {
@@ -86,6 +90,10 @@ impl ReadyAppState {
         member: &EquipmentCaseKey,
         format: CalculationTableFormat,
     ) -> Option<CapturedEquipmentOutput> {
+        if self.equipment_target_busy(&member.task_id, Some(&member.case_id)) {
+            self.equipment_export_unavailable();
+            return None;
+        }
         let workspace = &self.platform_host.modeling_inputs().workspace;
         let session = &workspace.engineering;
         let Some(task) = session.inputs().rating_task(&member.task_id) else {
@@ -239,7 +247,8 @@ impl ReadyAppState {
                 task: id,
                 calculation_id,
             } => {
-                session.current_candidate(id).is_some()
+                !self.equipment_target_busy(id, None)
+                    && session.current_candidate(id).is_some()
                     && session.calculation_id(id) == Some(calculation_id)
                     && !workspace.equipment_editor.pending_for_task(id, session)
             }
@@ -248,7 +257,8 @@ impl ReadyAppState {
                 calculation_id,
                 units,
             } => {
-                session.current_rating(member).is_some()
+                !self.equipment_target_busy(&member.task_id, Some(&member.case_id))
+                    && session.current_rating(member).is_some()
                     && session.case_calculation_id(member) == Some(calculation_id)
                     && !workspace.equipment_editor.pending_for_case(member, session)
                     && workspace.project_presentation.display_units() == units

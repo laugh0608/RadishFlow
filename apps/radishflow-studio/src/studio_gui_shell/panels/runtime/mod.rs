@@ -378,9 +378,15 @@ impl ReadyAppState {
             ui.horizontal_wrapped(|ui| {
                 let primary = run_panel.primary_action();
                 let response = ui.add_enabled(
-                    primary.enabled,
-                    egui::Button::new(self.locale.runtime_label(primary.label).as_ref())
-                        .fill(egui::Color32::from_rgb(230, 239, 252)),
+                    primary.enabled && self.run_panel_background_enabled(primary.id),
+                    egui::Button::new(
+                        self.locale
+                            .runtime_label(
+                                self.background_run_panel_label(primary.id, primary.label),
+                            )
+                            .as_ref(),
+                    )
+                    .fill(egui::Color32::from_rgb(230, 239, 252)),
                 );
                 let response = response.on_hover_text(primary.detail);
                 if response.clicked() {
@@ -389,8 +395,14 @@ impl ReadyAppState {
 
                 for action in &run_panel_view.secondary_actions {
                     let response = ui.add_enabled(
-                        action.enabled,
-                        egui::Button::new(self.locale.runtime_label(action.label).as_ref()),
+                        action.enabled && self.run_panel_background_enabled(action.id),
+                        egui::Button::new(
+                            self.locale
+                                .runtime_label(
+                                    self.background_run_panel_label(action.id, action.label),
+                                )
+                                .as_ref(),
+                        ),
                     );
                     let response = response.on_hover_text(action.detail);
                     if response.clicked() {
@@ -399,7 +411,30 @@ impl ReadyAppState {
                 }
             });
             ui.add_space(6.0);
+            if self.background_runs.is_some() {
+                let active = window.runtime.control_state.simulation_mode == SimulationMode::Active;
+                ui.small(match (self.locale, active) {
+                    (StudioShellLocale::ZhCn, true) => {
+                        "自动运行：开启。关闭自动运行不会取消当前计算。"
+                    }
+                    (StudioShellLocale::ZhCn, false) => "自动运行：关闭。当前计算可继续完成。",
+                    (StudioShellLocale::En, true) => {
+                        "Automatic run: on. Turning it off does not cancel the current calculation."
+                    }
+                    (StudioShellLocale::En, false) => {
+                        "Automatic run: off. The current calculation can still finish."
+                    }
+                });
+            }
             if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
+                if self.background_busy() {
+                    ui.small(match self.locale {
+                        StudioShellLocale::ZhCn => "上次结果 · 本次运行完成后另行更新",
+                        StudioShellLocale::En => {
+                            "Previous result · the current run has not updated it yet"
+                        }
+                    });
+                }
                 render_wrapped_label(
                     ui,
                     self.locale.solve_snapshot_primary_summary(
@@ -437,8 +472,11 @@ impl ReadyAppState {
             }
             if let Some(notice) = run_panel_view.notice.as_ref() {
                 ui.add_space(6.0);
-                ui.colored_label(notice_color(notice.level), &notice.title);
-                render_wrapped_label(ui, &notice.message);
+                ui.colored_label(
+                    notice_color(notice.level),
+                    self.locale.runtime_label(&notice.title),
+                );
+                render_wrapped_label(ui, self.locale.runtime_label(&notice.message));
                 if let Some(recovery_action) = notice.recovery_action.as_ref() {
                     render_wrapped_small(ui, recovery_action.detail);
                     if ui.button(recovery_action.title).clicked() {
@@ -1114,7 +1152,10 @@ impl ReadyAppState {
     ) -> egui::Response {
         let label = self.localized_command_action_label(action);
         let response = ui
-            .small_button(label.as_ref())
+            .add_enabled(
+                self.background_command_enabled(&action.command_id),
+                egui::Button::new(label.as_ref()).small(),
+            )
             .on_hover_text(&action.hover_text);
         if response.clicked() {
             self.dispatch_ui_command(&action.command_id);

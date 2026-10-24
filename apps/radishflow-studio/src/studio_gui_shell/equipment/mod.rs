@@ -357,7 +357,10 @@ impl ReadyAppState {
                         commands.push(EquipmentEditorCommand::Check(id.clone()));
                     }
                     if ui
-                        .button(tr(locale, "计算尺寸", "Calculate size"))
+                        .add_enabled(
+                            !self.background_busy(),
+                            egui::Button::new(tr(locale, "计算尺寸", "Calculate size")),
+                        )
                         .clicked()
                     {
                         commands.push(EquipmentEditorCommand::Calculate(id.clone()));
@@ -378,7 +381,8 @@ impl ReadyAppState {
                 }
             });
             if let EquipmentEditorTarget::Task(id) = &target {
-                let enabled = session.current_candidate(id).is_some()
+                let enabled = !self.equipment_target_busy(id, None)
+                    && session.current_candidate(id).is_some()
                     && !editor.pending_for_task(id, &session);
                 ui.horizontal_wrapped(|ui| {
                     let adopt = ui.add_enabled(

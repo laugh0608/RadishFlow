@@ -751,6 +751,7 @@ mod unit_settings_layout;
 mod unit_settings_localization;
 mod view_units;
 
+mod background_run;
 mod equipment_adoption;
 mod equipment_editor;
 mod equipment_rating_storage;

@@ -77,6 +77,7 @@ pub enum StudioAppExecutionLane {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppExecutionBoundary {
     Inline(StudioAppExecutionLane),
+    Background(StudioAppExecutionLane),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -155,6 +156,7 @@ pub struct StudioWorkspaceRunFailed {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioWorkspaceRunOutcome {
     Started(StudioSolveRequest),
+    Background(crate::StudioRunSubmission),
     Skipped(WorkspaceSolveSkipReason),
     Blocked(StudioWorkspaceRunBlocked),
     Failed(StudioWorkspaceRunFailed),
@@ -187,9 +189,22 @@ pub struct StudioAppCommandOutcome {
 #[derive(Debug, Clone, Default)]
 pub struct StudioAppFacade {
     solve_service: WorkspaceSolveService,
+    pub(crate) background: Option<crate::studio_run_owner::BackgroundRunSession>,
 }
 
 impl StudioAppFacade {
+    fn execution_boundary(&self, command: &StudioAppCommand) -> StudioAppExecutionBoundary {
+        if self.background.is_some()
+            && matches!(
+                command,
+                StudioAppCommand::RunWorkspace(_) | StudioAppCommand::ResumeWorkspace(_)
+            )
+        {
+            StudioAppExecutionBoundary::Background(StudioAppExecutionLane::WorkspaceSolve)
+        } else {
+            command.execution_boundary()
+        }
+    }
     pub fn new() -> Self {
         Self::default()
     }
@@ -200,7 +215,7 @@ impl StudioAppFacade {
         context: &StudioAppAuthCacheContext<'_>,
         command: &StudioAppCommand,
     ) -> RfResult<StudioAppCommandOutcome> {
-        let boundary = command.execution_boundary();
+        let boundary = self.execution_boundary(command);
         let dispatch = match command {
             StudioAppCommand::RunWorkspace(run_command) => StudioAppResultDispatch::WorkspaceRun(
                 self.run_workspace_from_auth_cache(app_state, context, run_command)?,
@@ -234,7 +249,7 @@ impl StudioAppFacade {
     where
         Client: crate::RadishFlowControlPlaneClient,
     {
-        let boundary = command.execution_boundary();
+        let boundary = self.execution_boundary(command);
         let dispatch = match command {
             StudioAppCommand::RunWorkspace(run_command) => {
                 let readonly_context =
@@ -286,6 +301,26 @@ impl StudioAppFacade {
         context: &StudioAppAuthCacheContext<'_>,
         command: &WorkspaceRunCommand,
     ) -> RfResult<StudioWorkspaceRunDispatch> {
+        if let Some(background) = &self.background {
+            let submission = background.owner.borrow_mut().submit_flow(
+                app_state,
+                background.root.clone(),
+                context.auth_cache_index,
+                command,
+                std::time::SystemTime::now(),
+            )?;
+            let outcome = match submission {
+                crate::StudioRunSubmission::Flow(crate::WorkspaceRunSubmission::Blocked(
+                    crate::WorkspaceRunBlock::Preflight(blocked),
+                )) => StudioWorkspaceRunOutcome::Blocked(blocked),
+                crate::StudioRunSubmission::Flow(crate::WorkspaceRunSubmission::Skipped(
+                    reason,
+                )) => StudioWorkspaceRunOutcome::Skipped(reason),
+                submission => StudioWorkspaceRunOutcome::Background(submission),
+            };
+            record_workspace_run_outcome(app_state, &outcome);
+            return Ok(map_workspace_run_dispatch(app_state, None, outcome));
+        }
         let package_id = match preflight_workspace_run(app_state, context.auth_cache_index, command)
         {
             WorkspaceRunPreflight::Ready(package_id) => package_id,
@@ -369,6 +404,17 @@ impl StudioAppFacade {
             ));
         }
 
+        if let Some(background) = &self.background
+            && let Some(activity) = background.owner.borrow().activity()
+        {
+            return Ok(map_workspace_run_dispatch(
+                app_state,
+                Some(package_id),
+                StudioWorkspaceRunOutcome::Background(crate::StudioRunSubmission::Busy(
+                    activity.id,
+                )),
+            ));
+        }
         app_state.set_simulation_mode(SimulationMode::Active);
         app_state.push_log(AppLogLevel::Info, "Activated workspace simulation mode");
 
@@ -441,7 +487,7 @@ pub(crate) fn preflight_workspace_run(
 
 fn record_workspace_run_outcome(app_state: &mut AppState, outcome: &StudioWorkspaceRunOutcome) {
     match outcome {
-        StudioWorkspaceRunOutcome::Started(_) => {}
+        StudioWorkspaceRunOutcome::Started(_) | StudioWorkspaceRunOutcome::Background(_) => {}
         StudioWorkspaceRunOutcome::Skipped(reason) => {
             push_log_if_needed(
                 app_state,

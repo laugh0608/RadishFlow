@@ -8,6 +8,13 @@ pub(super) struct ReadOnlyProjectView {
 }
 impl ReadyAppState {
     pub(super) fn render_read_only_project(&mut self, ctx: &egui::Context) -> bool {
+        if self.read_only_project.is_some() {
+            self.render_background_activity(ctx);
+            if self.background_run_details_open {
+                let window = self.platform_host.snapshot().window_model();
+                self.render_bottom_drawer(ctx, &window);
+            }
+        }
         let Some(view) = &self.read_only_project else {
             return false;
         };

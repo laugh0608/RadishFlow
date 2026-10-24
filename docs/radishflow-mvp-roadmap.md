@@ -68,7 +68,7 @@ P2 的自动化按可交付切片展开：先做变量 / 动作描述和只读�
 | AF5 结果、诊断与功能联动 | AF3 运行来源；AF2 方法来源；消费既有单位 / 设备结果，AF4 按入口逐项接入 | 在现有快照与设备资格之上补来源、Current / Stale / Missing / Failed 的一致查询和呈现、诊断对象定位及导出证据。保持流程与设备各自结果模型，不强行统一为一个巨大 DTO | 输入改变后界面、查询和导出同样拒绝旧结果；失败可定位到原工程对象；单位转换一致；打开 / 导出不暗算物性；工程关联不得绕过 C3 门禁 |
 | AF6 扩展边界复核 | 场景设计从 AF0 即开始；待 AF2 / AF3 / AF5 的实际契约形成后收口 | 用现有 SM 链路检查装配与结果接口，并用一个小型 EO 和一个积存动态场景审查未知量 / 残差 / 时间状态 / 初始化归属。输出后续 QS / P5 / P6 的最小接入需求与缺项，不创建成功占位模式 | UI / 存储不直接依赖数值工作区；工程图、执行计划和数学问题可区分；不支持的导数、时间或残差能力明确；本切片通过不代表 EO、动态或瞬态已实现 |
 
-2026-10-24 已形成 [AF3 任务提案](topics/runtime-messages/run-control-and-watch-conditions.md#af3-任务身份取消与完成接收方案)与[验收边界](topics/runtime-messages/scenarios-and-acceptance.md#af3-专项验收边界)，拟按身份 / 接收 → 后台流程 / 取消 → 设备 / 生命周期接线推进。方案已确认，AF3a 和 AF3b 后台 / 取消接口已实现；GUI 仍同步，设备与产品生命周期归 AF3c。AF1 继续独立跟踪，不代表已修复。
+2026-10-24 已形成 [AF3 任务提案](topics/runtime-messages/run-control-and-watch-conditions.md#af3-任务身份取消与完成接收方案)与[验收边界](topics/runtime-messages/scenarios-and-acceptance.md#af3-专项验收边界)，按身份 / 接收 → 后台流程 / 取消 → 设备 / 生命周期接线推进。方案已确认，AF3a—c 已接通；正式与实窗证据及保留项以专项验收为准。AF1 继续独立跟踪，不代表已修复。
 
 原默认次序为 **AF1 → AF2 必要装配 → AF3 → AF4 / AF5 → AF6 收口**；2026-10-24 确认实施 AF2a / AF2b，AF1 保留独立故障跟踪。这表示优先级而非全部硬依赖：AF2a 与 AF2b、AF4 的只读发现与 AF5 的展示盘点可以分别推进；AF6 的领域边界审查从早期开始。AF1 是当前已知用户路径故障的首修项，不要求所有平台验收结束后才能设计其他切片。跨平台与 I5 仍按既定节点补验，不能因本排序取消。
 
@@ -245,7 +245,7 @@ QS2 与 QS3 不强制串行；首个 EO 块不等待全部设备支持 EO，也�
 | 缓存进入 thermo、Canvas 实际位置 | [架构总览](architecture/overview.md) | 目标与实现差异 |
 | native 句柄释放保护 | [适配层专题](topics/capeopen-pmc-adapter.md) | 已补齐调用与释放保护，验证范围见专题 |
 | Windows 保存回滚错误 | [存储专题](topics/project-lifecycle-storage.md) | 已保留双重失败上下文并补齐故障注入，平台验证见专题 |
-| Studio 调用层次与同步执行 | [App 架构](architecture/app-architecture.md) | 维护性建议，无性能测量结论 |
+| Studio 调用层次与执行边界 | [App 架构](architecture/app-architecture.md) | 维护性建议，无性能测量结论 |
 
 ## 历史规划与详细入口
 

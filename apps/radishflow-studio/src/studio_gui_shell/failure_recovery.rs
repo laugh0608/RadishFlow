@@ -63,7 +63,13 @@ impl ReadyAppState {
                     radishflow_studio::StudioAppResultDispatch::WorkspaceRun(_)
                 ) =>
             {
-                self.update_workbench_tabs_after_run(&dispatch.dispatch.window);
+                if matches!(&outcome.dispatch, radishflow_studio::StudioAppResultDispatch::WorkspaceRun(run)
+                    if matches!(run.outcome, radishflow_studio::StudioWorkspaceRunOutcome::Background(_)))
+                {
+                    self.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
+                } else {
+                    self.update_workbench_tabs_after_run(&dispatch.dispatch.window);
+                }
                 return;
             }
             StudioRuntimeDispatch::RunPanelRecovery(recovery) => recovery,

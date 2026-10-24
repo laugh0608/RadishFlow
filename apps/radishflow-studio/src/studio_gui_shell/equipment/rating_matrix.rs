@@ -220,12 +220,13 @@ impl ReadyAppState {
         if wide {
             egui::Grid::new(("rating-matrix", &task.id))
                 .striped(true)
-                .num_columns(6)
-                .max_col_width((ui.available_width() / 6.0 - 12.0).max(80.0))
+                .num_columns(7)
+                .max_col_width((ui.available_width() / 7.0 - 12.0).max(80.0))
                 .show(ui, |ui| {
                     for label in [
                         tr(l, "工况", "Case"),
                         tr(l, "结果资格", "Result status"),
+                        tr(l, "计算阶段", "Execution"),
                         tr(l, "气相负荷", "Gas load"),
                         tr(l, "液体负荷", "Liquid load"),
                         tr(l, "两项结论", "Criteria"),
@@ -253,6 +254,7 @@ impl ReadyAppState {
                             clicked = Some(row.member.clone());
                         }
                         ui.label(rating_labels::status_label(l, row.status));
+                        ui.label(self.equipment_execution_label(&row.member));
                         let p = row.result.as_ref().map(|r| r.performance());
                         for load in [
                             p.map(|p| p.gas.load_fraction),
@@ -303,6 +305,7 @@ impl ReadyAppState {
                         clicked = Some(row.member.clone());
                     }
                     ui.label(rating_labels::status_label(l, row.status));
+                    ui.label(self.equipment_execution_label(&row.member));
                     if let Some(r) = &row.result {
                         let p = r.performance();
                         ui.label(format!(

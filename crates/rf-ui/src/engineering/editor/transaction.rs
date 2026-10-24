@@ -48,11 +48,8 @@ impl EquipmentEditorState {
                 );
             }
             CalculateRating(member) => {
-                if self.pending_for_case(&member, session) {
-                    return Err(EquipmentEditError::PendingDrafts);
-                }
-                session.calculate_rating(&member)?;
-                self.rating_checks.remove(&member);
+                let request = self.prepare_calculation(session, &CalculateRating(member))?;
+                session.complete_calculation(request.execute())?;
             }
             CreateTask => {
                 let id = self.next_id(session, "task")?;
@@ -252,11 +249,8 @@ impl EquipmentEditorState {
                 );
             }
             Calculate(task) => {
-                if self.pending_for_task(&task, session) {
-                    return Err(EquipmentEditError::PendingDrafts);
-                }
-                session.calculate(&task)?;
-                self.checks.remove(&task);
+                let request = self.prepare_calculation(session, &Calculate(task))?;
+                session.complete_calculation(request.execute())?;
             }
         }
         Ok(())

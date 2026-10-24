@@ -164,7 +164,7 @@ impl ReadyAppState {
 
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
-                self.platform_host = platform_host;
+                self.replace_background_host(platform_host);
                 self.read_only_project = None;
                 self.modeling_problems
                     .replace_document(self.platform_host.document());
@@ -313,6 +313,7 @@ impl ReadyAppState {
     pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
         match radishflow_studio::read_studio_project(&project_path) {
             Ok(radishflow_studio::StudioProjectOpen::ReadOnly(project)) => {
+                self.background_action(radishflow_studio::StudioBackgroundRunAction::Detach);
                 self.read_only_project = Some(project_read_only::ReadOnlyProjectView {
                     path: project_path,
                     project,
@@ -343,7 +344,7 @@ impl ReadyAppState {
 
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
-                self.platform_host = platform_host;
+                self.replace_background_host(platform_host);
                 self.read_only_project = None;
                 self.modeling_problems
                     .replace_document(self.platform_host.document());
@@ -466,6 +467,11 @@ impl ReadyAppState {
     }
 
     pub(super) fn update(&mut self, ctx: &egui::Context) {
+        self.poll_background_runs(ctx);
+        if self.render_background_exit(ctx) {
+            return;
+        }
+
         if self.render_read_only_project(ctx) {
             return;
         }
@@ -516,6 +522,15 @@ impl ReadyAppState {
             &window,
             &mut hovered_drop_target,
         );
+        self.render_background_activity(ctx);
+        if self.background_run_details_open
+            && matches!(
+                self.screen,
+                StudioShellScreen::Equipment | StudioShellScreen::Property
+            )
+        {
+            self.render_bottom_drawer(ctx, &window);
+        }
         if self.screen == StudioShellScreen::Equipment {
             self.render_equipment_page(ctx);
             self.render_command_palette(ctx, &window.commands);
@@ -577,6 +592,15 @@ impl ReadyAppState {
             &window,
             &mut hovered_drop_target,
         );
+        self.render_background_activity(ctx);
+        if self.background_run_details_open
+            && matches!(
+                self.screen,
+                StudioShellScreen::Equipment | StudioShellScreen::Property
+            )
+        {
+            self.render_bottom_drawer(ctx, &window);
+        }
         if self.screen == StudioShellScreen::Equipment {
             self.render_equipment_page(ctx);
             self.render_command_palette(ctx, &window.commands);
@@ -630,6 +654,9 @@ impl ReadyAppState {
 
     pub(super) fn dispatch_ui_command(&mut self, command_id: impl Into<String>) {
         let command_id = command_id.into();
+        if self.dispatch_background_cancel_command(&command_id) {
+            return;
+        }
         if self.intercept_recommendation_command(&command_id) {
             return;
         }

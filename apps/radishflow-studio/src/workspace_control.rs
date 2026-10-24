@@ -241,6 +241,55 @@ pub fn dispatch_workspace_control_action_with_auth_cache(
     })
 }
 
+fn background_run_notice(submission: &crate::StudioRunSubmission) -> RunPanelNotice {
+    use crate::{StudioRunSubmission as S, WorkspaceRunBlock as B, WorkspaceRunSubmission as W};
+    let (level, title, detail) = match submission {
+        S::Flow(W::Accepted(_)) | S::Accepted(_) => (
+            RunPanelNoticeLevel::Info,
+            "Run preparing",
+            "The calculation was submitted. Results will be available after it finishes.",
+        ),
+        S::Flow(W::AlreadyRunning(_)) | S::AlreadyRunning(_) => (
+            RunPanelNoticeLevel::Info,
+            "Already running",
+            "This task is already running. View its activity or cancel that task.",
+        ),
+        S::Flow(W::Busy(_)) | S::Busy(_) => (
+            RunPanelNoticeLevel::Info,
+            "Calculation busy",
+            "Another task is still running. This request was not queued.",
+        ),
+        S::Closing | S::Flow(W::Blocked(B::Closing)) => (
+            RunPanelNoticeLevel::Warning,
+            "Application closing",
+            "New calculations are disabled while waiting for the current task to finish.",
+        ),
+        S::Flow(W::Blocked(B::Authorization(crate::RunAuthorizationRefusal::Expired))) => (
+            RunPanelNoticeLevel::Warning,
+            "Authorization expired",
+            "Refresh the offline authorization before starting a calculation.",
+        ),
+        S::Flow(W::Blocked(B::Authorization(crate::RunAuthorizationRefusal::Changed))) => (
+            RunPanelNoticeLevel::Warning,
+            "Authorization changed",
+            "The current authorization does not permit this calculation.",
+        ),
+        S::Flow(W::Blocked(B::Preflight(blocked))) => {
+            return RunPanelNotice::new(
+                RunPanelNoticeLevel::Warning,
+                "Run blocked",
+                blocked.message.clone(),
+            );
+        }
+        S::Flow(W::Skipped(_)) => (
+            RunPanelNoticeLevel::Info,
+            "Run skipped",
+            "There is no eligible automatic request.",
+        ),
+    };
+    RunPanelNotice::new(level, title, detail)
+}
+
 fn notice_from_dispatch(
     dispatch: &StudioAppResultDispatch,
     latest_diagnostic_primary_code: Option<&str>,
@@ -250,6 +299,9 @@ fn notice_from_dispatch(
 ) -> Option<RunPanelNotice> {
     match dispatch {
         StudioAppResultDispatch::WorkspaceRun(dispatch) => match &dispatch.outcome {
+            StudioWorkspaceRunOutcome::Background(submission) => {
+                Some(background_run_notice(submission))
+            }
             StudioWorkspaceRunOutcome::Started(request) => Some(RunPanelNotice::new(
                 RunPanelNoticeLevel::Info,
                 "Run completed",

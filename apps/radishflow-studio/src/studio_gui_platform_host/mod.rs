@@ -525,6 +525,13 @@ pub struct StudioGuiPlatformHost {
 }
 
 impl StudioGuiPlatformHost {
+    pub fn background_run_action(
+        &mut self,
+        action: crate::StudioBackgroundRunAction,
+    ) -> RfResult<bool> {
+        self.driver.background_run_action(action)
+    }
+
     pub fn new(config: &crate::StudioRuntimeConfig) -> RfResult<Self> {
         Ok(Self {
             driver: StudioGuiDriver::new(config)?,

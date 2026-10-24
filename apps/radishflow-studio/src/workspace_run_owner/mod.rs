@@ -1,6 +1,6 @@
 //! Application-owned background flow execution. Keep this owner outside the
 //! replaceable document host; poll until idle before dropping it or exiting.
-//! The existing GUI wiring remains synchronous until the AF3c lifecycle work.
+//! The desktop StudioRunOwner shares its numeric slot with device calculations.
 mod authorization;
 #[cfg(test)]
 mod tests;
@@ -307,9 +307,17 @@ impl WorkspaceRunOwner {
         }
     }
 
-    pub fn begin_shutdown(&mut self, app: Option<&mut AppState>) {
+    pub fn begin_shutdown(&mut self, mut app: Option<&mut AppState>) {
         self.accepting = false;
         if let Some(active) = &mut self.active {
+            if let Some(app) = app.as_deref_mut()
+                && active
+                    .receipt
+                    .qualification()
+                    .same_session(&app.flow_run_qualification())
+            {
+                app.set_simulation_mode(SimulationMode::Hold);
+            }
             Self::cancel_active(active, app, WorkspaceRunCancelReason::Closing);
         }
     }

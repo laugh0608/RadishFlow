@@ -9,6 +9,8 @@ pub mod editor;
 mod impact;
 mod matrix;
 pub use matrix::{RatingMatrixCapture, RatingMatrixCaptureError, RatingMatrixRow};
+#[cfg(test)]
+mod calculation_control_tests;
 mod rating_commands;
 #[cfg(test)]
 mod rating_tests;
@@ -21,8 +23,8 @@ pub use commands::{
 };
 pub use impact::TaskImpact;
 pub use results::{
-    CalculationId, CalculationRequest, CompletedCalculation, EquipmentResultStatus,
-    ResultGeneration, ResultStaleness,
+    CalculationId, CalculationQualification, CalculationRequest, CompletedCalculation,
+    EquipmentResultStatus, ResultGeneration, ResultStaleness,
 };
 
 use crate::DocumentId;

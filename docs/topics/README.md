@@ -42,7 +42,7 @@
 | 项目物性基础与组分选择 | Active | 稳定内置 package、项目组分、保存 / 重开和运行请求之间的同一事实源 | `property-basis-and-components.md` |
 | 流程图建模与求解闭环 | Active | 维护受控单元、连接、readiness、Run Panel 和 solver 之间的边界 | `flowsheet-modeling-and-solve.md` |
 | 结果审阅、诊断与恢复 | Active | 结果与恢复保持同源；V1—V4 流向、着色、设备三维和回放为新增规划 | [结果与可视化](results-review-diagnostics.md) |
-| 运行、消息与诊断 | Draft / AF3b 接口已实现 | 后台流程 / 取消与接收已接通；GUI / 设备闭环及 N0—N5 待续 | [运行与诊断](runtime-messages-and-diagnostics.md) |
+| 运行、消息与诊断 | Draft / AF3c 已接线 | GUI 流程 / 设备后台、取消与生命周期已接通；完整 N0—N5 待续 | [运行与诊断](runtime-messages-and-diagnostics.md) |
 | 项目生命周期与存储 | Active | 明确打开、保存、另存为、最近项目、sidecar 和脏改确认的长期边界 | `project-lifecycle-storage.md` |
 | CAPE-OPEN PMC 适配层 | Active | 完善 `.NET 10` PMC 生命周期与调用可靠性，保持 COM 注册和 PME 验证基线 | `capeopen-pmc-adapter.md` |
 | 工程设计基础、工况与数据来源 | Draft | 共享基础 / 来源、单工况与设备事务已实现；G2-B1—B3 完成；C1 固定采纳、UI / 保存 / 证据输出及代表验证完成 | [工程基础](engineering-basis-and-cases.md) |

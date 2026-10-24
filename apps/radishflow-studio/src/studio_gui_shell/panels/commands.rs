@@ -35,9 +35,9 @@ impl ReadyAppState {
     ) {
         if ui
             .add_enabled(
-                command.enabled,
+                command.enabled && self.background_command_enabled(&command.command_id),
                 egui::Button::new(
-                    self.recommendation_command_label(&command.command_id, &command.label),
+                    self.background_command_label(&command.command_id, &command.label),
                 ),
             )
             .clicked()
@@ -91,9 +91,9 @@ impl ReadyAppState {
         if let Some(command) = node.command.as_ref() {
             if ui
                 .add_enabled(
-                    command.enabled,
+                    command.enabled && self.background_command_enabled(&command.command_id),
                     egui::Button::new(
-                        self.recommendation_command_label(&command.command_id, &command.label),
+                        self.background_command_label(&command.command_id, &command.label),
                     ),
                 )
                 .on_hover_text(&command.hover_text)
@@ -135,9 +135,9 @@ impl ReadyAppState {
             for command in &section.items {
                 let response = ui
                     .add_enabled(
-                        command.enabled,
+                        command.enabled && self.background_command_enabled(&command.command_id),
                         egui::Button::new(
-                            self.recommendation_command_label(&command.command_id, &command.label),
+                            self.background_command_label(&command.command_id, &command.label),
                         ),
                     )
                     .on_hover_text(&command.hover_text);
@@ -157,6 +157,7 @@ impl ReadyAppState {
             return;
         }
 
+        self.capture_background_palette_target();
         let mut open = self.command_palette.open;
         egui::Window::new(self.locale.text(ShellText::CommandPaletteTitle))
             .id(egui::Id::new("studio.command_palette"))
@@ -207,10 +208,12 @@ impl ReadyAppState {
                             let response = ui
                                 .add_enabled(
                                     item.enabled,
-                                    egui::Button::new(self.recommendation_command_label(
-                                        &item.command_id,
-                                        &item.label,
-                                    ))
+                                    egui::Button::new(
+                                        self.background_command_label(
+                                            &item.command_id,
+                                            &item.label,
+                                        ),
+                                    )
                                     .selected(selected),
                                 )
                                 .on_hover_text(&item.hover_text);

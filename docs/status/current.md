@@ -36,7 +36,7 @@
 ### 当前优先级
 
 1. 按 [代码链路审计](../architecture/overview.md#工程基础链路审计2026-10-23) 和 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 推进。AF0 已完成；AF2a 内建目录 / 工厂、AF2b 单包上下文已接通。AF1 未定因，独立跟踪。
-2. AF3b 后台 / 取消接口已接通；[AF3c 局部六图](../architecture/designs/studio-background-run-brief.md)待评审，GUI 仍同步；认可后接设备与生命周期。
+2. AF3c 已接设备、GUI 与生命周期；[局部六图](../architecture/designs/studio-background-run-brief.md)、自动回归及 macOS 代表实窗已完成。后续按 AF4 / AF5 细化。
 3. C2-A 后续方法对比方案已认可，排期服从基础主线；原精度失败不变。C2-B / C3 暂不实施，不以共享基础为名接入新 PR 产品链或流程设备物理关联。
 4. 基础契约中提前审查 EO / 动态 / 瞬态的扩展边界，具体物性、单元、递归分块 / recycle 和高级算法按真实场景逐步填入；每项另做物理验证。
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
@@ -79,7 +79,7 @@
 
 - [装置工程与数字孪生](../architecture/simulation-platform.md#装置工程与数字孪生愿景) 按 DT0—DT4 分期，未因本轮架构梳理启动实施。
 
-- [运行与诊断 N0—N5](../topics/runtime-messages-and-diagnostics.md) 的任务基础与结果联动衔接 AF3 / AF5；后台接口已接通；GUI 接线、暂停和开发工作台待续。
+- [运行与诊断 N0—N5](../topics/runtime-messages-and-diagnostics.md) 的任务基础与结果联动衔接 AF3 / AF5；GUI 后台与取消已接通；暂停和开发工作台待续。
 
 ### 后续事项
 
@@ -97,7 +97,7 @@
 
 ## 已知差异与风险路由
 
-- 架构差异：`rf-canvas` 占位与 Studio 同步求解见 [架构总览](../architecture/overview.md)。
+- 架构差异：`rf-canvas` 占位与 Studio 执行边界见 [架构总览](../architecture/overview.md)。
 - 原生句柄释放与并发调用契约及验证范围见 [CAPE-OPEN 专题](../topics/capeopen-pmc-adapter.md)。
 - Windows 保存替换与回滚失败的恢复契约见 [项目生命周期专题](../topics/project-lifecycle-storage.md)。
 
@@ -123,7 +123,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-10-24：AF3b 1,698 项与 clippy 通过；本轮未验原生窗口，既有实窗见 [W43](../devlogs/2026-10/2026-W43.md)。
+- 2026-10-24：AF3c 1,723 项与 clippy 通过，macOS 流程 / 设备运行及正常关闭代表验证完成；范围见 [W43](../devlogs/2026-10/2026-W43.md)。
 
 - 既有功能与实窗证据见 [W38](../devlogs/2026-09/2026-W38.md)，跨平台、native 与 `.NET` 历史基线见 [W37](../devlogs/2026-09/2026-W37.md)，更早记录见 [W36](../devlogs/2026-09/2026-W36.md)；历史证据不替代新增路径或发布验收。
 

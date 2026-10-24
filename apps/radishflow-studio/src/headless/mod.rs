@@ -251,7 +251,7 @@ fn run_request_file(path: &Path, response: &mut Response) -> Result<(), Failure>
             ));
             return Ok(());
         }
-        StudioWorkspaceRunOutcome::Started(_) => {}
+        StudioWorkspaceRunOutcome::Started(_) | StudioWorkspaceRunOutcome::Background(_) => {}
     }
     if !latest_snapshot(&app.workspace).is_some_and(|s| {
         s.status == RunStatus::Converged && s.document_revision == app.workspace.document.revision

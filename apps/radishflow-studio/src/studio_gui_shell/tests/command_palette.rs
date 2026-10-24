@@ -3,6 +3,8 @@ use super::*;
 #[test]
 fn command_palette_state_open_close_and_selection_reset_cleanly() {
     let mut state = CommandPaletteState {
+        background_target: None,
+        background_target_captured: false,
         open: false,
         query: "recover".to_string(),
         selected_index: 3,
@@ -32,6 +34,8 @@ fn command_palette_state_moves_selection_within_bounds() {
         ("run_panel.resume_workspace", true),
     ]);
     let mut state = CommandPaletteState {
+        background_target: None,
+        background_target_captured: false,
         open: true,
         query: String::new(),
         selected_index: 0,
@@ -61,6 +65,8 @@ fn command_palette_state_syncs_disabled_selection_to_nearest_enabled_command() {
         ("run_panel.recover_failure", false),
     ]);
     let mut state = CommandPaletteState {
+        background_target: None,
+        background_target_captured: false,
         open: true,
         query: String::new(),
         selected_index: 1,

@@ -49,6 +49,9 @@ impl ReadyAppState {
         &mut self,
         source: &EquipmentTaskId,
     ) {
+        if self.equipment_target_busy(source, None) {
+            return;
+        }
         let workspace = &self.platform_host.modeling_inputs().workspace;
         let session = &workspace.engineering;
         let Some(candidate) = session
@@ -117,6 +120,9 @@ impl ReadyAppState {
         let Some(form) = self.equipment.adoption.as_ref() else {
             return;
         };
+        if self.equipment_target_busy(&form.source, None) {
+            return;
+        }
         // An old preview never approves subsequently edited local fields.
         if form.prepared_form.is_none() || form.prepared_form != form.request() {
             return;
@@ -156,7 +162,9 @@ impl ReadyAppState {
         let units = workspace.project_presentation.display_units();
         let l = self.locale;
         let preview = editor.geometry_adoption_preview();
-        let valid = preview.is_some() && editor.validate_geometry_adoption_preview(session).is_ok();
+        let valid = !self.equipment_target_busy(&form.source, None)
+            && preview.is_some()
+            && editor.validate_geometry_adoption_preview(session).is_ok();
         let mut cancel = false;
         let mut prepare = false;
         let mut confirm = false;
@@ -206,7 +214,7 @@ impl ReadyAppState {
             ui.label(tr(l, "采纳只写设计输入，不自动校核。原样最小尺寸可能得到“边界待复核”。", "Adoption writes design inputs without running rating. An unchanged minimum size may require boundary review."));
             let unchanged = form.prepared_form.is_some() && form.prepared_form == form.request();
             ui.horizontal_wrapped(|ui| {
-                prepare = ui.add_enabled(form.request().is_some(), egui::Button::new(tr(l, "预览采用几何", "Preview adopted geometry"))).clicked();
+                prepare = ui.add_enabled(!self.equipment_target_busy(&form.source, None) && form.request().is_some(), egui::Button::new(tr(l, "预览采用几何", "Preview adopted geometry"))).clicked();
                 if form.stage == AdoptionStage::Geometry {
                     confirm = ui.add_enabled(valid && unchanged, egui::Button::new(tr(l, "确认采纳", "Confirm adoption"))).clicked();
                 }

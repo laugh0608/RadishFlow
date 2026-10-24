@@ -22,6 +22,13 @@ use crate::{
 use std::collections::BTreeSet;
 
 impl StudioGuiHost {
+    pub fn background_run_action(
+        &mut self,
+        action: crate::StudioBackgroundRunAction,
+    ) -> RfResult<bool> {
+        self.controller.background_run_action(action)
+    }
+
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
         let controller = StudioAppHostController::new(config)?;
         let layout_state_overrides = match controller.document_path() {

@@ -48,6 +48,7 @@ mod studio_local_rules;
 mod studio_modeling_readiness;
 mod studio_project_component_selection;
 mod studio_property_package_selection;
+mod studio_run_owner;
 mod studio_runtime;
 mod studio_stream_reconnect_presentation;
 mod studio_window_host;
@@ -59,6 +60,10 @@ pub mod test_support;
 mod workspace_control;
 mod workspace_run_command;
 mod workspace_run_owner;
+pub use studio_run_owner::{
+    SharedStudioRunOwner, StudioBackgroundRunAction, StudioRunActivity, StudioRunId,
+    StudioRunOutcome, StudioRunOwner, StudioRunSubmission, StudioRunSummary,
+};
 mod workspace_solve_service;
 
 pub use app_facade::{

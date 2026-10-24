@@ -481,6 +481,13 @@ pub struct StudioAppHost {
 }
 
 impl StudioAppHost {
+    pub fn background_run_action(
+        &mut self,
+        action: crate::StudioBackgroundRunAction,
+    ) -> RfResult<bool> {
+        self.window_host_manager.background_run_action(action)
+    }
+
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
         Ok(Self {
             window_host_manager: StudioAppWindowHostManager::new(config)?,
@@ -870,6 +877,17 @@ pub struct StudioAppHostController {
 }
 
 impl StudioAppHostController {
+    pub fn background_run_action(
+        &mut self,
+        action: crate::StudioBackgroundRunAction,
+    ) -> RfResult<bool> {
+        let changed = self.app_host.background_run_action(action)?;
+        if changed {
+            self.store = StudioAppHostStore::from_snapshot(&self.app_host.snapshot());
+        }
+        Ok(changed)
+    }
+
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
         let mut app_host = StudioAppHost::new(config)?;
         app_host.refresh_local_canvas_suggestions();

@@ -322,6 +322,13 @@ pub struct StudioRuntime {
 }
 
 impl StudioRuntime {
+    pub fn background_run_action(
+        &mut self,
+        action: crate::StudioBackgroundRunAction,
+    ) -> RfResult<bool> {
+        self.session.background_run_action(action)
+    }
+
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
         Ok(Self {
             session: crate::bootstrap::BootstrapSession::new(config)?,

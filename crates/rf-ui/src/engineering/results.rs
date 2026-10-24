@@ -51,7 +51,28 @@ pub struct CalculationRequest {
     task: EquipmentTask,
     basis: EngineeringBasis,
 }
+/// Read-only publication authority for an in-flight calculation. Revocation is
+/// exact: it cannot remove a newer request for the same member.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CalculationQualification {
+    key: CalculationKey,
+    request: CalculationId,
+}
+impl CalculationQualification {
+    pub fn id(&self) -> &CalculationId {
+        &self.request
+    }
+    pub fn member(&self) -> &EquipmentCaseKey {
+        &self.key.member
+    }
+}
 impl CalculationRequest {
+    pub fn qualification(&self) -> CalculationQualification {
+        CalculationQualification {
+            key: self.key.clone(),
+            request: self.request.clone(),
+        }
+    }
     pub fn task(&self) -> &EquipmentTask {
         &self.task
     }
@@ -80,6 +101,11 @@ pub struct CompletedCalculation {
     request: CalculationId,
     outcome: CalculationOutcome,
 }
+impl CompletedCalculation {
+    pub fn succeeded(&self) -> bool {
+        self.outcome.is_ok()
+    }
+}
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct CalculationRecord {
     id: CalculationId,
@@ -95,6 +121,24 @@ pub enum EquipmentResultStatus {
 }
 
 impl EngineeringSession {
+    pub fn calculation_belongs_to_session(&self, qualification: &CalculationQualification) -> bool {
+        self.identity == qualification.key.session && self.document_id == qualification.key.document
+    }
+    pub fn calculation_is_current(&self, qualification: &CalculationQualification) -> bool {
+        self.calculation_key(&qualification.key.member).as_ref() == Some(&qualification.key)
+            && self.pending.get(&qualification.key.member) == Some(&qualification.request)
+    }
+    pub fn revoke_calculation(&mut self, qualification: &CalculationQualification) -> bool {
+        if self.pending.get(&qualification.key.member) == Some(&qualification.request) {
+            self.pending.remove(&qualification.key.member);
+            true
+        } else {
+            false
+        }
+    }
+    pub fn case_calculation_pending(&self, member: &EquipmentCaseKey) -> bool {
+        self.pending.contains_key(member)
+    }
     // Task-only compatibility APIs require an unambiguous single member.
     // Matrix consumers must use explicit case APIs.
     fn member(&self, task: &EquipmentTaskId) -> Option<EquipmentCaseKey> {

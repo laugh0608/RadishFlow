@@ -205,6 +205,25 @@ fn dispatch_bootstrap_trigger(
             )
         }),
         StudioBootstrapTrigger::Equipment(command) => {
+            if matches!(
+                command,
+                rf_ui::engineering::editor::EquipmentEditorCommand::Calculate(_)
+                    | rf_ui::engineering::editor::EquipmentEditorCommand::CalculateRating(_)
+            ) && let Some(background) = &session.facade.background
+            {
+                let submission = background.owner.borrow_mut().submit_equipment(
+                    session.app_state,
+                    command,
+                    SystemTime::now(),
+                )?;
+                if matches!(
+                    submission,
+                    crate::StudioRunSubmission::Busy(_) | crate::StudioRunSubmission::Closing
+                ) {
+                    session.app_state.push_log(rf_ui::AppLogLevel::Warning, "Calculation not started: another task is still running or the application is closing");
+                }
+                return Ok(StudioBootstrapDispatch::Equipment);
+            }
             let workspace = &mut session.app_state.workspace;
             workspace
                 .equipment_editor
@@ -413,6 +432,77 @@ fn command_outcome_from_workspace_control(
 }
 
 impl BootstrapSession {
+    pub(crate) fn background_run_action(
+        &mut self,
+        action: crate::StudioBackgroundRunAction,
+    ) -> RfResult<bool> {
+        use crate::StudioBackgroundRunAction;
+        if let StudioBackgroundRunAction::Install(owner) = action {
+            if let Some(existing) = &self.facade.background
+                && !std::rc::Rc::ptr_eq(&existing.owner, &owner)
+                && !existing.owner.borrow().is_idle()
+            {
+                return Err(RfError::invalid_input(
+                    "drain the existing run owner before replacing it",
+                ));
+            }
+            self.facade.background = Some(crate::studio_run_owner::BackgroundRunSession {
+                owner,
+                root: self.cache_root.clone(),
+            });
+            return Ok(false);
+        }
+        let Some(background) = &self.facade.background else {
+            return Ok(false);
+        };
+        let mut owner = background.owner.borrow_mut();
+        let changed = match action {
+            StudioBackgroundRunAction::Poll { attached } => {
+                let changed = owner.poll(
+                    if attached {
+                        Some(&mut self.app_state)
+                    } else {
+                        None
+                    },
+                    SystemTime::now(),
+                );
+                if attached && owner.should_attempt_automatic(&self.app_state) {
+                    drop(owner);
+                    let context = StudioAppAuthCacheContext::new(
+                        self.cache_root.path(),
+                        &self.auth_cache_index,
+                    );
+                    self.facade.run_workspace_from_auth_cache(
+                        &mut self.app_state,
+                        &context,
+                        &crate::WorkspaceRunCommand::automatic_preferred(),
+                    )?;
+                    return Ok(true);
+                } else {
+                    changed
+                }
+            }
+            StudioBackgroundRunAction::Cancel(id) => {
+                owner.cancel(&mut self.app_state, &id);
+                true
+            }
+            StudioBackgroundRunAction::Detach => {
+                owner.detach(&mut self.app_state);
+                true
+            }
+            StudioBackgroundRunAction::BeginShutdown => {
+                owner.begin_shutdown(&mut self.app_state);
+                true
+            }
+            StudioBackgroundRunAction::ResumeSubmissions => {
+                owner.resume_submissions();
+                false
+            }
+            StudioBackgroundRunAction::Install(_) => unreachable!(),
+        };
+        Ok(changed)
+    }
+
     pub(crate) fn new(config: &StudioBootstrapConfig) -> RfResult<Self> {
         let mut app_state = match config.untitled_blank_project.as_ref() {
             Some(untitled) => app_state_from_untitled_blank_project(

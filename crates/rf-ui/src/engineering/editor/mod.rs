@@ -238,6 +238,44 @@ impl Default for EquipmentEditorState {
     }
 }
 impl EquipmentEditorState {
+    /// Apply the same draft gate as inline calculation, then freeze formal inputs.
+    /// The caller must reserve its worker slot before invoking this method.
+    pub fn prepare_calculation(
+        &mut self,
+        session: &mut EngineeringSession,
+        command: &EquipmentEditorCommand,
+    ) -> Result<CalculationRequest, EquipmentEditError> {
+        let result = match command {
+            EquipmentEditorCommand::Calculate(task) => {
+                if self.pending_for_task(task, session) {
+                    Err(EquipmentEditError::PendingDrafts)
+                } else {
+                    session.begin_calculation(task).map_err(Into::into)
+                }
+            }
+            EquipmentEditorCommand::CalculateRating(member) => {
+                if self.pending_for_case(member, session) {
+                    Err(EquipmentEditError::PendingDrafts)
+                } else {
+                    session.begin_rating(member).map_err(Into::into)
+                }
+            }
+            _ => Err(EquipmentEditError::UnsupportedEditorAction),
+        };
+        self.error = result.as_ref().err().cloned();
+        if result.is_ok() {
+            match command {
+                EquipmentEditorCommand::Calculate(task) => {
+                    self.checks.remove(task);
+                }
+                EquipmentEditorCommand::CalculateRating(member) => {
+                    self.rating_checks.remove(member);
+                }
+                _ => unreachable!(),
+            }
+        }
+        result
+    }
     pub fn active(&self) -> Option<&EquipmentEditorTarget> {
         self.active.as_ref()
     }

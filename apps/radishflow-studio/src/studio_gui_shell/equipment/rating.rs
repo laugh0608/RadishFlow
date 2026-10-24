@@ -112,7 +112,7 @@ impl ReadyAppState {
                 if ui.add_enabled(!pending, egui::Button::new(tr(l, "检查输入", "Check inputs"))).clicked() {
                     commands.push(EquipmentEditorCommand::CheckRating(key.clone()));
                 }
-                if ui.add_enabled(!pending, egui::Button::new(tr(l, "校核当前工况", "Rate current case"))).clicked() {
+                if ui.add_enabled(!pending && !self.background_busy(), egui::Button::new(tr(l, "校核当前工况", "Rate current case"))).clicked() {
                     commands.push(EquipmentEditorCommand::CalculateRating(key.clone()));
                     self.equipment.section = EquipmentSection::Results;
                 }
@@ -120,7 +120,7 @@ impl ReadyAppState {
                     (CalculationTableFormat::Csv, tr(l, "当前工况 CSV", "Current case CSV")),
                     (CalculationTableFormat::Json, tr(l, "当前工况 JSON", "Current case JSON")),
                 ] {
-                    if ui.add_enabled(!pending && session.current_rating(&key).is_some(), egui::Button::new(label)).clicked() {
+                    if ui.add_enabled(!pending && !self.equipment_target_busy(&key.task_id, Some(&key.case_id)) && session.current_rating(&key).is_some(), egui::Button::new(label)).clicked() {
                         *export = Some((EquipmentExportTarget::Rating(key.clone()), format));
                     }
                 }

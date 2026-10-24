@@ -40,6 +40,7 @@ impl ReadyAppState {
             return false;
         }
 
+        self.capture_background_palette_target();
         let palette_items = self.command_palette_items(commands, &self.command_palette.query);
         self.command_palette.sync_selection(&palette_items);
 
@@ -158,6 +159,7 @@ impl ReadyAppState {
             .is_some()
             || self.unit_settings.is_open()
             || self.pending_format_upgrade.is_some()
+            || self.pending_run_exit.is_some()
             || self.variable_browser.open
             || self.pending_input_action.is_some()
             || self.pending_unit_deletion.is_some()

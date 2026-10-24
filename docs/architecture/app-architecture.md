@@ -52,11 +52,11 @@
 - 将 `rf-ui`、`rf-canvas`、`rf-store`、`rf-solver` 能力组装成桌面应用
 - 负责 `AuthSessionState` / `EntitlementState` 与 `StoredAuthCacheIndex` 之间的桥接与同步
 - 负责控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的协议映射、下载租约与本地缓存落盘编排
-- [AF3b](../topics/runtime-messages/run-control-and-watch-conditions.md)已接后台运行、取消与受守卫的接收；GUI 仍同步，设备和生命周期归 AF3c。
+- [AF3](../topics/runtime-messages/run-control-and-watch-conditions.md)已接 GUI 流程 / 设备后台、精确取消、守卫接收与退出收尾；兼容入口仍同步。
 - 负责把 Studio shell 入口组织为可复现的 MVP α / β 工作流：默认显示 Home，普通空白项目先进入独立 `物性` 页，小案例作者入口可从空白项目直接进入左侧 `模块` 清单，进入 case 后暴露主路径命令
 - 负责让 `流程图` / `运行` 上下文工具栏、Run Panel `Resume`、`F5 / Shift+F5`、AppHost、StudioGuiDriver、StudioGuiHost command registry 等正式运行入口复用同一层建模输入 readiness；shell 只负责 notice、focus 和用户反馈，不在各入口复制另一套输入判断
 - 负责在 GUI shell 层提供用户操作与求解审计输出；默认 stderr 日志只作为开发态 smoke 和诊断入口，不替代未来正式审计 / telemetry 设计
-- 负责遵守 `eframe` / `winit` 事件循环约束：Windows 事件循环在主线程创建；干净最后窗口 close 不得被 `CancelClose` 拦截，关闭前清理逻辑窗口并停止当帧 fallback 布局；脏工作区 close 必须先确认保存 / 舍弃 / 取消
+- 负责遵守 `eframe` / `winit` 事件循环约束：Windows 事件循环在主线程创建；干净且无在途任务的最后窗口 close 不得被 `CancelClose` 拦截，关闭前清理逻辑窗口并停止当帧 fallback 布局；脏工作区 close 必须先确认保存 / 舍弃 / 取消
 - 负责桌面窗口渲染后端选择：macOS 开发态使用 `eframe/wgpu` + Metal backend；裸二进制系统日志后续由 `.app` bundle / `Info.plist` / 签名打包流程治理
 
 不应承担：
@@ -860,13 +860,13 @@ App 不应直接操作底层求解细节，而应通过稳定的数据结构与�
 
 这些内容未来可能需要，但当前阶段会分散地基建设注意力。
 
-## 维护性与同步执行现状
+## 维护性与执行边界
 
-`WorkspaceSolveService` 同步调用求解桥接并回写 AppState，GUI dispatch 沿 host / driver 同步执行。运行状态和 timer 不代表已有后台、取消或并行能力；GUI 帧耗时、复杂流程延迟及快照内存尚未测量。
+桌面 Shell 安装共享 `StudioRunOwner`，沿原 host / driver 转发提交、轮询和精确取消；流程 / 设备共用一个 worker 配额。切换工程保留拥有者，最后窗口待回收才关闭。未安装后台会话的 Facade、headless / FFI 保持同步；复杂流程时延与快照内存未测量。
 
 实现时按用户行为追踪命令链，保留独立状态、平台隔离和共享契约，评估纯转发与重复投影。大文件按领域职责拆分，测试按行为组织；undo 与结果快照的大负载成本先测量。
 
-2026-10-23 [代码链路审计](overview.md#工程基础链路审计2026-10-23)已完成，后续按 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 衔接 N 轨道；本轮只改文档。
+后续按 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 衔接 N 轨道。
 
 ## 其他待细化事项
 
