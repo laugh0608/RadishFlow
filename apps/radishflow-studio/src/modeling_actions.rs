@@ -149,17 +149,7 @@ pub fn dispatch_modeling_action(
             }
         }
         ModelingAction::Connect(target) => {
-            let connections = current_connections(app);
-            let mut matching = connections
-                .iter()
-                .filter(|c| connection_target(c) == target);
-            let connection = matching.next().ok_or(ConnectionUnavailable)?;
-            if matching.next().is_some() {
-                return Err(AmbiguousConnection);
-            }
-            let (command, _) = app
-                .commit_material_connection(connection, changed_at)
-                .map_err(Rejected)?;
+            let command = connect_material_target(app, &target, changed_at)?;
             ModelingActionEffect::Connected { target, command }
         }
         ModelingAction::Run(package) => {
@@ -178,6 +168,28 @@ pub fn dispatch_modeling_action(
         revision: app.workspace.document.revision,
         effect,
     })
+}
+
+/// Shared controlled connection transaction; callers enforce their own input guards.
+pub(crate) fn connect_material_target(
+    app: &mut AppState,
+    target: &MaterialConnectionTarget,
+    changed_at: DateTimeUtc,
+) -> Result<DocumentCommand, ModelingActionError> {
+    let connections = current_connections(app);
+    let mut matching = connections
+        .iter()
+        .filter(|c| connection_target(c) == *target);
+    let connection = matching
+        .next()
+        .ok_or(ModelingActionError::ConnectionUnavailable)?;
+    if matching.next().is_some() {
+        return Err(ModelingActionError::AmbiguousConnection);
+    }
+    let (command, _) = app
+        .commit_material_connection(connection, changed_at)
+        .map_err(ModelingActionError::Rejected)?;
+    Ok(command)
 }
 
 pub(crate) fn current_connections(app: &AppState) -> Vec<CanvasSuggestedMaterialConnection> {

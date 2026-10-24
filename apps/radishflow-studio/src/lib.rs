@@ -15,6 +15,7 @@ mod entitlement_session_driver;
 mod entitlement_session_host;
 mod entitlement_session_host_presentation;
 mod entitlement_session_host_runtime;
+pub mod flow_actions;
 pub mod headless;
 mod inspector_draft_driver;
 mod inspector_target_driver;
