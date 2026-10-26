@@ -165,13 +165,73 @@ AF4c-1 已提供 `radishflow-studio --headless query request.json`；不需要�
 | objects | 无其他参数；返回对象列表，含 target、document_id、parent、kind、label |
 | fields | target 必填；返回流程变量或设备输入字段、规范单位、值状态及来源；未指定不补零 |
 | record | target 必填；返回对象正式记录、版本和专用 data；方法、身份、固定采纳证据是只读元数据 |
-| actions | scope 必填；返回领域动作描述；AF4c-1 的 callable 为 false，后续接通执行时再逐项开放 |
+| actions | scope 必填；返回领域动作描述及适配器 callable；正式输入 / 检查已开放，计算将在 AF4c-3 接通 |
 | results | scope 为 flow，或精确 task / case 对象；返回 Current / Stale / Missing / Failed 资格与实际来源，仅 Current 返回数值 |
 
-对象 target 为单一枚举对象：`{"unit":{"id":"u"}}`、`{"stream":{"id":"s"}}`、`{"equipment":{"id":"t"}}`、`{"case":{"task":{"id":"t"},"case":{"id":"c"}}}`、`{"geometry":{"id":"t"}}`、`{"basis":{"id":"b"}}`、`{"source":{"id":"src"}}`。scope 是 `"flow"` 或 `{"object": target}`；单独 query 不存在前序动作输出，步骤引用会明确失败。
+对象 target 为单一枚举对象：`{"unit":{"id":"u"}}`、`{"stream":{"id":"s"}}`、`{"equipment":{"id":"t"}}`、`{"case":{"task":{"id":"t"},"case":{"id":"c"}}}`、`{"geometry":{"id":"t"}}`、`{"basis":{"id":"b"}}`、`{"source":{"id":"src"}}`。scope 是 `"project"`（根动作发现）、`"flow"` 或 `{"object": target}`；单独 query 不存在前序动作输出，步骤引用会明确失败。
 
 响应固定包含 schema_version、status、project、steps、queries 和 error。project 包含 document_id、project_schema_version、flow_revision、file_sha256、read_only、equipment_task_count；只读工程另有 read_only_reason。file_sha256 为同次读取原始字节的 64 位小写十六进制 SHA-256，空白变化也会改变指纹，不是签名。步骤尚未执行时 steps 为空。每项查询分别返回 value 或结构化 error；一项失败不阻止后续只读查询，顶层保留首个错误。
 
 未知能力工程的 objects 只列可安全读取的流程对象，数量与只读原因在 project 返回；fields / record 只允许流程输入，writable 为 false，设备记录和结果返回 unsupported_capability。源文件不被裁剪或重写。
 
 本阶段退出码 0 表示查询完成，2 表示请求 / 装载 / 查询错误，5 表示响应输出失败；Missing 等结果状态是有效查询。已保存工程不会恢复运行缓存，因此初次结果通常为 Missing；固定采纳证据仍是历史记录，不等同当前计算结果。
+
+
+## 新版 v3：正式输入与影响确认
+
+AF4c-2 提供 `radishflow-studio --headless execute request.json`。请求必填 schema_version、project、expected_project、steps、queries；expected_project 从 query 的 project 中提取 document_id 和 file_sha256。每步为 `{id, action, confirmation?}`，确认字段通常省略。所有步骤及嵌套数据先严格解析，再检查原文件身份和指纹；流程、设备输入与检查不加载物性缓存。
+
+```json
+{
+  "schema_version": 3,
+  "project": "project.rfproj.json",
+  "expected_project": {"document_id": "从 query 复制", "file_sha256": "从 query 复制"},
+  "steps": [
+    {"id": "rating", "action": {"kind": "create_rating_task"}},
+    {"id": "labels", "action": {
+      "kind": "update_rating_labels",
+      "task": {"step": "rating", "output": "task"},
+      "expected_revision": {"step": "rating", "output": "task"},
+      "data": {"tag": "V-101", "name": "分离器校核"}
+    }}
+  ],
+  "queries": [
+    {"id": "record", "query": {"kind": "record", "target": {"equipment": {"step": "rating", "output": "task"}}}}
+  ]
+}
+```
+
+对象引用为 `{id}` 或 `{step, output}`，output 限 document / unit / stream / task / case / geometry / basis / source；每步只提供实际可用且不歧义的输出。geometry 的对象身份沿 task，geometry 输出用于几何版本引用。expected_revision 为 u64 或 `{step, output}`，引用必须属于实际目标记录；不能引用另一个同版本对象。流程动作要求 document 版本，设备更新要求被更新记录版本；Sizing case 没有独立版本。
+
+| action.kind | 必填字段；可选字段注明 |
+| --- | --- |
+| write | expected_revision、target（object / section / field）、value；字段沿流程目录 |
+| create_unit | expected_revision、unit_kind（六类内建模型） |
+| connect | expected_revision、source（unit 引用 / port）；sink、stream 可省略 |
+| disconnect | expected_revision、port（unit 引用 / port） |
+| disconnect_stream | expected_revision、stream；direction 可省略，或 inlet / outlet |
+| create_sizing_task / create_rating_task / create_source | 无其他字段；建立正式空记录，输入由后续 update 完成 |
+| create_basis | data：name、value、source |
+| update_sizing_task | task、expected_revision、data：tag、name、case、axial_sections |
+| update_source | source、expected_revision、完整 SourceData |
+| update_basis | basis、expected_revision、data：name、value、source |
+| update_rating_labels | task、expected_revision、data：tag、name |
+| update_rating_geometry | task、expected_revision（geometry）、完整 GeometryData |
+| update_rating_case | task、case、expected_revision（case）、完整 RatingCaseData |
+| add_rating_case | task、expected_revision（task）；copy_from 可省略，必须为同任务 case |
+| reorder_rating_cases | task、expected_revision（task）、cases（完整有序引用数组） |
+| delete_equipment_record | target、expected_revision；只允许领域可删除的记录，共同几何不可单独删除 |
+| check_sizing / check_rating | task；check_rating 另需 case |
+
+完整 data 可从对应 record 查询复制，修改后提交；不能夹带 id、revision、method、adoption 或其他只读元数据。主要数据结构如下，所有字段除明确可选项外必填：
+
+- 工程数值为 `{quantity, value_si}`。绑定为 `{kind:"direct", value, source}`、`{kind:"basis", basis}` 或 `{kind:"override", basis, value, source, reason}`；覆盖理由不得为空。
+- SourceData：kind、title、reference、locator、publication_version、adoption_note、review、applicability、observations；accessed_on 为可选 ISO 日期。applicability 包含 fluid_system、phase、scope，可选 operating_conditions（temperature_k / pressure_pa）。observation 包含 id、quantity、original_value、original_unit、canonical_value、conversion_note、depends_on；依赖为 source 引用与 observation_id。
+- Sizing case：name、purpose、fluid_system、geometry_applicability、case_applicability、applicability_sources、inputs。GeometryData：applicability、applicability_sources、inputs、axial_sections。RatingCaseData：name、purpose、fluid_system、applicability、applicability_sources、inputs。
+- geometry_applicability 包含 internals_description，可选 orientation / gas_direction / geometry；case_applicability 的 service / k_basis / flow_basis 均可省略。数值 inputs 和 axial_sections 是显式字段枚举到绑定的映射；字段 / quantity 由 fields 查询和[类型目录](../../apps/radishflow-studio/src/headless/v3/enums.rs)确定，不接受任意字段或单位。
+
+每步回执包含 outcome、实际身份 / 版本 outputs、影响；无变化为 unchanged，不推进版本。检查为 checked 并返回结构化 issues，有问题仍是成功检查。第一处失败或待确认停止后续动作；queries 对停止时正式状态逐项执行，不能覆盖原动作错误。原 project 快照仍表示装载输入，各步版本见回执。
+
+触发删除、依据影响或旧 Rating 方法升级时，退出码为 6，error.details 提供 preview 与 confirmation_digest。预览包含旧 / 新输入、记录 / 方法版本及影响；该步未提交。审阅后把 `{ "digest": "af4c-confirm-v1:…" }` 放入原步骤的 confirmation，重新执行同一请求。前序步骤会重新执行，摘要匹配才提交本次新准备的事务；摘要错误返回 confirmation_mismatch 与新预览。无需确认的动作带 confirmation 会被拒绝且不留下该步变更。
+
+退出码 0 / 2 / 3 / 5 / 6 分别为完成、请求或版本 / 查询错误、执行门禁拒绝、输出失败、待确认或确认内容变化。run_flow / size / rate / adopt_geometry 由 AF4c-3 接通；当前不接受运行资源或隐式计算。任何成功输入回执都只作用于本次内存，不写回工程。

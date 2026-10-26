@@ -1,6 +1,13 @@
 //! Version 3 local automation. This module owns wire DTOs and request-local
 //! bindings, never independent domain state, solver policy or disk mutation.
+mod actions;
+mod confirmation;
 mod enums;
+mod equipment;
+mod errors;
+mod execute;
+mod flow;
+mod inputs;
 mod issues;
 mod protocol;
 mod query;
@@ -26,6 +33,26 @@ pub(super) fn query_args(
         Code::InvalidRequest,
         "query requires exactly one request file",
     ));
+    output(&response, stdout, stderr)
+}
+
+pub(super) fn execute_args(
+    args: &[std::ffi::OsString],
+    stdout: &mut impl Write,
+    stderr: &mut impl Write,
+) -> i32 {
+    let mut response = Response::default();
+    let result = match args {
+        [path] => execute::file(Path::new(path), &mut response),
+        _ => Err(Failure::new(
+            Stage::Request,
+            Code::InvalidRequest,
+            "execute requires exactly one request file",
+        )),
+    };
+    if let Err(error) = result {
+        response.fail(error);
+    }
     output(&response, stdout, stderr)
 }
 

@@ -118,17 +118,62 @@ pub fn editable(
         }
         QueryKind::Actions { scope } => {
             let reference = match scope {
-                Scope::Flow => None,
+                Scope::Project | Scope::Flow => None,
                 Scope::Object(r) => Some(q.reference(bindings.object(r)?)),
             };
             let actions = q
                 .actions(reference.as_ref(), browser::ActionExecution::Inline)
                 .map_err(query_error)?;
-            Ok(json!(
-                actions.iter().map(action_descriptor).collect::<Vec<_>>()
-            ))
+            let mut descriptions: Vec<_> =
+                actions.iter().map(|a| action_descriptor(a, app)).collect();
+            if matches!(scope, Scope::Project) {
+                for kind in [
+                    "create_sizing_task",
+                    "create_rating_task",
+                    "create_source",
+                    "create_basis",
+                ] {
+                    descriptions.push(adapter_action(kind, true));
+                }
+            }
+            if let Some(reference) = &reference {
+                match q.record(reference).map_err(query_error)? {
+                    ProjectRecord::Equipment(
+                        rf_model::equipment::EquipmentTask::SeparatorRating(_),
+                    ) => {
+                        for kind in [
+                            "add_rating_case",
+                            "reorder_rating_cases",
+                            "delete_equipment_record",
+                        ] {
+                            descriptions.push(adapter_action(kind, true));
+                        }
+                    }
+                    ProjectRecord::Equipment(_)
+                    | ProjectRecord::RatingCase(_)
+                    | ProjectRecord::Basis(_)
+                    | ProjectRecord::Source(_) => {
+                        descriptions.push(adapter_action("delete_equipment_record", true))
+                    }
+                    ProjectRecord::Flow(_)
+                        if matches!(
+                            reference.object,
+                            ProjectObjectId::Flow(browser::ObjectId::Stream(_))
+                        ) =>
+                    {
+                        descriptions.push(adapter_action("disconnect_stream", true))
+                    }
+                    _ => {}
+                }
+            }
+            Ok(json!(descriptions))
         }
         QueryKind::Results { scope } => match scope {
+            Scope::Project => Err(Failure::new(
+                Stage::Query,
+                Code::InvalidRequest,
+                "results require flow or an exact equipment case",
+            )),
             Scope::Flow => Ok(results::flow(app, executions)),
             Scope::Object(r) => Ok(results::equipment(
                 q.equipment_result(&q.reference(bindings.object(r)?))
@@ -223,8 +268,7 @@ pub fn flow_field(v: browser::VariableDescriptor) -> Value {
     }
     json!({"variable":value,"quantity":quantity,"constraint":constraint,"note":note})
 }
-fn action_descriptor(d: &ProjectActionDescriptor) -> Value {
-    // Only discovery ships in AF4c-1; execution is connected in AF4c-2/3.
+fn action_descriptor(d: &ProjectActionDescriptor, app: &rf_ui::AppState) -> Value {
     let (kind, modifies, undoable) = match d {
         ProjectActionDescriptor::Flow(v) => (
             match v.kind {
@@ -241,8 +285,35 @@ fn action_descriptor(d: &ProjectActionDescriptor) -> Value {
         ),
         ProjectActionDescriptor::Equipment(v) => (
             match &v.kind {
-                EquipmentActionKind::Edit(_) => "edit_equipment",
-                EquipmentActionKind::Check(_) => "check_equipment",
+                EquipmentActionKind::Edit(target) => match target {
+                    rf_ui::engineering::editor::EquipmentEditorTarget::Task(_) => {
+                        "update_sizing_task"
+                    }
+                    rf_ui::engineering::editor::EquipmentEditorTarget::RatingTask(_) => {
+                        "update_rating_labels"
+                    }
+                    rf_ui::engineering::editor::EquipmentEditorTarget::RatingGeometry(_) => {
+                        "update_rating_geometry"
+                    }
+                    rf_ui::engineering::editor::EquipmentEditorTarget::RatingCase(_) => {
+                        "update_rating_case"
+                    }
+                    rf_ui::engineering::editor::EquipmentEditorTarget::Source(_) => "update_source",
+                    rf_ui::engineering::editor::EquipmentEditorTarget::Basis(_) => "update_basis",
+                },
+                EquipmentActionKind::Check(key) => {
+                    if app
+                        .workspace
+                        .engineering
+                        .inputs()
+                        .task(&key.task_id)
+                        .is_some()
+                    {
+                        "check_sizing"
+                    } else {
+                        "check_rating"
+                    }
+                }
                 EquipmentActionKind::Size(_) => "size",
                 EquipmentActionKind::Rate(_) => "rate",
             },
@@ -250,7 +321,11 @@ fn action_descriptor(d: &ProjectActionDescriptor) -> Value {
             v.undoable,
         ),
     };
-    json!({"kind":kind,"execution":"inline","modifies_inputs":modifies,"undoable":undoable,"callable":false})
+    json!({"kind":kind,"execution":"inline","modifies_inputs":modifies,"undoable":undoable,"callable":!matches!(kind,"run_flow"|"size"|"rate")})
+}
+
+fn adapter_action(kind: &str, modifies: bool) -> Value {
+    json!({"kind":kind,"execution":"inline","modifies_inputs":modifies,"undoable":modifies,"callable":true})
 }
 
 fn read_only(

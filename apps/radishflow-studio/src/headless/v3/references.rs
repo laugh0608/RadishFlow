@@ -96,3 +96,56 @@ impl Executions {
             .map(|(_, step)| step.as_str())
     }
 }
+
+impl Bindings {
+    /// A receipt version is valid only for its actual owner, not another record
+    /// which happens to have the same numeric revision.
+    pub fn revision(
+        &self,
+        reference: &super::actions::RevisionRef,
+        kind: Output,
+        id: &str,
+        actual: u64,
+    ) -> Result<u64, Failure> {
+        let supplied = match reference {
+            super::actions::RevisionRef::Number(n) => *n,
+            super::actions::RevisionRef::Step { step, output } => {
+                if *output != kind {
+                    return Err(Failure::new(
+                        Stage::Step,
+                        Code::ReferenceKindMismatch,
+                        "revision owner kind differs",
+                    ));
+                }
+                let value = self
+                    .0
+                    .get(step)
+                    .and_then(|v| v.get(output))
+                    .ok_or_else(|| {
+                        Failure::new(
+                            Stage::Step,
+                            Code::UnknownReference,
+                            "revision output is unavailable",
+                        )
+                    })?;
+                if value.id != id {
+                    return Err(Failure::new(
+                        Stage::Step,
+                        Code::ReferenceKindMismatch,
+                        "revision belongs to a different record",
+                    ));
+                }
+                value.revision
+            }
+        };
+        if supplied != actual {
+            let mut failure =
+                Failure::new(Stage::Step, Code::RecordConflict, "record revision differs");
+            failure.details = Some(Box::new(
+                serde_json::json!({"owner":kind,"id":id,"expected":supplied,"actual":actual}),
+            ));
+            return Err(failure);
+        }
+        Ok(supplied)
+    }
+}

@@ -303,3 +303,6 @@ fn query_v3_read_only_flow_fields_never_advertise_writes() {
     let r: Value = serde_json::from_slice(&out).unwrap();
     assert_eq!(r["schema_version"], 3);
 }
+
+#[path = "execution_tests.rs"]
+mod execution;

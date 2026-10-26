@@ -16,11 +16,16 @@ use rf_ui::variable_commands::{VariableWriteError, VariableWriteRequest};
 use rf_ui::{AppState, RunStatus, latest_snapshot, stale_snapshot};
 use std::{ffi::OsString, io::Write as IoWrite, path::Path, time::SystemTime};
 
-pub const HELP: &str = "Usage: radishflow-studio --headless inspect <project.rfproj.json>\n       radishflow-studio --headless run <request.json>\n       radishflow-studio --headless query <v3-request.json>\n       radishflow-studio --headless --help\n\ninspect returns document identity, revision and variables as JSON.\nrun applies v1 SI writes or v2 create/connect/write steps in memory, solves and reads variables.\nPaths in a run request are relative to that request file. No input files are modified.\nExit codes: 0 success, 2 request/load/step/write/read error, 3 blocked, 4 run failed, 5 output error.\n";
+pub const HELP: &str = "Usage: radishflow-studio --headless inspect <project.rfproj.json>\n       radishflow-studio --headless run <request.json>\n       radishflow-studio --headless query <v3-request.json>\n       radishflow-studio --headless execute <v3-request.json>\n       radishflow-studio --headless --help\n\ninspect returns document identity, revision and variables as JSON.\nrun applies v1 SI writes or v2 create/connect/write steps in memory, solves and reads variables.\nquery reads v3 protocol records; execute applies explicit in-memory actions and checks.\nPaths in a run request are relative to that request file. No input files are modified.\nExit codes: 0 success, 2 request/load/step/write/read error, 3 blocked, 4 run failed, 5 output error, 6 v3 confirmation required.\n";
 
 /// Called before the GUI runtime is initialized. stdout contains exactly one JSON response
 /// (or help); diagnostics go to stderr only if writing stdout itself fails.
 pub fn run_cli(args: &[OsString], stdout: &mut impl IoWrite, stderr: &mut impl IoWrite) -> i32 {
+    if let [command, rest @ ..] = args
+        && command == "execute"
+    {
+        return v3::execute_args(rest, stdout, stderr);
+    }
     if let [command, rest @ ..] = args
         && command == "query"
     {

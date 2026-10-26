@@ -44,6 +44,7 @@ pub enum ObjectRef {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Scope {
+    Project,
     Flow,
     Object(ObjectRef),
 }
@@ -77,12 +78,16 @@ pub struct QueryRequest {
 pub enum Status {
     Ok,
     Error,
+    Blocked,
+    ConfirmationRequired,
 }
 impl Status {
     pub fn exit_code(self) -> i32 {
         match self {
             Self::Ok => 0,
             Self::Error => 2,
+            Self::Blocked => 3,
+            Self::ConfirmationRequired => 6,
         }
     }
 }
@@ -110,6 +115,12 @@ pub enum Code {
     ObjectMissing,
     FieldMissing,
     InputContextChanged,
+    ProjectConflict,
+    RecordConflict,
+    ReadOnlyProject,
+    ConfirmationRequired,
+    ConfirmationMismatch,
+    ActionRejected,
 }
 
 #[derive(Debug, Clone, Serialize)]
