@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-10-24
+更新时间：2026-10-26
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -699,28 +699,12 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 
 截至 2026-04-02，`apps/radishflow-studio` 已经实现最小应用层求解桥接，并通过单元测试与仓库级验证覆盖。
 
-当前已落地入口：
-
-- `StudioAppFacade::{execute_with_auth_cache, run_workspace_from_auth_cache}`
-- `StudioAppFacade::{resume_workspace_from_auth_cache, set_workspace_simulation_mode}`
-- `WorkspaceControlAction::{RunManual, Resume, SetMode}`
-- `snapshot_workspace_control_state(...)`
-- `dispatch_workspace_control_action_with_auth_cache(...)`
-- `WorkspaceRunCommand::{manual, automatic_preferred}`
-- `RunPanelIntent::{run_manual, resume, set_mode}`
-- `dispatch_workspace_run_from_auth_cache(...)`
-- `WorkspaceSolveService::{build_request, run_with_property_package, run_from_auth_cache}`
-- `WorkspaceSolveService::{dispatch_with_property_package, dispatch_from_auth_cache}`
-- `solve_workspace_with_property_package(...)`
-- `solve_workspace_from_auth_cache(...)`
-- `next_solver_snapshot_sequence(...)`
-- `run_studio_bootstrap(...)`
-- `src/main.rs` 当前最小 bootstrap 运行入口
+当前入口按职责分为 `StudioAppFacade` 运行 / 模式控制、`workspace_control` 与 `RunPanelIntent` 命令适配、`WorkspaceSolveService` 请求 / 物性装配及 `solve_workspace_*` 执行。GUI 后台拥有者和兼容同步调用的边界见下文；启动装配由 `run_studio_bootstrap` 承担。
 
 当前桥接行为：
 
 - 以 `AppState.workspace.document` 作为当前求解输入
-- `StudioAppFacade` 统一承接 auth cache 与运行；AF4b 的 `run_actions` 区分受理、拒绝、启动失败、执行终态和接收，运行身份不序列化
+- `StudioAppFacade` 承接运行；流程入口装配 auth cache，独立设备通过 `execute_equipment_run_action` 只消费工程工作区，不构造虚拟流程缓存。`run_actions` 区分受理、拒绝、启动失败、执行终态和接收，运行身份不序列化
 - `StudioAppCommand` 当前已显式区分 `RunWorkspace`、`ResumeWorkspace` 和 `SetWorkspaceSimulationMode` 三类应用命令，便于后续 UI 直接绑定运行控制动作
 - `workspace_control` 模块当前已把这三类应用命令进一步收口为更接近运行栏/状态栏的 `WorkspaceControlAction`
 - 由 `WorkspaceRunCommand` 承接“触发类型 + package 选择”这一层更接近 UI 的运行请求
@@ -756,6 +740,8 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - 数值焦点消费会话历史，其他文本沿用控件历史，非文本走工程历史；菜单 / IME 优先，确认状态阻断工程快捷键，见 [U2](../topics/units/input-drafts-and-interactions.md)。按键使用事件自身修饰键；`Primary` 与物理 `Ctrl` 分开，绑定及标签同源，平台键位和历史证据见 [B1-4](../topics/flowsheet-modeling-and-solve.md#b1-4平台快捷键展示与文档重做)。
 - Studio 源码按领域职责组织浅层模块；新增实现并入同域目录，避免继续扩大入口文件。
 
+AF4c 的 headless v3 在 GUI 初始化前消费同一动作与查询，保持磁盘只读；协议与重放确认见 [CLI 参考](../reference/headless-cli.md)。
+
 ## 结果快照模型
 
 求解结果当前正式规定为独立快照，而不是直接写回文档对象。
@@ -774,6 +760,8 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - `SolveSnapshot` 表示“某个文档版本的一次求解结果”
 - `WorkspaceState.snapshot_history` 表示“当前工作区保留的不可变结果窗口”
 - `SolveSessionState.latest_snapshot` 只是指向当前结果入口的引用
+
+AF5b 从领域查询投影当前结果与冻结来源，动作 / 输出使用时重验会话及执行身份；设备独立校验工况，历史依据不冒充当前值。见[结果参考](../reference/solve-snapshot-results.md#当前资格来源与动作守卫)。
 
 这种分离有几个直接好处：
 

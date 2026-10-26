@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-10-07
+更新时间：2026-10-26
 
 ## 目的
 
@@ -67,6 +67,14 @@
 - `selected_unit_id`
 
 这些状态不应被用来缓存第二份结果，也不应驱动第二次热力学判断。
+
+## 当前资格、来源与动作守卫
+
+`SolveSnapshot` 的数值不可变，但能否作为当前结果由 `WorkspaceState::flow_result()` 决定；文档 ID、revision、snapshot ID 或 sequence 相等都不能单独证明同属一次会话。`FlowResultView` 区分 Current、Stale、Missing、Failed，仅 Current 提供正式数值；Failed 携带该次诊断及来源，不能回退到上次成功值。未记录资格的旧快照明确视为不可用。
+
+`SolveSnapshot.origin` 保留冻结的 `FlowResultOrigin`：输入所属文档 / 会话、revision，以及可用的执行身份、solver、实际物性包与指纹。当前配置或包标签不得回填旧结果；准备失败可以没有实际包。应用层 `FlowResultReview` 是这一查询的拥有数据投影，不复制领域有效性规则。
+
+跨帧结果动作和待写输出携带 `FlowResultGuard`，激活 / 写入时重新查询当前工作区；定位还检查目标存在。设备使用独立 `EquipmentResultGuard` 和原计算 / 矩阵输出捕获机制，按相关工况资格重验，不用流程 revision 作为设备全局锁。RunId / CalculationId 不透明且不持久化，技术详情 / 文本只说明身份已记录、会话内使用，不输出内存地址或可恢复令牌。
 
 ## `StreamStateSnapshot` 的稳定语义
 
@@ -190,7 +198,7 @@ unit-centric 视图当前只是在同一份快照里按单元重新组织结果�
 
 ### Module Results
 
-`StudioGuiWindowModuleResultsModel` 是 Studio window-model 针对当前选中单元派生的 unit-centric presentation。它只读取 current-revision latest `SolveSnapshot`，并围绕 selected unit 暴露：
+`StudioGuiWindowModuleResultsModel` 是 Studio window-model 针对当前选中单元派生的 unit-centric presentation。它只读取 `WorkspaceState::flow_result()` 判定为 Current 的 `SolveSnapshot`，并围绕 selected unit 暴露：
 
 - `selected_unit_result`
 - consumed / produced stream chip
@@ -201,8 +209,8 @@ unit-centric 视图当前只是在同一份快照里按单元重新组织结果�
 当前状态语义：
 
 - `NoUnitSelected`：没有选中单元，不展示模块结果。
-- `NoCurrentResult`：当前文档 revision 尚无可用 latest result，提示先运行。
-- `Stale`：只存在旧 revision 的快照；展示 stale notice，不渲染旧 selected unit result、stream chip、related steps 或 diagnostic actions。
+- `NoCurrentResult`：当前工作区查询无 Current 结果，提示按当前资格检查或重跑；不能仅比较 revision。
+- `Stale`：当前查询判定已有快照失效；展示 stale notice，不渲染旧 selected unit result、stream chip、related steps 或 diagnostic actions。
 - `NoUnitResult`：当前 latest `SolveSnapshot` 中没有该单元的 step result，可展示 related steps / diagnostics，但不补造 unit result。
 - `Current`：当前 latest `SolveSnapshot` 中存在该单元结果，正常展示 selected unit result 和关联对象。
 
@@ -239,7 +247,7 @@ case-level `review_summary` 是 Studio window-model 从同一份最新 `SolveSna
 
 稳定边界：
 
-- action target 应从当前 `SolveSnapshot`、related steps 或 related diagnostics 派生
+- action target 应从当前 `SolveSnapshot`、related steps 或 related diagnostics 派生；捕获的结果动作须先重验守卫和目标，再走正式 focus command，失效不能静默定位同 ID 的新对象
 - `Results` command section 只能把当前最新 `SolveSnapshot` 内已有的 stream / unit target 暴露为 `inspector.focus_stream:*` / `inspector.focus_unit:*`
 - palette、menu、command list、runtime action button 与底部结果表都应继续走 host `dispatch_ui_command`，不为各自入口复制一套 target 解析
 - 顶部 `结果工具栏` 可以扫读 focus command 是否可用，但不应把当前 snapshot 的所有 stream / unit focus command 直接展开成一排长按钮；具体对象定位应由结果表、右侧相关 action、项目树或命令面板承担
@@ -259,7 +267,7 @@ UI / shell 不应通过解析错误文本反推出这些分类；分类、summar
 
 结果 DTO 数值始终为 SI。U3 呈现层根据量类型与单位目录生成 6 位有效数字文本；缺失和转换错误分开表示，温差不使用绝对温度偏移。`light_text_export()` 返回结构化错误或完整文本，转换失败不会生成带错误占位的成功产物。
 
-文本头包含 `snapshot_id`、`sequence`、`document_revision`、状态与摘要，以及 `display_units`、`number_format`。结果页和 Runtime 复用输出操作；发起时、剪贴板写入或文件选择器之前捕获工程身份、快照、项目单位和完整文本，不使用 Inspector 临时覆盖。等待期间显示单位变化不重写已捕获文本；文件写入前复验工程、当前快照身份和文档 revision。平台选择器、覆盖和失败恢复契约见 [B2-1](../topics/results-review-diagnostics.md#b2-1轻量结果输出闭环)。
+文本头包含 `snapshot_id`、`sequence`、`document_revision`、状态与摘要，以及 `display_units`、`number_format`。结果页和 Runtime 复用输出操作；发起时、剪贴板写入或文件选择器之前捕获工程身份、快照、项目单位和完整文本，不使用 Inspector 临时覆盖。等待期间显示单位变化不重写已捕获文本；文件写入前复验当前工作区、执行身份、快照及 revision；相同文档 ID / revision 的重开仍拒绝旧输出。平台选择器、覆盖和失败恢复契约见 [B2-1](../topics/results-review-diagnostics.md#b2-1轻量结果输出闭环)。
 
 稳定 section 口径：
 
@@ -268,6 +276,7 @@ UI / shell 不应通过解析错误文本反推出这些分类；分类、summar
 - `Units`：按单元列出当前最新 step、状态、summary、输入流股和输出流股
 - `Steps`：来自 `StepSnapshot` 的求解步骤摘要
 - `Diagnostics`：来自当前快照的诊断条目
+- `Execution origin`：冻结的执行来源、实际包 / 方法 / 指纹；未记录明确说明，保持文本审阅用途，不建立机器协议
 
 稳定边界：
 

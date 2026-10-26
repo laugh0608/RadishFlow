@@ -36,6 +36,12 @@ CSV 与 JSON 消费同一计算表行模型，按 `section / recordId / field` �
 
 仅 Current 且无相关草稿可输出，包括超限与边界结果。路径选择前捕获项目单位；写前重验行身份、不可复用的计算身份、资格、草稿及项目单位，期间变更须重新导出。标签更改不使数值过期，输出区分发起时和计算时标签。取消、覆盖失败、过期拒绝不改输入 / 历史 / 脏状态；工程后缀保护沿用 S1。
 
+## Matrix 矩阵审阅表
+
+格式为 `radishflow.separator-rating-matrix`，当前 version `3`。在单行 11 列前增加 `caseId`；共同任务、几何、覆盖与控制摘要的 `caseId` 为空，成员数据以具体工况限定。包含所有所需工况，即使零 Current 也可输出不完整覆盖；非 Current 成员保留状态、原因与可用执行来源，不写旧计算数值。控制摘要只使用 Current 行，不表示连续操作包络。
+
+发起时捕获完整成员列表、共同几何、各行结果身份及项目单位；所有成员及其依赖的相关草稿阻挡矩阵输出。写前重验该捕获，成员 / 输入 / 结果 / 单位变化须重新发起。固定采纳共同证据与逐行执行来源分别按下节约定保存；原始 SI、展示精度、CSV 转义和路径保护沿单行契约。
+
 ## C1 固定采纳证据
 
 C1 初版中，含采纳记录的单行表 `radishflow.separator-rating-table` 与矩阵 `radishflow.separator-rating-matrix` 使用 version `2`；未采纳任务和 S1 表使用 version `1`。AF5b 已将 Sizing 升为 `2`、Rating / Matrix 统一升为 `3`，下述采纳行内容保持。CSV 列数仍为单行 11 / 矩阵 12，JSON 保持相同行模型；CSV 的 `metadata/version` 与 JSON 的 `version` 一致。该版本独立于项目外层 v3 和 Rating 能力 v3。

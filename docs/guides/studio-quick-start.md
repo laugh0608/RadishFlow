@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-10-22
+更新时间：2026-10-26
 
 > 本文用于运行与验证当前 MVP 用户路径。内置样例与历史 `official` 称谓表示仓库演示 / 回归案例，运行成功不构成工程精度验证；解释结果前请阅读 [模型与样例边界](../thermo/mvp-model.md)。
 
@@ -10,7 +10,7 @@
 
 ## 当前能做什么
 
-截至 2026-10-15，源码支持以下路径；历史 staging 不包含后续能力，平台验证见专题：
+截至 2026-10-26，源码支持以下路径；历史 staging 不包含后续能力，平台验证见专题：
 
 - 启动后默认进入中文 Home Dashboard，可从 `开始 / 最近项目 / 示例项目 / 环境 / 消息` 分区判断从哪里开始
 - 新建未命名空白项目后先进入独立 `物性` 页，并从受控内置列表显式选择 `二元烃 Lite` 与 `methane / ethane`，再进入最短建模路径；项目文件仍保存稳定 id `binary-hydrocarbon-lite-v1`
@@ -125,7 +125,7 @@ cargo run -p radishflow-studio
 
 - `docs/guides/run-first-flowsheet.md`
 
-如果内置示例已经跑通，下一步建议从首页点击 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例`，按 `docs/guides/author-small-cases.md` 从空白项目复现小案例：放置单元、接受 suggestion、提交单元参数、运行、保存重开、重跑并导出当前结果。这些作者入口只打开空白项目和任务清单，不是自由连线、自动布线或完整项目向导。运行后进入顶部“结果”页，可点击“复制当前结果”或“导出当前结果”。macOS / Windows 提供文本保存选择器；Linux 暂用复制，文件导出会明确提示不支持。未运行或编辑导致结果过期时，输出入口禁用。路径自动补 `.txt`，已有目标需确认覆盖；取消或失败会在结果页显示原因，不改变工程保存路径，具体边界见 [B2-1](../topics/results-review-diagnostics.md#b2-1轻量结果输出闭环)。
+示例跑通后，可从首页 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例` 开始，按[小案例作者指南](author-small-cases.md)完成放置、连接、参数提交、运行和保存重开；入口只提供空白项目与任务清单。顶部 `结果` 页可复制或导出当前结果，缺失 / 过期时先重跑。macOS / Windows 提供 `.txt` 保存选择器，已有目标需确认覆盖；Linux 暂用复制。取消或失败不改变工程路径，完整契约见[结果审阅指南](review-solve-results.md#当前快照复制--导出)。
 
 ## 启动首页
 
@@ -236,7 +236,7 @@ macOS 工程撤销 / 重做使用 `⌘Z / ⇧⌘Z`，保留 `⌘Y`；Windows / L
 
 在 `工具 → 变量浏览器` 按对象搜索输入、结果和动作说明，并定位检查器编辑。浏览器只读，不展示未提交草稿；缺结果明确标识，旧结果保留来源但隐藏数值，重跑后恢复当前结果。
 
-`radishflow-studio --headless inspect <project>` 查询身份；`--headless run <request.json>` 执行 v1 参数写入或 v2 创建 / 连接 / 写入，再求解、读取 JSON。需已有组分 / 物性及缓存路径；使用 SI，只改内存。示例与边界见 [CLI 参考](../reference/headless-cli.md)。
+旧 `--headless inspect` / `run` 保持 v1 / v2 流程协议；新版 `--headless query` / `execute` 使用 v3，支持查询、正式编辑、检查、流程 / 设备计算及采纳。仅显式 `run_flow` 需要流程缓存，其他操作不需要。所有命令使用 SI，只改内存；新版不隐式运行或保存，影响确认按摘要重放。请求与退出码见 [CLI 参考](../reference/headless-cli.md)。
 
 ## 单元参数与连接诊断
 
@@ -321,6 +321,8 @@ Canvas 中的单元位置和 viewport offset 保存到项目同目录的 `<proje
 
 - `docs/guides/review-solve-results.md`
 - `docs/reference/solve-snapshot-results.md`
+
+来源详情、历史依据和输出资格见[结果审阅指南](review-solve-results.md#查看计算来源与结果资格)。
 
 ## 下一步应该读什么
 

@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-10-24
+更新时间：2026-10-26
 
 ## 用途
 
@@ -74,7 +74,7 @@ flowchart TD
 
 `rf-model::equipment` 拥有任务、输入与固定采纳证据；`rf-unitops::separator_sizing` 复用来源绑定，纯函数检查并返回拥有输入 / 来源副本的只读候选，无 UI、IO、COM 或流程求解调用。`rf-ui::engineering` 管理正式事务、独立历史及结果资格，`editor` 管理草稿与影响确认；Studio 设备页消费同一应用状态，并通过 `rf-store::project_v3` 保存正式输入。设备检查 / 计算不依赖流程 Run 或物性包选择；重开后结果 Missing。单行 / 矩阵导出已接通；C1 的 `separator_adoption` 纯映射与应用 / 编辑器原子采纳、v3 保存已实现，局部画板已确认，采纳 UI 与固定证据输出已接通；流程关联未接入。
 
-AF4a 的 `rf-ui::project_query` 从单一工作区只读发现流程、设备、基础和来源，分别校验流程身份与设备 checkpoint。AF5a 保留两类结果载荷，Current 才提供数值；执行来源随已接收结果保留，不由当前选包补填。AF4b 已接通流程 / 设备正式动作及运行回执；AF4c 已通过独立 v3 协议覆盖查询、正式编辑 / 确认、同步计算和 C1 采纳，旧 CLI 适配保持。
+AF4a 的 `rf-ui::project_query` 从单一工作区只读发现流程、设备、基础和来源，分别校验流程身份与设备 checkpoint。AF5a 保留两类结果载荷，Current 才提供数值；执行来源随已接收结果保留，不由当前选包补填。AF4b 已接通流程 / 设备正式动作及运行回执；AF4c 已通过独立 v3 协议覆盖查询、正式编辑 / 确认、同步计算和 C1 采纳，旧 CLI 适配保持。AF5b 的 `FlowResultReview` 将共享查询投影到 GUI，结果动作与输出以领域身份重验；设备历史独立折叠，计算表输出冻结执行来源。
 
 Studio 的 `modeling_specifications` 提供只读 A1 报告与会话身份；`modeling_recommendations` 持有同一检查会话，负责候选、预览、忽略和正式接受，GUI 共用该状态。接受经 `rf-ui` 输入 / 连接事务写回，检查与推荐不自动求解、不持久化，也不新增 CLI 协议。共享规则在 UI、预检与 solver 各自阶段消费，保留既有外部失败分类。
 
@@ -109,7 +109,7 @@ AF2b 已将 [CachedPropertyPackageProvider](../../crates/rf-property-package/src
 - 项目使用 `*.rfproj.json`，布局使用 `<project>.rfstudio-layout.json`；授权缓存与 token 不进入项目文件。
 - Studio 已内嵌 Inter / SourceHanSansSC 字体，不依赖固定的系统 CJK 字体名称。
 
-变量查询 / 写入置于 `rf-ui`，受控创建 / 连接 / 运行调用和本地 CLI 置于 Studio 应用层。CLI 复用现有事务与运行链路，不启动窗口；仍链接桌面依赖。接口范围见 [无界面参考](../reference/headless-cli.md)。 AF4b 的 `Studio::flow_actions`、`rf-ui::EquipmentAction` 与 `Studio::run_actions` 分别承接流程编辑、设备输入 / 检查和计算回执；各自校验领域输入上下文，编辑不需要物性缓存。GUI 复用正式事务与草稿守卫，旧 CLI 适配保持。新版 `headless::v3` 使用专用严格 DTO 和同次原始字节指纹，影响确认在隔离副本准备并按摘要重放；独立设备运行入口不接收流程缓存，仍使用相同运行资格和结果模型。
+变量查询 / 写入置于 `rf-ui`，受控创建 / 连接 / 运行调用和本地 CLI 置于 Studio 应用层。CLI 复用现有事务与运行链路，不启动窗口；仍链接桌面依赖。接口范围见 [无界面参考](../reference/headless-cli.md)。 AF4b 的 `Studio::flow_actions`、`rf-ui::EquipmentAction` 与 `Studio::run_actions` 分别承接流程编辑、设备输入 / 检查和计算回执；各自校验领域输入上下文，编辑不需要物性缓存。GUI 复用正式事务与草稿守卫，旧 CLI 适配保持。AF5b 的 `FlowResultReview` 将共享查询投影到 GUI，结果动作与输出以领域身份重验；设备历史独立折叠，计算表输出冻结执行来源。新版 `headless::v3` 使用专用严格 DTO 和同次原始字节指纹，影响确认在隔离副本准备并按摘要重放；独立设备运行入口不接收流程缓存，仍使用相同运行资格和结果模型。
 
 U1 的公共单位定义与转换位于 `rf-types::units`；`rf-ui` 变量元数据引用量类型。U2 已接通项目呈现保存、个人默认、数值会话及首批控件 / 视图覆盖，剩余交互与验收见 [单位专题](../topics/units-and-quantity-system.md)；CLI 保持规范 SI 契约。
 
@@ -141,7 +141,7 @@ Studio 已形成多层 host / driver / runtime / snapshot / window model，以�
 
 ## 工程基础链路审计（2026-10-23）
 
-2026-10-24 后续：AF2a 已将六类构造移至 `rf-unitops::catalog`，UI 创建与 solver 共用描述，保留原 kind / 参数 / 诊断；AF2b 另已迁出物性资源职责并接通共享上下文；AF3a—c 已接任务身份、后台流程 / 设备与 GUI 生命周期；AF4a / AF5a 已补工程发现与结果来源，AF4b 已接正式动作和 GUI 消费。2026-10-26 AF4c 已补新版 CLI 的 v3 查询、编辑、运行和采纳消费。下表保留 10 月 23 日审计基线，不作为当前缺口清单；各项状态与验收从 [AF 路线图](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)进入对应专题。
+2026-10-24 后续：AF2a 已将六类构造移至 `rf-unitops::catalog`，UI 创建与 solver 共用描述，保留原 kind / 参数 / 诊断；AF2b 另已迁出物性资源职责并接通共享上下文；AF3a—c 已接任务身份、后台流程 / 设备与 GUI 生命周期；AF4a / AF5a 已补工程发现与结果来源，AF4b 已接正式动作和 GUI 消费。2026-10-26 AF4c 已补 CLI v3，AF5b 已补 GUI 来源、定位和输出；后续按 AF6 复核扩展边界。下表保留 10 月 23 日审计基线，不作为当前缺口清单；各项状态与验收从 [AF 路线图](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)进入对应专题。
 
 基于 `9fd5650d` 的代码静态核对；本轮只修改文档，没有运行桌面窗口、性能测量或重新验收产品功能。下表的“已有”指代码中可定位的能力，自动测试位置是既有证据入口，不表示本轮重跑。原生保存症状来自 [W43 已有复现](../devlogs/2026-10/2026-W43.md#2026-10-22-原生保存定向复现与-c2-待审方案)。实施顺序和退出标准只在 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 维护。
 
