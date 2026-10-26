@@ -510,7 +510,7 @@ fn adoption_output_fixed_sources_current_difference_and_independent_csv_json_par
         output(&mut app, &key, matrix, Format::Json, &jp);
         output(&mut app, &key, matrix, Format::Csv, &cp);
         let data: Value = serde_json::from_str(&fs::read_to_string(&jp).unwrap()).unwrap();
-        assert_eq!(data["version"], 2);
+        assert_eq!(data["version"], 3);
         assert_eq!(
             row(&data, "adoption", "adopted-v3", "sourceTaskId")["text"],
             "sizing-source"

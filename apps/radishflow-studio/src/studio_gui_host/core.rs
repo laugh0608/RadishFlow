@@ -184,8 +184,16 @@ impl StudioGuiHost {
         let workspace_document = workspace_document_snapshot_from_controller(&self.controller);
         let control_state = self.controller.workspace_control_state();
         let run_panel = self.controller.run_panel_widget();
-        let latest_solve_snapshot = self.controller.latest_solve_snapshot();
-        let stale_solve_snapshot = self.controller.stale_solve_snapshot();
+        let workspace = &self.controller.app_state().workspace;
+        let result_review = crate::FlowResultReview::capture(workspace);
+        let latest_solve_snapshot = match workspace.flow_result() {
+            rf_ui::result_query::FlowResultView::Current { snapshot, .. } => Some(snapshot.clone()),
+            _ => None,
+        };
+        let stale_solve_snapshot = (result_review.status
+            == rf_ui::result_query::ResultStatus::Stale)
+            .then(|| self.controller.stale_solve_snapshot())
+            .flatten();
         let latest_failure_diagnostic_context = failure_diagnostic_context_from_controller(
             &self.controller,
             &control_state,
@@ -201,6 +209,7 @@ impl StudioGuiHost {
             self.command_registry(),
             self.canvas_state().widget(),
             StudioGuiRuntimeSnapshot {
+                result_review,
                 workspace_document,
                 example_projects: crate::studio_example_project_models(
                     self.controller.document_path(),

@@ -51,6 +51,7 @@ pub struct StudioGuiProjectComponentChoiceSnapshot {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiRuntimeSnapshot {
+    pub result_review: crate::FlowResultReview,
     pub workspace_document: StudioGuiWorkspaceDocumentSnapshot,
     pub example_projects: Vec<StudioExampleProjectModel>,
     pub control_state: WorkspaceControlState,

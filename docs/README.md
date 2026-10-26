@@ -93,6 +93,7 @@ Reference 文档回答“字段、单位、结果、格式分别是什么”，�
 | --- | --- |
 | `reference/headless-cli.md` | 本地无界面查询、建模与参数化运行的命令、JSON 与错误语义 |
 | `reference/units-and-conventions.md` | 当前稳定的单位、相标签、组成与字段后缀约定 |
+| [设备计算表](reference/equipment-calculation-tables.md) | Sizing / Rating / Matrix CSV、JSON 字段、来源版本与输出资格 |
 | `reference/solve-snapshot-results.md` | `SolveSnapshot`、step 输入/输出与结果 DTO 的稳定语义 |
 
 ## Architecture And Boundaries

@@ -178,7 +178,7 @@ impl ReadyAppState {
                 ui.selectable_value(&mut self.equipment.section, EquipmentSection::Evidence, tr(l, "依据", "Evidence"));
             });
             if self.equipment.section != EquipmentSection::Inputs {
-                requested_issue = rating_results::render(ui, l, &key, session, units, self.equipment.section == EquipmentSection::Evidence).or(requested_issue.take());
+                requested_issue = rating_results::render(ui, l, &key, session, units, self.equipment.section == EquipmentSection::Evidence).and_then(|navigation| self.current_equipment_navigation(navigation)).or(requested_issue.take());
                 return;
             }
             ui.horizontal_wrapped(|ui| {
@@ -204,7 +204,7 @@ impl ReadyAppState {
             if split {
                 ui.columns(2, |cols| {
                     render_inputs(&mut cols[0]);
-                    requested_issue = rating_results::render(&mut cols[1], l, &key, session, units, false).or(requested_issue.take());
+                    requested_issue = rating_results::render(&mut cols[1], l, &key, session, units, false).and_then(|navigation| self.current_equipment_navigation(navigation)).or(requested_issue.take());
                 });
             } else {
                 render_inputs(ui);

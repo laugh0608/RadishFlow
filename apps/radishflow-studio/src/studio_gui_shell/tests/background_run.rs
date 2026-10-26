@@ -647,3 +647,43 @@ fn activity_and_exit_wait_fit_narrow_bilingual_double_text_without_cancelling_on
         }
     }
 }
+
+#[test]
+fn background_result_projection_and_export_share_executed_origin() {
+    let mut app = flow_app();
+    start_flow(&mut app);
+    drain(&mut app);
+    let window = app.platform_host.snapshot().window_model();
+    let snapshot = window.runtime.latest_solve_snapshot.as_ref().unwrap();
+    let origin = snapshot.origin.as_ref().unwrap();
+    let package = origin.execution().unwrap().package.as_ref().unwrap();
+    assert_eq!(window.runtime.result_review.origin.as_ref(), Some(origin));
+    assert!(
+        snapshot
+            .result_guard
+            .as_ref()
+            .unwrap()
+            .is_current(&app.platform_host.modeling_inputs().workspace)
+    );
+    let text = snapshot.light_text_export().unwrap();
+    for value in [
+        &package.package_id,
+        &package.version,
+        &package.payload_fingerprint,
+    ] {
+        assert!(text.contains(value));
+    }
+    let inspector = snapshot.result_inspector_with_unit(None, None, None);
+    for action in inspector
+        .diagnostic_actions
+        .iter()
+        .chain(&inspector.unit_diagnostic_actions)
+    {
+        assert!(action.action.result_guard.is_some());
+        assert!(
+            action
+                .action
+                .result_is_current(&app.platform_host.modeling_inputs().workspace)
+        );
+    }
+}

@@ -567,7 +567,17 @@ fn failure_query_is_qualified_and_late_failure_cannot_replace_new_evidence() {
     };
     assert_eq!(origin.execution().unwrap().run_id, failed_id);
     assert!(origin.execution().unwrap().package.is_none());
+    let review = crate::FlowResultReview::capture(&app.workspace);
+    let guard = review.guard.as_ref().unwrap();
+    assert!(guard.is_current(&app.workspace));
+    let rows = crate::flow_origin_lines(review.origin.as_ref());
+    assert!(
+        rows.iter()
+            .any(|(key, value)| key == "package" && value == "not loaded during preparation")
+    );
+    assert!(!rows.iter().any(|(key, _)| key == "payload_fingerprint"));
     rename(&mut app, "New input");
+    assert!(!guard.is_current(&app.workspace));
     let mut good = execute(prepare(&mut app, false));
     complete_workspace_solve(&mut app, &mut good);
     let before = app.clone();

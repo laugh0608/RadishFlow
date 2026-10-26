@@ -75,11 +75,14 @@ impl ReadyAppState {
                 .expect("current identity")
                 .clone(),
         };
+        let view = session.query_case_result(&EquipmentCaseKey {
+            task_id: id.clone(),
+            case_id: task.case.id.clone(),
+        });
         let encoded = calculation_table::encode(
             candidate,
             task,
-            workspace.document.metadata.document_id.as_str(),
-            session.generation(id).expect("current generation"),
+            view.origin().expect("current execution origin"),
             workspace.project_presentation.display_units().clone(),
             format,
         );
@@ -116,11 +119,11 @@ impl ReadyAppState {
                 .clone(),
             units: units.clone(),
         };
+        let view = session.query_case_result(member);
         let encoded = calculation_table::encode_rating(
             result,
             task,
-            workspace.document.metadata.document_id.as_str(),
-            session.case_generation(member).expect("current generation"),
+            view.origin().expect("current execution origin"),
             units,
             format,
         );

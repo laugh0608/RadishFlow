@@ -70,6 +70,15 @@ impl StudioGuiWindowSolveSnapshotModel {
             ]),
         ];
 
+        // Append provenance without changing the established numerical tables.
+        let provenance = crate::flow_origin_lines(self.origin.as_ref());
+        let mut source_lines = vec!["Execution origin".to_string()];
+        source_lines.extend(
+            provenance
+                .into_iter()
+                .map(|(key, value)| format!("{key}: {}", one_line(&value))),
+        );
+
         for stream in &self.streams {
             lines.push(tsv_row([
                 stream.stream_id.as_str(),
@@ -151,6 +160,8 @@ impl StudioGuiWindowSolveSnapshotModel {
         }
 
         lines.push(String::new());
+        lines.push(String::new());
+        lines.extend(source_lines);
         Ok(lines.join("\n"))
     }
 }

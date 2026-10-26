@@ -3,7 +3,7 @@ use super::*;
 use rf_model::engineering::{InputBinding, SourceKind, SourcePhase, SourceReview};
 use rf_model::equipment::{SeparatorAxialSection, SeparatorInput, SeparatorSizingTask};
 use rf_types::units::ConversionError;
-use rf_ui::engineering::ResultGeneration;
+use rf_ui::engineering::EquipmentResultOrigin;
 use rf_ui::engineering::editor::separator_sizing::{ControllingConstraint, SeparatorCandidate};
 use serde::Serialize;
 
@@ -87,6 +87,20 @@ struct CalculationTable {
     units: DisplayUnitSet,
 }
 impl CalculationTable {
+    fn execution_origin(&mut self, origin: Option<&EquipmentResultOrigin>) {
+        if let Some(origin) = origin {
+            for (key, value) in radishflow_studio::equipment_origin_lines(origin) {
+                self.text(
+                    "executionOrigin",
+                    origin.member.case_id.as_str(),
+                    &key,
+                    value,
+                );
+            }
+        } else {
+            self.text("executionOrigin", "", "availability", "unrecorded");
+        }
+    }
     fn text(&mut self, section: &'static str, id: &str, field: &str, text: impl ToString) {
         let mut row = TableRow::new(section, id, field);
         row.text = Some(text.to_string());
@@ -224,8 +238,7 @@ fn csv_cell(value: &str, text_cell: bool) -> String {
 pub(super) fn encode(
     candidate: &SeparatorCandidate,
     current_task: &SeparatorSizingTask,
-    document_id: &str,
-    generation: ResultGeneration,
+    origin: &EquipmentResultOrigin,
     units: DisplayUnitSet,
     format: CalculationTableFormat,
 ) -> Result<String, TableError> {
@@ -233,16 +246,22 @@ pub(super) fn encode(
     let task = &capture.task;
     let mut table = CalculationTable {
         format: "radishflow.separator-calculation-table",
-        version: 1,
+        version: 2,
         rows: Vec::new(),
         units,
     };
     table.text("metadata", "", "format", table.format);
     table.text("metadata", "", "version", table.version);
-    table.text("metadata", "", "documentId", document_id);
+    table.execution_origin(Some(origin));
+    table.text("metadata", "", "documentId", origin.document_id.as_str());
     table.text("metadata", "", "resultStatusAtCapture", "current");
-    table.text("metadata", "", "inputGeneration", generation.input);
-    table.text("metadata", "", "evidenceGeneration", generation.evidence);
+    table.text("metadata", "", "inputGeneration", origin.generation.input);
+    table.text(
+        "metadata",
+        "",
+        "evidenceGeneration",
+        origin.generation.evidence,
+    );
     table.text("metadata", "", "unitScope", "projectAtExportRequest");
     table.text("metadata", "", "displaySignificantDigits", "6");
     table.text("metadata", "", "scope", "Conditional preliminary process dimensions; no mechanical certification, standard diameter rounding or separation efficiency guarantee.");

@@ -109,6 +109,15 @@ pub enum EquipmentResultView<'a> {
     },
 }
 impl EquipmentResultView<'_> {
+    pub fn origin(&self) -> Option<&EquipmentResultOrigin> {
+        match self {
+            Self::Current { origin, .. }
+            | Self::Stale { origin, .. }
+            | Self::Failed { origin, .. } => Some(origin),
+            Self::Missing { .. } => None,
+        }
+    }
+
     pub fn status(&self) -> EquipmentResultStatus {
         match self {
             Self::Current { .. } => EquipmentResultStatus::Current,

@@ -6,7 +6,12 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         window: &StudioGuiWindowModel,
     ) {
+        super::result_review::flow(ui, self.locale, &window.runtime.result_review);
         let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() else {
+            if let Some(failure) = window.runtime.latest_failure.as_ref() {
+                self.render_latest_failure_summary(ui, failure);
+                return;
+            }
             if let Some(stale_snapshot) = window.runtime.stale_solve_snapshot.as_ref() {
                 self.render_stale_solve_snapshot_notice(ui, stale_snapshot);
                 return;
@@ -14,6 +19,10 @@ impl ReadyAppState {
             ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
             return;
         };
+        let current = snapshot
+            .result_guard
+            .as_ref()
+            .is_some_and(|guard| guard.is_current(&self.platform_host.modeling_inputs().workspace));
         if snapshot.streams.is_empty() {
             ui.small(self.locale.text(ShellText::NoStreamResults));
             return;
@@ -32,9 +41,13 @@ impl ReadyAppState {
                 ui.end_row();
                 for stream in &snapshot.streams {
                     let response = ui
-                        .add(egui::Button::new(&stream.label).frame(false))
+                        .add_enabled(current, egui::Button::new(&stream.label).frame(false))
                         .on_hover_text(&stream.stream_id);
-                    if response.clicked() {
+                    if response.clicked()
+                        && snapshot.result_guard.as_ref().is_some_and(|guard| {
+                            guard.is_current(&self.platform_host.modeling_inputs().workspace)
+                        })
+                    {
                         self.focus_result_table_stream(
                             &snapshot.snapshot_id,
                             stream.stream_id.clone(),
@@ -70,9 +83,13 @@ impl ReadyAppState {
 
                 for unit in &snapshot.review_summary.unit_results {
                     let unit_response = ui
-                        .add(egui::Button::new(&unit.unit_id).frame(false))
+                        .add_enabled(current, egui::Button::new(&unit.unit_id).frame(false))
                         .on_hover_text(&unit.summary);
-                    if unit_response.clicked() {
+                    if unit_response.clicked()
+                        && snapshot.result_guard.as_ref().is_some_and(|guard| {
+                            guard.is_current(&self.platform_host.modeling_inputs().workspace)
+                        })
+                    {
                         self.focus_result_table_unit(&snapshot.snapshot_id, unit.unit_id.clone());
                     }
                     ui.label(self.locale.runtime_label(unit.status_label).as_ref());

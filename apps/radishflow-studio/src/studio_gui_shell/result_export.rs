@@ -167,6 +167,20 @@ impl ReadyAppState {
         &mut self,
         requested: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
     ) -> Option<radishflow_studio::StudioGuiWindowSolveSnapshotModel> {
+        if !requested
+            .result_guard
+            .as_ref()
+            .is_some_and(|guard| guard.is_current(&self.platform_host.modeling_inputs().workspace))
+        {
+            self.result_output_notice(
+                ProjectOpenNoticeLevel::Warning,
+                "Current results unavailable",
+                "当前结果不可输出",
+                "The result belongs to a changed execution or session. Start a new export.",
+                "结果所属运行或会话已变化，请重新发起导出。",
+            );
+            return None;
+        }
         let window = self.platform_host.snapshot().window_model();
         if let Some(current) = window.runtime.latest_solve_snapshot
             && current.snapshot_id == requested.snapshot_id

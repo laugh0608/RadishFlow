@@ -487,6 +487,9 @@ impl ReadyAppState {
                             .show(&mut columns[1], |ui| {
                                 if let Some(target) =
                                     results::render(ui, locale, id, &session, &units, evidence)
+                                        .and_then(|navigation| {
+                                            self.current_equipment_navigation(navigation)
+                                        })
                                 {
                                     self.equipment_issue_target(target, &mut open_source);
                                 }
@@ -603,7 +606,9 @@ impl ReadyAppState {
                             session,
                             units,
                             section == EquipmentSection::Evidence,
-                        ) {
+                        )
+                        .and_then(|navigation| self.current_equipment_navigation(navigation))
+                        {
                             self.equipment_issue_target(target, open_source);
                         }
                         return;

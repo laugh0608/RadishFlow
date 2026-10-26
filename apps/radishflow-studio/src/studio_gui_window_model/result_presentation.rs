@@ -32,6 +32,7 @@ impl std::error::Error for StudioGuiQuantityPresentationError {
 /// exposes the error, and output can reject the collected typed errors atomically.
 pub(super) struct ResultValuePresentation<'a> {
     units: &'a DisplayUnitSet,
+    pub(super) guard: Option<crate::FlowResultGuard>,
     errors: Vec<StudioGuiQuantityPresentationError>,
 }
 
@@ -39,6 +40,7 @@ impl<'a> ResultValuePresentation<'a> {
     fn new(units: &'a DisplayUnitSet) -> Self {
         Self {
             units,
+            guard: None,
             errors: Vec::new(),
         }
     }
@@ -168,6 +170,7 @@ impl<'a> ResultValuePresentation<'a> {
                 .join(", ")
         };
         StudioGuiWindowStreamResultModel {
+            result_guard: self.guard.clone(),
             stream_id: id.into(),
             label: stream.label.clone(),
             temperature_k: stream.temperature_k,
@@ -207,7 +210,7 @@ impl<'a> ResultValuePresentation<'a> {
                 enthalpy.as_deref(),
                 None,
             ),
-            focus_action: inspector_stream_action(id),
+            focus_action: inspector_stream_action(id).with_result_guard(self.guard.as_ref()),
         }
     }
 
@@ -258,7 +261,8 @@ pub(super) fn stream_result_reference_model_from_window_stream(
             stream.molar_enthalpy_text.as_deref(),
             Some(&stream.composition_text),
         ),
-        focus_action: inspector_stream_action(&stream.stream_id),
+        focus_action: inspector_stream_action(&stream.stream_id)
+            .with_result_guard(stream.result_guard.as_ref()),
     }
 }
 
@@ -288,6 +292,7 @@ pub(super) fn solve_snapshot_model_from_ui(
     units: &DisplayUnitSet,
 ) -> StudioGuiWindowSolveSnapshotModel {
     let mut presentation = ResultValuePresentation::new(units);
+    presentation.guard = crate::FlowResultGuard::from_snapshot(snapshot);
     let status_label = run_status_label(snapshot.status);
     let streams = snapshot
         .streams
@@ -318,7 +323,8 @@ pub(super) fn solve_snapshot_model_from_ui(
                 .iter()
                 .map(|stream| stream.stream_id.as_str().to_string())
                 .collect::<Vec<_>>();
-            let unit_action = inspector_unit_action(step.unit_id.as_str());
+            let unit_action = inspector_unit_action(step.unit_id.as_str())
+                .with_result_guard(presentation.guard.as_ref());
             let consumed_stream_actions = consumed_stream_results
                 .iter()
                 .map(|stream| stream.focus_action.clone())
@@ -361,6 +367,8 @@ pub(super) fn solve_snapshot_model_from_ui(
         result_review_summary_model_from_parts(status_label, diagnostics.len(), &streams, &steps);
 
     StudioGuiWindowSolveSnapshotModel {
+        origin: snapshot.origin.clone(),
+        result_guard: crate::FlowResultGuard::from_snapshot(snapshot),
         snapshot_id: snapshot.id.as_str().to_string(),
         sequence: snapshot.sequence,
         document_revision: snapshot.document_revision,

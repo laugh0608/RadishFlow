@@ -138,7 +138,7 @@ fn equipment_export_formats_share_complete_rows_units_precision_and_unknowns() {
     assert!(before.is_dirty());
     let table = read(&json);
     assert_eq!(table["format"], "radishflow.separator-calculation-table");
-    assert_eq!(table["version"], 1);
+    assert_eq!(table["version"], 2);
     for (field, si, value, unit) in [
         ("operatingTemperature", 300.0, "26.85", "celsius"),
         ("operatingPressure", 100000.0, "1", "bar"),
@@ -244,6 +244,27 @@ fn equipment_export_keeps_units_and_labels_captured_before_overwrite() {
     assert_eq!(
         row(&table, "task", task_id(&task).as_str(), "capturedName")["text"],
         "Synthetic separator"
+    );
+    let session = &app.platform_host.modeling_inputs().workspace.engineering;
+    let case = session
+        .inputs()
+        .task(&task_id(&task))
+        .unwrap()
+        .case
+        .id
+        .clone();
+    assert_eq!(
+        row(&table, "executionOrigin", case.as_str(), "taskName")["text"],
+        "Synthetic separator"
+    );
+    assert_eq!(
+        row(
+            &table,
+            "executionOrigin",
+            case.as_str(),
+            "executionIdentity"
+        )["text"],
+        "recorded; session-local, not serialized"
     );
     fs::remove_dir_all(file.parent().unwrap()).unwrap();
 }

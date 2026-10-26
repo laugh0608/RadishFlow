@@ -62,7 +62,7 @@ fn rating_export_preserves_signed_precision_geometry_evidence_units_and_csv_json
     assert_eq!(app.platform_host.modeling_inputs().workspace, before);
     let table: Value = serde_json::from_str(&fs::read_to_string(json).unwrap()).unwrap();
     assert_eq!(table["format"], "radishflow.separator-rating-table");
-    assert_eq!(table["version"], 1);
+    assert_eq!(table["version"], 3);
     for (section, id, field, expected) in [
         ("metadata", "", "taskId", "rating-1"),
         ("metadata", "", "caseId", "rating-case-1"),

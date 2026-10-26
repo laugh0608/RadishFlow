@@ -223,7 +223,7 @@ V1—V4 均须先评审相应 R0 / R1 用户路径，再逐切片实现。覆盖
 
 - 当前状态：Active
 - 最近更新：2026-10-24，AF5a 结果资格 / 来源查询完成；B2 输出 / 恢复、U3 单位消费与设备单行 / 矩阵 / 固定证据输出保持各自已验边界。
-- AF4c 已在新版 CLI 消费共享结果查询；下一步 AF5b 细化来源详情、诊断定位与输出一致性。新 UI 先做局部评审，Q1—Q3 和跨平台证据继续按各自范围推进。
+- AF4c 已在新版 CLI 消费共享结果查询；AF5b 已补齐来源详情、诊断定位与输出一致性。局部静态稿、自动回归和 macOS 代表验证通过，Q1—Q3 和跨平台证据继续按各自范围推进。
 
 
 ## AF5a 结果资格与来源查询（2026-10-24）
@@ -241,11 +241,11 @@ V1—V4 均须先评审相应 R0 / R1 用户路径，再逐切片实现。覆盖
 
 实现入口：[`WorkspaceState::flow_result`](../../crates/rf-ui/src/result_query.rs)、[`EngineeringSession::query_case_result`](../../crates/rf-ui/src/engineering/results/query.rs)、[受保护接收与实际来源映射](../../apps/radishflow-studio/src/solver_bridge/execution.rs)。同步缓存准备失败仍保留既有状态语义：低层只返回失败，Facade 之后记录的诊断没有运行来源，明确为未记录；后台准备失败经守卫发布并保留 RunId，尚未加载到物性资产时 package 缺失。实现标识为当前组件与 crate 版本，不代表 Git 构建标识或数值准确性认证。
 
-## AF5b 来源详情、诊断定位与输出方案（2026-10-26，待审定）
+## AF5b 来源详情、诊断定位与输出（2026-10-26）
 
-所有者要求在轻量验证治理提交后继续推进项目下一步。本节完成代码盘点与具体方案；涉及新增 UI、应用内读取边界及设备输出版本，尚不将继续推进理解为这些细节已获认可。方案确认后按下列四片实施；新增 UI 按[局部评审方案](../architecture/designs/studio-client-main-brief.md#af5b-来源与诊断局部方案2026-10-26待评审)先做静态评审。
+所有者已确认 AF5b-1—4 的范围、输出版本与局部 UI 方案。已接通来源投影、诊断 / 输出身份重验及就地折叠；静态稿见[局部方案](../architecture/designs/studio-client-main-brief.md#af5b-来源与诊断局部方案2026-10-26)。AF5b-1—4 已完成；自动回归、macOS 代表实窗与正式基线通过，范围与未验项见 [W44](../devlogs/2026-10/2026-W44.md#2026-10-26-af5b-实施与代表验证)。
 
-### 现有能力与具体缺口
+### 实施范围与读取边界
 
 | 链路 | 已有实现 | AF5b 补齐范围 |
 | --- | --- | --- |
@@ -256,9 +256,9 @@ V1—V4 均须先评审相应 R0 / R1 用户路径，再逐切片实现。覆盖
 | 流程输出 | `result_export.rs` 捕获显示模型、文本，写前比较工程 / 快照 / sequence / revision | 捕获真实结果资格和来源；写前使用领域身份复核，同 ID / revision 重开不能复用旧输出 |
 | 设备输出 | Sizing / Rating / Matrix 已有 CSV / JSON 共同行模型、计算身份、草稿与写前重验；C1 固定采纳证据已有版本 | 复用现有表和捕获机制，补冻结执行来源；当前标签与执行时标签分开，矩阵逐行保留自己的身份和状态 |
 
-关键代码入口：[`result_query.rs`](../../crates/rf-ui/src/result_query.rs)、[`设备查询`](../../crates/rf-ui/src/engineering/results/query.rs)、[`GUI 投影`](../../apps/radishflow-studio/src/studio_gui_window_model/result_presentation.rs)、[`流程输出`](../../apps/radishflow-studio/src/studio_gui_shell/result_export.rs)、[`设备输出`](../../apps/radishflow-studio/src/studio_gui_shell/equipment/export.rs)。上述是实现差距盘点，尚未通过运行复现将所有差距认定为产品缺陷。
+关键代码入口：[`result_query.rs`](../../crates/rf-ui/src/result_query.rs)、[`设备查询`](../../crates/rf-ui/src/engineering/results/query.rs)、[`GUI 投影`](../../apps/radishflow-studio/src/studio_gui_window_model/result_presentation.rs)、[`流程输出`](../../apps/radishflow-studio/src/studio_gui_shell/result_export.rs)、[`设备输出`](../../apps/radishflow-studio/src/studio_gui_shell/equipment/export.rs)。实现以既有领域资格为唯一来源，不建立第二套有效性规则。
 
-### 建议冻结的行为
+### 已确认行为
 
 1. **当前资格与历史审阅分开。** 顶部显示 Current / Stale / Missing / Failed，并以文字说明原因。Current 才有正式结果数值与现有采纳 / 输出动作；Stale 默认显示来源、失效原因和重算入口。既有设备历史可展开查看，明确“历史依据”，不允许从该区域导出当前表或采纳。Failed 展示本次失败诊断和实际已获得来源，Missing 不补零。运行中、取消请求和结果资格仍独立显示。
 2. **来源来自执行时捕获。** 流程显示文档 / 输入修订、会话内运行身份、实际包 ID / 版本 / 来源、液气相方法；指纹、schema 与实现标识放在技术详情。设备显示计算身份、task / case、方法及版本、记录修订、input / evidence generation 与基础 / 来源修订。来源未记录或准备失败未加载包时明确缺失，不用当前设置回填。当前名称只作为定位辅助，执行时标签与 C1 采纳时副本分别标明。
@@ -270,14 +270,14 @@ V1—V4 均须先评审相应 R0 / R1 用户路径，再逐切片实现。覆盖
 
 CLI v1 / v2 / v3、FFI 与工程 schema 保持现状；AF5b 不增加 CLI 保存 / 文件导出动作，不将会话内 RunId / CalculationId 变成持久化公共令牌。
 
-| 输出 | 当前版本 | 建议变化 |
+| 输出 | 原版本 | AF5b 变化 |
 | --- | --- | --- |
 | 流程轻量文本 | 现有 `RadishFlow Solve Snapshot`，无机器版本协议 | 保留现有数值表和 6 位有效数字，追加来源段及未记录原因；仍是供阅读的文本 |
-| Sizing CSV / JSON | `radishflow.separator-calculation-table` / 1 | 升为 2，增加执行来源 metadata，现有量与行列保留 |
+| Sizing CSV / JSON | `radishflow.separator-calculation-table` / 1 | 升为 2，增加 `executionOrigin` 行，现有量与行列保留 |
 | Rating CSV / JSON | `radishflow.separator-rating-table` / 1，带 C1 为 2 | 统一升为 3，完整保留已有 C1 行，新增冻结来源字段 |
 | Matrix CSV / JSON | `radishflow.separator-rating-matrix` / 1，带 C1 为 2 | 统一升为 3，来源按成员行归属；非 Current 成员仅带可用来源 / 状态 / 原因，无旧结果数值 |
 
-新增字段逐项来自 AF5a 结果记录；捕获缺失时明确 unknown / unrecorded，不填当前记录修订冒充执行修订。CSV 与 JSON 使用同一行模型，版本与字段表同步到设备输出专题。旧输出文件不改写；本项目当前没有这些输出表的导入器，不增加双版本导出菜单或兼容兜底。该版本选择需在实施前审定。
+新增字段逐项来自 AF5a 结果记录；捕获缺失时明确 unknown / unrecorded，不填当前记录修订冒充执行修订。CSV 与 JSON 使用同一行模型，版本与字段表同步到设备输出专题。旧输出文件不改写；本项目当前没有这些输出表的导入器，不增加双版本导出菜单或兼容兜底。版本已确认；字段表见[设备计算表](equipment/separator-sizing-and-rating.md#af5b-执行来源输出2026-10-26)。
 
 ### 实施切片与验收责任
 
@@ -290,10 +290,11 @@ CLI v1 / v2 / v3、FFI 与工程 schema 保持现状；AF5b 不增加 CLI 保存
 
 测试按责任分层：领域资格继续由既有查询测试负责；新增投影用例证明信息不丢失；导航与输出测试证明跨层身份 / IO 边界；UI 只覆盖新增交互和代表布局，不在每一层重复完整数值或故障矩阵。每片先做相关模块验证，最终收口一次全仓；文档收尾不重复产品测试。正式基线记录耗时，不设未经测量的性能达标承诺。
 
-### 待审定项与非目标
+### 实现与非目标
 
-- 是否接受“当前来源就地折叠、旧设备数值归显式历史依据、无新增常驻工作台”的 UI 范围。
-- 是否接受上述设备输出版本升级及流程文本追加来源段。
-- 是否按 AF5b-1—4 顺序实施，局部画板评审后接入新 UI。
+- `FlowResultReview` 从共享查询建立拥有数据的只读投影；`FlowResultGuard` 将原结果来源、快照序号或失败诊断作为会话内守卫，导航和写前重新查询。模块 / 流股 / 单元 / 失败动作携带守卫，目标不存在时禁用并说明。
+- 设备 `EquipmentResultGuard` 按工况来源及状态重验；无关工况编辑不撤销本工况动作。历史尺寸与校核均移入默认收起且禁止定位的历史依据区。
+- RunId / CalculationId 为会话内不透明身份，不提供跨运行数字编号或内存地址。技术详情 / 输出明确记录“已记录、会话内、不序列化”，其余可审阅证据写出真实值；它们不是持久化回放令牌。
+- 自动回归、静态设计和原生验证分别留痕；最终证据见 [W44](../devlogs/2026-10/2026-W44.md)。
 
 不改数值方法、物理准确性结论、C1 采纳映射、C3 流程关联、持久化运行历史、工程格式、COM / 录制、全局诊断工作台或原生文件面板架构。AF1 继续独立定因，本方案不把输出资格整理当作其修复证据。

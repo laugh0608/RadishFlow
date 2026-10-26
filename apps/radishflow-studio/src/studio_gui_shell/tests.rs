@@ -289,10 +289,10 @@ fn shared_command_surface_initial_window(
     apps: &CommandSurfaceApps,
 ) -> radishflow_studio::StudioGuiWindowModel {
     let initial_window = command_surface_window(&apps.menu_app);
-    assert_eq!(command_surface_window(&apps.toolbar_app), initial_window);
-    assert_eq!(command_surface_window(&apps.list_app), initial_window);
-    assert_eq!(command_surface_window(&apps.palette_app), initial_window);
-    assert_eq!(command_surface_window(&apps.shortcut_app), initial_window);
+    assert_command_surface_window_equal(&apps.toolbar_app, &initial_window);
+    assert_command_surface_window_equal(&apps.list_app, &initial_window);
+    assert_command_surface_window_equal(&apps.palette_app, &initial_window);
+    assert_command_surface_window_equal(&apps.shortcut_app, &initial_window);
     initial_window
 }
 
@@ -300,11 +300,11 @@ fn assert_command_surface_windows_equal(
     apps: &CommandSurfaceApps,
     expected: &radishflow_studio::StudioGuiWindowModel,
 ) {
-    assert_eq!(command_surface_window(&apps.menu_app), *expected);
-    assert_eq!(command_surface_window(&apps.toolbar_app), *expected);
-    assert_eq!(command_surface_window(&apps.list_app), *expected);
-    assert_eq!(command_surface_window(&apps.palette_app), *expected);
-    assert_eq!(command_surface_window(&apps.shortcut_app), *expected);
+    assert_command_surface_window_equal(&apps.menu_app, expected);
+    assert_command_surface_window_equal(&apps.toolbar_app, expected);
+    assert_command_surface_window_equal(&apps.list_app, expected);
+    assert_command_surface_window_equal(&apps.palette_app, expected);
+    assert_command_surface_window_equal(&apps.shortcut_app, expected);
 }
 
 fn dispatch_enabled_command_surface_interactions(
@@ -762,3 +762,79 @@ mod equipment_export;
 mod equipment_matrix;
 mod equipment_rating_editor;
 mod equipment_rating_export;
+
+mod result_provenance_ui;
+
+// These fixtures execute independently. Compare all presentation data while
+// validating (rather than equating) their deliberately distinct run authorities.
+fn assert_command_surface_window_equal(
+    app: &ReadyAppState,
+    expected: &radishflow_studio::StudioGuiWindowModel,
+) {
+    let mut actual = command_surface_window(app);
+    for (actual, expected) in [
+        (
+            &mut actual.runtime.result_review,
+            &expected.runtime.result_review,
+        ),
+        (
+            &mut actual.module_results.result_review,
+            &expected.module_results.result_review,
+        ),
+    ] {
+        assert_eq!(
+            radishflow_studio::flow_origin_lines(actual.origin.as_ref()),
+            radishflow_studio::flow_origin_lines(expected.origin.as_ref())
+        );
+        if let Some(guard) = &actual.guard {
+            assert!(guard.is_current(&app.platform_host.modeling_inputs().workspace));
+        }
+        actual.origin = expected.origin.clone();
+        actual.guard = expected.guard.clone();
+    }
+    if let Some(guard) = expected.runtime.result_review.guard.as_ref() {
+        let normalize = |action: &mut radishflow_studio::StudioGuiWindowCommandActionModel| {
+            assert!(
+                action
+                    .result_guard
+                    .as_ref()
+                    .unwrap()
+                    .is_current(&app.platform_host.modeling_inputs().workspace)
+            );
+            action.result_guard = Some(guard.clone());
+        };
+        if let Some(unit) = &mut actual.module_results.selected_unit {
+            normalize(&mut unit.action);
+        }
+        if let Some(failure) = &mut actual.runtime.latest_failure {
+            for action in &mut failure.diagnostic_actions {
+                normalize(&mut action.action);
+            }
+            if let Some(action) = &mut failure.recovery_action {
+                normalize(action);
+            }
+            if let Some(target) = &mut failure.recovery_target {
+                normalize(&mut target.action);
+            }
+            if let Some(detail) = &mut failure.diagnostic_detail {
+                for target in detail
+                    .related_units
+                    .iter_mut()
+                    .chain(&mut detail.related_streams)
+                {
+                    normalize(&mut target.action);
+                }
+                for stream in &mut detail.related_stream_results {
+                    normalize(&mut stream.focus_action);
+                }
+                for port in &mut detail.related_ports {
+                    normalize(&mut port.unit_action);
+                    if let Some(stream) = &mut port.stream_result {
+                        normalize(&mut stream.focus_action);
+                    }
+                }
+            }
+        }
+    }
+    assert_eq!(&actual, expected);
+}

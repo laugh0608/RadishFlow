@@ -27,11 +27,7 @@ pub(in super::super) fn encode(
     let summary = capture.summary();
     let mut common = CalculationTable {
         format: "radishflow.separator-rating-matrix",
-        version: if task.geometry.adoption.is_some() {
-            2
-        } else {
-            1
-        },
+        version: 3,
         rows: vec![],
         units: units.clone(),
     };
@@ -225,6 +221,9 @@ pub(in super::super) fn encode(
             units: units.clone(),
             rows: vec![],
         };
+        if captured.result.is_none() {
+            row.execution_origin(captured.origin.as_ref());
+        }
         row.text("member", case_id, "order", index);
         row.text("member", case_id, "name", &case.name);
         row.text("member", case_id, "purpose", &case.purpose);
@@ -265,8 +264,15 @@ pub(in super::super) fn encode(
             }
         }
         if let Some(result) = &captured.result {
-            let details =
-                rating::build(result, task, document, captured.generation, units.clone())?;
+            let details = rating::build(
+                result,
+                task,
+                captured
+                    .origin
+                    .as_ref()
+                    .expect("current result has execution origin"),
+                units.clone(),
+            )?;
             row.rows.extend(details.rows.into_iter().filter(|r| {
                 !r.section.starts_with("adoption")
                     && (r.section != "metadata"

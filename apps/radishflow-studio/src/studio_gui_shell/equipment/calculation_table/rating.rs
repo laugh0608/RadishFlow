@@ -6,19 +6,17 @@ use rf_ui::engineering::editor::separator_rating::{ConstraintStatus, SeparatorRa
 pub(in super::super) fn encode(
     result: &SeparatorRatingResult,
     current_task: &SeparatorRatingTask,
-    document_id: &str,
-    generation: ResultGeneration,
+    origin: &EquipmentResultOrigin,
     units: DisplayUnitSet,
     format: CalculationTableFormat,
 ) -> Result<String, TableError> {
-    build(result, current_task, document_id, generation, units)?.encode(format)
+    build(result, current_task, origin, units)?.encode(format)
 }
 
 pub(super) fn build(
     result: &SeparatorRatingResult,
     current_task: &SeparatorRatingTask,
-    document_id: &str,
-    generation: ResultGeneration,
+    origin: &EquipmentResultOrigin,
     units: DisplayUnitSet,
 ) -> Result<CalculationTable, TableError> {
     let capture = result.capture();
@@ -33,22 +31,24 @@ pub(super) fn build(
     let case_id = case.id.as_str();
     let mut table = CalculationTable {
         format: "radishflow.separator-rating-table",
-        version: if task.geometry.adoption.is_some() {
-            2
-        } else {
-            1
-        },
+        version: 3,
         rows: Vec::new(),
         units,
     };
     table.text("metadata", "", "format", table.format);
     table.text("metadata", "", "version", table.version);
-    table.text("metadata", "", "documentId", document_id);
+    table.execution_origin(Some(origin));
+    table.text("metadata", "", "documentId", origin.document_id.as_str());
     table.text("metadata", "", "taskId", id);
     table.text("metadata", "", "caseId", case_id);
     table.text("metadata", "", "resultStatusAtCapture", "current");
-    table.text("metadata", "", "inputGeneration", generation.input);
-    table.text("metadata", "", "evidenceGeneration", generation.evidence);
+    table.text("metadata", "", "inputGeneration", origin.generation.input);
+    table.text(
+        "metadata",
+        "",
+        "evidenceGeneration",
+        origin.generation.evidence,
+    );
     table.text("metadata", "", "unitScope", "projectAtExportRequest");
     table.text("metadata", "", "displaySignificantDigits", "6");
     table.text("metadata", "", "scope", "Conditional checks of two selected criteria against given geometry; no operating envelope, separation efficiency or mechanical certification.");

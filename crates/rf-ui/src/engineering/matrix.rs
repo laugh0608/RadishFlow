@@ -6,6 +6,7 @@ use rf_unitops::separator_rating::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct RatingMatrixRow {
+    pub origin: Option<EquipmentResultOrigin>,
     pub member: EquipmentCaseKey,
     pub status: EquipmentResultStatus,
     pub generation: ResultGeneration,
@@ -96,6 +97,7 @@ impl EngineeringSession {
                     case_id: case.id.clone(),
                 };
                 RatingMatrixRow {
+                    origin: self.query_case_result(&member).origin().cloned(),
                     status: self.case_result_status(&member),
                     generation: self.case_generation(&member).expect("validated member"),
                     result: self.current_rating(&member).cloned(),

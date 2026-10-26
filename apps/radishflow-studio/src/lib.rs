@@ -25,7 +25,12 @@ pub mod modeling_specifications;
 mod property_package_cache_root;
 mod property_package_download;
 mod property_package_download_client;
+mod result_review;
 pub mod run_actions;
+pub use result_review::{
+    EquipmentResultGuard, FlowResultGuard, FlowResultReview, equipment_origin_lines,
+    flow_origin_lines,
+};
 mod run_panel_driver;
 mod solver_bridge;
 mod studio_app_host;

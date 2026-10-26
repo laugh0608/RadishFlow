@@ -164,6 +164,7 @@ impl ReadyAppState {
                 }
             });
 
+            super::super::result_review::flow(ui, self.locale, &module.result_review);
             if let Some(stale) = module.stale_snapshot.as_ref() {
                 render_wrapped_small(
                     ui,
@@ -708,6 +709,7 @@ impl ReadyAppState {
         ui.add_space(8.0);
         egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.label(egui::RichText::new(self.locale.text(ShellText::Results)).strong());
+            super::super::result_review::flow(ui, self.locale, &window.runtime.result_review);
             if let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() {
                 ui.horizontal_wrapped(|ui| {
                     render_status_chip(
@@ -1150,15 +1152,22 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         action: &radishflow_studio::StudioGuiWindowCommandActionModel,
     ) -> egui::Response {
+        let current = action.result_is_current(&self.platform_host.modeling_inputs().workspace);
         let label = self.localized_command_action_label(action);
         let response = ui
             .add_enabled(
-                self.background_command_enabled(&action.command_id),
+                self.background_command_enabled(&action.command_id) && current,
                 egui::Button::new(label.as_ref()).small(),
             )
-            .on_hover_text(&action.hover_text);
+            .on_hover_text(&action.hover_text)
+            .on_disabled_hover_text(match self.locale {
+                StudioShellLocale::ZhCn => "结果或目标已变化，不能从这条结果定位；请返回当前结果。",
+                StudioShellLocale::En => {
+                    "Result or target changed; return to current results before navigating."
+                }
+            });
         if response.clicked() {
-            self.dispatch_ui_command(&action.command_id);
+            self.dispatch_result_action(action);
         }
         response
     }

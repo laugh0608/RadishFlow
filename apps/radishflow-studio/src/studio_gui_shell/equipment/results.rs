@@ -15,9 +15,16 @@ pub(super) fn render(
     session: &EngineeringSession,
     units: &DisplayUnitSet,
     evidence_only: bool,
-) -> Option<IssueTarget> {
-    let status = session.result_status(id);
+) -> Option<super::super::result_review::EquipmentNavigation<IssueTarget>> {
+    let task = session.inputs().task(id)?;
+    let member = rf_ui::engineering::EquipmentCaseKey {
+        task_id: id.clone(),
+        case_id: task.case.id.clone(),
+    };
+    let view = session.query_case_result(&member);
+    let status = view.status();
     ui.heading(status_label(l, status));
+    super::super::result_review::equipment(ui, l, &view);
     let Some(outcome) = session.historical_outcome(id) else {
         ui.label(tr(
             l,
@@ -31,22 +38,33 @@ pub(super) fn render(
         ui.colored_label(egui::Color32::from_rgb(160,65,30),tr(l,"下方是历史计算证据，不能作为当前候选使用。请重新计算。","Historical calculation evidence below is not a current candidate. Recalculate explicitly."));
     }
     let mut requested = None;
-    ui.scope(|ui| {
-        if stale {
-            ui.visuals_mut().override_text_color = Some(egui::Color32::GRAY);
-        }
-        match outcome {
-            Err(failure) => {
-                for issue in &failure.issues {
-                    if ui.link(issue_label(l, issue)).clicked() {
-                        requested = Some(issue.target.clone());
-                    }
+    let mut body = |ui: &mut egui::Ui| match outcome {
+        Err(failure) => {
+            for issue in &failure.issues {
+                if ui.link(issue_label(l, issue)).clicked() {
+                    requested = Some(issue.target.clone());
                 }
             }
-            Ok(candidate) => render_candidate(ui, l, candidate, units, evidence_only),
         }
-    });
+        Ok(candidate) => render_candidate(ui, l, candidate, units, evidence_only),
+    };
+    if stale {
+        egui::CollapsingHeader::new(tr(
+            l,
+            "历史依据 · 不可作为当前结果",
+            "Historical evidence · not a current result",
+        ))
+        .show(ui, |ui| {
+            ui.add_enabled_ui(false, &mut body);
+        });
+    } else {
+        body(ui);
+    }
     requested
+        .zip(radishflow_studio::EquipmentResultGuard::capture(
+            session, &member,
+        ))
+        .map(|(target, guard)| super::super::result_review::EquipmentNavigation { target, guard })
 }
 fn render_candidate(
     ui: &mut egui::Ui,

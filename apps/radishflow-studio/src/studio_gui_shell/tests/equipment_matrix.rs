@@ -89,7 +89,7 @@ fn matrix_output_full_evidence_non_si_unknown_height_ties_and_csv_json_parity() 
     assert_eq!(before, app.platform_host.modeling_inputs().workspace);
     let t = read(&jp);
     assert_eq!(t["format"], "radishflow.separator-rating-matrix");
-    assert_eq!(t["version"], 1);
+    assert_eq!(t["version"], 3);
     assert_eq!(row(&t, None, "matrix", "", "coverage")["text"], "complete");
     assert_eq!(
         row(&t, None, "matrix", "", "allCasesWithinCriteria")["text"],
@@ -180,6 +180,24 @@ fn matrix_output_keeps_empty_failed_stale_rows_without_stale_numerical_results()
     assert!(row(&t, None, "control", "gas", "maximumLoadFraction")["valueSi"].is_null());
     rate(&mut app, member());
     rate(&mut app, second());
+    let capture_guard = |app: &ReadyAppState, key: &EquipmentCaseKey| {
+        radishflow_studio::EquipmentResultGuard::capture(
+            &app.platform_host.modeling_inputs().workspace.engineering,
+            key,
+        )
+        .unwrap()
+    };
+    let current_guard = capture_guard(&app, &member());
+    let stale_guard = capture_guard(&app, &second());
+    let stale_origin = app
+        .platform_host
+        .modeling_inputs()
+        .workspace
+        .engineering
+        .query_case_result(&second())
+        .origin()
+        .unwrap()
+        .clone();
     for (key, value) in [(second(), "6000"), (third(), "-1")] {
         let target = EquipmentEditorTarget::RatingCase(key);
         app.equipment_command(EquipmentEditorCommand::Select(target.clone()));
@@ -196,6 +214,14 @@ fn matrix_output_keeps_empty_failed_stale_rows_without_stale_numerical_results()
         apply(&mut app, &target);
     }
     rate(&mut app, third());
+    let session = &app.platform_host.modeling_inputs().workspace.engineering;
+    assert!(
+        current_guard.is_current(session),
+        "another case edit must not invalidate this case"
+    );
+    assert!(!stale_guard.is_current(session));
+    let failed_guard = capture_guard(&app, &third());
+    assert!(failed_guard.is_current(session));
     let out = project.with_file_name("matrix-partial.json");
     encoded(&mut app, Format::Json, &out);
     let t = read(&out);
@@ -224,6 +250,33 @@ fn matrix_output_keeps_empty_failed_stale_rows_without_stale_numerical_results()
             .unwrap()
             .iter()
             .any(|r| r["caseId"] == "second" && r["section"] == "result")
+    );
+    for key in [member(), second(), third()] {
+        assert_eq!(
+            row(
+                &t,
+                Some(key.case_id.as_str()),
+                "executionOrigin",
+                key.case_id.as_str(),
+                "caseId"
+            )["text"],
+            key.case_id.as_str()
+        );
+    }
+    assert_eq!(
+        row(
+            &t,
+            Some("second"),
+            "executionOrigin",
+            "second",
+            "caseRevision"
+        )["text"],
+        stale_origin.case_revision.unwrap().to_string()
+    );
+    rate(&mut app, third());
+    assert!(
+        !failed_guard.is_current(&app.platform_host.modeling_inputs().workspace.engineering),
+        "failed rerun has a new identity"
     );
     rate(&mut app, second());
     let out = project.with_file_name("matrix-exceeded.json");

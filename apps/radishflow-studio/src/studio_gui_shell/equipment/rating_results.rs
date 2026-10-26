@@ -8,9 +8,11 @@ pub(super) fn render(
     session: &EngineeringSession,
     units: &DisplayUnitSet,
     evidence_only: bool,
-) -> Option<RatingIssueTarget> {
-    let status = session.case_result_status(key);
+) -> Option<super::super::result_review::EquipmentNavigation<RatingIssueTarget>> {
+    let view = session.query_case_result(key);
+    let status = view.status();
     ui.heading(rating_labels::status_label(l, status));
+    super::super::result_review::equipment(ui, l, &view);
     let Some(outcome) = session.historical_rating(key) else {
         ui.label(tr(
             l,
@@ -30,22 +32,33 @@ pub(super) fn render(
         );
     }
     let mut requested = None;
-    ui.scope(|ui| {
-        if status == EquipmentResultStatus::Stale {
-            ui.visuals_mut().override_text_color = Some(egui::Color32::GRAY);
-        }
-        match outcome {
-            Err(failure) => {
-                for issue in &failure.issues {
-                    if ui.link(rating_labels::issue_label(l, issue)).clicked() {
-                        requested = Some(issue.target.clone());
-                    }
+    let mut body = |ui: &mut egui::Ui| match outcome {
+        Err(failure) => {
+            for issue in &failure.issues {
+                if ui.link(rating_labels::issue_label(l, issue)).clicked() {
+                    requested = Some(issue.target.clone());
                 }
             }
-            Ok(result) => requested = render_result(ui, l, result, units, evidence_only),
         }
-    });
+        Ok(result) => requested = render_result(ui, l, result, units, evidence_only),
+    };
+    if status == EquipmentResultStatus::Stale {
+        egui::CollapsingHeader::new(tr(
+            l,
+            "历史依据 · 不可作为当前结果",
+            "Historical evidence · not a current result",
+        ))
+        .show(ui, |ui| {
+            ui.add_enabled_ui(false, &mut body);
+        });
+    } else {
+        body(ui);
+    }
     requested
+        .zip(radishflow_studio::EquipmentResultGuard::capture(
+            session, key,
+        ))
+        .map(|(target, guard)| super::super::result_review::EquipmentNavigation { target, guard })
 }
 fn render_result(
     ui: &mut egui::Ui,
