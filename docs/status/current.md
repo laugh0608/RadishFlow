@@ -114,17 +114,15 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 ## 当前验证基线
 
-- 文档、协作入口或仓库治理改动：执行 `cargo test --locked -p xtask` 与 `cargo run --locked --quiet -p xtask -- check-repository-governance`，并检查文档体量和工作区差异。
+- 文档改动：运行 `xtask` 的 `check-repository-governance`、`check-text-files`，检查文档体量和 diff；仅验证工具 / 编排变化另跑 `cargo test --locked -p xtask`。
 - 阶段收口或跨模块治理变化：在 macOS / Linux / CI 执行 `./scripts/check-repo.sh`；Windows 使用 `pwsh ./scripts/check-repo.ps1`。
-- `check-repo` 是正式仓库级入口，统一执行治理与文本门禁、Rust workspace 格式、构建、测试和 clippy 基线。
+- `check-repo` 统一执行治理、文本、格式、严格 Clippy 和测试并报告计时；CI 按 [ADR](../adr/0001-branch-and-pr-governance.md) 路由，稳定主线保持完整覆盖。
 - `adapters/reference/` 下的外部参考资料保留上游编码、BOM 和换行格式，不为通过仓库文本门禁而批量改写。
 - 重要验证若出现明显的沙盒权限、受限 restore、project reference 解析或 native 装载差异，先按 Agent 协作规则告知用户，再申请最小范围真实环境复验。
 
 最近通过记录：
 
-- 2026-10-26：AF4c `check-repo` 通过：1,803 项测试（含 25 项 CLI 进程）与严格 clippy；范围见 [W44](../devlogs/2026-10/2026-W44.md)。
-
-- 2026-10-24：AF4b 1,770 项与 clippy、macOS 代表实窗通过；范围见 [W43](../devlogs/2026-10/2026-W43.md)。
+- 2026-10-26：轻量治理后 `check-repo` 1,806 项与严格 Clippy 通过，本机缓存下 23.72 秒；AF4c 与治理证据见 [W44](../devlogs/2026-10/2026-W44.md)。
 
 - 既有功能与实窗证据见 [W38](../devlogs/2026-09/2026-W38.md)，跨平台、native 与 `.NET` 历史基线见 [W37](../devlogs/2026-09/2026-W37.md)，更早记录见 [W36](../devlogs/2026-09/2026-W36.md)；历史证据不替代新增路径或发布验收。
 

@@ -21,7 +21,7 @@
 - 仅允许通过 Pull Request 合并
 - 单人维护阶段不要求额外审批，但仍要求已解决会话
 - 仅要求聚合检查 `Candidate Quality` 通过；它会汇总 `Repo Hygiene`、Linux `Rust Baseline`、`Rust Baseline (macOS)`、`Rust Baseline (Windows)`、`.NET Adapter Baseline` 与 `Windows Staging Package` 六个组件结果
-- `PR Checks` 保留六个独立组件便于定位失败，并由稳定的 `Candidate Quality` 统一收口；任一组件失败、取消或跳过都会使聚合检查失败
+- `PR Checks` 保留六个独立组件便于定位失败，并由稳定的 `Candidate Quality` 统一收口；只有 `dev` PR 计划明确不适用的组件允许 skipped；缺失、失败、取消及应执行却跳过均使聚合检查失败。稳定主线仍要求六组件全部成功
 - `PR Checks` 响应 `pull_request -> dev/master/main`；目标为 `dev` 的 PR 为其他开发者提供合并前反馈，目标为默认分支的 PR 承担阶段稳定化门禁，普通 `dev` push 不触发
 - `Release Checks` 当前只保留 `workflow_dispatch` 手动 staging 入口；tag push 不自动触发 CI/CD，避免普通内部 staging 或历史 tag 造成误发布信号
 - `Rust Compatibility` 仅手动执行三平台浮动 `stable` 检查，不属于 required checks，也不参与 `Candidate Quality`；正式 workflow 继续使用仓库固定工具链。
@@ -44,7 +44,7 @@
 - `PR Checks` 的 `Repo Hygiene` 会针对 PR base ref 单独执行治理检查，确保 `git diff --check` 覆盖完整 PR 差异；`Release Checks` 在手动 staging 前执行同一治理基线
 - `scripts/check-dotnet-capeopen.ps1` 当前作为 Windows `.NET 10` CAPE-OPEN baseline 入口，负责 `rf-ffi` native build、`.NET` solution build、contract tests 和 smoke tests；不执行 COM 注册、反注册或注册表写入
 - `scripts/package.ps1` 当前只产出 Windows portable staging package；CI 上传 workflow artifact，不创建 GitHub Release，也不发布安装包
-- CI 当前在 Linux / macOS runner 上使用 `.sh` 入口，在 Windows runner 上使用 `.ps1`
+- CI 的治理 / 格式集中执行一次，三平台通过 `xtask validate-workspace --skip-format` 分别执行 Clippy 与测试；PR 路由与计时规则见 [ADR 0001](../../docs/adr/0001-branch-and-pr-governance.md#pr-检查的影响范围2026-10-26)
 
 ## 应用方式
 
