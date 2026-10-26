@@ -22,7 +22,7 @@ pub use auth_cache::{
     StoredPropertyPackageRecord, StoredPropertyPackageSource,
 };
 pub use integrity::{
-    StoredPropertyPackagePayloadIntegrity, property_package_payload_integrity,
+    StoredPropertyPackagePayloadIntegrity, property_package_payload_integrity, sha256_hex,
     validate_property_package_payload_integrity,
 };
 pub use json::{

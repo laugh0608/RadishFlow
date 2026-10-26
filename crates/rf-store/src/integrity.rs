@@ -48,7 +48,9 @@ pub fn validate_property_package_payload_integrity(
     Ok(())
 }
 
-fn sha256_hex(bytes: &[u8]) -> String {
+/// SHA-256 of exactly these bytes, in lowercase hexadecimal. Callers own the
+/// content/canonicalization contract; this is not an authenticity check.
+pub fn sha256_hex(bytes: &[u8]) -> String {
     let digest = sha256_digest(bytes);
     let mut output = String::with_capacity(64);
 

@@ -45,8 +45,17 @@ pub fn read_studio_project(project_path: &Path) -> RfResult<StudioProjectOpen> {
     let contents = std::fs::read_to_string(project_path).map_err(|e| {
         RfError::invalid_input(format!("read project {}: {e}", project_path.display()))
     })?;
-    if rf_store::project_v3::probe_version(&contents)? != 3 {
-        let project = rf_store::parse_project_file_json(&contents)?;
+    parse_studio_project(&contents, project_path)
+}
+
+/// Assemble the exact bytes already read by a caller. In particular, headless
+/// snapshot validation must not reopen the file between hashing and parsing.
+pub(crate) fn parse_studio_project(
+    contents: &str,
+    project_path: &Path,
+) -> RfResult<StudioProjectOpen> {
+    if rf_store::project_v3::probe_version(contents)? != 3 {
+        let project = rf_store::parse_project_file_json(contents)?;
         return Ok(StudioProjectOpen::Editable(Box::new(
             app_state_from_stored(
                 project.document,
@@ -57,7 +66,7 @@ pub fn read_studio_project(project_path: &Path) -> RfResult<StudioProjectOpen> {
             )?,
         )));
     }
-    match rf_store::project_v3::parse(&contents)? {
+    match rf_store::project_v3::parse(contents)? {
         rf_store::project_v3::ProjectV3Read::ReadOnly(project) => {
             Ok(StudioProjectOpen::ReadOnly(Box::new(project)))
         }

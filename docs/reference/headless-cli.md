@@ -2,7 +2,7 @@
 
 更新时间：2026-10-26
 
-用途：说明 Studio B3-4 / B3-5 命令、JSON 请求 / 响应和错误语义。
+用途：说明 Studio 旧 v1 / v2 与 AF4c v3 命令、JSON 请求 / 响应和错误语义。
 
 读者：使用本地脚本执行参数化工况的用户及适配器开发者。
 
@@ -10,7 +10,7 @@
 
 ## 规划兼容边界
 
-2026-10-26 已形成 [AF4c 新版 CLI 提案](../topics/variable-and-object-browser.md#af4c-新版-cli-提案2026-10-26待审定)，状态为待审定、未实现；拟新增的 query / execute 不属于本文当前可用命令。以下旧协议契约继续有效，新版字段参考随实现补齐。
+2026-10-26 已确认 [AF4c 新版 CLI 契约](../topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)，正在分片实施。新版 query 已接通；execute 在后续切片接入，当前不宣称可用。以下旧协议契约继续有效；新版参考见文末。
 
 B3-5 已通过 v2 请求接通受控创建 / 连接和步骤身份引用，v1 请求与响应字段保持兼容。2026-09-16 确认的 [单位系统](../topics/units-and-quantity-system.md) 和 [建模辅助](../topics/modeling-assistance-and-specifications.md) 后续复用本接口的身份、修订、命令与诊断；本文 v1 的 SI 数值、路径与错误契约不变。U1 已让响应的 unit 标签从公共目录派生，v1 / v2 仍只读写 SI，不接收额外单位字段。未来带单位请求须显式版本化或定义兼容扩展，不受 GUI 显示偏好影响。
 
@@ -18,7 +18,7 @@ U2-I1 已让本接口通过共享存储层读取项目文件 v1 / v2；工程集
 
 Studio GUI 已支持已知设备项目 v3，旧 CLI 的 `inspect`、v1 `run` 与 v2 workflow 仍在任何建模 / 求解前拒绝所有外层 v3 文件，包括工程区缺省或为空的文件。设备计算、保存及 CSV / JSON 导出不属于现有 CLI 协议；不能删除工程区后伪装为旧版继续运行。详见 [v3 生命周期](../topics/project-lifecycle-storage.md#完整设备保存与最小-studio-生命周期2026-10-15)。
 
-## 命令
+## 旧协议命令
 
 使用已构建的 `radishflow-studio` 可执行文件：
 
@@ -142,3 +142,36 @@ source / sink 为设备引用和精确端口名。sink 省略或 null 表示创�
 - 运行阻塞 / 失败时不执行 reads。成功运行后的某个查询失败时退出码为 2、stage 为 `read`，保留运行诊断与文档修订，整个 `variables` 为空，避免误用部分查询值。
 
 当前是同版本本地工具接口，尚不承诺跨版本公共传输兼容性。实现和阶段边界见 [Studio B3-4](../topics/studio-main-workflow.md#b3-4首个无界面参数化运行消费者) 与 [B3-5](../topics/studio-main-workflow.md#b3-5无界面创建连接与步骤身份引用)。
+
+## 新版 v3：查询
+
+AF4c-1 已提供 `radishflow-studio --headless query request.json`；不需要物性缓存，不修改磁盘或触发计算。工程 v1 / v2 / 已知 v3 使用相同入口，未知设备能力保留整份只读保护。以下是独立请求，不与旧 `run` 混用：
+
+```json
+{
+  "schema_version": 3,
+  "project": "project.rfproj.json",
+  "queries": [
+    {"id": "objects", "query": {"kind": "objects"}},
+    {"id": "flow_results", "query": {"kind": "results", "scope": "flow"}}
+  ]
+}
+```
+
+三个顶层字段必填，queries 可为空；id 非空白且唯一。未知 / 重复字段、错误类型和非有限数拒绝。可选字段用省略表达，不接受 null；路径相对请求文件目录。
+
+| query.kind | 参数与输出 |
+| --- | --- |
+| objects | 无其他参数；返回对象列表，含 target、document_id、parent、kind、label |
+| fields | target 必填；返回流程变量或设备输入字段、规范单位、值状态及来源；未指定不补零 |
+| record | target 必填；返回对象正式记录、版本和专用 data；方法、身份、固定采纳证据是只读元数据 |
+| actions | scope 必填；返回领域动作描述；AF4c-1 的 callable 为 false，后续接通执行时再逐项开放 |
+| results | scope 为 flow，或精确 task / case 对象；返回 Current / Stale / Missing / Failed 资格与实际来源，仅 Current 返回数值 |
+
+对象 target 为单一枚举对象：`{"unit":{"id":"u"}}`、`{"stream":{"id":"s"}}`、`{"equipment":{"id":"t"}}`、`{"case":{"task":{"id":"t"},"case":{"id":"c"}}}`、`{"geometry":{"id":"t"}}`、`{"basis":{"id":"b"}}`、`{"source":{"id":"src"}}`。scope 是 `"flow"` 或 `{"object": target}`；单独 query 不存在前序动作输出，步骤引用会明确失败。
+
+响应固定包含 schema_version、status、project、steps、queries 和 error。project 包含 document_id、project_schema_version、flow_revision、file_sha256、read_only、equipment_task_count；只读工程另有 read_only_reason。file_sha256 为同次读取原始字节的 64 位小写十六进制 SHA-256，空白变化也会改变指纹，不是签名。步骤尚未执行时 steps 为空。每项查询分别返回 value 或结构化 error；一项失败不阻止后续只读查询，顶层保留首个错误。
+
+未知能力工程的 objects 只列可安全读取的流程对象，数量与只读原因在 project 返回；fields / record 只允许流程输入，writable 为 false，设备记录和结果返回 unsupported_capability。源文件不被裁剪或重写。
+
+本阶段退出码 0 表示查询完成，2 表示请求 / 装载 / 查询错误，5 表示响应输出失败；Missing 等结果状态是有效查询。已保存工程不会恢复运行缓存，因此初次结果通常为 Missing；固定采纳证据仍是历史记录，不等同当前计算结果。
