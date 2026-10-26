@@ -42,7 +42,74 @@ pub struct FlowTarget {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum PackageSelection {
+    Preferred {},
+    Explicit { package_id: String },
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FlowResources {
+    pub cache_root: PathBuf,
+    pub auth_cache_index: PathBuf,
+    pub package: PackageSelection,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Adjustment {
+    pub value_m: f64,
+    pub reason: String,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Adjustments {
+    #[serde(
+        default,
+        deserialize_with = "optional",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub diameter: Option<Adjustment>,
+    #[serde(
+        default,
+        deserialize_with = "optional",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub working_liquid_height: Option<Adjustment>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum AdoptionTarget {
+    New {
+        tag: String,
+        name: String,
+        copy_case: bool,
+    },
+    Existing {
+        task: IdentityRef,
+        expected_revision: RevisionRef,
+    },
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
+    RunFlow {
+        expected_revision: RevisionRef,
+    },
+    Size {
+        task: IdentityRef,
+        expected_revision: RevisionRef,
+    },
+    Rate {
+        task: IdentityRef,
+        case: IdentityRef,
+        expected_case_revision: RevisionRef,
+        expected_geometry_revision: RevisionRef,
+    },
+    AdoptGeometry {
+        source: IdentityRef,
+        expected_revision: RevisionRef,
+        target: AdoptionTarget,
+        adjustments: Adjustments,
+    },
     Write {
         expected_revision: RevisionRef,
         target: FlowTarget,
@@ -164,6 +231,12 @@ pub struct ExecuteRequest {
     pub schema_version: u32,
     pub project: PathBuf,
     pub expected_project: ExpectedProject,
+    #[serde(
+        default,
+        deserialize_with = "optional",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub flow_resources: Option<FlowResources>,
     pub steps: Vec<Step>,
     pub queries: Vec<Query>,
 }
@@ -171,6 +244,12 @@ pub struct ExecuteRequest {
 impl Action {
     pub fn target(&self) -> Option<ObjectRef> {
         Some(match self {
+            Self::Size { task, .. } => ObjectRef::Equipment(task.clone()),
+            Self::Rate { task, case, .. } => ObjectRef::Case {
+                task: task.clone(),
+                case: case.clone(),
+            },
+            Self::AdoptGeometry { source, .. } => ObjectRef::Equipment(source.clone()),
             Self::Write { target, .. } => target.object.clone(),
             Self::Connect { source, .. } => ObjectRef::Unit(source.unit.clone()),
             Self::Disconnect { port, .. } => ObjectRef::Unit(port.unit.clone()),

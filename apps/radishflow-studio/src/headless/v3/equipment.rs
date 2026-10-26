@@ -101,7 +101,7 @@ pub fn version(app: &AppState, target: &EquipmentEditorTarget) -> Option<(Output
     };
     Some((kind, BoundOutput { id, revision }))
 }
-fn guard(
+pub fn guard(
     app: &AppState,
     target: &EquipmentEditorTarget,
     expected: &RevisionRef,
@@ -121,6 +121,12 @@ pub fn prepare(
         refs.resolve(r, Output::Task).map(Into::into)
     };
     Ok(match action {
+        Action::AdoptGeometry {
+            source,
+            expected_revision,
+            target,
+            adjustments,
+        } => super::adoption::prepare(app, refs, source, expected_revision, target, adjustments)?,
         Action::CreateSizingTask {} => EquipmentAction::CreateSizingTask,
         Action::CreateRatingTask {} => EquipmentAction::CreateRatingTask,
         Action::CreateSource {} => EquipmentAction::CreateSource,

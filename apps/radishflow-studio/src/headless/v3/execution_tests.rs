@@ -312,3 +312,6 @@ fn confirmation_normalizes_typed_allocations_but_never_display_strings() {
         original.as_str()
     );
 }
+
+#[path = "running_tests.rs"]
+mod running;

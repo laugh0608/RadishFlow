@@ -168,48 +168,7 @@ impl StudioAppFacade {
         }
         match request {
             StudioRunRequest::Equipment { expected, target } => {
-                if let Err(error) = expected.validate(&app.workspace.engineering) {
-                    return StudioRunReply::Blocked(StudioRunRejection::EquipmentContext(error));
-                }
-                let command = target.editor_command();
-                if let Some(background) = &self.background {
-                    return match background.owner.borrow_mut().submit_equipment_typed(
-                        app,
-                        &command,
-                        std::time::SystemTime::now(),
-                    ) {
-                        Ok(submission) => submission.into(),
-                        Err(error) => error.reply(),
-                    };
-                }
-                let workspace = &mut app.workspace;
-                let request = match workspace
-                    .equipment_editor
-                    .prepare_calculation(&mut workspace.engineering, &command)
-                {
-                    Ok(request) => request,
-                    Err(error) => {
-                        return StudioRunReply::Blocked(StudioRunRejection::Equipment(error));
-                    }
-                };
-                let id = StudioRunId::Equipment(request.qualification().id().clone());
-                let completed = request.execute();
-                let outcome = if completed.succeeded() {
-                    StudioRunOutcome::Succeeded
-                } else {
-                    StudioRunOutcome::Failed
-                };
-                let applied = workspace
-                    .engineering
-                    .complete_calculation(completed)
-                    .is_ok();
-                StudioRunReply::Completed(StudioRunCompletion {
-                    id,
-                    outcome,
-                    applied,
-                    cancellation: None,
-                    diagnostic_code: None,
-                })
+                self.execute_equipment_run_action(app, access, expected, target)
             }
             StudioRunRequest::Flow { expected, command } => {
                 if let Err(error) = expected.validate(&app.workspace) {
@@ -229,6 +188,62 @@ impl StudioAppFacade {
                 }
             }
         }
+    }
+
+    /// Independent device calculations consume only the engineering workspace.
+    /// Hosts do not need to construct a flow cache context for this boundary.
+    pub fn execute_equipment_run_action(
+        &self,
+        app: &mut AppState,
+        access: StudioRunAccess,
+        expected: EquipmentActionContext,
+        target: EquipmentCalculationTarget,
+    ) -> StudioRunReply {
+        if access == StudioRunAccess::ReadOnly {
+            return StudioRunReply::Blocked(StudioRunRejection::ReadOnly);
+        }
+        if let Err(error) = expected.validate(&app.workspace.engineering) {
+            return StudioRunReply::Blocked(StudioRunRejection::EquipmentContext(error));
+        }
+        let command = target.editor_command();
+        if let Some(background) = &self.background {
+            return match background.owner.borrow_mut().submit_equipment_typed(
+                app,
+                &command,
+                std::time::SystemTime::now(),
+            ) {
+                Ok(submission) => submission.into(),
+                Err(error) => error.reply(),
+            };
+        }
+        let workspace = &mut app.workspace;
+        let request = match workspace
+            .equipment_editor
+            .prepare_calculation(&mut workspace.engineering, &command)
+        {
+            Ok(request) => request,
+            Err(error) => {
+                return StudioRunReply::Blocked(StudioRunRejection::Equipment(error));
+            }
+        };
+        let id = StudioRunId::Equipment(request.qualification().id().clone());
+        let completed = request.execute();
+        let outcome = if completed.succeeded() {
+            StudioRunOutcome::Succeeded
+        } else {
+            StudioRunOutcome::Failed
+        };
+        let applied = workspace
+            .engineering
+            .complete_calculation(completed)
+            .is_ok();
+        StudioRunReply::Completed(StudioRunCompletion {
+            id,
+            outcome,
+            applied,
+            cancellation: None,
+            diagnostic_code: None,
+        })
     }
 }
 

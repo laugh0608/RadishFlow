@@ -1,6 +1,7 @@
 //! Version 3 local automation. This module owns wire DTOs and request-local
 //! bindings, never independent domain state, solver policy or disk mutation.
 mod actions;
+mod adoption;
 mod confirmation;
 mod enums;
 mod equipment;
@@ -14,6 +15,7 @@ mod query;
 mod records;
 mod references;
 mod results;
+mod runs;
 mod strict;
 use crate::document_lifecycle_driver::{StudioProjectOpen, parse_studio_project};
 use protocol::*;

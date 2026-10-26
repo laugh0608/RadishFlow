@@ -165,7 +165,7 @@ AF4c-1 已提供 `radishflow-studio --headless query request.json`；不需要�
 | objects | 无其他参数；返回对象列表，含 target、document_id、parent、kind、label |
 | fields | target 必填；返回流程变量或设备输入字段、规范单位、值状态及来源；未指定不补零 |
 | record | target 必填；返回对象正式记录、版本和专用 data；方法、身份、固定采纳证据是只读元数据 |
-| actions | scope 必填；返回领域动作描述及适配器 callable；正式输入 / 检查已开放，计算将在 AF4c-3 接通 |
+| actions | scope 必填；返回领域动作描述及适配器 callable；已覆盖本批正式输入、检查、同步计算和 C1 采纳 |
 | results | scope 为 flow，或精确 task / case 对象；返回 Current / Stale / Missing / Failed 资格与实际来源，仅 Current 返回数值 |
 
 对象 target 为单一枚举对象：`{"unit":{"id":"u"}}`、`{"stream":{"id":"s"}}`、`{"equipment":{"id":"t"}}`、`{"case":{"task":{"id":"t"},"case":{"id":"c"}}}`、`{"geometry":{"id":"t"}}`、`{"basis":{"id":"b"}}`、`{"source":{"id":"src"}}`。scope 是 `"project"`（根动作发现）、`"flow"` 或 `{"object": target}`；单独 query 不存在前序动作输出，步骤引用会明确失败。
@@ -234,4 +234,26 @@ AF4c-2 提供 `radishflow-studio --headless execute request.json`。请求必填
 
 触发删除、依据影响或旧 Rating 方法升级时，退出码为 6，error.details 提供 preview 与 confirmation_digest。预览包含旧 / 新输入、记录 / 方法版本及影响；该步未提交。审阅后把 `{ "digest": "af4c-confirm-v1:…" }` 放入原步骤的 confirmation，重新执行同一请求。前序步骤会重新执行，摘要匹配才提交本次新准备的事务；摘要错误返回 confirmation_mismatch 与新预览。无需确认的动作带 confirmation 会被拒绝且不留下该步变更。
 
-退出码 0 / 2 / 3 / 5 / 6 分别为完成、请求或版本 / 查询错误、执行门禁拒绝、输出失败、待确认或确认内容变化。run_flow / size / rate / adopt_geometry 由 AF4c-3 接通；当前不接受运行资源或隐式计算。任何成功输入回执都只作用于本次内存，不写回工程。
+退出码 0 / 2 / 3 / 5 / 6 分别为完成、请求或版本 / 查询错误、执行门禁拒绝、输出失败、待确认或确认内容变化。run_flow / size / rate / adopt_geometry 见下节；不执行隐式计算。任何成功输入回执都只作用于本次内存，不写回工程。
+
+
+## 新版 v3：显式计算、采纳与结果
+
+AF4c-3 已接通 run_flow、size、rate 和 adopt_geometry。每个计算步骤同步返回实际终态，步骤之间可编辑或再次计算；不提供后台轮询、取消、条件或循环。size / rate 完全不读取流程缓存。
+
+仅当 steps 含 run_flow 时，execute 顶层必须提供 flow_resources；其他请求携带它会在执行前拒绝。flow_resources 必填 cache_root、auth_cache_index 和 package，路径相对请求文件。package 为 `{ "kind": "preferred" }` 或 `{ "kind": "explicit", "package_id": "本地包ID" }`；保留正式选包、授权、readiness 和摘要校验。缓存索引在实际 run_flow 步骤才读取，加载失败不会抹掉前序编辑回执。
+
+| action.kind | 必填字段与版本 |
+| --- | --- |
+| run_flow | expected_revision：document |
+| size | task、expected_revision：Sizing task |
+| rate | task、case、expected_case_revision：精确行；expected_geometry_revision：共同几何 |
+| adopt_geometry | source：Sizing task、expected_revision：源 task、target、adjustments |
+
+adopt_geometry.target 为 `{kind:"new", tag, name, copy_case}` 或 `{kind:"existing", task, expected_revision}`，后者校验目标 geometry 版本。adjustments 必填，可为 `{}`；可选 diameter / working_liquid_height，每项为 `{value_m, reason}`，调整值必须为正且理由非空。只能采纳本次工作区的当前成功候选；先执行 size，输入或来源变化导致旧化后必须重新 size，不能导入旧候选或恢复旧运行 key。
+
+采纳始终先返回退出码 6 的审阅提案。preview 还包含本次候选尺寸、输入、来源、方法、限制、旧 / 新几何和完整固定证据。摘要排除执行身份和耗时，包含资源选择及调整内容；重放重新计算、重新验证当前资格。确认后输出 task / geometry、唯一 case（适用时）和 source（本次设计来源），created_sources 列出复制来源映射。复制来源在摘要中按原来源身份命名，不依赖生成字符串；原工程归档证据不套用当前身份归一化。
+
+运行回执的 outcome 区分 completed / start_failed / blocked / skipped；completed 另含 terminal（succeeded / failed / cancelled / infrastructure_failed）、reception（applied / discarded）、execution（request 范围的 step）、诊断及当时的 result。执行失败退出 4；开始前的正式门禁拒绝退出 3；版本错误仍退出 2。只有成功且接收的计算可继续后续动作，最终查询依然独立执行并保留原失败优先级。
+
+result 为 Current / Stale / Missing / Failed 的小写标记，仅 current 含数值和规范 SI 单位。设备结果 origin 包含任务 / case / geometry 版本、输入及证据 generation、方法和 basis / source 版本；流程 origin 包含真实 solver、package、payload 指纹及数据来源。所有运行引用只属于本次请求；重新启动不会恢复结果。显式 rate 算法成功但 conclusion 为 exceeded 是有效校核结果，退出 0 不表示满足工程准则或验证了物理精度。

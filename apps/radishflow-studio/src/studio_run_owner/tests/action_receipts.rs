@@ -251,3 +251,57 @@ fn cross_domain_busy_retains_the_occupying_run_identity() {
     );
     drain(&mut owner.borrow_mut(), &mut app);
 }
+
+#[test]
+fn independent_equipment_entry_needs_no_cache_and_preserves_context_and_run_identity() {
+    let mut app = app();
+    let facade = crate::StudioAppFacade::default();
+    let expected = EquipmentActionContext::capture(&app.workspace.engineering);
+    let target = EquipmentCalculationTarget::Rating(member());
+    assert_eq!(
+        facade.execute_equipment_run_action(
+            &mut app,
+            StudioRunAccess::ReadOnly,
+            expected.clone(),
+            target.clone()
+        ),
+        StudioRunReply::Blocked(StudioRunRejection::ReadOnly)
+    );
+    let StudioRunReply::Completed(first) = facade.execute_equipment_run_action(
+        &mut app,
+        StudioRunAccess::Allowed,
+        expected.clone(),
+        target.clone(),
+    ) else {
+        panic!()
+    };
+    let value = app
+        .workspace
+        .engineering
+        .current_rating(&member())
+        .unwrap()
+        .clone();
+    let StudioRunReply::Completed(second) = facade.execute_equipment_run_action(
+        &mut app,
+        StudioRunAccess::Allowed,
+        expected.clone(),
+        target.clone(),
+    ) else {
+        panic!()
+    };
+    assert_ne!(first.id, second.id);
+    assert!(second.applied);
+    assert_eq!(
+        app.workspace.engineering.current_rating(&member()),
+        Some(&value)
+    );
+    app.workspace.engineering = EngineeringSession::from_inputs(
+        "project".into(),
+        app.workspace.engineering.inputs().clone(),
+    )
+    .unwrap();
+    assert!(matches!(
+        facade.execute_equipment_run_action(&mut app, StudioRunAccess::Allowed, expected, target),
+        StudioRunReply::Blocked(StudioRunRejection::EquipmentContext(_))
+    ));
+}

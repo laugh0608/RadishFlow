@@ -35,8 +35,18 @@ pub struct PreparedGeometryAdoption {
     target: GeometryAdoptionTarget,
     prepared: PreparedEngineeringEdit,
     previous_geometry: Option<SeparatorGivenGeometry>,
+    design_source: SourceId,
+    source_copies: BTreeMap<SourceId, SourceId>,
 }
 impl PreparedGeometryAdoption {
+    /// Actual allocated provenance identities. Adapters must not infer these
+    /// from generated strings or the order of the prepared source collection.
+    pub fn design_source(&self) -> &SourceId {
+        &self.design_source
+    }
+    pub fn source_copies(&self) -> &BTreeMap<SourceId, SourceId> {
+        &self.source_copies
+    }
     pub fn source_task(&self) -> &EquipmentTaskId {
         &self.source_task
     }
@@ -278,6 +288,8 @@ impl EngineeringSession {
             target: request.target,
             prepared,
             previous_geometry,
+            design_source: design_source_id,
+            source_copies: source_ids,
         })
     }
     pub fn validate_geometry_adoption(

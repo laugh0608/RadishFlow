@@ -79,6 +79,7 @@ pub enum Status {
     Ok,
     Error,
     Blocked,
+    Failed,
     ConfirmationRequired,
 }
 impl Status {
@@ -87,6 +88,7 @@ impl Status {
             Self::Ok => 0,
             Self::Error => 2,
             Self::Blocked => 3,
+            Self::Failed => 4,
             Self::ConfirmationRequired => 6,
         }
     }
@@ -121,6 +123,8 @@ pub enum Code {
     ConfirmationRequired,
     ConfirmationMismatch,
     ActionRejected,
+    RunFailed,
+    RunStartFailed,
 }
 
 #[derive(Debug, Clone, Serialize)]

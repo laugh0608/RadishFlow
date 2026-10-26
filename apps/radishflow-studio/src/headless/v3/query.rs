@@ -149,8 +149,25 @@ pub fn editable(
                             descriptions.push(adapter_action(kind, true));
                         }
                     }
-                    ProjectRecord::Equipment(_)
-                    | ProjectRecord::RatingCase(_)
+                    ProjectRecord::Equipment(
+                        rf_model::equipment::EquipmentTask::SeparatorSizing(_),
+                    ) => {
+                        for kind in [
+                            "check_sizing",
+                            "size",
+                            "adopt_geometry",
+                            "delete_equipment_record",
+                        ] {
+                            descriptions.push(adapter_action(
+                                kind,
+                                matches!(kind, "adopt_geometry" | "delete_equipment_record"),
+                            ));
+                        }
+                    }
+                    ProjectRecord::SizingCase(_) => {
+                        descriptions.push(adapter_action("adopt_geometry", true))
+                    }
+                    ProjectRecord::RatingCase(_)
                     | ProjectRecord::Basis(_)
                     | ProjectRecord::Source(_) => {
                         descriptions.push(adapter_action("delete_equipment_record", true))
@@ -321,7 +338,7 @@ fn action_descriptor(d: &ProjectActionDescriptor, app: &rf_ui::AppState) -> Valu
             v.undoable,
         ),
     };
-    json!({"kind":kind,"execution":"inline","modifies_inputs":modifies,"undoable":undoable,"callable":!matches!(kind,"run_flow"|"size"|"rate")})
+    json!({"kind":kind,"execution":"inline","modifies_inputs":modifies,"undoable":undoable,"callable":true})
 }
 
 fn adapter_action(kind: &str, modifies: bool) -> Value {
