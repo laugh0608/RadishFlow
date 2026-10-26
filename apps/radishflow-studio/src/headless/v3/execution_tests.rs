@@ -315,3 +315,58 @@ fn confirmation_normalizes_typed_allocations_but_never_display_strings() {
 
 #[path = "running_tests.rs"]
 mod running;
+
+#[test]
+fn execute_output_write_and_flush_failures_return_five() {
+    struct OutputFailure {
+        fail_write: bool,
+    }
+    impl std::io::Write for OutputFailure {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            if self.fail_write {
+                Err(std::io::Error::other("write unavailable"))
+            } else {
+                Ok(bytes.len())
+            }
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Err(std::io::Error::other("flush unavailable"))
+        }
+    }
+    let f = Fixture::new();
+    let request = f.execution_request(&empty_project(), json!([]));
+    let path = f.write("execute.json", &request);
+    for fail_write in [true, false] {
+        let mut out = OutputFailure { fail_write };
+        let mut err = Vec::new();
+        assert_eq!(
+            execute_args(&[path.clone().into_os_string()], &mut out, &mut err),
+            5
+        );
+        assert!(!err.is_empty());
+    }
+}
+#[test]
+fn completed_step_without_requested_output_is_a_kind_mismatch() {
+    let f = Fixture::new();
+    let request=f.execution_request(&empty_project(),json!([
+        {"id":"task","action":{"kind":"create_sizing_task"}},
+        {"id":"bad","action":{"kind":"create_basis","data":{"name":"x","value":{"quantity":"duration","value_si":1.0},"source":{"step":"task","output":"source"}}}}
+    ]));
+    let (code, r) = f.execute(&request);
+    assert_eq!(code, 2);
+    assert_eq!(r["error"]["code"], "reference_kind_mismatch");
+}
+
+#[test]
+fn unsupported_record_deletion_is_an_execution_gate_not_a_parse_error() {
+    let f = Fixture::new();
+    let request=f.execution_request(&empty_project(),json!([
+        {"id":"task","action":{"kind":"create_sizing_task"}},
+        {"id":"delete","action":{"kind":"delete_equipment_record","target":{"case":{"task":{"step":"task","output":"task"},"case":{"step":"task","output":"case"}}},"expected_revision":1}}
+    ]));
+    let (code, r) = f.execute(&request);
+    assert_eq!(code, 3);
+    assert_eq!(r["error"]["code"], "unsupported_capability");
+    assert_eq!(r["error"]["step_id"], "delete");
+}

@@ -44,11 +44,13 @@ pub fn target(
         (ProjectObjectId::Source(id), _) => EquipmentEditorTarget::Source(id.clone()),
         (ProjectObjectId::Basis(id), _) => EquipmentEditorTarget::Basis(id.clone()),
         _ => {
-            return Err(Failure::new(
+            let mut failure = Failure::new(
                 Stage::Step,
                 Code::UnsupportedCapability,
                 "this record has no device edit operation",
-            ));
+            );
+            failure.status = Status::Blocked;
+            return Err(failure);
         }
     })
 }

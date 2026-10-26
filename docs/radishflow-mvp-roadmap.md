@@ -70,11 +70,11 @@ P2 的自动化按可交付切片展开：先做变量 / 动作描述和只读�
 
 2026-10-24 已形成 [AF3 任务提案](topics/runtime-messages/run-control-and-watch-conditions.md#af3-任务身份取消与完成接收方案)与[验收边界](topics/runtime-messages/scenarios-and-acceptance.md#af3-专项验收边界)，按身份 / 接收 → 后台流程 / 取消 → 设备 / 生命周期接线推进。方案已确认，AF3a—c 已接通；正式与实窗证据及保留项以专项验收为准。AF1 继续独立跟踪，不代表已修复。
 
-2026-10-24 已实现 [AF4a 工程发现](topics/variable-and-object-browser.md#af4a-工程发现与上下文契约2026-10-24)＋[AF5a 结果查询](topics/results-review-diagnostics.md#af5a-结果资格与来源查询2026-10-24)。顺序为共享发现 → 结果资格 / 来源 → 正式动作 → 新版本 CLI → 界面 / 诊断 / 输出；AF4b 已实现；下一批建议先细化 AF4c 新版 CLI，再推进 AF5b 界面 / 诊断 / 输出，具体待决策与验收见[接下来事项](topics/variable-and-object-browser.md#接下来事项2026-10-24-日终建议)。首批不改工程格式或旧 CLI / FFI，不接 COM、录制及 C3。
+2026-10-24 已实现 [AF4a 工程发现](topics/variable-and-object-browser.md#af4a-工程发现与上下文契约2026-10-24)＋[AF5a 结果查询](topics/results-review-diagnostics.md#af5a-结果资格与来源查询2026-10-24)。顺序为共享发现 → 结果资格 / 来源 → 正式动作 → 新版本 CLI → 界面 / 诊断 / 输出；AF4b / AF4c 已实现；下一批细化 AF5b 界面 / 诊断 / 输出，具体待决策与验收见[接下来事项](topics/variable-and-object-browser.md#接下来事项2026-10-24-日终建议)。首批不改工程格式或旧 CLI / FFI，不接 COM、录制及 C3。
 
 AF4b [正式动作契约](topics/variable-and-object-browser.md#af4b-正式动作契约与实施切片2026-10-24)已确认，按流程动作 → 设备输入 / 检查 → 计算控制回执 → 消费者接线分片；AF4b-1—4 已完成；设备输入 / 检查、计算控制回执与 GUI 消费已接通，正式基线及 macOS 代表实窗通过，证据见 [W43](devlogs/2026-10/2026-W43.md)。
 
-2026-10-26 [AF4c 契约](topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)已获确认：新增协议 v3 的 query / execute，保持首版磁盘只读，覆盖共享查询、正式输入 / 检查、计算与既有 C1 采纳；按发现 / 协议 → 输入 / 确认 → 运行 / 结果 → 真实进程验收实施。当前按四片实施，不代表新命令已完整可用；保存 / 文件输出仍在批次外。
+2026-10-26 [AF4c 契约](topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)已获确认：新增协议 v3 的 query / execute，保持首版磁盘只读，覆盖共享查询、正式输入 / 检查、计算与既有 C1 采纳；按发现 / 协议 → 输入 / 确认 → 运行 / 结果 → 真实进程验收实施。AF4c-1—4 已完成，公开示例、macOS 真实进程磁盘边界和正式仓库基线通过，证据见 [W44](devlogs/2026-10/2026-W44.md)；保存 / 文件输出仍在批次外，未验平台和物理精度不变。
 
 原默认次序为 **AF1 → AF2 必要装配 → AF3 → AF4 / AF5 → AF6 收口**；2026-10-24 确认实施 AF2a / AF2b，AF1 保留独立故障跟踪。这表示优先级而非全部硬依赖：AF2a 与 AF2b、AF4 的只读发现与 AF5 的展示盘点可以分别推进；AF6 的领域边界审查从早期开始。AF1 是当前已知用户路径故障的首修项，不要求所有平台验收结束后才能设计其他切片。跨平台与 I5 仍按既定节点补验，不能因本排序取消。
 

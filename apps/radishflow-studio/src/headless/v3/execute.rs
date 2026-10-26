@@ -100,6 +100,7 @@ pub fn file(path: &Path, response: &mut Response) -> Result<(), Failure> {
                     response.fail(error);
                     break;
                 }
+                refs.0.entry(step.id.clone()).or_default();
                 response.steps.push(receipt);
             }
             Err(mut e) => {

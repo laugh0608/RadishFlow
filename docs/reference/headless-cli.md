@@ -8,15 +8,15 @@
 
 不包含：公共网络 API、COM、录制脚本、后台任务与项目保存。
 
-## 规划兼容边界
+## 版本与兼容边界
 
-2026-10-26 已确认 [AF4c 新版 CLI 契约](../topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)，正在分片实施。新版 query 已接通；execute 在后续切片接入，当前不宣称可用。以下旧协议契约继续有效；新版参考见文末。
+2026-10-26 已确认 [AF4c 新版 CLI 契约](../topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)，AF4c-1—4 已完成。新版 query / execute 的查询、正式输入 / 确认、同步运行和采纳已接通，并通过真实进程与正式仓库基线。以下旧协议契约继续有效；新版参考见文末。
 
 B3-5 已通过 v2 请求接通受控创建 / 连接和步骤身份引用，v1 请求与响应字段保持兼容。2026-09-16 确认的 [单位系统](../topics/units-and-quantity-system.md) 和 [建模辅助](../topics/modeling-assistance-and-specifications.md) 后续复用本接口的身份、修订、命令与诊断；本文 v1 的 SI 数值、路径与错误契约不变。U1 已让响应的 unit 标签从公共目录派生，v1 / v2 仍只读写 SI，不接收额外单位字段。未来带单位请求须显式版本化或定义兼容扩展，不受 GUI 显示偏好影响。
 
 U2-I1 已让本接口通过共享存储层读取项目文件 v1 / v2；工程集呈现配置不改变 CLI 的 SI 数值与标签，非法呈现配置会使装载失败，不能丢弃配置后继续运行。项目外层版本与 CLI 请求版本独立，文件兼容规则见 [单位存储接口](../topics/units/unit-sets-and-persistence.md#u2-存储接口)。读取与运行仍不改写原工程，尚未提供 U3 的输出单位选择。
 
-Studio GUI 已支持已知设备项目 v3，旧 CLI 的 `inspect`、v1 `run` 与 v2 workflow 仍在任何建模 / 求解前拒绝所有外层 v3 文件，包括工程区缺省或为空的文件。设备计算、保存及 CSV / JSON 导出不属于现有 CLI 协议；不能删除工程区后伪装为旧版继续运行。详见 [v3 生命周期](../topics/project-lifecycle-storage.md#完整设备保存与最小-studio-生命周期2026-10-15)。
+Studio GUI 已支持已知设备项目 v3，旧 CLI 的 `inspect`、v1 `run` 与 v2 workflow 仍在任何建模 / 求解前拒绝所有外层 v3 文件，包括工程区缺省或为空的文件。设备计算、保存及 CSV / JSON 导出不属于旧 CLI 协议；不能删除工程区后伪装为旧版继续运行。详见 [v3 生命周期](../topics/project-lifecycle-storage.md#完整设备保存与最小-studio-生命周期2026-10-15)。
 
 ## 旧协议命令
 
@@ -257,3 +257,20 @@ adopt_geometry.target 为 `{kind:"new", tag, name, copy_case}` 或 `{kind:"exist
 运行回执的 outcome 区分 completed / start_failed / blocked / skipped；completed 另含 terminal（succeeded / failed / cancelled / infrastructure_failed）、reception（applied / discarded）、execution（request 范围的 step）、诊断及当时的 result。执行失败退出 4；开始前的正式门禁拒绝退出 3；版本错误仍退出 2。只有成功且接收的计算可继续后续动作，最终查询依然独立执行并保留原失败优先级。
 
 result 为 Current / Stale / Missing / Failed 的小写标记，仅 current 含数值和规范 SI 单位。设备结果 origin 包含任务 / case / geometry 版本、输入及证据 generation、方法和 basis / source 版本；流程 origin 包含真实 solver、package、payload 指纹及数据来源。所有运行引用只属于本次请求；重新启动不会恢复结果。显式 rate 算法成功但 conclusion 为 exceeded 是有效校核结果，退出 0 不表示满足工程准则或验证了物理精度。
+
+## v3 公开示例与复现
+
+- [流程建模与显式运行请求](../../examples/automation/build-feed-heater-flash-v3.request.json)：从已有组分 / 包选择的空工程创建 Feed、Heater、Flash，建立受控连接，写入 SI 输入，再执行 run_flow。先把 flow_resources 改为已有本地缓存根目录和索引；CLI 不下载或生成替代资产。
+- [独立设备空工程](../../examples/flowsheets/standalone-separator-basis.rfproj.json)与[查询请求](../../examples/automation/query-separator-v3.request.json)：已知 v3，设备区为空，保留完整显示单位配置。CLI 仍使用 SI，不受摄氏度、bar 等显示偏好影响。
+- [尺寸计算、采纳与校核请求](../../examples/automation/size-adopt-rate-v3.request.json)：创建来源和依据，填入公开合成 S0-B01 算术输入，检查、size、adopt_geometry、check_rating、rate，最后读取结果。无需缓存；首次执行在 adopt 停止并返回 6，审阅 preview 后仅为该步补 confirmation，再重放整个请求。
+
+在仓库根目录使用已构建程序：
+
+```sh
+target/debug/radishflow-studio --headless query examples/automation/query-separator-v3.request.json
+target/debug/radishflow-studio --headless execute examples/automation/size-adopt-rate-v3.request.json
+```
+
+示例的 expected_project 对应当前提交中的原始工程字节。若修改工程、转换换行或从别处复制后字节改变，先重新 query 并核对 / 更新身份和指纹，不能自动忽略冲突。确认步骤不会修改原请求文件；由调用方审阅后填入摘要。新进程重新装载时不会看到上次创建的设备或计算结果。
+
+本批自动验收在 macOS 执行；真实进程测试逐字节比较工程、受控合成本地缓存、已有 sidecar 和整个测试目录清单，覆盖确认重放、来源改变、连续确认、失败终态和旧协议拒绝 v3。Windows / Linux 原生运行、桌面实窗、COM、物理准确性与发布验收不由这些 CLI 测试替代。

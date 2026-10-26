@@ -1,0 +1,395 @@
+{
+  "schema_version": 3,
+  "project": "../flowsheets/binary-hydrocarbon-basis.rfproj.json",
+  "expected_project": {
+    "document_id": "example-binary-hydrocarbon-basis",
+    "file_sha256": "cae2e522edab101532ac4ca02dbea87427a6b41dc1cf45afc9627c062bc4d0f3"
+  },
+  "flow_resources": {
+    "cache_root": "./cache",
+    "auth_cache_index": "./auth-index.json",
+    "package": {
+      "kind": "preferred"
+    }
+  },
+  "steps": [
+    {
+      "id": "feed",
+      "action": {
+        "kind": "create_unit",
+        "unit_kind": "feed",
+        "expected_revision": 0
+      }
+    },
+    {
+      "id": "feed_stream",
+      "action": {
+        "kind": "connect",
+        "source": {
+          "unit": {
+            "step": "feed",
+            "output": "unit"
+          },
+          "port": "outlet"
+        },
+        "expected_revision": {
+          "step": "feed",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "feed_temperature",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "feed",
+              "output": "unit"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_temperature"
+        },
+        "value": 310.0,
+        "expected_revision": {
+          "step": "feed_stream",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "feed_pressure",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "feed",
+              "output": "unit"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_pressure"
+        },
+        "value": 120000.0,
+        "expected_revision": {
+          "step": "feed_temperature",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "feed_flow",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "stream": {
+              "step": "feed_stream",
+              "output": "stream"
+            }
+          },
+          "section": "inputs",
+          "field": "molar_flow"
+        },
+        "value": 5.0,
+        "expected_revision": {
+          "step": "feed_pressure",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "methane_fraction",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "stream": {
+              "step": "feed_stream",
+              "output": "stream"
+            }
+          },
+          "section": "inputs",
+          "field": {
+            "mole_fraction": "methane"
+          }
+        },
+        "value": 0.35,
+        "expected_revision": {
+          "step": "feed_flow",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "ethane_fraction",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "stream": {
+              "step": "feed_stream",
+              "output": "stream"
+            }
+          },
+          "section": "inputs",
+          "field": {
+            "mole_fraction": "ethane"
+          }
+        },
+        "value": 0.65,
+        "expected_revision": {
+          "step": "methane_fraction",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "heater",
+      "action": {
+        "kind": "create_unit",
+        "unit_kind": "heater",
+        "expected_revision": {
+          "step": "ethane_fraction",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "feed_to_heater",
+      "action": {
+        "kind": "connect",
+        "source": {
+          "unit": {
+            "step": "feed",
+            "output": "unit"
+          },
+          "port": "outlet"
+        },
+        "sink": {
+          "unit": {
+            "step": "heater",
+            "output": "unit"
+          },
+          "port": "inlet"
+        },
+        "stream": {
+          "step": "feed_stream",
+          "output": "stream"
+        },
+        "expected_revision": {
+          "step": "heater",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "heated_stream",
+      "action": {
+        "kind": "connect",
+        "source": {
+          "unit": {
+            "step": "heater",
+            "output": "unit"
+          },
+          "port": "outlet"
+        },
+        "expected_revision": {
+          "step": "feed_to_heater",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "heater_temperature",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "heater",
+              "output": "unit"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_temperature"
+        },
+        "value": 330.0,
+        "expected_revision": {
+          "step": "heated_stream",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "heater_pressure",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "heater",
+              "output": "unit"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_pressure"
+        },
+        "value": 90000.0,
+        "expected_revision": {
+          "step": "heater_temperature",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "flash",
+      "action": {
+        "kind": "create_unit",
+        "unit_kind": "flash_drum",
+        "expected_revision": {
+          "step": "heater_pressure",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "heater_to_flash",
+      "action": {
+        "kind": "connect",
+        "source": {
+          "unit": {
+            "step": "heater",
+            "output": "unit"
+          },
+          "port": "outlet"
+        },
+        "sink": {
+          "unit": {
+            "step": "flash",
+            "output": "unit"
+          },
+          "port": "inlet"
+        },
+        "stream": {
+          "step": "heated_stream",
+          "output": "stream"
+        },
+        "expected_revision": {
+          "step": "flash",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "liquid_stream",
+      "action": {
+        "kind": "connect",
+        "source": {
+          "unit": {
+            "step": "flash",
+            "output": "unit"
+          },
+          "port": "liquid"
+        },
+        "expected_revision": {
+          "step": "heater_to_flash",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "vapor_stream",
+      "action": {
+        "kind": "connect",
+        "source": {
+          "unit": {
+            "step": "flash",
+            "output": "unit"
+          },
+          "port": "vapor"
+        },
+        "expected_revision": {
+          "step": "liquid_stream",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "flash_temperature",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "flash",
+              "output": "unit"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_temperature"
+        },
+        "value": 280.0,
+        "expected_revision": {
+          "step": "vapor_stream",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "flash_pressure",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "flash",
+              "output": "unit"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_pressure"
+        },
+        "value": 80000.0,
+        "expected_revision": {
+          "step": "flash_temperature",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "solve",
+      "action": {
+        "kind": "run_flow",
+        "expected_revision": {
+          "step": "flash_pressure",
+          "output": "document"
+        }
+      }
+    }
+  ],
+  "queries": [
+    {
+      "id": "flow_results",
+      "query": {
+        "kind": "results",
+        "scope": "flow"
+      }
+    },
+    {
+      "id": "heated_stream",
+      "query": {
+        "kind": "fields",
+        "target": {
+          "stream": {
+            "step": "heated_stream",
+            "output": "stream"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -14,6 +14,22 @@ pub struct BoundOutput {
 #[derive(Default, Clone)]
 pub struct Bindings(pub BTreeMap<String, BTreeMap<Output, BoundOutput>>);
 impl Bindings {
+    fn output(&self, step: &str, output: Output) -> Result<&BoundOutput, Failure> {
+        let values = self.0.get(step).ok_or_else(|| {
+            Failure::new(
+                Stage::Step,
+                Code::UnknownReference,
+                "referenced step has not succeeded",
+            )
+        })?;
+        values.get(&output).ok_or_else(|| {
+            Failure::new(
+                Stage::Step,
+                Code::ReferenceKindMismatch,
+                "completed step does not expose the requested output kind",
+            )
+        })
+    }
     pub fn resolve(&self, r: &IdentityRef, kind: Output) -> Result<String, Failure> {
         match r {
             IdentityRef::Id { id } if !id.trim().is_empty() => Ok(id.clone()),
@@ -30,17 +46,7 @@ impl Bindings {
                         "step output has a different object kind",
                     ));
                 }
-                self.0
-                    .get(step)
-                    .and_then(|values| values.get(output))
-                    .map(|v| v.id.clone())
-                    .ok_or_else(|| {
-                        Failure::new(
-                            Stage::Step,
-                            Code::UnknownReference,
-                            "step output is not available",
-                        )
-                    })
+                self.output(step, *output).map(|v| v.id.clone())
             }
         }
     }
@@ -117,17 +123,7 @@ impl Bindings {
                         "revision owner kind differs",
                     ));
                 }
-                let value = self
-                    .0
-                    .get(step)
-                    .and_then(|v| v.get(output))
-                    .ok_or_else(|| {
-                        Failure::new(
-                            Stage::Step,
-                            Code::UnknownReference,
-                            "revision output is unavailable",
-                        )
-                    })?;
+                let value = self.output(step, *output)?;
                 if value.id != id {
                     return Err(Failure::new(
                         Stage::Step,
