@@ -40,6 +40,7 @@ mod home_dashboard;
 mod input_departure;
 mod keyboard;
 mod locale;
+mod material_balance;
 mod modeling_problems;
 mod modeling_readiness;
 mod modeling_recommendations;
@@ -155,6 +156,7 @@ struct ReadyAppState {
     result_inspector: ResultInspectorState,
     screen: StudioShellScreen,
     equipment: equipment::EquipmentPageState,
+    material: material_balance::MaterialPanelState,
     left_sidebar_tab: StudioShellLeftSidebarTab,
     right_sidebar_tab: StudioShellRightSidebarTab,
     bottom_drawer_tab: StudioShellBottomDrawerTab,
@@ -490,6 +492,7 @@ impl ReadyAppState {
             background_runs: None,
             pending_run_exit: None,
             background_run_details_open: false,
+            material: material_balance::MaterialPanelState::default(),
             platform_host,
             platform_timer_executor: EguiPlatformTimerExecutor::default(),
             command_palette: CommandPaletteState::default(),

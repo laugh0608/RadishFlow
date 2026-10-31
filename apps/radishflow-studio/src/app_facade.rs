@@ -569,7 +569,7 @@ fn map_workspace_solve_dispatch(dispatch: WorkspaceSolveDispatch) -> StudioWorks
     }
 }
 
-fn workspace_pending_inspector_draft_block(
+pub(crate) fn workspace_pending_inspector_draft_block(
     app_state: &AppState,
 ) -> Option<StudioWorkspaceRunBlocked> {
     let invalid_draft_count = app_state

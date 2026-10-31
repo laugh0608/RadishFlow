@@ -1,6 +1,6 @@
 # 本地无界面运行接口
 
-更新时间：2026-10-26
+更新时间：2026-10-31
 
 用途：说明 Studio 旧 v1 / v2 与 AF4c v3 命令、JSON 请求 / 响应和错误语义。
 
@@ -257,6 +257,24 @@ adopt_geometry.target 为 `{kind:"new", tag, name, copy_case}` 或 `{kind:"exist
 运行回执的 outcome 区分 completed / start_failed / blocked / skipped；completed 另含 terminal（succeeded / failed / cancelled / infrastructure_failed）、reception（applied / discarded）、execution（request 范围的 step）、诊断及当时的 result。执行失败退出 4；开始前的正式门禁拒绝退出 3；版本错误仍退出 2。只有成功且接收的计算可继续后续动作，最终查询依然独立执行并保留原失败优先级。
 
 result 为 Current / Stale / Missing / Failed 的小写标记，仅 current 含数值和规范 SI 单位。设备结果 origin 包含任务 / case / geometry 版本、输入及证据 generation、方法和 basis / source 版本；流程 origin 包含真实 solver、package、payload 指纹及数据来源。所有运行引用只属于本次请求；重新启动不会恢复结果。显式 rate 算法成功但 conclusion 为 exceeded 是有效校核结果，退出 0 不表示满足工程准则或验证了物理精度。
+
+### v3 有限物料计算扩展（2026-10-31，已确认）
+
+显式增加 `run_material_balance` 动作和 `material_balance` 查询作用域；原 v1 / v2 与已有 v3 请求、回执形状保持。物料任务仅支持两股固定同温同压 Feed 连接终端 Mixer，不产生完整流程热状态，不读取物性缓存。
+
+动作必填 `expected_revision`（document）、`mixer`（Unit 身份引用）与 `settings`。settings 必填 `algorithm: "lower_triangular_substitution"`、`scales_mol_s: {inlet_a, inlet_b, outlet}`、`absolute_tolerance_mol_s`、`scaled_tolerance`，尺度 / 容差须正且有限。可选 `outlet_total_molar_flow_mol_s` 用于明确规格检查：固定进料已确定总量，重复和冲突均拒绝。未知字段 / 算法或显式 null 仍严格拒绝。
+
+物料动作不要求 flow_resources；只有同一请求另含 run_flow 时才提供它。沿用现有步骤引用、expected_project / SHA-256 检查、一次性执行身份与磁盘只读。准备前的非法计划返回 blocked / 3，装配或数值失败返回 failed / 4 与当次独立诊断；最终查询仍执行。
+
+查询示例为 `{ "kind": "results", "scope": "material_balance" }`，动作发现使用相同 scope 的 actions 查询。Current 返回变量 / 方程的 unit、typed port、stream、component 领域绑定、规范 SI 数值、原始与缩放残差、出口物料量和实际算法 / 修订、冻结设置及成本统计。没有初值迭代时不输出虚构迭代数。Stale 仅给来源，不输出旧值；新进程为 Missing，不从文件恢复结果。物料结果不会改变 flow 结果作用域或设备计算资格。
+
+[公开工程](../../examples/flowsheets/feed-mixer-material-balance.rfproj.json)与[执行请求](../../examples/automation/material-balance-v3.request.json)可直接复现：
+
+```sh
+target/debug/radishflow-studio --headless execute examples/automation/material-balance-v3.request.json
+```
+
+预期出口 5 mol/s，Methane / Ethane 摩尔分率 0.44 / 0.56。请求的退出码 / 回执不表示热力学准确性或完整 EO 流程验收；真实进程测试同时检查整个临时目录及原工程字节不变。
 
 ## v3 公开示例与复现
 

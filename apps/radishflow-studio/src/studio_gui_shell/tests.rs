@@ -1,3 +1,4 @@
+mod material_balance;
 use super::*;
 use radishflow_studio::{
     StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed, StudioRuntimeTrigger,

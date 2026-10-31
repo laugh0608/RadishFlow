@@ -467,6 +467,34 @@ impl BootstrapSession {
         action: crate::StudioBackgroundRunAction,
     ) -> RfResult<crate::StudioBackgroundRunReply> {
         use crate::StudioBackgroundRunAction;
+        match action {
+            StudioBackgroundRunAction::ConfigureMaterial {
+                expected,
+                access,
+                plan,
+            } => {
+                let changed = self
+                    .facade
+                    .configure_material_balance(&mut self.app_state, access, &expected, *plan)
+                    .map_err(|e| e.diagnostic())?;
+                return Ok(crate::StudioBackgroundRunReply {
+                    changed,
+                    ..Default::default()
+                });
+            }
+            StudioBackgroundRunAction::RunMaterial { expected, access } => {
+                let submission = self
+                    .facade
+                    .execute_material_balance(&mut self.app_state, access, &expected)
+                    .map_err(|e| e.diagnostic())?;
+                return Ok(crate::StudioBackgroundRunReply {
+                    changed: true,
+                    submission: Some(submission),
+                    ..Default::default()
+                });
+            }
+            _ => {}
+        }
         if let StudioBackgroundRunAction::Install(owner) = action {
             if let Some(existing) = &self.facade.background
                 && !std::rc::Rc::ptr_eq(&existing.owner, &owner)
@@ -545,7 +573,9 @@ impl BootstrapSession {
                 owner.resume_submissions();
                 false
             }
-            StudioBackgroundRunAction::Install(_) => unreachable!(),
+            StudioBackgroundRunAction::Install(_)
+            | StudioBackgroundRunAction::ConfigureMaterial { .. }
+            | StudioBackgroundRunAction::RunMaterial { .. } => unreachable!(),
         };
         reply.changed = changed;
         Ok(reply)

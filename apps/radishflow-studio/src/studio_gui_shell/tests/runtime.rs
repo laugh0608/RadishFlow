@@ -271,7 +271,7 @@ fn render_full_runtime_panel_texts(
     })
 }
 
-fn collect_shape_texts(shape: &egui::epaint::Shape, texts: &mut Vec<String>) {
+pub(super) fn collect_shape_texts(shape: &egui::epaint::Shape, texts: &mut Vec<String>) {
     match shape {
         egui::epaint::Shape::Text(text) => texts.push(text.galley.job.text.clone()),
         egui::epaint::Shape::Vec(shapes) => {

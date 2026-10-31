@@ -91,6 +91,11 @@ pub enum AdoptionTarget {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Action {
+    RunMaterialBalance {
+        expected_revision: RevisionRef,
+        mixer: IdentityRef,
+        settings: super::material::MaterialSettings,
+    },
     RunFlow {
         expected_revision: RevisionRef,
     },
@@ -244,6 +249,7 @@ pub struct ExecuteRequest {
 impl Action {
     pub fn target(&self) -> Option<ObjectRef> {
         Some(match self {
+            Self::RunMaterialBalance { mixer, .. } => ObjectRef::Unit(mixer.clone()),
             Self::Size { task, .. } => ObjectRef::Equipment(task.clone()),
             Self::Rate { task, case, .. } => ObjectRef::Case {
                 task: task.clone(),

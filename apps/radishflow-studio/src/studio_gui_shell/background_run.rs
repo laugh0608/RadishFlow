@@ -189,6 +189,13 @@ impl ReadyAppState {
         let zh = self.locale == StudioShellLocale::ZhCn;
         let cancelling = activity.phase == WorkspaceRunPhase::CancelRequested;
         let kind = match activity.id {
+            StudioRunId::Material(_) => {
+                if zh {
+                    "物料衡算"
+                } else {
+                    "Material balance"
+                }
+            }
             StudioRunId::Flow(_) => {
                 if zh {
                     "流程"

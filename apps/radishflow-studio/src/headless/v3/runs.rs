@@ -30,7 +30,10 @@ pub struct RunStep {
 pub fn is_run(action: &Action) -> bool {
     matches!(
         action,
-        Action::RunFlow { .. } | Action::Size { .. } | Action::Rate { .. }
+        Action::RunFlow { .. }
+            | Action::RunMaterialBalance { .. }
+            | Action::Size { .. }
+            | Action::Rate { .. }
     )
 }
 pub fn validate_resources(request: &ExecuteRequest) -> Result<(), Failure> {
@@ -68,6 +71,33 @@ pub fn execute(
 ) -> Result<RunStep, Failure> {
     let facade = StudioAppFacade::new();
     let (reply, scope) = match &step.action {
+        Action::RunMaterialBalance {
+            expected_revision,
+            mixer,
+            settings,
+        } => {
+            let doc = &app.workspace.document;
+            refs.revision(
+                expected_revision,
+                Output::Document,
+                doc.metadata.document_id.as_str(),
+                doc.revision,
+            )?;
+            let id = refs.resolve(mixer, Output::Unit)?.into();
+            let expected = crate::flow_actions::FlowEditContext::capture(&app.workspace);
+            facade
+                .configure_material_balance(
+                    app,
+                    StudioRunAccess::Allowed,
+                    &expected,
+                    settings.plan(id),
+                )
+                .map_err(super::material::action_error)?;
+            let reply = facade
+                .execute_material_balance(app, StudioRunAccess::Allowed, &expected)
+                .map_err(super::material::action_error)?;
+            (reply, Scope::MaterialBalance)
+        }
         Action::RunFlow { expected_revision } => {
             let doc = &app.workspace.document;
             refs.revision(

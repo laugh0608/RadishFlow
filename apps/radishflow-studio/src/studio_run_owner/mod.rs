@@ -1,6 +1,8 @@
 //! Desktop application lifetime, one numeric worker across flowsheet and equipment.
 //! Rc/RefCell is confined to the UI thread. Workers receive frozen values only.
 mod equipment;
+mod material;
+mod numeric_worker;
 use crate::{
     PropertyPackageCacheRoot, WorkspaceExecutionOutcome, WorkspaceRunCommand, WorkspaceRunOwner,
     WorkspaceRunPhase, WorkspaceRunSubmission,
@@ -19,6 +21,7 @@ pub type SharedStudioRunOwner = Rc<RefCell<StudioRunOwner>>;
 pub enum StudioRunId {
     Flow(FlowRunId),
     Equipment(CalculationId),
+    Material(rf_ui::material_balance::MaterialBalanceRunId),
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioRunSubmission {
@@ -67,6 +70,7 @@ struct StudioRunTerminal {
 pub struct StudioRunOwner {
     flow: WorkspaceRunOwner,
     equipment: Option<EquipmentRun>,
+    material: Option<material::MaterialRun>,
     activity: Option<StudioRunActivity>,
     history: VecDeque<StudioRunSummary>,
     next_number: u64,
@@ -85,6 +89,7 @@ impl Default for StudioRunOwner {
         Self {
             flow: WorkspaceRunOwner::new(),
             equipment: None,
+            material: None,
             activity: None,
             history: VecDeque::new(),
             next_number: 0,
@@ -95,11 +100,19 @@ impl Default for StudioRunOwner {
 }
 impl StudioRunOwner {
     pub fn is_idle(&self) -> bool {
-        self.flow.is_idle() && self.equipment.is_none()
+        self.flow.is_idle() && self.equipment.is_none() && self.material.is_none()
     }
     pub fn activity(&self) -> Option<StudioRunActivity> {
         let mut activity = self.activity.clone()?;
-        activity.phase = if let Some(run) = &self.equipment {
+        activity.phase = if let Some(run) = &self.material {
+            if run.cancel_reason.is_some() {
+                WorkspaceRunPhase::CancelRequested
+            } else if run.started() {
+                WorkspaceRunPhase::Running
+            } else {
+                WorkspaceRunPhase::Preparing
+            }
+        } else if let Some(run) = &self.equipment {
             if run.cancel_reason.is_some() {
                 WorkspaceRunPhase::CancelRequested
             } else if run.started {
@@ -140,7 +153,7 @@ impl StudioRunOwner {
         if !self.accepting {
             return Ok(StudioRunSubmission::Closing);
         }
-        if self.equipment.is_some() {
+        if self.equipment.is_some() || self.material.is_some() {
             match crate::app_facade::preflight_workspace_run(app, index, command) {
                 crate::app_facade::WorkspaceRunPreflight::Skipped(reason) => {
                     return Ok(StudioRunSubmission::Flow(WorkspaceRunSubmission::Skipped(
@@ -291,6 +304,25 @@ impl StudioRunOwner {
         }
         match id {
             StudioRunId::Flow(id) => self.flow.cancel(app, id),
+            StudioRunId::Material(id) => {
+                if let Some(run) = &mut self.material
+                    && run.receipt.qualification().run_id() == id
+                {
+                    if run.cancel_reason.is_some() {
+                        return Reply::AlreadyRequested;
+                    }
+                    run.cancel(Some(app), crate::WorkspaceRunCancelReason::UserRequested);
+                    Reply::Requested
+                } else if self
+                    .history
+                    .iter()
+                    .any(|summary| summary.activity.id == StudioRunId::Material(id.clone()))
+                {
+                    Reply::AlreadyFinished
+                } else {
+                    Reply::UnknownRun
+                }
+            }
             StudioRunId::Equipment(id) => {
                 if let Some(run) = &mut self.equipment
                     && run.qualification.id() == id
@@ -313,6 +345,9 @@ impl StudioRunOwner {
         }
     }
     pub fn detach(&mut self, app: &mut AppState) {
+        if let Some(run) = &mut self.material {
+            run.cancel(Some(app), crate::WorkspaceRunCancelReason::Detached);
+        }
         self.flow.detach(app);
         if let Some(run) = &mut self.equipment {
             run.cancel(Some(app), crate::WorkspaceRunCancelReason::Detached);
@@ -341,6 +376,9 @@ impl StudioRunOwner {
         if let Some(run) = &mut self.equipment {
             run.cancel(Some(app), crate::WorkspaceRunCancelReason::Closing);
         }
+        if let Some(run) = &mut self.material {
+            run.cancel(Some(app), crate::WorkspaceRunCancelReason::Closing);
+        }
         self.flow.begin_shutdown(Some(app));
     }
     pub fn resume_submissions(&mut self) {
@@ -366,6 +404,17 @@ impl StudioRunOwner {
                 cancellation: summary.cancellation,
                 diagnostic_code: summary.diagnostic_code,
             })
+        } else if self
+            .material
+            .as_mut()
+            .is_some_and(|run| run.poll(app.as_deref_mut()))
+        {
+            Some(
+                self.material
+                    .take()
+                    .expect("finished worker")
+                    .finish(app.as_deref_mut()),
+            )
         } else if self
             .equipment
             .as_mut()
@@ -480,8 +529,19 @@ pub(crate) struct BackgroundRunSession {
 
 #[derive(Debug, Clone)]
 pub enum StudioBackgroundRunAction {
+    ConfigureMaterial {
+        expected: crate::flow_actions::FlowEditContext,
+        access: crate::run_actions::StudioRunAccess,
+        plan: Box<rf_solver::component_balance::MaterialBalancePlan>,
+    },
+    RunMaterial {
+        expected: crate::flow_actions::FlowEditContext,
+        access: crate::run_actions::StudioRunAccess,
+    },
     Install(SharedStudioRunOwner),
-    Poll { attached: bool },
+    Poll {
+        attached: bool,
+    },
     Cancel(StudioRunId),
     Detach,
     BeginShutdown,

@@ -53134,6 +53134,2814 @@
           "fontWeight": "normal"
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "Xt9Q4",
+      "x": 18560,
+      "y": 0,
+      "name": "QS0-M01 / 物料衡算 · 设置与当前结果",
+      "clip": true,
+      "width": 980,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 28,
+      "children": [
+        {
+          "type": "text",
+          "id": "ZSegG",
+          "name": "评审说明",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "运行 / 物料衡算 · 局部交互方案",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "IctuS",
+          "name": "页面标题",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "物料衡算",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 28,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "ce5ld",
+          "name": "计算范围",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "两股固定进料 → 终端 Mixer · 计算组分流量和组成",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 15,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "fQLjO",
+          "name": "计算目标与正式设置",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 18,
+          "children": [
+            {
+              "type": "text",
+              "id": "PyFEH",
+              "name": "目标选择",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "计算对象      Mixer / M-101   ▾",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "O4RFL",
+              "name": "会话设置说明",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "计算设置 · 本次会话",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "pqWZC",
+              "name": "尺度行",
+              "width": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "AaTnq",
+                  "name": "入口 A 尺度",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "yT8Dw",
+                      "name": "入口 A 尺度标签",
+                      "fill": "$r1-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "入口 A 尺度",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "S5MBk",
+                      "name": "入口 A 尺度输入",
+                      "fill": "$r1-specified",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2 mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "tNuXU",
+                  "name": "入口 B 尺度",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "IWcvE",
+                      "name": "入口 B 尺度标签",
+                      "fill": "$r1-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "入口 B 尺度",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ELcHF",
+                      "name": "入口 B 尺度输入",
+                      "fill": "$r1-specified",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "3 mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "VIvqK",
+                  "name": "出口尺度",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "AxS1a",
+                      "name": "出口尺度标签",
+                      "fill": "$r1-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "出口尺度",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "IaK3w",
+                      "name": "出口尺度输入",
+                      "fill": "$r1-specified",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "5 mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "M2i2Uw",
+              "name": "容差行",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "绝对容差  1e-10 mol/s       缩放容差  1e-10",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "Bt4Z8",
+              "name": "正式动作",
+              "width": "fill_container",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "J1b6uC",
+                  "name": "应用设置",
+                  "fill": "#F1F5F9",
+                  "cornerRadius": 4,
+                  "padding": [
+                    10,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "HHYab",
+                      "name": "应用设置文字",
+                      "fill": "$r1-text",
+                      "content": "应用设置",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Sjk10",
+                  "name": "计算物料衡算",
+                  "fill": "#2563EB",
+                  "cornerRadius": 4,
+                  "padding": [
+                    10,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Qs9yY",
+                      "name": "计算物料衡算文字",
+                      "fill": "#FFFFFF",
+                      "content": "计算物料衡算",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "z62lAt",
+          "name": "结果状态",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "✓ 当前结果 · 工程输入修订 12",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 18,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "j6QGv",
+          "name": "物料计算表",
+          "width": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "JZTOj",
+              "name": "物料行 0",
+              "width": "fill_container",
+              "fill": "#F1F5F9",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                10
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "IDHv4",
+                  "name": "列 0",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "BRpae",
+                      "name": "单元值 0",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "组分",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "icKyg",
+                  "name": "列 1",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "T7ecz",
+                      "name": "单元值 1",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "入口 A / mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "drN5k",
+                  "name": "列 2",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "bkfBP",
+                      "name": "单元值 2",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "入口 B / mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "D78CD7",
+                  "name": "列 3",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "LHywL",
+                      "name": "单元值 3",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "出口 / mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "EKuXe",
+                  "name": "列 4",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "EI5ep",
+                      "name": "单元值 4",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "出口摩尔分率",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "vRTE4",
+              "name": "物料行 1",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                10
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "J0eaO",
+                  "name": "列 0",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "NYjl9",
+                      "name": "单元值 0",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "A",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "HnEaK",
+                  "name": "列 1",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "hMPoO",
+                      "name": "单元值 1",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "1.6",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wBHmP",
+                  "name": "列 2",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "v38y1E",
+                      "name": "单元值 2",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "0.6",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "B2mWI",
+                  "name": "列 3",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "T7gy9",
+                      "name": "单元值 3",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2.2",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "qlZXu",
+                  "name": "列 4",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "hx0jo",
+                      "name": "单元值 4",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "0.44",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "WYcy4",
+              "name": "物料行 2",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                10
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "sQZkh",
+                  "name": "列 0",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "q2U7Y",
+                      "name": "单元值 0",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "B",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "mONSC",
+                  "name": "列 1",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "QI8eD",
+                      "name": "单元值 1",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "0.4",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "V55XD",
+                  "name": "列 2",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "R7dz8I",
+                      "name": "单元值 2",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2.4",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "YzBdx",
+                  "name": "列 3",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Gqejp",
+                      "name": "单元值 3",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2.8",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "o3eun",
+                  "name": "列 4",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "T8IUT",
+                      "name": "单元值 4",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "0.56",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "mPn8L",
+              "name": "物料行 3",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                10
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "j7k9Z6",
+                  "name": "列 0",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "kdY18",
+                      "name": "单元值 0",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "总流量",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "J9W4t",
+                  "name": "列 1",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "KYH91",
+                      "name": "单元值 1",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "D7MJp",
+                  "name": "列 2",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "lt9EI",
+                      "name": "单元值 2",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "3",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "j1jVCq",
+                  "name": "列 3",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "B7ceM9",
+                      "name": "单元值 3",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "5",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Zgl6P",
+                  "name": "列 4",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "H3V6h",
+                      "name": "单元值 4",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "—",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "aA3N3",
+          "name": "结果动作",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "复制当前计算表       查看计算依据 ▾",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "u95rpR",
+          "name": "求解依据",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "直接线性前代 · 6 行求解 · 原始最大残差 ≤ 1e-10 mol/s · 缩放最大残差 ≤ 1e-10",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "pXijJ",
+          "name": "范围提醒",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "本结果仅包含物料量；温度、焓与相态由对应的流程计算提供。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "vgjoF",
+      "x": 19640,
+      "y": 0,
+      "name": "QS0-M02 / 设置草稿与结果过期",
+      "clip": true,
+      "width": 980,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 28,
+      "children": [
+        {
+          "type": "text",
+          "id": "wl2OC",
+          "name": "评审说明",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "运行 / 物料衡算 · 草稿与失效",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "YMA4D",
+          "name": "页面标题",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "物料衡算",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 28,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "iTyo2",
+          "name": "计算范围",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "两股固定进料 → 终端 Mixer · 计算组分流量和组成",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 15,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "JoMyN",
+          "name": "计算目标与正式设置",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 18,
+          "children": [
+            {
+              "type": "text",
+              "id": "NoEav",
+              "name": "目标选择",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "计算对象      Mixer / M-101   ▾",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "W107k",
+              "name": "会话设置说明",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "计算设置 · 本次会话",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "AZsjK",
+              "name": "尺度行",
+              "width": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "dTgY8",
+                  "name": "入口 A 尺度",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "x1Zx6y",
+                      "name": "入口 A 尺度标签",
+                      "fill": "$r1-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "入口 A 尺度",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Gtrc5",
+                      "name": "入口 A 尺度输入",
+                      "fill": "$r1-specified",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2 mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "SPEHI",
+                  "name": "入口 B 尺度",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "iXXUw",
+                      "name": "入口 B 尺度标签",
+                      "fill": "$r1-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "入口 B 尺度",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "R6WWX8",
+                      "name": "入口 B 尺度输入",
+                      "fill": "$r1-specified",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "3 mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "D25pWj",
+                  "name": "出口尺度",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "sk2EF",
+                      "name": "出口尺度标签",
+                      "fill": "$r1-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "出口尺度",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "ll1Kx",
+                      "name": "出口尺度输入",
+                      "fill": "$r1-error",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "1e-",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "IHFqb",
+              "name": "容差行",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "绝对容差  1e-10 mol/s       缩放容差  1e-10",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "oOjBq",
+              "name": "正式动作",
+              "width": "fill_container",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "IIzzt",
+                  "name": "应用设置",
+                  "fill": "#F1F5F9",
+                  "cornerRadius": 4,
+                  "padding": [
+                    10,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "UPPQg",
+                      "name": "应用设置文字",
+                      "fill": "$r1-text",
+                      "content": "应用设置",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "aKDox",
+                  "name": "计算物料衡算",
+                  "fill": "#E2E8F0",
+                  "cornerRadius": 4,
+                  "padding": [
+                    10,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "LBIps",
+                      "name": "计算物料衡算文字",
+                      "fill": "$r1-secondary",
+                      "content": "计算不可用",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "CO2tm",
+          "name": "结果状态",
+          "fill": "#9A6700",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "△ 结果已过期 · 计算设置已改变",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 18,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "HN1Pa",
+          "x": 28,
+          "y": 470,
+          "name": "物料计算表",
+          "enabled": false,
+          "width": "fill_container(924)",
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "BSPQ5",
+              "name": "物料行 0",
+              "width": "fill_container",
+              "fill": "#F1F5F9",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                10
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "cpNxG",
+                  "name": "列 0",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "hPnvj",
+                      "name": "单元值 0",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "组分",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ItP5b",
+                  "name": "列 1",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "SquiS",
+                      "name": "单元值 1",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "入口 A / mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "YbQ23",
+                  "name": "列 2",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "XHjFl",
+                      "name": "单元值 2",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "入口 B / mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "QZdvi",
+                  "name": "列 3",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "D391f8",
+                      "name": "单元值 3",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "出口 / mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "avK6J",
+                  "name": "列 4",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "E9kfe0",
+                      "name": "单元值 4",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "出口摩尔分率",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "O9DUL",
+              "name": "物料行 1",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                10
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "eilT2",
+                  "name": "列 0",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "iOh4U",
+                      "name": "单元值 0",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "A",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "U87YMi",
+                  "name": "列 1",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "kaHFm",
+                      "name": "单元值 1",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "1.6",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Bpkcj",
+                  "name": "列 2",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "x0u11E",
+                      "name": "单元值 2",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "0.6",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "MDxzl",
+                  "name": "列 3",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "g9IAw",
+                      "name": "单元值 3",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2.2",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "a1cGH",
+                  "name": "列 4",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "MqNYV",
+                      "name": "单元值 4",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "0.44",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "LlC7O",
+              "name": "物料行 2",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                10
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "r2STRn",
+                  "name": "列 0",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "yA8Cw",
+                      "name": "单元值 0",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "B",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "cczQV",
+                  "name": "列 1",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "VvfTq",
+                      "name": "单元值 1",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "0.4",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "LRWUZ",
+                  "name": "列 2",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "OorMk",
+                      "name": "单元值 2",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2.4",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "eAbUP",
+                  "name": "列 3",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "S1b0Yh",
+                      "name": "单元值 3",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2.8",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "YZPKX",
+                  "name": "列 4",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "RZccF",
+                      "name": "单元值 4",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "0.56",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "DaLLo",
+              "name": "物料行 3",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                10
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "k0IkA",
+                  "name": "列 0",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "moDh2",
+                      "name": "单元值 0",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "总流量",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "KbQgS",
+                  "name": "列 1",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "waxN0",
+                      "name": "单元值 1",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "v2WXKb",
+                  "name": "列 2",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "MmFjO",
+                      "name": "单元值 2",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "3",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "BqLkm",
+                  "name": "列 3",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "j311OX",
+                      "name": "单元值 3",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "5",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "m1o5J",
+                  "name": "列 4",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "KAS6l",
+                      "name": "单元值 4",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "—",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "qhxNB",
+          "name": "结果动作",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "应用设置后重新计算",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "p8zkQj",
+          "x": 28,
+          "y": 709,
+          "name": "求解依据",
+          "enabled": false,
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container(924)",
+          "content": "直接线性前代 · 6 行求解 · 原始最大残差 ≤ 1e-10 mol/s · 缩放最大残差 ≤ 1e-10",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "Ccdg8",
+          "name": "范围提醒",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "修改工程、撤销或改变计算设置后，旧物料数值不再显示或复制。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "LeF7W",
+          "name": "未应用草稿",
+          "fill": "$r1-error",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "设置尚未应用 · 出口尺度：1e-",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 17,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "UeqP4",
+          "name": "草稿处理",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "输入未完成。保留当前草稿；“计算物料衡算”不可用。修正后应用，或恢复已应用设置。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "FXtDB",
+          "name": "配置改回提示",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "将数值改回原设置仍需要重新计算，旧任务不会重新获得结果发布资格。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "U7GR4",
+      "x": 20720,
+      "y": 0,
+      "name": "QS0-M03 / 运行取消与失败定位",
+      "clip": true,
+      "width": 980,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 28,
+      "children": [
+        {
+          "type": "text",
+          "id": "RwTxY",
+          "name": "评审说明",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "运行 / 物料衡算 · 在途与失败替代状态",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "N189g",
+          "name": "页面标题",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "物料衡算",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 28,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "tmsKq",
+          "name": "计算范围",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "两股固定进料 → 终端 Mixer · 计算组分流量和组成",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 15,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "ZAHLT",
+          "name": "计算目标与正式设置",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 18,
+          "children": [
+            {
+              "type": "text",
+              "id": "nnili",
+              "name": "目标选择",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "计算对象      Mixer / M-101   ▾",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "yiity",
+              "name": "会话设置说明",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "计算设置 · 本次会话",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "ysTZ0",
+              "name": "尺度行",
+              "width": "fill_container",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "yVWe3",
+                  "name": "入口 A 尺度",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "MYa49",
+                      "name": "入口 A 尺度标签",
+                      "fill": "$r1-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "入口 A 尺度",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "MKxIc",
+                      "name": "入口 A 尺度输入",
+                      "fill": "$r1-specified",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2 mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "hUowX",
+                  "name": "入口 B 尺度",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "MGgSc",
+                      "name": "入口 B 尺度标签",
+                      "fill": "$r1-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "入口 B 尺度",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "kMyCV",
+                      "name": "入口 B 尺度输入",
+                      "fill": "$r1-specified",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "3 mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "yburm",
+                  "name": "出口尺度",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "i8Ikw0",
+                      "name": "出口尺度标签",
+                      "fill": "$r1-secondary",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "出口尺度",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 13,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "MvVz8",
+                      "name": "出口尺度输入",
+                      "fill": "$r1-specified",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "5 mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "f8wAxB",
+              "name": "容差行",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "绝对容差  1e-10 mol/s       缩放容差  1e-10",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "JAvqJ",
+              "name": "正式动作",
+              "width": "fill_container",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "PFVUW",
+                  "name": "应用设置",
+                  "fill": "#F1F5F9",
+                  "cornerRadius": 4,
+                  "padding": [
+                    10,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "QzkqG",
+                      "name": "应用设置文字",
+                      "fill": "$r1-text",
+                      "content": "应用设置",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "gcAXa",
+                  "name": "计算物料衡算",
+                  "fill": "#E2E8F0",
+                  "cornerRadius": 4,
+                  "padding": [
+                    10,
+                    18
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "PzEmc",
+                      "name": "计算物料衡算文字",
+                      "fill": "$r1-secondary",
+                      "content": "计算中",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 14,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "N1kHP",
+          "name": "结果状态",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "计算中 · M-101 · 2 / 6 行",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 18,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "wnahT",
+          "x": 28,
+          "y": 470,
+          "name": "物料计算表",
+          "enabled": false,
+          "width": "fill_container(924)",
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "w3C3wG",
+              "name": "物料行 0",
+              "width": "fill_container",
+              "fill": "#F1F5F9",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                10
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "yYdUu",
+                  "name": "列 0",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "SDaHo",
+                      "name": "单元值 0",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "组分",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ZubMl",
+                  "name": "列 1",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "N3qCWl",
+                      "name": "单元值 1",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "入口 A / mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "yqNMM",
+                  "name": "列 2",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "W7q3V",
+                      "name": "单元值 2",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "入口 B / mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "XrCff",
+                  "name": "列 3",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "pcRRc",
+                      "name": "单元值 3",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "出口 / mol/s",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "s6H1hE",
+                  "name": "列 4",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "Y9wLqr",
+                      "name": "单元值 4",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "出口摩尔分率",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "tcnjh",
+              "name": "物料行 1",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                10
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "n57Zb6",
+                  "name": "列 0",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "a9gRmq",
+                      "name": "单元值 0",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "A",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "HJXBE",
+                  "name": "列 1",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "yS4qs",
+                      "name": "单元值 1",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "1.6",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "aaOb1",
+                  "name": "列 2",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "CuBky",
+                      "name": "单元值 2",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "0.6",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "q1xMc",
+                  "name": "列 3",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "S7fSIO",
+                      "name": "单元值 3",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2.2",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Oz1ut",
+                  "name": "列 4",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ekxeh",
+                      "name": "单元值 4",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "0.44",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ZPe5S",
+              "name": "物料行 2",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                10
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "m96KDn",
+                  "name": "列 0",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "lX86t",
+                      "name": "单元值 0",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "B",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "vroqb",
+                  "name": "列 1",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "ofkGh",
+                      "name": "单元值 1",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "0.4",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "z0pLk",
+                  "name": "列 2",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "JJSbq",
+                      "name": "单元值 2",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2.4",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "u4DWw",
+                  "name": "列 3",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "o5qUi",
+                      "name": "单元值 3",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2.8",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ISo99",
+                  "name": "列 4",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "kLxXF",
+                      "name": "单元值 4",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "0.56",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "LnPyf",
+              "name": "物料行 3",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": [
+                12,
+                10
+              ],
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "nVaPc",
+                  "name": "列 0",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "mkgLs",
+                      "name": "单元值 0",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "总流量",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Jsosw",
+                  "name": "列 1",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "FsaEE",
+                      "name": "单元值 1",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "2",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "mIdYt",
+                  "name": "列 2",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "wftiU",
+                      "name": "单元值 2",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "3",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "lTA8s",
+                  "name": "列 3",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "n51T8a",
+                      "name": "单元值 3",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "5",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "iBDiv",
+                  "name": "列 4",
+                  "width": "fill_container",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "o7KfGc",
+                      "name": "单元值 4",
+                      "fill": "$r1-text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "—",
+                      "fontFamily": "Noto Sans SC",
+                      "fontSize": 15,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "c42ua",
+          "name": "结果动作",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "取消本次物料计算",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "d9jXJj",
+          "name": "求解依据",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "取消后等待计算退出；期间其他流程或设备计算不可开始。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "NtnJ2",
+          "name": "范围提醒",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "取消请求与实际退出分开呈现；迟到结果不更新当前工程。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "cSDAJ",
+          "name": "失败替代状态",
+          "fill": "$r1-error",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "替代状态：本次计算失败",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 18,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "nrkE7",
+          "name": "失败定位",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "进料 B 的固定温度与进料 A 不同，本物料任务暂不支持此边界。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "pNP5E",
+          "name": "失败动作",
+          "fill": "$r1-specified",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "定位：B / inlet_b     修正正式输入后重新计算",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "Xkcbk",
+          "name": "缺失替代状态",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "首次进入 / 重开工程：尚无物料结果，请应用设置并计算。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "i831k",
+      "x": 21800,
+      "y": 0,
+      "name": "QS0-M04 / English · 400 px 与键盘",
+      "clip": true,
+      "width": 400,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 18,
+      "padding": 24,
+      "children": [
+        {
+          "type": "text",
+          "id": "vdddI",
+          "name": "英文位置",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "RUN / MATERIAL BALANCE",
+          "fontFamily": "Inter",
+          "fontSize": 16,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "LnOTY",
+          "name": "英文标题",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Material balance",
+          "fontFamily": "Inter",
+          "fontSize": 30,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "wl1cf",
+          "name": "英文范围",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Two fixed feeds into one terminal mixer.",
+          "fontFamily": "Inter",
+          "fontSize": 20,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "a5Lzm",
+          "name": "英文目标",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Mixer: M-101  ▾",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "Ujkzn",
+          "name": "英文设置",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Session settings",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "rIflZ",
+          "name": "Inlet A scale",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Inlet A scale",
+          "fontFamily": "Inter",
+          "fontSize": 18,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "E0k24H",
+          "name": "Inlet A scale field",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "padding": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "Asehs",
+              "name": "Inlet A scale value",
+              "fill": "$r1-specified",
+              "content": "2 mol/s",
+              "fontFamily": "Inter",
+              "fontSize": 22,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "S93ey",
+          "name": "Inlet B scale",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Inlet B scale",
+          "fontFamily": "Inter",
+          "fontSize": 18,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "kjiQv",
+          "name": "Inlet B scale field",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "padding": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "fjk4k",
+              "name": "Inlet B scale value",
+              "fill": "$r1-specified",
+              "content": "3 mol/s",
+              "fontFamily": "Inter",
+              "fontSize": 22,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "y8SDF",
+          "name": "Outlet scale",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Outlet scale",
+          "fontFamily": "Inter",
+          "fontSize": 18,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "B5HyU",
+          "name": "Outlet scale field",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "padding": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "D6NxA",
+              "name": "Outlet scale value",
+              "fill": "$r1-specified",
+              "content": "5 mol/s",
+              "fontFamily": "Inter",
+              "fontSize": 22,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "RBxjx",
+          "name": "Absolute tolerance",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Absolute tolerance",
+          "fontFamily": "Inter",
+          "fontSize": 18,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "yzdAQ",
+          "name": "Absolute tolerance field",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "padding": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "YuHMq",
+              "name": "Absolute tolerance value",
+              "fill": "$r1-specified",
+              "content": "1e-10 mol/s",
+              "fontFamily": "Inter",
+              "fontSize": 22,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "fZoPe",
+          "name": "Scaled tolerance",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Scaled tolerance",
+          "fontFamily": "Inter",
+          "fontSize": 18,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "eJw7Z",
+          "name": "Scaled tolerance field",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "padding": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "D6rpX",
+              "name": "Scaled tolerance value",
+              "fill": "$r1-specified",
+              "content": "1e-10",
+              "fontFamily": "Inter",
+              "fontSize": 22,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "QfqfY",
+          "name": "Apply settings",
+          "width": "fill_container",
+          "fill": "#F1F5F9",
+          "cornerRadius": 4,
+          "padding": 14,
+          "children": [
+            {
+              "type": "text",
+              "id": "BfsRW",
+              "name": "Apply settings label",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Apply settings",
+              "fontFamily": "Inter",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "GkBEE",
+          "name": "Calculate material balance",
+          "width": "fill_container",
+          "fill": "#2563EB",
+          "cornerRadius": 4,
+          "padding": 14,
+          "children": [
+            {
+              "type": "text",
+              "id": "u1a28",
+              "name": "Calculate material balance label",
+              "fill": "#FFFFFF",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Calculate material balance",
+              "fontFamily": "Inter",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "HamK6",
+          "name": "英文状态",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Current result",
+          "fontFamily": "Inter",
+          "fontSize": 24,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "RmzA1",
+          "name": "英文数据",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "A: 2.2 mol/s · x = 0.44\nB: 2.8 mol/s · x = 0.56\nTotal: 5 mol/s",
+          "fontFamily": "Inter",
+          "fontSize": 22,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "cjP3w",
+          "name": "英文辅助",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Tab moves between fields and actions. Errors remain visible with text; focus does not discard drafts.",
+          "fontFamily": "Inter",
+          "fontSize": 18,
+          "fontWeight": "normal"
+        }
+      ]
     }
   ],
   "themes": {

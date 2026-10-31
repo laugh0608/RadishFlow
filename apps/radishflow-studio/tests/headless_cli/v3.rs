@@ -1,3 +1,5 @@
+#[path = "v3/material.rs"]
+mod material;
 use super::*;
 use std::collections::BTreeMap;
 use std::path::Path;

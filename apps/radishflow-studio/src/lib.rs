@@ -19,6 +19,7 @@ pub mod flow_actions;
 pub mod headless;
 mod inspector_draft_driver;
 mod inspector_target_driver;
+pub mod material_balance_actions;
 pub mod modeling_actions;
 pub mod modeling_recommendations;
 pub mod modeling_specifications;

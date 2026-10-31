@@ -10,6 +10,7 @@ mod execute;
 mod flow;
 mod inputs;
 mod issues;
+mod material;
 mod protocol;
 mod query;
 mod records;

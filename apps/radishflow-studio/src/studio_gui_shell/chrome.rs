@@ -1707,6 +1707,12 @@ impl ReadyAppState {
         hovered_drop_target: &mut bool,
     ) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            if self.screen == StudioShellScreen::Run {
+                egui::ScrollArea::vertical()
+                    .id_salt("material-balance-page")
+                    .show(ui, |ui| self.render_material_balance(ui));
+                return;
+            }
             self.render_region(
                 ui,
                 window,

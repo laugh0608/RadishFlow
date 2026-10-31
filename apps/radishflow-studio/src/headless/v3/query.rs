@@ -117,8 +117,11 @@ pub fn editable(
             Ok(value)
         }
         QueryKind::Actions { scope } => {
+            if matches!(scope, Scope::MaterialBalance) {
+                return Ok(json!([adapter_action("run_material_balance", false)]));
+            }
             let reference = match scope {
-                Scope::Project | Scope::Flow => None,
+                Scope::Project | Scope::Flow | Scope::MaterialBalance => None,
                 Scope::Object(r) => Some(q.reference(bindings.object(r)?)),
             };
             let actions = q
@@ -186,6 +189,7 @@ pub fn editable(
             Ok(json!(descriptions))
         }
         QueryKind::Results { scope } => match scope {
+            Scope::MaterialBalance => Ok(super::material::result(app, executions)),
             Scope::Project => Err(Failure::new(
                 Stage::Query,
                 Code::InvalidRequest,
@@ -415,6 +419,9 @@ fn read_only(
             }
         }
         QueryKind::Actions { scope } => {
+            if matches!(scope, Scope::MaterialBalance) {
+                return Ok(json!([adapter_action("run_material_balance", false)]));
+            }
             if let Scope::Object(target) = scope {
                 let ProjectObjectId::Flow(id) = bindings.object(target)? else {
                     return Err(Failure::new(
