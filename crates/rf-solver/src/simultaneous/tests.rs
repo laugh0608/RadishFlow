@@ -1,8 +1,9 @@
 use super::*;
 use crate::test_fixtures::binary_hydrocarbon_provider;
+use crate::test_fixtures::cross_recycle as case;
 use rf_flash::PlaceholderTpFlashSolver;
 use rf_model::Component;
-use rf_unitops::{build_feed_node, build_mixer_node, build_splitter_node};
+use rf_unitops::{build_mixer_node, build_splitter_node};
 mod backend;
 mod boundaries;
 mod faults;
@@ -19,42 +20,6 @@ fn options() -> ModularOptions {
         temperature_k: 300.0,
         pressure_pa: 650_000.0,
     })
-}
-fn case(a: f64, b: f64) -> Flowsheet {
-    let mut f = Flowsheet::new("QS2 cross recycle");
-    for c in ["methane", "ethane"] {
-        f.insert_component(Component::new(c, c)).unwrap();
-    }
-    for (id, flow, x, y) in [
-        ("fa-out", 2.0, 0.8, 0.2),
-        ("fb-out", 3.0, 0.2, 0.8),
-        ("ma-out", 97.0, 0.9, 0.1),
-        ("mb-out", 83.0, 0.1, 0.9),
-        ("ab", 79.0, 0.6, 0.4),
-        ("ba", 71.0, 0.4, 0.6),
-        ("pa", 91.0, 0.8, 0.2),
-        ("pb", 101.0, 0.3, 0.7),
-    ] {
-        f.insert_stream(stream(id, flow, x, y)).unwrap();
-    }
-    for mut u in [
-        build_feed_node("fa", "FA", "fa-out"),
-        build_feed_node("fb", "FB", "fb-out"),
-        build_mixer_node("ma", "MA", "fa-out", "ba", "ma-out"),
-        build_mixer_node("mb", "MB", "fb-out", "ab", "mb-out"),
-        build_splitter_node("sa", "SA", "ma-out", "ab", "pa"),
-        build_splitter_node("sb", "SB", "mb-out", "ba", "pb"),
-    ] {
-        if u.kind == "mixer" {
-            u.parameters.outlet_pressure_pa = Some(650_000.0);
-        }
-        if u.kind == "splitter" {
-            u.parameters.outlet_a_split_fraction =
-                Some(if u.id == UnitId::new("sa") { a } else { b });
-        }
-        f.insert_unit(u).unwrap();
-    }
-    f
 }
 fn solve_options(f: &Flowsheet, o: &ModularOptions) -> Result<ModularResult, Box<ModularFailure>> {
     SimultaneousModularSolver.solve(

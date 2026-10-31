@@ -42,6 +42,18 @@ pub struct BuiltinModelDefinition {
 }
 
 impl BuiltinModelDefinition {
+    pub const fn component_equation_capability(
+        &self,
+    ) -> Option<crate::component_equations::ComponentEquationCapability> {
+        use crate::component_equations::ComponentEquationCapability::*;
+        match self.spec.kind {
+            BuiltinUnitKind::Feed => Some(Feed),
+            BuiltinUnitKind::Mixer => Some(Mixer),
+            BuiltinUnitKind::Splitter => Some(Splitter),
+            _ => None,
+        }
+    }
+
     /// Only the fixed-T/P component-flow mapping, not thermal or phase derivatives.
     pub const fn component_response_capability(
         &self,
@@ -207,6 +219,19 @@ fn heater_cooler_outlet_template(
     Ok(outlet)
 }
 
+/// Resolve the same effective Feed boundary used by local execution, without
+/// loading services or evaluating thermal properties.
+pub fn effective_feed_boundary(
+    unit: &UnitNode,
+    streams: &BTreeMap<StreamId, MaterialStreamState>,
+) -> RfResult<MaterialStreamState> {
+    if crate::validate_unit_node(unit)?.kind != BuiltinUnitKind::Feed {
+        return Err(RfError::invalid_input(
+            "feed boundary requires a canonical Feed",
+        ));
+    }
+    feed_outlet_template(unit, streams)
+}
 fn feed_outlet_template(
     unit: &UnitNode,
     streams: &BTreeMap<StreamId, MaterialStreamState>,

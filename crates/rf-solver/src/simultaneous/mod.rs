@@ -151,15 +151,7 @@ pub struct ModularCosts {
     pub verification_elapsed: Duration,
     pub elapsed: Duration,
 }
-#[derive(Debug, Clone, PartialEq)]
-pub struct LinearEvidence {
-    pub dimension: usize,
-    pub matrix_inf_norm: f64,
-    pub pivot_threshold: f64,
-    pub row_swaps: Vec<(usize, usize)>,
-    pub rcond_indicator: Option<f64>,
-    pub backward_error: Option<f64>,
-}
+pub use crate::dense_linear::LinearEvidence;
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConnectionEvidence {
     pub binding: CouplingBinding,

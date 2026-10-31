@@ -1,6 +1,8 @@
 pub mod component_balance;
 mod control;
+mod dense_linear;
 mod dependency_graph;
+pub mod equation_oriented;
 mod fixed_tp_material;
 mod local_services;
 pub mod partitioned;

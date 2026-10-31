@@ -112,7 +112,7 @@ UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-p
 | 回流工程与正式接入 | QS1-C 已实现 | 项目 v4、独立计划 / 双资格、显式闭环建模、已认可 GUI 与 CLI v4 | [QS1-C](modeling/recycle-project-and-consumers.md) |
 | 首个联立模块块 | QS2-A/B 核心已实现 | 交叉回流、耦合变量 / 残差、模块仿射响应、稠密后端与独立基准；正式接入归 QS2-C | [QS2](modeling/simultaneous-modular-block.md) |
 | 联立模块工程与正式接入 | D06 已批准，C-A / C-B / CLI / GUI 已实现 | v4 新方法 / 能力、冻结计划 / 双资格、worker / 真实结果与 CLI v5；GUI 画板已认可并接通，未验平台保持 | [QS2-C](modeling/simultaneous-project-and-consumers.md) |
-| 多单元联立方程与规格反算 | QS3-D01—D08 方案已批准，产品未实施 | 端口方程 / 结构分析、正向 / 单比例反算、候选采纳、v4 新能力与 GUI / CLI v6 提案 | [QS3](modeling/equation-oriented-block.md) |
+| 多单元联立方程与规格反算 | QS3-D01—D08 已批准，A/B 核心已实现 | 端口方程 / 结构分析、正向 / 单比例反算、候选采纳、v4 新能力与 GUI / CLI v6 提案 | [QS3](modeling/equation-oriented-block.md) |
 
 ### 平台与服务
 
