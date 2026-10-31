@@ -9,6 +9,14 @@ pub enum ComponentBalancePort {
     FeedOutlet,
     Mixer(MixerBalancePort),
 }
+impl ComponentBalancePort {
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::FeedOutlet => rf_unitops::FEED_OUTLET_PORT,
+            Self::Mixer(port) => port.name(),
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentFlowBinding {
@@ -99,7 +107,7 @@ pub struct MixerBalanceValues {
     pub mole_fractions: rf_model::Composition,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ComponentBalanceError {
     Model(RfError),
     UnsupportedModel {

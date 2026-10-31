@@ -11,6 +11,7 @@ mod entitlement_panel_view;
 mod entitlement_panel_widget;
 mod flow_run;
 mod ids;
+pub mod material_balance;
 pub mod project_query;
 mod quantity_presentation;
 pub mod result_query;

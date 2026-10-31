@@ -1,11 +1,15 @@
 //! Immutable, material-only QS0 problem. No solver, application state or IO.
 mod assembly;
+mod diagnostics;
+mod solve;
 mod types;
+pub use solve::*;
 pub use types::*;
 
 use rf_model::{Composition, Flowsheet};
 use rf_types::{ComponentId, UnitId};
-use rf_unitops::component_balance::{MixerBalancePort, mixer_component_residual};
+pub use rf_unitops::component_balance::MixerBalancePort;
+use rf_unitops::component_balance::mixer_component_residual;
 
 /// Numerical acceptance for the approved bounded arithmetic case, not physical accuracy.
 pub const COMPONENT_BALANCE_TOLERANCE: f64 = 1e-10;
@@ -28,6 +32,14 @@ impl MixerComponentBalanceProblem {
         specification: &MixerBalanceSpecification,
     ) -> Result<Self, ComponentBalanceError> {
         assembly::assemble(flowsheet, specification)
+    }
+
+    /// Readiness uses exactly the assembly checks without constructing numeric matrices.
+    pub fn validate_specification(
+        flowsheet: &Flowsheet,
+        specification: &MixerBalanceSpecification,
+    ) -> Result<(), ComponentBalanceError> {
+        assembly::validate(flowsheet, specification).map(|_| ())
     }
 
     pub fn variables(&self) -> &[ComponentFlowVariable] {
@@ -109,19 +121,32 @@ impl MixerComponentBalanceProblem {
         point_mol_s: &[f64],
     ) -> Result<MixerBalanceValues, ComponentBalanceError> {
         let evaluated = self.evaluate_si(point_mol_s)?;
+        self.check_evaluated_solution(
+            point_mol_s,
+            &evaluated,
+            COMPONENT_BALANCE_ABSOLUTE_TOLERANCE_MOL_S,
+            COMPONENT_BALANCE_TOLERANCE,
+        )
+    }
+
+    fn check_evaluated_solution(
+        &self,
+        point_mol_s: &[f64],
+        evaluated: &ComponentBalanceEvaluation,
+        absolute_tolerance_mol_s: f64,
+        scaled_tolerance: f64,
+    ) -> Result<MixerBalanceValues, ComponentBalanceError> {
         for ((row, value), residual) in self
             .rows
             .iter()
-            .zip(evaluated.scaled_residuals)
-            .zip(evaluated.residuals_mol_s)
+            .zip(&evaluated.scaled_residuals)
+            .zip(&evaluated.residuals_mol_s)
         {
-            if value.abs() > COMPONENT_BALANCE_TOLERANCE
-                || residual.abs() > COMPONENT_BALANCE_ABSOLUTE_TOLERANCE_MOL_S
-            {
+            if value.abs() > scaled_tolerance || residual.abs() > absolute_tolerance_mol_s {
                 return Err(ComponentBalanceError::UnsatisfiedEquation {
                     equation: Box::new(row.equation.clone()),
-                    scaled_residual: value,
-                    residual_mol_s: residual,
+                    scaled_residual: *value,
+                    residual_mol_s: *residual,
                 });
             }
         }

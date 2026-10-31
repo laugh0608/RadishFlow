@@ -454,6 +454,7 @@ impl AppLogFeed {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceState {
+    pub(crate) material_balance: crate::material_balance::MaterialBalanceState,
     pub(crate) flow_failure: Option<crate::result_query::FlowFailureRecord>,
     pub(crate) flow_run_acceptance: crate::flow_run::FlowRunAcceptance,
     // Retain identities across deletion and history branching for this document session.
@@ -481,6 +482,7 @@ impl WorkspaceState {
         let run_panel = RunPanelState::from_runtime(&solve_session, None, None);
 
         Self {
+            material_balance: crate::material_balance::MaterialBalanceState::default(),
             flow_run_acceptance: crate::flow_run::FlowRunAcceptance::new(),
             engineering: crate::engineering::EngineeringSession::new(
                 document.metadata.document_id.clone(),
@@ -606,6 +608,7 @@ impl WorkspaceState {
     }
 
     pub fn clear_results(&mut self) {
+        self.clear_material_balance_results();
         self.revoke_flow_run_acceptance();
         self.snapshot_history.clear();
         self.flow_failure = None;

@@ -7,7 +7,7 @@ use rf_unitops::{
     build_feed_node, build_mixer_node, component_balance::ComponentBalanceCapability,
 };
 
-fn fixture() -> (Flowsheet, MixerBalanceSpecification) {
+pub(super) fn fixture() -> (Flowsheet, MixerBalanceSpecification) {
     let mut flow = Flowsheet::new("QS0 fixed-feed mixer");
     for id in ["component-a", "component-b"] {
         flow.insert_component(Component::new(id, id)).unwrap();

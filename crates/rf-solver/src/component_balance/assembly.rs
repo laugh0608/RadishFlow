@@ -12,10 +12,23 @@ use rf_unitops::{
 
 use super::*;
 
-pub(super) fn assemble(
+struct InletBoundary {
+    feed_id: rf_types::UnitId,
+    stream_id: rf_types::StreamId,
+    flows: rf_model::Composition,
+}
+pub(super) struct Boundary {
+    components: Vec<ComponentId>,
+    mixer_id: rf_types::UnitId,
+    inlets: Vec<InletBoundary>,
+    outlet_stream_id: rf_types::StreamId,
+}
+
+/// The same capability, graph and physical checks, without a quadratic matrix allocation.
+pub(super) fn validate(
     flowsheet: &Flowsheet,
     specification: &MixerBalanceSpecification,
-) -> Result<MixerComponentBalanceProblem, ComponentBalanceError> {
+) -> Result<Boundary, ComponentBalanceError> {
     let topology_error = || ComponentBalanceError::UnsupportedTopology {
         mixer_id: specification.mixer_id.clone(),
     };
@@ -149,33 +162,59 @@ pub(super) fn assemble(
         });
     }
 
+    Ok(Boundary {
+        components,
+        mixer_id: mixer.id.clone(),
+        outlet_stream_id: outlet.stream_id.clone(),
+        inlets: inlets
+            .into_iter()
+            .map(|(connection, _, flows)| InletBoundary {
+                feed_id: connection.source.unit_id.clone(),
+                stream_id: connection.stream_id.clone(),
+                flows,
+            })
+            .collect(),
+    })
+}
+
+pub(super) fn assemble(
+    flowsheet: &Flowsheet,
+    specification: &MixerBalanceSpecification,
+) -> Result<MixerComponentBalanceProblem, ComponentBalanceError> {
+    let Boundary {
+        components,
+        mixer_id,
+        inlets,
+        outlet_stream_id,
+    } = validate(flowsheet, specification)?;
     let mut variables = Vec::with_capacity(3 * components.len());
     let mut rows = Vec::with_capacity(3 * components.len());
     let mut fixed = Vec::with_capacity(2 * components.len());
     for (port_position, port) in MixerBalancePort::ALL.into_iter().enumerate() {
         let stream_id = match port {
-            MixerBalancePort::Outlet => &outlet.stream_id,
-            _ => &inlets[port_position].0.stream_id,
+            MixerBalancePort::Outlet => &outlet_stream_id,
+            _ => &inlets[port_position].stream_id,
         };
         for component in &components {
             let target = ComponentFlowBinding {
-                unit_id: mixer.id.clone(),
+                unit_id: mixer_id.clone(),
                 port: ComponentBalancePort::Mixer(port),
                 stream_id: stream_id.clone(),
                 component_id: component.clone(),
             };
             let equation = if port == MixerBalancePort::Outlet {
                 ComponentBalanceEquation::MixerConservation {
-                    unit_id: mixer.id.clone(),
+                    unit_id: mixer_id.clone(),
                     component_id: component.clone(),
                 }
             } else {
-                let (connection, _, component_flows) = &inlets[port_position];
+                let inlet = &inlets[port_position];
+                let component_flows = &inlet.flows;
                 // A registered component omitted from a sparse inlet composition is zero.
                 fixed.push(component_flows.get(component).copied().unwrap_or(0.0));
                 ComponentBalanceEquation::Connection {
                     source: ComponentFlowBinding {
-                        unit_id: connection.source.unit_id.clone(),
+                        unit_id: inlet.feed_id.clone(),
                         port: ComponentBalancePort::FeedOutlet,
                         stream_id: stream_id.clone(),
                         component_id: component.clone(),
@@ -216,7 +255,7 @@ pub(super) fn assemble(
         }
     }
     Ok(MixerComponentBalanceProblem {
-        mixer_id: mixer.id.clone(),
+        mixer_id: mixer_id.clone(),
         components,
         variables,
         rows,
