@@ -3,7 +3,7 @@ use rf_flowsheet::dependencies::material_dependencies;
 use rf_unitops::{BuiltinUnitKind, MIXER_INLET_A_PORT, MIXER_INLET_B_PORT, SPLITTER_OUTLET_A_PORT};
 use std::collections::{BTreeMap, BTreeSet};
 
-type Graph = BTreeMap<UnitId, BTreeSet<UnitId>>;
+use crate::dependency_graph::{Graph, ordered_components, topological_order};
 
 pub fn assemble_partitioned_plan(
     flowsheet: &Flowsheet,
@@ -77,7 +77,7 @@ pub fn assemble_partitioned_plan(
     }
     let dependencies = material_dependencies(flowsheet)?;
     let components: Vec<_> = flowsheet.components.keys().cloned().collect();
-    let sccs = strongly_connected_components(&dependencies.successors);
+    let sccs = ordered_components(&dependencies.successors);
     let membership: BTreeMap<_, _> = sccs
         .iter()
         .enumerate()
@@ -208,45 +208,12 @@ pub fn assemble_partitioned_plan(
             recycle,
         });
     }
-    // A fresh condensation DAG determines block order, independent of SCC discovery.
-    let mut block_graph: BTreeMap<usize, BTreeSet<usize>> =
-        (0..blocks.len()).map(|i| (i, BTreeSet::new())).collect();
-    for (source, children) in &dependencies.successors {
-        for sink in children {
-            let (a, b) = (membership[source], membership[sink]);
-            if a != b {
-                block_graph.get_mut(&a).expect("block source").insert(b);
-            }
-        }
-    }
-    let mut indegrees = vec![0; blocks.len()];
-    for children in block_graph.values() {
-        for &child in children {
-            indegrees[child] += 1;
-        }
-    }
-    let mut ready: BTreeSet<_> = indegrees
-        .iter()
-        .enumerate()
-        .filter(|(_, count)| **count == 0)
-        .map(|(i, _)| (blocks[i].members[0].clone(), i))
-        .collect();
-    let mut ordered = Vec::new();
-    while let Some((_, index)) = ready.pop_first() {
-        ordered.push(blocks[index].clone());
-        for &child in &block_graph[&index] {
-            indegrees[child] -= 1;
-            if indegrees[child] == 0 {
-                ready.insert((blocks[child].members[0].clone(), child));
-            }
-        }
-    }
     Ok(PartitionedSolvePlan {
         flowsheet: flowsheet.clone(),
         connections: dependencies.connections,
         components,
         options: options.clone(),
-        blocks: ordered,
+        blocks,
     })
 }
 
@@ -337,82 +304,4 @@ fn recycle_capability(
         product_stream: product.stream_id.clone(),
         tear,
     })
-}
-
-fn topological_order(graph: &Graph) -> Option<Vec<UnitId>> {
-    let mut counts: BTreeMap<_, usize> = graph.keys().cloned().map(|id| (id, 0)).collect();
-    for children in graph.values() {
-        for child in children {
-            *counts.get_mut(child)? += 1;
-        }
-    }
-    let mut ready: BTreeSet<_> = counts
-        .iter()
-        .filter(|(_, n)| **n == 0)
-        .map(|(id, _)| id.clone())
-        .collect();
-    let mut result = Vec::new();
-    while let Some(id) = ready.pop_first() {
-        for child in &graph[&id] {
-            let count = counts.get_mut(child)?;
-            *count -= 1;
-            if *count == 0 {
-                ready.insert(child.clone());
-            }
-        }
-        result.push(id);
-    }
-    (result.len() == graph.len()).then_some(result)
-}
-
-// Iterative Kosaraju traversal avoids a recursion/stack limit on large acyclic inputs.
-fn strongly_connected_components(graph: &Graph) -> Vec<Vec<UnitId>> {
-    let mut visited = BTreeSet::new();
-    let mut finish = Vec::new();
-    for root in graph.keys() {
-        let mut stack = vec![(root.clone(), false)];
-        while let Some((id, exiting)) = stack.pop() {
-            if exiting {
-                finish.push(id);
-                continue;
-            }
-            if !visited.insert(id.clone()) {
-                continue;
-            }
-            stack.push((id.clone(), true));
-            stack.extend(graph[&id].iter().rev().cloned().map(|child| (child, false)));
-        }
-    }
-    let mut reverse: Graph = graph
-        .keys()
-        .cloned()
-        .map(|id| (id, BTreeSet::new()))
-        .collect();
-    for (source, children) in graph {
-        for child in children {
-            reverse
-                .get_mut(child)
-                .expect("graph node")
-                .insert(source.clone());
-        }
-    }
-    visited.clear();
-    let mut result = Vec::new();
-    for root in finish.into_iter().rev() {
-        if visited.contains(&root) {
-            continue;
-        }
-        let mut members = Vec::new();
-        let mut stack = vec![root];
-        while let Some(id) = stack.pop() {
-            if !visited.insert(id.clone()) {
-                continue;
-            }
-            stack.extend(reverse[&id].iter().cloned());
-            members.push(id);
-        }
-        members.sort();
-        result.push(members);
-    }
-    result
 }

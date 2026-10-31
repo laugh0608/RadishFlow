@@ -50,6 +50,16 @@ pub struct Splitter {
     outlet_a_split_fraction: f64,
 }
 
+pub(crate) fn validate_fraction(fraction: f64) -> RfResult<()> {
+    if !fraction.is_finite() || !(0.0..=1.0).contains(&fraction) {
+        return Err(
+            RfError::invalid_input("outlet_a_split_fraction must be finite and in [0, 1]")
+                .with_diagnostic_code("unitops.splitter.invalid_fraction"),
+        );
+    }
+    Ok(())
+}
+
 impl Splitter {
     pub fn new(
         outlet_a: StreamTarget,
@@ -76,12 +86,7 @@ impl UnitOperation for Splitter {
     ) -> RfResult<UnitOperationOutputs> {
         inputs.validate_against_spec(self.spec())?;
         let fraction = self.outlet_a_split_fraction;
-        if !fraction.is_finite() || !(0.0..=1.0).contains(&fraction) {
-            return Err(RfError::invalid_input(
-                "outlet_a_split_fraction must be finite and in [0, 1]",
-            )
-            .with_diagnostic_code("unitops.splitter.invalid_fraction"));
-        }
+        validate_fraction(fraction)?;
         let inlet = inputs.require_stream(SPLITTER_INLET_PORT)?;
         validated_total_flow(inlet)?;
         validated_temperature(inlet)?;
@@ -107,7 +112,8 @@ impl UnitOperation for Splitter {
             let mut output = inlet.clone();
             output.id = target.id.clone();
             output.name = target.name.clone();
-            output.total_molar_flow_mol_s *= split;
+            output.total_molar_flow_mol_s =
+                component_balance::splitter_component_outlet(inlet.total_molar_flow_mol_s, split);
             outputs.insert_material_stream(port, output);
         }
         Ok(outputs)

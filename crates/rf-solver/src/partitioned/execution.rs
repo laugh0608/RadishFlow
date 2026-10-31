@@ -1,5 +1,5 @@
-use super::services::{CountedFlash, CountedThermo};
 use super::*;
+use crate::local_services::{CountedFlash, CountedThermo};
 use rf_types::PortDirection;
 use rf_unitops::{
     UnitOperation, UnitOperationInputs, UnitOperationServices, catalog::instantiate_builtin,

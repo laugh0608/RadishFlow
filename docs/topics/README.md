@@ -110,7 +110,7 @@ UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-p
 | 多策略求解与问题装配 | QS0 有限物料任务已接通 | 装配 / 纯求值、直接后端、正式运行及跨端结果；QS1—QS4 按能力分期 | [多策略求解](modeling/solver-strategies-and-assembly.md) |
 | 分块序贯模块与回流求解 | QS1-A/B 核心已实现 | Splitter、SCC / 显式撕裂、循环 / 复核与故障验证；版本化保存及 GUI / CLI 已按 QS1-C 接通 | [QS1](modeling/recycle-and-block-execution.md) |
 | 回流工程与正式接入 | QS1-C 已实现 | 项目 v4、独立计划 / 双资格、显式闭环建模、已认可 GUI 与 CLI v4 | [QS1-C](modeling/recycle-project-and-consumers.md) |
-| 首个联立模块块 | QS2 方案待确认 | 交叉回流、耦合变量 / 残差、模块仿射响应、稠密后端与独立基准；正式接入另审 | [QS2](modeling/simultaneous-modular-block.md) |
+| 首个联立模块块 | QS2-A/B 核心已实现 | 交叉回流、耦合变量 / 残差、模块仿射响应、稠密后端与独立基准；正式接入另审 | [QS2](modeling/simultaneous-modular-block.md) |
 
 ### 平台与服务
 

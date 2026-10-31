@@ -1,0 +1,94 @@
+use super::*;
+use crate::test_fixtures::binary_hydrocarbon_provider;
+use rf_flash::PlaceholderTpFlashSolver;
+use rf_model::Component;
+use rf_unitops::{build_feed_node, build_mixer_node, build_splitter_node};
+mod backend;
+mod boundaries;
+mod faults;
+mod numerical;
+
+fn composition(a: f64, b: f64) -> BTreeMap<ComponentId, f64> {
+    [("methane".into(), a), ("ethane".into(), b)].into()
+}
+fn stream(id: &str, f: f64, a: f64, b: f64) -> MaterialStreamState {
+    MaterialStreamState::from_tpzf(id, id, 300.0, 650_000.0, f, composition(a, b))
+}
+fn options() -> ModularOptions {
+    ModularOptions::new(FixedBoundary {
+        temperature_k: 300.0,
+        pressure_pa: 650_000.0,
+    })
+}
+fn case(a: f64, b: f64) -> Flowsheet {
+    let mut f = Flowsheet::new("QS2 cross recycle");
+    for c in ["methane", "ethane"] {
+        f.insert_component(Component::new(c, c)).unwrap();
+    }
+    for (id, flow, x, y) in [
+        ("fa-out", 2.0, 0.8, 0.2),
+        ("fb-out", 3.0, 0.2, 0.8),
+        ("ma-out", 97.0, 0.9, 0.1),
+        ("mb-out", 83.0, 0.1, 0.9),
+        ("ab", 79.0, 0.6, 0.4),
+        ("ba", 71.0, 0.4, 0.6),
+        ("pa", 91.0, 0.8, 0.2),
+        ("pb", 101.0, 0.3, 0.7),
+    ] {
+        f.insert_stream(stream(id, flow, x, y)).unwrap();
+    }
+    for mut u in [
+        build_feed_node("fa", "FA", "fa-out"),
+        build_feed_node("fb", "FB", "fb-out"),
+        build_mixer_node("ma", "MA", "fa-out", "ba", "ma-out"),
+        build_mixer_node("mb", "MB", "fb-out", "ab", "mb-out"),
+        build_splitter_node("sa", "SA", "ma-out", "ab", "pa"),
+        build_splitter_node("sb", "SB", "mb-out", "ba", "pb"),
+    ] {
+        if u.kind == "mixer" {
+            u.parameters.outlet_pressure_pa = Some(650_000.0);
+        }
+        if u.kind == "splitter" {
+            u.parameters.outlet_a_split_fraction =
+                Some(if u.id == UnitId::new("sa") { a } else { b });
+        }
+        f.insert_unit(u).unwrap();
+    }
+    f
+}
+fn solve_options(f: &Flowsheet, o: &ModularOptions) -> Result<ModularResult, Box<ModularFailure>> {
+    SimultaneousModularSolver.solve(
+        &crate::SolverServices {
+            thermo: &binary_hydrocarbon_provider(),
+            flash_solver: &PlaceholderTpFlashSolver,
+        },
+        f,
+        o,
+    )
+}
+fn solve(f: &Flowsheet) -> Result<ModularResult, Box<ModularFailure>> {
+    solve_options(f, &options())
+}
+fn close(a: f64, b: f64, t: f64) {
+    assert!((a - b).abs() <= t, "{a} != {b}, tolerance {t}");
+}
+fn assert_flow(r: &ModularResult, id: &str, a: f64, b: f64, t: f64) {
+    let s = &r.streams[&StreamId::new(id)];
+    close(
+        s.total_molar_flow_mol_s * s.overall_mole_fractions[&ComponentId::new("methane")],
+        a,
+        t,
+    );
+    close(
+        s.total_molar_flow_mol_s * s.overall_mole_fractions[&ComponentId::new("ethane")],
+        b,
+        t,
+    );
+    if a + b > 0.0 {
+        close(
+            s.overall_mole_fractions[&ComponentId::new("methane")],
+            a / (a + b),
+            1e-10,
+        );
+    }
+}

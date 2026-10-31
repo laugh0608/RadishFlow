@@ -1,5 +1,6 @@
 pub mod catalog;
 pub mod component_balance;
+pub mod component_response;
 pub mod separator_adoption;
 mod separator_evidence;
 mod separator_hydraulics;

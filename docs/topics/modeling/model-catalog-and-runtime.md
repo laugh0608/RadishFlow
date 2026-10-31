@@ -173,6 +173,6 @@ MC0—MC3 是细化模型装配的切片，不另建平行插件路线；与 P2 
 
 QS0 闭合模板保持原能力和拒绝范围，新增 Splitter 不表示已支持 EO。v1 / v2 / v3 明确拒绝保存 Splitter 或任意 kind 上的新比例，包含文件直接 serde；GUI 与 CLI v4 已开放新模型，CLI v3 保留六类词汇。原六类创建 / Undo / Redo / roundtrip 覆盖保留，新模型的版本化保存、正式字段 / 显式连接与 GUI / CLI 已按 [QS1-C](recycle-project-and-consumers.md) C01—C06 及认可画板接通；核心目录不承载保存能力或 GUI 状态。
 
-## QS2 模块响应提案（2026-10-31，待确认）
+## QS2 模块响应（2026-10-31，已实现）
 
-[QS2-D02](simultaneous-modular-block.md#分层接口证据与批准项)建议为 Mixer / Splitter 单独声明固定 T/P、固定参数下的仿射组分流量响应，响应以规范端口 / ComponentId 和量纲绑定；局部 run 与响应共用物料关系。此提案未实施，不改变现有 UnitOperation 调用契约、QS0 能力或 thermo 导数声明；目录发现、块级装配与数值后端各自归位，正式应用 / 持久化按 QS2-D06 另审。
+[QS2-D02](simultaneous-modular-block.md#分层接口证据与批准项)已按所有者批准为 Mixer / Splitter 单独声明固定 T/P、固定参数下的仿射组分流量响应，响应以规范端口 / ComponentId 和量纲绑定；局部 run 与响应共用物料关系。响应能力已实现并通过真实局部扰动验证，不改变现有 UnitOperation 调用契约、QS0 能力或 thermo 导数声明；目录发现、块级装配与数值后端各自归位，正式应用 / 持久化按 QS2-D06 另审。

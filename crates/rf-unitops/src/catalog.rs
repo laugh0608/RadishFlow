@@ -42,6 +42,18 @@ pub struct BuiltinModelDefinition {
 }
 
 impl BuiltinModelDefinition {
+    /// Only the fixed-T/P component-flow mapping, not thermal or phase derivatives.
+    pub const fn component_response_capability(
+        &self,
+    ) -> Option<crate::component_response::AffineComponentCapability> {
+        use crate::component_response::AffineComponentCapability::*;
+        match self.spec.kind {
+            BuiltinUnitKind::Mixer => Some(TwoInletMixing),
+            BuiltinUnitKind::Splitter => Some(NonselectiveSplitting),
+            _ => None,
+        }
+    }
+
     /// A material-only capability, independent of the local run service contract.
     pub const fn component_balance_capability(
         &self,

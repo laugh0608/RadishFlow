@@ -8,7 +8,7 @@ use rf_thermo::{
 use rf_types::RfResult;
 use std::cell::Cell;
 
-pub(super) struct CountedThermo<'a> {
+pub(crate) struct CountedThermo<'a> {
     pub provider: &'a dyn ThermoProvider,
     pub calls: Cell<usize>,
 }
@@ -39,7 +39,7 @@ impl ThermoProvider for CountedThermo<'_> {
         self.provider.phase_molar_enthalpy(state)
     }
 }
-pub(super) struct CountedFlash<'a> {
+pub(crate) struct CountedFlash<'a> {
     pub solver: &'a dyn TpFlashSolver,
     pub calls: Cell<usize>,
 }

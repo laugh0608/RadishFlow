@@ -3,7 +3,6 @@
 mod checks;
 mod execution;
 mod plan;
-mod services;
 
 use crate::SolverServices;
 use rf_flowsheet::MaterialConnection;

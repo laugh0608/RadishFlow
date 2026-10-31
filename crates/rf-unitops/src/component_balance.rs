@@ -40,6 +40,11 @@ pub fn mixer_component_outlet(inlet_a_mol_s: f64, inlet_b_mol_s: f64) -> f64 {
     inlet_a_mol_s + inlet_b_mol_s
 }
 
+/// Nonselective extensive-flow relation; callers validate flow and fraction.
+pub fn splitter_component_outlet(inlet_mol_s: f64, fraction: f64) -> f64 {
+    inlet_mol_s * fraction
+}
+
 pub fn mixer_component_residual(inlet_a_mol_s: f64, inlet_b_mol_s: f64, outlet_mol_s: f64) -> f64 {
     outlet_mol_s - mixer_component_outlet(inlet_a_mol_s, inlet_b_mol_s)
 }

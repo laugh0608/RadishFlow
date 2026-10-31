@@ -1,6 +1,10 @@
 pub mod component_balance;
 mod control;
+mod dependency_graph;
+mod fixed_tp_material;
+mod local_services;
 pub mod partitioned;
+pub mod simultaneous;
 pub use control::{ControlledSolveOutcome, SolveProgress, SolveStage, SolverControl};
 
 mod parameter_checks;
