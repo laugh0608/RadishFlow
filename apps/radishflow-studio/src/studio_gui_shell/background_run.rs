@@ -258,6 +258,9 @@ impl ReadyAppState {
                         if let Some(evaluation) = progress.evaluation { ui.label(format!("{} #{evaluation}",match progress.phase {Some(rf_solver::partitioned::EvaluationPhase::Verification)=>if zh {"独立复核"} else {"Independent verification"},_=>if zh {"迭代求值"} else {"Iteration evaluation"}})); }
                         if let Some(sample) = progress.residual { ui.label(format!("{}: {:.3e} mol/s · scaled {:.3e}",if zh {"最近完成残差"} else {"Last completed residual"},sample.max_absolute_mol_s,sample.max_scaled)); }
                     }
+                    radishflow_studio::WorkspaceSolveProgress::Simultaneous(progress) => {
+                        ui.label(flow_plan::modular_results::progress_text(&progress, zh));
+                    }
                     _ => {}
                 }
             }
@@ -289,13 +292,13 @@ impl ReadyAppState {
         !matches!(
             command,
             "run_panel.run_manual" | "run_panel.resume_workspace"
-        ) || !self.background_busy()
+        ) || (!self.background_busy() && !self.modular_plan_draft_pending())
     }
     pub(super) fn run_panel_background_enabled(&self, action: rf_ui::RunPanelActionId) -> bool {
         !matches!(
             action,
             rf_ui::RunPanelActionId::RunManual | rf_ui::RunPanelActionId::Resume
-        ) || !self.background_busy()
+        ) || (!self.background_busy() && !self.modular_plan_draft_pending())
     }
     pub(super) fn background_command_label<'a>(&self, command: &str, fallback: &'a str) -> &'a str {
         let fallback = self.recommendation_command_label(command, fallback);
@@ -523,6 +526,33 @@ impl ReadyAppState {
                     format!("用时 {:.2} 秒", duration.as_secs_f64())
                 } else {
                     format!("Elapsed {:.2} s", duration.as_secs_f64())
+                });
+            }
+            if let StudioRunId::Flow(id) = &summary.activity.id
+                && let Some(failure) = owner.flow_diagnostic(id)
+            {
+                ui.push_id(summary.activity.number, |ui| {
+                    ui.collapsing(
+                        if zh {
+                            "本次执行诊断（非当前结果）"
+                        } else {
+                            "Execution diagnostics (not current results)"
+                        },
+                        |ui| {
+                            for line in radishflow_studio::modular_evidence::failure_lines(
+                                failure,
+                                self.platform_host
+                                    .modeling_inputs()
+                                    .workspace
+                                    .project_presentation
+                                    .display_units(),
+                            )
+                            .lines
+                            {
+                                ui.label(line);
+                            }
+                        },
+                    );
                 });
             }
             if let Some(code) = &summary.diagnostic_code {

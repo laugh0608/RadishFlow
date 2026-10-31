@@ -367,6 +367,9 @@ fn notice_title_for_blocked_outcome(
         crate::StudioWorkspaceRunBlockedReason::MissingProjectComponents => {
             "Project components required"
         }
+        crate::StudioWorkspaceRunBlockedReason::PendingFlowPlanDrafts => {
+            "Flow plan edits not applied"
+        }
         crate::StudioWorkspaceRunBlockedReason::PendingInspectorDrafts => {
             "Inspector edits not applied"
         }

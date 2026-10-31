@@ -139,6 +139,13 @@ impl FlowPlanState {
             draft: None,
         }
     }
+    pub fn has_pending_modular_draft(&self) -> bool {
+        self.draft.as_ref().is_some_and(|d| {
+            d.is_pending(&self.current)
+                && (matches!(self.current, FlowPlanConfiguration::Simultaneous(_))
+                    || matches!(d.candidate(), FlowPlanConfiguration::Simultaneous(_)))
+        })
+    }
     pub fn current(&self) -> &FlowPlanConfiguration {
         &self.current
     }

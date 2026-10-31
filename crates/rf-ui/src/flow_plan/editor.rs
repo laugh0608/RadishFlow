@@ -176,8 +176,11 @@ impl FlowPlanDraft {
         number.original_raw = original;
         Ok(())
     }
+    pub fn has_modified_numbers(&self) -> bool {
+        self.numbers.values().any(|n| n.raw != n.original_raw)
+    }
     pub fn is_pending(&self, current: &FlowPlanConfiguration) -> bool {
-        self.candidate != *current || self.numbers.values().any(|n| n.raw != n.original_raw)
+        self.candidate != *current || self.has_modified_numbers()
     }
     pub fn configuration(&self) -> RfResult<FlowPlanConfiguration> {
         let mut candidate = self.candidate.clone();

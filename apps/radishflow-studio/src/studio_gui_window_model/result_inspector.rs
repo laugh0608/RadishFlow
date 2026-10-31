@@ -147,14 +147,8 @@ impl StudioGuiWindowSolveSnapshotModel {
             .collect();
 
         let unit_ids = self
-            .partitioned
-            .as_ref()
-            .map(|p| {
-                p.units
-                    .iter()
-                    .map(|u| u.unit_id.clone())
-                    .collect::<Vec<_>>()
-            })
+            .block_unit_results()
+            .map(|p| p.iter().map(|u| u.unit_id.clone()).collect::<Vec<_>>())
             .unwrap_or_else(|| self.steps.iter().map(|s| s.unit_id.clone()).collect());
         let unit_id_order: Vec<String> =
             unit_ids.into_iter().fold(Vec::new(), |mut acc, unit_id| {
@@ -203,9 +197,8 @@ impl StudioGuiWindowSolveSnapshotModel {
             })
             .unwrap_or_default();
         let selected_unit = selected_unit_id.as_deref().and_then(|selected_unit| {
-            self.partitioned
-                .as_ref()
-                .and_then(|p| p.units.iter().find(|u| u.unit_id == selected_unit))
+            self.block_unit_results()
+                .and_then(|p| p.iter().find(|u| u.unit_id == selected_unit))
                 .cloned()
                 .or_else(|| {
                     unit_related_steps
@@ -226,9 +219,8 @@ impl StudioGuiWindowSolveSnapshotModel {
             .iter()
             .map(|unit_id| {
                 if let Some(unit) = self
-                    .partitioned
-                    .as_ref()
-                    .and_then(|p| p.units.iter().find(|u| &u.unit_id == unit_id))
+                    .block_unit_results()
+                    .and_then(|p| p.iter().find(|u| &u.unit_id == unit_id))
                 {
                     return StudioGuiWindowResultInspectorUnitOptionModel {
                         unit_id: unit_id.clone(),

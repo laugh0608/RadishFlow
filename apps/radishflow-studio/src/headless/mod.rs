@@ -357,6 +357,7 @@ fn blocked_code(reason: crate::StudioWorkspaceRunBlockedReason) -> &'static str 
         ModelingInputsNotReady => "modeling_inputs_not_ready",
         MissingProjectComponents => "missing_project_components",
         PendingInspectorDrafts => "pending_inspector_drafts",
+        PendingFlowPlanDrafts => "pending_flow_plan_drafts",
         UnnormalizedStreamComposition => "unnormalized_stream_composition",
     }
 }

@@ -213,7 +213,14 @@ pub struct StudioGuiWindowPartitionedModel {
     pub units: Vec<StudioGuiWindowUnitExecutionResultModel>,
 }
 #[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiWindowSimultaneousModel {
+    pub result: std::sync::Arc<rf_solver::simultaneous::ModularResult>,
+    pub units: Vec<StudioGuiWindowUnitExecutionResultModel>,
+    pub evidence_lines: Vec<String>,
+}
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowSolveSnapshotModel {
+    pub simultaneous: Option<StudioGuiWindowSimultaneousModel>,
     pub partitioned: Option<StudioGuiWindowPartitionedModel>,
     pub origin: Option<rf_ui::result_query::FlowResultOrigin>,
     pub result_guard: Option<crate::FlowResultGuard>,
@@ -2116,9 +2123,8 @@ fn latest_unit_result_for_target(
     let rf_ui::InspectorTarget::Unit(unit_id) = target else {
         return None;
     };
-    if let Some(partitioned) = &snapshot.partitioned {
-        return partitioned
-            .units
+    if let Some(units) = snapshot.block_unit_results() {
+        return units
             .iter()
             .find(|u| u.unit_id == unit_id.as_str())
             .cloned();
@@ -2481,3 +2487,21 @@ mod tests;
 
 #[cfg(test)]
 mod partitioned_tests;
+
+impl StudioGuiWindowSolveSnapshotModel {
+    pub fn block_unit_results(&self) -> Option<&[StudioGuiWindowUnitExecutionResultModel]> {
+        self.partitioned
+            .as_ref()
+            .map(|p| p.units.as_slice())
+            .or_else(|| self.simultaneous.as_ref().map(|s| s.units.as_slice()))
+    }
+    pub fn block_count(&self) -> Option<usize> {
+        self.partitioned
+            .as_ref()
+            .map(|p| p.result.blocks.len())
+            .or_else(|| self.simultaneous.as_ref().map(|s| s.result.blocks.len()))
+    }
+}
+
+#[cfg(test)]
+mod simultaneous_tests;

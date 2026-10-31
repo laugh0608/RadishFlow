@@ -1,7 +1,7 @@
 use super::*;
 use rf_ui::result_query::FlowResultView;
 impl ReadyAppState {
-    pub(super) fn render_partitioned_results(&mut self, ui: &mut egui::Ui) {
+    pub(super) fn render_flow_results(&mut self, ui: &mut egui::Ui) {
         let zh = self.locale == StudioShellLocale::ZhCn;
         let workspace = &self.platform_host.modeling_inputs().workspace;
         ui.separator();
@@ -38,6 +38,9 @@ impl ReadyAppState {
                         cost.flash_calls
                     ));
                 }
+                if let rf_ui::FlowResultRecord::Simultaneous(s) = snapshot {
+                    self.render_modular_current(ui, &s.result);
+                }
                 ui.collapsing(tr(zh, "执行依据", "Execution evidence"), |ui| {
                     for (key, value) in radishflow_studio::flow_origin_lines(Some(origin)) {
                         ui.label(format!("{key}: {value}"));
@@ -60,6 +63,22 @@ impl ReadyAppState {
             }
             FlowResultView::Failed { diagnostic, .. } => {
                 ui.label(format!("Failed · {}", diagnostic.primary_message));
+                if let Some(failure) = workspace.simultaneous_failure_evidence() {
+                    ui.strong(tr(
+                        zh,
+                        "仅失败诊断；没有发布部分结果。",
+                        "Failure diagnostics only; no partial results published.",
+                    ));
+                    ui.label(super::modular_results::progress_text(&failure.progress, zh));
+                    for line in radishflow_studio::modular_evidence::failure_lines(
+                        failure,
+                        workspace.project_presentation.display_units(),
+                    )
+                    .lines
+                    {
+                        ui.label(line);
+                    }
+                }
                 if let Some(failure) = workspace.partitioned_failure_evidence() {
                     ui.label(format!(
                         "{:?} · block {:?} · unit {:?} · {} local calls",

@@ -306,7 +306,7 @@ QS1 的[真实回流案例、分块 / 撕裂](recycle-and-block-execution.md)已
 | --- | --- | --- |
 | QS0 问题与契约 | 选定首个物理案例，确定未知量、规格、能力、初始化与独立基准 | 明确模型版本、有效域、失败场景与比较指标，审定所需接口 / 存储影响 |
 | [QS1 分块 SM 与循环](recycle-and-block-execution.md) | A/B 与 C 已按确认范围实现；依赖分块、显式撕裂、局部复核和版本化正式消费者 | 已知回流解、残差 / 衡算、边界与失败传播正确；不以达到迭代次数作为成功 |
-| [QS2 首个联立模块块](simultaneous-modular-block.md) | D01—D05 已实现四成员 / 二成员装配、模块响应、缩放主元 LU 与独立复核；[D06](simultaneous-project-and-consumers.md)已批准并接通保存 / 运行与 CLI v5 | 核心与接入定向验证通过；GUI 等待局部画板评审 |
+| [QS2 首个联立模块块](simultaneous-modular-block.md) | D01—D05 已实现四成员 / 二成员装配、模块响应、缩放主元 LU 与独立复核；[D06](simultaneous-project-and-consumers.md)已批准并接通保存 / 运行、CLI v5 与 GUI | 核心与接入定向验证、本机代表实窗通过；未验平台保持 |
 | QS3 首个 EO 块 | 小型模型组的方程、连接、结构、缩放、导数与初始化 | 与独立基准和支持的局部求解一致；错误规格、奇异结构和超域可诊断 |
 | QS4 混合分区 | 组合已验证的序贯、联立模块、方程块及按需引入的黑箱 | 跨块回路与残差正确，结果和失败身份一致；不支持的组合明确拒绝 |
 
@@ -329,7 +329,7 @@ QS1 归 P3；QS2 / QS3 归 P4，可在各自前置能力具备后分别实施，
 
 ## 实施前待决策
 
-- QS1-D01—D05 与 QS1-C01—C06 已确认并实现；QS2 的[核心](simultaneous-modular-block.md)已按 D01—D05 实施及验证，[QS2-C / D06](simultaneous-project-and-consumers.md)保存 / 运行和 CLI v5 已按 D06 批准范围实现，GUI 仍先审画板。QS3 的工况、物性 / 规格与独立基准仍按实际需求确定。
+- QS1-D01—D05 与 QS1-C01—C06 已确认并实现；QS2 的[核心](simultaneous-modular-block.md)已按 D01—D05 实施及验证，[QS2-C / D06](simultaneous-project-and-consumers.md)保存 / 运行、CLI v5 和经画板认可的 GUI 已按 D06 批准范围实现。QS3 的工况、物性 / 规格与独立基准仍按实际需求确定。
 - 模型能力接口、变量 / 方程身份、单位 / 基准、缩放和结构分析表示。
 - 初始化、局部 / 外层误差、稀疏求导与数值后端选型及失败恢复策略。
 - 策略选项、运行证据和重开复现的存储范围；当前工程格式不因本文改变。

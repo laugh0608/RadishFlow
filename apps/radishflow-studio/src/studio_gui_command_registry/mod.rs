@@ -388,8 +388,23 @@ fn result_snapshot_command_entries(
 
     let mut seen_units = BTreeSet::new();
     let unit_commands = match snapshot {
-        // Dedicated modular navigation is enabled after its local GUI review.
-        rf_ui::FlowResultRecord::Simultaneous(_) => Vec::new(),
+        rf_ui::FlowResultRecord::Simultaneous(s) => s
+            .result
+            .blocks
+            .iter()
+            .enumerate()
+            .flat_map(|(block, b)| b.members.iter().map(move |id| (block, id)))
+            .enumerate()
+            .map(|(index, (block, id))| {
+                result_unit_command_entry(
+                    snapshot,
+                    id,
+                    format!("Final local evaluation in block #{}", block + 1),
+                    index,
+                    target_window_id,
+                )
+            })
+            .collect(),
         rf_ui::FlowResultRecord::Acyclic(s) => s
             .steps
             .iter()

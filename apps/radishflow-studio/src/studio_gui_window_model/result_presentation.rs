@@ -369,101 +369,134 @@ pub(super) fn solve_snapshot_model_from_ui(
     let mut review_summary =
         result_review_summary_model_from_parts(status_label, diagnostics.len(), &streams, &steps);
 
-    let partitioned = match snapshot {
-        rf_ui::FlowResultRecord::Acyclic(_) | rf_ui::FlowResultRecord::Simultaneous(_) => None,
-        rf_ui::FlowResultRecord::Partitioned(p) => {
-            let mut unit_results = Vec::new();
-            for (block_index, block) in p.result.blocks.iter().enumerate() {
-                for unit in &block.final_units {
-                    let values = &p.final_units[&unit.unit_id];
-                    let consumed_stream_results = values
-                        .consumed_streams
-                        .iter()
-                        .map(|v| presentation.reference(v))
-                        .collect::<Vec<_>>();
-                    let produced_stream_results = values
-                        .produced_streams
-                        .iter()
-                        .map(|v| presentation.reference(v))
-                        .collect::<Vec<_>>();
-                    unit_results.push(StudioGuiWindowUnitExecutionResultModel {
-                        unit_id: unit.unit_id.to_string(),
-                        location: ResultExecutionLocation::Block(block_index),
-                        status_label: "Converged",
-                        summary: "Final local evaluation; actual consumed and produced states"
-                            .into(),
-                        consumed_stream_actions: consumed_stream_results
-                            .iter()
-                            .map(|s| s.focus_action.clone())
-                            .collect(),
-                        produced_stream_actions: produced_stream_results
-                            .iter()
-                            .map(|s| s.focus_action.clone())
-                            .collect(),
-                        consumed_stream_results,
-                        produced_stream_results,
-                    });
-                }
-            }
-            review_summary.unit_results = unit_results
+    let mut partitioned = None;
+    let mut simultaneous = None;
+    let block_data = match snapshot {
+        rf_ui::FlowResultRecord::Acyclic(_) => None,
+        rf_ui::FlowResultRecord::Partitioned(p) => Some((
+            p.result
+                .blocks
                 .iter()
-                .map(|u| StudioGuiWindowResultReviewUnitModel {
-                    unit_id: u.unit_id.clone(),
-                    location: u.location,
-                    status_label: u.status_label,
-                    summary: u.summary.clone(),
-                    consumed_stream_ids: u
-                        .consumed_stream_results
-                        .iter()
-                        .map(|s| s.stream_id.clone())
-                        .collect(),
-                    produced_stream_ids: u
-                        .produced_stream_results
-                        .iter()
-                        .map(|s| s.stream_id.clone())
-                        .collect(),
-                })
-                .collect();
-            let consumed: std::collections::BTreeSet<_> = unit_results
+                .map(|b| b.members.clone())
+                .collect::<Vec<_>>(),
+            &p.final_units,
+        )),
+        rf_ui::FlowResultRecord::Simultaneous(p) => Some((
+            p.result
+                .blocks
                 .iter()
-                .flat_map(|u| u.consumed_stream_results.iter().map(|s| &s.stream_id))
-                .collect();
-            let produced: std::collections::BTreeSet<_> = unit_results
-                .iter()
-                .flat_map(|u| u.produced_stream_results.iter().map(|s| &s.stream_id))
-                .collect();
-            let sources: std::collections::BTreeSet<_> = unit_results
-                .iter()
-                .filter(|u| u.consumed_stream_results.is_empty())
-                .flat_map(|u| u.produced_stream_results.iter().map(|s| &s.stream_id))
-                .collect();
-            review_summary.source_stream_results = streams
-                .iter()
-                .filter(|s| sources.contains(&s.stream_id) && consumed.contains(&s.stream_id))
-                .map(stream_result_reference_model_from_window_stream)
-                .collect();
-            review_summary.intermediate_stream_results = streams
-                .iter()
-                .filter(|s| {
-                    !sources.contains(&s.stream_id)
-                        && consumed.contains(&s.stream_id)
-                        && produced.contains(&s.stream_id)
-                })
-                .map(stream_result_reference_model_from_window_stream)
-                .collect();
-            review_summary.terminal_stream_results = streams
-                .iter()
-                .filter(|s| produced.contains(&s.stream_id) && !consumed.contains(&s.stream_id))
-                .map(stream_result_reference_model_from_window_stream)
-                .collect();
-            Some(StudioGuiWindowPartitionedModel {
-                result: p.result.clone(),
-                units: unit_results,
-            })
-        }
+                .map(|b| b.members.clone())
+                .collect::<Vec<_>>(),
+            &p.final_units,
+        )),
     };
+    if let Some((block_members, final_units)) = block_data {
+        let mut unit_results = Vec::new();
+        for (block_index, ids) in block_members.iter().enumerate() {
+            for unit_id in ids {
+                let values = &final_units[unit_id];
+                let consumed_stream_results = values
+                    .consumed_streams
+                    .iter()
+                    .map(|v| presentation.reference(v))
+                    .collect::<Vec<_>>();
+                let produced_stream_results = values
+                    .produced_streams
+                    .iter()
+                    .map(|v| presentation.reference(v))
+                    .collect::<Vec<_>>();
+                unit_results.push(StudioGuiWindowUnitExecutionResultModel {
+                    unit_id: unit_id.to_string(),
+                    location: ResultExecutionLocation::Block(block_index),
+                    status_label: "Converged",
+                    summary: "Final local evaluation; actual consumed and produced states".into(),
+                    consumed_stream_actions: consumed_stream_results
+                        .iter()
+                        .map(|s| s.focus_action.clone())
+                        .collect(),
+                    produced_stream_actions: produced_stream_results
+                        .iter()
+                        .map(|s| s.focus_action.clone())
+                        .collect(),
+                    consumed_stream_results,
+                    produced_stream_results,
+                });
+            }
+        }
+        review_summary.unit_results = unit_results
+            .iter()
+            .map(|u| StudioGuiWindowResultReviewUnitModel {
+                unit_id: u.unit_id.clone(),
+                location: u.location,
+                status_label: u.status_label,
+                summary: u.summary.clone(),
+                consumed_stream_ids: u
+                    .consumed_stream_results
+                    .iter()
+                    .map(|s| s.stream_id.clone())
+                    .collect(),
+                produced_stream_ids: u
+                    .produced_stream_results
+                    .iter()
+                    .map(|s| s.stream_id.clone())
+                    .collect(),
+            })
+            .collect();
+        let consumed: std::collections::BTreeSet<_> = unit_results
+            .iter()
+            .flat_map(|u| u.consumed_stream_results.iter().map(|s| &s.stream_id))
+            .collect();
+        let produced: std::collections::BTreeSet<_> = unit_results
+            .iter()
+            .flat_map(|u| u.produced_stream_results.iter().map(|s| &s.stream_id))
+            .collect();
+        let sources: std::collections::BTreeSet<_> = unit_results
+            .iter()
+            .filter(|u| u.consumed_stream_results.is_empty())
+            .flat_map(|u| u.produced_stream_results.iter().map(|s| &s.stream_id))
+            .collect();
+        review_summary.source_stream_results = streams
+            .iter()
+            .filter(|s| sources.contains(&s.stream_id) && consumed.contains(&s.stream_id))
+            .map(stream_result_reference_model_from_window_stream)
+            .collect();
+        review_summary.intermediate_stream_results = streams
+            .iter()
+            .filter(|s| {
+                !sources.contains(&s.stream_id)
+                    && consumed.contains(&s.stream_id)
+                    && produced.contains(&s.stream_id)
+            })
+            .map(stream_result_reference_model_from_window_stream)
+            .collect();
+        review_summary.terminal_stream_results = streams
+            .iter()
+            .filter(|s| produced.contains(&s.stream_id) && !consumed.contains(&s.stream_id))
+            .map(stream_result_reference_model_from_window_stream)
+            .collect();
+
+        match snapshot {
+            rf_ui::FlowResultRecord::Partitioned(p) => {
+                partitioned = Some(StudioGuiWindowPartitionedModel {
+                    result: p.result.clone(),
+                    units: unit_results,
+                })
+            }
+            rf_ui::FlowResultRecord::Simultaneous(p) => {
+                let evidence = crate::modular_evidence::result_lines(&p.result, units);
+                presentation.errors.extend(evidence.errors);
+                simultaneous = Some(StudioGuiWindowSimultaneousModel {
+                    result: p.result.clone(),
+                    units: unit_results,
+                    evidence_lines: evidence.lines,
+                });
+            }
+            rf_ui::FlowResultRecord::Acyclic(_) => unreachable!("block data"),
+        }
+    }
     StudioGuiWindowSolveSnapshotModel {
         partitioned,
+        simultaneous,
         origin: snapshot.origin.clone(),
         result_guard: crate::FlowResultGuard::from_snapshot(snapshot),
         snapshot_id: snapshot.id.as_str().to_string(),

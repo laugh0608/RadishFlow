@@ -509,6 +509,16 @@ impl StudioRunOwner {
                 && case.is_none_or(|case| &member.case_id == case)
         })
     }
+    pub fn flow_diagnostic(
+        &self,
+        id: &rf_ui::FlowRunId,
+    ) -> Option<&rf_solver::simultaneous::ModularFailure> {
+        self.flow
+            .history()
+            .iter()
+            .find(|s| &s.run_id == id)
+            .and_then(|s| s.simultaneous_diagnostic.as_deref())
+    }
     pub fn flow_progress(&self) -> Option<crate::WorkspaceRunProgress> {
         self.flow.state()?.progress
     }

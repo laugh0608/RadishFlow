@@ -313,7 +313,7 @@ impl ReadyAppState {
     pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
         match radishflow_studio::read_studio_project_with_support(
             &project_path,
-            rf_store::project_v4::FlowPlanSupport::Sequential,
+            rf_store::project_v4::FlowPlanSupport::Simultaneous,
         ) {
             Ok(radishflow_studio::StudioProjectOpen::ReadOnly(project)) => {
                 self.background_action(radishflow_studio::StudioBackgroundRunAction::Detach);
@@ -691,6 +691,15 @@ impl ReadyAppState {
     }
 
     pub(super) fn dispatch_confirmed_ui_command(&mut self, command_id: String) {
+        if matches!(
+            command_id.as_str(),
+            "run_panel.run_manual" | "run_panel.resume_workspace" | "run_panel.set_active"
+        ) && self.modular_plan_draft_pending()
+        {
+            self.screen = StudioShellScreen::Run;
+            self.platform_host.record_activity_line("请先应用或放弃联立计划草稿 / Apply or discard the modular plan draft before running.");
+            return;
+        }
         if self.intercept_recommendation_command(&command_id) {
             return;
         }

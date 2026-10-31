@@ -968,7 +968,7 @@ fn recent_case_tile_from_path(
         .then(|| {
             radishflow_studio::read_studio_project_with_support(
                 project_path,
-                rf_store::project_v4::FlowPlanSupport::Sequential,
+                rf_store::project_v4::FlowPlanSupport::Simultaneous,
             )
             .ok()
         })

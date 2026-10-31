@@ -832,20 +832,16 @@ impl StudioShellLocale {
         self,
         snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
     ) -> String {
-        if let Some(partitioned) = &snapshot.partitioned {
+        if let Some(block_count) = snapshot.block_count() {
             if self == Self::ZhCn {
                 format!(
                     "{} 条流股 · {} 个依赖块 · {} 条诊断",
-                    snapshot.stream_count,
-                    partitioned.result.blocks.len(),
-                    snapshot.diagnostic_count
+                    snapshot.stream_count, block_count, snapshot.diagnostic_count
                 )
             } else {
                 format!(
                     "{} streams · {} dependency blocks · {} diagnostics",
-                    snapshot.stream_count,
-                    partitioned.result.blocks.len(),
-                    snapshot.diagnostic_count
+                    snapshot.stream_count, block_count, snapshot.diagnostic_count
                 )
             }
         } else {

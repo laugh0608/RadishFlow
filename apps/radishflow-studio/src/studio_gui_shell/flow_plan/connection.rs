@@ -2,7 +2,7 @@ use super::*;
 impl ReadyAppState {
     pub(super) fn render_exact_connection(&mut self, ui: &mut egui::Ui, access: FlowEditAccess) {
         let zh = self.locale == StudioShellLocale::ZhCn;
-        ui.collapsing(tr(zh,"建模：Splitter 与显式连接","Modeling: Splitter and explicit connections"), |ui| {
+        ui.collapsing(tr(zh,"建模：Splitter 与显式连接","Modeling and connections"), |ui| {
             ui.add_enabled_ui(access == FlowEditAccess::Editable, |ui| {
                 if ui.button(tr(zh,"放置 Splitter","Place Splitter")).clicked() { self.dispatch_ui_command("canvas.begin_place_unit.splitter"); self.screen = StudioShellScreen::Workbench; }
                 let workspace = &self.platform_host.modeling_inputs().workspace;

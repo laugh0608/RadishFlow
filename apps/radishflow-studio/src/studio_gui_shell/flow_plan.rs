@@ -12,6 +12,9 @@ use rf_types::{DiagnosticPortTarget, PortDirection, PortKind, StreamId};
 use rf_ui::flow_plan::*;
 mod connection;
 mod results;
+mod simultaneous;
+use simultaneous::PlanMethod;
+pub(super) mod modular_results;
 
 #[derive(Default)]
 pub(super) struct FlowPlanPanelState {
@@ -55,23 +58,22 @@ impl ReadyAppState {
             .unwrap_or_else(|| FlowPlanDraft::new(workspace, current.clone()));
         let original = draft.clone();
         let mut candidate = draft.candidate().clone();
-        let applied_part = matches!(current, FlowPlanConfiguration::Partitioned(_));
+        let applied_method = PlanMethod::of(&current);
         ui.horizontal_wrapped(|ui| {
             if ui
-                .add_enabled(editable, egui::Button::new(tr(zh, "运行 F5", "Run F5")))
+                .add_enabled(
+                    editable && self.background_command_enabled("run_panel.run_manual"),
+                    egui::Button::new(tr(zh, "运行 F5", "Run F5")),
+                )
                 .clicked()
             {
                 self.dispatch_ui_command("run_panel.run_manual");
             }
-            ui.label(if applied_part {
-                tr(
-                    zh,
-                    "已应用：分块回流（固定温压）",
-                    "Applied: partitioned recycle (fixed T/P)",
-                )
-            } else {
-                tr(zh, "已应用：无环序贯", "Applied: acyclic sequential")
-            });
+            ui.label(format!(
+                "{}: {}",
+                tr(zh, "已应用", "Applied"),
+                applied_method.label(zh)
+            ));
             ui.label(
                 if self
                     .platform_host
@@ -86,44 +88,30 @@ impl ReadyAppState {
                 },
             );
         });
-        let mut part = matches!(candidate, FlowPlanConfiguration::Partitioned(_));
-        ui.add_enabled_ui(editable, |ui| {
+        let mut method = PlanMethod::of(&candidate);
+        let numeric_pending = draft.has_modified_numbers();
+        ui.add_enabled_ui(editable && !numeric_pending, |ui| {
             egui::ComboBox::from_id_salt("flow-method")
-                .selected_text(if part {
-                    tr(
-                        zh,
-                        "分块回流（固定温压）",
-                        "Partitioned recycle (fixed T/P)",
-                    )
-                } else {
-                    tr(zh, "无环序贯", "Acyclic sequential")
-                })
+                .selected_text(method.label(zh))
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut part, false, tr(zh, "无环序贯", "Acyclic sequential"));
-                    ui.selectable_value(
-                        &mut part,
-                        true,
-                        tr(
-                            zh,
-                            "分块回流（固定温压）",
-                            "Partitioned recycle (fixed T/P)",
-                        ),
-                    );
+                    for choice in [
+                        PlanMethod::Acyclic,
+                        PlanMethod::Partitioned,
+                        PlanMethod::Simultaneous,
+                    ] {
+                        ui.selectable_value(&mut method, choice, choice.label(zh));
+                    }
                 });
         });
-        if part != matches!(candidate, FlowPlanConfiguration::Partitioned(_)) {
-            candidate = if part {
-                FlowPlanConfiguration::Partitioned(RecycleSolveOptions {
-                    boundary: FixedRecycleBoundary {
-                        temperature_k: 298.15,
-                        pressure_pa: 101325.0,
-                    },
-                    max_iteration_evaluations: 500,
-                    tears: Vec::new(),
-                })
-            } else {
-                FlowPlanConfiguration::Acyclic
-            };
+        if numeric_pending {
+            ui.small(tr(
+                zh,
+                "切换方法或尺度规则前，请先应用或放弃数值草稿。",
+                "Apply or discard numeric drafts before changing method or scale policy.",
+            ));
+        }
+        if method != PlanMethod::of(&candidate) {
+            candidate = method.default_configuration();
             draft.replace_candidate(candidate.clone());
         }
         let components: Vec<_> = self
@@ -218,10 +206,20 @@ impl ReadyAppState {
                 });
             }
         });
+        if let FlowPlanConfiguration::Simultaneous(options) = &mut candidate {
+            ui.add_enabled_ui(editable, |ui| {
+                apply_requested |= self.render_simultaneous_plan(ui, &mut draft, options);
+            });
+        }
         draft.replace_candidate(candidate);
         let configuration = draft.configuration();
         let pending = draft.is_pending(&current);
-        if pending {
+        if pending
+            && (matches!(draft.candidate(), FlowPlanConfiguration::Simultaneous(_))
+                || matches!(current, FlowPlanConfiguration::Simultaneous(_)))
+        {
+            ui.label(tr(zh, "先应用或放弃草稿，才可 Run / F5 或输出当前结果；保存仅写正式配置。", "Apply or discard the draft before Run / F5 or current output. Save writes only formal configuration."));
+        } else if pending {
             ui.label(tr(zh,"草稿未应用；Run/F5 使用已应用计划。保存保留草稿，只写正式配置。","Draft is not applied. Run/F5 uses the applied plan. Save writes formal configuration and preserves drafts."));
         }
         if let Err(error) = &configuration {
@@ -305,7 +303,7 @@ impl ReadyAppState {
             }
         }
         self.render_exact_connection(ui, access);
-        self.render_partitioned_results(ui);
+        self.render_flow_results(ui);
         if let Some(message) = &self.flow_plan.notice {
             ui.label(message);
         }

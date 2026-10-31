@@ -657,6 +657,19 @@ impl ReadyAppState {
                             } else {
                                 "Solver: Partitioned recycle (fixed T/P)"
                             }
+                        } else if matches!(
+                            self.platform_host
+                                .modeling_inputs()
+                                .workspace
+                                .flow_plan
+                                .current(),
+                            rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
+                        ) {
+                            if self.locale == StudioShellLocale::ZhCn {
+                                "求解器: 固定温压仿射联立模块"
+                            } else {
+                                "Solver: Fixed-T/P affine modular"
+                            }
                         } else {
                             self.locale.text(ShellText::SolverSequentialModular)
                         },

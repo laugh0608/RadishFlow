@@ -6,6 +6,7 @@ mod confirmed_input_action;
 mod control_plane_client;
 mod control_plane_sync;
 pub mod flow_plan_actions;
+pub mod modular_evidence;
 mod modular_result_projection;
 pub use confirmed_input_action::{StudioConfirmedInputAction, StudioInputAction};
 mod document_history_driver;

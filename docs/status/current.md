@@ -36,7 +36,7 @@
 ### 当前优先级
 
 1. 按 [代码链路审计](../architecture/overview.md#工程基础链路审计2026-10-23) 和 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 推进。AF0 已完成；AF2a 内建目录 / 工厂、AF2b 单包上下文已接通。AF1 未定因，独立跟踪。
-2. QS0、[QS1-C](../topics/modeling/recycle-project-and-consumers.md)与 [QS2-A/B](../topics/modeling/simultaneous-modular-block.md)已完成；[QS2-C / D06](../topics/modeling/simultaneous-project-and-consumers.md)已批准并接通存储配置、运行结果与 CLI v5，1,976 项门禁通过。GUI 五类六张局部画板已获认可，接线进行中；完成前桌面 QS2 暂只读。
+2. QS0、[QS1-C](../topics/modeling/recycle-project-and-consumers.md)与 [QS2-A/B](../topics/modeling/simultaneous-modular-block.md)已完成；[QS2-C / D06](../topics/modeling/simultaneous-project-and-consumers.md)已接通存储配置、运行结果、CLI v5 与经画板认可的 GUI，1,988 项门禁及 macOS 代表实窗通过；未知能力只读与未验平台边界保持。
 3. C2-A 后续方法对比方案已认可，排期服从基础主线；原精度失败不变。C2-B / C3 暂不实施，不以共享基础为名接入新 PR 产品链或流程设备物理关联。
 4. 基础契约中提前审查 EO / 动态 / 瞬态的扩展边界，具体物性、单元、递归分块 / recycle 和高级算法按真实场景逐步填入；每项另做物理验证。
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
@@ -120,7 +120,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-10-31：QS2-C C-A / C-B / CLI v5 本机 1,976 项、严格 Clippy 与完整门禁通过；历史存储读写器另验通过。GUI / 原生窗口及未验平台见 [W44](../devlogs/2026-10/2026-W44.md)。
+- 2026-10-31：QS2-C 含 GUI 通过本机 1,988 项及完整门禁、macOS 代表实窗；历史读写器另验通过。证据与未验范围见 [W44](../devlogs/2026-10/2026-W44.md)。
 
 - 既有功能与实窗证据见 [W38](../devlogs/2026-09/2026-W38.md)，跨平台、native 与 `.NET` 历史基线见 [W37](../devlogs/2026-09/2026-W37.md)，更早记录见 [W36](../devlogs/2026-09/2026-W36.md)；历史证据不替代新增路径或发布验收。
 

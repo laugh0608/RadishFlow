@@ -133,6 +133,7 @@ pub enum StudioWorkspaceRunBlockedReason {
     ModelingInputsNotReady,
     MissingProjectComponents,
     PendingInspectorDrafts,
+    PendingFlowPlanDrafts,
     UnnormalizedStreamComposition,
 }
 
@@ -391,7 +392,9 @@ impl StudioAppFacade {
         context: &StudioAppAuthCacheContext<'_>,
         selection: &WorkspaceRunPackageSelection,
     ) -> RfResult<StudioWorkspaceRunDispatch> {
-        if let Some(blocked) = workspace_pending_inspector_draft_block(app_state) {
+        if let Some(blocked) = workspace_pending_flow_draft_block(app_state)
+            .or_else(|| workspace_pending_inspector_draft_block(app_state))
+        {
             let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
             record_workspace_run_outcome(app_state, &outcome);
             return Ok(map_workspace_run_dispatch(app_state, None, outcome));
@@ -475,7 +478,9 @@ pub(crate) fn preflight_workspace_run(
     index: &StoredAuthCacheIndex,
     command: &WorkspaceRunCommand,
 ) -> WorkspaceRunPreflight {
-    if let Some(blocked) = workspace_pending_inspector_draft_block(app) {
+    if let Some(blocked) = workspace_pending_flow_draft_block(app)
+        .or_else(|| workspace_pending_inspector_draft_block(app))
+    {
         return WorkspaceRunPreflight::Blocked {
             package_id: None,
             blocked,
@@ -777,3 +782,10 @@ fn describe_simulation_mode(mode: SimulationMode) -> &'static str {
 
 #[cfg(test)]
 mod tests;
+
+fn workspace_pending_flow_draft_block(app: &AppState) -> Option<StudioWorkspaceRunBlocked> {
+    app.workspace.flow_plan.has_pending_modular_draft().then(|| StudioWorkspaceRunBlocked {
+        reason: StudioWorkspaceRunBlockedReason::PendingFlowPlanDrafts,
+        message: "Apply or discard the modular plan draft before running; only the applied plan can execute.".into(),
+    })
+}

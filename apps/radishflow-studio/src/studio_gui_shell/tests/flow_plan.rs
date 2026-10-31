@@ -205,6 +205,17 @@ fn output(
                 egui::Pos2::ZERO,
                 egui::vec2(900.0, 3000.0),
             )),
+            modifiers: events
+                .iter()
+                .rev()
+                .find_map(|e| {
+                    if let egui::Event::Key { modifiers, .. } = e {
+                        Some(*modifiers)
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_default(),
             events,
             focused: true,
             ..Default::default()
@@ -281,12 +292,7 @@ fn gui_explicit_connection_button_builds_the_return_edge_before_running() {
         },
     });
     let revision = app.platform_host.document().revision;
-    click_text(
-        &mut app,
-        &ctx,
-        "Modeling: Splitter and explicit connections",
-        0,
-    );
+    click_text(&mut app, &ctx, "Modeling and connections", 0);
     click_text(&mut app, &ctx, "—", 0);
     click_text(&mut app, &ctx, "splitter-1.outlet_a", 0);
     click_text(&mut app, &ctx, "—", 0);
@@ -317,3 +323,5 @@ fn gui_explicit_connection_button_builds_the_return_edge_before_running() {
         }
     ));
 }
+
+mod simultaneous;

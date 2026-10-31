@@ -498,15 +498,14 @@ impl StudioGuiWindowStatusSummaryModel {
         let partitioned = runtime
             .latest_solve_snapshot
             .as_ref()
-            .and_then(|s| s.partitioned.as_ref());
+            .and_then(|s| s.block_count());
         let step_value = runtime
             .latest_solve_snapshot
             .as_ref()
             .map(|snapshot| {
                 snapshot
-                    .partitioned
-                    .as_ref()
-                    .map_or(snapshot.step_count, |p| p.result.blocks.len())
+                    .block_count()
+                    .unwrap_or(snapshot.step_count)
                     .to_string()
             })
             .unwrap_or_else(|| "N/A".to_string());
