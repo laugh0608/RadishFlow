@@ -36,18 +36,16 @@
 ### 当前优先级
 
 1. 按 [代码链路审计](../architecture/overview.md#工程基础链路审计2026-10-23) 和 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 推进。AF0 已完成；AF2a 内建目录 / 工厂、AF2b 单包上下文已接通。AF1 未定因，独立跟踪。
-2. AF3—AF5b 已完成；新版 CLI 首版磁盘只读，下一步 AF6 扩展边界审查。
+2. AF2—AF5 已贯通，AF6 审查材料完成；先审定有限组分衡算装配方案。
 3. C2-A 后续方法对比方案已认可，排期服从基础主线；原精度失败不变。C2-B / C3 暂不实施，不以共享基础为名接入新 PR 产品链或流程设备物理关联。
 4. 基础契约中提前审查 EO / 动态 / 瞬态的扩展边界，具体物性、单元、递归分块 / recycle 和高级算法按真实场景逐步填入；每项另做物理验证。
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
 
 2026-09-13 的 B0 / B1 主路径基线见 [建模专题](../topics/flowsheet-modeling-and-solve.md) 和 [生命周期专题](../topics/project-lifecycle-storage.md)。账户联合登录仍为待架构决策的 Draft。
 
-### 最近进展（截至 2026-10-26）
+### 最近进展（截至 2026-10-31）
 
-- AF4c / AF5b 已完成 CLI v3、来源 / 导航 / 输出及代表验证，见 [W44](../devlogs/2026-10/2026-W44.md)。
-
-- AF1 已补 picker 诊断，根因未定；实窗与回归见 [W43](../devlogs/2026-10/2026-W43.md)。
+- [AF6 审查](../topics/modeling/solver-strategies-and-assembly.md#af6-扩展边界复核2026-10-31)已形成代码证据、两个场景及最小方案，接口 / 模型实现待审定。
 
 - [AF2a](../topics/modeling/model-catalog-and-runtime.md#af2a-内建目录与工厂)六类目录 / 工厂已接通，旧 kind、格式和诊断保持。
 
@@ -66,7 +64,7 @@
 - [x] AF2a / b 装配、AF3 后台运行、AF4a / AF5a 查询与 AF4b 正式动作 / GUI 已完成。
 - [x] [AF4c 契约](../topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)四片完成，v3 覆盖及磁盘边界已验证，旧协议保持。
 - [x] AF5b 来源、导航、输出及代表验证完成。
-- [ ] 按[接下来事项](../topics/variable-and-object-browser.md#接下来事项2026-10-26-日终建议)审查 AF6，再审定实现。
+- [x] AF6 链路 / 场景审查材料完成；按[接下来事项](../topics/variable-and-object-browser.md#接下来事项2026-10-31)审定后续实现。
 - [ ] [C2-A 方法对比](../thermo/mvp-model.md#c2-a-后续方法对比与排期)已认可、尚未实施；第三轮来源审计仍待审，混合物气相仍缺，B / C3 不开工。
 - [ ] 全局 R0 待评审；U / A / 设备局部稿通过不代表全局定稿。
 - [ ] [可视化 V1—V4](../radishflow-mvp-roadmap.md#颜色与流程可视化的配套切片)方向已确认、均未实现：二维流向 / 数据着色随结果基础，局部三维依赖设备几何，动态回放依赖真实时间结果；整厂三维另评估。
@@ -123,7 +121,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-10-31：macOS `check-repo` 1,811 项、严格 Clippy 通过（23.59 秒）；Windows 复验见 PR #17，AF5b 实窗见 [W44](../devlogs/2026-10/2026-W44.md)。
+- 2026-10-31：本机 1,811 项及 PR #17 全部 CI 通过，merge 后已回灌 `dev`；原生实窗边界见 [W44](../devlogs/2026-10/2026-W44.md)。
 
 - 既有功能与实窗证据见 [W38](../devlogs/2026-09/2026-W38.md)，跨平台、native 与 `.NET` 历史基线见 [W37](../devlogs/2026-09/2026-W37.md)，更早记录见 [W36](../devlogs/2026-09/2026-W36.md)；历史证据不替代新增路径或发布验收。
 
