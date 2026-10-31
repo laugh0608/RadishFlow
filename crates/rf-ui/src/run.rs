@@ -25,6 +25,7 @@ pub enum RunStatus {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SolvePendingReason {
+    CandidateAdopted,
     PlanChanged,
     DocumentRevisionAdvanced,
     ModeActivated,

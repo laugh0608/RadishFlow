@@ -7,6 +7,7 @@ pub(super) enum PlanMethod {
     Acyclic,
     Partitioned,
     Simultaneous,
+    EquationOriented,
 }
 impl PlanMethod {
     pub(super) fn of(plan: &FlowPlanConfiguration) -> Self {
@@ -14,10 +15,16 @@ impl PlanMethod {
             FlowPlanConfiguration::Acyclic => Self::Acyclic,
             FlowPlanConfiguration::Partitioned(_) => Self::Partitioned,
             FlowPlanConfiguration::Simultaneous(_) => Self::Simultaneous,
+            FlowPlanConfiguration::EquationOriented(_) => Self::EquationOriented,
         }
     }
     pub(super) fn label(self, zh: bool) -> &'static str {
         match self {
+            Self::EquationOriented => tr(
+                zh,
+                "固定温压物料方程 / 规格反算",
+                "Fixed-T/P equations / specification solve",
+            ),
             Self::Acyclic => tr(zh, "无环序贯", "Acyclic sequential"),
             Self::Partitioned => tr(
                 zh,
@@ -33,6 +40,9 @@ impl PlanMethod {
             pressure_pa: 650000.0,
         };
         match self {
+            Self::EquationOriented => FlowPlanConfiguration::EquationOriented(
+                rf_solver::equation_oriented::EquationOptions::new(boundary),
+            ),
             Self::Acyclic => FlowPlanConfiguration::Acyclic,
             Self::Partitioned => FlowPlanConfiguration::Partitioned(RecycleSolveOptions::new(
                 FixedRecycleBoundary {
@@ -50,11 +60,8 @@ impl PlanMethod {
 
 impl ReadyAppState {
     pub(in crate::studio_gui_shell) fn modular_plan_draft_pending(&self) -> bool {
-        self.platform_host
-            .modeling_inputs()
-            .workspace
-            .flow_plan
-            .has_pending_modular_draft()
+        let plan = &self.platform_host.modeling_inputs().workspace.flow_plan;
+        plan.has_pending_modular_draft() || plan.has_pending_equation_draft()
     }
 
     pub(super) fn render_simultaneous_plan(

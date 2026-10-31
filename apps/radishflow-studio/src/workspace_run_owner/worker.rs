@@ -141,6 +141,14 @@ impl rf_solver::simultaneous::ModularControl for WorkerControl {
         self.emit(WorkspaceSolveProgress::Simultaneous(progress))
     }
 }
+impl rf_solver::equation_oriented::EquationControl for WorkerControl {
+    fn checkpoint(
+        &mut self,
+        progress: rf_solver::equation_oriented::EquationProgress,
+    ) -> ControlFlow<()> {
+        self.emit(WorkspaceSolveProgress::EquationOriented(progress))
+    }
+}
 impl WorkspaceSolveControl for WorkerControl {
     fn before_load(&mut self) -> ControlFlow<()> {
         self.emit(WorkspaceSolveProgress::Preparing)

@@ -301,7 +301,9 @@ pub(super) fn solve_snapshot_model_from_ui(
         .collect::<Vec<_>>();
     let acyclic_steps = match snapshot {
         rf_ui::FlowResultRecord::Acyclic(s) => s.steps.as_slice(),
-        rf_ui::FlowResultRecord::Partitioned(_) | rf_ui::FlowResultRecord::Simultaneous(_) => &[],
+        rf_ui::FlowResultRecord::Partitioned(_)
+        | rf_ui::FlowResultRecord::Simultaneous(_)
+        | rf_ui::FlowResultRecord::EquationOriented(_) => &[],
     };
     let steps = acyclic_steps
         .iter()
@@ -369,9 +371,14 @@ pub(super) fn solve_snapshot_model_from_ui(
     let mut review_summary =
         result_review_summary_model_from_parts(status_label, diagnostics.len(), &streams, &steps);
 
+    let mut equation_oriented = None;
     let mut partitioned = None;
     let mut simultaneous = None;
     let block_data = match snapshot {
+        rf_ui::FlowResultRecord::EquationOriented(p) => Some((
+            vec![p.final_units.keys().cloned().collect()],
+            &p.final_units,
+        )),
         rf_ui::FlowResultRecord::Acyclic(_) => None,
         rf_ui::FlowResultRecord::Partitioned(p) => Some((
             p.result
@@ -407,7 +414,11 @@ pub(super) fn solve_snapshot_model_from_ui(
                     .collect::<Vec<_>>();
                 unit_results.push(StudioGuiWindowUnitExecutionResultModel {
                     unit_id: unit_id.to_string(),
-                    location: ResultExecutionLocation::Block(block_index),
+                    location: if matches!(snapshot, rf_ui::FlowResultRecord::EquationOriented(_)) {
+                        ResultExecutionLocation::EquationVerification
+                    } else {
+                        ResultExecutionLocation::Block(block_index)
+                    },
                     status_label: "Converged",
                     summary: "Final local evaluation; actual consumed and produced states".into(),
                     consumed_stream_actions: consumed_stream_results
@@ -476,6 +487,15 @@ pub(super) fn solve_snapshot_model_from_ui(
             .collect();
 
         match snapshot {
+            rf_ui::FlowResultRecord::EquationOriented(p) => {
+                let evidence = crate::equation_evidence::result_lines(&p.result, units);
+                presentation.errors.extend(evidence.errors);
+                equation_oriented = Some(StudioGuiWindowEquationModel {
+                    evidence_lines: evidence.lines,
+                    result: p.result.clone(),
+                    units: unit_results,
+                });
+            }
             rf_ui::FlowResultRecord::Partitioned(p) => {
                 partitioned = Some(StudioGuiWindowPartitionedModel {
                     result: p.result.clone(),
@@ -495,6 +515,7 @@ pub(super) fn solve_snapshot_model_from_ui(
         }
     }
     StudioGuiWindowSolveSnapshotModel {
+        equation_oriented,
         partitioned,
         simultaneous,
         origin: snapshot.origin.clone(),

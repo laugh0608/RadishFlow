@@ -6,6 +6,7 @@ impl ReadyAppState {
         let workspace = &self.platform_host.modeling_inputs().workspace;
         ui.separator();
         ui.heading(tr(zh, "流程结果", "Flow results"));
+        let mut adopt = false;
         match workspace.flow_result() {
             FlowResultView::Current { snapshot, origin } => {
                 ui.strong("Current");
@@ -38,6 +39,9 @@ impl ReadyAppState {
                         cost.flash_calls
                     ));
                 }
+                if let rf_ui::FlowResultRecord::EquationOriented(s) = snapshot {
+                    adopt = self.render_equation_current(ui, &s.result);
+                }
                 if let rf_ui::FlowResultRecord::Simultaneous(s) = snapshot {
                     self.render_modular_current(ui, &s.result);
                 }
@@ -63,6 +67,25 @@ impl ReadyAppState {
             }
             FlowResultView::Failed { diagnostic, .. } => {
                 ui.label(format!("Failed · {}", diagnostic.primary_message));
+                if let Some(failure) = workspace.equation_failure_evidence() {
+                    ui.strong(tr(
+                        zh,
+                        "仅失败诊断；没有发布部分结果。",
+                        "Failure diagnostics only; no partial results published.",
+                    ));
+                    ui.label(super::equation_results::progress_text(
+                        &failure.progress,
+                        zh,
+                    ));
+                    for line in radishflow_studio::equation_evidence::failure_lines(
+                        failure,
+                        workspace.project_presentation.display_units(),
+                    )
+                    .lines
+                    {
+                        ui.label(line);
+                    }
+                }
                 if let Some(failure) = workspace.simultaneous_failure_evidence() {
                     ui.strong(tr(
                         zh,
@@ -104,6 +127,24 @@ impl ReadyAppState {
                         "Diagnostic evidence only; no partial flow result was published.",
                     ));
                 }
+            }
+        }
+        if adopt {
+            let access = if self.read_only_project.is_some() {
+                FlowEditAccess::ReadOnly
+            } else {
+                FlowEditAccess::Editable
+            };
+            match radishflow_studio::equation_actions::preview_equation_adoption(
+                self.platform_host.modeling_inputs(),
+                access,
+                self.background_busy(),
+            ) {
+                Ok(p) => {
+                    self.flow_plan.adoption = Some(p);
+                    self.flow_plan.adoption_focus_first = true;
+                }
+                Err(e) => self.flow_plan.notice = Some(e.to_string()),
             }
         }
     }

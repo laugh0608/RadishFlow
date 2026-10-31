@@ -92,6 +92,7 @@ pub struct WorkspaceRunSummary {
     pub cancellation: Option<WorkspaceRunCancelReason>,
     pub diagnostic_code: Option<String>,
     /// Execution evidence only; this never grants Current result qualification.
+    pub equation_diagnostic: Option<std::sync::Arc<rf_solver::equation_oriented::EquationFailure>>,
     pub simultaneous_diagnostic: Option<std::sync::Arc<rf_solver::simultaneous::ModularFailure>>,
 }
 
@@ -261,6 +262,7 @@ impl WorkspaceRunOwner {
                     disposition,
                     cancellation: None,
                     diagnostic_code: error.context().diagnostic_code().map(str::to_owned),
+                    equation_diagnostic: None,
                     simultaneous_diagnostic: None,
                 });
                 return Err(error);
@@ -477,6 +479,10 @@ impl WorkspaceRunOwner {
                 .completion_result()
                 .err()
                 .and_then(|error| error.context().diagnostic_code().map(str::to_owned)),
+            equation_diagnostic: completion
+                .equation_failure_evidence()
+                .cloned()
+                .map(std::sync::Arc::new),
             simultaneous_diagnostic: completion
                 .simultaneous_failure_evidence()
                 .cloned()

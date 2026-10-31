@@ -388,6 +388,20 @@ fn result_snapshot_command_entries(
 
     let mut seen_units = BTreeSet::new();
     let unit_commands = match snapshot {
+        rf_ui::FlowResultRecord::EquationOriented(s) => s
+            .final_units
+            .keys()
+            .enumerate()
+            .map(|(index, id)| {
+                result_unit_command_entry(
+                    snapshot,
+                    id,
+                    "Final EO local verification".into(),
+                    index,
+                    target_window_id,
+                )
+            })
+            .collect(),
         rf_ui::FlowResultRecord::Simultaneous(s) => s
             .result
             .blocks
@@ -509,6 +523,7 @@ fn result_unit_command_entry(
                 rf_ui::FlowResultRecord::Acyclic(_) => "SolveSnapshot",
                 rf_ui::FlowResultRecord::Partitioned(_) => "PartitionedSolveResult",
                 rf_ui::FlowResultRecord::Simultaneous(_) => "ModularResult",
+                rf_ui::FlowResultRecord::EquationOriented(_) => "EquationResult",
             },
             snapshot.id.as_str(),
             detail

@@ -6,6 +6,7 @@ pub fn flow(app: &AppState, executions: &Executions) -> Result<Value, Failure> {
     if matches!(
         app.workspace.flow_plan.current(),
         rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
+            | rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
     ) {
         return Err(Failure::new(
             Stage::Query,
@@ -17,7 +18,8 @@ pub fn flow(app: &AppState, executions: &Executions) -> Result<Value, Failure> {
     match app.workspace.flow_result() {
         FlowResultView::Current { snapshot, origin } => {
             match snapshot {
-                rf_ui::FlowResultRecord::Simultaneous(_) => {
+                rf_ui::FlowResultRecord::Simultaneous(_)
+                | rf_ui::FlowResultRecord::EquationOriented(_) => {
                     return Err(Failure::new(
                         Stage::Query,
                         Code::UnsupportedCapability,

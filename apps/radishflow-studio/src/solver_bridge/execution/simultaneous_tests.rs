@@ -176,6 +176,11 @@ impl ModularControl for StopAt {
         }
     }
 }
+impl EquationControl for StopAt {
+    fn checkpoint(&mut self, _: EquationProgress) -> ControlFlow<()> {
+        ControlFlow::Continue(())
+    }
+}
 impl WorkspaceSolveControl for StopAt {
     fn before_load(&mut self) -> ControlFlow<()> {
         ControlFlow::Continue(())

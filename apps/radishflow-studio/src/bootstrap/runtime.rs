@@ -468,6 +468,24 @@ impl BootstrapSession {
     ) -> RfResult<crate::StudioBackgroundRunReply> {
         use crate::StudioBackgroundRunAction;
         match action {
+            StudioBackgroundRunAction::AdoptEquationCandidate { access, preview } => {
+                let busy = self
+                    .facade
+                    .background
+                    .as_ref()
+                    .is_some_and(|b| !b.owner.borrow().is_idle());
+                let receipt = crate::equation_actions::adopt_equation_candidate(
+                    &mut self.app_state,
+                    access,
+                    busy,
+                    &preview,
+                    SystemTime::now(),
+                )?;
+                return Ok(crate::StudioBackgroundRunReply {
+                    changed: receipt.invalidates_flow_results(),
+                    ..Default::default()
+                });
+            }
             StudioBackgroundRunAction::ConfigureFlowPlan {
                 expected,
                 access,
@@ -628,7 +646,8 @@ impl BootstrapSession {
                 owner.resume_submissions();
                 false
             }
-            StudioBackgroundRunAction::ConfigureFlowPlan { .. }
+            StudioBackgroundRunAction::AdoptEquationCandidate { .. }
+            | StudioBackgroundRunAction::ConfigureFlowPlan { .. }
             | StudioBackgroundRunAction::FlowPlanDraft { .. }
             | StudioBackgroundRunAction::EditFlow { .. }
             | StudioBackgroundRunAction::Install(_)

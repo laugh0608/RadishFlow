@@ -1,5 +1,9 @@
 //! Versioned project configuration DTOs. They contain no solver workspace or UI identity.
-use super::{SIMULTANEOUS_METHOD, StoredCouplingScaling, StoredModularPlan};
+use super::{
+    EQUATION_ORIENTED_METHOD, SIMULTANEOUS_METHOD, StoredCouplingScale, StoredCouplingScaling,
+    StoredEquationBinding, StoredEquationPlan, StoredEquationScale, StoredEquationScaling,
+    StoredEquationSpecification, StoredEquationVariableBinding, StoredModularPlan,
+};
 use rf_types::{ComponentId, RfError, RfResult, StreamId, UnitId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::BTreeSet;
@@ -12,6 +16,7 @@ pub enum StoredFlowPlan {
     Acyclic,
     Partitioned(StoredRecyclePlan),
     Simultaneous(StoredModularPlan),
+    EquationOriented(StoredEquationPlan),
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -19,7 +24,7 @@ pub struct StoredFixedBoundary {
     pub temperature_k: f64,
     pub pressure_pa: f64,
 }
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct StoredPortBinding {
     pub unit_id: UnitId,
@@ -110,7 +115,55 @@ struct PlanWire {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "present"
     )]
-    scaling: Option<StoredCouplingScaling>,
+    scaling: Option<PlanScalingWire>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present"
+    )]
+    equation_contract_version: Option<u32>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present"
+    )]
+    specifications: Option<Vec<StoredEquationSpecification>>,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+enum PlanScalingWire {
+    EvaluatedFreshTotal,
+    ExplicitCouplings {
+        values: Vec<StoredCouplingScale>,
+    },
+    ExplicitEquations {
+        variables: Vec<StoredEquationScale<StoredEquationVariableBinding>>,
+        equations: Vec<StoredEquationScale<StoredEquationBinding>>,
+    },
+}
+impl From<StoredCouplingScaling> for PlanScalingWire {
+    fn from(s: StoredCouplingScaling) -> Self {
+        match s {
+            StoredCouplingScaling::EvaluatedFreshTotal => Self::EvaluatedFreshTotal,
+            StoredCouplingScaling::ExplicitCouplings { values } => {
+                Self::ExplicitCouplings { values }
+            }
+        }
+    }
+}
+impl From<StoredEquationScaling> for PlanScalingWire {
+    fn from(s: StoredEquationScaling) -> Self {
+        match s {
+            StoredEquationScaling::EvaluatedFreshTotal => Self::EvaluatedFreshTotal,
+            StoredEquationScaling::ExplicitEquations {
+                variables,
+                equations,
+            } => Self::ExplicitEquations {
+                variables,
+                equations,
+            },
+        }
+    }
 }
 fn present<'de, D: Deserializer<'de>, T: Deserialize<'de>>(d: D) -> Result<Option<T>, D::Error> {
     T::deserialize(d).map(Some)
@@ -122,6 +175,7 @@ impl StoredFlowPlan {
                 Self::Acyclic => ACYCLIC_METHOD,
                 Self::Partitioned(_) => PARTITIONED_METHOD,
                 Self::Simultaneous(_) => SIMULTANEOUS_METHOD,
+                Self::EquationOriented(_) => EQUATION_ORIENTED_METHOD,
             }
             .into(),
             version: 1,
@@ -129,6 +183,9 @@ impl StoredFlowPlan {
     }
     pub fn validate(&self) -> RfResult<()> {
         if let Self::Simultaneous(plan) = self {
+            return plan.validate();
+        }
+        if let Self::EquationOriented(plan) = self {
             return plan.validate();
         }
         let Self::Partitioned(plan) = self else {
@@ -195,6 +252,8 @@ impl Serialize for StoredFlowPlan {
             tears: None,
             response_contract_version: None,
             scaling: None,
+            equation_contract_version: None,
+            specifications: None,
         };
         if let Self::Partitioned(plan) = self {
             wire.acceptance_contract_version = Some(1);
@@ -206,7 +265,15 @@ impl Serialize for StoredFlowPlan {
             wire.acceptance_contract_version = Some(1);
             wire.response_contract_version = Some(1);
             wire.fixed_boundary = Some(plan.fixed_boundary.clone());
-            wire.scaling = Some(plan.canonical_scaling());
+            wire.scaling = Some(plan.canonical_scaling().into());
+        }
+        if let Self::EquationOriented(plan) = self {
+            let plan = plan.canonicalized();
+            wire.acceptance_contract_version = Some(1);
+            wire.equation_contract_version = Some(1);
+            wire.fixed_boundary = Some(plan.fixed_boundary);
+            wire.specifications = Some(plan.specifications);
+            wire.scaling = Some(plan.scaling.into());
         }
         wire.serialize(s)
     }
@@ -219,6 +286,13 @@ impl<'de> Deserialize<'de> for StoredFlowPlan {
                 "simulation: missing partitioned plan field or unsupported contract",
             )
         };
+        if w.method.id != EQUATION_ORIENTED_METHOD
+            && (w.equation_contract_version.is_some() || w.specifications.is_some())
+        {
+            return Err(serde::de::Error::custom(
+                "simulation: EO fields require EO method",
+            ));
+        }
         let result = match (w.method.id.as_str(), w.method.version) {
             (ACYCLIC_METHOD, 1)
                 if w.acceptance_contract_version.is_none()
@@ -249,8 +323,52 @@ impl<'de> Deserialize<'de> for StoredFlowPlan {
             {
                 Self::Simultaneous(StoredModularPlan {
                     fixed_boundary: w.fixed_boundary.ok_or_else(missing)?,
-                    scaling: w.scaling.ok_or_else(missing)?,
+                    scaling: match w.scaling.ok_or_else(missing)? {
+                        PlanScalingWire::EvaluatedFreshTotal => {
+                            StoredCouplingScaling::EvaluatedFreshTotal
+                        }
+                        PlanScalingWire::ExplicitCouplings { values } => {
+                            StoredCouplingScaling::ExplicitCouplings { values }
+                        }
+                        _ => {
+                            return Err(serde::de::Error::custom(
+                                "simulation: EO scaling cannot be used by modular method",
+                            ));
+                        }
+                    },
                 })
+            }
+            (EQUATION_ORIENTED_METHOD, 1)
+                if w.acceptance_contract_version == Some(1)
+                    && w.equation_contract_version == Some(1)
+                    && w.response_contract_version.is_none()
+                    && w.tears.is_none()
+                    && w.max_iteration_evaluations.is_none() =>
+            {
+                Self::EquationOriented(
+                    StoredEquationPlan {
+                        fixed_boundary: w.fixed_boundary.ok_or_else(missing)?,
+                        specifications: w.specifications.ok_or_else(missing)?,
+                        scaling: match w.scaling.ok_or_else(missing)? {
+                            PlanScalingWire::EvaluatedFreshTotal => {
+                                StoredEquationScaling::EvaluatedFreshTotal
+                            }
+                            PlanScalingWire::ExplicitEquations {
+                                variables,
+                                equations,
+                            } => StoredEquationScaling::ExplicitEquations {
+                                variables,
+                                equations,
+                            },
+                            _ => {
+                                return Err(serde::de::Error::custom(
+                                    "simulation: coupling scaling cannot be used by EO method",
+                                ));
+                            }
+                        },
+                    }
+                    .canonicalized(),
+                )
             }
             _ => {
                 return Err(serde::de::Error::custom(

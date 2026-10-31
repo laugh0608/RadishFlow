@@ -26,6 +26,7 @@ enum FlowResultPayload {
     Acyclic,
     Partitioned,
     Simultaneous,
+    EquationOriented,
 }
 impl FlowResultPayload {
     fn of(snapshot: &FlowResultRecord) -> Self {
@@ -33,6 +34,7 @@ impl FlowResultPayload {
             FlowResultRecord::Acyclic(_) => Self::Acyclic,
             FlowResultRecord::Partitioned(_) => Self::Partitioned,
             FlowResultRecord::Simultaneous(_) => Self::Simultaneous,
+            FlowResultRecord::EquationOriented(_) => Self::EquationOriented,
         }
     }
 }
@@ -152,6 +154,23 @@ pub fn flow_origin_lines(origin: Option<&FlowResultOrigin>) -> Vec<(String, Stri
                 plan.configuration_sha256.clone(),
             ),
         ]);
+        if let Some(e) = &plan.equation_oriented {
+            rows.extend([
+                ("solver_capability".into(), e.capability.into()),
+                (
+                    "solver_capability_version".into(),
+                    e.capability_version.to_string(),
+                ),
+                (
+                    "equation_contract_version".into(),
+                    e.equation_contract_version.to_string(),
+                ),
+                (
+                    "core_backend".into(),
+                    e.core_backend.unwrap_or("not invoked").into(),
+                ),
+            ]);
+        }
         if let Some(modular) = &plan.modular {
             rows.extend([
                 ("solver_capability".into(), modular.capability.into()),

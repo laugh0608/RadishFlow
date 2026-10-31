@@ -7,6 +7,7 @@
 - official hydrocarbon 示例：`feed-heater-flash-binary-hydrocarbon.rfproj.json`、`feed-cooler-flash-binary-hydrocarbon.rfproj.json`、`feed-valve-flash-binary-hydrocarbon.rfproj.json`、`feed-mixer-flash-binary-hydrocarbon.rfproj.json`
 - synthetic demo 示例：`feed-heater-flash-synthetic-demo.rfproj.json`、`feed-cooler-flash-synthetic-demo.rfproj.json`、`feed-valve-flash-synthetic-demo.rfproj.json`、`feed-mixer-flash-synthetic-demo.rfproj.json`、`feed-mixer-heater-flash-synthetic-demo.rfproj.json`
 - QS1 固定温压回流：[`fixed-tp-recycle-binary-hydrocarbon.rfproj.json`](fixed-tp-recycle-binary-hydrocarbon.rfproj.json)，工程 v4，0.6 回流、显式撕裂与独立最终复核；[CLI v4 查询](../automation/query-recycle-v4.request.json)无需物性缓存。非进料模板故意偏离解，结果只来自真实局部求值。
+- QS3 固定温压物料 EO：[`fixed-tp-material-eo-binary-hydrocarbon.rfproj.json`](fixed-tp-material-eo-binary-hydrocarbon.rfproj.json)，两股新鲜进料 / 交叉回流、释放一个分流比例、产品目标 1.5 mol/s。工程 v4 新能力；[CLI v6 查询](../automation/query-material-eo-v6.request.json)与[采纳后改正向重算](../automation/adopt-material-eo-v6.request.template.json)复用正式动作，运行方式见 CLI 参考。
 - PME 验证示例：`feed-heater-flash-water-ethanol.rfproj.json`
 
 其中，official hydrocarbon 示例使用 methane / ethane，并在项目文件的 `flowsheet.thermo.property_package_id` 中持久化 `binary-hydrocarbon-lite-v1`。Studio 的 Home、独立物性页、左侧项目输入和运行路径读取同一物性包状态；界面主展示会把该稳定 id 映射为可读 label `二元烃 Lite`，项目文件和命令边界仍保留稳定 id。

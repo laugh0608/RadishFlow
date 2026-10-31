@@ -313,7 +313,7 @@ impl ReadyAppState {
     pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
         match radishflow_studio::read_studio_project_with_support(
             &project_path,
-            rf_store::project_v4::FlowPlanSupport::Simultaneous,
+            rf_store::project_v4::FlowPlanSupport::EquationOriented,
         ) {
             Ok(radishflow_studio::StudioProjectOpen::ReadOnly(project)) => {
                 self.background_action(radishflow_studio::StudioBackgroundRunAction::Detach);

@@ -103,6 +103,12 @@ pub struct FractionTarget {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum NewAction<P = Plan> {
+    AdoptEoSplitFraction {
+        expected_revision: RevisionRef,
+        expected_plan_revision: PlanRevision,
+        execution: super::super::v6::adoption::ExecutionRef,
+        target: FractionTarget,
+    },
     ConfigureFlowPlan {
         expected_plan_revision: PlanRevision,
         plan: P,
@@ -152,12 +158,14 @@ impl<'de, P: super::super::planned::PlanProtocol> Deserialize<'de> for Action<P>
             .get("kind")
             .and_then(Value::as_str)
             .ok_or_else(|| serde::de::Error::custom("action requires kind"))?;
-        let new = matches!(
-            kind,
-            "configure_flow_plan" | "run_flow" | "create_unit" | "connect_exact"
-        ) || (kind == "write"
-            && value.pointer("/target/field").and_then(Value::as_str)
-                == Some("outlet_a_split_fraction"));
+        let new = (P::VERSION >= 6 && kind == "adopt_eo_split_fraction")
+            || matches!(
+                kind,
+                "configure_flow_plan" | "run_flow" | "create_unit" | "connect_exact"
+            )
+            || (kind == "write"
+                && value.pointer("/target/field").and_then(Value::as_str)
+                    == Some("outlet_a_split_fraction"));
         // v4 keeps its required sink vocabulary. v5 can bind an external product
         // outlet through the existing exact domain action without inferred candidates.
         if kind == "connect_exact"

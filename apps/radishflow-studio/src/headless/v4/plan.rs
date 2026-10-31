@@ -73,7 +73,7 @@ pub fn configuration(plan: &Plan, refs: &Bindings) -> Result<FlowPlanConfigurati
 }
 pub fn wire(plan: &FlowPlanConfiguration) -> Result<Plan, Failure> {
     Ok(match plan {
-        FlowPlanConfiguration::Simultaneous(_) => {
+        FlowPlanConfiguration::Simultaneous(_) | FlowPlanConfiguration::EquationOriented(_) => {
             return Err(Failure::new(
                 Stage::Project,
                 Code::UnsupportedCapability,

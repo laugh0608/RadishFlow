@@ -1,3 +1,4 @@
+mod equation_oriented;
 use super::*;
 use crate::{InputUnitOrigin, NumericParseOutcome, parse_numeric_input};
 use rf_types::{
@@ -11,6 +12,12 @@ pub enum FlowPlanNumericField {
     Temperature,
     Pressure,
     IterationBudget,
+    ReleasedLower(rf_solver::equation_oriented::ParameterBinding),
+    ReleasedUpper(rf_solver::equation_oriented::ParameterBinding),
+    BisectionBudget(rf_solver::equation_oriented::ParameterBinding),
+    ProductTarget(rf_solver::equation_oriented::PortBinding),
+    EquationVariableScale(rf_solver::equation_oriented::VariableBinding),
+    EquationResidualScale(rf_solver::equation_oriented::EquationBinding),
     InitialComponent {
         stream: StreamId,
         component: ComponentId,
@@ -27,7 +34,11 @@ impl FlowPlanNumericField {
         match self {
             Self::Temperature => Some(QuantityKind::AbsoluteTemperature),
             Self::Pressure => Some(QuantityKind::AbsolutePressure),
-            Self::IterationBudget => None,
+            Self::IterationBudget | Self::BisectionBudget(_) => None,
+            Self::ReleasedLower(_) | Self::ReleasedUpper(_) => {
+                Some(QuantityKind::DimensionlessRatio)
+            }
+            Self::EquationVariableScale(b) => Some(equation_oriented::variable_quantity(b)),
             _ => Some(QuantityKind::MolarFlow),
         }
     }
@@ -57,44 +68,8 @@ impl FlowPlanDraft {
         &self.context
     }
     pub fn replace_candidate(&mut self, candidate: FlowPlanConfiguration) {
-        self.numbers.retain(|field, _| match (&candidate, field) {
-            (FlowPlanConfiguration::Acyclic, _) => false,
-            (
-                FlowPlanConfiguration::Simultaneous(o),
-                FlowPlanNumericField::CouplingVariableScale(b)
-                | FlowPlanNumericField::CouplingResidualScale(b),
-            ) => o.scales.as_ref().is_some_and(|s| s.contains_key(b)),
-            (
-                FlowPlanConfiguration::Simultaneous(_),
-                FlowPlanNumericField::IterationBudget
-                | FlowPlanNumericField::InitialComponent { .. }
-                | FlowPlanNumericField::ResidualScale { .. },
-            ) => false,
-            (
-                FlowPlanConfiguration::Partitioned(_),
-                FlowPlanNumericField::CouplingVariableScale(_)
-                | FlowPlanNumericField::CouplingResidualScale(_),
-            ) => false,
-            (
-                FlowPlanConfiguration::Partitioned(o),
-                FlowPlanNumericField::InitialComponent { stream, component },
-            ) => o.tears.iter().any(|t| {
-                &t.stream_id == stream
-                    && t.initial_component_flows_mol_s
-                        .as_ref()
-                        .is_some_and(|v| v.contains_key(component))
-            }),
-            (
-                FlowPlanConfiguration::Partitioned(o),
-                FlowPlanNumericField::ResidualScale { stream, component },
-            ) => o.tears.iter().any(|t| {
-                &t.stream_id == stream
-                    && t.component_scales_mol_s
-                        .as_ref()
-                        .is_some_and(|v| v.contains_key(component))
-            }),
-            _ => true,
-        });
+        self.numbers
+            .retain(|field, _| equation_oriented::applies_to(field, &candidate));
         self.candidate = candidate;
     }
     pub fn candidate(&self) -> &FlowPlanConfiguration {
@@ -209,6 +184,10 @@ impl FlowPlanDraft {
                     .map(|v| v as f64)
                     .map_err(|_| RfError::invalid_input("iteration budget requires an integer"))?
             };
+            if let FlowPlanConfiguration::EquationOriented(options) = &mut candidate {
+                equation_oriented::apply(options, field, value)?;
+                continue;
+            }
             if let FlowPlanConfiguration::Simultaneous(options) = &mut candidate {
                 match field {
                     FlowPlanNumericField::Temperature => options.boundary.temperature_k = value,
@@ -244,7 +223,13 @@ impl FlowPlanDraft {
             };
             match field {
                 FlowPlanNumericField::CouplingVariableScale(_)
-                | FlowPlanNumericField::CouplingResidualScale(_) => {
+                | FlowPlanNumericField::CouplingResidualScale(_)
+                | FlowPlanNumericField::ReleasedLower(_)
+                | FlowPlanNumericField::ReleasedUpper(_)
+                | FlowPlanNumericField::BisectionBudget(_)
+                | FlowPlanNumericField::ProductTarget(_)
+                | FlowPlanNumericField::EquationVariableScale(_)
+                | FlowPlanNumericField::EquationResidualScale(_) => {
                     return Err(RfError::invalid_input(
                         "coupling scales are unavailable for a recycle plan",
                     ));

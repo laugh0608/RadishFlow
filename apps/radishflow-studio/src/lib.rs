@@ -5,9 +5,14 @@ mod builtin_property_package_data;
 mod confirmed_input_action;
 mod control_plane_client;
 mod control_plane_sync;
+pub mod equation_actions;
+pub mod equation_evidence;
+pub mod equation_result_projection;
 pub mod flow_plan_actions;
 pub mod modular_evidence;
 mod modular_result_projection;
+mod result_evidence;
+mod result_evidence_text;
 pub use confirmed_input_action::{StudioConfirmedInputAction, StudioInputAction};
 mod document_history_driver;
 mod document_lifecycle_driver;
@@ -464,3 +469,5 @@ pub use workspace_run_owner::{
 mod qs1_test_support;
 #[cfg(test)]
 mod qs2_test_support;
+#[cfg(test)]
+mod qs3_test_support;

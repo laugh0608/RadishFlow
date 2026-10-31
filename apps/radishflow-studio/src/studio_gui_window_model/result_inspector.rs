@@ -147,7 +147,7 @@ impl StudioGuiWindowSolveSnapshotModel {
             .collect();
 
         let unit_ids = self
-            .block_unit_results()
+            .final_unit_results()
             .map(|p| p.iter().map(|u| u.unit_id.clone()).collect::<Vec<_>>())
             .unwrap_or_else(|| self.steps.iter().map(|s| s.unit_id.clone()).collect());
         let unit_id_order: Vec<String> =
@@ -197,7 +197,7 @@ impl StudioGuiWindowSolveSnapshotModel {
             })
             .unwrap_or_default();
         let selected_unit = selected_unit_id.as_deref().and_then(|selected_unit| {
-            self.block_unit_results()
+            self.final_unit_results()
                 .and_then(|p| p.iter().find(|u| u.unit_id == selected_unit))
                 .cloned()
                 .or_else(|| {
@@ -219,7 +219,7 @@ impl StudioGuiWindowSolveSnapshotModel {
             .iter()
             .map(|unit_id| {
                 if let Some(unit) = self
-                    .block_unit_results()
+                    .final_unit_results()
                     .and_then(|p| p.iter().find(|u| &u.unit_id == unit_id))
                 {
                     return StudioGuiWindowResultInspectorUnitOptionModel {

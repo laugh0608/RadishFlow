@@ -2,7 +2,7 @@
 
 更新时间：2026-10-31
 
-用途：说明 Studio 旧 v1 / v2、AF4c v3、QS1-C v4 与 QS2-C v5 命令、JSON 请求 / 响应和错误语义。
+用途：说明 Studio 旧 v1 / v2、AF4c v3、QS1-C v4、QS2-C v5 与 QS3 v6 命令、JSON 请求 / 响应和错误语义。
 
 读者：使用本地脚本执行参数化工况的用户及适配器开发者。
 
@@ -377,3 +377,26 @@ target/debug/radishflow-studio --headless execute examples/automation/run-cross-
 ```
 
 本机真实子进程已验证两个运行模板、三块 / 八未知量、10 次局部调用 / 4 份响应 / 1 次分解 / 9 次三角求解、独立分数组分基准及失败 / Stale / 重开 Missing；整个临时目录（含工程、缓存、索引、sidecar）的字节和条目保持，未创建偏好文件。历史 `8c18f223` 存储库另编译验证只读 / 拒绝覆盖；GUI、Windows / Linux、COM 与远端 CI 未验证，证据归 [W44](../devlogs/2026-10/2026-W44.md)。
+
+
+### QS3 CLI v6（2026-10-31，已实现）
+
+[QS3-D08](../topics/modeling/equation-oriented-block.md#d08cli-v6验证矩阵与连续开发)使用 `schema_version=6`，工程仍为 v4。旧 v5 固定 Simultaneous 能力，EO 工程只读，execute 在步骤和资源加载前拒绝；v1—v4 不扩词汇。
+
+`configure_flow_plan` 新增 `radishflow.fixed-tp-material-eo/1`。配置、IdentityRef 及尺度 wire 见模板与 QS3-D08。
+
+查询 `results` 的 `flow_plan` scope 返回规范配置、ready、equation_preview（变量 / 方程、匹配与尺度）及能力范围，不加载物性；`flow` Current 返回 `execution_kind=equation_oriented`、真实流股 / 单元与 evidence。失败仅 diagnostic_evidence，不返回正式 fields / streams；保留缺失 / 有限 / tagged 非有限三态及实际 backend 来源。
+
+`adopt_eo_split_fraction` 必填 expected_revision、expected_plan_revision、`execution:{"step":"本请求已接收的 run_flow 步骤"}` 与精确 target（unit object、inputs、outlet_a_split_fraction）。不接受调用者数值或跨请求执行引用。回执含来源、before / after revision、原值 / 采纳值和 persisted=false；单输入事务使结果 Stale、计划保留、不自动重算，相同值 unchanged。固定比例运行需显式改正向再 Run。
+
+确认前缀 `headless-v6-confirm-v1:`；动作只影响请求内存，已验证目录及文件字节不变。
+
+- [EO 工程](../../examples/flowsheets/fixed-tp-material-eo-binary-hydrocarbon.rfproj.json)：产品目标 1.5 mol/s，解 alpha=10/19；非进料模板不是结果。
+- [查询](../../examples/automation/query-material-eo-v6.request.json)：无需物性资源。
+- [反算运行](../../examples/automation/run-material-eo-v6.request.template.json)、[建图运行](../../examples/automation/build-material-eo-v6.request.template.json)：填写已有有效缓存路径，工程改变后重新查询 SHA。
+- [反算 → 采纳 → 改正向 → 重算](../../examples/automation/adopt-material-eo-v6.request.template.json)：引用前序步骤的 document / plan revision。
+
+```sh
+target/debug/radishflow-studio --headless query examples/automation/query-material-eo-v6.request.json
+target/debug/radishflow-studio --headless execute examples/automation/adopt-material-eo-v6.request.template.json
+```

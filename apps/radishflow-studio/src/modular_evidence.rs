@@ -1,82 +1,10 @@
 //! Read-only text projection of captured QS2 evidence, shared by GUI and export.
-use crate::StudioGuiQuantityPresentationError;
-use rf_model::MaterialStreamState;
 use rf_solver::simultaneous::*;
-use rf_types::units::{DisplayUnitSet, QuantityKind, from_canonical};
+use rf_types::units::{DisplayUnitSet, QuantityKind};
 
-#[derive(Default)]
-pub struct EvidenceLines {
-    pub lines: Vec<String>,
-    pub errors: Vec<StudioGuiQuantityPresentationError>,
-}
-struct Projection<'a> {
-    units: &'a DisplayUnitSet,
-    output: EvidenceLines,
-}
-impl<'a> Projection<'a> {
-    fn new(units: &'a DisplayUnitSet) -> Self {
-        Self {
-            units,
-            output: EvidenceLines::default(),
-        }
-    }
-    fn quantity(&mut self, id: &str, kind: QuantityKind, value: f64) -> String {
-        if !value.is_finite() {
-            return diagnostic_number(Some(value));
-        }
-        let unit = self.units.unit_for(kind);
-        match from_canonical(value, kind, unit) {
-            Ok(value) => format!("{value:.9e} {}", unit.definition().symbol),
-            Err(cause) => {
-                let error = StudioGuiQuantityPresentationError {
-                    stream_id: id.into(),
-                    quantity: kind,
-                    unit,
-                    cause,
-                };
-                let text = format!("Conversion failed: {error}");
-                self.output.errors.push(error);
-                text
-            }
-        }
-    }
-    fn flow(&mut self, id: &str, value: f64) -> String {
-        self.quantity(id, QuantityKind::MolarFlow, value)
-    }
-    fn state(&mut self, role: &str, stream: &MaterialStreamState) {
-        let temperature = self.quantity(
-            stream.id.as_str(),
-            QuantityKind::AbsoluteTemperature,
-            stream.temperature_k,
-        );
-        let pressure = self.quantity(
-            stream.id.as_str(),
-            QuantityKind::AbsolutePressure,
-            stream.pressure_pa,
-        );
-        let flow = self.flow(stream.id.as_str(), stream.total_molar_flow_mol_s);
-        self.output.lines.push(format!(
-            "{role} {}: T {temperature}; P {pressure}; F {flow}",
-            stream.id
-        ));
-        for (component, fraction) in &stream.overall_mole_fractions {
-            let value = self.flow(stream.id.as_str(), fraction * stream.total_molar_flow_mol_s);
-            self.output.lines.push(format!("  {component}: {value}"));
-        }
-    }
-    fn local_units(&mut self, units: &[LocalUnitEvaluation]) {
-        for unit in units {
-            self.output
-                .lines
-                .push(format!("Local I/O: {}", unit.unit_id));
-            for stream in &unit.consumed_streams {
-                self.state("Consumed", stream);
-            }
-            for stream in &unit.produced_streams {
-                self.state("Produced", stream);
-            }
-        }
-    }
+use crate::result_evidence_text::Projection;
+pub use crate::result_evidence_text::{EvidenceLines, diagnostic_number};
+impl Projection<'_> {
     fn coupling(&mut self, e: &CoupledEvidence) {
         let temperature = self.quantity(
             "boundary",
@@ -166,16 +94,6 @@ impl<'a> Projection<'a> {
                 }
             }
         }
-    }
-}
-/// Missing is distinct from a computed non-finite diagnostic value.
-pub fn diagnostic_number(value: Option<f64>) -> String {
-    match value {
-        None => "未计算 / not computed".into(),
-        Some(v) if v.is_nan() => "NaN (非有限 / non-finite)".into(),
-        Some(v) if v == f64::INFINITY => "+Infinity (正无穷 / non-finite)".into(),
-        Some(v) if v == f64::NEG_INFINITY => "-Infinity (负无穷 / non-finite)".into(),
-        Some(v) => format!("{v:.9e}"),
     }
 }
 pub fn cost_lines(c: &ModularCosts) -> Vec<String> {

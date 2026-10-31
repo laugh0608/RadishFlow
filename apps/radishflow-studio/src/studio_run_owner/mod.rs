@@ -519,6 +519,16 @@ impl StudioRunOwner {
             .find(|s| &s.run_id == id)
             .and_then(|s| s.simultaneous_diagnostic.as_deref())
     }
+    pub fn equation_diagnostic(
+        &self,
+        id: &rf_ui::FlowRunId,
+    ) -> Option<&rf_solver::equation_oriented::EquationFailure> {
+        self.flow
+            .history()
+            .iter()
+            .find(|s| &s.run_id == id)
+            .and_then(|s| s.equation_diagnostic.as_deref())
+    }
     pub fn flow_progress(&self) -> Option<crate::WorkspaceRunProgress> {
         self.flow.state()?.progress
     }
@@ -539,6 +549,10 @@ pub(crate) struct BackgroundRunSession {
 
 #[derive(Debug, Clone)]
 pub enum StudioBackgroundRunAction {
+    AdoptEquationCandidate {
+        access: crate::flow_actions::FlowEditAccess,
+        preview: crate::equation_actions::EquationAdoptionPreview,
+    },
     ConfigureFlowPlan {
         expected: rf_ui::flow_plan::FlowPlanEditContext,
         access: crate::flow_actions::FlowEditAccess,

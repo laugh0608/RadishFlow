@@ -41,6 +41,14 @@ pub struct ExecutedFlowPlan {
     pub acceptance_contract_version: u32,
     pub configuration_sha256: String,
     pub modular: Option<ModularExecutionEvidence>,
+    pub equation_oriented: Option<EquationExecutionEvidence>,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EquationExecutionEvidence {
+    pub capability: &'static str,
+    pub capability_version: u32,
+    pub equation_contract_version: u32,
+    pub core_backend: Option<&'static str>,
 }
 /// Requested contracts and actually invoked core method are separate facts.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -122,6 +130,7 @@ impl FlowRunReceipt {
 pub(crate) enum FlowFailureEvidence {
     Partitioned(std::sync::Arc<rf_solver::partitioned::PartitionedSolveFailure>),
     Simultaneous(std::sync::Arc<rf_solver::simultaneous::ModularFailure>),
+    EquationOriented(std::sync::Arc<rf_solver::equation_oriented::EquationFailure>),
 }
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct FlowFailureRecord {
@@ -245,7 +254,9 @@ impl WorkspaceState {
         if matches!(self.flow_result(), FlowResultView::Failed { .. }) {
             match self.flow_failure.as_ref()?.evidence.as_ref()? {
                 FlowFailureEvidence::Partitioned(f) => Some(f.as_ref()),
-                FlowFailureEvidence::Simultaneous(_) => None,
+                FlowFailureEvidence::Simultaneous(_) | FlowFailureEvidence::EquationOriented(_) => {
+                    None
+                }
             }
         } else {
             None
@@ -269,7 +280,7 @@ impl WorkspaceState {
         }
         match self.flow_failure.as_ref()?.evidence.as_ref()? {
             FlowFailureEvidence::Simultaneous(f) => Some(f.as_ref()),
-            FlowFailureEvidence::Partitioned(_) => None,
+            FlowFailureEvidence::Partitioned(_) | FlowFailureEvidence::EquationOriented(_) => None,
         }
     }
     pub fn attach_simultaneous_failure(
@@ -278,6 +289,30 @@ impl WorkspaceState {
     ) {
         if let Some(record) = &mut self.flow_failure {
             record.evidence = Some(FlowFailureEvidence::Simultaneous(std::sync::Arc::new(
+                failure,
+            )));
+        }
+    }
+}
+
+impl WorkspaceState {
+    pub fn equation_failure_evidence(
+        &self,
+    ) -> Option<&rf_solver::equation_oriented::EquationFailure> {
+        if !matches!(self.flow_result(), FlowResultView::Failed { .. }) {
+            return None;
+        }
+        match self.flow_failure.as_ref()?.evidence.as_ref()? {
+            FlowFailureEvidence::EquationOriented(f) => Some(f.as_ref()),
+            _ => None,
+        }
+    }
+    pub fn attach_equation_failure(
+        &mut self,
+        failure: rf_solver::equation_oriented::EquationFailure,
+    ) {
+        if let Some(record) = &mut self.flow_failure {
+            record.evidence = Some(FlowFailureEvidence::EquationOriented(std::sync::Arc::new(
                 failure,
             )));
         }

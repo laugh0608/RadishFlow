@@ -671,7 +671,22 @@ impl ReadyAppState {
                                 "Solver: Fixed-T/P affine modular"
                             }
                         } else {
-                            self.locale.text(ShellText::SolverSequentialModular)
+                            if matches!(
+                                self.platform_host
+                                    .modeling_inputs()
+                                    .workspace
+                                    .flow_plan
+                                    .current(),
+                                rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
+                            ) {
+                                if self.locale == StudioShellLocale::ZhCn {
+                                    "求解器: 固定温压物料方程"
+                                } else {
+                                    "Solver: Fixed-T/P material equations"
+                                }
+                            } else {
+                                self.locale.text(ShellText::SolverSequentialModular)
+                            }
                         },
                     );
                     ui.separator();

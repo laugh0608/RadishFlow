@@ -1383,6 +1383,7 @@ pub fn stale_snapshot(workspace: &WorkspaceState) -> Option<&crate::FlowResultRe
         || workspace.solve_session.pending_reason
             != Some(SolvePendingReason::DocumentRevisionAdvanced)
             && workspace.solve_session.pending_reason != Some(SolvePendingReason::PlanChanged)
+            && workspace.solve_session.pending_reason != Some(SolvePendingReason::CandidateAdopted)
     {
         return None;
     }

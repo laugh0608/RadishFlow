@@ -74,3 +74,8 @@ AF4b 已补 [类型化运行回执](variable-and-object-browser.md#af4b-2—4-�
 - [COMSOL 求解日志设置](https://doc.comsol.com/6.3/doc/com.comsol.help.comsol/comsol_ref_solver.36.159.html)：日志详细度、嵌套求解信息与采样开销。
 - [用户提供的 Aspen 案例](https://bbs.imbhj.com/t/topic/364)：警告时停止后查详细日志；数值阈值位于 Fortran 模型逻辑，不能据此认定任意阈值都是停止点菜单的原生功能。此案例只作场景依据，不采用无物理依据的数值截断作为通用修复。
 - [NN/g 错误消息指南](https://www.nngroup.com/articles/error-message-guidelines/) 与 [W3C 状态消息说明](https://www.w3.org/WAI/WCAG21/Understanding/status-messages)：具体、可行动、不无故夺取焦点；Rust 桌面端通过原生可访问性映射，不照搬网页属性。
+
+
+## QS3 后台执行（2026-10-31）
+
+[QS3-D06](modeling/equation-oriented-block.md#d06后台运行资格与失败)已复用单 worker，增加方程装配 / 匹配、条件线性 / 区间评价、完整 Jacobian 与真实复核阶段。结构未就绪在正式预检 Blocked，worker 再验冻结输入和计划；取消撤销接收资格，join 后才释放名额。各核心阶段取消、Ready 后计划变化、迟到结果、错载荷、包准备失败无伪核心来源均有自动验证。

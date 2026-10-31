@@ -1,0 +1,93 @@
+{
+  "schema_version": 6,
+  "project": "../flowsheets/fixed-tp-material-eo-binary-hydrocarbon.rfproj.json",
+  "expected_project": {
+    "document_id": "example-qs3-fixed-tp-material-eo",
+    "file_sha256": "83b725e8cc5d5167c8a9be40579f3f0d6912aaca256881af12b5e6f8d6f67a94"
+  },
+  "flow_resources": {
+    "cache_root": "./property-package-cache",
+    "auth_cache_index": "./auth-cache-index.json",
+    "package": {
+      "kind": "preferred"
+    }
+  },
+  "steps": [
+    {
+      "id": "solve",
+      "action": {
+        "kind": "run_flow",
+        "expected_revision": 0,
+        "expected_plan_revision": 0
+      }
+    },
+    {
+      "id": "adopt",
+      "action": {
+        "kind": "adopt_eo_split_fraction",
+        "expected_revision": 0,
+        "expected_plan_revision": 0,
+        "execution": {
+          "step": "solve"
+        },
+        "target": {
+          "object": {
+            "unit": {
+              "id": "splitter-1"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_a_split_fraction"
+        }
+      }
+    },
+    {
+      "id": "forward",
+      "action": {
+        "kind": "configure_flow_plan",
+        "expected_plan_revision": 0,
+        "plan": {
+          "method": "radishflow.fixed-tp-material-eo/1",
+          "equation_contract_version": 1,
+          "acceptance_contract_version": 1,
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "specifications": [],
+          "scaling": {
+            "kind": "evaluated_fresh_total"
+          }
+        }
+      }
+    },
+    {
+      "id": "rerun",
+      "action": {
+        "kind": "run_flow",
+        "expected_revision": {
+          "step": "adopt",
+          "output": "document"
+        },
+        "expected_plan_revision": {
+          "step": "forward",
+          "output": "plan"
+        }
+      }
+    }
+  ],
+  "queries": [
+    {
+      "id": "plan",
+      "query": {
+        "kind": "results",
+        "scope": "flow_plan"
+      }
+    },
+    {
+      "id": "result",
+      "query": {
+        "kind": "results",
+        "scope": "flow"
+      }
+    }
+  ]
+}

@@ -27,6 +27,11 @@ pub(super) fn check_inputs_with_plan(
         rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(options) => {
             rf_solver::partitioned::assemble_partitioned_plan(flowsheet, options).map(|_| ())
         }
+        rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(options) => {
+            rf_solver::equation_oriented::assemble(flowsheet, options)
+                .and_then(|p| p.require_ready())
+                .map_err(|e| e.error)
+        }
         rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(options) => {
             rf_solver::simultaneous::assemble(flowsheet, options).map(|_| ())
         }
@@ -68,7 +73,14 @@ pub(super) fn check_inputs_with_plan(
     );
 
     if topology_valid {
-        check_feed_inputs(flowsheet, &mut checks);
+        check_feed_inputs(
+            flowsheet,
+            &mut checks,
+            matches!(
+                plan,
+                rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
+            ),
+        );
     }
     checks.coverage(
         SpecificationCheckScope::FeedInputs,
@@ -89,7 +101,9 @@ pub(super) fn check_inputs_with_plan(
     for unit in flowsheet.units.values() {
         if let Some(kind) = BuiltinUnitKind::parse(&unit.kind) {
             for &parameter in input_specification(kind).required_explicit_parameters {
-                if parameter.value(&unit.parameters).is_none() {
+                if !released_parameter(plan, &unit.id, parameter)
+                    && parameter.value(&unit.parameters).is_none()
+                {
                     checks
                         .problems
                         .push(SpecificationProblem::MissingParameter {
@@ -110,7 +124,8 @@ pub(super) fn check_inputs_with_plan(
         };
         let spec = input_specification(kind);
         for &parameter in spec.parameters {
-            if let Some(value) = parameter.value(&unit.parameters)
+            if !released_parameter(plan, &unit.id, parameter)
+                && let Some(value) = parameter.value(&unit.parameters)
                 && check_parameter_value(kind, parameter, value, None).is_err()
             {
                 checks
@@ -149,6 +164,7 @@ pub(super) fn check_inputs_with_plan(
             plan,
             rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(_)
                 | rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
         ) {
             // Cyclic inlet pressure comes from the frozen fixed boundary and evaluated
             // streams. Document templates cannot prove the recycle inlet pressure.
@@ -205,7 +221,7 @@ pub(super) fn check_inputs_with_plan(
     checks
 }
 
-fn check_feed_inputs(flowsheet: &Flowsheet, checks: &mut InputChecks) {
+fn check_feed_inputs(flowsheet: &Flowsheet, checks: &mut InputChecks, allow_zero_flow: bool) {
     let mut missing_compositions = Vec::new();
     for unit in flowsheet
         .units
@@ -232,7 +248,10 @@ fn check_feed_inputs(flowsheet: &Flowsheet, checks: &mut InputChecks) {
                 field,
                 input,
             });
-            if input.source == FeedInputSource::StreamInput && !is_positive_finite(input.value) {
+            if input.source == FeedInputSource::StreamInput
+                && !is_positive_finite(input.value)
+                && !(allow_zero_flow && field == FeedInputField::MolarFlow && input.value == 0.0)
+            {
                 checks
                     .problems
                     .push(SpecificationProblem::InvalidFeedInput {
@@ -289,4 +308,12 @@ fn check_compositions(flowsheet: &Flowsheet, checks: &mut InputChecks) {
             }
         }
     }
+}
+
+fn released_parameter(
+    plan: &rf_ui::flow_plan::FlowPlanConfiguration,
+    unit: &rf_types::UnitId,
+    parameter: UnitParameter,
+) -> bool {
+    matches!(plan, rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(o) if parameter == UnitParameter::OutletASplitFraction && o.released.as_ref().is_some_and(|r| &r.binding.unit == unit))
 }

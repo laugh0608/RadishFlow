@@ -160,7 +160,7 @@ pub(super) fn execute_file<P: PlanProtocol>(
                         .map(|s| json!({"id":s.id,"action":s.action}))
                         .collect();
                     let mut review = json!({"steps":prefix,"flow_plan":P::wire(app.workspace.flow_plan.current())?,"in_memory_required_project_schema_version":crate::project_save_version(app)});
-                    if P::VERSION == 5 {
+                    if P::VERSION >= 5 {
                         review["in_memory_required_capabilities"] = required_capabilities(app);
                     }
                     old::execute::step_action_review(
@@ -191,7 +191,7 @@ pub(super) fn execute_file<P: PlanProtocol>(
 fn required_version<P: PlanProtocol>(app: &AppState, response: &mut Response) {
     if let Some(project) = &mut response.project {
         project.in_memory_required_project_schema_version = Some(crate::project_save_version(app));
-        if P::VERSION == 5 {
+        if P::VERSION >= 5 {
             project.in_memory_required_capabilities = Some(required_capabilities(app));
         }
     }
@@ -241,6 +241,28 @@ fn new_action<P: PlanProtocol>(
 ) -> Result<(Value, Option<Failure>), Failure> {
     no_confirmation(step)?;
     let (expected, action) = match action {
+        NewAction::AdoptEoSplitFraction {
+            expected_revision,
+            expected_plan_revision,
+            execution,
+            target,
+        } => {
+            plan_revision(
+                expected_plan_revision,
+                app.workspace.flow_plan.revision(),
+                plans,
+            )?;
+            return super::v6::adoption::execute(
+                app,
+                refs,
+                executions,
+                &step.id,
+                expected_revision,
+                execution,
+                target,
+            )
+            .map(|v| (v, None));
+        }
         NewAction::ConfigureFlowPlan {
             expected_plan_revision,
             plan: config,
@@ -363,9 +385,11 @@ fn queries<P: PlanProtocol>(
         let result = match opened {
             StudioProjectOpen::Editable(app) => match &query.query {
                 QueryKind::Plan(PlanQuery::Results { .. }) => P::query(app),
-                QueryKind::Plan(PlanQuery::Actions { .. }) => Ok(
-                    json!([{"kind":"configure_flow_plan","expected_plan_revision":true,"requires_resources":false},{"kind":"run_flow","expected_revision":true,"expected_plan_revision":true,"requires_resources":true}]),
-                ),
+                QueryKind::Plan(PlanQuery::Actions { .. }) => {
+                    let mut actions=json!([{"kind":"configure_flow_plan","expected_plan_revision":true,"requires_resources":false},{"kind":"run_flow","expected_revision":true,"expected_plan_revision":true,"requires_resources":true}]);
+                    if P::VERSION>=6 {actions.as_array_mut().expect("array").push(json!({"kind":"adopt_eo_split_fraction","expected_revision":true,"expected_plan_revision":true,"requires_current_request_execution":true,"caller_value":false}));}
+                    Ok(actions)
+                },
                 QueryKind::Legacy(old::protocol::QueryKind::Results { scope: Scope::Flow }) => {
                     P::flow(app, executions)
                 }
@@ -380,6 +404,9 @@ fn queries<P: PlanProtocol>(
                                 action["expected_plan_revision"] = json!(true);
                             }
                         }
+                    }
+                    if P::VERSION >= 6 && matches!(scope,Scope::Project|Scope::Flow) {
+                        value.as_array_mut().expect("actions array").push(json!({"kind":"adopt_eo_split_fraction","execution":"inline","modifies_inputs":true,"undoable":true,"callable":true,"expected_revision":true,"expected_plan_revision":true,"requires_current_request_execution":true,"caller_value":false}));
                     }
                     value
                     })

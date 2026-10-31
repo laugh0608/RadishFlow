@@ -17,6 +17,7 @@ pub enum FlowPlanConfiguration {
     Acyclic,
     Partitioned(RecycleSolveOptions),
     Simultaneous(rf_solver::simultaneous::ModularOptions),
+    EquationOriented(rf_solver::equation_oriented::EquationOptions),
 }
 impl FlowPlanConfiguration {
     pub fn validate_configuration(&self) -> RfResult<()> {
@@ -24,10 +25,16 @@ impl FlowPlanConfiguration {
             Self::Acyclic => Ok(()),
             Self::Partitioned(o) => o.validate_configuration(),
             Self::Simultaneous(o) => simultaneous::validate_configuration(o),
+            Self::EquationOriented(o) => o.validate_shape().map_err(|e| e.error),
         }
     }
     pub fn validate_for(&self, workspace: &WorkspaceState) -> RfResult<()> {
         match self {
+            Self::EquationOriented(o) => {
+                rf_solver::equation_oriented::assemble(&workspace.document.flowsheet, o)
+                    .and_then(|p| p.require_ready())
+                    .map_err(|e| e.error)
+            }
             Self::Acyclic => {
                 rf_solver::sequential_execution_order(&workspace.document.flowsheet).map(|_| ())
             }
@@ -42,6 +49,7 @@ impl FlowPlanConfiguration {
     pub fn referenced_unit_ids(&self) -> BTreeSet<UnitId> {
         match self {
             Self::Acyclic => BTreeSet::new(),
+            Self::EquationOriented(o) => o.referenced_unit_ids(),
             Self::Simultaneous(o) => o
                 .scales
                 .iter()
@@ -58,6 +66,7 @@ impl FlowPlanConfiguration {
     pub fn referenced_stream_ids(&self) -> BTreeSet<StreamId> {
         match self {
             Self::Acyclic => BTreeSet::new(),
+            Self::EquationOriented(o) => o.referenced_stream_ids(),
             Self::Simultaneous(o) => o
                 .scales
                 .iter()
@@ -138,6 +147,13 @@ impl FlowPlanState {
             redo: Vec::new(),
             draft: None,
         }
+    }
+    pub fn has_pending_equation_draft(&self) -> bool {
+        self.draft.as_ref().is_some_and(|d| {
+            d.is_pending(&self.current)
+                && (matches!(self.current, FlowPlanConfiguration::EquationOriented(_))
+                    || matches!(d.candidate(), FlowPlanConfiguration::EquationOriented(_)))
+        })
     }
     pub fn has_pending_modular_draft(&self) -> bool {
         self.draft.as_ref().is_some_and(|d| {

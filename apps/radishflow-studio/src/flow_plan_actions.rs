@@ -1,4 +1,5 @@
 //! Formal plan transactions and explicit project DTO conversion. No solver work or IO.
+mod equation_oriented;
 mod simultaneous;
 use crate::flow_actions::FlowEditAccess;
 use rf_solver::partitioned::*;
@@ -35,6 +36,9 @@ pub fn execute_flow_plan_action(
 pub fn stored_flow_plan(plan: &FlowPlanConfiguration) -> StoredFlowPlan {
     match plan {
         FlowPlanConfiguration::Acyclic => StoredFlowPlan::Acyclic,
+        FlowPlanConfiguration::EquationOriented(o) => {
+            StoredFlowPlan::EquationOriented(equation_oriented::stored(o))
+        }
         FlowPlanConfiguration::Simultaneous(options) => {
             StoredFlowPlan::Simultaneous(simultaneous::stored(options))
         }
@@ -92,6 +96,9 @@ pub fn flow_plan_configuration(plan: StoredFlowPlan) -> RfResult<FlowPlanConfigu
     plan.validate()?;
     let value = match plan {
         StoredFlowPlan::Acyclic => FlowPlanConfiguration::Acyclic,
+        StoredFlowPlan::EquationOriented(p) => {
+            FlowPlanConfiguration::EquationOriented(equation_oriented::configuration(p)?)
+        }
         StoredFlowPlan::Simultaneous(plan) => {
             FlowPlanConfiguration::Simultaneous(simultaneous::configuration(plan))
         }

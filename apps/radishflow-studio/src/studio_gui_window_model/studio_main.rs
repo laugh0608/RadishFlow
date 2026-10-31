@@ -495,6 +495,12 @@ impl StudioGuiWindowStatusSummaryModel {
                     .map(|_| "Stale".to_string())
             })
             .unwrap_or_else(|| "N/A".to_string());
+        let equation_count = runtime
+            .latest_solve_snapshot
+            .as_ref()
+            .and_then(|s| s.equation_oriented.as_ref())
+            .and_then(|e| e.result.evidence.definition.as_ref())
+            .map(|d| d.equations.len());
         let partitioned = runtime
             .latest_solve_snapshot
             .as_ref()
@@ -503,8 +509,8 @@ impl StudioGuiWindowStatusSummaryModel {
             .latest_solve_snapshot
             .as_ref()
             .map(|snapshot| {
-                snapshot
-                    .block_count()
+                equation_count
+                    .or_else(|| snapshot.block_count())
                     .unwrap_or(snapshot.step_count)
                     .to_string()
             })
@@ -566,19 +572,19 @@ impl StudioGuiWindowStatusSummaryModel {
                         .to_string(),
                 },
                 StudioGuiWindowStatusSummaryMetricModel {
-                    label: if partitioned.is_some() {
+                    label: if equation_count.is_some() {"Equations"} else if partitioned.is_some() {
                         "Blocks"
                     } else {
                         "Steps"
                     },
                     value: step_value,
-                    status_label: if partitioned.is_some() {
+                    status_label: if equation_count.is_some() {"Material equations"} else if partitioned.is_some() {
                         "Dependency blocks"
                     } else {
                         "Sequential steps"
                     }
                     .to_string(),
-                    detail: if partitioned.is_some() {
+                    detail: if equation_count.is_some() {"Verified material equations; conditional evaluations are reported separately."} else if partitioned.is_some() {
                         "Completed dependency blocks; recycle evaluations are reported separately."
                     } else {
                         "Sequential modular solve steps; no fabricated iteration count."

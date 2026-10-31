@@ -1,6 +1,8 @@
 //! v4 project envelope: explicit flow capabilities and a persisted active plan.
 //! Legacy project entry points retain their existing capability rejection.
 mod document;
+mod equation_oriented;
+pub use equation_oriented::*;
 mod file_io;
 mod plan;
 mod simultaneous;
@@ -22,6 +24,7 @@ pub const VERSION: u32 = 4;
 pub const FLOW_PLAN_CAPABILITY: &str = "radishflow.flow-plan";
 pub const SPLITTER_CAPABILITY: &str = "radishflow.unit.splitter";
 pub const PARTITIONED_CAPABILITY: &str = "radishflow.solver.partitioned-sm";
+pub const EQUATION_ORIENTED_CAPABILITY: &str = "radishflow.solver.fixed-tp-material-eo";
 pub const SIMULTANEOUS_CAPABILITY: &str = "radishflow.solver.fixed-tp-affine-modular-lu";
 
 /// A consumer's supported vocabulary is independent of the project envelope version.
@@ -29,6 +32,7 @@ pub const SIMULTANEOUS_CAPABILITY: &str = "radishflow.solver.fixed-tp-affine-mod
 pub enum FlowPlanSupport {
     Sequential,
     Simultaneous,
+    EquationOriented,
 }
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -109,6 +113,7 @@ struct PlanProbe {
     method: StoredMethod,
     acceptance_contract_version: Option<u32>,
     response_contract_version: Option<u32>,
+    equation_contract_version: Option<u32>,
 }
 
 pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapability> {
@@ -128,6 +133,12 @@ pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapabilit
     if matches!(project.steady_state_plan, StoredFlowPlan::Simultaneous(_)) {
         ids.push(SIMULTANEOUS_CAPABILITY);
     }
+    if matches!(
+        project.steady_state_plan,
+        StoredFlowPlan::EquationOriented(_)
+    ) {
+        ids.push(EQUATION_ORIENTED_CAPABILITY);
+    }
     ids.sort();
     ids.into_iter()
         .map(|id| RequiredCapability {
@@ -137,7 +148,7 @@ pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapabilit
         .collect()
 }
 pub fn parse(contents: &str) -> RfResult<ProjectV4Read> {
-    parse_with_support(contents, FlowPlanSupport::Simultaneous)
+    parse_with_support(contents, FlowPlanSupport::EquationOriented)
 }
 
 pub fn parse_with_support(contents: &str, support: FlowPlanSupport) -> RfResult<ProjectV4Read> {
@@ -166,9 +177,12 @@ pub fn parse_with_support(contents: &str, support: FlowPlanSupport) -> RfResult<
                     SPLITTER_CAPABILITY,
                     PARTITIONED_CAPABILITY,
                     SIMULTANEOUS_CAPABILITY,
+                    EQUATION_ORIENTED_CAPABILITY,
                 ]
                 .contains(&c.id.as_str())
                 || (support == FlowPlanSupport::Sequential && c.id == SIMULTANEOUS_CAPABILITY)
+                || (support != FlowPlanSupport::EquationOriented
+                    && c.id == EQUATION_ORIENTED_CAPABILITY)
         })
         .map(|c| format!("{} / {}", c.id, c.version))
         .collect();
@@ -178,20 +192,33 @@ pub fn parse_with_support(contents: &str, support: FlowPlanSupport) -> RfResult<
     let probe: SimulationProbe =
         serde_json::from_value(wire.simulation.clone()).map_err(json_error)?;
     let modular = probe.steady_state_plan.method.id == SIMULTANEOUS_METHOD;
-    if modular
+    let eo = probe.steady_state_plan.method.id == EQUATION_ORIENTED_METHOD;
+    if (modular || eo)
         && (probe.steady_state_plan.method.version == 0
             || probe.steady_state_plan.acceptance_contract_version == Some(0)
-            || probe.steady_state_plan.response_contract_version == Some(0))
+            || probe.steady_state_plan.response_contract_version == Some(0)
+            || probe.steady_state_plan.equation_contract_version == Some(0))
     {
         return Err(RfError::invalid_input(
             "simulation: contract versions must be positive",
         ));
     }
-    if ![ACYCLIC_METHOD, PARTITIONED_METHOD, SIMULTANEOUS_METHOD]
-        .contains(&probe.steady_state_plan.method.id.as_str())
+    if ![
+        ACYCLIC_METHOD,
+        PARTITIONED_METHOD,
+        SIMULTANEOUS_METHOD,
+        EQUATION_ORIENTED_METHOD,
+    ]
+    .contains(&probe.steady_state_plan.method.id.as_str())
         || probe.steady_state_plan.method.version != 1
         || (modular && support == FlowPlanSupport::Sequential)
-        || ((probe.steady_state_plan.method.id == PARTITIONED_METHOD || modular)
+        || (eo && support != FlowPlanSupport::EquationOriented)
+        || (eo
+            && probe
+                .steady_state_plan
+                .equation_contract_version
+                .is_some_and(|v| v != 1))
+        || ((probe.steady_state_plan.method.id == PARTITIONED_METHOD || modular || eo)
             && probe
                 .steady_state_plan
                 .acceptance_contract_version

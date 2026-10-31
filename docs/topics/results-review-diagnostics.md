@@ -307,3 +307,8 @@ CLI v1 / v2 / v3、FFI 与工程 schema 保持现状；AF5b 不增加 CLI 保存
 ### QS2-C 联立结果增量（2026-10-31，共享链路 / CLI 已实现）
 
 [D06-04](modeling/simultaneous-project-and-consumers.md)复用同一资格和输出守卫，新增 typed 联立快照 / 互斥失败证据，保留真实生产者流股、局部 I/O、耦合映射 / 双尺度、响应、LU / 条件 / 后向误差及成本；不伪造 QS1 tears / iterations 或旧 steps。未计算指标保持缺失，部分块只作诊断；实际核心方法和已加载包事实与冻结请求区分。CLI v5 已投影上述证据，诊断区分 null 与 tagged 非有限数值；GUI 详情和文本导出等待画板。细则和验证归 QS2-C，物理验收范围不变。
+
+
+## QS3 EO 结果与显式采纳（2026-10-31）
+
+[QS3-D04](modeling/equation-oriented-block.md#d04真实结果独立复核与候选采纳)已接通独立 EquationOriented 结果、互斥失败证据、真实单元 I/O、变量 / 方程、目标轨迹、条件系统与完整 Jacobian、零流来源及实际执行来源。GUI / CLI v6 和文本输出复用输入＋计划守卫；失败不输出正式流股，None 与非有限三态保持。求得比例与原输入分列，显式采纳仅从 Current 执行取值，单输入事务使结果 Stale、保留计划且不自动重算。

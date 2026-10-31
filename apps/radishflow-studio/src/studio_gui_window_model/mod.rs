@@ -196,6 +196,7 @@ pub struct StudioGuiWindowRuntimeAreaModel {
 pub enum ResultExecutionLocation {
     Step(usize),
     Block(usize),
+    EquationVerification,
     NotRun,
 }
 impl std::fmt::Display for ResultExecutionLocation {
@@ -204,6 +205,7 @@ impl std::fmt::Display for ResultExecutionLocation {
             Self::Step(i) => write!(f, "#{i}"),
             Self::Block(i) => write!(f, "Block #{}", i + 1),
             Self::NotRun => f.write_str("Not run"),
+            Self::EquationVerification => f.write_str("EO verification"),
         }
     }
 }
@@ -219,7 +221,14 @@ pub struct StudioGuiWindowSimultaneousModel {
     pub evidence_lines: Vec<String>,
 }
 #[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiWindowEquationModel {
+    pub evidence_lines: Vec<String>,
+    pub result: std::sync::Arc<rf_solver::equation_oriented::EquationResult>,
+    pub units: Vec<StudioGuiWindowUnitExecutionResultModel>,
+}
+#[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowSolveSnapshotModel {
+    pub equation_oriented: Option<StudioGuiWindowEquationModel>,
     pub simultaneous: Option<StudioGuiWindowSimultaneousModel>,
     pub partitioned: Option<StudioGuiWindowPartitionedModel>,
     pub origin: Option<rf_ui::result_query::FlowResultOrigin>,
@@ -2123,7 +2132,7 @@ fn latest_unit_result_for_target(
     let rf_ui::InspectorTarget::Unit(unit_id) = target else {
         return None;
     };
-    if let Some(units) = snapshot.block_unit_results() {
+    if let Some(units) = snapshot.final_unit_results() {
         return units
             .iter()
             .find(|u| u.unit_id == unit_id.as_str())
@@ -2489,11 +2498,12 @@ mod tests;
 mod partitioned_tests;
 
 impl StudioGuiWindowSolveSnapshotModel {
-    pub fn block_unit_results(&self) -> Option<&[StudioGuiWindowUnitExecutionResultModel]> {
+    pub fn final_unit_results(&self) -> Option<&[StudioGuiWindowUnitExecutionResultModel]> {
         self.partitioned
             .as_ref()
             .map(|p| p.units.as_slice())
             .or_else(|| self.simultaneous.as_ref().map(|s| s.units.as_slice()))
+            .or_else(|| self.equation_oriented.as_ref().map(|s| s.units.as_slice()))
     }
     pub fn block_count(&self) -> Option<usize> {
         self.partitioned
@@ -2505,3 +2515,6 @@ impl StudioGuiWindowSolveSnapshotModel {
 
 #[cfg(test)]
 mod simultaneous_tests;
+
+#[cfg(test)]
+mod equation_tests;

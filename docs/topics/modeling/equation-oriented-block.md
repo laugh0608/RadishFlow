@@ -6,9 +6,9 @@
 读者：维护 unitops、solver、store、运行与结果、Studio 和自动化入口的协作者。
 不包含：热 / 相平衡 EO、通用非线性求解器、优化、多变量设计规格、动态 / 瞬态、混合分区、插件 ABI 或 COM 自动化。
 
-**状态：QS3-D01—D08 已于 2026-10-31 获所有者批准，进入连续实施，A/B 模型、结构与求解核心已实现，C/D 工程和消费者接入推进中。** 按模型 / 结构、求解 / 复核、工程 / 运行、正式消费者顺序推进；GUI 七张局部画板已获认可，按对应局部稿接线。起点 `f2ba51c1`，QS2-C 已完成本机消费者接入，正式基线 1,988 项；未验平台与发布门禁保持。
+**状态：QS3-D01—D08 已批准并完成本机实现与阶段验证。** 模型 / 结构、正向 / 单比例反算、工程 v4、后台运行、显式采纳及 GUI / CLI v6 已接通；GUI 六类七张画板先获认可再接线。正式门禁 2,031 项通过，macOS 代表实窗和历史 reader / writer 验证通过。Windows / Linux、I5、原生 OS 缩放与 PME 缺口保持；不表示通用非线性或热 / 相平衡 EO 已实现。
 
-父专题：[多策略求解](solver-strategies-and-assembly.md)。既有基础：[QS0 有限物料](solver-strategies-and-assembly.md#qs0-首片实施2026-10-31)、[QS2 核心](simultaneous-modular-block.md)、[QS2-C 正式消费者](simultaneous-project-and-consumers.md)。本批反算也是 [DS0 / DS1](../flowsheet-modeling-and-solve.md#设计规格求解规划尚未实现) 的限定场景提案，不代表全部 Design Specification 已实现。
+父专题：[多策略求解](solver-strategies-and-assembly.md)。既有基础：[QS0 有限物料](solver-strategies-and-assembly.md#qs0-首片实施2026-10-31)、[QS2 核心](simultaneous-modular-block.md)、[QS2-C 正式消费者](simultaneous-project-and-consumers.md)。本批反算也是 [DS0 / DS1](../flowsheet-modeling-and-solve.md#设计规格求解规划尚未实现) 的限定场景实现，不代表全部 Design Specification 已实现。
 
 ## 实施进展（2026-10-31）
 
@@ -16,12 +16,17 @@
 - `rf-solver::equation_oriented` 已实现全端口装配、稳定身份、双尺度、确定性最大匹配与交替区域；结构查询不调用物性。规格未配对能形成欠 / 过规格报告，结构通过不代替数值检查。
 - 正向直接 LU 与反算条件 LU / 二分已落地；共享内部 `dense_linear` 保持 QS2 算法、门槛、外部错误及计数。每次条件评价和最终完整 Jacobian 分别留存证据。
 - 最终用真实目录工厂逐单元复核，保留实际消费 / 生产者、候选与最终残差、零流组成锚点、目标及总体衡算。候选只在隔离单元副本使用，不修改源工程。
-- 核心定向测试覆盖 E1 / E2 独立算术、导数扰动、QS2 对比、端点 / 未括区 / 预算、结构与数值相关、奇异区间、尺度 / 容量 / 绑定拒绝、零流串联、局部故障及各阶段取消。`rf-solver` 141 项、`rf-unitops` 83 项通过；正式跨层基线留待接入阶段收口。
-- 目前不是 QS3 整体完成；工程 v4、冻结运行 / 资格、正式采纳、CLI v6 与已认可 GUI 继续按 D05—D08 推进。
+- 核心定向测试覆盖 E1 / E2 独立算术、导数扰动、QS2 对比、端点 / 未括区 / 预算、结构与数值相关、奇异区间、尺度 / 容量 / 绑定拒绝、零流串联、局部故障及各阶段取消。`rf-solver` 141 项、`rf-unitops` 83 项通过；跨层正式基线为 2,031 项。
+- 工程 v4 新方法 / capability、严格规格与完整尺度映射、ID 保留、同版本保存升级与只读保护已实现；历史 `f2ba51c1` 独立构建实测读取新工程为只读、拒绝序列化及覆盖，原字节保持。
+- 复用单 worker、Ready 双资格、取消 / join；结构未就绪在预检 Blocked，worker 独立复验。成功 / 失败 / 取消证据分开，实际包与核心来源不伪造。
+- 正式采纳从 Current 结果取得候选，预览 / 提交复验输入、计划、执行及访问资格；单次输入事务、计划保留、Stale、不自动运行、no-op 和 Undo 后旧资格不恢复均有自动验证。
+- GUI 已接通规格、结构、尺度、诊断、真实结果及显式采纳；自动帧覆盖中英 400 px / 20 px 字体、未完成草稿、默认取消焦点、失败无 Current 数值、保存升级与重开。macOS 实窗覆盖反算 Run、采纳、保存、重开 Missing 及显式 rerun。
+- CLI v6 公开查询 / 运行 / 建图 / 采纳后切正向重算模板已加入；真实进程验证整个临时目录、资源和工程字节不变，旧协议及外部执行引用拒绝。接口和运行方式见 [CLI 参考](../../reference/headless-cli.md#qs3-cli-v62026-10-31已实现)。
+- 阶段验证与未覆盖原生平台记录见 [W44](../../devlogs/2026-10/2026-W44.md)。
 
-## 代码事实与新增职责
+## 实施起点与职责分配
 
-| 已核对入口 | 当前事实 | QS3 增量与复用边界 |
+| 已核对入口 | 实施前事实 | QS3 增量与复用边界 |
 | --- | --- | --- |
 | [QS0 问题](../../../crates/rf-solver/src/component_balance/mod.rs) | `MixerComponentBalanceProblem` 是单 Mixer 专用装配，直接前代求解；有领域变量 / 方程与 Jacobian | 保留原入口 / 结果语义；新建多单元方程装配，不能只给现有模板改名 |
 | [物料关系](../../../crates/rf-unitops/src/component_balance.rs)、[模块响应](../../../crates/rf-unitops/src/component_response.rs) | 共享混合 / 非选择性分流关系；QS2 导数针对固定参数下的输入输出响应 | 新增端口变量、单元残差及解析偏导能力；分流比例释放后增加参数导数，不谎称已有 QS2 响应包含它 |
@@ -82,7 +87,7 @@ E2 的 `dq/dalpha=-C*(1-beta)/(1-alpha*beta)^2`；解处为 `-361/132 mol/s`，�
 
 ### 方程能力
 
-提议新增 `rf-unitops` 固定温压组分方程能力，与局部 run / 模块响应分别声明；用具体类型及类型化行角色承载，不引入字符串表达式语言、全模式大 trait 或新 crate。目录只暴露真实支持；模型拥有下列物理关系、局部偏导和定义域，solver 拥有全局索引、连接、规格与矩阵。
+新增 `rf-unitops` 固定温压组分方程能力，与局部 run / 模块响应分别声明；用具体类型及类型化行角色承载，不引入字符串表达式语言、全模式大 trait 或新 crate。目录只暴露真实支持；模型拥有下列物理关系、局部偏导和定义域，solver 拥有全局索引、连接、规格与矩阵。
 
 | 方程角色 | 残差 | 非零偏导 |
 | --- | --- | --- |
@@ -148,7 +153,7 @@ Feed 的负流量先按输入非法拒绝，不通过从总量求和中排除它
 
 复核全部生产者输出与 EO 出口变量、实际消费者与 EO 入口变量、连接两端、目标残差，以及各单元 / 全局组分与总量。消费者假设和生产者真实值分别保留，允许容差内差异但不覆写成相等。反算目标用最终生产者实际总量再验。最终完整 Jacobian 与条件数证据使用该次候选点，不能借前次子系统通过代替。
 
-提议独立 `EquationOriented` 结果变体：包含完整变量 / 方程、结构报告、固定 / 释放量、尺度、矩阵维数 / 条件指标、目标括区与评价轨迹、原始 / 缩放残差、最终局部 I/O、总体衡算、实际方法版本及包来源。公共流股和单元审阅取真实生产者结果；没有虚构的序贯 steps 或 QS2 响应次数。展示明确为“当前 EO 工况”，释放字段的求得值与工程存储值并列，不暗示输入已更新。
+独立 `EquationOriented` 结果变体：包含完整变量 / 方程、结构报告、固定 / 释放量、尺度、矩阵维数 / 条件指标、目标括区与评价轨迹、原始 / 缩放残差、最终局部 I/O、总体衡算、实际方法版本及包来源。公共流股和单元审阅取真实生产者结果；没有虚构的序贯 steps 或 QS2 响应次数。展示明确为“当前 EO 工况”，释放字段的求得值与工程存储值并列，不暗示输入已更新。
 
 计数至少分开装配、匹配、条件线性评价、完整 Jacobian 评价 / 检查、LU 分解、三角求解、目标评价、区间更新、最终局部调用及 thermo / flash；耗时按实际阶段记录。不因 EO 未调用 QS2 而填充伪响应，也不以迭代数较少推导更快。
 
@@ -160,7 +165,7 @@ Feed 的负流量先按输入非法拒绝，不通过从总量求和中排除它
 
 ## D05：工程格式、方法与旧读者
 
-| 项目 | 提议值 / 范围 |
+| 项目 | 正式值 / 范围 |
 | --- | --- |
 | 外层工程 | 保持 v4；新增必需 capability，不把未知 EO 内容交给旧 reader 可编辑 |
 | 方法 | `radishflow.fixed-tp-material-eo` / version 1 |
@@ -170,7 +175,7 @@ Feed 的负流量先按输入非法拒绝，不通过从总量求和中排除它
 | 正式配置 | 固定 T/P；零或一个 released split binding；零或一个 product-total target；反算区间 / 二分预算；默认或全量显式变量 / 残差尺度 |
 | 不保存 | 求得比例候选、结果、匹配 / Jacobian、数值索引、括区轨迹、运行 token、临时草稿 |
 
-拟议 `simulation.steadyStatePlan` 的 E2 配置如下；字段只为待审新方法定义，旧方法不接受这些增量：
+`simulation.steadyStatePlan` 的 E2 配置如下；字段只为新方法定义，旧方法不接受这些增量：
 
 ```json
 {
@@ -196,7 +201,7 @@ Feed 的负流量先按输入非法拒绝，不通过从总量求和中排除它
 }
 ```
 
-正向 `specifications=[]`；两种记录各最多一个，`field` 只接受该 typed 字段，不是任意可写路径。目标需要完整生产端绑定，不能按重名流股匹配。显式尺度提议为 `kind=explicit_equations`，分别包含 `variables` 与 `equations` 的 `{binding, scaleSi}` 数组；binding 使用 D02 的 tagged 身份，尺度的量纲由变量 / 行角色决定，不接受自由单位字符串。方法字段严格拒绝未知项、显式 null、重复键、重复身份与非有限数值；规范排序不制造计划修订。
+正向 `specifications=[]`；两种记录各最多一个，`field` 只接受该 typed 字段，不是任意可写路径。目标需要完整生产端绑定，不能按重名流股匹配。显式尺度为 `kind=explicit_equations`，分别包含 `variables` 与 `equations` 的 `{binding, scaleSi}` 数组；binding 使用 D02 的 tagged 身份，尺度的量纲由变量 / 行角色决定，不接受自由单位字符串。方法字段严格拒绝未知项、显式 null、重复键、重复身份与非有限数值；规范排序不制造计划修订。
 
 规格独立字段允许暂缺其中一侧的可编辑工程，shape 只检查类型、重复、版本、有限正目标和区间；运行就绪再检查完整配对、对象、目标是否终端、依赖及结构。零目标首批不支持；端点 alpha=1 的零产品正向情况另按现有零流规则检查。释放参数不使用旧输入值作为数值初值或固定条件。所有身份和尺度规范排序；配置摘要包括 SI、规格、区间、预算及方法 / 契约版本，缺省尺度只保存规则，实际 F_ref 在运行证据中冻结。
 
@@ -243,11 +248,11 @@ Feed 的负流量先按输入非法拒绝，不通过从总量求和中排除它
 
 ## D08：CLI v6、验证矩阵与连续开发
 
-建议独立 `schema_version=6` 的 query / execute，复用现有 planned 执行框架与引用解析。旧 v1—v5 词汇 / 错误 / 磁盘边界保持；v5 在共享 parser 创建可编辑工作区前固定 Simultaneous 能力。EO 方法 wire 为 `radishflow.fixed-tp-material-eo/1`，配置字段与 D05 一一映射，严查未知 / 重复字段、null、单位、版本与引用。工程仍是 v4，不因 CLI 版本变化升级外层。
+独立 `schema_version=6` 的 query / execute，复用现有 planned 执行框架与引用解析。旧 v1—v5 词汇 / 错误 / 磁盘边界保持；v5 在共享 parser 创建可编辑工作区前固定 Simultaneous 能力。EO 方法 wire 为 `radishflow.fixed-tp-material-eo/1`，配置字段与 D05 一一映射，严查未知 / 重复字段、null、单位、版本与引用。工程仍是 v4，不因 CLI 版本变化升级外层。
 
 新增查询为 EO 规格 / 分析范围 / 结构预览和实际结果；`execution_kind=equation_oriented` 独立投影变量 / 方程、目标、求得参数、最终 I/O 和执行证据。能力发现准确列明正向 / 单比例反算限制，不允许任意表达式、多个自由参数或热规格。配置和 Run 继续要求期望输入 / 计划身份；目标和释放绑定可用前序创建的类型化引用。
 
-沿已有 `configure_flow_plan` / `run_flow` 与 `results` 的 `flow_plan` / `flow` scope 查询扩展 v6 投影。EO plan 必填 `equation_contract_version`、`acceptance_contract_version`、`temperature_k`、`pressure_pa`、`specifications`、`scaling`；使用 snake_case，对象位置沿既有 `IdentityRef` 而非照搬存储 ID 字符串。采纳动作提议命名 `adopt_eo_split_fraction`，执行引用只指向已接收的本请求结果；安全元数据查询保留原文件版本 / SHA-256，内存能力另列，不能把配置或采纳回执称作已保存。
+沿已有 `configure_flow_plan` / `run_flow` 与 `results` 的 `flow_plan` / `flow` scope 查询扩展 v6 投影。EO plan 必填 `equation_contract_version`、`acceptance_contract_version`、`temperature_k`、`pressure_pa`、`specifications`、`scaling`；使用 snake_case，对象位置沿既有 `IdentityRef` 而非照搬存储 ID 字符串。采纳动作命名 `adopt_eo_split_fraction`，执行引用只指向已接收的本请求结果；安全元数据查询保留原文件版本 / SHA-256，内存能力另列，不能把配置或采纳回执称作已保存。
 
 新增采纳动作只引用本请求内已成功并被接收的 EO 执行，以及确切求得字段，不能提交调用者自选数值。返回输入动作回执、Current→Stale 和保留的反算计划；后续步骤可以显式改正向计划再 Run。跨进程执行引用不持久化、不接受伪造历史 token。沿既有受控影响确认规则，v6 使用独立 `headless-v6-confirm-v1:`；普通配置 / Run 不加泛化审批。所有操作仅在请求内存副本发生，无 Save、偏好、缓存写入、sidecar 或结果文件写入。
 
@@ -285,7 +290,7 @@ Feed 的负流量先按输入非法拒绝，不通过从总量求和中排除它
 | QS3-D04 | 独立 EO 结果、真实局部复核、零流来源和仅显式采纳比例 | 结果接口与新的输入事务；候选不自动写回，不持久化结果 |
 | QS3-D05 | 独立 method / capability / 契约 v1，工程外层 v4、规格配置与旧读者保护 | store / UI 类型与格式能力增量、同版本保存升级提示 |
 | QS3-D06 | 既有 worker 中增加 EO 阶段 / 载荷，复用双资格 / 取消 / join | 运行和诊断接口增量；单名额、QS0 / 设备资格边界保持 |
-| QS3-D07 | 原 Run / F5 下的规格、结构、结果与采纳交互方向 | 需后续局部画板认可，方向批准不等于 GUI 接线批准 |
+| QS3-D07 | 原 Run / F5 下的规格、结构、结果与采纳交互方向 | 局部画板已获认可并完成接线，方向批准不替代局部评审 |
 | QS3-D08 | 独立 CLI v6、旧 v5 固定能力、执行引用采纳及完整分阶段验证 | 新 JSON 词汇 / 投影 / 确认命名空间，继续请求内存与磁盘不变 |
 
 所有者已批准本表并要求按计划连续实施、验证和同步文档，不推送或创建 PR。GUI 方向批准不替代局部画板认可；阶段完成以验证证据为准，不以文档或接口命名代替实现。

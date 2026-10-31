@@ -292,3 +292,5 @@ fn v4_roundtrip_preserves_all_v3_rating_adoption_and_display_inputs() {
         assert_eq!(parse(&json).unwrap(), project);
     }
 }
+
+mod equation_oriented;

@@ -121,7 +121,19 @@ impl StudioGuiWindowSolveSnapshotModel {
             ]));
         }
 
-        if let Some(partitioned) = &self.partitioned {
+        if let Some(eo) = &self.equation_oriented {
+            for unit in &eo.units {
+                lines.push(tsv_row([
+                    unit.unit_id.as_str(),
+                    unit.location.to_string().as_str(),
+                    unit.status_label,
+                    unit.summary.as_str(),
+                    format_stream_references(&unit.consumed_stream_results).as_str(),
+                    format_stream_references(&unit.produced_stream_results).as_str(),
+                ]));
+            }
+            lines.extend(eo.evidence_lines.clone());
+        } else if let Some(partitioned) = &self.partitioned {
             for unit in &partitioned.units {
                 lines.push(tsv_row([
                     unit.unit_id.as_str(),

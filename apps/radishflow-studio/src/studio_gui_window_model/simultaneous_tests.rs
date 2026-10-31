@@ -18,7 +18,7 @@ fn modular_current_drives_inspector_block_summary_navigation_and_lossless_eviden
     assert!(model.steps.is_empty());
     assert!(model.partitioned.is_none());
     assert_eq!(model.block_count(), Some(3));
-    assert_eq!(model.block_unit_results().unwrap().len(), 6);
+    assert_eq!(model.final_unit_results().unwrap().len(), 6);
     assert_eq!(model.review_summary.source_stream_results.len(), 2);
     assert_eq!(model.review_summary.terminal_stream_results.len(), 2);
     let inspector = model.result_inspector_with_unit(Some("s-ma"), None, Some("mixer-1"));

@@ -134,6 +134,7 @@ pub enum StudioWorkspaceRunBlockedReason {
     MissingProjectComponents,
     PendingInspectorDrafts,
     PendingFlowPlanDrafts,
+    FlowPlanNotReady,
     UnnormalizedStreamComposition,
 }
 
@@ -489,6 +490,23 @@ pub(crate) fn preflight_workspace_run(
     if let Some(reason) = WorkspaceSolveService::new().skip_reason(app, command.trigger) {
         return WorkspaceRunPreflight::Skipped(reason);
     }
+    if matches!(
+        app.workspace.flow_plan.current(),
+        rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
+    ) && let Err(error) = app
+        .workspace
+        .flow_plan
+        .current()
+        .validate_for(&app.workspace)
+    {
+        return WorkspaceRunPreflight::Blocked {
+            package_id: None,
+            blocked: StudioWorkspaceRunBlocked {
+                reason: StudioWorkspaceRunBlockedReason::FlowPlanNotReady,
+                message: error.to_string(),
+            },
+        };
+    }
     let package_id = match resolve_workspace_run_package_id(app, index, &command.package) {
         Ok(id) => id,
         Err(error) => {
@@ -784,7 +802,7 @@ fn describe_simulation_mode(mode: SimulationMode) -> &'static str {
 mod tests;
 
 fn workspace_pending_flow_draft_block(app: &AppState) -> Option<StudioWorkspaceRunBlocked> {
-    app.workspace.flow_plan.has_pending_modular_draft().then(|| StudioWorkspaceRunBlocked {
+    (app.workspace.flow_plan.has_pending_modular_draft() || app.workspace.flow_plan.has_pending_equation_draft()).then(|| StudioWorkspaceRunBlocked {
         reason: StudioWorkspaceRunBlockedReason::PendingFlowPlanDrafts,
         message: "Apply or discard the modular plan draft before running; only the applied plan can execute.".into(),
     })

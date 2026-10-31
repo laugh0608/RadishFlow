@@ -12,8 +12,8 @@ mod entitlement_panel_widget;
 pub mod flow_plan;
 mod flow_results;
 pub use flow_results::{
-    FlowResultRecord, FlowSnapshotHeader, PartitionedFlowSnapshot, SimultaneousFlowSnapshot,
-    UnitResultView,
+    EquationFlowSnapshot, FlowResultRecord, FlowSnapshotHeader, PartitionedFlowSnapshot,
+    SimultaneousFlowSnapshot, UnitResultView,
 };
 mod flow_run;
 mod ids;

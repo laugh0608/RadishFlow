@@ -1,0 +1,41 @@
+{
+  "schema_version": 6,
+  "project": "../flowsheets/fixed-tp-material-eo-binary-hydrocarbon.rfproj.json",
+  "expected_project": {
+    "document_id": "example-qs3-fixed-tp-material-eo",
+    "file_sha256": "83b725e8cc5d5167c8a9be40579f3f0d6912aaca256881af12b5e6f8d6f67a94"
+  },
+  "flow_resources": {
+    "cache_root": "./property-package-cache",
+    "auth_cache_index": "./auth-cache-index.json",
+    "package": {
+      "kind": "preferred"
+    }
+  },
+  "steps": [
+    {
+      "id": "solve",
+      "action": {
+        "kind": "run_flow",
+        "expected_revision": 0,
+        "expected_plan_revision": 0
+      }
+    }
+  ],
+  "queries": [
+    {
+      "id": "plan",
+      "query": {
+        "kind": "results",
+        "scope": "flow_plan"
+      }
+    },
+    {
+      "id": "result",
+      "query": {
+        "kind": "results",
+        "scope": "flow"
+      }
+    }
+  ]
+}

@@ -11,6 +11,8 @@ use rf_types::units::{ALL_UNITS, MeasurementUnit, from_canonical};
 use rf_types::{DiagnosticPortTarget, PortDirection, PortKind, StreamId};
 use rf_ui::flow_plan::*;
 mod connection;
+mod equation_oriented;
+pub(super) mod equation_results;
 mod results;
 mod simultaneous;
 use simultaneous::PlanMethod;
@@ -19,6 +21,8 @@ pub(super) mod modular_results;
 #[derive(Default)]
 pub(super) struct FlowPlanPanelState {
     notice: Option<String>,
+    pub(super) adoption: Option<radishflow_studio::equation_actions::EquationAdoptionPreview>,
+    adoption_focus_first: bool,
     stream: String,
     source: Option<MaterialPortTarget>,
     sink: Option<MaterialPortTarget>,
@@ -98,6 +102,7 @@ impl ReadyAppState {
                         PlanMethod::Acyclic,
                         PlanMethod::Partitioned,
                         PlanMethod::Simultaneous,
+                        PlanMethod::EquationOriented,
                     ] {
                         ui.selectable_value(&mut method, choice, choice.label(zh));
                     }
@@ -211,12 +216,22 @@ impl ReadyAppState {
                 apply_requested |= self.render_simultaneous_plan(ui, &mut draft, options);
             });
         }
+        if let FlowPlanConfiguration::EquationOriented(options) = &mut candidate {
+            ui.add_enabled_ui(editable, |ui| {
+                apply_requested |= self.render_equation_plan(ui, &mut draft, options);
+            });
+        }
         draft.replace_candidate(candidate);
         let configuration = draft.configuration();
         let pending = draft.is_pending(&current);
         if pending
-            && (matches!(draft.candidate(), FlowPlanConfiguration::Simultaneous(_))
-                || matches!(current, FlowPlanConfiguration::Simultaneous(_)))
+            && (matches!(
+                draft.candidate(),
+                FlowPlanConfiguration::Simultaneous(_) | FlowPlanConfiguration::EquationOriented(_)
+            ) || matches!(
+                current,
+                FlowPlanConfiguration::Simultaneous(_) | FlowPlanConfiguration::EquationOriented(_)
+            ))
         {
             ui.label(tr(zh, "先应用或放弃草稿，才可 Run / F5 或输出当前结果；保存仅写正式配置。", "Apply or discard the draft before Run / F5 or current output. Save writes only formal configuration."));
         } else if pending {
@@ -304,6 +319,7 @@ impl ReadyAppState {
         }
         self.render_exact_connection(ui, access);
         self.render_flow_results(ui);
+        self.render_equation_adoption(ui.ctx());
         if let Some(message) = &self.flow_plan.notice {
             ui.label(message);
         }
