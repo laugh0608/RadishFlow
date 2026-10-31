@@ -292,3 +292,8 @@ target/debug/radishflow-studio --headless execute examples/automation/size-adopt
 示例的 expected_project 对应当前提交中的原始工程字节。若修改工程、转换换行或从别处复制后字节改变，先重新 query 并核对 / 更新身份和指纹，不能自动忽略冲突。确认步骤不会修改原请求文件；由调用方审阅后填入摘要。新进程重新装载时不会看到上次创建的设备或计算结果。
 
 本批自动验收在 macOS 执行；真实进程测试逐字节比较工程、受控合成本地缓存、已有 sidecar 和整个测试目录清单，覆盖确认重放、来源改变、连续确认、失败终态和旧协议拒绝 v3。Windows / Linux 原生运行、桌面实窗、COM、物理准确性与发布验收不由这些 CLI 测试替代。
+
+
+## QS1-C CLI v4 提案（待确认、不可调用）
+
+当前 query / execute 仍为 schema_version=3。拟定的 [QS1-C06](../topics/modeling/recycle-project-and-consumers.md#qs1-c06cli-v4-与兼容消费)使用新 schema_version=4 接入计划查询 / 应用、Splitter / 显式连接和分块结果；请求与工程版本分别判定，旧 v3 明确拒绝 v4 工程。仍只操作本次内存副本，不提供工程保存或文件导出。此处仅作方案导航，不改变以上已实现的词汇、请求 / 回应或退出码。

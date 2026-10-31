@@ -171,4 +171,4 @@ MC0—MC3 是细化模型装配的切片，不另建平行插件路线；与 P2 
 
 [QS1-D01 / D05](recycle-and-block-execution.md#模型与接口决策)已获批准并实施：非选择性 Splitter 具有规范一入两出、唯一物理分流比例、目录 / 工厂和局部执行；比例属于工程模型，数值计划只选择回流边与求解选项。核心目录现有七类，应用正式创建 / 保存仍限原六类。
 
-QS0 闭合模板保持原能力和拒绝范围，新增 Splitter 不表示已支持 EO。v1 / v2 / v3 明确拒绝保存 Splitter 或任意 kind 上的新比例，包含文件直接 serde；GUI 创建拒绝新模型，CLI v3 保留六类词汇。原六类创建 / Undo / Redo / roundtrip 覆盖保留，新模型的版本化保存及 GUI / CLI 接入归 QS1-C，另行确认。
+QS0 闭合模板保持原能力和拒绝范围，新增 Splitter 不表示已支持 EO。v1 / v2 / v3 明确拒绝保存 Splitter 或任意 kind 上的新比例，包含文件直接 serde；GUI 创建拒绝新模型，CLI v3 保留六类词汇。原六类创建 / Undo / Redo / roundtrip 覆盖保留，新模型的版本化保存、正式字段 / 显式连接与 GUI / CLI 已整理为 [QS1-C 方案](recycle-project-and-consumers.md)，C01—C06 待确认，当前创建门禁保持。
