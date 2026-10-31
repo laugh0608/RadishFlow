@@ -236,6 +236,7 @@ fn studio_modeling_unit_parameter_label_en(parameter: StudioModelingUnitParamete
     match parameter {
         StudioModelingUnitParameter::OutletTemperature => "outlet temperature",
         StudioModelingUnitParameter::OutletPressure => "outlet pressure",
+        StudioModelingUnitParameter::OutletASplitFraction => "outlet A split fraction",
     }
 }
 
@@ -243,5 +244,6 @@ fn studio_modeling_unit_parameter_label_zh(parameter: StudioModelingUnitParamete
     match parameter {
         StudioModelingUnitParameter::OutletTemperature => "出口温度",
         StudioModelingUnitParameter::OutletPressure => "出口压力",
+        StudioModelingUnitParameter::OutletASplitFraction => "出口 A 分流比例",
     }
 }

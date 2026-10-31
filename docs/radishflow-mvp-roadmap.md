@@ -70,7 +70,7 @@ P2 的自动化按可交付切片展开：先做变量 / 动作描述和只读�
 
 2026-10-24 已形成 [AF3 任务提案](topics/runtime-messages/run-control-and-watch-conditions.md#af3-任务身份取消与完成接收方案)与[验收边界](topics/runtime-messages/scenarios-and-acceptance.md#af3-专项验收边界)，按身份 / 接收 → 后台流程 / 取消 → 设备 / 生命周期接线推进。方案已确认，AF3a—c 已接通；正式与实窗证据及保留项以专项验收为准。AF1 继续独立跟踪，不代表已修复。
 
-2026-10-24 已实现 [AF4a 工程发现](topics/variable-and-object-browser.md#af4a-工程发现与上下文契约2026-10-24)＋[AF5a 结果查询](topics/results-review-diagnostics.md#af5a-结果资格与来源查询2026-10-24)。顺序为共享发现 → 结果资格 / 来源 → 正式动作 → 新版本 CLI → 界面 / 诊断 / 输出；AF4b / AF4c 已实现；[AF5b 具体方案](topics/results-review-diagnostics.md#af5b-来源详情诊断定位与输出2026-10-26)已完成来源投影、导航与输出、局部 UI 及代表验证，2026-10-31 AF6 审查及有限物料任务已完成，下一步按真实案例审定 QS1，见[接下来事项](topics/variable-and-object-browser.md#接下来事项2026-10-31)。首批不改工程格式或旧 CLI / FFI，不接 COM、录制及 C3。
+2026-10-24 已实现 [AF4a 工程发现](topics/variable-and-object-browser.md#af4a-工程发现与上下文契约2026-10-24)＋[AF5a 结果查询](topics/results-review-diagnostics.md#af5a-结果资格与来源查询2026-10-24)。顺序为共享发现 → 结果资格 / 来源 → 正式动作 → 新版本 CLI → 界面 / 诊断 / 输出；AF4b / AF4c 已实现；[AF5b 具体方案](topics/results-review-diagnostics.md#af5b-来源详情诊断定位与输出2026-10-26)已完成来源投影、导航与输出、局部 UI 及代表验证，2026-10-31 AF6 审查及有限物料任务已完成，QS1-A/B 核心已完成，下一步审定 QS1-C 正式接入，见[接下来事项](topics/variable-and-object-browser.md#接下来事项2026-10-31)。首批不改工程格式或旧 CLI / FFI，不接 COM、录制及 C3。
 
 AF4b [正式动作契约](topics/variable-and-object-browser.md#af4b-正式动作契约与实施切片2026-10-24)已确认，按流程动作 → 设备输入 / 检查 → 计算控制回执 → 消费者接线分片；AF4b-1—4 已完成；设备输入 / 检查、计算控制回执与 GUI 消费已接通，正式基线及 macOS 代表实窗通过，证据见 [W43](devlogs/2026-10/2026-W43.md)。
 
@@ -195,7 +195,7 @@ G0 纳入 UI R0 的项目→设计基础→工况→设备→结果关系；Q1 �
 | 切片 | 依赖与阶段 | 退出依据 |
 | --- | --- | --- |
 | QS0 问题与契约 | 随首个真实求解案例，复用 MC0 的必要模型描述 | 明确未知量、规格、物性、适用域、初值、独立基准与比较指标 |
-| QS1 分块 SM 与循环 | P3；[案例 / 分块 / 接口方案](topics/modeling/recycle-and-block-execution.md)完成、待审；按模型 / 计划、循环执行、版本化接入分期 | 撕裂及局部收敛满足残差和衡算，回路 / 规格失败可定位，不以循环结束冒充成功 |
+| QS1 分块 SM 与循环 | P3；[A/B 核心](topics/modeling/recycle-and-block-execution.md)已完成模型 / 写保护、分块与真实循环复核；C 版本化保存及正式消费者待审 | 撕裂及局部收敛满足残差和衡算，回路 / 规格失败可定位，不以循环结束冒充成功 |
 | QS2 首个联立模块块 | P4，具备可重复局部求解、耦合残差与可用响应 | 与同模型参考结果一致；内外层误差受控，完整统计计算成本和鲁棒性 |
 | QS3 首个 EO 块 | P4，具备小型模型组的方程、结构、缩放、导数及初始化 | 独立基准和跨策略一致；欠 / 过规格、相关约束、超域与数值失败可解释 |
 | QS4 混合分区 | P4，组合已验证的块能力；黑箱按实际需求引入 | 跨块回路与边界残差正确，结果 / 失败身份统一，不支持组合明确拒绝 |

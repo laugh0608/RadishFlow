@@ -23,18 +23,24 @@ pub(super) fn validate_step_parameters(
             continue; // The execution API retains its existing default semantics.
         };
         if check_parameter_value(kind, parameter, value, None).is_err() {
-            let (symbol, quantity) = match parameter {
-                UnitParameter::OutletTemperature => ("K", "temperature"),
-                UnitParameter::OutletPressure => ("Pa", "pressure"),
+            let requirement = match parameter {
+                UnitParameter::OutletTemperature => format!(
+                    "{} `{value}` K must be a positive finite temperature",
+                    parameter.key()
+                ),
+                UnitParameter::OutletPressure => format!(
+                    "{} `{value}` Pa must be a positive finite pressure",
+                    parameter.key()
+                ),
+                UnitParameter::OutletASplitFraction => {
+                    format!("{} `{value}` must be finite in [0, 1]", parameter.key())
+                }
             };
             return Err(solver_step_invalid_input_with_context(
                 step_number,
                 unit,
                 SolverDiagnosticCode::StepParameter,
-                format!(
-                    "{} `{value}` {symbol} must be a positive finite {quantity}",
-                    parameter.key(),
-                ),
+                requirement,
                 unit_parameter_related_stream_ids(unit, consumed_stream_ids),
                 outlet_port_targets(unit),
             ));

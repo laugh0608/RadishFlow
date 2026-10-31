@@ -4,6 +4,14 @@ use super::*;
 fn catalog_models_create_with_canonical_identity_and_survive_history_and_storage() {
     for model in rf_unitops::catalog::builtin_models() {
         let mut app = AppState::new(sample_document());
+        if model.spec.kind == BuiltinUnitKind::Splitter {
+            assert!(
+                app.create_builtin_unit(model.spec.kind, timestamp(11))
+                    .is_err()
+            );
+            assert!(app.workspace.document.flowsheet.units.is_empty());
+            continue;
+        }
         let created = app
             .create_builtin_unit(model.spec.kind, timestamp(11))
             .unwrap();

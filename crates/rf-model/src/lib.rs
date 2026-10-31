@@ -148,11 +148,15 @@ pub struct UnitOperationParameters {
     pub outlet_temperature_k: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub outlet_pressure_pa: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub outlet_a_split_fraction: Option<f64>,
 }
 
 impl UnitOperationParameters {
     pub fn is_empty(&self) -> bool {
-        self.outlet_temperature_k.is_none() && self.outlet_pressure_pa.is_none()
+        self.outlet_temperature_k.is_none()
+            && self.outlet_pressure_pa.is_none()
+            && self.outlet_a_split_fraction.is_none()
     }
 }
 

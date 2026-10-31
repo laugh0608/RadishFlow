@@ -285,6 +285,7 @@ mod tests {
         heater.parameters = UnitOperationParameters {
             outlet_temperature_k: Some(360.0),
             outlet_pressure_pa: None,
+            outlet_a_split_fraction: None,
         };
         let project = StoredProjectFile::new(
             flowsheet,
@@ -765,3 +766,6 @@ mod tests {
         fs::remove_dir_all(&root).expect("expected temp dir cleanup");
     }
 }
+
+#[cfg(test)]
+mod project_capabilities;

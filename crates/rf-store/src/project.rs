@@ -68,6 +68,7 @@ pub struct StoredProjectDocument {
 impl StoredProjectDocument {
     pub fn validate(&self) -> RfResult<()> {
         self.metadata.validate()?;
+        validate_legacy_flow_capabilities(&self.flowsheet)?;
         validate_flowsheet_thermo_config(&self.flowsheet)
     }
 }
@@ -204,4 +205,17 @@ impl TryFrom<ProjectFileWire> for StoredProjectFile {
         project.validate()?;
         Ok(project)
     }
+}
+
+// v1/v2/v3 have no capability marker understood by old readers. Refuse to
+// serialize the new model or its parameter, even when attached to another kind.
+fn validate_legacy_flow_capabilities(flowsheet: &Flowsheet) -> RfResult<()> {
+    for unit in flowsheet.units.values() {
+        if unit.kind == "splitter" || unit.parameters.outlet_a_split_fraction.is_some() {
+            return Err(RfError::invalid_input("project versions 1/2/3 cannot preserve Splitter capability; versioned saving requires explicit support")
+                .with_diagnostic_code("store.project.unsupported_flow_capability")
+                .with_related_unit_id(unit.id.clone()));
+        }
+    }
+    Ok(())
 }

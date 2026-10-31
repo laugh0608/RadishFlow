@@ -71,13 +71,14 @@ impl BuiltinModelDefinition {
 
 use ServiceRequirement::{Optional, Required};
 
-static BUILTIN_MODELS: [BuiltinModelDefinition; 6] = [
+static BUILTIN_MODELS: [BuiltinModelDefinition; 7] = [
     BuiltinModelDefinition::new(&FEED_SPEC, Optional, Optional, create_feed),
     BuiltinModelDefinition::new(&MIXER_SPEC, Required, Optional, create_mixer),
     BuiltinModelDefinition::new(&HEATER_SPEC, Required, Optional, create_heater),
     BuiltinModelDefinition::new(&COOLER_SPEC, Required, Optional, create_cooler),
     BuiltinModelDefinition::new(&VALVE_SPEC, Required, Optional, create_valve),
     BuiltinModelDefinition::new(&FLASH_DRUM_SPEC, Required, Required, create_flash_drum),
+    BuiltinModelDefinition::new(&crate::SPLITTER_SPEC, Optional, Optional, create_splitter),
 ];
 
 pub fn builtin_models() -> &'static [BuiltinModelDefinition] {
@@ -92,6 +93,7 @@ pub fn builtin_model(kind: BuiltinUnitKind) -> &'static BuiltinModelDefinition {
         BuiltinUnitKind::Cooler => &BUILTIN_MODELS[3],
         BuiltinUnitKind::Valve => &BUILTIN_MODELS[4],
         BuiltinUnitKind::FlashDrum => &BUILTIN_MODELS[5],
+        BuiltinUnitKind::Splitter => &BUILTIN_MODELS[6],
     }
 }
 
@@ -266,3 +268,19 @@ fn unit_context(unit: &UnitNode) -> String {
 
 #[cfg(test)]
 mod tests;
+
+fn create_splitter(
+    unit: &UnitNode,
+    streams: &BTreeMap<StreamId, MaterialStreamState>,
+) -> RfResult<Box<dyn UnitOperation>> {
+    let fraction = unit.parameters.outlet_a_split_fraction.ok_or_else(|| {
+        RfError::invalid_input("splitter requires outlet_a_split_fraction")
+            .with_diagnostic_code("unitops.splitter.missing_fraction")
+            .with_related_unit_id(unit.id.clone())
+    })?;
+    Ok(Box::new(crate::Splitter::new(
+        stream_target_for_port(unit, crate::SPLITTER_OUTLET_A_PORT, streams)?,
+        stream_target_for_port(unit, crate::SPLITTER_OUTLET_B_PORT, streams)?,
+        fraction,
+    )))
+}

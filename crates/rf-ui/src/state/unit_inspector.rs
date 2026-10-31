@@ -307,12 +307,20 @@ pub(crate) fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorD
     use rf_unitops::specifications::{UnitParameter, input_specification};
     let mut fields = vec![UnitInspectorDraftField::Name];
     if let Some(kind) = BuiltinUnitKind::parse(&unit.kind) {
-        fields.extend(input_specification(kind).parameters.iter().map(
-            |parameter| match parameter {
-                UnitParameter::OutletTemperature => UnitInspectorDraftField::OutletTemperatureK,
-                UnitParameter::OutletPressure => UnitInspectorDraftField::OutletPressurePa,
-            },
-        ));
+        fields.extend(
+            input_specification(kind)
+                .parameters
+                .iter()
+                .filter_map(|parameter| match parameter {
+                    UnitParameter::OutletTemperature => {
+                        Some(UnitInspectorDraftField::OutletTemperatureK)
+                    }
+                    UnitParameter::OutletPressure => {
+                        Some(UnitInspectorDraftField::OutletPressurePa)
+                    }
+                    UnitParameter::OutletASplitFraction => None,
+                }),
+        );
     }
     fields
 }

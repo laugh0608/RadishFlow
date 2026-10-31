@@ -92,19 +92,7 @@ pub(super) fn build_provider() -> PlaceholderThermoProvider {
     PlaceholderThermoProvider::new(ThermoSystem::binary([first, second]))
 }
 
-fn build_binary_hydrocarbon_provider() -> PlaceholderThermoProvider {
-    let mut methane = ThermoComponent::new(ComponentId::new("methane"), "Methane");
-    methane.antoine = Some(AntoineCoefficients::new(8.987, 659.7, -16.7));
-    methane.liquid_heat_capacity_j_per_mol_k = Some(35.0);
-    methane.vapor_heat_capacity_j_per_mol_k = Some(36.5);
-
-    let mut ethane = ThermoComponent::new(ComponentId::new("ethane"), "Ethane");
-    ethane.antoine = Some(AntoineCoefficients::new(8.952, 699.7, -22.8));
-    ethane.liquid_heat_capacity_j_per_mol_k = Some(52.0);
-    ethane.vapor_heat_capacity_j_per_mol_k = Some(65.0);
-
-    PlaceholderThermoProvider::new(ThermoSystem::binary([methane, ethane]))
-}
+use crate::test_fixtures::binary_hydrocarbon_provider as build_binary_hydrocarbon_provider;
 
 fn build_demo_flowsheet() -> Flowsheet {
     let mut flowsheet = Flowsheet::new("feed-mixer-flash");
@@ -760,6 +748,7 @@ fn sequential_solver_uses_feed_unit_outlet_temperature_and_pressure_parameters()
         .parameters = UnitOperationParameters {
         outlet_temperature_k: Some(310.0),
         outlet_pressure_pa: Some(110_000.0),
+        outlet_a_split_fraction: None,
     };
 
     let snapshot = SequentialModularSolver
@@ -1435,6 +1424,7 @@ fn sequential_solver_reports_unit_parameter_context_for_invalid_valve_pressure()
         .parameters = UnitOperationParameters {
         outlet_temperature_k: None,
         outlet_pressure_pa: Some(130_000.0),
+        outlet_a_split_fraction: None,
     };
 
     let error = SequentialModularSolver
@@ -1483,6 +1473,7 @@ fn sequential_solver_reports_unit_parameter_context_for_invalid_feed_temperature
         .parameters = UnitOperationParameters {
         outlet_temperature_k: Some(0.0),
         outlet_pressure_pa: None,
+        outlet_a_split_fraction: None,
     };
 
     let error = SequentialModularSolver
@@ -1522,6 +1513,7 @@ fn sequential_solver_reports_unit_parameter_context_for_invalid_heater_pressure(
         .parameters = UnitOperationParameters {
         outlet_temperature_k: None,
         outlet_pressure_pa: Some(130_000.0),
+        outlet_a_split_fraction: None,
     };
 
     let error = SequentialModularSolver
@@ -1567,6 +1559,7 @@ fn sequential_solver_reports_unit_parameter_context_for_invalid_mixer_pressure()
         .parameters = UnitOperationParameters {
         outlet_temperature_k: None,
         outlet_pressure_pa: Some(110_000.0),
+        outlet_a_split_fraction: None,
     };
 
     let error = SequentialModularSolver
@@ -1622,6 +1615,7 @@ fn sequential_solver_reports_unit_parameter_context_for_invalid_flash_pressure()
         .parameters = UnitOperationParameters {
         outlet_temperature_k: None,
         outlet_pressure_pa: Some(0.0),
+        outlet_a_split_fraction: None,
     };
 
     let error = SequentialModularSolver
@@ -1671,6 +1665,7 @@ fn sequential_solver_reports_unit_parameter_context_for_invalid_flash_temperatur
         .parameters = UnitOperationParameters {
         outlet_temperature_k: Some(0.0),
         outlet_pressure_pa: None,
+        outlet_a_split_fraction: None,
     };
 
     let error = SequentialModularSolver

@@ -124,11 +124,29 @@ wire_enum!(
     engineering::SourcePhase,
     [Gas, Liquid, Both, NotApplicable]
 );
-wire_enum!(
-    UnitKind,
-    rf_ui::BuiltinUnitKind,
-    [Feed, Heater, Cooler, Valve, Mixer, FlashDrum]
-);
+// This wire vocabulary remains the six persistable application models.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UnitKind {
+    Feed,
+    Heater,
+    Cooler,
+    Valve,
+    Mixer,
+    FlashDrum,
+}
+impl From<UnitKind> for rf_ui::BuiltinUnitKind {
+    fn from(value: UnitKind) -> Self {
+        match value {
+            UnitKind::Feed => Self::Feed,
+            UnitKind::Heater => Self::Heater,
+            UnitKind::Cooler => Self::Cooler,
+            UnitKind::Valve => Self::Valve,
+            UnitKind::Mixer => Self::Mixer,
+            UnitKind::FlashDrum => Self::FlashDrum,
+        }
+    }
+}
 wire_enum!(
     Quantity,
     rf_types::units::QuantityKind,

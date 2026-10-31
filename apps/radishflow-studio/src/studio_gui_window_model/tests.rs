@@ -1170,6 +1170,7 @@ fn invalid_valve_parameter_failure_synced_config() -> (StudioRuntimeConfig, Path
         .parameters = UnitOperationParameters {
         outlet_temperature_k: None,
         outlet_pressure_pa: Some(730_000.0),
+        outlet_a_split_fraction: None,
     };
     let project_json =
         project_file_to_pretty_json(&project).expect("expected invalid valve project json");

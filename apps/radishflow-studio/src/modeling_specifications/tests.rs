@@ -102,6 +102,9 @@ fn document(kind: BuiltinUnitKind) -> FlowsheetDocument {
                 )
             }
             BuiltinUnitKind::Feed => unreachable!(),
+            BuiltinUnitKind::Splitter => {
+                unreachable!("this fixture covers the six existing application models")
+            }
         };
         unit.parameters.outlet_pressure_pa = Some(90_000.0);
         if matches!(
@@ -695,6 +698,9 @@ fn scalar_and_composition_boundaries_are_projected_without_implicit_repair() {
                     .unwrap()
                     .parameters;
                 match parameter {
+                    UnitParameter::OutletASplitFraction => {
+                        params.outlet_a_split_fraction = Some(value)
+                    }
                     UnitParameter::OutletPressure => params.outlet_pressure_pa = Some(value),
                     UnitParameter::OutletTemperature => params.outlet_temperature_k = Some(value),
                 }

@@ -221,7 +221,7 @@ pub(super) fn problem_evidence(
         SpecificationProblem::MissingFeedComposition { .. } => tr(locale, "源流股组成为空；需要明确各组分摩尔分数。", "Feed composition is empty; specify component mole fractions.").into(),
         SpecificationProblem::MissingParameter { .. } => tr(locale, "需要显式指定此参数；界面默认显示和未提交草稿不能补齐规格。", "Specify this parameter explicitly; displayed defaults and uncommitted drafts do not complete the specification.").into(),
         SpecificationProblem::InvalidParameter { parameter, value, .. } => {
-            let kind = match parameter { rf_flowsheet::specifications::UnitParameter::OutletTemperature => QuantityKind::AbsoluteTemperature, rf_flowsheet::specifications::UnitParameter::OutletPressure => QuantityKind::AbsolutePressure };
+            let kind = parameter.quantity_kind();
             let value = quantity(*value, kind, units);
             if zh { format!("已提交 {value}；要求有限且严格大于零（SI）。") } else { format!("Committed {value}; must be finite and strictly positive in SI.") }
         }

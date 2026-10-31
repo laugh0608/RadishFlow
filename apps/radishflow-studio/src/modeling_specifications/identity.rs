@@ -158,13 +158,17 @@ impl SpecificationProblem {
             Self::MissingParameter { unit_id, parameter }
             | Self::InvalidParameter {
                 unit_id, parameter, ..
-            } => vec![field(
-                ObjectId::Unit(unit_id.clone()),
-                match parameter {
-                    UnitParameter::OutletTemperature => VariableField::OutletTemperature,
-                    UnitParameter::OutletPressure => VariableField::OutletPressure,
-                },
-            )],
+            } => match parameter {
+                UnitParameter::OutletASplitFraction => vec![T::Unit(unit_id.clone())],
+                UnitParameter::OutletTemperature => vec![field(
+                    ObjectId::Unit(unit_id.clone()),
+                    VariableField::OutletTemperature,
+                )],
+                UnitParameter::OutletPressure => vec![field(
+                    ObjectId::Unit(unit_id.clone()),
+                    VariableField::OutletPressure,
+                )],
+            },
             Self::OutletPressureAboveInlet { unit_id, .. } => vec![field(
                 ObjectId::Unit(unit_id.clone()),
                 VariableField::OutletPressure,

@@ -5,6 +5,12 @@ pub(super) fn prepare_builtin_unit_creation(
     builtin_kind: BuiltinUnitKind,
     allocated_unit_ids: &BTreeSet<UnitId>,
 ) -> RfResult<(DocumentCommand, Flowsheet, UnitId)> {
+    if builtin_kind == BuiltinUnitKind::Splitter {
+        return Err(RfError::invalid_input(
+            "Splitter authoring requires versioned project and application support",
+        )
+        .with_diagnostic_code("ui.unsupported_model_capability"));
+    }
     let spec = rf_unitops::catalog::builtin_model(builtin_kind).spec;
     let unit_id = next_canvas_unit_id(flowsheet, builtin_kind, allocated_unit_ids);
     let unit = UnitNode::new(
@@ -83,6 +89,7 @@ pub(super) fn canvas_unit_id_prefix(kind: BuiltinUnitKind) -> &'static str {
         BuiltinUnitKind::Cooler => "cooler",
         BuiltinUnitKind::Valve => "valve",
         BuiltinUnitKind::FlashDrum => "flash",
+        BuiltinUnitKind::Splitter => "splitter",
     }
 }
 
@@ -94,6 +101,7 @@ pub(super) fn canvas_unit_label(kind: BuiltinUnitKind) -> &'static str {
         BuiltinUnitKind::Cooler => "Cooler",
         BuiltinUnitKind::Valve => "Valve",
         BuiltinUnitKind::FlashDrum => "Flash Drum",
+        BuiltinUnitKind::Splitter => "Splitter",
     }
 }
 

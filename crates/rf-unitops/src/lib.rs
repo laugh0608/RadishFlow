@@ -6,6 +6,12 @@ mod separator_hydraulics;
 pub mod separator_rating;
 pub mod separator_sizing;
 pub mod specifications;
+mod splitter;
+pub use splitter::{SPLITTER_SPEC, Splitter, build_splitter_node};
+pub const SPLITTER_KIND: &str = "splitter";
+pub const SPLITTER_INLET_PORT: &str = "inlet";
+pub const SPLITTER_OUTLET_A_PORT: &str = "outlet_a";
+pub const SPLITTER_OUTLET_B_PORT: &str = "outlet_b";
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -41,6 +47,7 @@ pub enum BuiltinUnitKind {
     Cooler,
     Valve,
     FlashDrum,
+    Splitter,
 }
 
 impl BuiltinUnitKind {
@@ -52,6 +59,7 @@ impl BuiltinUnitKind {
             Self::Cooler => COOLER_KIND,
             Self::Valve => VALVE_KIND,
             Self::FlashDrum => FLASH_DRUM_KIND,
+            Self::Splitter => SPLITTER_KIND,
         }
     }
 
@@ -63,6 +71,7 @@ impl BuiltinUnitKind {
             COOLER_KIND => Some(Self::Cooler),
             VALVE_KIND => Some(Self::Valve),
             FLASH_DRUM_KIND => Some(Self::FlashDrum),
+            SPLITTER_KIND => Some(Self::Splitter),
             _ => None,
         }
     }

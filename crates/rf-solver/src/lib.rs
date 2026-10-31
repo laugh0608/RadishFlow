@@ -1,5 +1,6 @@
 pub mod component_balance;
 mod control;
+pub mod partitioned;
 pub use control::{ControlledSolveOutcome, SolveProgress, SolveStage, SolverControl};
 
 mod parameter_checks;
@@ -9,7 +10,7 @@ use parameter_checks::validate_step_parameters;
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use rf_flash::TpFlashSolver;
-use rf_flowsheet::validate_connections;
+use rf_flowsheet::dependencies::material_dependencies;
 use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
 use rf_thermo::ThermoProvider;
 use rf_types::{DiagnosticPortTarget, PortDirection, RfError, RfResult, StreamId, UnitId};
@@ -411,15 +412,16 @@ impl SequentialModularSolver {
 /// Validate canonical connections and the current acyclic SM strategy without solving.
 /// Returned errors use the same structured codes and targets as execution.
 pub fn sequential_execution_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>> {
-    let connections = validate_connections(flowsheet)
+    let dependencies = material_dependencies(flowsheet)
         .map_err(|error| solver_stage_error(SolverDiagnosticCode::ConnectionValidation, error))?;
+    let connections = dependencies.connections;
     let mut incoming_counts = flowsheet
         .units
         .keys()
         .cloned()
         .map(|unit_id| (unit_id, 0usize))
         .collect::<BTreeMap<_, _>>();
-    let mut downstream_units = BTreeMap::<UnitId, BTreeSet<UnitId>>::new();
+    let downstream_units = dependencies.successors;
     let mut processed_connections = Vec::<rf_flowsheet::MaterialConnection>::new();
 
     for connection in connections {
@@ -435,15 +437,17 @@ pub fn sequential_execution_order(flowsheet: &Flowsheet) -> RfResult<Vec<UnitId>
             if let Some(error) = detect_two_unit_cycle_error(&connection, &processed_connections) {
                 return Err(error);
             }
-            downstream_units
-                .entry(connection.source.unit_id.clone())
-                .or_default()
-                .insert(sink.unit_id.clone());
-            *incoming_counts.entry(sink.unit_id.clone()).or_insert(0) += 1;
         }
         processed_connections.push(connection);
     }
 
+    for children in downstream_units.values() {
+        for child in children {
+            *incoming_counts
+                .get_mut(child)
+                .expect("validated dependency") += 1;
+        }
+    }
     let mut ready = VecDeque::from(
         incoming_counts
             .iter()
@@ -1115,3 +1119,6 @@ fn push_related_stream_id(stream_ids: &mut Vec<StreamId>, candidate: &str) {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod test_fixtures;
