@@ -278,7 +278,7 @@ GUI 调用入口根据当前只读视图拒绝编辑与运行事件，不能仅�
 AF4a / AF5a、AF4b、AF4c 与 AF5b 已完成已确认批次。[AF6 审查](modeling/solver-strategies-and-assembly.md#af6-扩展边界复核2026-10-31)已完成；所有者随后批准的[有限组分衡算核心](modeling/solver-strategies-and-assembly.md#qs0-首片实施2026-10-31)已接通装配、残差 / Jacobian 与拒绝证据。后续批准的有限物料后端、独立任务与 GUI / CLI 已接通；动态未实现。
 
 1. **QS1-C 正式接入已实现。** [QS1-A/B 核心](modeling/recycle-and-block-execution.md)已按 D01—D05 实现 Splitter、分块 / 显式撕裂、循环复核与故障验证；[QS1-C01—C06 方案](modeling/recycle-project-and-consumers.md)已确认并实现项目 v4、独立计划 / 双资格、显式连接及已认可 GUI / CLI v4；验证与后续边界见该专题。
-2. **按消费者与物理能力分期扩展。** 新模型 / 后端、联立模块及热 / 相平衡 EO 另行确认；动态的 mol 存量、初值 / 事件、积分与轨迹仍另审。复用结果资格，不用步骤或快照序号代替迭代 / 时间。
+2. **按消费者与物理能力分期扩展。** [QS2](modeling/simultaneous-modular-block.md)的交叉回流、模块响应 / 后端与独立基准方案已形成，D01—D05 待确认；正式保存 / 计划 / GUI / CLI 为 D06 另审。热 / 相平衡 EO、动态存量 / 积分 / 轨迹仍另审；复用结果资格，不用步骤或快照序号代替迭代 / 时间。
 3. **保留既有问题与验证边界。** AF1 继续按[生命周期事项](project-lifecycle-storage.md#af1-接下来事项2026-10-23)捕获现场并定因。PR #17 的三平台 Rust、Windows .NET / 打包已通过，不能替代原生 GUI / PME、I5 或完整交互组合补验。C2-A 专项服从基础主线，C2-B / C3、COM、录制和发布保持原边界。
 
 本轮记录见 [W44](../devlogs/2026-10/2026-W44.md)；当前正式基线与优先级以[当前状态](../status/current.md)为准。
