@@ -1,10 +1,10 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-10-26
+更新时间：2026-10-31
 
 ## 目的
 
-本文档用于说明当前 `rf-ui::SolveSnapshot` 及其相关结果 DTO 的稳定语义。
+本文档说明 `rf-ui::FlowResultRecord` 及各方法载荷的稳定语义；`SolveSnapshot` 专指无回路载荷。下文 step 细则只适用于该载荷。
 
 它回答的是：
 
@@ -48,11 +48,17 @@
 - case-level review summary
 - 当前快照文本 formatter，用于复制或导出 `.txt`
 
+## 方法载荷与共同入口
+
+`FlowResultRecord` 包含 Acyclic(SolveSnapshot)、Partitioned(PartitionedFlowSnapshot)、Simultaneous(SimultaneousFlowSnapshot)、EquationOriented(EquationFlowSnapshot)。共同 `FlowSnapshotHeader` 保存来源、ID、输入 revision、sequence、状态、诊断和生产者流股；`unit_result()` 返回真实消费 / 产出。只有 Acyclic 提供 `StepSnapshot`，其他方法保留最终单元复核、块或方程证据，不能用空 steps 判断“没有单元结果”。
+
+QS1 记录撕裂 / 迭代与最终复核；QS2 记录响应、耦合、LU / 条件 / 后向误差；QS3 记录变量 / 方程、规格 / 区间轨迹、条件系统与完整 Jacobian、原值 / 求得比例及实际 I/O。部分失败证据不能作为正式流股发布。方法边界分别见 [QS1-C](../topics/modeling/recycle-project-and-consumers.md)、[QS2-C](../topics/modeling/simultaneous-project-and-consumers.md)、[QS3](../topics/modeling/equation-oriented-block.md)。QS0 独立物料任务与设备结果不属于 FlowResultRecord。
+
 ## `SolveSnapshot` 的稳定语义
 
 `SolveSnapshot` 表示“某个文档修订号上的一次不可变求解结果”。
 
-它是当前实现的结果真相源，不是独立物理基准；`Converged`、相区、H 和泡露点窗口的含义受当前物性与单元近似约束。统一解释见 [热力学模型](../thermo/mvp-model.md)。
+它是无回路方法的结果载荷，不是独立物理基准；`Converged`、相区、H 和泡露点窗口的含义受当前物性与单元近似约束。统一解释见 [热力学模型](../thermo/mvp-model.md)。
 
 当前稳定边界：
 
@@ -70,9 +76,9 @@
 
 ## 当前资格、来源与动作守卫
 
-`SolveSnapshot` 的数值不可变，但能否作为当前结果由 `WorkspaceState::flow_result()` 决定；文档 ID、revision、snapshot ID 或 sequence 相等都不能单独证明同属一次会话。`FlowResultView` 区分 Current、Stale、Missing、Failed，仅 Current 提供正式数值；Failed 携带该次诊断及来源，不能回退到上次成功值。未记录资格的旧快照明确视为不可用。
+`FlowResultRecord` 的数值不可变，但能否作为当前结果由 `WorkspaceState::flow_result()` 决定；文档 ID、revision、snapshot ID 或 sequence 相等都不能单独证明同属一次会话。`FlowResultView` 区分 Current、Stale、Missing、Failed，输入或计划 A→B→A、重开及重算都不能仅凭相同内容恢复旧资格；仅 Current 提供正式数值；Failed 携带该次诊断及来源，不能回退到上次成功值。未记录资格的旧快照明确视为不可用。
 
-`SolveSnapshot.origin` 保留冻结的 `FlowResultOrigin`：输入所属文档 / 会话、revision，以及可用的执行身份、solver、实际物性包与指纹。当前配置或包标签不得回填旧结果；准备失败可以没有实际包。应用层 `FlowResultReview` 是这一查询的拥有数据投影，不复制领域有效性规则。
+共同 `origin` 保留冻结的 `FlowResultOrigin`：输入与计划的会话 / revision / generation，以及可用的执行身份、solver、实际物性包与指纹。当前配置或包标签不得回填旧结果；准备失败可以没有实际包。应用层 `FlowResultReview` 是这一查询的拥有数据投影，不复制领域有效性规则。
 
 跨帧结果动作和待写输出携带 `FlowResultGuard`，激活 / 写入时重新查询当前工作区；定位还检查目标存在。设备使用独立 `EquipmentResultGuard` 和原计算 / 矩阵输出捕获机制，按相关工况资格重验，不用流程 revision 作为设备全局锁。RunId / CalculationId 不透明且不持久化，技术详情 / 文本只说明身份已记录、会话内使用，不输出内存地址或可恢复令牌。
 
@@ -198,7 +204,7 @@ unit-centric 视图当前只是在同一份快照里按单元重新组织结果�
 
 ### Module Results
 
-`StudioGuiWindowModuleResultsModel` 是 Studio window-model 针对当前选中单元派生的 unit-centric presentation。它只读取 `WorkspaceState::flow_result()` 判定为 Current 的 `SolveSnapshot`，并围绕 selected unit 暴露：
+`StudioGuiWindowModuleResultsModel` 是 Studio window-model 针对当前选中单元派生的 unit-centric presentation。它只读取 `WorkspaceState::flow_result()` 判定为 Current 的 `FlowResultRecord`，并围绕 selected unit 暴露：
 
 - `selected_unit_result`
 - consumed / produced stream chip
@@ -211,21 +217,21 @@ unit-centric 视图当前只是在同一份快照里按单元重新组织结果�
 - `NoUnitSelected`：没有选中单元，不展示模块结果。
 - `NoCurrentResult`：当前工作区查询无 Current 结果，提示按当前资格检查或重跑；不能仅比较 revision。
 - `Stale`：当前查询判定已有快照失效；展示 stale notice，不渲染旧 selected unit result、stream chip、related steps 或 diagnostic actions。
-- `NoUnitResult`：当前 latest `SolveSnapshot` 中没有该单元的 step result，可展示 related steps / diagnostics，但不补造 unit result。
-- `Current`：当前 latest `SolveSnapshot` 中存在该单元结果，正常展示 selected unit result 和关联对象。
+- `NoUnitResult`：当前载荷中没有该单元的实际结果，可展示 related steps / diagnostics，但不补造 unit result。
+- `Current`：当前载荷中存在该单元结果，正常展示 selected unit result 和关联对象。
 
 这层 DTO 不承担完整报表、跨快照历史、重新求解或结果补算职责。若 Module Results 与 Result Inspector / 底部结果表对同一单元的 consumed / produced stream 表达不一致，应优先按消费层 bug 排查，而不是让 Module Results 自行拼装另一套结果。
 
 ### case-level review summary
 
-case-level `review_summary` 是 Studio window-model 从同一份最新 `SolveSnapshot` 派生的审阅摘要，用于让用户先按流程链路确认“哪些结果对象应该被看见”。
+case-level `review_summary` 是 Studio window-model 从同一份 Current `FlowResultRecord` 派生的审阅摘要，用于让用户先按流程链路确认“哪些结果对象应该被看见”。
 
 当前分组语义：
 
 - `source_stream_results`：source unit 产出、且被下游单元消费的流股，例如 Feed outlet。
 - `intermediate_stream_results`：既由上游单元产出、又被下游单元消费的非 source 流股，例如 heater / cooler / valve / mixer outlet。
 - `terminal_stream_results`：由单元产出、但不再被下游单元消费的终端产品流股，例如 Flash Drum liquid / vapor outlet。
-- `unit_results`：每个单元当前最新 step 的 step index、状态、摘要、消费流股和产出流股；底部结果表的单元区应消费这层摘要，而不是在 shell 内另扫一遍 steps。
+- `unit_results`：每个单元的真实执行位置（顺序 step、依赖块或 EO verification）、状态、摘要及消费 / 产出流股；底部结果表的单元区应消费这层摘要，而不是在 shell 内另扫一遍 steps。
 - `diagnostic_count`：当前快照中的诊断条目数量。
 
 这层摘要不改变 `SolveSnapshot.streams`、`StepSnapshot.consumed_streams` 或 `StepSnapshot.streams` 的正式语义，也不承担结果推导、重新计算或报表模板职责。若某个流股在 `Review` 分组和 step 明细中表现不一致，应优先按消费层 bug 排查，而不是让 `Review` 自行补造结果。
@@ -247,8 +253,8 @@ case-level `review_summary` 是 Studio window-model 从同一份最新 `SolveSna
 
 稳定边界：
 
-- action target 应从当前 `SolveSnapshot`、related steps 或 related diagnostics 派生；捕获的结果动作须先重验守卫和目标，再走正式 focus command，失效不能静默定位同 ID 的新对象
-- `Results` command section 只能把当前最新 `SolveSnapshot` 内已有的 stream / unit target 暴露为 `inspector.focus_stream:*` / `inspector.focus_unit:*`
+- action target 应从当前方法载荷、related steps 或 related diagnostics 派生；捕获的结果动作须先重验守卫和目标，再走正式 focus command，失效不能静默定位同 ID 的新对象
+- `Results` command section 只能把当前载荷内已有的 stream / unit target 暴露为 `inspector.focus_stream:*` / `inspector.focus_unit:*`
 - palette、menu、command list、runtime action button 与底部结果表都应继续走 host `dispatch_ui_command`，不为各自入口复制一套 target 解析
 - 顶部 `结果工具栏` 可以扫读 focus command 是否可用，但不应把当前 snapshot 的所有 stream / unit focus command 直接展开成一排长按钮；具体对象定位应由结果表、右侧相关 action、项目树或命令面板承担
 - `DiagnosticTargets` section 只汇总这组已存在 target，不另造 shell 私有状态机
@@ -263,18 +269,18 @@ UI / shell 不应通过解析错误文本反推出这些分类；分类、summar
 
 ### text copy / export
 
-当前快照复制和文本导出只消费同一份最新 `SolveSnapshot`，并把已物化的流股摘要、case-level review summary、单元结果、求解步骤和诊断格式化为纯文本。
+当前快照复制和文本导出只消费同一份 Current `FlowResultRecord`，并把已物化的流股摘要、case-level review summary、单元结果、求解步骤和诊断格式化为纯文本。
 
-结果 DTO 数值始终为 SI。U3 呈现层根据量类型与单位目录生成 6 位有效数字文本；缺失和转换错误分开表示，温差不使用绝对温度偏移。`light_text_export()` 返回结构化错误或完整文本，转换失败不会生成带错误占位的成功产物。
+结果 DTO 数值始终为 SI。常规数量按 U3 生成 6 位有效数字文本；方法证据保留各自科学计数法与精度，不能把文本当成无损 SI 协议；缺失和转换错误分开表示，温差不使用绝对温度偏移。`light_text_export()` 返回结构化错误或完整文本，转换失败不会生成带错误占位的成功产物。
 
 文本头包含 `snapshot_id`、`sequence`、`document_revision`、状态与摘要，以及 `display_units`、`number_format`。结果页和 Runtime 复用输出操作；发起时、剪贴板写入或文件选择器之前捕获工程身份、快照、项目单位和完整文本，不使用 Inspector 临时覆盖。等待期间显示单位变化不重写已捕获文本；文件写入前复验当前工作区、执行身份、快照及 revision；相同文档 ID / revision 的重开仍拒绝旧输出。平台选择器、覆盖和失败恢复契约见 [B2-1](../topics/results-review-diagnostics.md#b2-1轻量结果输出闭环)。
 
 稳定 section 口径：
 
-- `Streams`：来自 `SolveSnapshot.streams` 的流股摘要
+- `Streams`：来自当前载荷 common.streams 的流股摘要
 - `Review`：按 source / intermediate / terminal streams、latest unit results 和 diagnostics count 汇总同一份快照
-- `Units`：按单元列出当前最新 step、状态、summary、输入流股和输出流股
-- `Steps`：来自 `StepSnapshot` 的求解步骤摘要
+- `Units`：按单元列出真实执行位置、状态、summary、输入流股和输出流股；原 step 列在非顺序方法中表示块 / EO verification，不能按整数步骤解析
+- `Steps`：仅 Acyclic 来自 StepSnapshot；其他方法不造步骤，另附分块 / 联立 / EO 的真实证据
 - `Diagnostics`：来自当前快照的诊断条目
 - `Execution origin`：冻结的执行来源、实际包 / 方法 / 指纹；未记录明确说明，保持文本审阅用途，不建立机器协议
 

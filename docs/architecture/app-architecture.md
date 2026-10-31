@@ -14,7 +14,7 @@
 
 长期边界见 [模拟平台规划](simulation-platform.md)：`SimulationMode::Active / Hold` 表示运行触发策略，工程模型、运行任务与数值状态分离。COM / 脚本及录制共用描述和应用命令；`CommandHistory` 只负责文档 Undo / Redo，运行、保存、导出与动态检查点另有契约。CLI 已支持参数化运行与有序建模，见 [Studio B3-5](../topics/studio-main-workflow.md#b3-5无界面创建连接与步骤身份引用)。
 
-AF6 的[代码链路与场景审查](../topics/modeling/solver-strategies-and-assembly.md#af6-扩展边界复核2026-10-31)已完成审查：工程与索引在提交时捕获，数值上下文装载后固定，经 Ready 重验才执行；数学试算工作区归单次执行，UI / store 只消费正式输入与有资格的结果。现有单元步骤、快照序号和墙钟不承载积分时间。有限物料任务已接入独立后端、会话计划、守卫结果与 GUI / CLI；不占用完整流程快照，不改工程格式。
+AF6 的[代码链路与场景审查](../topics/modeling/solver-strategies-and-assembly.md#af6-扩展边界复核2026-10-31)已完成审查：工程与索引在提交时捕获，数值上下文装载后固定，经 Ready 重验才执行；数学试算工作区归单次执行，UI / store 只消费正式输入与有资格的结果。现有单元步骤、快照序号和墙钟不承载积分时间。QS0 有限物料任务已接入独立后端、会话计划、守卫结果与 GUI / CLI，不占用完整流程快照。QS1—QS3 则通过工程 v4 保存正式流程计划，采用输入＋计划双资格及独立结果载荷；两类任务不能混为同一结果。
 
 ## 冻结决策
 
@@ -493,18 +493,13 @@ shell 只消费 DTO，不建立第二套项目、物性、结果或诊断状态�
 
 草稿保留原值、当前输入、变更事实和校验状态，供显式提交前验证及面板批量应用复用。数值解析、精度、组合输入和事务边界以 [单位编辑专题](../topics/units/input-drafts-and-interactions.md) 为准。
 
-## 求解快照草案
+## 求解快照结构
 
-独立结果快照当前建议至少分为三层：
+当前公共入口为 `FlowResultRecord`：Acyclic、Partitioned、Simultaneous、EquationOriented 分别保留原顺序步骤、分块回流、仿射联立及物料 EO 证据。下列无回路载荷通过 common 持有来源、快照 ID、输入 revision、sequence、状态、诊断和流股：
 
 ```rust
 pub struct SolveSnapshot {
-    pub id: SolveSnapshotId,
-    pub document_revision: u64,
-    pub sequence: u64,
-    pub status: RunStatus,
-    pub summary: DiagnosticSummary,
-    pub diagnostics: Vec<DiagnosticSnapshot>,
+    pub common: FlowSnapshotHeader,
     pub steps: Vec<StepSnapshot>,
 }
 
@@ -518,12 +513,12 @@ pub struct StepSnapshot {
 }
 ```
 
-这里最重要的不是字段名字，而是结构关系：
+结构关系：
 
-- 快照关联文档修订号
+- 快照关联冻结输入与正式计划，Current 由会话 / generation / 运行接收资格共同判定
 - 快照通过 `sequence` 区分同一修订号上的多次运行
 - `summary` 与 `SolveSessionState.latest_diagnostic` 共享同一摘要语义
-- 步骤序列保持稳定顺序
+- 仅 Acyclic 的步骤序列表示顺序执行；其他载荷通过真实最终单元 I/O 和方法证据消费，不伪造步骤
 - 步骤内部记录单元执行结果，以及结构化输入流股 `consumed_streams` 和输出流股 `streams`
 - `StepSnapshot` 的输入/输出流股应由 solver step 直接物化，UI / workspace consumer 只读消费这份 DTO，不再按 stream id 回填或临时拼装第二套 step 结果
 - 诊断信息与数值结果并列保存
@@ -733,7 +728,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - Studio app-host GUI 动作入口统一为 `StudioAppHostController::dispatch_ui_command(command_id)`。run panel command registry 首批稳定命令为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；菜单、快捷键、命令面板、palette 和 runtime 小型 action button 都应复用这条派发链。
 - Canvas 编辑复用 command surface；移动只写 sidecar，连接 / 删除进入工程历史。删除、历史和修复的显式放弃经 `StudioConfirmedInputAction` / `InputEditCheckpoint` 重验，事务成功才发布，对象删除保留范围外草稿，见 [离开保护](../topics/units/input-drafts-and-interactions.md#i4-统一离开确认与失败保护)。公开变量写入门禁不变。
 - 结果审阅、错误定位和诊断目标都必须复用 `StudioGuiWindowDiagnosticTargetActionModel`、`inspector.focus_stream:*`、`inspector.focus_unit:*` 或既有 focus action。`selected_stream / comparison_stream / selected_unit` 只是 shell-local selector state，不缓存第二份结果；comparison 复位不代表结果语义变化。
-- `StudioGuiCommandRegistry` 从最新 `SolveSnapshot` 派生 `Results` command section；result stream / unit navigation 只暴露为正式 focus command。顶部 `结果` 工具栏只扫读结果入口和状态，不承担所有对象定位按钮。
+- `StudioGuiCommandRegistry` 从 Current `FlowResultRecord` 派生 `Results` command section；result stream / unit navigation 只暴露为正式 focus command。顶部 `结果` 工具栏只扫读结果入口和状态，不承担所有对象定位按钮。
 - shell 输出重验当前快照，落盘复用 staged write；运行 / 恢复反馈按正式 dispatch 和 applied target 同步面板与画布，见 [结果与恢复专题](../topics/results-review-diagnostics.md)。
 - Module Settings、Module Results、case-level `review_summary` 和 `stale_solve_snapshot` 的边界见本文上方 `Studio Shell UI 规范化边界` 与 `docs/reference/solve-snapshot-results.md`。它们都服务当前 revision 的结果审阅和轻量导出，不成为第二套结果缓存或报表模型。
 - 失败详情只消费 `latest_diagnostic`，显示 primary code、revision、severity、count 与相关 target；GUI 不从 message 文本反解析或私造端口级 command。Run Panel recovery action 必须区分聚焦与修复，用户主动选中流股后的恢复动作走对应 `canvas.*selected_stream*` 命令，不复用 failure-only recovery command。
@@ -742,7 +737,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - 数值焦点消费会话历史，其他文本沿用控件历史，非文本走工程历史；菜单 / IME 优先，确认状态阻断工程快捷键，见 [U2](../topics/units/input-drafts-and-interactions.md)。按键使用事件自身修饰键；`Primary` 与物理 `Ctrl` 分开，绑定及标签同源，平台键位和历史证据见 [B1-4](../topics/flowsheet-modeling-and-solve.md#b1-4平台快捷键展示与文档重做)。
 - Studio 源码按领域职责组织浅层模块；新增实现并入同域目录，避免继续扩大入口文件。
 
-AF4c 的 headless v3 在 GUI 初始化前消费同一动作与查询，保持磁盘只读；协议与重放确认见 [CLI 参考](../reference/headless-cli.md)。
+headless v3—v6 在 GUI 初始化前消费共享动作与查询；v4 / v5 / v6 分别支持分块回流 / 仿射联立 / 物料 EO，旧协议能力固定。请求只改内存，协议与重放确认见 [CLI 参考](../reference/headless-cli.md)。
 
 ## 结果快照模型
 
@@ -759,7 +754,7 @@ AF4c 的 headless v3 在 GUI 初始化前消费同一动作与查询，保持磁
 其中：
 
 - `FlowsheetDocument` 表示“用户当前编辑的真相源”
-- `SolveSnapshot` 表示“某个文档版本的一次求解结果”
+- `FlowResultRecord` 表示某次冻结输入与计划的求解结果；`SolveSnapshot` 是其中的无回路载荷
 - `WorkspaceState.snapshot_history` 表示“当前工作区保留的不可变结果窗口”
 - `SolveSessionState.latest_snapshot` 只是指向当前结果入口的引用
 
@@ -775,14 +770,12 @@ AF5b 从领域查询投影当前结果与冻结来源，动作 / 输出使用时
 
 ## 按步操作与后续扩展
 
-既然目标是吸收 Aspen、HYSYS、PRO/II 的长处，就不应只停在“得到最终结果”。
-
-当前建议从一开始就保留以下扩展点：
+后续扩展沿正式命令与真实执行证据推进：
 
 - 每次提交形成显式命令
 - 每次求解形成独立快照
-- 快照内部保留步骤序列
-- 步骤内保留单元执行和流股状态结果
+- 无回路快照保留步骤序列；其他策略保留各自真实块 / 方程证据
+- 单元结果保留实际消费与产出流股，不用伪步骤承载迭代或时间
 
 这样后续可以自然扩展：
 
@@ -853,7 +846,7 @@ App 不应直接操作底层求解细节，而应通过稳定的数据结构与�
 
 ## 维护性与执行边界
 
-桌面 Shell 安装共享 `StudioRunOwner`，沿原 host / driver 转发提交、轮询和精确取消；流程 / 设备共用一个 worker 配额。切换工程保留拥有者，最后窗口待回收才关闭。未安装后台会话的 Facade、headless / FFI 保持同步；复杂流程时延与快照内存未测量。
+桌面 Shell 安装共享 `StudioRunOwner`，沿原 host / driver 转发提交、轮询和精确取消；流程 / 设备 / QS0 独立物料任务共用一个 worker 配额。切换工程保留拥有者，最后窗口待回收才关闭。未安装后台会话的 Facade、headless / FFI 保持同步；复杂流程时延与快照内存未测量。
 
 实现时按用户行为追踪命令链，保留独立状态、平台隔离和共享契约，评估纯转发与重复投影。大文件按领域职责拆分，测试按行为组织；undo 与结果快照的大负载成本先测量。
 

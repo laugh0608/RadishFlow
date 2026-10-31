@@ -36,7 +36,7 @@
 ### 当前优先级
 
 1. 按 [代码链路审计](../architecture/overview.md#工程基础链路审计2026-10-23) 和 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 推进。AF0 已完成；AF2a 内建目录 / 工厂、AF2b 单包上下文已接通。AF1 未定因，独立跟踪。
-2. QS0、QS1-C、[QS2-C](../topics/modeling/simultaneous-project-and-consumers.md)与 [QS3](../topics/modeling/equation-oriented-block.md)批准范围已完成本机接入与阶段验证。QS3 覆盖多单元固定温压物料方程、单比例反算、正式采纳、工程 v4、GUI / CLI v6；正式门禁 2,031 项通过。后续算法范围按多策略专题另行审定，未验平台和发布门禁保持。
+2. QS0、QS1-C、[QS2-C](../topics/modeling/simultaneous-project-and-consumers.md)与 [QS3](../topics/modeling/equation-oriented-block.md)批准范围已完成本机接入与阶段验证。QS3 覆盖多单元固定温压物料方程、单比例反算、正式采纳、工程 v4、GUI / CLI v6；后续算法另审，未验平台和发布门禁保持。
 3. C2-A 后续方法对比方案已认可，排期服从基础主线；原精度失败不变。C2-B / C3 暂不实施，不以共享基础为名接入新 PR 产品链或流程设备物理关联。
 4. 基础契约中提前审查 EO / 动态 / 瞬态的扩展边界，具体物性、单元、递归分块 / recycle 和高级算法按真实场景逐步填入；每项另做物理验证。
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
@@ -48,14 +48,12 @@
 
 - [AF2a](../topics/modeling/model-catalog-and-runtime.md#af2a-内建目录与工厂)六类目录 / 工厂已接通，旧 kind、格式和诊断保持。
 
-- G1 / S1、S2-A、G2-B 及 C1 采纳 UI / 固定证据 / 输出已完成，证据见 [W43](../devlogs/2026-10/2026-W43.md)。
-
-- AF0 审计与排序已完成；C2-A 三轮材料已提交，原表审计待审、精度仍未达标。
-
-- B3、U1—U3 首批已接通；证据见 [W38](../devlogs/2026-09/2026-W38.md) 与 [W41](../devlogs/2026-10/2026-W41.md)。
+- 设备采纳、单位与作者路径等既有进展见 [W43](../devlogs/2026-10/2026-W43.md)及专题；C2-A 原表待审、精度结论不变。
 
 ### 下一步
 
+- [ ] 按 [QS3 接下来事项](../topics/modeling/equation-oriented-block.md#接下来事项)核对跨方法验收证据，补边界 / 原生交互与平台缺口。
+- [ ] 评估 [QS4 首个真实混合分区场景](../topics/modeling/solver-strategies-and-assembly.md#接下来事项)，先形成方案再确认实施；本条仅为建议。
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)的设备数据 / 事务 / 保存 / UI / 输出及代表验证完成，流程关联未实现。
 - [x] AF0 代码审计、功能断点与依赖切片已整理，基础架构优先安排已同步；不代表后续切片实施完成。
@@ -63,14 +61,14 @@
 - [x] AF2a / b 装配、AF3 后台运行、AF4a / AF5a 查询与 AF4b 正式动作 / GUI 已完成。
 - [x] [AF4c 契约](../topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)四片完成，v3 覆盖及磁盘边界已验证，旧协议保持。
 - [x] AF5b 来源、导航、输出及代表验证完成。
-- [x] AF6 审查及有限物料任务已接通；完整 EO、回流与动态按后续切片审定。
+- [x] AF6、QS0 独立物料任务和 QS1—QS3 有限回流 / 联立模块 / 物料 EO 已接通；混合分区、热 / 相平衡 EO 与动态另行审定。
 - [ ] [C2-A 方法对比](../thermo/mvp-model.md#c2-a-后续方法对比与排期)已认可、尚未实施；第三轮来源审计仍待审，混合物气相仍缺，B / C3 不开工。
 - [ ] 全局 R0 待评审；U / A / 设备局部稿通过不代表全局定稿。
 - [ ] [可视化 V1—V4](../radishflow-mvp-roadmap.md#颜色与流程可视化的配套切片)方向已确认、均未实现：二维流向 / 数据着色随结果基础，局部三维依赖设备几何，动态回放依赖真实时间结果；整厂三维另评估。
 
 ### 相关规划
 
-- [模型装配 MC0—MC3](../topics/modeling/model-catalog-and-runtime.md) 与 [多策略 QS0—QS4](../topics/modeling/solver-strategies-and-assembly.md) 方向已确认；现有模型装配先按 AF2 推进，算法按 P3 / P4 分期；第三方宿主未实现。
+- [模型装配](../topics/modeling/model-catalog-and-runtime.md)与[多策略](../topics/modeling/solver-strategies-and-assembly.md)按实际能力分期；第三方宿主未实现。
 
 - [变量与对象浏览器 VB0—VB3](../topics/variable-and-object-browser.md) 的后续跨端覆盖衔接 AF4；已有变量读写不等于全部工程对象已覆盖。
 
@@ -86,7 +84,7 @@
 
 ## 当前能力基线
 
-- 受控流程可覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，以及显式输入、运行、保存、重开、rerun 和轻量结果审阅。
+- 受控流程覆盖原无回路示例，以及固定温压 Feed / Mixer / Splitter 的分块回流、仿射联立和物料 EO 正向 / 单比例反算；正式计划、运行、采纳、保存重开与结果审阅已接通。方法能力按专题区分，不自动切换。
 - Studio 已形成 Home、独立物性页、独立设备页、流程图工作台、模块设置 / 结果和运行状态区域的主路径；设备计算与流程 Run 分离，支持尺寸、逐行校核及有限矩阵 CSV / JSON。
 - Rust Core 与 `.NET 10` 适配层保持隔离；CAPE-OPEN / COM 语义不进入 Rust Core。
 - 数值实现仍使用演示物性、常热容显热和简化单元行为；golden、结果透传与用户路径验收不等于独立物理准确性证明，见 [热力学模型](../thermo/mvp-model.md)。
@@ -120,7 +118,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-10-31：QS2-C 含 GUI 通过本机 1,988 项及完整门禁、macOS 代表实窗；历史读写器另验通过。证据与未验范围见 [W44](../devlogs/2026-10/2026-W44.md)。
+- 2026-10-31：QS3 含 GUI / CLI v6 通过本机 2,031 项及完整门禁、macOS 反算 / 采纳 / 保存重开 / rerun；历史读写器另验通过。上午 PR #17 的跨平台 CI 仅覆盖当时合入版本，不覆盖其后的 QS0—QS3 新增代码。证据与未验范围见 [W44](../devlogs/2026-10/2026-W44.md)。
 
 - 既有功能与实窗证据见 [W38](../devlogs/2026-09/2026-W38.md)，跨平台、native 与 `.NET` 历史基线见 [W37](../devlogs/2026-09/2026-W37.md)，更早记录见 [W36](../devlogs/2026-09/2026-W36.md)；历史证据不替代新增路径或发布验收。
 
