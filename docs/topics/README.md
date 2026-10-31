@@ -108,6 +108,7 @@ UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-p
 | Material Stream 物流股 | Active | 流程图建模与求解闭环 / 结果审阅、诊断与恢复 | `modeling/material-stream.md` |
 | 模型目录、发现与运行实例 | AF2a / AF2b 已实施 | 流程图建模与求解闭环 / 项目物性基础；外部扩展待实施 | [模型装配](modeling/model-catalog-and-runtime.md) |
 | 多策略求解与问题装配 | QS0 有限物料任务已接通 | 装配 / 纯求值、直接后端、正式运行及跨端结果；QS1—QS4 按能力分期 | [多策略求解](modeling/solver-strategies-and-assembly.md) |
+| 分块序贯模块与回流求解 | QS1 方案待审 / 未实现 | 多策略子专题；循环混配案例、SCC / 撕裂、独立基准与模型 / 兼容变更 | [QS1](modeling/recycle-and-block-execution.md) |
 
 ### 平台与服务
 
