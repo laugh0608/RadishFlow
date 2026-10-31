@@ -322,6 +322,13 @@ pub struct StudioRuntime {
 }
 
 impl StudioRuntime {
+    pub fn background_run_action(
+        &mut self,
+        action: crate::StudioBackgroundRunAction,
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
+        self.session.background_run_action(action)
+    }
+
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
         Ok(Self {
             session: crate::bootstrap::BootstrapSession::new(config)?,
@@ -887,7 +894,7 @@ mod tests {
             StudioRuntimeDispatch::RunPanelRecovery(_) => {
                 panic!("expected entitlement session event dispatch")
             }
-            StudioRuntimeDispatch::Equipment
+            StudioRuntimeDispatch::Equipment(_)
             | StudioRuntimeDispatch::NumericEdit { .. }
             | StudioRuntimeDispatch::ObjectDeletion { .. }
             | StudioRuntimeDispatch::ProjectPresentation { .. }

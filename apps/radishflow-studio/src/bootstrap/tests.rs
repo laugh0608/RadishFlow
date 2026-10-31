@@ -167,7 +167,7 @@ fn bootstrap_seed_sample_auth_cache_uses_official_payload_semantics_with_compone
     flowsheet
         .insert_component(Component::new("a-component", "A Component"))
         .expect("expected second component");
-    let cache_root = super::temp_cache::TemporaryCacheRoot::new("bootstrap-seed-payload-test")
+    let cache_root = crate::PropertyPackageCacheRoot::temporary("bootstrap-seed-payload-test")
         .expect("expected temporary cache root");
 
     let seed = super::seed::seed_sample_auth_cache(
@@ -229,7 +229,7 @@ fn bootstrap_seed_sample_auth_cache_preserves_official_component_coefficients_by
     flowsheet
         .insert_component(Component::new("methane", "Methane Runtime"))
         .expect("expected methane component");
-    let cache_root = super::temp_cache::TemporaryCacheRoot::new("bootstrap-seed-official-id-test")
+    let cache_root = crate::PropertyPackageCacheRoot::temporary("bootstrap-seed-official-id-test")
         .expect("expected temporary cache root");
 
     let seed = super::seed::seed_sample_auth_cache(
@@ -284,7 +284,7 @@ fn bootstrap_seed_sample_auth_cache_preserves_official_payload_with_extra_catalo
     flowsheet
         .insert_component(Component::new("component-c", "Component C"))
         .expect("expected extra catalog component");
-    let cache_root = super::temp_cache::TemporaryCacheRoot::new("bootstrap-seed-official-subset")
+    let cache_root = crate::PropertyPackageCacheRoot::temporary("bootstrap-seed-official-subset")
         .expect("expected temporary cache root");
 
     let seed = super::seed::seed_sample_auth_cache(
@@ -1063,7 +1063,7 @@ fn app_command(report: &super::StudioBootstrapReport) -> &crate::StudioAppComman
         StudioBootstrapDispatch::RunPanelRecovery(_) => {
             panic!("expected app command dispatch")
         }
-        StudioBootstrapDispatch::Equipment
+        StudioBootstrapDispatch::Equipment(_)
         | StudioBootstrapDispatch::NumericEdit { .. }
         | StudioBootstrapDispatch::ObjectDeletion { .. }
         | StudioBootstrapDispatch::ProjectPresentation { .. }
@@ -1129,7 +1129,7 @@ fn session_event(
         StudioBootstrapDispatch::RunPanelRecovery(_) => {
             panic!("expected entitlement session event dispatch")
         }
-        StudioBootstrapDispatch::Equipment
+        StudioBootstrapDispatch::Equipment(_)
         | StudioBootstrapDispatch::NumericEdit { .. }
         | StudioBootstrapDispatch::ObjectDeletion { .. }
         | StudioBootstrapDispatch::ProjectPresentation { .. }

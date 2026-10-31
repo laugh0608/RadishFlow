@@ -26,9 +26,14 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@1.96.0
+        with:
+          components: rustfmt
 
       - name: Cache Rust artifacts
         uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all --check
 
       - name: Check repository hygiene
         run: ./scripts/check-text-files.sh
@@ -56,7 +61,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run rust baseline
-        run: ./scripts/check-repo.sh --skip-text-files
+        run: cargo run --locked --quiet --target-dir target/xtask -p xtask -- validate-workspace --skip-format
 
   rust-baseline-macos:
     name: Rust Baseline (macOS)
@@ -75,7 +80,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run rust baseline
-        run: ./scripts/check-repo.sh --skip-text-files
+        run: cargo run --locked --quiet --target-dir target/xtask -p xtask -- validate-workspace --skip-format
 
   rust-baseline-windows:
     name: Rust Baseline (Windows)
@@ -95,7 +100,7 @@ jobs:
 
       - name: Run rust baseline
         shell: pwsh
-        run: ./scripts/check-repo.ps1 -SkipTextFiles
+        run: cargo run --locked --quiet --target-dir target/xtask -p xtask -- validate-workspace --skip-format
 
   dotnet-adapter-baseline:
     name: .NET Adapter Baseline

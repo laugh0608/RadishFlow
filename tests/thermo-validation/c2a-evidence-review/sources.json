@@ -1,0 +1,43 @@
+{
+  "je0496701": {
+    "doi": "10.1021/je0496701",
+    "url": "https://trc.nist.gov/ThermoML/10.1021/je0496701.json",
+    "sha256": "ae6b61eece11e8bcf88d2343e6a2c482d5af428e2ada4fa9b71885eb25fcf95f",
+    "thermoml_xml_md5": "220a69bbb6871033003c7556d2d94206",
+    "archive_extracted_on": "2020-09-29",
+    "retrieved_on": "2026-10-22",
+    "title": "Vapor-Liquid Equilibrium (VLE) Properties for the Binary Systems Propane (1) + n-Butane (2) and Propane (1) + Isobutane (3)",
+    "authors": [
+      "Kayukawa, Y.[Yohei]",
+      "Fujii, K.",
+      "Higashi, Y.[Yukihiro]"
+    ],
+    "selected_datasets": [
+      1,
+      2
+    ],
+    "license": "NIST ThermoML/Data Archive mds2-2422 metadata: https://www.nist.gov/open/license",
+    "transform": "Selected numerical datasets only; kPa to Pa; retain point IDs and compiler-expanded uncertainties; no abstract or article text copied."
+  },
+  "j.jct.2004.07.017": {
+    "doi": "10.1016/j.jct.2004.07.017",
+    "url": "https://trc.nist.gov/ThermoML/10.1016/j.jct.2004.07.017.json",
+    "sha256": "322495c5a01c003e83376e5bad544c3abced330d5054ff0411a7a00b70a963c9",
+    "thermoml_xml_md5": "2a4c230201baf295f61cf3f4e200275c",
+    "archive_extracted_on": "2020-09-29",
+    "retrieved_on": "2026-10-22",
+    "title": "Measurement of the (p,.rho.,T) relation of propane, propylene, n-butane, and isobutane in the temperature range from (95 to 340) K at pressures up to 12 MPa using an accurate two-sinker densimeter",
+    "authors": [
+      "Glos, S.[Stefan]",
+      "Kleinrahm, R.[Reiner]",
+      "Wagner, W.[Wolfgang]"
+    ],
+    "selected_datasets": [
+      11,
+      13,
+      14
+    ],
+    "license": "NIST ThermoML/Data Archive mds2-2422 metadata: https://www.nist.gov/open/license",
+    "transform": "Selected numerical datasets only; kPa to Pa; retain point IDs and compiler-expanded uncertainties; no abstract or article text copied."
+  }
+}

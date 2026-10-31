@@ -164,7 +164,7 @@ impl ReadyAppState {
 
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
-                self.platform_host = platform_host;
+                self.replace_background_host(platform_host);
                 self.read_only_project = None;
                 self.modeling_problems
                     .replace_document(self.platform_host.document());
@@ -223,9 +223,7 @@ impl ReadyAppState {
                 let equipment_project = self.equipment.new_project;
                 self.equipment = equipment::EquipmentPageState::default();
                 if equipment_project {
-                    self.equipment_command(
-                        rf_ui::engineering::editor::EquipmentEditorCommand::CreateTask,
-                    );
+                    self.equipment.creating_task = true;
                     self.enter_equipment();
                 }
                 if let Err(error) = self.apply_default_hidden_commands_panel_for_current_window() {
@@ -315,6 +313,7 @@ impl ReadyAppState {
     pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
         match radishflow_studio::read_studio_project(&project_path) {
             Ok(radishflow_studio::StudioProjectOpen::ReadOnly(project)) => {
+                self.background_action(radishflow_studio::StudioBackgroundRunAction::Detach);
                 self.read_only_project = Some(project_read_only::ReadOnlyProjectView {
                     path: project_path,
                     project,
@@ -345,7 +344,7 @@ impl ReadyAppState {
 
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
-                self.platform_host = platform_host;
+                self.replace_background_host(platform_host);
                 self.read_only_project = None;
                 self.modeling_problems
                     .replace_document(self.platform_host.document());
@@ -468,6 +467,11 @@ impl ReadyAppState {
     }
 
     pub(super) fn update(&mut self, ctx: &egui::Context) {
+        self.poll_background_runs(ctx);
+        if self.render_background_exit(ctx) {
+            return;
+        }
+
         if self.render_read_only_project(ctx) {
             return;
         }
@@ -509,7 +513,7 @@ impl ReadyAppState {
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
             self.render_input_action_dialog(ctx);
-            self.render_result_export_dialog(ctx);
+            self.render_export_dialogs(ctx);
             return;
         }
         self.render_top_bar(
@@ -518,11 +522,21 @@ impl ReadyAppState {
             &window,
             &mut hovered_drop_target,
         );
+        self.render_background_activity(ctx);
+        if self.background_run_details_open
+            && matches!(
+                self.screen,
+                StudioShellScreen::Equipment | StudioShellScreen::Property
+            )
+        {
+            self.render_bottom_drawer(ctx, &window);
+        }
         if self.screen == StudioShellScreen::Equipment {
             self.render_equipment_page(ctx);
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
             self.render_input_action_dialog(ctx);
+            self.render_export_dialogs(ctx);
             return;
         }
         if self.screen == StudioShellScreen::Property {
@@ -533,7 +547,7 @@ impl ReadyAppState {
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
             self.render_input_action_dialog(ctx);
-            self.render_result_export_dialog(ctx);
+            self.render_export_dialogs(ctx);
             return;
         }
         self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
@@ -547,7 +561,7 @@ impl ReadyAppState {
         self.render_pending_close_window_dialog(ctx);
         self.render_unit_deletion_dialog(ctx);
         self.render_input_action_dialog(ctx);
-        self.render_result_export_dialog(ctx);
+        self.render_export_dialogs(ctx);
         self.finish_drop_preview_cycle(
             ctx,
             window.layout_state.scope.window_id,
@@ -568,7 +582,7 @@ impl ReadyAppState {
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
             self.render_input_action_dialog(ctx);
-            self.render_result_export_dialog(ctx);
+            self.render_export_dialogs(ctx);
             return;
         }
 
@@ -578,11 +592,21 @@ impl ReadyAppState {
             &window,
             &mut hovered_drop_target,
         );
+        self.render_background_activity(ctx);
+        if self.background_run_details_open
+            && matches!(
+                self.screen,
+                StudioShellScreen::Equipment | StudioShellScreen::Property
+            )
+        {
+            self.render_bottom_drawer(ctx, &window);
+        }
         if self.screen == StudioShellScreen::Equipment {
             self.render_equipment_page(ctx);
             self.render_command_palette(ctx, &window.commands);
             self.render_pending_close_window_dialog(ctx);
             self.render_input_action_dialog(ctx);
+            self.render_export_dialogs(ctx);
             return;
         }
         if self.screen == StudioShellScreen::Property {
@@ -592,7 +616,7 @@ impl ReadyAppState {
             self.render_pending_close_window_dialog(ctx);
             self.render_unit_deletion_dialog(ctx);
             self.render_input_action_dialog(ctx);
-            self.render_result_export_dialog(ctx);
+            self.render_export_dialogs(ctx);
             return;
         }
         self.render_left_sidebar(ctx, &window, &mut hovered_drop_target);
@@ -605,7 +629,7 @@ impl ReadyAppState {
         self.render_pending_close_window_dialog(ctx);
         self.render_unit_deletion_dialog(ctx);
         self.render_input_action_dialog(ctx);
-        self.render_result_export_dialog(ctx);
+        self.render_export_dialogs(ctx);
     }
 
     pub(super) fn dispatch_run_panel_widget(&mut self, event: RunPanelWidgetEvent) {
@@ -630,6 +654,9 @@ impl ReadyAppState {
 
     pub(super) fn dispatch_ui_command(&mut self, command_id: impl Into<String>) {
         let command_id = command_id.into();
+        if self.dispatch_background_cancel_command(&command_id) {
+            return;
+        }
         if self.intercept_recommendation_command(&command_id) {
             return;
         }
@@ -1017,6 +1044,7 @@ impl ReadyAppState {
         &mut self,
         event: StudioGuiEvent,
     ) -> RfResult<StudioGuiPlatformExecutedDispatch> {
+        self.check_project_event_access(&event)?;
         let result = self
             .platform_host
             .dispatch_event_and_execute_platform_timer(event, &mut self.platform_timer_executor);

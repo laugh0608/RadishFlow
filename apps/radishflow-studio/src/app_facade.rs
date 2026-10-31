@@ -77,6 +77,7 @@ pub enum StudioAppExecutionLane {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioAppExecutionBoundary {
     Inline(StudioAppExecutionLane),
+    Background(StudioAppExecutionLane),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -111,6 +112,7 @@ impl<'a> StudioAppMutableAuthCacheContext<'a> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioWorkspaceRunDispatch {
+    pub formal_receipt: Option<Box<crate::run_actions::StudioRunReply>>,
     pub package_id: Option<String>,
     pub outcome: StudioWorkspaceRunOutcome,
     pub simulation_mode: SimulationMode,
@@ -155,6 +157,7 @@ pub struct StudioWorkspaceRunFailed {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StudioWorkspaceRunOutcome {
     Started(StudioSolveRequest),
+    Background(crate::StudioRunSubmission),
     Skipped(WorkspaceSolveSkipReason),
     Blocked(StudioWorkspaceRunBlocked),
     Failed(StudioWorkspaceRunFailed),
@@ -187,9 +190,22 @@ pub struct StudioAppCommandOutcome {
 #[derive(Debug, Clone, Default)]
 pub struct StudioAppFacade {
     solve_service: WorkspaceSolveService,
+    pub(crate) background: Option<crate::studio_run_owner::BackgroundRunSession>,
 }
 
 impl StudioAppFacade {
+    fn execution_boundary(&self, command: &StudioAppCommand) -> StudioAppExecutionBoundary {
+        if self.background.is_some()
+            && matches!(
+                command,
+                StudioAppCommand::RunWorkspace(_) | StudioAppCommand::ResumeWorkspace(_)
+            )
+        {
+            StudioAppExecutionBoundary::Background(StudioAppExecutionLane::WorkspaceSolve)
+        } else {
+            command.execution_boundary()
+        }
+    }
     pub fn new() -> Self {
         Self::default()
     }
@@ -200,7 +216,7 @@ impl StudioAppFacade {
         context: &StudioAppAuthCacheContext<'_>,
         command: &StudioAppCommand,
     ) -> RfResult<StudioAppCommandOutcome> {
-        let boundary = command.execution_boundary();
+        let boundary = self.execution_boundary(command);
         let dispatch = match command {
             StudioAppCommand::RunWorkspace(run_command) => StudioAppResultDispatch::WorkspaceRun(
                 self.run_workspace_from_auth_cache(app_state, context, run_command)?,
@@ -234,7 +250,7 @@ impl StudioAppFacade {
     where
         Client: crate::RadishFlowControlPlaneClient,
     {
-        let boundary = command.execution_boundary();
+        let boundary = self.execution_boundary(command);
         let dispatch = match command {
             StudioAppCommand::RunWorkspace(run_command) => {
                 let readonly_context =
@@ -286,41 +302,59 @@ impl StudioAppFacade {
         context: &StudioAppAuthCacheContext<'_>,
         command: &WorkspaceRunCommand,
     ) -> RfResult<StudioWorkspaceRunDispatch> {
-        if let Some(blocked) = workspace_pending_inspector_draft_block(app_state) {
-            let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
-            record_workspace_run_outcome(app_state, &outcome);
-            return Ok(map_workspace_run_dispatch(app_state, None, outcome));
-        }
-
-        if let Some(skip_reason) = self.solve_service.skip_reason(app_state, command.trigger) {
-            let outcome = StudioWorkspaceRunOutcome::Skipped(skip_reason);
-            record_workspace_run_outcome(app_state, &outcome);
-            return Ok(map_workspace_run_dispatch(app_state, None, outcome));
-        }
-
-        let package_id = match resolve_workspace_run_package_id(
+        let previous = crate::run_actions::flow_execution_id(app_state);
+        let mut dispatch = self.run_workspace_legacy(app_state, context, command)?;
+        dispatch.formal_receipt = Some(Box::new(crate::run_actions::normalize_flow_dispatch(
             app_state,
-            context.auth_cache_index,
-            &command.package,
-        ) {
-            Ok(package_id) => package_id,
-            Err(error) => {
-                let blocked = map_workspace_run_blocked(&error);
-                let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
+            previous,
+            dispatch.clone(),
+        )));
+        Ok(dispatch)
+    }
+
+    fn run_workspace_legacy(
+        &self,
+        app_state: &mut AppState,
+        context: &StudioAppAuthCacheContext<'_>,
+        command: &WorkspaceRunCommand,
+    ) -> RfResult<StudioWorkspaceRunDispatch> {
+        if let Some(background) = &self.background {
+            let submission = background.owner.borrow_mut().submit_flow(
+                app_state,
+                background.root.clone(),
+                context.auth_cache_index,
+                command,
+                std::time::SystemTime::now(),
+            )?;
+            let outcome = match submission {
+                crate::StudioRunSubmission::Flow(crate::WorkspaceRunSubmission::Blocked(
+                    crate::WorkspaceRunBlock::Preflight(blocked),
+                )) => StudioWorkspaceRunOutcome::Blocked(blocked),
+                crate::StudioRunSubmission::Flow(crate::WorkspaceRunSubmission::Skipped(
+                    reason,
+                )) => StudioWorkspaceRunOutcome::Skipped(reason),
+                submission => StudioWorkspaceRunOutcome::Background(submission),
+            };
+            record_workspace_run_outcome(app_state, &outcome);
+            return Ok(map_workspace_run_dispatch(app_state, None, outcome));
+        }
+        let package_id = match preflight_workspace_run(app_state, context.auth_cache_index, command)
+        {
+            WorkspaceRunPreflight::Ready(package_id) => package_id,
+            WorkspaceRunPreflight::Skipped(reason) => {
+                let outcome = StudioWorkspaceRunOutcome::Skipped(reason);
                 record_workspace_run_outcome(app_state, &outcome);
                 return Ok(map_workspace_run_dispatch(app_state, None, outcome));
             }
+            WorkspaceRunPreflight::Blocked {
+                package_id,
+                blocked,
+            } => {
+                let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
+                record_workspace_run_outcome(app_state, &outcome);
+                return Ok(map_workspace_run_dispatch(app_state, package_id, outcome));
+            }
         };
-
-        if let Some(blocked) = workspace_modeling_readiness_block(app_state) {
-            let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
-            record_workspace_run_outcome(app_state, &outcome);
-            return Ok(map_workspace_run_dispatch(
-                app_state,
-                Some(package_id),
-                outcome,
-            ));
-        }
 
         match self.solve_service.dispatch_from_auth_cache(
             app_state,
@@ -387,6 +421,17 @@ impl StudioAppFacade {
             ));
         }
 
+        if let Some(background) = &self.background
+            && let Some(activity) = background.owner.borrow().activity()
+        {
+            return Ok(map_workspace_run_dispatch(
+                app_state,
+                Some(package_id),
+                StudioWorkspaceRunOutcome::Background(crate::StudioRunSubmission::Busy(
+                    activity.id,
+                )),
+            ));
+        }
         app_state.set_simulation_mode(SimulationMode::Active);
         app_state.push_log(AppLogLevel::Info, "Activated workspace simulation mode");
 
@@ -414,9 +459,52 @@ impl StudioAppFacade {
     }
 }
 
+pub(crate) enum WorkspaceRunPreflight {
+    Ready(String),
+    Skipped(WorkspaceSolveSkipReason),
+    Blocked {
+        package_id: Option<String>,
+        blocked: StudioWorkspaceRunBlocked,
+    },
+}
+
+/// Shared read-only gates for synchronous and background submission. Logging
+/// and result publication remain the responsibility of their respective owner.
+pub(crate) fn preflight_workspace_run(
+    app: &AppState,
+    index: &StoredAuthCacheIndex,
+    command: &WorkspaceRunCommand,
+) -> WorkspaceRunPreflight {
+    if let Some(blocked) = workspace_pending_inspector_draft_block(app) {
+        return WorkspaceRunPreflight::Blocked {
+            package_id: None,
+            blocked,
+        };
+    }
+    if let Some(reason) = WorkspaceSolveService::new().skip_reason(app, command.trigger) {
+        return WorkspaceRunPreflight::Skipped(reason);
+    }
+    let package_id = match resolve_workspace_run_package_id(app, index, &command.package) {
+        Ok(id) => id,
+        Err(error) => {
+            return WorkspaceRunPreflight::Blocked {
+                package_id: None,
+                blocked: map_workspace_run_blocked(&error),
+            };
+        }
+    };
+    if let Some(blocked) = workspace_modeling_readiness_block(app) {
+        return WorkspaceRunPreflight::Blocked {
+            package_id: Some(package_id),
+            blocked,
+        };
+    }
+    WorkspaceRunPreflight::Ready(package_id)
+}
+
 fn record_workspace_run_outcome(app_state: &mut AppState, outcome: &StudioWorkspaceRunOutcome) {
     match outcome {
-        StudioWorkspaceRunOutcome::Started(_) => {}
+        StudioWorkspaceRunOutcome::Started(_) | StudioWorkspaceRunOutcome::Background(_) => {}
         StudioWorkspaceRunOutcome::Skipped(reason) => {
             push_log_if_needed(
                 app_state,
@@ -652,6 +740,7 @@ fn map_workspace_run_dispatch(
     outcome: StudioWorkspaceRunOutcome,
 ) -> StudioWorkspaceRunDispatch {
     StudioWorkspaceRunDispatch {
+        formal_receipt: None,
         package_id,
         outcome,
         simulation_mode: app_state.workspace.solve_session.mode,

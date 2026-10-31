@@ -198,6 +198,13 @@ pub struct StudioAppWindowHostManager {
 }
 
 impl StudioAppWindowHostManager {
+    pub fn background_run_action(
+        &mut self,
+        action: crate::StudioBackgroundRunAction,
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
+        self.session.background_run_action(action)
+    }
+
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
         Ok(Self {
             session: StudioWindowSession::new(config)?,

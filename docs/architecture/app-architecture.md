@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-10-15
+更新时间：2026-10-26
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -52,11 +52,12 @@
 - 将 `rf-ui`、`rf-canvas`、`rf-store`、`rf-solver` 能力组装成桌面应用
 - 负责 `AuthSessionState` / `EntitlementState` 与 `StoredAuthCacheIndex` 之间的桥接与同步
 - 负责控制面 `entitlement` / `manifest` / `lease` / `offline refresh` 的协议映射、下载租约与本地缓存落盘编排
-- 负责从 `PropertyPackageProvider` 或本地 auth cache 组装最小真实求解链路，并把 `rf-solver::SolveSnapshot` 回写到 `rf-ui::AppState`
+- [AF3](../topics/runtime-messages/run-control-and-watch-conditions.md)已接 GUI 流程 / 设备后台、精确取消、守卫接收与退出收尾；兼容入口仍同步。
+- AF4a / AF5a 的 `rf-ui::project_query` 只读发现工程对象；流程 / 设备分别检查结果资格，执行来源随结果保留，见[查询契约](../topics/variable-and-object-browser.md#af4a-工程发现与上下文契约2026-10-24)。
 - 负责把 Studio shell 入口组织为可复现的 MVP α / β 工作流：默认显示 Home，普通空白项目先进入独立 `物性` 页，小案例作者入口可从空白项目直接进入左侧 `模块` 清单，进入 case 后暴露主路径命令
 - 负责让 `流程图` / `运行` 上下文工具栏、Run Panel `Resume`、`F5 / Shift+F5`、AppHost、StudioGuiDriver、StudioGuiHost command registry 等正式运行入口复用同一层建模输入 readiness；shell 只负责 notice、focus 和用户反馈，不在各入口复制另一套输入判断
 - 负责在 GUI shell 层提供用户操作与求解审计输出；默认 stderr 日志只作为开发态 smoke 和诊断入口，不替代未来正式审计 / telemetry 设计
-- 负责遵守 `eframe` / `winit` 事件循环约束：Windows 事件循环在主线程创建；干净最后窗口 close 不得被 `CancelClose` 拦截，关闭前清理逻辑窗口并停止当帧 fallback 布局；脏工作区 close 必须先确认保存 / 舍弃 / 取消
+- 负责遵守 `eframe` / `winit` 事件循环约束：Windows 事件循环在主线程创建；干净且无在途任务的最后窗口 close 不得被 `CancelClose` 拦截，关闭前清理逻辑窗口并停止当帧 fallback 布局；脏工作区 close 必须先确认保存 / 舍弃 / 取消
 - 负责桌面窗口渲染后端选择：macOS 开发态使用 `eframe/wgpu` + Metal backend；裸二进制系统日志后续由 `.app` bundle / `Info.plist` / 签名打包流程治理
 
 不应承担：
@@ -86,7 +87,7 @@ Studio 首页、工作台分区、运行后结果视图和项目切换确认流�
 
 ### 独立设备编辑边界
 
-`WorkspaceState.engineering` 持有正式输入、设备历史和候选资格；`equipment_editor` 持有版本化草稿与确认状态。设备命令经 bootstrap 派发至 `rf-ui::engineering::editor`，与流程历史分离；保存不应用草稿，文本框本地撤销不进入设备历史。shell 仅保留页签、返回字段和焦点，结果消费设备资格，不显示流程运行状态。详见 [设备 UI](../topics/equipment/separator-sizing-and-rating.md#独立单工况设备-ui2026-10-15)。
+`WorkspaceState.engineering` 持有正式输入、设备历史及逐行结果资格，`equipment_editor` 持有各目标草稿与确认；命令经 bootstrap 进入应用层，与流程历史分离。保存不应用草稿，文本撤销不进入设备历史。shell 管理选择、焦点 / 滚动及不可变输出捕获：单行只检查自身依赖，矩阵检查全体成员、执行、草稿和项目单位，写前重验；非 Current 行保留状态而不输出旧数值。F5 只校核所选行，切行不提交草稿。C1 预览 / 确认复用编辑器原子事务，固定证据展示与输出已接通。设备计算不依赖流程 Run，重开结果 Missing。详见 [工程基础](../topics/engineering-basis-and-cases.md)与[分离器输出](../topics/equipment/separator-sizing-and-rating.md)。
 
 ### Studio Main Presentation 边界
 
@@ -698,28 +699,12 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 
 截至 2026-04-02，`apps/radishflow-studio` 已经实现最小应用层求解桥接，并通过单元测试与仓库级验证覆盖。
 
-当前已落地入口：
-
-- `StudioAppFacade::{execute_with_auth_cache, run_workspace_from_auth_cache}`
-- `StudioAppFacade::{resume_workspace_from_auth_cache, set_workspace_simulation_mode}`
-- `WorkspaceControlAction::{RunManual, Resume, SetMode}`
-- `snapshot_workspace_control_state(...)`
-- `dispatch_workspace_control_action_with_auth_cache(...)`
-- `WorkspaceRunCommand::{manual, automatic_preferred}`
-- `RunPanelIntent::{run_manual, resume, set_mode}`
-- `dispatch_workspace_run_from_auth_cache(...)`
-- `WorkspaceSolveService::{build_request, run_with_property_package, run_from_auth_cache}`
-- `WorkspaceSolveService::{dispatch_with_property_package, dispatch_from_auth_cache}`
-- `solve_workspace_with_property_package(...)`
-- `solve_workspace_from_auth_cache(...)`
-- `next_solver_snapshot_sequence(...)`
-- `run_studio_bootstrap(...)`
-- `src/main.rs` 当前最小 bootstrap 运行入口
+当前入口按职责分为 `StudioAppFacade` 运行 / 模式控制、`workspace_control` 与 `RunPanelIntent` 命令适配、`WorkspaceSolveService` 请求 / 物性装配及 `solve_workspace_*` 执行。GUI 后台拥有者和兼容同步调用的边界见下文；启动装配由 `run_studio_bootstrap` 承担。
 
 当前桥接行为：
 
 - 以 `AppState.workspace.document` 作为当前求解输入
-- 由 `StudioAppFacade` 作为当前明确的桌面应用命令入口，统一承接 auth cache 上下文、运行命令执行、结果派发摘要和后续异步执行边界占位
+- `StudioAppFacade` 承接运行；流程入口装配 auth cache，独立设备通过 `execute_equipment_run_action` 只消费工程工作区，不构造虚拟流程缓存。`run_actions` 区分受理、拒绝、启动失败、执行终态和接收，运行身份不序列化
 - `StudioAppCommand` 当前已显式区分 `RunWorkspace`、`ResumeWorkspace` 和 `SetWorkspaceSimulationMode` 三类应用命令，便于后续 UI 直接绑定运行控制动作
 - `workspace_control` 模块当前已把这三类应用命令进一步收口为更接近运行栏/状态栏的 `WorkspaceControlAction`
 - 由 `WorkspaceRunCommand` 承接“触发类型 + package 选择”这一层更接近 UI 的运行请求
@@ -728,9 +713,8 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - 由 `WorkspaceSolveService` 负责生成默认 `snapshot_id` / `sequence`
 - `WorkspaceSolveService` 明确区分 `Manual` / `Automatic` 触发，并把 `SimulationMode` 与 `pending_reason` 的运行门控收口在应用层
 - `ResumeWorkspace` 当前会先复用同一层 package / readiness preflight；如果建模输入未就绪则保持 `Hold` / pending 状态并返回 modeling notice，只有 preflight 通过后才切到 `Active` 并按 Automatic 语义发起运行
-- 先把 `SolveSessionState` 推进到 `Checking -> Runnable -> Solving`
-- 通过 `PropertyPackageProvider` 或 `CachedPropertyPackageProvider` 加载 `ThermoSystem`
-- 组装 `PlaceholderThermoProvider + PlaceholderTpFlashSolver + SequentialModularSolver`
+- 通过 `rf-property-package` 的内存或缓存 provider 按需装载指定包，调用 `prepare_local_context` 冻结本地服务；缓存准备失败仍不改变旧运行状态
+- 把 `SolveSessionState` 推进到 `Checking -> Runnable -> Solving`，借用上下文物性 / TP Flash 服务供 `SequentialModularSolver` 使用；包不可用沿用旧 workspace 诊断，内部日志保留具体原因
 - 成功时调用 `AppState::store_solver_snapshot(...)`，把求解结果映射为 UI 层 `SolveSnapshot`
 - 失败时调用 `record_failure(...)` 并追加 `AppLogFeed` 错误日志
 - Automatic 命中 `HoldMode` / `NoPendingRequest` 的 skip 当前也会写入 `AppLogFeed`
@@ -743,7 +727,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 
 当前已落地与仍待细化的边界：
 
-- 手动运行已经进入真实 GUI 工作台主路径：`流程图` / `运行` 上下文工具栏中的 `运行当前流程` 派发 `run_panel.run_manual`，并通过 command registry 的 availability / disabled reason 控制按钮状态。`StudioAppFacade`、`WorkspaceControlAction`、`WorkspaceControlState`、`RunPanelWidgetModel` 与 `run_panel_driver` 构成稳定链路；后台调度、取消、自动运行与 `Hold -> Active` 恢复仍留给后续 GUI 交互细化。
+- GUI 的 `运行当前流程` / F5 经 command registry 与 Facade 提交给 AF3 后台拥有者；控制模型描述可用性，拥有者负责取消、接收和自动最新输入，兼容调用保留同步返回。
 - Studio app-host GUI 动作入口统一为 `StudioAppHostController::dispatch_ui_command(command_id)`。run panel command registry 首批稳定命令为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；菜单、快捷键、命令面板、palette 和 runtime 小型 action button 都应复用这条派发链。
 - Canvas 编辑复用 command surface；移动只写 sidecar，连接 / 删除进入工程历史。删除、历史和修复的显式放弃经 `StudioConfirmedInputAction` / `InputEditCheckpoint` 重验，事务成功才发布，对象删除保留范围外草稿，见 [离开保护](../topics/units/input-drafts-and-interactions.md#i4-统一离开确认与失败保护)。公开变量写入门禁不变。
 - 结果审阅、错误定位和诊断目标都必须复用 `StudioGuiWindowDiagnosticTargetActionModel`、`inspector.focus_stream:*`、`inspector.focus_unit:*` 或既有 focus action。`selected_stream / comparison_stream / selected_unit` 只是 shell-local selector state，不缓存第二份结果；comparison 复位不代表结果语义变化。
@@ -755,6 +739,8 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - `studio_gui_shell` 已通过 shell 级等价回归锁定 run panel、canvas suggestion、layout nudge、选中流股恢复和 disabled gate 在菜单、工具栏、命令面板、Canvas / Inspector 入口之间的共享派发语义；后续提示应停留在 presentation 层，不越过 disabled gate 改状态。
 - 数值焦点消费会话历史，其他文本沿用控件历史，非文本走工程历史；菜单 / IME 优先，确认状态阻断工程快捷键，见 [U2](../topics/units/input-drafts-and-interactions.md)。按键使用事件自身修饰键；`Primary` 与物理 `Ctrl` 分开，绑定及标签同源，平台键位和历史证据见 [B1-4](../topics/flowsheet-modeling-and-solve.md#b1-4平台快捷键展示与文档重做)。
 - Studio 源码按领域职责组织浅层模块；新增实现并入同域目录，避免继续扩大入口文件。
+
+AF4c 的 headless v3 在 GUI 初始化前消费同一动作与查询，保持磁盘只读；协议与重放确认见 [CLI 参考](../reference/headless-cli.md)。
 
 ## 结果快照模型
 
@@ -774,6 +760,8 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - `SolveSnapshot` 表示“某个文档版本的一次求解结果”
 - `WorkspaceState.snapshot_history` 表示“当前工作区保留的不可变结果窗口”
 - `SolveSessionState.latest_snapshot` 只是指向当前结果入口的引用
+
+AF5b 从领域查询投影当前结果与冻结来源，动作 / 输出使用时重验会话及执行身份；设备独立校验工况，历史依据不冒充当前值。见[结果参考](../reference/solve-snapshot-results.md#当前资格来源与动作守卫)。
 
 这种分离有几个直接好处：
 
@@ -848,7 +836,7 @@ App 不应直接操作底层求解细节，而应通过稳定的数据结构与�
 - `apps/radishflow-studio` 作为组合根承接两者之间的桥接，不让 `rf-ui` 直接依赖 `rf-store`
 - 项目文件继续采用用户选择路径下的单文件 `*.rfproj.json`，授权缓存与包缓存继续放在应用私有缓存根目录，不混回项目目录
 - 授权缓存索引只记录相对缓存路径和安全凭据引用，不把绝对路径和 token 明文写回项目文件
-- `rf-thermo` 只通过稳定接口读取已授权物性包，不自行触发 OIDC 流程
+- `rf-property-package` 装载受检包；`rf-thermo` 只消费已解析数据，不处理授权或 IO
 
 ## 当前阶段不急着做的 UI 能力
 
@@ -861,19 +849,19 @@ App 不应直接操作底层求解细节，而应通过稳定的数据结构与�
 
 这些内容未来可能需要，但当前阶段会分散地基建设注意力。
 
-## 维护性与同步执行现状
+## 维护性与执行边界
 
-`WorkspaceSolveService` 同步调用求解桥接并回写 AppState，GUI dispatch 沿 host / driver 同步执行。运行状态和 timer 不代表已有后台、取消或并行能力；GUI 帧耗时、复杂流程延迟及快照内存尚未测量。
+桌面 Shell 安装共享 `StudioRunOwner`，沿原 host / driver 转发提交、轮询和精确取消；流程 / 设备共用一个 worker 配额。切换工程保留拥有者，最后窗口待回收才关闭。未安装后台会话的 Facade、headless / FFI 保持同步；复杂流程时延与快照内存未测量。
 
-若以后获准处理复杂度，应按用户行为追踪命令链，保留承担独立状态、平台隔离和共享契约的层，评估纯转发与重复投影。大型文件按项目生命周期、建模命令、结果审阅或平台 IO 等职责划分，测试按行为和失败模式组织，不为缩短文件机械切片。现有 snapshot-backed undo 与结果快照在更大负载下的成本也应先测量。
+实现时按用户行为追踪命令链，保留独立状态、平台隔离和共享契约，评估纯转发与重复投影。大文件按领域职责拆分，测试按行为组织；undo 与结果快照的大负载成本先测量。
 
-运行控制按 [N3](../topics/runtime-messages-and-diagnostics.md) 审定；N0 / N1 先统一诊断，当前同步执行不变。
+后续按 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 衔接 N 轨道。
 
-## 未排期事项
+## 其他待细化事项
 
-以下问题保留为历史待评估项，不授权启动实现：
+优先级归 AF 与当前状态；以下契约在对应实施切片细化：
 
 - 保存失败恢复、跨平台文件选择与偏好范围见 [项目生命周期专题](../topics/project-lifecycle-storage.md)。
-- Inspector 多字段提交与草稿继续复用正式命令，不在 shell 建立另一份输入状态。
-- `AppLogFeed` 的脚本导出用途、真实授权刷新 UI 和后台求解仍需在实际需求进入范围时确认。
+- Inspector 多字段 / 数值提交沿正式输入事务；设备 `EquipmentAction` 与 GUI 草稿 Apply 共用提交和影响确认，程序写入拒绝相关草稿。
+- `AppLogFeed` 脚本导出和真实授权刷新 UI 仍待细化。
 - 画布视图与 suggestion 的目标契约见 [Canvas 交互边界](canvas-interaction-contract.md)，当前不扩展复杂 Dock、多文档或运行时插件化 UI。

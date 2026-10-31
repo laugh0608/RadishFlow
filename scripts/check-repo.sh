@@ -4,7 +4,8 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "${script_dir}/.." && pwd)"
 
-args=(run --locked --quiet -p xtask -- check-repo)
+# Keep the running tool separate from binaries rebuilt by workspace tests on Windows.
+args=(run --locked --quiet --target-dir target/xtask -p xtask -- check-repo)
 
 while (($# > 0)); do
   case "$1" in

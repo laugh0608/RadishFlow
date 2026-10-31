@@ -1,6 +1,7 @@
 mod app_facade;
 mod auth_cache_sync;
 mod bootstrap;
+mod builtin_property_package_data;
 mod confirmed_input_action;
 mod control_plane_client;
 mod control_plane_sync;
@@ -14,14 +15,22 @@ mod entitlement_session_driver;
 mod entitlement_session_host;
 mod entitlement_session_host_presentation;
 mod entitlement_session_host_runtime;
+pub mod flow_actions;
 pub mod headless;
 mod inspector_draft_driver;
 mod inspector_target_driver;
 pub mod modeling_actions;
 pub mod modeling_recommendations;
 pub mod modeling_specifications;
+mod property_package_cache_root;
 mod property_package_download;
 mod property_package_download_client;
+mod result_review;
+pub mod run_actions;
+pub use result_review::{
+    EquipmentResultGuard, FlowResultGuard, FlowResultReview, equipment_origin_lines,
+    flow_origin_lines,
+};
 mod run_panel_driver;
 mod solver_bridge;
 mod studio_app_host;
@@ -46,6 +55,7 @@ mod studio_local_rules;
 mod studio_modeling_readiness;
 mod studio_project_component_selection;
 mod studio_property_package_selection;
+mod studio_run_owner;
 mod studio_runtime;
 mod studio_stream_reconnect_presentation;
 mod studio_window_host;
@@ -56,6 +66,11 @@ mod studio_window_timer_driver;
 pub mod test_support;
 mod workspace_control;
 mod workspace_run_command;
+mod workspace_run_owner;
+pub use studio_run_owner::{
+    SharedStudioRunOwner, StudioBackgroundRunAction, StudioBackgroundRunReply, StudioRunActivity,
+    StudioRunId, StudioRunOutcome, StudioRunOwner, StudioRunSubmission, StudioRunSummary,
+};
 mod workspace_solve_service;
 
 pub use app_facade::{
@@ -89,9 +104,10 @@ pub use document_history_driver::{
 };
 pub use document_lifecycle_driver::{
     DocumentLifecycleOutcome, FILE_SAVE_AS_COMMAND_ID, FILE_SAVE_COMMAND_ID,
-    StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand, StudioProjectOpen,
-    dispatch_document_lifecycle, load_project_app_state, project_save_requires_upgrade,
-    project_save_version, read_studio_project,
+    ProjectSaveCompatibility, StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand,
+    StudioProjectOpen, dispatch_document_lifecycle, load_project_app_state,
+    project_save_compatibility, project_save_requires_upgrade, project_save_version,
+    read_studio_project,
 };
 pub use entitlement_control::{
     StudioEntitlementAction, StudioEntitlementActionOutcome, StudioEntitlementFailure,
@@ -183,7 +199,9 @@ pub use run_panel_driver::{
     dispatch_run_panel_widget_action_with_auth_cache, snapshot_run_panel_driver_state,
 };
 pub use solver_bridge::{
-    StudioSolveRequest, next_solver_snapshot_sequence, solve_workspace_from_auth_cache,
+    CompletedWorkspaceSolve, PreparedWorkspaceSolve, StudioSolveRequest, WorkspaceExecutionOutcome,
+    WorkspaceSolveProgress, complete_workspace_solve, next_solver_snapshot_sequence,
+    prepare_workspace_solve, solve_workspace_from_auth_cache,
     solve_workspace_with_property_package,
 };
 pub use studio_app_host::{
@@ -428,4 +446,12 @@ pub use workspace_run_command::{
 pub use workspace_solve_service::{
     WorkspaceSolveDispatch, WorkspaceSolveService, WorkspaceSolveSkipReason, WorkspaceSolveTrigger,
     build_workspace_solve_request,
+};
+
+pub use property_package_cache_root::PropertyPackageCacheRoot;
+
+pub use workspace_run_owner::{
+    RunAuthorizationRefusal, WorkspaceRunBlock, WorkspaceRunCancelReason, WorkspaceRunCancelReply,
+    WorkspaceRunOwner, WorkspaceRunPhase, WorkspaceRunProgress, WorkspaceRunState,
+    WorkspaceRunSubmission, WorkspaceRunSummary,
 };

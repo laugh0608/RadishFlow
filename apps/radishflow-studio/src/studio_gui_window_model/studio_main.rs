@@ -139,6 +139,7 @@ pub enum StudioGuiWindowModuleResultsState {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowModuleResultsModel {
+    pub result_review: crate::FlowResultReview,
     pub title: &'static str,
     pub state: StudioGuiWindowModuleResultsState,
     pub state_label: &'static str,
@@ -351,15 +352,20 @@ impl StudioGuiWindowModuleSettingsModel {
 
 impl StudioGuiWindowModuleResultsModel {
     pub fn from_runtime(runtime: &StudioGuiWindowRuntimeAreaModel) -> Self {
-        let Some(selected_unit) = active_unit_target(runtime) else {
+        let Some(mut selected_unit) = active_unit_target(runtime) else {
             return module_results_empty(
+                runtime,
                 StudioGuiWindowModuleResultsState::NoUnitSelected,
                 "No unit is selected for module results.",
             );
         };
 
+        selected_unit.action = selected_unit
+            .action
+            .with_result_guard(runtime.result_review.guard.as_ref());
         if let Some(stale_snapshot) = runtime.stale_solve_snapshot.as_ref() {
             return StudioGuiWindowModuleResultsModel {
+                result_review: runtime.result_review.clone(),
                 title: "Module Results",
                 state: StudioGuiWindowModuleResultsState::Stale,
                 state_label: module_results_state_label(StudioGuiWindowModuleResultsState::Stale),
@@ -378,6 +384,7 @@ impl StudioGuiWindowModuleResultsModel {
 
         let Some(snapshot) = runtime.latest_solve_snapshot.as_ref() else {
             return StudioGuiWindowModuleResultsModel {
+                result_review: runtime.result_review.clone(),
                 title: "Module Results",
                 state: StudioGuiWindowModuleResultsState::NoCurrentResult,
                 state_label: module_results_state_label(
@@ -413,6 +420,7 @@ impl StudioGuiWindowModuleResultsModel {
 
         let Some(selected_unit_result) = selected_unit_result else {
             return StudioGuiWindowModuleResultsModel {
+                result_review: runtime.result_review.clone(),
                 title: "Module Results",
                 state: StudioGuiWindowModuleResultsState::NoUnitResult,
                 state_label: module_results_state_label(
@@ -435,6 +443,7 @@ impl StudioGuiWindowModuleResultsModel {
         };
 
         StudioGuiWindowModuleResultsModel {
+            result_review: runtime.result_review.clone(),
             title: "Module Results",
             state: StudioGuiWindowModuleResultsState::Current,
             state_label: module_results_state_label(StudioGuiWindowModuleResultsState::Current),
@@ -697,10 +706,12 @@ fn module_settings_help_detail(unit: &StudioGuiWindowInspectorTargetModel) -> St
 }
 
 fn module_results_empty(
+    runtime: &StudioGuiWindowRuntimeAreaModel,
     state: StudioGuiWindowModuleResultsState,
     detail: &str,
 ) -> StudioGuiWindowModuleResultsModel {
     StudioGuiWindowModuleResultsModel {
+        result_review: runtime.result_review.clone(),
         title: "Module Results",
         state,
         state_label: module_results_state_label(state),

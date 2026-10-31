@@ -22,6 +22,13 @@ use crate::{
 use std::collections::BTreeSet;
 
 impl StudioGuiHost {
+    pub fn background_run_action(
+        &mut self,
+        action: crate::StudioBackgroundRunAction,
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
+        self.controller.background_run_action(action)
+    }
+
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
         let controller = StudioAppHostController::new(config)?;
         let layout_state_overrides = match controller.document_path() {
@@ -177,8 +184,16 @@ impl StudioGuiHost {
         let workspace_document = workspace_document_snapshot_from_controller(&self.controller);
         let control_state = self.controller.workspace_control_state();
         let run_panel = self.controller.run_panel_widget();
-        let latest_solve_snapshot = self.controller.latest_solve_snapshot();
-        let stale_solve_snapshot = self.controller.stale_solve_snapshot();
+        let workspace = &self.controller.app_state().workspace;
+        let result_review = crate::FlowResultReview::capture(workspace);
+        let latest_solve_snapshot = match workspace.flow_result() {
+            rf_ui::result_query::FlowResultView::Current { snapshot, .. } => Some(snapshot.clone()),
+            _ => None,
+        };
+        let stale_solve_snapshot = (result_review.status
+            == rf_ui::result_query::ResultStatus::Stale)
+            .then(|| self.controller.stale_solve_snapshot())
+            .flatten();
         let latest_failure_diagnostic_context = failure_diagnostic_context_from_controller(
             &self.controller,
             &control_state,
@@ -194,6 +209,7 @@ impl StudioGuiHost {
             self.command_registry(),
             self.canvas_state().widget(),
             StudioGuiRuntimeSnapshot {
+                result_review,
                 workspace_document,
                 example_projects: crate::studio_example_project_models(
                     self.controller.document_path(),
@@ -1645,7 +1661,7 @@ fn workspace_document_snapshot_from_controller(
                 crate::StudioGuiProjectComponentChoiceSnapshot {
                     component_id: component.component_id.to_string(),
                     name: component.name.to_string(),
-                    formula: Some(component.formula.to_string()),
+                    formula: component.formula.map(str::to_string),
                     selected,
                     select_command_id: crate::project_component_select_command_id(
                         component.component_id,

@@ -177,6 +177,30 @@ impl StudioShellLocale {
         }
 
         match label {
+            "Run preparing" => Cow::Borrowed("准备运行"),
+            "Already running" => Cow::Borrowed("该任务正在运行"),
+            "Calculation busy" => Cow::Borrowed("计算名额被占用"),
+            "Application closing" => Cow::Borrowed("正在退出"),
+            "Authorization expired" => Cow::Borrowed("运行授权已过期"),
+            "Authorization changed" => Cow::Borrowed("运行授权已变化"),
+            "The calculation was submitted. Results will be available after it finishes." => {
+                Cow::Borrowed("已提交计算，完成后才会更新结果。")
+            }
+            "This task is already running. View its activity or cancel that task." => {
+                Cow::Borrowed("该任务已在运行，可查看进度或取消本次运行。")
+            }
+            "Another task is still running. This request was not queued." => {
+                Cow::Borrowed("另一任务仍占用计算名额，本次请求未排队。")
+            }
+            "New calculations are disabled while waiting for the current task to finish." => {
+                Cow::Borrowed("正在等待当前任务结束，暂不接受新计算。")
+            }
+            "Refresh the offline authorization before starting a calculation." => {
+                Cow::Borrowed("请刷新离线运行授权后再开始计算。")
+            }
+            "The current authorization does not permit this calculation." => {
+                Cow::Borrowed("当前授权不允许执行本次计算。")
+            }
             "Active" => Cow::Borrowed("活动"),
             "Idle" => Cow::Borrowed("空闲"),
             "Flowsheet Context" => Cow::Borrowed("流程图工具栏"),

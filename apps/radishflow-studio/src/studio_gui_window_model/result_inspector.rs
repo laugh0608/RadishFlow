@@ -104,7 +104,7 @@ impl StudioGuiWindowSolveSnapshotModel {
                     .collect()
             })
             .unwrap_or_default();
-        let diagnostic_actions = result_inspector_diagnostic_actions(
+        let mut diagnostic_actions = result_inspector_diagnostic_actions(
             selected_stream_id.as_deref(),
             &related_steps,
             &related_diagnostics,
@@ -120,7 +120,8 @@ impl StudioGuiWindowSolveSnapshotModel {
                     .as_deref()
                     .map(|selected_id| selected_id == stream.stream_id)
                     .unwrap_or(false),
-                focus_action: result_inspector_stream_focus_action(&stream.stream_id),
+                focus_action: result_inspector_stream_focus_action(&stream.stream_id)
+                    .with_result_guard(self.result_guard.as_ref()),
             })
             .collect();
         let comparison_options = self
@@ -140,7 +141,8 @@ impl StudioGuiWindowSolveSnapshotModel {
                     .as_deref()
                     .map(|comparison_id| comparison_id == stream.stream_id)
                     .unwrap_or(false),
-                focus_action: result_inspector_stream_focus_action(&stream.stream_id),
+                focus_action: result_inspector_stream_focus_action(&stream.stream_id)
+                    .with_result_guard(self.result_guard.as_ref()),
             })
             .collect();
 
@@ -233,16 +235,25 @@ impl StudioGuiWindowSolveSnapshotModel {
                         .as_deref()
                         .map(|selected_unit| selected_unit == unit_id)
                         .unwrap_or(false),
-                    focus_action: result_inspector_unit_focus_action(unit_id),
+                    focus_action: result_inspector_unit_focus_action(unit_id)
+                        .with_result_guard(self.result_guard.as_ref()),
                 }
             })
             .collect();
-        let unit_diagnostic_actions = result_inspector_unit_diagnostic_actions(
+        let mut unit_diagnostic_actions = result_inspector_unit_diagnostic_actions(
             selected_unit_id.as_deref(),
             &unit_related_steps,
             &unit_related_diagnostics,
         );
 
+        super::result_navigation::qualify_diagnostics(
+            &mut diagnostic_actions,
+            self.result_guard.as_ref(),
+        );
+        super::result_navigation::qualify_diagnostics(
+            &mut unit_diagnostic_actions,
+            self.result_guard.as_ref(),
+        );
         StudioGuiWindowResultInspectorModel {
             snapshot_id: self.snapshot_id.clone(),
             selected_stream_id,
@@ -472,8 +483,10 @@ fn result_inspector_comparison_model(
     StudioGuiWindowResultInspectorComparisonModel {
         base_stream_id: base.stream_id.clone(),
         compared_stream_id: compared.stream_id.clone(),
-        base_stream_focus_action: result_inspector_stream_focus_action(&base.stream_id),
-        compared_stream_focus_action: result_inspector_stream_focus_action(&compared.stream_id),
+        base_stream_focus_action: result_inspector_stream_focus_action(&base.stream_id)
+            .with_result_guard(base.result_guard.as_ref()),
+        compared_stream_focus_action: result_inspector_stream_focus_action(&compared.stream_id)
+            .with_result_guard(compared.result_guard.as_ref()),
         summary_rows,
         composition_rows: component_ids
             .into_iter()

@@ -1,6 +1,6 @@
 # Agent 协作与执行规则
 
-更新时间：2026-10-11
+更新时间：2026-10-26
 
 用途：承接 `AGENTS.md` / `CLAUDE.md` 不适合在每次任务启动时全量加载的协作细则。
 
@@ -124,12 +124,21 @@
 
 ## 验证与留痕
 
-- 每完成一个可分割步骤先做定向验证，再根据影响面决定是否扩大到 crate、workspace 或仓库级基线。
-- 文档与治理改动至少检查协作文件同步、Markdown 相对链接、文本格式、文档体量和 `git diff --check`。
+- 每完成一个可分割步骤先做定向验证，再根据影响面决定是否扩大到 crate、workspace 或仓库级基线。同一批代码完成正式基线后，只有新代码、失败或未解决风险才扩大或重跑；随后仅修改文档时只补文档检查，不重跑已验证的产品测试。
+- 文档与治理改动至少检查协作文件同步、Markdown 相对链接、文本格式、文档体量和 `git diff --check`。仅修改文档时运行检查器即可；修改 `xtask` 或验证编排时再执行检查器自身测试。
 - Rust 核心、公共模型、求解、存储或项目格式变化应执行相关测试；跨 crate 或阶段收口时回到正式 `check-repo` 入口。
 - `.NET 10` CAPE-OPEN 解决方案、native 装载和 PME smoke 按对应专题在合适环境验证，不用沙盒假阳性或假阴性替代最终结论。
 - 当前正式命令、阶段附加门禁和最近通过记录只在 `docs/status/current.md` 维护，不复制到根入口。
 - 本周重要推进写入 `docs/devlogs/YYYY-MM/YYYY-Www.md`；记录目标、完成情况、关键决策、风险与未完成项、下周建议。
+
+### 验证成本与唯一归属
+
+- 本地 `check-repo` 按治理、文本、格式、严格 Clippy、workspace 测试执行；Clippy 覆盖相同 workspace 的全部 targets，默认入口不再重复执行独立 `cargo check`。保留原默认 feature 与 doc-test 覆盖，不以 `--all-features` 代替不同配置。显式跳过 Clippy 时仍先执行 `cargo check`，但只能报告局部验证。
+- 正式脚本与 CI 的验证入口使用 `cargo run --locked --quiet --target-dir target/xtask -p xtask -- ...` 构建并启动检查工具；子命令仍在原 workspace target 中验证。直接调用 `check-repo` / `validate-workspace` 时也使用该独立目录，避免 Windows 锁定运行中的 `xtask.exe`，导致 workspace 集成测试重建该二进制时失败；不排除 `xtask` 或减少测试覆盖。
+- 入口报告各阶段通过 / 失败及耗时、调用总耗时；计时从 `xtask` 启动开始，不含最外层 Cargo 构建它的时间，也不把缓存下实测当作冷构建或 CI 承诺。中断不形成通过结论。
+- CI 中治理 / 文本 / 格式归 `Repo Hygiene`；各平台通过 `validate-workspace --skip-format` 运行自己的 Clippy 与测试。该命令是明确的组成部分，单独通过不代表完整仓库检查。
+- PR 选择与聚合由 `xtask` 维护。`dev` 按整个 merge-base 差异路由；稳定主线和手动 Release 仍完整验证。具体范围见 [ADR 0001](../adr/0001-branch-and-pr-governance.md)。不缓存验证结论、不增加自动重试或跨 revision 接续。
+- 测试数量不能代替成本和覆盖分析；先量化慢用例、fixture 与跨层断言的职责，再收敛确实冗余的组合。领域边界、存储恢复、互操作及真实进程契约不因瘦身而删除。
 
 ### Rust 工具链与锁定依赖
 

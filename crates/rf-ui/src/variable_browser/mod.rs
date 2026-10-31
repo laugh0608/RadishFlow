@@ -36,9 +36,27 @@ pub struct VariableBrowser<'a> {
 }
 
 impl<'a> VariableBrowser<'a> {
+    /// Application reads bind inputs and results to their owning workspace.
+    pub fn from_workspace(workspace: &'a crate::WorkspaceState) -> Self {
+        use crate::result_query::FlowResultView;
+        let (current, stale) = match workspace.flow_result() {
+            FlowResultView::Current { snapshot, .. } => (Some(snapshot), None),
+            FlowResultView::Stale { .. } => (
+                None,
+                crate::latest_snapshot(workspace).or_else(|| crate::stale_snapshot(workspace)),
+            ),
+            _ => (None, None),
+        };
+        Self {
+            document: &workspace.document,
+            current,
+            stale,
+        }
+    }
+
     /// Snapshots must come from the same workspace as the document.
     /// Revision filtering prevents stale values being presented as current; it is not a
-    /// cross-workspace identity check because SolveSnapshot has no document identity.
+    /// cross-workspace identity check for legacy snapshots that have no recorded origin.
     pub fn new(
         document: &'a FlowsheetDocument,
         current: Option<&'a SolveSnapshot>,

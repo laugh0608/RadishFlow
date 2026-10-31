@@ -40,6 +40,13 @@ pub struct StudioWindowSession {
 }
 
 impl StudioWindowSession {
+    pub fn background_run_action(
+        &mut self,
+        action: crate::StudioBackgroundRunAction,
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
+        self.host_port.background_run_action(action)
+    }
+
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
         Ok(Self {
             host_port: StudioRuntimeHostPort::new(config)?,

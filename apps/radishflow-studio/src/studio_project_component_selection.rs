@@ -1,3 +1,4 @@
+use std::sync::LazyLock;
 use std::time::SystemTime;
 
 use rf_model::Component;
@@ -11,27 +12,36 @@ pub const PROJECT_COMPONENT_REMOVE_COMMAND_PREFIX: &str = "project.component.rem
 pub struct StudioBuiltinProjectComponent {
     pub component_id: &'static str,
     pub name: &'static str,
-    pub formula: &'static str,
+    pub formula: Option<&'static str>,
 }
 
 impl StudioBuiltinProjectComponent {
     pub fn to_model_component(self) -> Component {
-        Component::new(self.component_id, self.name).with_formula(self.formula)
+        let component = Component::new(self.component_id, self.name);
+        match self.formula {
+            Some(formula) => component.with_formula(formula),
+            None => component,
+        }
     }
 }
 
-pub const STUDIO_BUILTIN_PROJECT_COMPONENTS: &[StudioBuiltinProjectComponent] = &[
-    StudioBuiltinProjectComponent {
-        component_id: "methane",
-        name: "Methane",
-        formula: "CH4",
-    },
-    StudioBuiltinProjectComponent {
-        component_id: "ethane",
-        name: "Ethane",
-        formula: "C2H6",
-    },
-];
+pub static STUDIO_BUILTIN_PROJECT_COMPONENTS: LazyLock<Vec<StudioBuiltinProjectComponent>> =
+    LazyLock::new(|| {
+        crate::builtin_property_package_data::descriptor()
+            .components
+            .iter()
+            .map(|component| StudioBuiltinProjectComponent {
+                component_id: component.id.as_str(),
+                name: &component.name,
+                // Display annotations are application metadata, not facts supplied by the payload.
+                formula: match component.id.as_str() {
+                    "methane" => Some("CH4"),
+                    "ethane" => Some("C2H6"),
+                    _ => None,
+                },
+            })
+            .collect()
+    });
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioProjectComponentSelectionCommand {

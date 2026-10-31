@@ -753,6 +753,7 @@ fn runtime_panel_localizes_recovery_effect_diagnostic_actions() {
             target_label: "Document",
             summary: "Document mutation: Unbound outlet port".to_string(),
             action: radishflow_studio::StudioGuiWindowCommandActionModel {
+                result_guard: None,
                 label: "Create outlet stream".to_string(),
                 hover_text: "create outlet stream".to_string(),
                 command_id: "run_panel.recover_failure".to_string(),
@@ -763,6 +764,7 @@ fn runtime_panel_localizes_recovery_effect_diagnostic_actions() {
             target_label: "Inspector",
             summary: "Inspector focus: Unit parameter invalid".to_string(),
             action: radishflow_studio::StudioGuiWindowCommandActionModel {
+                result_guard: None,
                 label: "Inspect unit parameters".to_string(),
                 hover_text: "inspect unit parameters".to_string(),
                 command_id: "run_panel.recover_failure".to_string(),

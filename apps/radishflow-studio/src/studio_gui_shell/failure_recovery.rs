@@ -39,31 +39,29 @@ impl ReadyAppState {
         &mut self,
         dispatch: &StudioGuiPlatformExecutedDispatch,
     ) {
-        let executed = match &dispatch.dispatch.outcome {
-            StudioGuiDriverOutcome::HostCommand(
-                StudioGuiHostCommandOutcome::UiCommandDispatched(
-                    StudioGuiHostUiCommandDispatchResult::Executed(executed),
-                ),
-            )
-            | StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDispatched(
-                executed,
-            )) => Some(executed),
-            StudioGuiDriverOutcome::HostCommand(
-                StudioGuiHostCommandOutcome::LifecycleDispatched(lifecycle),
-            ) => lifecycle.dispatch.as_ref(),
-            _ => None,
-        };
-        let Some(executed) = executed else {
+        let Some(runtime_dispatch) = runtime_dispatch_from_gui(dispatch) else {
             return;
         };
-        let recovery = match &executed.effects.runtime_report.dispatch {
+        let recovery = match runtime_dispatch {
             StudioRuntimeDispatch::AppCommand(outcome)
                 if matches!(
                     outcome.dispatch,
                     radishflow_studio::StudioAppResultDispatch::WorkspaceRun(_)
                 ) =>
             {
-                self.update_workbench_tabs_after_run(&dispatch.dispatch.window);
+                if let radishflow_studio::StudioAppResultDispatch::WorkspaceRun(run) =
+                    &outcome.dispatch
+                    && let Some(receipt) = &run.formal_receipt
+                {
+                    self.record_run_reply(receipt);
+                }
+                if matches!(&outcome.dispatch, radishflow_studio::StudioAppResultDispatch::WorkspaceRun(run)
+                    if matches!(run.outcome, radishflow_studio::StudioWorkspaceRunOutcome::Background(_)))
+                {
+                    self.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
+                } else {
+                    self.update_workbench_tabs_after_run(&dispatch.dispatch.window);
+                }
                 return;
             }
             StudioRuntimeDispatch::RunPanelRecovery(recovery) => recovery,
@@ -96,4 +94,22 @@ impl ReadyAppState {
             self.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
         }
     }
+}
+
+pub(super) fn runtime_dispatch_from_gui(
+    dispatch: &StudioGuiPlatformExecutedDispatch,
+) -> Option<&StudioRuntimeDispatch> {
+    let executed = match &dispatch.dispatch.outcome {
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::UiCommandDispatched(
+            StudioGuiHostUiCommandDispatchResult::Executed(executed),
+        ))
+        | StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::WindowDispatched(
+            executed,
+        )) => Some(executed),
+        StudioGuiDriverOutcome::HostCommand(StudioGuiHostCommandOutcome::LifecycleDispatched(
+            lifecycle,
+        )) => lifecycle.dispatch.as_ref(),
+        _ => None,
+    };
+    executed.map(|executed| &executed.effects.runtime_report.dispatch)
 }

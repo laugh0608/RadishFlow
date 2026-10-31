@@ -5,6 +5,7 @@ members = [
     "crates/rf-types",
     "crates/rf-model",
     "crates/rf-thermo",
+    "crates/rf-property-package",
     "crates/rf-flash",
     "crates/rf-unitops",
     "crates/rf-flowsheet",

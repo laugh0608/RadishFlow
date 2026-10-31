@@ -97,7 +97,12 @@ impl ReadyAppState {
     ) {
         self.reconcile_home_case_selection(window);
         self.render_home_app_bar(ctx, window);
-        self.render_home_messages(ctx, window);
+        self.render_background_activity(ctx);
+        if self.background_run_details_open {
+            self.render_bottom_drawer(ctx, window);
+        } else {
+            self.render_home_messages(ctx, window);
+        }
         egui::SidePanel::left("studio.home_start_actions")
             .default_width(HOME_START_WIDTH)
             .min_width(HOME_START_WIDTH)

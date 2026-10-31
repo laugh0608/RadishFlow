@@ -480,3 +480,6 @@ fn v3_is_rejected_before_headless_inspection_modeling_or_solving() {
         }
     }
 }
+
+#[path = "headless_cli/v3.rs"]
+mod v3;

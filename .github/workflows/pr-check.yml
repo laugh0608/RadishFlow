@@ -18,6 +18,10 @@ jobs:
   repo-hygiene:
     name: Repo Hygiene
     runs-on: ubuntu-latest
+    outputs:
+      rust: ${{ steps.plan.outputs.rust }}
+      dotnet: ${{ steps.plan.outputs.dotnet }}
+      package: ${{ steps.plan.outputs.package }}
 
     steps:
       - name: Checkout
@@ -27,20 +31,35 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@1.96.0
+        with:
+          components: rustfmt
 
       - name: Cache Rust artifacts
         uses: Swatinem/rust-cache@v2
+
+      - name: Plan required checks
+        id: plan
+        env:
+          PR_BASE: ${{ github.base_ref }}
+        run: cargo run --locked --quiet -p xtask -- plan-pr-checks --base-ref "origin/$PR_BASE" --target-branch "$PR_BASE"
+
+      - name: Check formatting
+        run: cargo fmt --all --check
 
       - name: Check repository hygiene
         run: ./scripts/check-text-files.sh
 
       - name: Check repository governance
-        run: cargo run --locked --quiet -p xtask -- check-repository-governance --base-ref "origin/${{ github.base_ref }}"
+        env:
+          PR_BASE: ${{ github.base_ref }}
+        run: cargo run --locked --quiet -p xtask -- check-repository-governance --base-ref "origin/$PR_BASE"
 
       - name: Check document size advisory
         run: bash scripts/check-doc-size.sh --include-advisory
 
   rust-baseline:
+    needs: repo-hygiene
+    if: needs.repo-hygiene.outputs.rust == 'true'
     name: Rust Baseline
     runs-on: ubuntu-latest
 
@@ -57,9 +76,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run rust baseline
-        run: ./scripts/check-repo.sh --skip-text-files
+        run: cargo run --locked --quiet --target-dir target/xtask -p xtask -- validate-workspace --skip-format
 
   rust-baseline-macos:
+    needs: repo-hygiene
+    if: needs.repo-hygiene.outputs.rust == 'true'
     name: Rust Baseline (macOS)
     runs-on: macos-latest
 
@@ -76,9 +97,11 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run rust baseline
-        run: ./scripts/check-repo.sh --skip-text-files
+        run: cargo run --locked --quiet --target-dir target/xtask -p xtask -- validate-workspace --skip-format
 
   rust-baseline-windows:
+    needs: repo-hygiene
+    if: needs.repo-hygiene.outputs.rust == 'true'
     name: Rust Baseline (Windows)
     runs-on: windows-latest
 
@@ -96,9 +119,11 @@ jobs:
 
       - name: Run rust baseline
         shell: pwsh
-        run: ./scripts/check-repo.ps1 -SkipTextFiles
+        run: cargo run --locked --quiet --target-dir target/xtask -p xtask -- validate-workspace --skip-format
 
   dotnet-adapter-baseline:
+    needs: repo-hygiene
+    if: needs.repo-hygiene.outputs.dotnet == 'true'
     name: .NET Adapter Baseline
     runs-on: windows-latest
 
@@ -124,12 +149,8 @@ jobs:
   windows-staging-package:
     name: Windows Staging Package
     runs-on: windows-latest
-    needs:
-      - repo-hygiene
-      - rust-baseline
-      - rust-baseline-macos
-      - rust-baseline-windows
-      - dotnet-adapter-baseline
+    needs: repo-hygiene
+    if: needs.repo-hygiene.outputs.package == 'true'
 
     steps:
       - name: Checkout
@@ -164,43 +185,16 @@ jobs:
       - dotnet-adapter-baseline
       - windows-staging-package
     steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@1.96.0
+
+      - name: Cache Rust artifacts
+        uses: Swatinem/rust-cache@v2
+
       - name: Summarize PR quality gate
-        shell: bash
         env:
-          REPO_HYGIENE_RESULT: ${{ needs.repo-hygiene.result }}
-          RUST_BASELINE_RESULT: ${{ needs.rust-baseline.result }}
-          RUST_BASELINE_MACOS_RESULT: ${{ needs.rust-baseline-macos.result }}
-          RUST_BASELINE_WINDOWS_RESULT: ${{ needs.rust-baseline-windows.result }}
-          DOTNET_ADAPTER_BASELINE_RESULT: ${{ needs.dotnet-adapter-baseline.result }}
-          WINDOWS_STAGING_PACKAGE_RESULT: ${{ needs.windows-staging-package.result }}
-        run: |
-          failed=false
-          {
-            echo "## PR Quality Gate"
-            echo
-            echo "| Check | Result |"
-            echo "| --- | --- |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          append_result() {
-            local check_name="$1"
-            local check_result="$2"
-            echo "| ${check_name} | ${check_result} |" >> "$GITHUB_STEP_SUMMARY"
-            if [[ "${check_result}" != "success" ]]; then
-              failed=true
-            fi
-          }
-
-          append_result "Repo Hygiene" "${REPO_HYGIENE_RESULT}"
-          append_result "Rust Baseline" "${RUST_BASELINE_RESULT}"
-          append_result "Rust Baseline (macOS)" "${RUST_BASELINE_MACOS_RESULT}"
-          append_result "Rust Baseline (Windows)" "${RUST_BASELINE_WINDOWS_RESULT}"
-          append_result ".NET Adapter Baseline" "${DOTNET_ADAPTER_BASELINE_RESULT}"
-          append_result "Windows Staging Package" "${WINDOWS_STAGING_PACKAGE_RESULT}"
-
-          if [[ "${failed}" == "true" ]]; then
-            echo "One or more PR quality components did not succeed." >&2
-            exit 1
-          fi
-
-          echo "All PR quality components succeeded."
+          RADISHFLOW_CI_NEEDS: ${{ toJSON(needs) }}
+        run: cargo run --locked --quiet -p xtask -- check-pr-results

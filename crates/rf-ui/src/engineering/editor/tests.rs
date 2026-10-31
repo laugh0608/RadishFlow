@@ -71,7 +71,7 @@ fn incomplete_text_is_preserved_by_navigation_save_capture_and_rejected_apply() 
         )
         .unwrap();
     assert_eq!(editor.pending_count(), 1);
-    let task = session.inputs().tasks[0].id.clone();
+    let task = session.inputs().tasks[0].id().clone();
     assert_eq!(
         editor.dispatch(
             &mut session,

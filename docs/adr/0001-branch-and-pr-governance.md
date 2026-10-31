@@ -1,6 +1,6 @@
 # ADR 0001: Branch And PR Governance
 
-更新时间：2026-09-12
+更新时间：2026-10-26
 
 ## 状态
 
@@ -82,9 +82,9 @@ Accepted
 - GitHub Actions PR 检查工作流
   - `PR Checks` 在目标分支为 `dev`、`master` 或 `main` 的 Pull Request 上自动触发；目标为 `dev` 的 PR 提供合并前反馈，默认分支 PR 用于阶段稳定化合并，普通 `dev` push 不触发
   - 当前拆分为 `Repo Hygiene`、三平台 `Rust Baseline`、`.NET Adapter Baseline` 与 `Windows Staging Package` 六个组件，并由 `Candidate Quality` 聚合收口
-  - `Candidate Quality` 使用 `if: always()` 汇总六个组件，任一组件失败、取消或跳过都会失败；`master` / `main` ruleset 只绑定该稳定 context
+  - `Candidate Quality` 使用 `if: always()` 汇总六个组件；治理必须成功，只有计划明确不适用的组件允许 skipped，缺失、失败、取消及应执行却跳过均失败；`master` / `main` ruleset 只绑定该稳定 context
   - 规范 tag push 暂不自动触发 CI/CD；`Release Checks` 仅保留 `workflow_dispatch` 手动 staging 入口，避免普通内部 staging 或历史 tag 造成误发布信号
-  - 正式 workflow 使用仓库固定 Rust 基线；独立的 `Rust Compatibility` 仅手动检查三平台浮动 `stable`，不加入 `Candidate Quality`，不改变六组件合并门禁或触发发布。工具链维护规则见 [Agent 协作指南](../development/agent-collaboration.md#rust-工具链与锁定依赖)
+  - 正式 workflow 使用仓库固定 Rust 基线；独立的 `Rust Compatibility` 仅手动检查三平台浮动 `stable`，不加入 `Candidate Quality`，不改变稳定主线完整门禁或触发发布。工具链维护规则见 [Agent 协作指南](../development/agent-collaboration.md#rust-工具链与锁定依赖)
 - 文本编码与文件格式检查脚本
   - 正式实现源收口到 Rust `xtask`，`.ps1` 与 `.sh` 仅作为平台包装层
 - 仓库治理检查
@@ -95,6 +95,23 @@ Accepted
 - Windows `.NET 10` CAPE-OPEN baseline 入口：`scripts/check-dotnet-capeopen.ps1` 负责 native build、`.NET` solution build、contract tests 和 smoke tests；不执行 COM 注册、反注册或注册表写入
 - Windows portable staging package 入口：`scripts/package.ps1` 只产出 workflow artifact，不创建 GitHub Release，也不发布安装包
 - `master` / `main` ruleset 模板
+
+### PR 检查的影响范围（2026-10-26）
+
+`Repo Hygiene` 始终执行治理、文本、文档篇幅提示和 Rust 格式。`xtask plan-pr-checks` 使用 PR base 的 merge-base 到当前验证 HEAD 的完整差异；关闭 rename 折叠，同时考虑删除与新增路径。无法解析 base / 差异时失败，空差异从严执行全部检查。
+
+| 目标与改动 | 必需的附加检查 |
+| --- | --- |
+| `master` / `main` PR；手动 Release | 三平台 Rust、Windows .NET、Windows Release 打包全部保留 |
+| `dev`：仅 `docs/**/*.md` 或已列举的根协作文档 | 无；治理与格式仍必需 |
+| `dev`：Studio、`rf-ui`、`rf-canvas` | 三平台 Rust、Windows Release 打包 |
+| `dev`：`tests/rust-integration` | 三平台 Rust |
+| `dev`：`.NET` 适配层 | Windows .NET（含 native build、contract 与 smoke） |
+| 核心 crate、工具链、依赖、验证工具 / 配置及未知路径 | 全部检查 |
+
+混合改动取并集。精确路径列表由 `xtask/src/ci_validation.rs` 维护；不推测未知路径或新依赖的影响。若将 Studio / UI 变为适配层依赖，应同时收紧路由。稳定主线要求、ruleset context、分支角色与回灌规则不变。
+
+PR 中适用的 Rust、.NET 和打包 job 在治理通过后并行；聚合等待全部结果。治理与格式只执行一次，各平台 Clippy / 测试分别保留。手动 Release 保留完整组成与打包前置关系。部分组件结果不冒充全仓或发布验收。
 
 ## 影响
 

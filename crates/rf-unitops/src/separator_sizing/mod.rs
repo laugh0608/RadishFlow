@@ -13,7 +13,8 @@ use std::collections::BTreeMap;
 pub const METHOD_ID: &str = "radishflow.separator.vertical-sb-working-volume";
 pub const METHOD_VERSION: u32 = 1;
 /// Relative numerical comparison only, not an engineering uncertainty budget.
-pub const COMPARISON_RELATIVE_TOLERANCE: f64 = 1e-10;
+pub const COMPARISON_RELATIVE_TOLERANCE: f64 =
+    crate::separator_evidence::COMPARISON_RELATIVE_TOLERANCE;
 
 pub fn method() -> EquipmentMethod {
     EquipmentMethod {
@@ -127,16 +128,7 @@ pub struct SizingInputCapture {
     /// Includes transitive observation dependencies and original basis provenance.
     pub sources: BTreeMap<SourceId, SourceRecord>,
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UncheckedRequirement {
-    PhaseEquilibrium,
-    EntrainmentAndEfficiency,
-    PressureDrop,
-    SlugHandling,
-    MechanicalDesignAndCertification,
-    StandardDiameterRounding,
-    MultipleOperatingCases,
-}
+pub use crate::separator_evidence::UncheckedRequirement;
 #[derive(Debug, Clone, PartialEq)]
 pub struct SeparatorCandidate {
     capture: SizingInputCapture,
@@ -167,16 +159,7 @@ impl SeparatorCandidate {
     }
     /// Every result is a conditional preliminary process size, even when reviewed.
     pub fn unchecked_requirements(&self) -> &'static [UncheckedRequirement] {
-        use UncheckedRequirement::*;
-        &[
-            PhaseEquilibrium,
-            EntrainmentAndEfficiency,
-            PressureDrop,
-            SlugHandling,
-            MechanicalDesignAndCertification,
-            StandardDiameterRounding,
-            MultipleOperatingCases,
-        ]
+        crate::separator_evidence::UNCHECKED_REQUIREMENTS
     }
 }
 

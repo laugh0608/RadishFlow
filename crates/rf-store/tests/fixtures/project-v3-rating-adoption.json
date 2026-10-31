@@ -1,0 +1,1100 @@
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 3,
+  "document": {
+    "revision": 7,
+    "flowsheet": {
+      "name": "units-compatibility",
+      "components": {},
+      "streams": {},
+      "units": {}
+    },
+    "metadata": {
+      "documentId": "doc-units-compatibility",
+      "title": "Unit presentation compatibility",
+      "schemaVersion": 1,
+      "createdAt": "2026-09-23T00:00:00Z",
+      "updatedAt": "2026-09-23T00:00:00Z"
+    }
+  },
+  "presentation": {
+    "displayUnits": [
+      {
+        "quantityId": "absolute_temperature",
+        "unitId": "celsius"
+      },
+      {
+        "quantityId": "temperature_difference",
+        "unitId": "kelvin_difference"
+      },
+      {
+        "quantityId": "absolute_pressure",
+        "unitId": "bar"
+      },
+      {
+        "quantityId": "molar_flow",
+        "unitId": "kilomole_per_hour"
+      },
+      {
+        "quantityId": "mole_fraction",
+        "unitId": "mole_per_mole"
+      },
+      {
+        "quantityId": "molar_phase_fraction",
+        "unitId": "mole_per_mole"
+      },
+      {
+        "quantityId": "molar_enthalpy",
+        "unitId": "joule_per_mole"
+      },
+      {
+        "quantityId": "actual_volume_flow",
+        "unitId": "cubic_metre_per_hour"
+      },
+      {
+        "quantityId": "mass_density",
+        "unitId": "kilogram_per_cubic_metre"
+      },
+      {
+        "quantityId": "velocity",
+        "unitId": "metre_per_second"
+      },
+      {
+        "quantityId": "duration",
+        "unitId": "minute"
+      },
+      {
+        "quantityId": "length",
+        "unitId": "millimetre"
+      },
+      {
+        "quantityId": "area",
+        "unitId": "square_metre"
+      },
+      {
+        "quantityId": "volume",
+        "unitId": "cubic_metre"
+      },
+      {
+        "quantityId": "dimensionless_ratio",
+        "unitId": "one"
+      }
+    ]
+  },
+  "engineering": {
+    "basisEntries": [
+      {
+        "id": "basis-time",
+        "revision": 7,
+        "name": "Required working time",
+        "quantityId": "duration",
+        "valueSi": 120.0,
+        "sourceId": "source-test"
+      },
+      {
+        "id": "basis-diameter",
+        "revision": 8,
+        "name": "Original diameter",
+        "quantityId": "length",
+        "valueSi": 0.5,
+        "sourceId": "drawing"
+      }
+    ],
+    "sources": [
+      {
+        "id": "source-test",
+        "revision": 3,
+        "kind": "assumed",
+        "title": "Synthetic rating arithmetic",
+        "reference": "",
+        "locator": "",
+        "publicationVersion": "fixture-1",
+        "accessedOn": "2026-10-20",
+        "adoptionNote": "Public synthetic fixture; no industrial accuracy claim",
+        "review": "adopted",
+        "applicability": {
+          "fluidSystem": "Synthetic two-phase fluid",
+          "phase": "both",
+          "operatingConditions": {
+            "temperatureK": 300.0,
+            "pressurePa": 100000.0
+          },
+          "scope": "Clean two-phase actual flows and whole-vessel effective K"
+        },
+        "observations": [
+          {
+            "id": "raw-flow",
+            "quantityId": "actual_volume_flow",
+            "originalValue": 3600.0,
+            "originalUnit": "m3/h",
+            "canonicalValue": 1.0,
+            "conversionNote": "Divide by 3600",
+            "dependsOn": []
+          }
+        ]
+      },
+      {
+        "id": "drawing",
+        "revision": 4,
+        "kind": "vendor",
+        "title": "Synthetic geometry drawing",
+        "reference": "Public arithmetic fixture, not an actual vendor",
+        "locator": "Given diameter and liquid levels",
+        "publicationVersion": "drawing-2",
+        "accessedOn": "2026-10-20",
+        "adoptionNote": "",
+        "review": "reviewed",
+        "applicability": {
+          "fluidSystem": "",
+          "phase": "notApplicable",
+          "operatingConditions": {},
+          "scope": "Full equal-diameter cylindrical section"
+        },
+        "observations": []
+      },
+      {
+        "id": "adoption-source-1",
+        "revision": 1,
+        "kind": "vendor",
+        "title": "Synthetic geometry drawing",
+        "reference": "Public arithmetic fixture, not an actual vendor",
+        "locator": "Given diameter and liquid levels",
+        "publicationVersion": "drawing-2",
+        "accessedOn": "2026-10-20",
+        "adoptionNote": "",
+        "review": "reviewed",
+        "applicability": {
+          "fluidSystem": "",
+          "phase": "notApplicable",
+          "operatingConditions": {},
+          "scope": "Full equal-diameter cylindrical section"
+        },
+        "observations": []
+      },
+      {
+        "id": "adoption-source-2",
+        "revision": 1,
+        "kind": "assumed",
+        "title": "Synthetic rating arithmetic",
+        "reference": "",
+        "locator": "",
+        "publicationVersion": "fixture-1",
+        "accessedOn": "2026-10-20",
+        "adoptionNote": "Public synthetic fixture; no industrial accuracy claim",
+        "review": "adopted",
+        "applicability": {
+          "fluidSystem": "Synthetic two-phase fluid",
+          "phase": "both",
+          "operatingConditions": {
+            "temperatureK": 300.0,
+            "pressurePa": 100000.0
+          },
+          "scope": "Clean two-phase actual flows and whole-vessel effective K"
+        },
+        "observations": [
+          {
+            "id": "raw-flow",
+            "quantityId": "actual_volume_flow",
+            "originalValue": 3600.0,
+            "originalUnit": "m3/h",
+            "canonicalValue": 1.0,
+            "conversionNote": "Divide by 3600",
+            "dependsOn": []
+          }
+        ]
+      },
+      {
+        "id": "adoption-source-3",
+        "revision": 1,
+        "kind": "assumed",
+        "title": "Design geometry adopted from preliminary separator sizing",
+        "reference": "doc-units-compatibility / sizing-source",
+        "locator": "geometry.adoption",
+        "publicationVersion": "radishflow.separator.vertical-sb-working-volume:1",
+        "accessedOn": "",
+        "adoptionNote": "Explicit design decision; conditional preliminary sizing. Original evidence and review states are retained in geometry.adoption.",
+        "review": "adopted",
+        "applicability": {
+          "fluidSystem": "",
+          "phase": "notApplicable",
+          "operatingConditions": {},
+          "scope": "Adopted full-cylinder geometry; not measured or vendor-certified"
+        },
+        "observations": []
+      }
+    ],
+    "tasks": [
+      {
+        "kind": "verticalGasLiquidSeparatorRating",
+        "id": "rating-1",
+        "revision": 5,
+        "tag": "V-102",
+        "name": "Given-geometry synthetic rating",
+        "method": {
+          "id": "radishflow.separator.vertical-sb-working-volume-rating",
+          "version": 1
+        },
+        "geometry": {
+          "revision": 6,
+          "applicability": {
+            "orientation": "vertical",
+            "gasDirection": "upward",
+            "geometry": "fullEqualDiameterCylinder",
+            "internalsDescription": "Full-section effective K assumption"
+          },
+          "applicabilitySourceIds": [
+            "drawing"
+          ],
+          "inputs": {
+            "internalDiameter": {
+              "kind": "override",
+              "basisEntryId": "basis-diameter",
+              "quantityId": "length",
+              "valueSi": 1.1283791670955126,
+              "sourceId": "drawing",
+              "reason": "Explicit revised geometry"
+            },
+            "workingLiquidHeight": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.6,
+              "sourceId": "drawing"
+            }
+          },
+          "axialSections": {
+            "bottomTangentToLLL": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "drawing"
+            },
+            "nllToHLL": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "drawing"
+            },
+            "hllToInletCenter": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "drawing"
+            },
+            "inletCenterToInternalsBottom": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "drawing"
+            },
+            "internalsThickness": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "drawing"
+            },
+            "internalsTopToTopTangent": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "drawing"
+            }
+          }
+        },
+        "cases": [
+          {
+            "id": "rating-case-1",
+            "revision": 9,
+            "name": "Exceeding synthetic case",
+            "purpose": "Lifecycle and arithmetic tests",
+            "fluidSystem": "Synthetic two-phase fluid",
+            "applicability": {
+              "service": "cleanNonFoamingTwoPhase",
+              "kBasis": "effectiveWholeVesselForDeclaredInternals",
+              "flowBasis": "actualAtOperatingConditions"
+            },
+            "applicabilitySourceIds": [
+              "source-test"
+            ],
+            "inputs": {
+              "operatingTemperature": {
+                "kind": "direct",
+                "quantityId": "absolute_temperature",
+                "valueSi": 300.0,
+                "sourceId": "source-test"
+              },
+              "operatingPressure": {
+                "kind": "direct",
+                "quantityId": "absolute_pressure",
+                "valueSi": 100000.0,
+                "sourceId": "source-test"
+              },
+              "gasActualVolumeFlow": {
+                "kind": "direct",
+                "quantityId": "actual_volume_flow",
+                "valueSi": 1.0,
+                "sourceId": "source-test"
+              },
+              "liquidActualVolumeFlow": {
+                "kind": "direct",
+                "quantityId": "actual_volume_flow",
+                "valueSi": 0.006,
+                "sourceId": "source-test"
+              },
+              "gasMassDensity": {
+                "kind": "direct",
+                "quantityId": "mass_density",
+                "valueSi": 10.0,
+                "sourceId": "source-test"
+              },
+              "liquidMassDensity": {
+                "kind": "direct",
+                "quantityId": "mass_density",
+                "valueSi": 1010.0,
+                "sourceId": "source-test"
+              },
+              "effectiveK": {
+                "kind": "direct",
+                "quantityId": "velocity",
+                "valueSi": 0.1,
+                "sourceId": "source-test"
+              },
+              "gasUtilization": {
+                "kind": "direct",
+                "quantityId": "dimensionless_ratio",
+                "valueSi": 0.8,
+                "sourceId": "source-test"
+              },
+              "workingDuration": {
+                "kind": "basisRef",
+                "basisEntryId": "basis-time"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "kind": "verticalGasLiquidSeparatorSizing",
+        "id": "sizing-source",
+        "revision": 1,
+        "tag": "V-201",
+        "name": "C1 public synthetic adoption source",
+        "method": {
+          "id": "radishflow.separator.vertical-sb-working-volume",
+          "version": 1
+        },
+        "case": {
+          "id": "sizing-source-case",
+          "name": "C1 synthetic source",
+          "purpose": "Lifecycle and arithmetic tests",
+          "fluidSystem": "Synthetic two-phase fluid",
+          "applicabilitySourceIds": [
+            "source-test"
+          ],
+          "applicability": {
+            "orientation": "vertical",
+            "gasDirection": "upward",
+            "service": "cleanNonFoamingTwoPhase",
+            "geometry": "fullEqualDiameterCylinder",
+            "kBasis": "effectiveWholeVesselForDeclaredInternals",
+            "flowBasis": "actualAtOperatingConditions",
+            "internalsDescription": "Full-section effective K assumption"
+          }
+        },
+        "inputs": {
+          "operatingTemperature": {
+            "kind": "direct",
+            "quantityId": "absolute_temperature",
+            "valueSi": 300.0,
+            "sourceId": "source-test"
+          },
+          "operatingPressure": {
+            "kind": "direct",
+            "quantityId": "absolute_pressure",
+            "valueSi": 100000.0,
+            "sourceId": "source-test"
+          },
+          "gasActualVolumeFlow": {
+            "kind": "direct",
+            "quantityId": "actual_volume_flow",
+            "valueSi": 1.0,
+            "sourceId": "source-test"
+          },
+          "liquidActualVolumeFlow": {
+            "kind": "direct",
+            "quantityId": "actual_volume_flow",
+            "valueSi": 0.006,
+            "sourceId": "source-test"
+          },
+          "gasMassDensity": {
+            "kind": "direct",
+            "quantityId": "mass_density",
+            "valueSi": 10.0,
+            "sourceId": "source-test"
+          },
+          "liquidMassDensity": {
+            "kind": "direct",
+            "quantityId": "mass_density",
+            "valueSi": 1010.0,
+            "sourceId": "source-test"
+          },
+          "effectiveK": {
+            "kind": "direct",
+            "quantityId": "velocity",
+            "valueSi": 0.1,
+            "sourceId": "source-test"
+          },
+          "gasUtilization": {
+            "kind": "direct",
+            "quantityId": "dimensionless_ratio",
+            "valueSi": 0.8,
+            "sourceId": "source-test"
+          },
+          "workingDuration": {
+            "kind": "basisRef",
+            "basisEntryId": "basis-time"
+          },
+          "maximumWorkingLiquidHeight": {
+            "kind": "direct",
+            "quantityId": "length",
+            "valueSi": 1.0,
+            "sourceId": "drawing"
+          }
+        },
+        "axialSections": {
+          "bottomTangentToLLL": {
+            "kind": "direct",
+            "quantityId": "length",
+            "valueSi": 0.1,
+            "sourceId": "drawing"
+          },
+          "nllToHLL": {
+            "kind": "direct",
+            "quantityId": "length",
+            "valueSi": 0.1,
+            "sourceId": "drawing"
+          },
+          "hllToInletCenter": {
+            "kind": "direct",
+            "quantityId": "length",
+            "valueSi": 0.1,
+            "sourceId": "drawing"
+          },
+          "inletCenterToInternalsBottom": {
+            "kind": "direct",
+            "quantityId": "length",
+            "valueSi": 0.1,
+            "sourceId": "drawing"
+          },
+          "internalsThickness": {
+            "kind": "direct",
+            "quantityId": "length",
+            "valueSi": 0.1,
+            "sourceId": "drawing"
+          },
+          "internalsTopToTopTangent": {
+            "kind": "direct",
+            "quantityId": "length",
+            "valueSi": 0.1,
+            "sourceId": "drawing"
+          }
+        }
+      },
+      {
+        "kind": "verticalGasLiquidSeparatorRating",
+        "id": "matrix-v2",
+        "revision": 5,
+        "tag": "V-103",
+        "name": "Given-geometry synthetic rating",
+        "method": {
+          "id": "radishflow.separator.vertical-sb-working-volume-rating",
+          "version": 2
+        },
+        "geometry": {
+          "revision": 6,
+          "applicability": {
+            "orientation": "vertical",
+            "gasDirection": "upward",
+            "geometry": "fullEqualDiameterCylinder",
+            "internalsDescription": "Full-section effective K assumption"
+          },
+          "applicabilitySourceIds": [
+            "drawing"
+          ],
+          "inputs": {
+            "internalDiameter": {
+              "kind": "override",
+              "basisEntryId": "basis-diameter",
+              "quantityId": "length",
+              "valueSi": 1.1283791670955126,
+              "sourceId": "drawing",
+              "reason": "Explicit revised geometry"
+            },
+            "workingLiquidHeight": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.6,
+              "sourceId": "drawing"
+            }
+          },
+          "axialSections": {
+            "bottomTangentToLLL": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "drawing"
+            },
+            "nllToHLL": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "drawing"
+            },
+            "hllToInletCenter": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "drawing"
+            },
+            "inletCenterToInternalsBottom": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "drawing"
+            },
+            "internalsThickness": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "drawing"
+            },
+            "internalsTopToTopTangent": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "drawing"
+            }
+          }
+        },
+        "cases": [
+          {
+            "id": "matrix-v2-case1",
+            "revision": 9,
+            "name": "Exceeding synthetic case",
+            "purpose": "Lifecycle and arithmetic tests",
+            "fluidSystem": "Synthetic two-phase fluid",
+            "applicability": {
+              "service": "cleanNonFoamingTwoPhase",
+              "kBasis": "effectiveWholeVesselForDeclaredInternals",
+              "flowBasis": "actualAtOperatingConditions"
+            },
+            "applicabilitySourceIds": [
+              "source-test"
+            ],
+            "inputs": {
+              "operatingTemperature": {
+                "kind": "direct",
+                "quantityId": "absolute_temperature",
+                "valueSi": 300.0,
+                "sourceId": "source-test"
+              },
+              "operatingPressure": {
+                "kind": "direct",
+                "quantityId": "absolute_pressure",
+                "valueSi": 100000.0,
+                "sourceId": "source-test"
+              },
+              "gasActualVolumeFlow": {
+                "kind": "direct",
+                "quantityId": "actual_volume_flow",
+                "valueSi": 1.0,
+                "sourceId": "source-test"
+              },
+              "liquidActualVolumeFlow": {
+                "kind": "direct",
+                "quantityId": "actual_volume_flow",
+                "valueSi": 0.006,
+                "sourceId": "source-test"
+              },
+              "gasMassDensity": {
+                "kind": "direct",
+                "quantityId": "mass_density",
+                "valueSi": 10.0,
+                "sourceId": "source-test"
+              },
+              "liquidMassDensity": {
+                "kind": "direct",
+                "quantityId": "mass_density",
+                "valueSi": 1010.0,
+                "sourceId": "source-test"
+              },
+              "effectiveK": {
+                "kind": "direct",
+                "quantityId": "velocity",
+                "valueSi": 0.1,
+                "sourceId": "source-test"
+              },
+              "gasUtilization": {
+                "kind": "direct",
+                "quantityId": "dimensionless_ratio",
+                "valueSi": 0.8,
+                "sourceId": "source-test"
+              },
+              "workingDuration": {
+                "kind": "basisRef",
+                "basisEntryId": "basis-time"
+              }
+            }
+          },
+          {
+            "id": "matrix-v2-case2",
+            "revision": 9,
+            "name": "Exceeding synthetic case",
+            "purpose": "Lifecycle and arithmetic tests",
+            "fluidSystem": "Synthetic two-phase fluid",
+            "applicability": {
+              "service": "cleanNonFoamingTwoPhase",
+              "kBasis": "effectiveWholeVesselForDeclaredInternals",
+              "flowBasis": "actualAtOperatingConditions"
+            },
+            "applicabilitySourceIds": [
+              "source-test"
+            ],
+            "inputs": {
+              "operatingTemperature": {
+                "kind": "direct",
+                "quantityId": "absolute_temperature",
+                "valueSi": 300.0,
+                "sourceId": "source-test"
+              },
+              "operatingPressure": {
+                "kind": "direct",
+                "quantityId": "absolute_pressure",
+                "valueSi": 100000.0,
+                "sourceId": "source-test"
+              },
+              "gasActualVolumeFlow": {
+                "kind": "direct",
+                "quantityId": "actual_volume_flow",
+                "valueSi": 1.0,
+                "sourceId": "source-test"
+              },
+              "liquidActualVolumeFlow": {
+                "kind": "direct",
+                "quantityId": "actual_volume_flow",
+                "valueSi": 0.006,
+                "sourceId": "source-test"
+              },
+              "gasMassDensity": {
+                "kind": "direct",
+                "quantityId": "mass_density",
+                "valueSi": 10.0,
+                "sourceId": "source-test"
+              },
+              "liquidMassDensity": {
+                "kind": "direct",
+                "quantityId": "mass_density",
+                "valueSi": 1010.0,
+                "sourceId": "source-test"
+              },
+              "effectiveK": {
+                "kind": "direct",
+                "quantityId": "velocity",
+                "valueSi": 0.1,
+                "sourceId": "source-test"
+              },
+              "gasUtilization": {
+                "kind": "direct",
+                "quantityId": "dimensionless_ratio",
+                "valueSi": 0.8,
+                "sourceId": "source-test"
+              },
+              "workingDuration": {
+                "kind": "basisRef",
+                "basisEntryId": "basis-time"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "kind": "verticalGasLiquidSeparatorRating",
+        "id": "adopted-v3",
+        "revision": 1,
+        "tag": "V-202",
+        "name": "Fixed adopted design geometry",
+        "method": {
+          "id": "radishflow.separator.vertical-sb-working-volume-rating",
+          "version": 3
+        },
+        "geometry": {
+          "revision": 1,
+          "adoption": {
+            "sourceDocumentId": "doc-units-compatibility",
+            "sourceTask": {
+              "id": "sizing-source",
+              "revision": 1,
+              "tag": "V-201",
+              "name": "C1 public synthetic adoption source",
+              "method": {
+                "id": "radishflow.separator.vertical-sb-working-volume",
+                "version": 1
+              },
+              "case": {
+                "id": "sizing-source-case",
+                "name": "C1 synthetic source",
+                "purpose": "Lifecycle and arithmetic tests",
+                "fluidSystem": "Synthetic two-phase fluid",
+                "applicabilitySourceIds": [
+                  "source-test"
+                ],
+                "applicability": {
+                  "orientation": "vertical",
+                  "gasDirection": "upward",
+                  "service": "cleanNonFoamingTwoPhase",
+                  "geometry": "fullEqualDiameterCylinder",
+                  "kBasis": "effectiveWholeVesselForDeclaredInternals",
+                  "flowBasis": "actualAtOperatingConditions",
+                  "internalsDescription": "Full-section effective K assumption"
+                }
+              },
+              "inputs": {
+                "operatingTemperature": {
+                  "kind": "direct",
+                  "quantityId": "absolute_temperature",
+                  "valueSi": 300.0,
+                  "sourceId": "source-test"
+                },
+                "operatingPressure": {
+                  "kind": "direct",
+                  "quantityId": "absolute_pressure",
+                  "valueSi": 100000.0,
+                  "sourceId": "source-test"
+                },
+                "gasActualVolumeFlow": {
+                  "kind": "direct",
+                  "quantityId": "actual_volume_flow",
+                  "valueSi": 1.0,
+                  "sourceId": "source-test"
+                },
+                "liquidActualVolumeFlow": {
+                  "kind": "direct",
+                  "quantityId": "actual_volume_flow",
+                  "valueSi": 0.006,
+                  "sourceId": "source-test"
+                },
+                "gasMassDensity": {
+                  "kind": "direct",
+                  "quantityId": "mass_density",
+                  "valueSi": 10.0,
+                  "sourceId": "source-test"
+                },
+                "liquidMassDensity": {
+                  "kind": "direct",
+                  "quantityId": "mass_density",
+                  "valueSi": 1010.0,
+                  "sourceId": "source-test"
+                },
+                "effectiveK": {
+                  "kind": "direct",
+                  "quantityId": "velocity",
+                  "valueSi": 0.1,
+                  "sourceId": "source-test"
+                },
+                "gasUtilization": {
+                  "kind": "direct",
+                  "quantityId": "dimensionless_ratio",
+                  "valueSi": 0.8,
+                  "sourceId": "source-test"
+                },
+                "workingDuration": {
+                  "kind": "basisRef",
+                  "basisEntryId": "basis-time"
+                },
+                "maximumWorkingLiquidHeight": {
+                  "kind": "direct",
+                  "quantityId": "length",
+                  "valueSi": 1.0,
+                  "sourceId": "drawing"
+                }
+              },
+              "axialSections": {
+                "bottomTangentToLLL": {
+                  "kind": "direct",
+                  "quantityId": "length",
+                  "valueSi": 0.1,
+                  "sourceId": "drawing"
+                },
+                "nllToHLL": {
+                  "kind": "direct",
+                  "quantityId": "length",
+                  "valueSi": 0.1,
+                  "sourceId": "drawing"
+                },
+                "hllToInletCenter": {
+                  "kind": "direct",
+                  "quantityId": "length",
+                  "valueSi": 0.1,
+                  "sourceId": "drawing"
+                },
+                "inletCenterToInternalsBottom": {
+                  "kind": "direct",
+                  "quantityId": "length",
+                  "valueSi": 0.1,
+                  "sourceId": "drawing"
+                },
+                "internalsThickness": {
+                  "kind": "direct",
+                  "quantityId": "length",
+                  "valueSi": 0.1,
+                  "sourceId": "drawing"
+                },
+                "internalsTopToTopTangent": {
+                  "kind": "direct",
+                  "quantityId": "length",
+                  "valueSi": 0.1,
+                  "sourceId": "drawing"
+                }
+              }
+            },
+            "sourceBasis": {
+              "basisEntries": [
+                {
+                  "id": "basis-time",
+                  "revision": 7,
+                  "name": "Required working time",
+                  "quantityId": "duration",
+                  "valueSi": 120.0,
+                  "sourceId": "source-test"
+                }
+              ],
+              "sources": [
+                {
+                  "id": "drawing",
+                  "revision": 4,
+                  "kind": "vendor",
+                  "title": "Synthetic geometry drawing",
+                  "reference": "Public arithmetic fixture, not an actual vendor",
+                  "locator": "Given diameter and liquid levels",
+                  "publicationVersion": "drawing-2",
+                  "accessedOn": "2026-10-20",
+                  "adoptionNote": "",
+                  "review": "reviewed",
+                  "applicability": {
+                    "fluidSystem": "",
+                    "phase": "notApplicable",
+                    "operatingConditions": {},
+                    "scope": "Full equal-diameter cylindrical section"
+                  },
+                  "observations": []
+                },
+                {
+                  "id": "source-test",
+                  "revision": 3,
+                  "kind": "assumed",
+                  "title": "Synthetic rating arithmetic",
+                  "reference": "",
+                  "locator": "",
+                  "publicationVersion": "fixture-1",
+                  "accessedOn": "2026-10-20",
+                  "adoptionNote": "Public synthetic fixture; no industrial accuracy claim",
+                  "review": "adopted",
+                  "applicability": {
+                    "fluidSystem": "Synthetic two-phase fluid",
+                    "phase": "both",
+                    "operatingConditions": {
+                      "temperatureK": 300.0,
+                      "pressurePa": 100000.0
+                    },
+                    "scope": "Clean two-phase actual flows and whole-vessel effective K"
+                  },
+                  "observations": [
+                    {
+                      "id": "raw-flow",
+                      "quantityId": "actual_volume_flow",
+                      "originalValue": 3600.0,
+                      "originalUnit": "m3/h",
+                      "canonicalValue": 1.0,
+                      "conversionNote": "Divide by 3600",
+                      "dependsOn": []
+                    }
+                  ]
+                }
+              ],
+              "tasks": []
+            },
+            "diameter": {
+              "originalM": 1.2615662610100802,
+              "adoptedM": 1.6,
+              "reason": "Explicit synthetic standard-diameter selection"
+            },
+            "workingLiquidHeight": {
+              "originalM": 0.576,
+              "adoptedM": 0.576,
+              "reason": ""
+            },
+            "axialSections": [
+              {
+                "section": "bottomTangentToLLL",
+                "valueM": 0.1
+              },
+              {
+                "section": "nllToHLL",
+                "valueM": 0.1
+              },
+              {
+                "section": "hllToInletCenter",
+                "valueM": 0.1
+              },
+              {
+                "section": "inletCenterToInternalsBottom",
+                "valueM": 0.1
+              },
+              {
+                "section": "internalsThickness",
+                "valueM": 0.1
+              },
+              {
+                "section": "internalsTopToTopTangent",
+                "valueM": 0.1
+              }
+            ]
+          },
+          "applicability": {
+            "orientation": "vertical",
+            "gasDirection": "upward",
+            "geometry": "fullEqualDiameterCylinder",
+            "internalsDescription": "Full-section effective K assumption"
+          },
+          "applicabilitySourceIds": [
+            "adoption-source-3"
+          ],
+          "inputs": {
+            "internalDiameter": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 1.6,
+              "sourceId": "adoption-source-3"
+            },
+            "workingLiquidHeight": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.576,
+              "sourceId": "adoption-source-3"
+            }
+          },
+          "axialSections": {
+            "bottomTangentToLLL": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "adoption-source-3"
+            },
+            "nllToHLL": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "adoption-source-3"
+            },
+            "hllToInletCenter": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "adoption-source-3"
+            },
+            "inletCenterToInternalsBottom": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "adoption-source-3"
+            },
+            "internalsThickness": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "adoption-source-3"
+            },
+            "internalsTopToTopTangent": {
+              "kind": "direct",
+              "quantityId": "length",
+              "valueSi": 0.1,
+              "sourceId": "adoption-source-3"
+            }
+          }
+        },
+        "cases": [
+          {
+            "id": "adopted-v3-case",
+            "revision": 1,
+            "name": "C1 synthetic source",
+            "purpose": "Lifecycle and arithmetic tests",
+            "fluidSystem": "Synthetic two-phase fluid",
+            "applicability": {
+              "service": "cleanNonFoamingTwoPhase",
+              "kBasis": "effectiveWholeVesselForDeclaredInternals",
+              "flowBasis": "actualAtOperatingConditions"
+            },
+            "applicabilitySourceIds": [
+              "adoption-source-2"
+            ],
+            "inputs": {
+              "operatingTemperature": {
+                "kind": "direct",
+                "quantityId": "absolute_temperature",
+                "valueSi": 300.0,
+                "sourceId": "adoption-source-2"
+              },
+              "operatingPressure": {
+                "kind": "direct",
+                "quantityId": "absolute_pressure",
+                "valueSi": 100000.0,
+                "sourceId": "adoption-source-2"
+              },
+              "gasActualVolumeFlow": {
+                "kind": "direct",
+                "quantityId": "actual_volume_flow",
+                "valueSi": 1.0,
+                "sourceId": "adoption-source-2"
+              },
+              "liquidActualVolumeFlow": {
+                "kind": "direct",
+                "quantityId": "actual_volume_flow",
+                "valueSi": 0.006,
+                "sourceId": "adoption-source-2"
+              },
+              "gasMassDensity": {
+                "kind": "direct",
+                "quantityId": "mass_density",
+                "valueSi": 10.0,
+                "sourceId": "adoption-source-2"
+              },
+              "liquidMassDensity": {
+                "kind": "direct",
+                "quantityId": "mass_density",
+                "valueSi": 1010.0,
+                "sourceId": "adoption-source-2"
+              },
+              "effectiveK": {
+                "kind": "direct",
+                "quantityId": "velocity",
+                "valueSi": 0.1,
+                "sourceId": "adoption-source-2"
+              },
+              "gasUtilization": {
+                "kind": "direct",
+                "quantityId": "dimensionless_ratio",
+                "valueSi": 0.8,
+                "sourceId": "adoption-source-2"
+              },
+              "workingDuration": {
+                "kind": "direct",
+                "quantityId": "duration",
+                "valueSi": 120.0,
+                "sourceId": "adoption-source-2"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

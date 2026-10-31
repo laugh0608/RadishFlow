@@ -408,6 +408,7 @@ fn initial_run_panel_reflects_hold_idle_without_snapshot() {
 }
 
 mod canvas;
+mod catalog;
 mod entitlement;
 mod inspector;
 mod recovery;

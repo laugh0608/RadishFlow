@@ -40,6 +40,7 @@ impl ReadyAppState {
             return false;
         }
 
+        self.capture_background_palette_target();
         let palette_items = self.command_palette_items(commands, &self.command_palette.query);
         self.command_palette.sync_selection(&palette_items);
 
@@ -80,7 +81,7 @@ impl ReadyAppState {
         }
 
         if self.screen == StudioShellScreen::Equipment {
-            use rf_ui::engineering::editor::{EquipmentEditorCommand, EquipmentEditorTarget};
+            use rf_ui::engineering::editor::EquipmentEditorCommand;
             if focus_context != StudioGuiFocusContext::TextInput {
                 let history = ctx.input_mut(|i| {
                     if i.consume_key(
@@ -99,17 +100,8 @@ impl ReadyAppState {
                     self.equipment_command(EquipmentEditorCommand::History { redo });
                 }
             }
-            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::F5))
-                && let Some(EquipmentEditorTarget::Task(id)) = self
-                    .platform_host
-                    .modeling_inputs()
-                    .workspace
-                    .equipment_editor
-                    .active()
-                    .cloned()
-            {
-                self.equipment_command(EquipmentEditorCommand::Calculate(id));
-                self.equipment.section = equipment::EquipmentSection::Results;
+            if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::F5)) {
+                self.calculate_active_equipment();
             }
             if !ctx.memory(|memory| memory.any_popup_open())
                 && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
@@ -167,10 +159,15 @@ impl ReadyAppState {
             .is_some()
             || self.unit_settings.is_open()
             || self.pending_format_upgrade.is_some()
+            || self.pending_run_exit.is_some()
             || self.variable_browser.open
             || self.pending_input_action.is_some()
             || self.pending_unit_deletion.is_some()
             || self.pending_result_export.is_some()
+            || self.equipment.pending_export.is_some()
+            || self.equipment.creating_task
+            || self.equipment.adoption.is_some()
+            || self.equipment.adoption_evidence.is_some()
             || self.project_open.pending_confirmation.is_some()
             || self.project_open.pending_blank_project_confirmation
             || self.project_open.pending_save_as_overwrite.is_some()

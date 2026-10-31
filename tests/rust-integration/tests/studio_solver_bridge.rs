@@ -1,6 +1,7 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use radishflow_studio::{StudioSolveRequest, solve_workspace_with_property_package};
+use rf_property_package::InMemoryPropertyPackageProvider;
 use rf_rust_integration::{
     NearBoundaryCaseKind, NearBoundaryStreamWindowCase, SYNTHETIC_DEMO_PACKAGE_ID,
     SYNTHETIC_LIQUID_ONLY_PACKAGE_ID, SYNTHETIC_VAPOR_ONLY_PACKAGE_ID, assert_close,
@@ -10,7 +11,6 @@ use rf_rust_integration::{
     synthetic_single_phase_near_boundary_stream_window_cases,
 };
 use rf_store::parse_project_file_json;
-use rf_thermo::InMemoryPropertyPackageProvider;
 use rf_types::{ComponentId, PhaseEquilibriumRegion, StreamId, UnitId};
 use rf_ui::{
     AppState, DocumentMetadata, FlowsheetDocument, RunPanelRecoveryActionKind,

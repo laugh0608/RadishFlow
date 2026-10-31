@@ -82,6 +82,23 @@ impl AppState {
         Ok((command, revision))
     }
 
+    /// Exact material-port transaction. Application callers enforce input/draft guards.
+    /// Does not select an Inspector or delete the stream or its other bindings.
+    pub fn disconnect_material_port(
+        &mut self,
+        unit_id: &UnitId,
+        port: &str,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<DocumentCommand>> {
+        let (command, next) =
+            apply_disconnect_port_mutation(&self.workspace.document.flowsheet, unit_id, port)?;
+        if next == self.workspace.document.flowsheet {
+            return Ok(None);
+        }
+        self.commit_document_change(command.clone(), next, changed_at);
+        Ok(Some(command))
+    }
+
     /// Delete one unit as a single document transaction. Streams remain explicit objects.
     pub fn delete_unit(&mut self, unit_id: &UnitId, changed_at: DateTimeUtc) -> RfResult<u64> {
         let mut flowsheet = self.workspace.document.flowsheet.clone();

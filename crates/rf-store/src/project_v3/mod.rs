@@ -1,7 +1,10 @@
 //! Complete v3 equipment storage; legacy readers and CLI retain their v1/v2 contract.
+mod adoption_wire;
 mod engineering_wire;
+mod equipment_wire;
 mod file_io;
 mod presentation_wire;
+mod rating_wire;
 mod task_wire;
 pub use file_io::{read, write, write_upgraded};
 
@@ -17,7 +20,19 @@ pub const VERSION: u32 = 3;
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct StoredEngineeringInputs {
     pub basis: EngineeringBasis,
-    pub tasks: Vec<rf_model::equipment::SeparatorSizingTask>,
+    pub tasks: Vec<rf_model::equipment::EquipmentTask>,
+}
+impl StoredEngineeringInputs {
+    pub fn has_rating(&self) -> bool {
+        self.rating_method_version() != 0
+    }
+    pub fn rating_method_version(&self) -> u32 {
+        self.tasks
+            .iter()
+            .filter_map(|t| t.as_rating().map(|r| r.method.version))
+            .max()
+            .unwrap_or(0)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -27,6 +42,18 @@ pub struct StoredProjectV3 {
     /// None preserves an omitted engineering block. Some(empty) preserves an
     /// explicitly present block with three empty arrays, as required by v3.
     pub engineering: Option<StoredEngineeringInputs>,
+}
+impl StoredProjectV3 {
+    pub fn rating_method_version(&self) -> u32 {
+        self.engineering
+            .as_ref()
+            .map_or(0, StoredEngineeringInputs::rating_method_version)
+    }
+    pub fn has_rating(&self) -> bool {
+        self.engineering
+            .as_ref()
+            .is_some_and(StoredEngineeringInputs::has_rating)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -173,7 +200,7 @@ pub fn to_pretty_json(project: &ProjectV3Read) -> RfResult<String> {
                 &e.basis,
                 e.tasks
                     .iter()
-                    .map(task_wire::TaskWire::from)
+                    .map(equipment_wire::EquipmentWire::from)
                     .collect::<Vec<_>>(),
             )
         }),
@@ -189,50 +216,7 @@ fn json_error(error: serde_json::Error) -> RfError {
 mod tests;
 
 fn validate_engineering(inputs: &StoredEngineeringInputs) -> RfResult<()> {
-    inputs
-        .basis
-        .validate()
-        .map_err(|e| RfError::invalid_input(format!("engineering.{e}")))?;
-    rf_model::equipment::validate_equipment_identities(&inputs.tasks).map_err(|e| {
-        RfError::invalid_input(format!("engineering.tasks[{}]: {:?}", e.task_index, e.kind))
-    })?;
-    for (index, task) in inputs.tasks.iter().enumerate() {
-        if task.method.id != task_wire::METHOD_ID
-            || task.method.version != task_wire::METHOD_VERSION
-        {
-            return Err(RfError::invalid_input(format!(
-                "engineering.tasks[{index}].method: unsupported method cannot be written"
-            )));
-        }
-        for (field, binding) in &task.case.inputs {
-            inputs
-                .basis
-                .resolve(field.quantity(), binding)
-                .map_err(|e| {
-                    RfError::invalid_input(format!(
-                        "engineering.tasks[{index}].inputs.{field:?}: {e}"
-                    ))
-                })?;
-        }
-        for (section, binding) in &task.axial_sections {
-            inputs
-                .basis
-                .resolve(rf_types::units::QuantityKind::Length, binding)
-                .map_err(|e| {
-                    RfError::invalid_input(format!(
-                        "engineering.tasks[{index}].axialSections.{section:?}: {e}"
-                    ))
-                })?;
-        }
-        for source in &task.case.applicability_source_ids {
-            if !inputs.basis.sources.iter().any(|s| &s.id == source) {
-                return Err(RfError::invalid_input(format!(
-                    "engineering.tasks[{index}].case.applicabilitySourceIds: missing source {source}"
-                )));
-            }
-        }
-    }
-    Ok(())
+    equipment_wire::validate(inputs)
 }
 
 /// Version dispatch without a lossy JSON Value conversion. Body readers remain strict.

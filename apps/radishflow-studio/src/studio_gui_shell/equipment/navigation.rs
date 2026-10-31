@@ -12,15 +12,23 @@ pub(super) fn render(
         item(
             ui,
             locale,
-            EquipmentEditorTarget::Task(task.id.clone()),
+            if task.as_sizing().is_some() {
+                EquipmentEditorTarget::Task(task.id().clone())
+            } else {
+                EquipmentEditorTarget::RatingTask(task.id().clone())
+            },
             inputs,
             editor,
             commands,
         );
-        ui.small(nonempty(
-            &task.case.name,
-            tr(locale, "未命名工况", "Untitled case"),
-        ));
+        if let Some(sizing) = task.as_sizing() {
+            ui.small(nonempty(
+                &sizing.case.name,
+                tr(locale, "未命名工况", "Untitled case"),
+            ));
+        } else {
+            ui.small(tr(locale, "已有几何校核", "Given-geometry rating"));
+        }
     }
     ui.separator();
     ui.strong(tr(locale, "工程基础", "Engineering basis"));
@@ -81,6 +89,7 @@ impl ReadyAppState {
         query: &str,
     ) -> Vec<radishflow_studio::StudioGuiWindowCommandPaletteItemModel> {
         let mut items = commands.palette_items(query);
+        self.append_background_palette_items(&mut items, query);
         if self.screen != StudioShellScreen::Equipment {
             return items;
         }

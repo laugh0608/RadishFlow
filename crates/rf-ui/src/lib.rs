@@ -9,8 +9,11 @@ mod entitlement_panel_presenter;
 mod entitlement_panel_text;
 mod entitlement_panel_view;
 mod entitlement_panel_widget;
+mod flow_run;
 mod ids;
+pub mod project_query;
 mod quantity_presentation;
+pub mod result_query;
 mod run;
 mod run_panel;
 mod run_panel_presenter;
@@ -101,3 +104,8 @@ pub use state::{
 
 pub use state::{DisplayUnitViewId, ViewDisplayUnits};
 pub use state::{InputDiscardScope, InputEditCheckpoint};
+
+pub use flow_run::{
+    FlowRunDiscardReason, FlowRunDisposition, FlowRunId, FlowRunQualification, FlowRunReceipt,
+    FrozenFlowRun,
+};

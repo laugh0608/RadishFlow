@@ -1,0 +1,89 @@
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 3,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "Independent synthetic separator",
+      "components": {},
+      "streams": {},
+      "units": {}
+    },
+    "metadata": {
+      "documentId": "example-standalone-separator",
+      "title": "Public synthetic separator workspace",
+      "schemaVersion": 1,
+      "createdAt": "2026-10-26T00:00:00Z",
+      "updatedAt": "2026-10-26T00:00:00Z"
+    }
+  },
+  "presentation": {
+    "displayUnits": [
+      {
+        "quantityId": "absolute_temperature",
+        "unitId": "celsius"
+      },
+      {
+        "quantityId": "temperature_difference",
+        "unitId": "kelvin_difference"
+      },
+      {
+        "quantityId": "absolute_pressure",
+        "unitId": "bar"
+      },
+      {
+        "quantityId": "molar_flow",
+        "unitId": "kilomole_per_hour"
+      },
+      {
+        "quantityId": "mole_fraction",
+        "unitId": "mole_per_mole"
+      },
+      {
+        "quantityId": "molar_phase_fraction",
+        "unitId": "mole_per_mole"
+      },
+      {
+        "quantityId": "molar_enthalpy",
+        "unitId": "joule_per_mole"
+      },
+      {
+        "quantityId": "actual_volume_flow",
+        "unitId": "cubic_metre_per_hour"
+      },
+      {
+        "quantityId": "mass_density",
+        "unitId": "kilogram_per_cubic_metre"
+      },
+      {
+        "quantityId": "velocity",
+        "unitId": "metre_per_second"
+      },
+      {
+        "quantityId": "duration",
+        "unitId": "minute"
+      },
+      {
+        "quantityId": "length",
+        "unitId": "millimetre"
+      },
+      {
+        "quantityId": "area",
+        "unitId": "square_metre"
+      },
+      {
+        "quantityId": "volume",
+        "unitId": "cubic_metre"
+      },
+      {
+        "quantityId": "dimensionless_ratio",
+        "unitId": "one"
+      }
+    ]
+  },
+  "engineering": {
+    "basisEntries": [],
+    "sources": [],
+    "tasks": []
+  }
+}

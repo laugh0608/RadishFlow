@@ -1,0 +1,120 @@
+{
+  "je800377b": {
+    "doi": "10.1021/je800377b",
+    "url": "https://trc.nist.gov/ThermoML/10.1021/je800377b.json",
+    "sha256": "39ea795131023f1779fac78b3cd5f4f0f28882aac7ca114ba7c17ee6df8372b2",
+    "thermoml_xml_md5": "409ac0064f256fcd1a2426923316a3f5",
+    "archive_extracted_on": "2020-09-29",
+    "retrieved_on": "2026-10-22",
+    "title": "Vapor-Liquid Equilibria for Propane (R290) + n-Butane (R600) at Various Temperatures",
+    "authors": [
+      "Seong, G.[Gimyeong]",
+      "Yoo, K.-P.[Ki-Pung]",
+      "Lim, J. S.[Jong Sung]"
+    ],
+    "selected_datasets": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "license": "NIST ThermoML/Data Archive mds2-2422 metadata: https://www.nist.gov/open/license",
+    "transform": "Selected numerical datasets only; kPa to Pa; retain point IDs and compiler-expanded uncertainties; no abstract or article text copied."
+  },
+  "je049671t": {
+    "doi": "10.1021/je049671t",
+    "url": "https://trc.nist.gov/ThermoML/10.1021/je049671t.json",
+    "sha256": "6ca3277401d6db4a66deafdc643deca13fdc6e0b8500947be69eb3700a7ed7e2",
+    "thermoml_xml_md5": "83081e5e09cfddabeff3507786fc146f",
+    "archive_extracted_on": "2020-09-29",
+    "retrieved_on": "2026-10-22",
+    "title": "Liquid-Phase Thermodynamic Properties for the Binary and Ternary Systems of Propane (1), n-Butane (2), and Isobutane (3)",
+    "authors": [
+      "Kayukawa, Y.[Yohei]",
+      "Hasumoto, M.[Masaya]",
+      "Kano, Y.[Yuya]",
+      "Watanabe, K.[Koichi]"
+    ],
+    "selected_datasets": [
+      1,
+      2,
+      3
+    ],
+    "license": "NIST ThermoML/Data Archive mds2-2422 metadata: https://www.nist.gov/open/license",
+    "transform": "Selected numerical datasets only; kPa to Pa; retain point IDs and compiler-expanded uncertainties; no abstract or article text copied."
+  },
+  "j.jct.2007.06.014": {
+    "doi": "10.1016/j.jct.2007.06.014",
+    "url": "https://trc.nist.gov/ThermoML/10.1016/j.jct.2007.06.014.json",
+    "sha256": "9de010377f5ca6c04ff2f288a4772e09c17cfdf9bcf09c2aa28351d2aef13a2c",
+    "thermoml_xml_md5": "259041b2a9622c9413e81743514d64a9",
+    "archive_extracted_on": "2020-09-29",
+    "retrieved_on": "2026-10-22",
+    "title": "The (p,q,T,x) properties of (x1 propane + x2 n-butane) with x1 = (0.0000, 0.2729, 0.5021, and 0.7308) over the temperature range from (280 to 440) K at pressures from (1 to 200) MPa",
+    "authors": [
+      "Miyamoto, H.",
+      "Uematsu, M."
+    ],
+    "selected_datasets": [
+      2
+    ],
+    "license": "NIST ThermoML/Data Archive mds2-2422 metadata: https://www.nist.gov/open/license",
+    "transform": "Selected numerical datasets only; kPa to Pa; retain point IDs and compiler-expanded uncertainties; no abstract or article text copied."
+  },
+  "je900124n": {
+    "doi": "10.1021/je900124n",
+    "url": "https://trc.nist.gov/ThermoML/10.1021/je900124n.json",
+    "sha256": "c092dff60dccedcb003f73d03d37abe86a4855f10498eb6ede8e5d1c1fb3094b",
+    "thermoml_xml_md5": "d6d26814529b336af4663ab06a1a631f",
+    "archive_extracted_on": "2020-09-29",
+    "retrieved_on": "2026-10-22",
+    "title": "Thermodynamic Properties of Propane. I. p-?-T Behavior from (265 to 500) K with Pressures to 36 MPa",
+    "authors": [
+      "McLinden, M. O.[Mark O.]"
+    ],
+    "selected_datasets": [
+      1,
+      2
+    ],
+    "license": "NIST ThermoML/Data Archive mds2-2422 metadata: https://www.nist.gov/open/license",
+    "transform": "Selected numerical datasets only; kPa to Pa; retain point IDs and compiler-expanded uncertainties; no abstract or article text copied."
+  },
+  "j.jct.2006.07.012": {
+    "doi": "10.1016/j.jct.2006.07.012",
+    "url": "https://trc.nist.gov/ThermoML/10.1016/j.jct.2006.07.012.json",
+    "sha256": "1e1f0dfcbfa0c783dac412eb9ec4e3af78b5d6b3399bfaeb2e4d2ef6dff31ead",
+    "thermoml_xml_md5": "969ad81ad036296589e62d0f31ce1e1b",
+    "archive_extracted_on": "2020-09-29",
+    "retrieved_on": "2026-10-22",
+    "title": "Saturated liquid densities of propane at T = (280 to 365) K",
+    "authors": [
+      "Miyamoto, H.",
+      "Uematsu, M."
+    ],
+    "selected_datasets": [
+      1
+    ],
+    "license": "NIST ThermoML/Data Archive mds2-2422 metadata: https://www.nist.gov/open/license",
+    "transform": "Selected numerical datasets only; kPa to Pa; retain point IDs and compiler-expanded uncertainties; no abstract or article text copied."
+  },
+  "j.jct.2006.09.014": {
+    "doi": "10.1016/j.jct.2006.09.014",
+    "url": "https://trc.nist.gov/ThermoML/10.1016/j.jct.2006.09.014.json",
+    "sha256": "a7d95c8c2f572b196d38c2dc72b75461350bdd282c3bc814ce1fa5c9e38cb330",
+    "thermoml_xml_md5": "261ac9113944c5b1295919514abfd345",
+    "archive_extracted_on": "2020-09-29",
+    "retrieved_on": "2026-10-22",
+    "title": "Measurements of vapour pressures and saturated-liquid densities for n-butane at T = (280 to 424) K",
+    "authors": [
+      "Miyamoto, H.",
+      "Uematsu, M."
+    ],
+    "selected_datasets": [
+      1,
+      2,
+      3
+    ],
+    "license": "NIST ThermoML/Data Archive mds2-2422 metadata: https://www.nist.gov/open/license",
+    "transform": "Selected numerical datasets only; kPa to Pa; retain point IDs and compiler-expanded uncertainties; no abstract or article text copied."
+  }
+}

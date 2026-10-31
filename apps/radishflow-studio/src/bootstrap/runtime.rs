@@ -30,12 +30,12 @@ use super::seed::{
     app_state_from_untitled_blank_project, normalized_system_time_now,
     seed_bootstrap_runtime_state, seed_sample_auth_cache,
 };
-use super::temp_cache::TemporaryCacheRoot;
 use super::{
     BootstrapSession, StudioBootstrapConfig, StudioBootstrapDispatch,
     StudioBootstrapEntitlementPreflight, StudioBootstrapEntitlementSessionEvent,
     StudioBootstrapReport, StudioBootstrapTrigger,
 };
+use crate::PropertyPackageCacheRoot;
 
 struct BootstrapSessionResources<'a> {
     facade: &'a crate::StudioAppFacade,
@@ -205,23 +205,72 @@ fn dispatch_bootstrap_trigger(
             )
         }),
         StudioBootstrapTrigger::Equipment(command) => {
-            let workspace = &mut session.app_state.workspace;
-            workspace
-                .equipment_editor
-                .dispatch(
+            use crate::run_actions::{
+                EquipmentCalculationTarget, StudioEquipmentDispatch, StudioRunAccess,
+                StudioRunRequest,
+            };
+            use rf_ui::engineering::editor::{EquipmentActionContext, EquipmentEditorCommand};
+            let calculation = match command {
+                EquipmentEditorCommand::Calculate(task) => {
+                    Some(EquipmentCalculationTarget::Sizing(task.clone()))
+                }
+                EquipmentEditorCommand::CalculateRating(member) => {
+                    Some(EquipmentCalculationTarget::Rating(member.clone()))
+                }
+                _ => None,
+            };
+            let dispatch = if let Some(target) = calculation {
+                let expected =
+                    EquipmentActionContext::capture(&session.app_state.workspace.engineering);
+                let context =
+                    StudioAppAuthCacheContext::new(session.cache_root, session.auth_cache_index);
+                StudioEquipmentDispatch::Run(session.facade.execute_run_action(
+                    session.app_state,
+                    &context,
+                    StudioRunAccess::Allowed,
+                    StudioRunRequest::Equipment { expected, target },
+                ))
+            } else {
+                let workspace = &mut session.app_state.workspace;
+                match workspace.equipment_editor.dispatch_with_receipt(
                     &mut workspace.engineering,
                     workspace.project_presentation.display_units(),
                     command.clone(),
-                )
-                .map_err(|error| RfError::invalid_input(error.to_string()))?;
-            Ok(StudioBootstrapDispatch::Equipment)
+                ) {
+                    Ok(Some(receipt)) => StudioEquipmentDispatch::Action(receipt),
+                    Ok(None) => StudioEquipmentDispatch::Interaction,
+                    Err(error) => StudioEquipmentDispatch::Rejected(error),
+                }
+            };
+            Ok(StudioBootstrapDispatch::Equipment(Box::new(dispatch)))
         }
         StudioBootstrapTrigger::NumericEdit(command) => {
-            let generation = session
-                .app_state
-                .dispatch_numeric_edit(command.clone(), normalized_system_time_now()?)
+            let (generation, committed) = if let rf_ui::NumericEditCommand::Commit {
+                variable,
+                generation,
+            } = command
+            {
+                let receipt = crate::flow_actions::commit_numeric_flow_input(
+                    session.app_state,
+                    variable,
+                    *generation,
+                    normalized_system_time_now()?,
+                )
                 .map_err(|error| RfError::invalid_input(error.to_string()))?;
-            Ok(StudioBootstrapDispatch::NumericEdit { generation })
+                (None, Some(receipt))
+            } else {
+                (
+                    session
+                        .app_state
+                        .dispatch_numeric_edit(command.clone(), normalized_system_time_now()?)
+                        .map_err(|error| RfError::invalid_input(error.to_string()))?,
+                    None,
+                )
+            };
+            Ok(StudioBootstrapDispatch::NumericEdit {
+                generation,
+                committed,
+            })
         }
         StudioBootstrapTrigger::ProjectPresentation(command) => {
             let changed = session
@@ -413,6 +462,95 @@ fn command_outcome_from_workspace_control(
 }
 
 impl BootstrapSession {
+    pub(crate) fn background_run_action(
+        &mut self,
+        action: crate::StudioBackgroundRunAction,
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
+        use crate::StudioBackgroundRunAction;
+        if let StudioBackgroundRunAction::Install(owner) = action {
+            if let Some(existing) = &self.facade.background
+                && !std::rc::Rc::ptr_eq(&existing.owner, &owner)
+                && !existing.owner.borrow().is_idle()
+            {
+                return Err(RfError::invalid_input(
+                    "drain the existing run owner before replacing it",
+                ));
+            }
+            self.facade.background = Some(crate::studio_run_owner::BackgroundRunSession {
+                owner,
+                root: self.cache_root.clone(),
+            });
+            return Ok(crate::StudioBackgroundRunReply::default());
+        }
+        let Some(background) = &self.facade.background else {
+            return Ok(crate::StudioBackgroundRunReply {
+                cancellation: matches!(action, StudioBackgroundRunAction::Cancel(_))
+                    .then_some(crate::WorkspaceRunCancelReply::UnknownRun),
+                ..Default::default()
+            });
+        };
+        let mut owner = background.owner.borrow_mut();
+        let mut reply = crate::StudioBackgroundRunReply::default();
+        let changed = match action {
+            StudioBackgroundRunAction::Poll { attached } => {
+                let changed = owner.poll(
+                    if attached {
+                        Some(&mut self.app_state)
+                    } else {
+                        None
+                    },
+                    SystemTime::now(),
+                );
+                if attached && owner.should_attempt_automatic(&self.app_state) {
+                    drop(owner);
+                    let context = StudioAppAuthCacheContext::new(
+                        self.cache_root.path(),
+                        &self.auth_cache_index,
+                    );
+                    let expected =
+                        crate::flow_actions::FlowEditContext::capture(&self.app_state.workspace);
+                    reply.submission = Some(self.facade.execute_run_action(
+                        &mut self.app_state,
+                        &context,
+                        crate::run_actions::StudioRunAccess::Allowed,
+                        crate::run_actions::StudioRunRequest::Flow {
+                            expected,
+                            command: crate::WorkspaceRunCommand::automatic_preferred(),
+                        },
+                    ));
+                    reply.changed = true;
+                    return Ok(reply);
+                } else {
+                    changed
+                }
+            }
+            StudioBackgroundRunAction::Cancel(id) => {
+                let cancellation = owner.cancel(&mut self.app_state, &id);
+                reply.cancellation = Some(cancellation);
+                matches!(
+                    cancellation,
+                    crate::WorkspaceRunCancelReply::Requested
+                        | crate::WorkspaceRunCancelReply::AlreadyRequested
+                )
+            }
+            StudioBackgroundRunAction::Detach => {
+                owner.detach(&mut self.app_state);
+                true
+            }
+            StudioBackgroundRunAction::BeginShutdown => {
+                owner.begin_shutdown(&mut self.app_state);
+                true
+            }
+            StudioBackgroundRunAction::ResumeSubmissions => {
+                owner.resume_submissions();
+                false
+            }
+            StudioBackgroundRunAction::Install(_) => unreachable!(),
+        };
+        reply.changed = changed;
+        Ok(reply)
+    }
+
     pub(crate) fn new(config: &StudioBootstrapConfig) -> RfResult<Self> {
         let mut app_state = match config.untitled_blank_project.as_ref() {
             Some(untitled) => app_state_from_untitled_blank_project(
@@ -422,7 +560,7 @@ impl BootstrapSession {
             ),
             None => crate::load_project_app_state(&config.project_path)?,
         };
-        let cache_root = TemporaryCacheRoot::new("studio-bootstrap")?;
+        let cache_root = PropertyPackageCacheRoot::temporary("studio-bootstrap")?;
         let seeded_auth_cache = seed_sample_auth_cache(
             cache_root.path(),
             &app_state.workspace.document.flowsheet,
@@ -573,13 +711,50 @@ impl BootstrapSession {
         &mut self,
         position: rf_ui::CanvasPoint,
     ) -> RfResult<Option<rf_ui::CanvasEditCommitResult>> {
-        let result = self
+        use crate::flow_actions::{
+            FlowAction, FlowActionEffect, FlowActionRequest, FlowEditAccess, FlowEditContext,
+            execute_flow_action,
+        };
+        let Some(intent) = self
             .app_state
-            .commit_canvas_pending_edit_at(position, SystemTime::now())?;
-        if result.is_some() {
-            self.refresh_local_canvas_suggestions();
-        }
-        Ok(result)
+            .workspace
+            .canvas_interaction
+            .pending_edit
+            .clone()
+        else {
+            return Ok(None);
+        };
+        let kind = intent.builtin_unit_kind()?;
+        // This adapter owns the pending placement. Clear only that intent in the
+        // staged copy; all other draft and input guards remain in the formal action.
+        let mut next = self.app_state.clone();
+        next.cancel_canvas_pending_edit();
+        let request = FlowActionRequest {
+            expected: FlowEditContext::capture(&next.workspace),
+            action: FlowAction::CreateUnit(kind),
+        };
+        let receipt = execute_flow_action(
+            &mut next,
+            FlowEditAccess::Editable,
+            &request,
+            SystemTime::now(),
+        )
+        .map_err(|e| RfError::invalid_input(e.to_string()))?;
+        let FlowActionEffect::Created(unit_id) = receipt.effect else {
+            unreachable!("creation action")
+        };
+        let result = next.finish_canvas_unit_placement(
+            intent,
+            rf_ui::UnitCreateResult {
+                unit_id,
+                command: receipt.command.expect("created command"),
+                revision: receipt.after.revision(),
+            },
+            position,
+        );
+        self.app_state = next;
+        self.refresh_local_canvas_suggestions();
+        Ok(Some(result))
     }
 
     pub(crate) fn accept_modeling_recommendation(
@@ -636,19 +811,7 @@ impl BootstrapSession {
     pub(crate) fn disconnect_selected_stream_connections(
         &mut self,
     ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
-        let Some(rf_ui::InspectorTarget::Stream(stream_id)) =
-            self.app_state.workspace.drafts.active_target.clone()
-        else {
-            return Ok(None);
-        };
-        let result = self
-            .app_state
-            .disconnect_stream_connections(&stream_id, SystemTime::now())?;
-        if result.is_some() {
-            self.refresh_local_canvas_suggestions();
-            self.dispatch_automatic_run_after_canvas_write_if_needed()?;
-        }
-        Ok(result)
+        self.disconnect_selected_stream(None)
     }
 
     pub(crate) fn disconnect_selected_stream_source_connection(
@@ -667,19 +830,51 @@ impl BootstrapSession {
         &mut self,
         direction: rf_types::PortDirection,
     ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        self.disconnect_selected_stream(Some(direction))
+    }
+
+    fn disconnect_selected_stream(
+        &mut self,
+        direction: Option<rf_types::PortDirection>,
+    ) -> RfResult<Option<rf_ui::StreamConnectionEditResult>> {
+        use crate::flow_actions::{
+            FlowAction, FlowActionEffect, FlowActionRequest, FlowEditAccess, FlowEditContext,
+            execute_flow_action,
+        };
         let Some(rf_ui::InspectorTarget::Stream(stream_id)) =
             self.app_state.workspace.drafts.active_target.clone()
         else {
             return Ok(None);
         };
-        let result =
-            self.app_state
-                .disconnect_stream_endpoint(&stream_id, direction, SystemTime::now())?;
-        if result.is_some() {
-            self.refresh_local_canvas_suggestions();
-            self.dispatch_automatic_run_after_canvas_write_if_needed()?;
-        }
-        Ok(result)
+        let request = FlowActionRequest {
+            expected: FlowEditContext::capture(&self.app_state.workspace),
+            action: FlowAction::DisconnectStream {
+                stream: stream_id.clone(),
+                direction,
+            },
+        };
+        let receipt = execute_flow_action(
+            &mut self.app_state,
+            FlowEditAccess::Editable,
+            &request,
+            SystemTime::now(),
+        )
+        .map_err(|e| RfError::invalid_input(e.to_string()))?;
+        let Some(command) = receipt.command else {
+            return Ok(None);
+        };
+        let FlowActionEffect::StreamDisconnected { ports, .. } = receipt.effect else {
+            unreachable!("stream disconnect action")
+        };
+        let result = rf_ui::StreamConnectionEditResult {
+            stream_id,
+            disconnected_ports: ports,
+            command,
+            revision: receipt.after.revision(),
+        };
+        self.refresh_local_canvas_suggestions();
+        self.dispatch_automatic_run_after_canvas_write_if_needed()?;
+        Ok(Some(result))
     }
 
     pub(crate) fn reconnect_selected_stream_to_unique_available_endpoint(

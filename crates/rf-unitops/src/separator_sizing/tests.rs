@@ -1,6 +1,7 @@
 use super::*;
 use rf_model::engineering::*;
 use rf_types::{EngineeringCaseId, EquipmentTaskId, SourceObservationId, units::*};
+mod adoption;
 
 // Public synthetic arithmetic fixture S0-B01. No proprietary engineering data.
 fn fixture() -> (SeparatorSizingTask, EngineeringBasis) {

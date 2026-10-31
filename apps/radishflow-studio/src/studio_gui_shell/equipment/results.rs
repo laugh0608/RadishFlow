@@ -3,20 +3,9 @@ use rf_ui::engineering::editor::separator_sizing::*;
 use rf_ui::engineering::{EngineeringSession, EquipmentResultStatus};
 
 pub(super) fn format_value(value: f64, q: QuantityKind, units: &DisplayUnitSet) -> String {
-    let unit = units.unit_for(q);
-    match rf_types::units::from_canonical(value, q, unit) {
-        Ok(value) => format!("{} {}", display_number(value), unit.definition().symbol),
-        Err(_) => format!(
-            "{value:.6} {}",
-            q.definition().canonical_unit.definition().symbol
-        ),
-    }
-}
-fn display_number(value: f64) -> String {
-    if value != 0.0 && (value.abs() < 0.0001 || value.abs() >= 1e7) {
-        format!("{value:.6e}")
-    } else {
-        format!("{value:.6}")
+    match rf_ui::format_quantity(value, q, units.unit_for(q)) {
+        Ok(text) => text,
+        Err(error) => format!("⚠ {error}"),
     }
 }
 pub(super) fn render(
@@ -26,9 +15,16 @@ pub(super) fn render(
     session: &EngineeringSession,
     units: &DisplayUnitSet,
     evidence_only: bool,
-) -> Option<IssueTarget> {
-    let status = session.result_status(id);
+) -> Option<super::super::result_review::EquipmentNavigation<IssueTarget>> {
+    let task = session.inputs().task(id)?;
+    let member = rf_ui::engineering::EquipmentCaseKey {
+        task_id: id.clone(),
+        case_id: task.case.id.clone(),
+    };
+    let view = session.query_case_result(&member);
+    let status = view.status();
     ui.heading(status_label(l, status));
+    super::super::result_review::equipment(ui, l, &view);
     let Some(outcome) = session.historical_outcome(id) else {
         ui.label(tr(
             l,
@@ -42,22 +38,33 @@ pub(super) fn render(
         ui.colored_label(egui::Color32::from_rgb(160,65,30),tr(l,"下方是历史计算证据，不能作为当前候选使用。请重新计算。","Historical calculation evidence below is not a current candidate. Recalculate explicitly."));
     }
     let mut requested = None;
-    ui.scope(|ui| {
-        if stale {
-            ui.visuals_mut().override_text_color = Some(egui::Color32::GRAY);
-        }
-        match outcome {
-            Err(failure) => {
-                for issue in &failure.issues {
-                    if ui.link(issue_label(l, issue)).clicked() {
-                        requested = Some(issue.target.clone());
-                    }
+    let mut body = |ui: &mut egui::Ui| match outcome {
+        Err(failure) => {
+            for issue in &failure.issues {
+                if ui.link(issue_label(l, issue)).clicked() {
+                    requested = Some(issue.target.clone());
                 }
             }
-            Ok(candidate) => render_candidate(ui, l, candidate, units, evidence_only),
         }
-    });
+        Ok(candidate) => render_candidate(ui, l, candidate, units, evidence_only),
+    };
+    if stale {
+        egui::CollapsingHeader::new(tr(
+            l,
+            "历史依据 · 不可作为当前结果",
+            "Historical evidence · not a current result",
+        ))
+        .show(ui, |ui| {
+            ui.add_enabled_ui(false, &mut body);
+        });
+    } else {
+        body(ui);
+    }
     requested
+        .zip(radishflow_studio::EquipmentResultGuard::capture(
+            session, &member,
+        ))
+        .map(|(target, guard)| super::super::result_review::EquipmentNavigation { target, guard })
 }
 fn render_candidate(
     ui: &mut egui::Ui,
@@ -189,8 +196,111 @@ fn render_candidate(
             "No assumed or pending-review source flags in this capture.",
         ));
     }
+    render_unchecked(ui, l, c.unchecked_requirements());
+    egui::CollapsingHeader::new(tr(l, "本次计算输入与来源快照", "Captured evidence"))
+        .default_open(evidence_only)
+        .show(ui, |ui| {
+            ui.label(format!(
+                "{} · {} · {}",
+                capture.task.tag, capture.task.case.name, capture.task.case.fluid_system
+            ));
+            for (field, value) in &capture.values_si {
+                ui.label(format!(
+                    "{}：{}",
+                    field_label(l, EquipmentField::Input(*field)),
+                    format_value(*value, field.quantity(), units)
+                ));
+                if let Some(binding) = capture.task.case.inputs.get(field) {
+                    render_binding_evidence(
+                        ui,
+                        l,
+                        binding,
+                        &capture.basis_entries,
+                        &capture.sources,
+                        units,
+                    );
+                }
+            }
+            for (field, value) in &capture.axial_lengths_m {
+                ui.label(format!(
+                    "{}：{}",
+                    field_label(l, EquipmentField::Axial(*field)),
+                    format_value(*value, QuantityKind::Length, units)
+                ));
+                if let Some(binding) = capture.task.axial_sections.get(field) {
+                    render_binding_evidence(
+                        ui,
+                        l,
+                        binding,
+                        &capture.basis_entries,
+                        &capture.sources,
+                        units,
+                    );
+                }
+            }
+            render_sources(ui, l, &capture.sources, units);
+        });
+}
+
+pub(super) fn render_binding_evidence(
+    ui: &mut egui::Ui,
+    l: StudioShellLocale,
+    binding: &rf_model::engineering::InputBinding,
+    basis_entries: &std::collections::BTreeMap<
+        rf_types::BasisEntryId,
+        rf_model::engineering::BasisEntry,
+    >,
+    sources: &std::collections::BTreeMap<rf_types::SourceId, rf_model::engineering::SourceRecord>,
+    units: &DisplayUnitSet,
+) {
+    use rf_model::engineering::InputBinding;
+    let (basis_id, source_id, reason) = match binding {
+        InputBinding::Direct { source_id, .. } => (None, Some(source_id), None),
+        InputBinding::BasisRef { basis_entry_id } => (Some(basis_entry_id), None, None),
+        InputBinding::Override {
+            basis_entry_id,
+            source_id,
+            reason,
+            ..
+        } => (Some(basis_entry_id), Some(source_id), Some(reason)),
+    };
+    if let Some(basis) = basis_id.and_then(|id| basis_entries.get(id)) {
+        ui.label(format!(
+            "{}：{} = {}",
+            tr(l, "原始基础", "Original basis"),
+            basis.name,
+            format_value(basis.value.value_si, basis.value.quantity, units)
+        ));
+        if let Some(source) = sources.get(&basis.source_id) {
+            ui.label(format!(
+                "{}：{}",
+                tr(l, "基础来源", "Basis source"),
+                source.title
+            ));
+        }
+    }
+    if let Some(source) = source_id.and_then(|id| sources.get(id)) {
+        ui.label(format!(
+            "{}：{}",
+            tr(l, "有效输入来源", "Effective input source"),
+            source.title
+        ));
+    }
+    if let Some(reason) = reason {
+        ui.label(format!(
+            "{}：{reason}",
+            tr(l, "局部覆盖理由", "Local override reason")
+        ));
+    }
+}
+
+pub(super) fn render_unchecked(
+    ui: &mut egui::Ui,
+    l: StudioShellLocale,
+    requirements: &[UncheckedRequirement],
+) {
     ui.heading(tr(l, "未校核项目", "Unchecked requirements"));
-    for requirement in c.unchecked_requirements() {
+    for requirement in requirements {
         ui.label(match requirement {
             UncheckedRequirement::PhaseEquilibrium => tr(
                 l,
@@ -213,132 +323,64 @@ fn render_candidate(
             }
         });
     }
-    egui::CollapsingHeader::new(tr(l, "本次计算输入与来源快照", "Captured evidence"))
-        .default_open(evidence_only)
-        .show(ui, |ui| {
-            ui.label(format!(
-                "{} · {} · {}",
-                capture.task.tag, capture.task.case.name, capture.task.case.fluid_system
-            ));
-            for (field, value) in &capture.values_si {
-                ui.label(format!(
-                    "{}：{}",
-                    field_label(l, EquipmentField::Input(*field)),
-                    format_value(*value, field.quantity(), units)
-                ));
-                if let Some(binding) = capture.task.case.inputs.get(field) {
-                    render_binding_evidence(ui, l, binding, capture, units);
-                }
-            }
-            for (field, value) in &capture.axial_lengths_m {
-                ui.label(format!(
-                    "{}：{}",
-                    field_label(l, EquipmentField::Axial(*field)),
-                    format_value(*value, QuantityKind::Length, units)
-                ));
-                if let Some(binding) = capture.task.axial_sections.get(field) {
-                    render_binding_evidence(ui, l, binding, capture, units);
-                }
-            }
-            for source in capture.sources.values() {
-                ui.separator();
-                ui.strong(&source.title);
-                ui.label(format!(
-                    "{} · {}",
-                    source_kind(l, source.kind),
-                    source_review(l, source.review)
-                ));
-                for text in [
-                    &source.reference,
-                    &source.locator,
-                    &source.publication_version,
-                    &source.adoption_note,
-                    &source.applicability.scope,
-                ] {
-                    if !text.is_empty() {
-                        ui.label(text);
-                    }
-                }
-                ui.label(format!(
-                    "{}：{}",
-                    tr(l, "物系", "Fluid system"),
-                    source.applicability.fluid_system
-                ));
-                if let Some(conditions) = source.applicability.operating_conditions {
-                    ui.label(format!(
-                        "T = {}; P = {}",
-                        format_value(
-                            conditions.temperature_k,
-                            QuantityKind::AbsoluteTemperature,
-                            units
-                        ),
-                        format_value(
-                            conditions.pressure_pa,
-                            QuantityKind::AbsolutePressure,
-                            units
-                        )
-                    ));
-                }
-                if let Some(date) = source.accessed_on {
-                    ui.label(date.to_string());
-                }
-                for observation in &source.observations {
-                    ui.label(format!(
-                        "{} {} → {} · {}",
-                        observation.original_value,
-                        observation.original_unit,
-                        format_value(observation.canonical_value, observation.quantity, units),
-                        observation.conversion_note
-                    ));
-                }
-            }
-        });
 }
 
-fn render_binding_evidence(
+pub(super) fn render_sources(
     ui: &mut egui::Ui,
     l: StudioShellLocale,
-    binding: &rf_model::engineering::InputBinding,
-    capture: &SizingInputCapture,
+    sources: &std::collections::BTreeMap<rf_types::SourceId, rf_model::engineering::SourceRecord>,
     units: &DisplayUnitSet,
 ) {
-    use rf_model::engineering::InputBinding;
-    let (basis_id, source_id, reason) = match binding {
-        InputBinding::Direct { source_id, .. } => (None, Some(source_id), None),
-        InputBinding::BasisRef { basis_entry_id } => (Some(basis_entry_id), None, None),
-        InputBinding::Override {
-            basis_entry_id,
-            source_id,
-            reason,
-            ..
-        } => (Some(basis_entry_id), Some(source_id), Some(reason)),
-    };
-    if let Some(basis) = basis_id.and_then(|id| capture.basis_entries.get(id)) {
+    for source in sources.values() {
+        ui.separator();
+        ui.strong(&source.title);
         ui.label(format!(
-            "{}：{} = {}",
-            tr(l, "原始基础", "Original basis"),
-            basis.name,
-            format_value(basis.value.value_si, basis.value.quantity, units)
+            "{} · {}",
+            source_kind(l, source.kind),
+            source_review(l, source.review)
         ));
-        if let Some(source) = capture.sources.get(&basis.source_id) {
-            ui.label(format!(
-                "{}：{}",
-                tr(l, "基础来源", "Basis source"),
-                source.title
-            ));
+        for text in [
+            &source.reference,
+            &source.locator,
+            &source.publication_version,
+            &source.adoption_note,
+            &source.applicability.scope,
+        ] {
+            if !text.is_empty() {
+                ui.label(text);
+            }
         }
-    }
-    if let Some(source) = source_id.and_then(|id| capture.sources.get(id)) {
         ui.label(format!(
             "{}：{}",
-            tr(l, "有效输入来源", "Effective input source"),
-            source.title
+            tr(l, "物系", "Fluid system"),
+            source.applicability.fluid_system
         ));
-    }
-    if let Some(reason) = reason {
-        ui.label(format!(
-            "{}：{reason}",
-            tr(l, "局部覆盖理由", "Local override reason")
-        ));
+        if let Some(conditions) = source.applicability.operating_conditions {
+            ui.label(format!(
+                "T = {}; P = {}",
+                format_value(
+                    conditions.temperature_k,
+                    QuantityKind::AbsoluteTemperature,
+                    units
+                ),
+                format_value(
+                    conditions.pressure_pa,
+                    QuantityKind::AbsolutePressure,
+                    units
+                )
+            ));
+        }
+        if let Some(date) = source.accessed_on {
+            ui.label(date.to_string());
+        }
+        for observation in &source.observations {
+            ui.label(format!(
+                "{} {} → {} · {}",
+                observation.original_value,
+                observation.original_unit,
+                format_value(observation.canonical_value, observation.quantity, units),
+                observation.conversion_note
+            ));
+        }
     }
 }

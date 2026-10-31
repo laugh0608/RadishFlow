@@ -181,14 +181,19 @@ impl ReadyAppState {
         section_title: &str,
         item: &radishflow_studio::StudioGuiWindowContextToolbarItemModel,
     ) {
-        let label =
-            self.locale.runtime_label(self.recommendation_command_label(
-                item.command_id.as_deref().unwrap_or(""),
-                &item.label,
-            ));
+        let label = self.locale.runtime_label(
+            self.background_command_label(item.command_id.as_deref().unwrap_or(""), &item.label),
+        );
         let detail = self.locale.runtime_label(&item.detail);
         let response = ui
-            .add_enabled(item.enabled, egui::Button::new(label.as_ref()))
+            .add_enabled(
+                item.enabled
+                    && item
+                        .command_id
+                        .as_deref()
+                        .is_none_or(|id| self.background_command_enabled(id)),
+                egui::Button::new(label.as_ref()),
+            )
             .on_hover_text(detail.as_ref());
         if response.clicked() {
             match item.target {
@@ -564,7 +569,26 @@ impl ReadyAppState {
             .exact_height(height)
             .resizable(false)
             .show(ctx, |ui| {
-                self.render_bottom_workbench(ui, window);
+                if self.background_run_details_open {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.strong(self.locale.text(ShellText::RuntimeLog));
+                        if ui
+                            .button(match self.locale {
+                                StudioShellLocale::ZhCn => "收起运行详情",
+                                StudioShellLocale::En => "Close run details",
+                            })
+                            .clicked()
+                        {
+                            self.background_run_details_open = false;
+                        }
+                    });
+                    ui.separator();
+                    egui::ScrollArea::vertical()
+                        .id_salt("background-run-log-scroll")
+                        .show(ui, |ui| self.render_bottom_run_log(ui, window));
+                } else {
+                    self.render_bottom_workbench(ui, window);
+                }
             });
     }
 
@@ -1517,6 +1541,7 @@ impl ReadyAppState {
     }
 
     fn render_bottom_run_log(&self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        self.render_background_history(ui);
         if window.runtime.log_entries.is_empty() {
             ui.small(self.locale.text(ShellText::NoRuntimeLog));
             return;

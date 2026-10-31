@@ -26,9 +26,7 @@ pub use unit_inspector::{
 
 use rf_model::{Component, Flowsheet, MaterialStreamState, UnitNode, UnitPort};
 use rf_types::{ComponentId, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId};
-use rf_unitops::{
-    BuiltinUnitKind, UnitOperationSpec, builtin_unit_spec, builtin_unit_spec_by_name,
-};
+use rf_unitops::{BuiltinUnitKind, UnitOperationSpec, builtin_unit_spec_by_name};
 
 use crate::auth::{
     AuthSessionState, AuthenticatedUser, EntitlementSnapshot, EntitlementState,
@@ -456,6 +454,8 @@ impl AppLogFeed {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceState {
+    pub(crate) flow_failure: Option<crate::result_query::FlowFailureRecord>,
+    pub(crate) flow_run_acceptance: crate::flow_run::FlowRunAcceptance,
     // Retain identities across deletion and history branching for this document session.
     allocated_unit_ids: BTreeSet<UnitId>,
     pub document: FlowsheetDocument,
@@ -481,6 +481,7 @@ impl WorkspaceState {
         let run_panel = RunPanelState::from_runtime(&solve_session, None, None);
 
         Self {
+            flow_run_acceptance: crate::flow_run::FlowRunAcceptance::new(),
             engineering: crate::engineering::EngineeringSession::new(
                 document.metadata.document_id.clone(),
             ),
@@ -497,6 +498,7 @@ impl WorkspaceState {
             command_history: CommandHistory::new(),
             solve_session,
             snapshot_history: VecDeque::new(),
+            flow_failure: None,
             run_panel,
         }
     }
@@ -517,6 +519,7 @@ impl WorkspaceState {
                 revision, command, before, after,
             ));
         self.canvas_interaction.invalidate_all();
+        self.flow_run_acceptance.input_changed();
         self.solve_session.mark_document_revision_advanced(revision);
         self.drafts
             .fields
@@ -539,6 +542,7 @@ impl WorkspaceState {
                 revision, command, before, after,
             ));
         self.canvas_interaction.invalidate_all();
+        self.flow_run_acceptance.input_changed();
         self.solve_session.mark_document_revision_advanced(revision);
         self.refresh_numeric_edits();
         revision
@@ -547,6 +551,7 @@ impl WorkspaceState {
     fn apply_history_flowsheet(&mut self, flowsheet: Flowsheet, changed_at: DateTimeUtc) -> u64 {
         let revision = self.document.replace_flowsheet(flowsheet, changed_at);
         self.canvas_interaction.invalidate_all();
+        self.flow_run_acceptance.input_changed();
         self.solve_session.mark_document_revision_advanced(revision);
         self.prune_focus_against_document();
         self.drafts
@@ -590,14 +595,20 @@ impl WorkspaceState {
         }
     }
 
-    pub fn store_snapshot(&mut self, snapshot: SolveSnapshot, limit: usize) {
+    pub fn store_snapshot(&mut self, mut snapshot: SolveSnapshot, limit: usize) {
+        if snapshot.origin.is_none() {
+            snapshot.origin = Some(crate::result_query::FlowResultOrigin::local(self));
+        }
+        self.flow_failure = None;
         self.snapshot_history.push_back(snapshot.clone());
         self.apply_snapshot_history_limit(limit);
         self.solve_session.complete_with_snapshot(&snapshot);
     }
 
     pub fn clear_results(&mut self) {
+        self.revoke_flow_run_acceptance();
         self.snapshot_history.clear();
+        self.flow_failure = None;
         self.solve_session.latest_snapshot = None;
         self.solve_session.pending_reason = Some(SolvePendingReason::SnapshotMissing);
         self.run_panel = RunPanelState::from_runtime(&self.solve_session, None, None);
@@ -761,6 +772,10 @@ impl AppState {
     }
 
     pub fn record_failure(&mut self, revision: u64, status: RunStatus, summary: DiagnosticSummary) {
+        self.workspace.flow_failure = Some(crate::result_query::FlowFailureRecord {
+            origin: crate::result_query::FlowResultOrigin::local(&self.workspace),
+            diagnostic: summary.clone(),
+        });
         self.workspace
             .solve_session
             .hold_with_failure(revision, status, summary);
@@ -909,17 +924,36 @@ impl AppState {
             return Ok(None);
         };
 
-        let CanvasEditIntent::PlaceUnit { unit_kind } = &intent;
-        let kind = parse_canvas_unit_kind(unit_kind).ok_or_else(|| {
-            RfError::invalid_input(format!(
-                "canvas place unit intent uses unsupported unit kind `{unit_kind}`"
-            ))
-        })?;
+        let kind = intent.builtin_unit_kind()?;
         let UnitCreateResult {
             command,
             unit_id,
             revision,
         } = self.create_builtin_unit(kind, changed_at)?;
+        Ok(Some(self.finish_canvas_unit_placement(
+            intent,
+            UnitCreateResult {
+                command,
+                unit_id,
+                revision,
+            },
+            position,
+        )))
+    }
+
+    /// Finish the selection and viewport-facing part of an already committed creation.
+    /// Both canvas and formal-action adapters use this presentation-only step.
+    pub fn finish_canvas_unit_placement(
+        &mut self,
+        intent: CanvasEditIntent,
+        created: UnitCreateResult,
+        position: CanvasPoint,
+    ) -> CanvasEditCommitResult {
+        let UnitCreateResult {
+            command,
+            unit_id,
+            revision,
+        } = created;
         self.workspace.selection.selected_units.clear();
         self.workspace.selection.selected_streams.clear();
         self.workspace
@@ -933,13 +967,13 @@ impl AppState {
             format_canvas_edit_commit_message(&intent, &unit_id, position),
         );
 
-        Ok(Some(CanvasEditCommitResult {
+        CanvasEditCommitResult {
             intent,
             command,
             revision,
             unit_id,
             position,
-        }))
+        }
     }
 
     pub fn accept_focused_canvas_suggestion_by_tab(
@@ -1304,6 +1338,7 @@ impl AppState {
     }
 
     pub fn clear_auth_session(&mut self) {
+        self.workspace.revoke_flow_run_acceptance();
         self.auth_session.clear();
         self.entitlement.clear();
     }

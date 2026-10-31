@@ -257,11 +257,20 @@ impl ModelingRecommendationSession {
                 .command
             }
             RecommendedAction::MaterialConnection(connection) => {
-                app.validate_acyclic_material_connection(connection)
-                    .map_err(Rejected)?;
-                app.commit_material_connection(connection, changed_at)
-                    .map_err(Rejected)?
-                    .0
+                use crate::flow_actions::{
+                    FlowAction, FlowActionRequest, FlowEditAccess, FlowEditContext,
+                    execute_flow_action,
+                };
+                let request = FlowActionRequest {
+                    expected: FlowEditContext::capture(&app.workspace),
+                    action: FlowAction::Connect(crate::modeling_actions::connection_target(
+                        connection,
+                    )),
+                };
+                execute_flow_action(app, FlowEditAccess::Editable, &request, changed_at)
+                    .map_err(|error| Rejected(rf_types::RfError::invalid_input(error.to_string())))?
+                    .command
+                    .expect("connection commits a command")
             }
         };
         // From here the edit has committed. Recheck failure is an outcome, never an

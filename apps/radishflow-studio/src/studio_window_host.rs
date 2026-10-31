@@ -166,6 +166,13 @@ pub struct StudioRuntimeHostPort {
 }
 
 impl StudioRuntimeHostPort {
+    pub fn background_run_action(
+        &mut self,
+        action: crate::StudioBackgroundRunAction,
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
+        self.runtime.background_run_action(action)
+    }
+
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
         Ok(Self {
             runtime: StudioRuntime::new(config)?,

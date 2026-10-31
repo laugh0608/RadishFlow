@@ -9,12 +9,28 @@ pub fn calculate(
     use CalculationStep::*;
     use SeparatorInput::*;
     let v = |field| capture.values_si[&field];
-    let ratio = positive(
-        (v(LiquidDensity) - v(GasDensity)) / v(GasDensity),
-        DensityRatio,
-    )?;
-    let u_sb = positive(v(EffectiveK) * ratio.sqrt(), SoudersBrownVelocity)?;
-    let u_allow = positive(v(GasVelocityUtilization) * u_sb, AllowedVelocity)?;
+    let velocities = crate::separator_hydraulics::gas_velocities(
+        v(GasDensity),
+        v(LiquidDensity),
+        v(EffectiveK),
+        v(GasVelocityUtilization),
+    )
+    .map_err(|step| {
+        use crate::separator_hydraulics::VelocityStep;
+        let step = match step {
+            VelocityStep::DensityRatio => DensityRatio,
+            VelocityStep::SoudersBrownVelocity => SoudersBrownVelocity,
+            VelocityStep::AllowedVelocity => AllowedVelocity,
+        };
+        SizingFailure {
+            issues: vec![SizingIssue {
+                target: IssueTarget::Calculation,
+                kind: SizingIssueKind::NumericRange(step),
+            }],
+        }
+    })?;
+    let u_sb = velocities.souders_brown_m_s;
+    let u_allow = velocities.allowed_m_s;
     let gas_area = positive(v(GasVolumeFlow) / u_allow, GasArea)?;
     let volume = positive(v(LiquidVolumeFlow) * v(WorkingVolumeTime), WorkingVolume)?;
     let liquid_area = positive(volume / v(MaximumWorkingLiquidHeight), LiquidArea)?;

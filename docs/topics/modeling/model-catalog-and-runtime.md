@@ -1,6 +1,6 @@
 # 模型目录、发现与运行实例
 
-更新时间：2026-09-29
+更新时间：2026-10-24
 
 ## 用途与状态
 
@@ -8,9 +8,11 @@
 读者：维护模型、求解器、物性包、模块面板、项目存储与互操作适配的协作者。
 不包含：具体插件 ABI、运行时选型、完整 SDK、市场、安装器或第三方 CAPE-OPEN 宿主实现。
 
-- 状态：Draft / 2026-09-29 方向已确认，新增能力尚未实现。
+- 状态：部分实现 / AF2a 六类目录 / 工厂、AF2b 单包上下文已接通；外部扩展仍按切片推进。
 - 层级：二级功能；父专题为 [流程图建模与求解](../flowsheet-modeling-and-solve.md)，关联 [物性基础](../property-basis-and-components.md)。
 - 总体扩展与权限原则归 [平台规划](../../architecture/simulation-platform.md#插件系统)，实施依赖归 [路线图](../../radishflow-mvp-roadmap.md#模型装配与物性上下文的配套切片)，当前优先级归 [当前状态](../../status/current.md)。
+
+2026-10-23 的基础架构安排将现有模型的必要 MC0 / MC1 / MC2 工作纳入 [AF2](../../radishflow-mvp-roadmap.md#基础架构优先的实施切片)，以六类内建模型、单包物性上下文及现有 GUI / CLI 消费者为起点；不等待 PR 准确性研究完成，也不顺带实现新 PR 内核或外部插件。代码断点见 [架构审计](../../architecture/overview.md#工程基础链路审计2026-10-23)。2026-10-24 所有者确认 AF2a 接口与兼容范围，并允许 AF1 保留故障跟踪、不阻塞本轮实施。
 
 ## 目标与用户路径
 
@@ -22,14 +24,14 @@
 
 | 对象 | 当前事实 | 尚缺能力 |
 | --- | --- | --- |
-| 单元类型与描述 | `rf-unitops::BuiltinUnitKind` 固定六类；`UnitOperationSpec` 描述规范端口 | 开放模型身份、版本、参数 / 规格与能力描述 |
+| 单元类型与描述 | `rf-unitops::catalog` 枚举六类内建模型，关联规范端口、输入规格和服务需求 | 开放模型身份、版本与扩展能力描述 |
 | 工程实例 | `rf-model::UnitNode` 保存 ID、kind、端口和出口温压参数 | 任意模型配置、版本绑定与缺模型恢复契约 |
-| 计算实例 | `rf-solver::instantiate_operation` 按 kind 分支构造；`UnitOperation::run` 接收输入和服务 | 由领域目录 / 工厂解析实现；实例与任务的显式生命周期 |
-| 物性包 | `PropertyPackageProvider` 枚举 manifest、装载 `ThermoSystem`；支持内存与本地缓存来源 | 可替换计算实现的工厂及能力协商；现有数据包不等于可执行插件 |
-| 物性上下文 | 流程保存一个 package ID；Studio 构造固定 provider / TP Flash，一次求解共享一套服务 | 工段 / 单元多物性绑定、明确映射和跨包基准一致性 |
+| 计算实例 | `catalog::instantiate_builtin` 构造独立实例；solver 编排并调用 `UnitOperation::run` | 外部实现解析与任务的显式生命周期 |
+| 物性包 | `rf-property-package` 发现可用性、装载受检包；支持内存 / 缓存 / 文件来源 | 任意计算实现解析及能力协商；现有数据包不等于可执行插件 |
+| 物性上下文 | 流程保存一个 package ID；Studio / FFI 共用工厂，独立上下文冻结数据与来源 | 工段 / 单元多物性绑定、明确映射和跨包基准一致性 |
 | CAPE-OPEN | 自有单元 PMC 可由外部 PME 发现和调用 | RadishFlow 作为宿主发现、激活第三方单元或物性包 |
 
-实现定位：[单元契约](../../../crates/rf-unitops/src/lib.rs)、[实例化与调度](../../../crates/rf-solver/src/lib.rs)、[物性装配](../../../apps/radishflow-studio/src/solver_bridge.rs)。当前固定枚举和温压参数是 MVP 范围，不应被包装成已稳定的第三方模型协议。
+实现定位：[单元契约](../../../crates/rf-unitops/src/lib.rs)、[内建目录与工厂](../../../crates/rf-unitops/src/catalog.rs)、[调度](../../../crates/rf-solver/src/lib.rs)、[物性装配](../../../apps/radishflow-studio/src/solver_bridge.rs)。当前固定枚举和温压参数是 MVP 范围，不应被包装成已稳定的第三方模型协议。
 
 ## 模型定义、工程实例与运行实例
 
@@ -79,6 +81,8 @@ flowchart LR
 
 多包绑定不是首个目录切片的前置。若实际工段需要不同物性包，应先定义绑定优先级、组分映射、相标签、单位 / 基准与焓参考态，再决定如何跨边界传递状态和验证衡算；不能只给流股增加一个任意 package 字符串。
 
+AF2b 的资源加载 / 资格、共享服务工厂、冻结数据和组分发现已由 `rf-property-package` 实现，接口与兼容验收见[物性装配](../property-basis-and-components.md#af2b-物性装配与运行上下文)；本专题不重复维护其包协议与验证矩阵。
+
 ## 分阶段切片
 
 | 切片 | 范围 | 退出标准 |
@@ -90,7 +94,63 @@ flowchart LR
 
 MC0—MC3 是细化模型装配的切片，不另建平行插件路线；与 P2 / P3 及物理验证的依赖见路线图。MC2 不预先要求多物性包，MC3 不同时承诺原生 DLL、WASM、独立进程和 COM 四套运行时。
 
-进入实现前须确定：首个消费者、模型描述 / 配置表示、旧 kind 与新身份映射、版本和迁移规则、工厂所有权、物性上下文粒度；外部加载还需确定 ABI / 消息契约、线程与进程模型、释放责任和性能指标。当前文档不冻结这些技术选型。
+进入实现前须确定：首个消费者、模型描述 / 配置表示、旧 kind 与新身份映射、版本和迁移规则、工厂所有权、物性上下文粒度；外部加载还需确定 ABI / 消息契约、线程与进程模型、释放责任和性能指标。AF2a 的内建接口与兼容边界按下节实现；外部扩展技术选型尚未冻结。
+
+## AF2a 内建目录与工厂
+
+2026-10-24 按已确认方案实施 MC0 的内建消费者范围及 MC1 静态目录 / 工厂。AF1 根因未定、保留故障跟踪，按所有者确认不阻塞本轮；该安排不表示 AF1 已通过。首个外部扩展需求、模型版本绑定和插件恢复仍留待 MC3 的真实场景。
+
+### 消费者与职责迁移
+
+| 位置 | 迁移前职责 | 本切片处理 |
+| --- | --- | --- |
+| `rf-unitops` | 六类 `BuiltinUnitKind`、端口 `UnitOperationSpec`、`specifications::input_specification` 和设备计算实现 | 在本 crate 提供静态目录与构造入口；复用现有规格与校验，不复制另一份描述 |
+| `rf-solver` | 原构造入口含六类分支，另有拓扑、入口解析、参数诊断与执行 | 六类构造及模板参数应用已移交目录；保留执行次序、运行输入解析及诊断投影 |
+| `rf-ui::state::actions` | 由 `builtin_unit_spec` 创建工程端口，画布名称 / ID 和别名映射 | 工程创建查询同源描述；显示名、ID 策略和 `flash` 画布别名仍由 UI 拥有 |
+| Studio headless | `UnitKind` 显式映射六类领域枚举，再走应用命令与求解桥 | 保持既有序列化词汇和协议；目录不新增命令或扩大 CLI 的 v3 覆盖 |
+| `rf-ffi` 与存储 | 消费求解诊断、结果及既有工程格式 | 作为兼容回归消费者；不新增 FFI / COM 模型注册接口或格式字段 |
+
+源码依据：[单元规格](../../../crates/rf-unitops/src/specifications.rs)、[solver 参数诊断](../../../crates/rf-solver/src/parameter_checks.rs)、[工程创建](../../../crates/rf-ui/src/state/actions.rs)、[headless 映射](../../../apps/radishflow-studio/src/headless/workflow.rs)。`rf-flowsheet` 已依赖 `rf-unitops`，工厂不得反向依赖 `rf-flowsheet`。
+
+### 目录与工厂接口
+
+- `rf-unitops::catalog` 保存六条不可变内建登记，以 `builtin_model(BuiltinUnitKind)` 查询，`builtin_models()` 枚举，`instantiate_builtin` 构造。每条描述关联现有端口规格、输入规格、服务需求和本模型构造函数；不增加运行时注册、全局可变状态或可注入任意服务的容器。
+- 构造输入限定为借用的 `&UnitNode` 与 `&BTreeMap<StreamId, MaterialStreamState>`，返回 `RfResult<Box<dyn UnitOperation>>`。解析 kind 后只调用对应登记的构造函数；不读取整个 UI / 工作区，不做缓存 IO。连接出口的身份 / 模板与温压参数在领域工厂解释，已求解入口仍由 solver 在执行时传入。
+- 保留 `UnitOperation::kind`、`spec`、`run` 和 `UnitOperationServices` 形状。模型实例拥有所需参数 / 模板副本，不持有工程可变引用；每个求解步骤创建自己的实例，不跨设备或任务缓存可变对象。
+- 服务需求用有类型的必需 / 可选描述表达，具体服务仍在 `run` 时传入并按现有实现检查。目录发现与构造不要求提前启动计算，也不把所有模型统一标成“必须具备全部物性”。
+- solver 仍负责把领域错误附上步骤编号、诊断码及对象目标；领域工厂不得依赖 `SolverDiagnosticCode`。迁移时保留已有外部错误文本和目标顺序，必要的兼容文本投影留在 solver。未知 kind 显式拒绝，不默认选择 Feed 或其他模型。
+
+服务需求按当前实现描述：
+
+| 模型 | ThermoProvider | TpFlashSolver | 保留语义 |
+| --- | --- | --- | --- |
+| Feed | 可选 | 可选，与物性服务共同用于附加结果 | 无物性服务时仍可输出给定物流；有服务时沿用当前附加物性行为 |
+| Mixer / Heater / Cooler / Valve | 必需 | 可选 | 基本单元计算需要物性；TP Flash 用于现有附加结果，不升级为所有路径必需 |
+| FlashDrum | 必需 | 必需 | 现有 TP 分相路径明确要求两者 |
+
+“可选”表示现有算法允许服务缺省，不表示提供服务后可吞掉计算失败；组分、相态、零流量等条件仍按实现判定。AF2a 仅描述已有稳态局部执行能力，不虚构 PH Flash、残差 / 导数、EO 或时间状态支持。AF2b 物性包身份、资格和上下文冻结见上节路由。
+
+### 兼容与模块归属
+
+1. 保留六个持久 kind 字符串及 `BuiltinUnitKind`，不引入新的模型 ID 字段、实现版本或项目 schema 迁移。静态目录身份就是现有 kind；当前构建来源不等同可恢复的模型版本。未来外部版本契约另行确认。
+2. 端口、单位、出口模板来源、Feed 的 `effective_feed_input` 优先级保持。显式建模的必填参数与底层执行 API 的缺省语义继续区分，不能因共用目录把旧工程缺省参数变成新错误。
+3. 保持“拓扑 → 单元规格 → 构造 → 已解入口 → 物流 / 参数校验 → run → 出口发布”的顺序。非法端口、缺物流、非法参数同时出现时，首个错误、错误码、对象目标与既有消费者一致；不把参数校验前移到工厂而改变 `StepParameter`。
+4. 未知模型沿用当前拒绝行为，不扩大项目加载器对未知配置的承诺；只读工程、格式升级和保存失败恢复由生命周期层继续拥有。
+5. 新职责进入 `catalog.rs` 及同域测试，构造用到的端口 / 模板解析随领域归属迁移。`rf-unitops/src/lib.rs` 已超过 1,500 行，不继续堆入登记和工厂；仅按实际共用关系提取 helper，避免为搬迁引入新 crate 或依赖。
+
+### 验收与兼容证据
+
+实现沿用既有诊断与参数缺省案例，新增目录 / 工厂及求解兼容回归；工程创建和运行装配已接通同源描述。未改变 UI 交互、后台任务或物性内核。
+
+| 验证层 | 必须覆盖 |
+| --- | --- |
+| 目录与工厂 | 六类登记无重名 / 缺项；描述与实际端口、输入规格及服务需求一致；构造后行为与原路径一致；未知 kind、缺端口 / 流股可定位 |
+| 参数与错误 | Feed 覆盖顺序、显式必填与执行缺省、温压非法值及入口压力约束；多故障首错、诊断码与目标顺序不回退 |
+| 实例隔离 | 同模型两个设备使用不同参数，连续两次运行无参数串扰；输入工程和出口模板不被试算修改 |
+| 跨端与存储 | 六类创建 / Undo / Redo；代表链路求解；保存重开再求解；headless / FFI 既有诊断与结果 golden；不扩大协议范围 |
+| 收口 | 定向覆盖 `rf-unitops`、`rf-solver`、`rf-ui`、`rf-store`、`rf-ffi` 及 Studio 相关回归，随后正式 `check-repo`；真实窗口和未验平台按既定节点留证 |
+
+验证定位：[目录 / 工厂回归](../../../crates/rf-unitops/src/catalog/tests.rs)、[求解兼容回归](../../../crates/rf-solver/src/tests/catalog_compatibility.rs)、[创建 / 历史 / 存储回归](../../../crates/rf-ui/src/tests/catalog.rs)，跨层与正式检查记录见 [W43](../../devlogs/2026-10/2026-W43.md)。上述证据只证明装配与兼容行为，物理准确性仍独立验收；AF3、外部扩展及未验平台保持各自边界。
 
 ## 验收与最小验证
 

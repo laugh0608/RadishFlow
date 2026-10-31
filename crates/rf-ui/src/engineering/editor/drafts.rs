@@ -97,7 +97,7 @@ pub struct BindingDraft {
     pub reason: String,
 }
 impl BindingDraft {
-    fn from_binding(
+    pub(super) fn from_binding(
         binding: Option<&InputBinding>,
         quantity: QuantityKind,
         units: &DisplayUnitSet,

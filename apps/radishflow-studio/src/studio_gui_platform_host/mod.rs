@@ -525,6 +525,13 @@ pub struct StudioGuiPlatformHost {
 }
 
 impl StudioGuiPlatformHost {
+    pub fn background_run_action(
+        &mut self,
+        action: crate::StudioBackgroundRunAction,
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
+        self.driver.background_run_action(action)
+    }
+
     pub fn new(config: &crate::StudioRuntimeConfig) -> RfResult<Self> {
         Ok(Self {
             driver: StudioGuiDriver::new(config)?,
@@ -571,6 +578,12 @@ impl StudioGuiPlatformHost {
     }
     pub fn project_save_requires_upgrade(&self) -> bool {
         crate::project_save_requires_upgrade(self.driver.host().app_state())
+    }
+    pub fn project_save_compatibility(
+        &self,
+        path: &std::path::Path,
+    ) -> RfResult<Option<crate::ProjectSaveCompatibility>> {
+        crate::project_save_compatibility(self.driver.host().app_state(), path)
     }
 
     /// Runtime identity for departure confirmation; not a presentation field.

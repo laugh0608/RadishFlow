@@ -1,0 +1,4847 @@
+{
+  "cases": [
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p1",
+        "point_number": 1,
+        "x_propane": 0.1692,
+        "temperature_k": 310.0,
+        "pressure_pa": 471100.0,
+        "expanded_uncertainty": 14200.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.355,
+        "paired_id": "je0496701/d2/p1",
+        "y_expanded_uncertainty": 0.0264
+      },
+      "constructed_z_propane": 0.2621,
+      "constructed_beta": 0.5,
+      "results": {
+        "PR": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 486331.4266636781,
+            "x": [
+              0.1692,
+              0.8308
+            ],
+            "y": [
+              0.38483492121829455,
+              0.6151650787817056
+            ],
+            "liquid_density_kg_m3": 572.6104769844417,
+            "vapor_density_kg_m3": 11.15187608440713
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.5462887531802477,
+            "raw_quality": 0.5462887531802477,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.15122573048381327,
+                  0.8487742695161867
+                ],
+                "molar_fraction": 0.4537112468197523,
+                "molar_density_mol_m3": 10249.788802615067,
+                "molar_volume_m3_mol": 9.756298585829069e-05,
+                "molar_mass_kg_mol": 0.05600102019331035,
+                "mass_density_kg_m3": 573.9986297124127,
+                "compressibility_factor": 0.017832092509499,
+                "molar_flow_mol_s": 4.537112468197523,
+                "actual_volume_flow_m3_s": 0.0004426542395722293
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.35418482285158864,
+                  0.6458151771484114
+                ],
+                "molar_fraction": 0.5462887531802477,
+                "molar_density_mol_m3": 204.44600665148118,
+                "molar_volume_m3_mol": 0.004891266972529811,
+                "molar_mass_kg_mol": 0.053154198247486364,
+                "mass_density_kg_m3": 10.867163568459747,
+                "compressibility_factor": 0.8940022117557689,
+                "molar_flow_mol_s": 5.462887531802477,
+                "actual_volume_flow_m3_s": 0.026720441358950353
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 486043.6564438356,
+            "x": [
+              0.1692,
+              0.8308
+            ],
+            "y": [
+              0.382001549739267,
+              0.617998450260733
+            ],
+            "liquid_density_kg_m3": 547.5074582429825,
+            "vapor_density_kg_m3": 11.190997040984383
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.5522982929585767,
+            "raw_quality": 0.5522982929585767,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.15149769743828623,
+                  0.8485023025617138
+                ],
+                "molar_fraction": 0.4477017070414233,
+                "molar_density_mol_m3": 9799.325843505458,
+                "molar_volume_m3_mol": 0.00010204783634812531,
+                "molar_mass_kg_mol": 0.055997205427066085,
+                "mass_density_kg_m3": 548.7348623055327,
+                "compressibility_factor": 0.018651811874609094,
+                "molar_flow_mol_s": 4.477017070414233,
+                "actual_volume_flow_m3_s": 0.00045686990532939505
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.35175597086012544,
+                  0.6482440291398746
+                ],
+                "molar_fraction": 0.5522982929585767,
+                "molar_density_mol_m3": 205.19145331387662,
+                "molar_volume_m3_mol": 0.004873497330662809,
+                "molar_mass_kg_mol": 0.05318826673425278,
+                "mass_density_kg_m3": 10.913777750447446,
+                "compressibility_factor": 0.8907543622271239,
+                "molar_flow_mol_s": 5.522982929585767,
+                "actual_volume_flow_m3_s": 0.026916242564632493
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p4",
+        "point_number": 4,
+        "x_propane": 0.309,
+        "temperature_k": 300.0,
+        "pressure_pa": 449500.0,
+        "expanded_uncertainty": 13600.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.5339,
+        "paired_id": "je0496701/d2/p4",
+        "y_expanded_uncertainty": 0.0347
+      },
+      "constructed_z_propane": 0.42145,
+      "constructed_beta": 0.5,
+      "results": {
+        "PR": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 468250.53026418824,
+            "x": [
+              0.309,
+              0.6910000000000001
+            ],
+            "y": [
+              0.5944462132572955,
+              0.4055537867427045
+            ],
+            "liquid_density_kg_m3": 577.2535078623151,
+            "vapor_density_kg_m3": 10.403325214075323
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.49407409998920016,
+            "raw_quality": 0.49407409998920016,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.28231946924744217,
+                  0.7176805307525578
+                ],
+                "molar_fraction": 0.5059259000107998,
+                "molar_density_mol_m3": 10696.061759738033,
+                "molar_volume_m3_mol": 9.349235470612053e-05,
+                "molar_mass_kg_mol": 0.05416222337904321,
+                "mass_density_kg_m3": 579.3224863069734,
+                "compressibility_factor": 0.016848077609027522,
+                "molar_flow_mol_s": 5.059259000107998,
+                "actual_volume_flow_m3_s": 0.0004730020369882297
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.563917979988238,
+                  0.43608202001176194
+                ],
+                "molar_fraction": 0.49407409998920016,
+                "molar_density_mol_m3": 199.99709275995247,
+                "molar_volume_m3_mol": 0.005000072682057709,
+                "molar_mass_kg_mol": 0.05021235934025658,
+                "mass_density_kg_m3": 10.04232588866936,
+                "compressibility_factor": 0.9010534910890605,
+                "molar_flow_mol_s": 4.940740999892002,
+                "actual_volume_flow_m3_s": 0.024704064102682492
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 468290.90209683025,
+            "x": [
+              0.309,
+              0.6910000000000001
+            ],
+            "y": [
+              0.5925988944444501,
+              0.40740110555554987
+            ],
+            "liquid_density_kg_m3": 550.1880975449003,
+            "vapor_density_kg_m3": 10.43689600909267
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.4975662650599989,
+            "raw_quality": 0.4975662650599989,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.2823572384213114,
+                  0.7176427615786886
+                ],
+                "molar_fraction": 0.5024337349400011,
+                "molar_density_mol_m3": 10193.377313223615,
+                "molar_volume_m3_mol": 9.810291224113963e-05,
+                "molar_mass_kg_mol": 0.05416169360670439,
+                "mass_density_kg_m3": 552.090578856349,
+                "compressibility_factor": 0.017678937323867962,
+                "molar_flow_mol_s": 5.024337349400011,
+                "actual_volume_flow_m3_s": 0.0004929021260580694
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.5619034443159495,
+                  0.4380965556840504
+                ],
+                "molar_fraction": 0.4975662650599989,
+                "molar_density_mol_m3": 200.56438784341296,
+                "molar_volume_m3_mol": 0.0049859300085752616,
+                "molar_mass_kg_mol": 0.05024061638602678,
+                "mass_density_kg_m3": 10.076478470339204,
+                "compressibility_factor": 0.8985048670739697,
+                "molar_flow_mol_s": 4.975662650599989,
+                "actual_volume_flow_m3_s": 0.02480830572217361
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p5",
+        "point_number": 5,
+        "x_propane": 0.3294,
+        "temperature_k": 290.0,
+        "pressure_pa": 371700.0,
+        "expanded_uncertainty": 11700.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.6425,
+        "paired_id": "je0496701/d2/p5",
+        "y_expanded_uncertainty": 0.0266
+      },
+      "constructed_z_propane": 0.48595,
+      "constructed_beta": 0.5,
+      "results": {
+        "PR": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 366233.3335689289,
+            "x": [
+              0.3294,
+              0.6706
+            ],
+            "y": [
+              0.6362064840610356,
+              0.36379351593896425
+            ],
+            "liquid_density_kg_m3": 590.6294279725236,
+            "vapor_density_kg_m3": 8.159426814345416
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.4782519641369575,
+            "raw_quality": 0.4782519641369575,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.3391621544188748,
+                  0.6608378455811251
+                ],
+                "molar_fraction": 0.5217480358630425,
+                "molar_density_mol_m3": 11054.275561493181,
+                "molar_volume_m3_mol": 9.046273493338923e-05,
+                "molar_mass_kg_mol": 0.0533649149080713,
+                "mass_density_kg_m3": 589.9104747094557,
+                "compressibility_factor": 0.013945371609973722,
+                "molar_flow_mol_s": 5.217480358630425,
+                "actual_volume_flow_m3_s": 0.0004719875427029487
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.6460879102723089,
+                  0.35391208972769106
+                ],
+                "molar_fraction": 0.4782519641369575,
+                "molar_density_mol_m3": 168.48299620502894,
+                "molar_volume_m3_mol": 0.005935317049935937,
+                "molar_mass_kg_mol": 0.04905979623953264,
+                "mass_density_kg_m3": 8.265741463644671,
+                "compressibility_factor": 0.9149646199102438,
+                "molar_flow_mol_s": 4.782519641369575,
+                "actual_volume_flow_m3_s": 0.02838577036907434
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 366427.6917710482,
+            "x": [
+              0.3294,
+              0.6706
+            ],
+            "y": [
+              0.6346233236061238,
+              0.3653766763938761
+            ],
+            "liquid_density_kg_m3": 561.047514383031,
+            "vapor_density_kg_m3": 8.193196821005072
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.4819448688441077,
+            "raw_quality": 0.4819448688441077,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.33875957776912485,
+                  0.6612404222308752
+                ],
+                "molar_fraction": 0.5180551311558923,
+                "molar_density_mol_m3": 10500.043561747825,
+                "molar_volume_m3_mol": 9.523770012184037e-05,
+                "molar_mass_kg_mol": 0.05337056168165515,
+                "mass_density_kg_m3": 560.3932225723283,
+                "compressibility_factor": 0.014681461050854225,
+                "molar_flow_mol_s": 5.180551311558923,
+                "actual_volume_flow_m3_s": 0.0004933837922760555
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.6441688304579134,
+                  0.3558311695420866
+                ],
+                "molar_fraction": 0.4819448688441077,
+                "molar_density_mol_m3": 169.00003694024517,
+                "molar_volume_m3_mol": 0.005917158469933227,
+                "molar_mass_kg_mol": 0.049086714366075646,
+                "mass_density_kg_m3": 8.295656541142048,
+                "compressibility_factor": 0.9121653662039118,
+                "molar_flow_mol_s": 4.819448688441077,
+                "actual_volume_flow_m3_s": 0.028517441627217702
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p6",
+        "point_number": 6,
+        "x_propane": 0.3878,
+        "temperature_k": 300.0,
+        "pressure_pa": 532800.0,
+        "expanded_uncertainty": 15700.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.6703,
+        "paired_id": "je0496701/d2/p6",
+        "y_expanded_uncertainty": 0.0245
+      },
+      "constructed_z_propane": 0.52905,
+      "constructed_beta": 0.5,
+      "results": {
+        "PR": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 524211.5630819071,
+            "x": [
+              0.3878,
+              0.6122000000000001
+            ],
+            "y": [
+              0.673005542321422,
+              0.32699445767857804
+            ],
+            "liquid_density_kg_m3": 570.9468927230195,
+            "vapor_density_kg_m3": 11.493865307864594
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.4553657280033986,
+            "raw_quality": 0.4553657280033986,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.39978280322736304,
+                  0.600217196772637
+                ],
+                "molar_fraction": 0.5446342719966014,
+                "molar_density_mol_m3": 10853.382096289137,
+                "molar_volume_m3_mol": 9.213717817434148e-05,
+                "molar_mass_kg_mol": 0.052514614527907136,
+                "mass_density_kg_m3": 569.9611771107127,
+                "compressibility_factor": 0.01968084240109029,
+                "molar_flow_mol_s": 5.446342719966014,
+                "actual_volume_flow_m3_s": 0.0005018106495880362
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.6836583538521834,
+                  0.3163416461478165
+                ],
+                "molar_fraction": 0.4553657280033986,
+                "molar_density_mol_m3": 240.3118745625361,
+                "molar_volume_m3_mol": 0.004161259204608182,
+                "molar_mass_kg_mol": 0.048532811407024035,
+                "mass_density_kg_m3": 11.663010887011982,
+                "compressibility_factor": 0.8888603733990498,
+                "molar_flow_mol_s": 4.553657280033986,
+                "actual_volume_flow_m3_s": 0.018948948271172477
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 524498.1092293441,
+            "x": [
+              0.3878,
+              0.6122000000000001
+            ],
+            "y": [
+              0.6716855142713158,
+              0.3283144857286842
+            ],
+            "liquid_density_kg_m3": 544.3992259359391,
+            "vapor_density_kg_m3": 11.528290058372276
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.45890502643575964,
+            "raw_quality": 0.45890502643575964,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.3993293389100037,
+                  0.6006706610899963
+                ],
+                "molar_fraction": 0.5410949735642403,
+                "molar_density_mol_m3": 10348.844731614468,
+                "molar_volume_m3_mol": 9.662914324582734e-05,
+                "molar_mass_kg_mol": 0.05252097508143172,
+                "mass_density_kg_m3": 543.5314162707294,
+                "compressibility_factor": 0.020640342772111363,
+                "molar_flow_mol_s": 5.410949735642403,
+                "actual_volume_flow_m3_s": 0.0005228554371013613
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.6820036475736405,
+                  0.31799635242635954
+                ],
+                "molar_fraction": 0.45890502643575964,
+                "molar_density_mol_m3": 240.77785702629203,
+                "molar_volume_m3_mol": 0.004153205831925,
+                "molar_mass_kg_mol": 0.048556021277016526,
+                "mass_density_kg_m3": 11.691214748803079,
+                "compressibility_factor": 0.8871401431758601,
+                "molar_flow_mol_s": 4.5890502643575966,
+                "actual_volume_flow_m3_s": 0.019059270320926934
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p8",
+        "point_number": 8,
+        "x_propane": 0.4327,
+        "temperature_k": 280.0,
+        "pressure_pa": 319700.0,
+        "expanded_uncertainty": 10400.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.7427,
+        "paired_id": "je0496701/d2/p8",
+        "y_expanded_uncertainty": 0.0191
+      },
+      "constructed_z_propane": 0.5877,
+      "constructed_beta": 0.5,
+      "results": {
+        "PR": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 317511.5975152164,
+            "x": [
+              0.4327,
+              0.5673
+            ],
+            "y": [
+              0.746266387121571,
+              0.25373361287842905
+            ],
+            "liquid_density_kg_m3": 597.3499838432549,
+            "vapor_density_kg_m3": 7.027248473633369
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.4803755300077595,
+            "raw_quality": 0.4803755300077595,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.43766464592397236,
+                  0.5623353540760277
+                ],
+                "molar_fraction": 0.5196244699922405,
+                "molar_density_mol_m3": 11484.26617028534,
+                "molar_volume_m3_mol": 8.707565508951921e-05,
+                "molar_mass_kg_mol": 0.051983261830775736,
+                "mass_density_kg_m3": 596.989615264263,
+                "compressibility_factor": 0.011957686697179013,
+                "molar_flow_mol_s": 5.1962446999224055,
+                "actual_volume_flow_m3_s": 0.0004524664112511856
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.7499939481130412,
+                  0.25000605188695874
+                ],
+                "molar_fraction": 0.4803755300077595,
+                "molar_density_mol_m3": 148.5408023515447,
+                "molar_volume_m3_mol": 0.006732156984269857,
+                "molar_mass_kg_mol": 0.047602349887276574,
+                "mass_density_kg_m3": 7.070891246075026,
+                "compressibility_factor": 0.9244951867587372,
+                "molar_flow_mol_s": 4.803755300077595,
+                "actual_volume_flow_m3_s": 0.032339634794140724
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 317991.8425507108,
+            "x": [
+              0.4327,
+              0.5673
+            ],
+            "y": [
+              0.7454876136400654,
+              0.25451238635993456
+            ],
+            "liquid_density_kg_m3": 565.8042263391416,
+            "vapor_density_kg_m3": 7.062616349462911
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.48470605817706525,
+            "raw_quality": 0.48470605817706525,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.436545740034706,
+                  0.563454259965294
+                ],
+                "molar_fraction": 0.5152939418229348,
+                "molar_density_mol_m3": 10875.833327243521,
+                "molar_volume_m3_mol": 9.19469772946079e-05,
+                "molar_mass_kg_mol": 0.05199895625374399,
+                "mass_density_kg_m3": 565.5319814063467,
+                "compressibility_factor": 0.01262664227000333,
+                "molar_flow_mol_s": 5.152939418229348,
+                "actual_volume_flow_m3_s": 0.00047379720368842396
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.7483930079103568,
+                  0.2516069920896432
+                ],
+                "molar_fraction": 0.48470605817706525,
+                "molar_density_mol_m3": 149.01371706330164,
+                "molar_volume_m3_mol": 0.006710791594945557,
+                "molar_mass_kg_mol": 0.04762480560310475,
+                "mass_density_kg_m3": 7.096749307335794,
+                "compressibility_factor": 0.9215611791829048,
+                "molar_flow_mol_s": 4.847060581770652,
+                "actual_volume_flow_m3_s": 0.03252761341233842
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p9",
+        "point_number": 9,
+        "x_propane": 0.4804,
+        "temperature_k": 300.0,
+        "pressure_pa": 593200.0,
+        "expanded_uncertainty": 17200.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.7433,
+        "paired_id": "je0496701/d2/p9",
+        "y_expanded_uncertainty": 0.0191
+      },
+      "constructed_z_propane": 0.61185,
+      "constructed_beta": 0.5,
+      "results": {
+        "PR": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 591148.3237856244,
+            "x": [
+              0.4804,
+              0.5196000000000001
+            ],
+            "y": [
+              0.7482033299188241,
+              0.251796670081176
+            ],
+            "liquid_density_kg_m3": 563.1350073817895,
+            "vapor_density_kg_m3": 12.82508312516768
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.4817204741787878,
+            "raw_quality": 0.4817204741787878,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.4832093528487831,
+                  0.5167906471512169
+                ],
+                "molar_fraction": 0.5182795258212122,
+                "molar_density_mol_m3": 10963.036481714606,
+                "molar_volume_m3_mol": 9.121560451503681e-05,
+                "molar_mass_kg_mol": 0.05134442535551832,
+                "mass_density_kg_m3": 562.8908083052198,
+                "compressibility_factor": 0.021692761590380943,
+                "molar_flow_mol_s": 5.1827952582121215,
+                "actual_volume_flow_m3_s": 0.00047275180255548495
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.7502535289771008,
+                  0.24974647102289924
+                ],
+                "molar_fraction": 0.4817204741787878,
+                "molar_density_mol_m3": 270.3090559720349,
+                "molar_volume_m3_mol": 0.0036994690999307693,
+                "molar_mass_kg_mol": 0.04759870885552038,
+                "mass_density_kg_m3": 12.866362056223453,
+                "compressibility_factor": 0.8798023279289887,
+                "molar_flow_mol_s": 4.8172047417878785,
+                "actual_volume_flow_m3_s": 0.017821100090284238
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 591738.4085964944,
+            "x": [
+              0.4804,
+              0.5196000000000001
+            ],
+            "y": [
+              0.747289893228308,
+              0.2527101067716921
+            ],
+            "liquid_density_kg_m3": 537.2730854138088,
+            "vapor_density_kg_m3": 12.861016694913424
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.4860235373490146,
+            "raw_quality": 0.4860235373490146,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.48239328243477947,
+                  0.5176067175652206
+                ],
+                "molar_fraction": 0.5139764626509854,
+                "molar_density_mol_m3": 10458.700598182308,
+                "molar_volume_m3_mol": 9.561417220164015e-05,
+                "molar_mass_kg_mol": 0.05135587203246597,
+                "mass_density_kg_m3": 537.1156895461259,
+                "compressibility_factor": 0.02273882252120458,
+                "molar_flow_mol_s": 5.139764626509854,
+                "actual_volume_flow_m3_s": 0.0004914343400750119
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.7487522293107564,
+                  0.2512477706892436
+                ],
+                "molar_fraction": 0.4860235373490146,
+                "molar_density_mol_m3": 270.69270811441567,
+                "molar_volume_m3_mol": 0.0036942258510241164,
+                "molar_mass_kg_mol": 0.04761976695539433,
+                "mass_density_kg_m3": 12.890323676933052,
+                "compressibility_factor": 0.8785553861464311,
+                "molar_flow_mol_s": 4.860235373490146,
+                "actual_volume_flow_m3_s": 0.01795480715880915
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p10",
+        "point_number": 10,
+        "x_propane": 0.5906,
+        "temperature_k": 280.0,
+        "pressure_pa": 394400.0,
+        "expanded_uncertainty": 12300.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.8484,
+        "paired_id": "je0496701/d2/p10",
+        "y_expanded_uncertainty": 0.0113
+      },
+      "constructed_z_propane": 0.7195,
+      "constructed_beta": 0.5,
+      "results": {
+        "PR": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 387946.4773008037,
+            "x": [
+              0.5906,
+              0.4094
+            ],
+            "y": [
+              0.8458328349987773,
+              0.1541671650012228
+            ],
+            "liquid_density_kg_m3": 585.3569207756381,
+            "vapor_density_kg_m3": 8.450243690775622
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.4615162131465495,
+            "raw_quality": 0.4615162131465495,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.6048678942655478,
+                  0.3951321057344522
+                ],
+                "molar_fraction": 0.5384837868534504,
+                "molar_density_mol_m3": 11769.539716667732,
+                "molar_volume_m3_mol": 8.496508989079875e-05,
+                "molar_mass_kg_mol": 0.04963797209165275,
+                "mass_density_kg_m3": 584.2160839875515,
+                "compressibility_factor": 0.014394123053110167,
+                "molar_flow_mol_s": 5.384837868534504,
+                "actual_volume_flow_m3_s": 0.0004575232335474113
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.8532494298846487,
+                  0.14675057011535136
+                ],
+                "molar_fraction": 0.4615162131465495,
+                "molar_density_mol_m3": 185.95470492823642,
+                "molar_volume_m3_mol": 0.005377653662411605,
+                "molar_mass_kg_mol": 0.04615402861176859,
+                "mass_density_kg_m3": 8.58255877175081,
+                "compressibility_factor": 0.9110401537060446,
+                "molar_flow_mol_s": 4.615162131465495,
+                "actual_volume_flow_m3_s": 0.02481874353889877
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 388898.2551647166,
+            "x": [
+              0.5906,
+              0.4094
+            ],
+            "y": [
+              0.845348395776234,
+              0.15465160422376603
+            ],
+            "liquid_density_kg_m3": 554.1772853914481,
+            "vapor_density_kg_m3": 8.498618789318217
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.4691425061480992,
+            "raw_quality": 0.4691425061480992,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.6027040367781817,
+                  0.3972959632218182
+                ],
+                "molar_fraction": 0.5308574938519008,
+                "molar_density_mol_m3": 11138.824718140639,
+                "molar_volume_m3_mol": 8.977607829409548e-05,
+                "molar_mass_kg_mol": 0.04966832361180789,
+                "mass_density_kg_m3": 553.246750755814,
+                "compressibility_factor": 0.015209163196928555,
+                "molar_flow_mol_s": 5.308574938519008,
+                "actual_volume_flow_m3_s": 0.0004765830393105556
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.851660295678645,
+                  0.14833970432135496
+                ],
+                "molar_fraction": 0.4691425061480992,
+                "molar_density_mol_m3": 186.49626771414583,
+                "molar_volume_m3_mol": 0.005362037601378494,
+                "molar_mass_kg_mol": 0.04617631872983983,
+                "mass_density_kg_m3": 8.611711099893935,
+                "compressibility_factor": 0.9083946024048646,
+                "molar_flow_mol_s": 4.6914250614809925,
+                "actual_volume_flow_m3_s": 0.025155597583710495
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p11",
+        "point_number": 11,
+        "x_propane": 0.5947,
+        "temperature_k": 290.0,
+        "pressure_pa": 525500.0,
+        "expanded_uncertainty": 15500.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.836,
+        "paired_id": "je0496701/d2/p11",
+        "y_expanded_uncertainty": 0.0122
+      },
+      "constructed_z_propane": 0.7153499999999999,
+      "constructed_beta": 0.5,
+      "results": {
+        "PR": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 518246.78243324964,
+            "x": [
+              0.5947,
+              0.4053
+            ],
+            "y": [
+              0.8356705266334331,
+              0.16432947336656695
+            ],
+            "liquid_density_kg_m3": 569.5219225659027,
+            "vapor_density_kg_m3": 11.193191629043138
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.4601555071566707,
+            "raw_quality": 0.4601555071566707,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.6070294952043759,
+                  0.3929705047956241
+                ],
+                "molar_fraction": 0.5398444928433292,
+                "molar_density_mol_m3": 11459.001065645494,
+                "molar_volume_m3_mol": 8.726764176661408e-05,
+                "molar_mass_kg_mol": 0.049607652223156204,
+                "mass_density_kg_m3": 568.454139689318,
+                "compressibility_factor": 0.01901926710138744,
+                "molar_flow_mol_s": 5.3984449284332925,
+                "actual_volume_flow_m3_s": 0.00047110955811131117
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.8424292744332351,
+                  0.15757072556676488
+                ],
+                "molar_fraction": 0.4601555071566707,
+                "molar_density_mol_m3": 244.93984355580233,
+                "molar_volume_m3_mol": 0.004082635089020049,
+                "molar_mass_kg_mol": 0.04630579838782028,
+                "mass_density_kg_m3": 11.342135012839222,
+                "compressibility_factor": 0.8897768481384014,
+                "molar_flow_mol_s": 4.601555071566707,
+                "actual_volume_flow_m3_s": 0.0187864701992364
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 519301.2152175394,
+            "x": [
+              0.5947,
+              0.4053
+            ],
+            "y": [
+              0.8350484585877829,
+              0.1649515414122171
+            ],
+            "liquid_density_kg_m3": 541.201761623125,
+            "vapor_density_kg_m3": 11.243546524744978
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.4674792968202657,
+            "raw_quality": 0.4674792968202657,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.6052004143228051,
+                  0.394799585677195
+                ],
+                "molar_fraction": 0.5325207031797343,
+                "molar_density_mol_m3": 10886.994966694687,
+                "molar_volume_m3_mol": 9.185271078559173e-05,
+                "molar_mass_kg_mol": 0.04963330797246804,
+                "mass_density_kg_m3": 540.3575740766668,
+                "compressibility_factor": 0.020018545305597997,
+                "molar_flow_mol_s": 5.325207031797343,
+                "actual_volume_flow_m3_s": 0.0004891347013650808
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.840824935935673,
+                  0.15917506406432702
+                ],
+                "molar_fraction": 0.4674792968202657,
+                "molar_density_mol_m3": 245.44052045394736,
+                "molar_volume_m3_mol": 0.0040743068754518575,
+                "molar_mass_kg_mol": 0.04632830177010341,
+                "mass_density_kg_m3": 11.37084249820171,
+                "compressibility_factor": 0.887961782266054,
+                "molar_flow_mol_s": 4.674792968202657,
+                "actual_volume_flow_m3_s": 0.01904654113166208
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p12",
+        "point_number": 12,
+        "x_propane": 0.6488,
+        "temperature_k": 300.0,
+        "pressure_pa": 720600.0,
+        "expanded_uncertainty": 20300.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.8492,
+        "paired_id": "je0496701/d2/p12",
+        "y_expanded_uncertainty": 0.0112
+      },
+      "constructed_z_propane": 0.749,
+      "constructed_beta": 0.5,
+      "results": {
+        "PR": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 716506.9286321847,
+            "x": [
+              0.6488,
+              0.35119999999999996
+            ],
+            "y": [
+              0.8531696849992579,
+              0.14683031500074215
+            ],
+            "liquid_density_kg_m3": 547.6710020345535,
+            "vapor_density_kg_m3": 15.401912303675036
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.4697541048861802,
+            "raw_quality": 0.4697541048861802,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.654184389101358,
+                  0.34581561089864205
+                ],
+                "molar_fraction": 0.5302458951138198,
+                "molar_density_mol_m3": 11178.530468791774,
+                "molar_volume_m3_mol": 8.945719679270906e-05,
+                "molar_mass_kg_mol": 0.04894623033151868,
+                "mass_density_kg_m3": 547.1469270933817,
+                "compressibility_factor": 0.025843665016538883,
+                "molar_flow_mol_s": 5.302458951138198,
+                "actual_volume_flow_m3_s": 0.00047434311387723144
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.8560253308034332,
+                  0.1439746691965668
+                ],
+                "molar_fraction": 0.4697541048861802,
+                "molar_density_mol_m3": 335.85505587498847,
+                "molar_volume_m3_mol": 0.0029774749032577276,
+                "molar_mass_kg_mol": 0.04611509221545918,
+                "mass_density_kg_m3": 15.487986872703289,
+                "compressibility_factor": 0.8601752207063984,
+                "molar_flow_mol_s": 4.697541048861802,
+                "actual_volume_flow_m3_s": 0.013986810580008998
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 717429.2576593644,
+            "x": [
+              0.6488,
+              0.35119999999999996
+            ],
+            "y": [
+              0.8525679310984919,
+              0.14743206890150798
+            ],
+            "liquid_density_kg_m3": 523.3406179401339,
+            "vapor_density_kg_m3": 15.436438589031825
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.4758372161909071,
+            "raw_quality": 0.4758372161909071,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.652968231926908,
+                  0.347031768073092
+                ],
+                "molar_fraction": 0.524162783809093,
+                "molar_density_mol_m3": 10681.036998604874,
+                "molar_volume_m3_mol": 9.36238681815836e-05,
+                "molar_mass_kg_mol": 0.04896328885741867,
+                "mass_density_kg_m3": 522.9786998594666,
+                "compressibility_factor": 0.027047392200809952,
+                "molar_flow_mol_s": 5.241627838090929,
+                "actual_volume_flow_m3_s": 0.0004907414737703442
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.8547846615912993,
+                  0.14521533840870066
+                ],
+                "molar_fraction": 0.4758372161909071,
+                "molar_density_mol_m3": 336.05161878447444,
+                "molar_volume_m3_mol": 0.002975733322211272,
+                "molar_mass_kg_mol": 0.04613249456141671,
+                "mass_density_kg_m3": 15.502899475930048,
+                "compressibility_factor": 0.8596720880487985,
+                "molar_flow_mol_s": 4.758372161909071,
+                "actual_volume_flow_m3_s": 0.014159646601675312
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p14",
+        "point_number": 14,
+        "x_propane": 0.6934,
+        "temperature_k": 290.0,
+        "pressure_pa": 586200.0,
+        "expanded_uncertainty": 17000.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.8848,
+        "paired_id": "je0496701/d2/p14",
+        "y_expanded_uncertainty": 0.0086
+      },
+      "constructed_z_propane": 0.7891,
+      "constructed_beta": 0.5,
+      "results": {
+        "PR": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 576839.6928326922,
+            "x": [
+              0.6934,
+              0.3066
+            ],
+            "y": [
+              0.885724788091765,
+              0.11427521190823492
+            ],
+            "liquid_density_kg_m3": 560.7281124906895,
+            "vapor_density_kg_m3": 12.407955733104094
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.43573558979409077,
+            "raw_quality": 0.43573558979409077,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.7089739104519367,
+                  0.2910260895480632
+                ],
+                "molar_fraction": 0.5642644102059092,
+                "molar_density_mol_m3": 11608.833609683677,
+                "molar_volume_m3_mol": 8.614129839589014e-05,
+                "molar_mass_kg_mol": 0.04817772072713307,
+                "mass_density_kg_m3": 559.2871436150963,
+                "compressibility_factor": 0.02094233221561682,
+                "molar_flow_mol_s": 5.6426441020590925,
+                "actual_volume_flow_m3_s": 0.00048606468933728184
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.8928608625960873,
+                  0.10713913740391275
+                ],
+                "molar_fraction": 0.43573558979409077,
+                "molar_density_mol_m3": 276.42420611955095,
+                "molar_volume_m3_mol": 0.0036176281883487046,
+                "molar_mass_kg_mol": 0.045598415681926976,
+                "mass_density_kg_m3": 12.604505855185947,
+                "compressibility_factor": 0.8795034758449062,
+                "molar_flow_mol_s": 4.3573558979409075,
+                "actual_volume_flow_m3_s": 0.015763293523058507
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "bubble": {
+            "status": "ok",
+            "pressure_pa": 578052.1394862885,
+            "x": [
+              0.6934,
+              0.3066
+            ],
+            "y": [
+              0.8851738192178993,
+              0.11482618078210075
+            ],
+            "liquid_density_kg_m3": 533.0748798900859,
+            "vapor_density_kg_m3": 12.461977584848016
+          },
+          "tp": {
+            "status": "ok",
+            "region": "two_phase",
+            "beta_molar": 0.4454180552915996,
+            "raw_quality": 0.4454180552915996,
+            "raw_phase": "phases.iphase_twophase",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "liquid": {
+                "mole_fractions": [
+                  0.7069398885380549,
+                  0.29306011146194516
+                ],
+                "molar_fraction": 0.5545819447084004,
+                "molar_density_mol_m3": 11034.371001051471,
+                "molar_volume_m3_mol": 9.062591786198864e-05,
+                "molar_mass_kg_mol": 0.048206251098229895,
+                "mass_density_kg_m3": 531.9256591877136,
+                "compressibility_factor": 0.022032615186370584,
+                "molar_flow_mol_s": 5.545819447084003,
+                "actual_volume_flow_m3_s": 0.0005025949776888541
+              },
+              "vapor": {
+                "mole_fractions": [
+                  0.891396065125144,
+                  0.10860393487485595
+                ],
+                "molar_fraction": 0.4454180552915996,
+                "molar_density_mol_m3": 276.92651055398215,
+                "molar_volume_m3_mol": 0.00361106633669537,
+                "molar_mass_kg_mol": 0.04561896178083696,
+                "mass_density_kg_m3": 12.633099901062653,
+                "compressibility_factor": 0.8779081843896719,
+                "molar_flow_mol_s": 4.454180552915997,
+                "actual_volume_flow_m3_s": 0.016084341452198125
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "pure_saturated_vapor_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d13/p5",
+        "point_number": 5,
+        "temperature_k": 300.0,
+        "density_kg_m3": 6.5149,
+        "expanded_uncertainty": 0.0092,
+        "reported_significant_digits": 5,
+        "pressure_pa": 257622.0,
+        "paired_id": "j.jct.2004.07.017/d11/p19",
+        "pressure_expanded_uncertainty": 44.0
+      },
+      "results": {
+        "PR": {
+          "saturation": {
+            "status": "ok",
+            "pressure_pa": 256652.8202872082,
+            "x": [
+              1.0
+            ],
+            "y": [
+              1.0
+            ],
+            "liquid_density_kg_m3": 599.3981524193579,
+            "vapor_density_kg_m3": 6.4496697357453066
+          },
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 6.476066154316222,
+            "imposed_phase": "vapor"
+          }
+        },
+        "HEOS": {
+          "saturation": {
+            "status": "ok",
+            "pressure_pa": 257596.13416399725,
+            "x": [
+              1.0
+            ],
+            "y": [
+              1.0
+            ],
+            "liquid_density_kg_m3": 570.6793764145076,
+            "vapor_density_kg_m3": 6.516384099093
+          },
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 6.517099795871021,
+            "imposed_phase": "vapor"
+          }
+        }
+      }
+    },
+    {
+      "kind": "pure_saturated_vapor_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d13/p6",
+        "point_number": 6,
+        "temperature_k": 310.0,
+        "density_kg_m3": 8.6426,
+        "expanded_uncertainty": 0.0115,
+        "reported_significant_digits": 5,
+        "pressure_pa": 346298.0,
+        "paired_id": "j.jct.2004.07.017/d11/p20",
+        "pressure_expanded_uncertainty": 55.0
+      },
+      "results": {
+        "PR": {
+          "saturation": {
+            "status": "ok",
+            "pressure_pa": 345123.87892839697,
+            "x": [
+              1.0
+            ],
+            "y": [
+              1.0
+            ],
+            "liquid_density_kg_m3": 585.1326163995396,
+            "vapor_density_kg_m3": 8.559829171635924
+          },
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 8.592025069746393,
+            "imposed_phase": "vapor"
+          }
+        },
+        "HEOS": {
+          "saturation": {
+            "status": "ok",
+            "pressure_pa": 346281.4379106405,
+            "x": [
+              1.0
+            ],
+            "y": [
+              1.0
+            ],
+            "liquid_density_kg_m3": 558.7677877736028,
+            "vapor_density_kg_m3": 8.644958440387958
+          },
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 8.645421449558757,
+            "imposed_phase": "vapor"
+          }
+        }
+      }
+    },
+    {
+      "kind": "pure_saturated_vapor_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d13/p7",
+        "point_number": 7,
+        "temperature_k": 320.0,
+        "density_kg_m3": 11.284,
+        "expanded_uncertainty": 0.0144,
+        "reported_significant_digits": 6,
+        "pressure_pa": 456235.0,
+        "paired_id": "j.jct.2004.07.017/d11/p21",
+        "pressure_expanded_uncertainty": 68.0
+      },
+      "results": {
+        "PR": {
+          "saturation": {
+            "status": "ok",
+            "pressure_pa": 455053.3782877889,
+            "x": [
+              1.0
+            ],
+            "y": [
+              1.0
+            ],
+            "liquid_density_kg_m3": 569.840025684623,
+            "vapor_density_kg_m3": 11.188979124512006
+          },
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 11.221954928839347,
+            "imposed_phase": "vapor"
+          }
+        },
+        "HEOS": {
+          "saturation": {
+            "status": "ok",
+            "pressure_pa": 456239.9542765157,
+            "x": [
+              1.0
+            ],
+            "y": [
+              1.0
+            ],
+            "liquid_density_kg_m3": 546.3623138930567,
+            "vapor_density_kg_m3": 11.287095561761271
+          },
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 11.286954381912045,
+            "imposed_phase": "vapor"
+          }
+        }
+      }
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p38",
+        "point_number": 38,
+        "temperature_k": 300.0,
+        "pressure_pa": 200575.0,
+        "density_kg_m3": 4.9721,
+        "expanded_uncertainty": 0.0387,
+        "reported_significant_digits": 5
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "results": {
+        "PR": {
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 4.951468404218852,
+            "imposed_phase": "vapor"
+          },
+          "raw_tp": {
+            "status": "ok",
+            "region": "vapor",
+            "beta_molar": 1.0,
+            "raw_quality": -1.0,
+            "raw_phase": "phases.iphase_gas",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "vapor": {
+                "mole_fractions": [
+                  1.0
+                ],
+                "molar_fraction": 1.0,
+                "molar_density_mol_m3": 85.19065699885505,
+                "molar_volume_m3_mol": 0.011738376427985992,
+                "molar_mass_kg_mol": 0.0581222,
+                "mass_density_kg_m3": 4.951468404218852,
+                "compressibility_factor": 0.9439074057545612,
+                "molar_flow_mol_s": 10.0,
+                "actual_volume_flow_m3_s": 0.11738376427985993
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 4.972955546221081,
+            "imposed_phase": "vapor"
+          },
+          "raw_tp": {
+            "status": "ok",
+            "region": "vapor",
+            "beta_molar": 1.0,
+            "raw_quality": -1.0,
+            "raw_phase": "phases.iphase_gas",
+            "gas_constant_j_mol_k": 8.314472,
+            "phases": {
+              "vapor": {
+                "mole_fractions": [
+                  1.0
+                ],
+                "molar_fraction": 1.0,
+                "molar_density_mol_m3": 85.56034606778616,
+                "molar_volume_m3_mol": 0.011687657261317512,
+                "molar_mass_kg_mol": 0.0581222,
+                "mass_density_kg_m3": 4.972955546221081,
+                "compressibility_factor": 0.9398279109754203,
+                "molar_flow_mol_s": 10.0,
+                "actual_volume_flow_m3_s": 0.1168765726131751
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p45",
+        "point_number": 45,
+        "temperature_k": 310.0,
+        "pressure_pa": 202029.0,
+        "density_kg_m3": 4.8154,
+        "expanded_uncertainty": 0.0316,
+        "reported_significant_digits": 5
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "results": {
+        "PR": {
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 4.80311584098592,
+            "imposed_phase": "vapor"
+          },
+          "raw_tp": {
+            "status": "ok",
+            "region": "vapor",
+            "beta_molar": 1.0,
+            "raw_quality": -1.0,
+            "raw_phase": "phases.iphase_gas",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "vapor": {
+                "mole_fractions": [
+                  1.0
+                ],
+                "molar_fraction": 1.0,
+                "molar_density_mol_m3": 82.63823188017523,
+                "molar_volume_m3_mol": 0.01210093654290658,
+                "molar_mass_kg_mol": 0.0581222,
+                "mass_density_kg_m3": 4.80311584098592,
+                "compressibility_factor": 0.9484988721161887,
+                "molar_flow_mol_s": 10.0,
+                "actual_volume_flow_m3_s": 0.1210093654290658
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 4.81530531563288,
+            "imposed_phase": "vapor"
+          },
+          "raw_tp": {
+            "status": "ok",
+            "region": "vapor",
+            "beta_molar": 1.0,
+            "raw_quality": -1.0,
+            "raw_phase": "phases.iphase_gas",
+            "gas_constant_j_mol_k": 8.314472,
+            "phases": {
+              "vapor": {
+                "mole_fractions": [
+                  1.0
+                ],
+                "molar_fraction": 1.0,
+                "molar_density_mol_m3": 82.84795337466373,
+                "molar_volume_m3_mol": 0.012070304205074262,
+                "molar_mass_kg_mol": 0.0581222,
+                "mass_density_kg_m3": 4.81530531563288,
+                "compressibility_factor": 0.9460967723959056,
+                "molar_flow_mol_s": 10.0,
+                "actual_volume_flow_m3_s": 0.12070304205074261
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p46",
+        "point_number": 46,
+        "temperature_k": 320.0,
+        "pressure_pa": 200863.0,
+        "density_kg_m3": 4.6087,
+        "expanded_uncertainty": 0.0047,
+        "reported_significant_digits": 5
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "results": {
+        "PR": {
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 4.603207220014263,
+            "imposed_phase": "vapor"
+          },
+          "raw_tp": {
+            "status": "ok",
+            "region": "vapor",
+            "beta_molar": 1.0,
+            "raw_quality": -1.0,
+            "raw_phase": "phases.iphase_gas",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "vapor": {
+                "mole_fractions": [
+                  1.0
+                ],
+                "molar_fraction": 1.0,
+                "molar_density_mol_m3": 79.19877809192121,
+                "molar_volume_m3_mol": 0.01262645742891842,
+                "molar_mass_kg_mol": 0.0581222,
+                "mass_density_kg_m3": 4.603207220014263,
+                "compressibility_factor": 0.9532291182774013,
+                "molar_flow_mol_s": 10.0,
+                "actual_volume_flow_m3_s": 0.1262645742891842
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 4.608534268312887,
+            "imposed_phase": "vapor"
+          },
+          "raw_tp": {
+            "status": "ok",
+            "region": "vapor",
+            "beta_molar": 1.0,
+            "raw_quality": -1.0,
+            "raw_phase": "phases.iphase_gas",
+            "gas_constant_j_mol_k": 8.314472,
+            "phases": {
+              "vapor": {
+                "mole_fractions": [
+                  1.0
+                ],
+                "molar_fraction": 1.0,
+                "molar_density_mol_m3": 79.2904306497842,
+                "molar_volume_m3_mol": 0.01261186238749129,
+                "molar_mass_kg_mol": 0.0581222,
+                "mass_density_kg_m3": 4.608534268312887,
+                "compressibility_factor": 0.9521261973770699,
+                "molar_flow_mol_s": 10.0,
+                "actual_volume_flow_m3_s": 0.1261186238749129
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p47",
+        "point_number": 47,
+        "temperature_k": 320.0,
+        "pressure_pa": 298455.0,
+        "density_kg_m3": 7.0328,
+        "expanded_uncertainty": 0.0058,
+        "reported_significant_digits": 5
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "results": {
+        "PR": {
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 7.016576323504652,
+            "imposed_phase": "vapor"
+          },
+          "raw_tp": {
+            "status": "ok",
+            "region": "vapor",
+            "beta_molar": 1.0,
+            "raw_quality": -1.0,
+            "raw_phase": "phases.iphase_gas",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "vapor": {
+                "mole_fractions": [
+                  1.0
+                ],
+                "molar_fraction": 1.0,
+                "molar_density_mol_m3": 120.72110696953405,
+                "molar_volume_m3_mol": 0.008283555586119389,
+                "molar_mass_kg_mol": 0.0581222,
+                "mass_density_kg_m3": 7.016576323504652,
+                "compressibility_factor": 0.9292048897188635,
+                "molar_flow_mol_s": 10.0,
+                "actual_volume_flow_m3_s": 0.08283555586119389
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 7.033346092888447,
+            "imposed_phase": "vapor"
+          },
+          "raw_tp": {
+            "status": "ok",
+            "region": "vapor",
+            "beta_molar": 1.0,
+            "raw_quality": -1.0,
+            "raw_phase": "phases.iphase_gas",
+            "gas_constant_j_mol_k": 8.314472,
+            "phases": {
+              "vapor": {
+                "mole_fractions": [
+                  1.0
+                ],
+                "molar_fraction": 1.0,
+                "molar_density_mol_m3": 121.00963302986548,
+                "molar_volume_m3_mol": 0.008263804913392287,
+                "molar_mass_kg_mol": 0.0581222,
+                "mass_density_kg_m3": 7.033346092888447,
+                "compressibility_factor": 0.926988319066036,
+                "molar_flow_mol_s": 10.0,
+                "actual_volume_flow_m3_s": 0.08263804913392288
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p48",
+        "point_number": 48,
+        "temperature_k": 320.0,
+        "pressure_pa": 399703.0,
+        "density_kg_m3": 9.7079,
+        "expanded_uncertainty": 0.008,
+        "reported_significant_digits": 5
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "results": {
+        "PR": {
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 9.66744077117836,
+            "imposed_phase": "vapor"
+          },
+          "raw_tp": {
+            "status": "ok",
+            "region": "vapor",
+            "beta_molar": 1.0,
+            "raw_quality": -1.0,
+            "raw_phase": "phases.iphase_gas",
+            "gas_constant_j_mol_k": 8.31446261815324,
+            "phases": {
+              "vapor": {
+                "mole_fractions": [
+                  1.0
+                ],
+                "molar_fraction": 1.0,
+                "molar_density_mol_m3": 166.3295740900785,
+                "molar_volume_m3_mol": 0.0060121599268836805,
+                "molar_mass_kg_mol": 0.0581222,
+                "mass_density_kg_m3": 9.66744077117836,
+                "compressibility_factor": 0.9031996675619733,
+                "molar_flow_mol_s": 10.0,
+                "actual_volume_flow_m3_s": 0.060121599268836805
+              }
+            }
+          }
+        },
+        "HEOS": {
+          "density_at_measured_pressure": {
+            "status": "ok",
+            "density_kg_m3": 9.70930192082425,
+            "imposed_phase": "vapor"
+          },
+          "raw_tp": {
+            "status": "ok",
+            "region": "vapor",
+            "beta_molar": 1.0,
+            "raw_quality": -1.0,
+            "raw_phase": "phases.iphase_gas",
+            "gas_constant_j_mol_k": 8.314472,
+            "phases": {
+              "vapor": {
+                "mole_fractions": [
+                  1.0
+                ],
+                "molar_fraction": 1.0,
+                "molar_density_mol_m3": 167.04980060672602,
+                "molar_volume_m3_mol": 0.005986238812425954,
+                "molar_mass_kg_mol": 0.0581222,
+                "mass_density_kg_m3": 9.70930192082425,
+                "compressibility_factor": 0.8993045544606564,
+                "molar_flow_mol_s": 10.0,
+                "actual_volume_flow_m3_s": 0.05986238812425954
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "excluded": [
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p2",
+        "point_number": 2,
+        "x_propane": 0.1734,
+        "temperature_k": 280.0,
+        "pressure_pa": 197900.0,
+        "expanded_uncertainty": 7400.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.4585,
+        "paired_id": "je0496701/d2/p2",
+        "y_expanded_uncertainty": 0.0341
+      },
+      "constructed_z_propane": 0.31595,
+      "constructed_beta": 0.5,
+      "reasons": [
+        "outside_pressure_domain"
+      ]
+    },
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p3",
+        "point_number": 3,
+        "x_propane": 0.1744,
+        "temperature_k": 270.0,
+        "pressure_pa": 142600.0,
+        "expanded_uncertainty": 6000.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.4616,
+        "paired_id": "je0496701/d2/p3",
+        "y_expanded_uncertainty": 0.0343
+      },
+      "constructed_z_propane": 0.318,
+      "constructed_beta": 0.5,
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain"
+      ]
+    },
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p7",
+        "point_number": 7,
+        "x_propane": 0.4226,
+        "temperature_k": 270.0,
+        "pressure_pa": 231800.0,
+        "expanded_uncertainty": 8200.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.7558,
+        "paired_id": "je0496701/d2/p7",
+        "y_expanded_uncertainty": 0.0182
+      },
+      "constructed_z_propane": 0.5892,
+      "constructed_beta": 0.5,
+      "reasons": [
+        "outside_temperature_domain"
+      ]
+    },
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p13",
+        "point_number": 13,
+        "x_propane": 0.6662,
+        "temperature_k": 270.0,
+        "pressure_pa": 317000.0,
+        "expanded_uncertainty": 10300.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.8935,
+        "paired_id": "je0496701/d2/p13",
+        "y_expanded_uncertainty": 0.0079
+      },
+      "constructed_z_propane": 0.7798499999999999,
+      "constructed_beta": 0.5,
+      "reasons": [
+        "outside_temperature_domain"
+      ]
+    },
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p16",
+        "point_number": 16,
+        "x_propane": 0.8702,
+        "temperature_k": 270.0,
+        "pressure_pa": 388200.0,
+        "expanded_uncertainty": 12100.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.9658,
+        "paired_id": "je0496701/d2/p15",
+        "y_expanded_uncertainty": 0.0026
+      },
+      "constructed_z_propane": 0.9179999999999999,
+      "constructed_beta": 0.5,
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_composition_domain"
+      ]
+    },
+    {
+      "kind": "binary_vle",
+      "observed": {
+        "id": "je0496701/d1/p17",
+        "point_number": 17,
+        "x_propane": 0.8704,
+        "temperature_k": 280.0,
+        "pressure_pa": 521799.99999999994,
+        "expanded_uncertainty": 15400.0,
+        "reported_significant_digits": 4,
+        "y_propane": 0.9603,
+        "paired_id": "je0496701/d2/p16",
+        "y_expanded_uncertainty": 0.003
+      },
+      "constructed_z_propane": 0.91535,
+      "constructed_beta": 0.5,
+      "reasons": [
+        "outside_composition_domain"
+      ]
+    },
+    {
+      "kind": "pure_saturated_vapor_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d13/p1",
+        "point_number": 1,
+        "temperature_k": 270.0,
+        "density_kg_m3": 2.4628,
+        "expanded_uncertainty": 0.0048,
+        "reported_significant_digits": 5,
+        "pressure_pa": 91499.0,
+        "paired_id": "j.jct.2004.07.017/d11/p15",
+        "pressure_expanded_uncertainty": 23.0
+      },
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain"
+      ]
+    },
+    {
+      "kind": "pure_saturated_vapor_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d13/p2",
+        "point_number": 2,
+        "temperature_k": 275.0,
+        "density_kg_m3": 2.9414,
+        "expanded_uncertainty": 0.0054,
+        "reported_significant_digits": 5,
+        "pressure_pa": 110673.0,
+        "paired_id": "j.jct.2004.07.017/d11/p16",
+        "pressure_expanded_uncertainty": 25.0
+      },
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain"
+      ]
+    },
+    {
+      "kind": "pure_saturated_vapor_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d13/p3",
+        "point_number": 3,
+        "temperature_k": 285.0,
+        "density_kg_m3": 4.1131,
+        "expanded_uncertainty": 0.0061,
+        "reported_significant_digits": 5,
+        "pressure_pa": 158306.0,
+        "paired_id": "j.jct.2004.07.017/d11/p17",
+        "pressure_expanded_uncertainty": 35.0
+      },
+      "reasons": [
+        "outside_pressure_domain"
+      ]
+    },
+    {
+      "kind": "pure_saturated_vapor_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d13/p4",
+        "point_number": 4,
+        "temperature_k": 290.0,
+        "density_kg_m3": 4.8201,
+        "expanded_uncertainty": 0.0076,
+        "reported_significant_digits": 5,
+        "pressure_pa": 187371.0,
+        "paired_id": "j.jct.2004.07.017/d11/p18",
+        "pressure_expanded_uncertainty": 37.0
+      },
+      "reasons": [
+        "outside_pressure_domain"
+      ]
+    },
+    {
+      "kind": "pure_saturated_vapor_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d13/p8",
+        "point_number": 8,
+        "temperature_k": 330.0,
+        "density_kg_m3": 14.5357,
+        "expanded_uncertainty": 0.0181,
+        "reported_significant_digits": 6,
+        "pressure_pa": 590396.0,
+        "paired_id": "j.jct.2004.07.017/d11/p22",
+        "pressure_expanded_uncertainty": 71.0
+      },
+      "reasons": [
+        "outside_temperature_domain"
+      ]
+    },
+    {
+      "kind": "pure_saturated_vapor_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d13/p9",
+        "point_number": 9,
+        "temperature_k": 340.0,
+        "density_kg_m3": 18.5183,
+        "expanded_uncertainty": 0.0205,
+        "reported_significant_digits": 6,
+        "pressure_pa": 751896.0,
+        "paired_id": "j.jct.2004.07.017/d11/p23",
+        "pressure_expanded_uncertainty": 75.0
+      },
+      "reasons": [
+        "outside_temperature_domain"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p1",
+        "point_number": 1,
+        "temperature_k": 140.0,
+        "pressure_pa": 2002480.0,
+        "density_kg_m3": 731.069,
+        "expanded_uncertainty": 0.115,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p2",
+        "point_number": 2,
+        "temperature_k": 140.0,
+        "pressure_pa": 4003680.0,
+        "density_kg_m3": 731.913,
+        "expanded_uncertainty": 0.115,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p3",
+        "point_number": 3,
+        "temperature_k": 140.0,
+        "pressure_pa": 6004320.0,
+        "density_kg_m3": 732.746,
+        "expanded_uncertainty": 0.115,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p4",
+        "point_number": 4,
+        "temperature_k": 140.0,
+        "pressure_pa": 8005220.0,
+        "density_kg_m3": 733.572,
+        "expanded_uncertainty": 0.115,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p5",
+        "point_number": 5,
+        "temperature_k": 140.0,
+        "pressure_pa": 10005760.0,
+        "density_kg_m3": 734.386,
+        "expanded_uncertainty": 0.116,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p6",
+        "point_number": 6,
+        "temperature_k": 140.0,
+        "pressure_pa": 12006410.0,
+        "density_kg_m3": 735.195,
+        "expanded_uncertainty": 0.116,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p7",
+        "point_number": 7,
+        "temperature_k": 170.0,
+        "pressure_pa": 2003080.0,
+        "density_kg_m3": 703.28,
+        "expanded_uncertainty": 0.112,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p8",
+        "point_number": 8,
+        "temperature_k": 170.0,
+        "pressure_pa": 4004350.0,
+        "density_kg_m3": 704.327,
+        "expanded_uncertainty": 0.112,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p9",
+        "point_number": 9,
+        "temperature_k": 170.0,
+        "pressure_pa": 6005750.0,
+        "density_kg_m3": 705.36,
+        "expanded_uncertainty": 0.112,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p10",
+        "point_number": 10,
+        "temperature_k": 170.0,
+        "pressure_pa": 8006670.0,
+        "density_kg_m3": 706.38,
+        "expanded_uncertainty": 0.112,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p11",
+        "point_number": 11,
+        "temperature_k": 170.0,
+        "pressure_pa": 10007600.0,
+        "density_kg_m3": 707.386,
+        "expanded_uncertainty": 0.112,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p12",
+        "point_number": 12,
+        "temperature_k": 170.0,
+        "pressure_pa": 12008610.0,
+        "density_kg_m3": 708.378,
+        "expanded_uncertainty": 0.112,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p13",
+        "point_number": 13,
+        "temperature_k": 200.0,
+        "pressure_pa": 2002510.0,
+        "density_kg_m3": 675.323,
+        "expanded_uncertainty": 0.109,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p14",
+        "point_number": 14,
+        "temperature_k": 200.0,
+        "pressure_pa": 4005540.0,
+        "density_kg_m3": 676.638,
+        "expanded_uncertainty": 0.109,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p15",
+        "point_number": 15,
+        "temperature_k": 200.0,
+        "pressure_pa": 6003880.0,
+        "density_kg_m3": 677.928,
+        "expanded_uncertainty": 0.109,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p16",
+        "point_number": 16,
+        "temperature_k": 200.0,
+        "pressure_pa": 8006360.0,
+        "density_kg_m3": 679.195,
+        "expanded_uncertainty": 0.109,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p17",
+        "point_number": 17,
+        "temperature_k": 200.0,
+        "pressure_pa": 10009620.0,
+        "density_kg_m3": 680.443,
+        "expanded_uncertainty": 0.109,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p18",
+        "point_number": 18,
+        "temperature_k": 200.0,
+        "pressure_pa": 12008820.0,
+        "density_kg_m3": 681.665,
+        "expanded_uncertainty": 0.109,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p19",
+        "point_number": 19,
+        "temperature_k": 230.0,
+        "pressure_pa": 2002790.0,
+        "density_kg_m3": 646.694,
+        "expanded_uncertainty": 0.106,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p20",
+        "point_number": 20,
+        "temperature_k": 230.0,
+        "pressure_pa": 4003120.0,
+        "density_kg_m3": 648.369,
+        "expanded_uncertainty": 0.106,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p21",
+        "point_number": 21,
+        "temperature_k": 230.0,
+        "pressure_pa": 6004520.0,
+        "density_kg_m3": 650.003,
+        "expanded_uncertainty": 0.106,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p22",
+        "point_number": 22,
+        "temperature_k": 230.0,
+        "pressure_pa": 8004680.0,
+        "density_kg_m3": 651.599,
+        "expanded_uncertainty": 0.106,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p23",
+        "point_number": 23,
+        "temperature_k": 230.0,
+        "pressure_pa": 10004630.0,
+        "density_kg_m3": 653.164,
+        "expanded_uncertainty": 0.107,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p24",
+        "point_number": 24,
+        "temperature_k": 230.0,
+        "pressure_pa": 12005030.0,
+        "density_kg_m3": 654.692,
+        "expanded_uncertainty": 0.107,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p25",
+        "point_number": 25,
+        "temperature_k": 260.0,
+        "pressure_pa": 2019520.0,
+        "density_kg_m3": 616.844,
+        "expanded_uncertainty": 0.104,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p26",
+        "point_number": 26,
+        "temperature_k": 260.0,
+        "pressure_pa": 4006490.0,
+        "density_kg_m3": 619.013,
+        "expanded_uncertainty": 0.104,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p27",
+        "point_number": 27,
+        "temperature_k": 260.0,
+        "pressure_pa": 6006680.0,
+        "density_kg_m3": 621.134,
+        "expanded_uncertainty": 0.104,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p28",
+        "point_number": 28,
+        "temperature_k": 260.0,
+        "pressure_pa": 8007610.0,
+        "density_kg_m3": 623.188,
+        "expanded_uncertainty": 0.104,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p29",
+        "point_number": 29,
+        "temperature_k": 260.0,
+        "pressure_pa": 10004150.0,
+        "density_kg_m3": 625.174,
+        "expanded_uncertainty": 0.104,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p30",
+        "point_number": 30,
+        "temperature_k": 260.0,
+        "pressure_pa": 12005530.0,
+        "density_kg_m3": 627.108,
+        "expanded_uncertainty": 0.105,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p31",
+        "point_number": 31,
+        "temperature_k": 280.0,
+        "pressure_pa": 2002790.0,
+        "density_kg_m3": 595.863,
+        "expanded_uncertainty": 0.229,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p32",
+        "point_number": 32,
+        "temperature_k": 280.0,
+        "pressure_pa": 6002990.0,
+        "density_kg_m3": 601.077,
+        "expanded_uncertainty": 0.103,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p33",
+        "point_number": 33,
+        "temperature_k": 280.0,
+        "pressure_pa": 8007890.0,
+        "density_kg_m3": 603.537,
+        "expanded_uncertainty": 0.103,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p34",
+        "point_number": 34,
+        "temperature_k": 280.0,
+        "pressure_pa": 10004440.0,
+        "density_kg_m3": 605.897,
+        "expanded_uncertainty": 0.103,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p35",
+        "point_number": 35,
+        "temperature_k": 280.0,
+        "pressure_pa": 12005490.0,
+        "density_kg_m3": 608.181,
+        "expanded_uncertainty": 0.104,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p36",
+        "point_number": 36,
+        "temperature_k": 280.0,
+        "pressure_pa": 2002790.0,
+        "density_kg_m3": 598.524,
+        "expanded_uncertainty": 0.23,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p37",
+        "point_number": 37,
+        "temperature_k": 290.0,
+        "pressure_pa": 170308.0,
+        "density_kg_m3": 4.353,
+        "expanded_uncertainty": 0.0478,
+        "reported_significant_digits": 5
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p39",
+        "point_number": 39,
+        "temperature_k": 300.0,
+        "pressure_pa": 2003900.0,
+        "density_kg_m3": 573.693,
+        "expanded_uncertainty": 0.208,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p40",
+        "point_number": 40,
+        "temperature_k": 300.0,
+        "pressure_pa": 4005120.0,
+        "density_kg_m3": 577.002,
+        "expanded_uncertainty": 0.102,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p41",
+        "point_number": 41,
+        "temperature_k": 300.0,
+        "pressure_pa": 6006810.0,
+        "density_kg_m3": 580.137,
+        "expanded_uncertainty": 0.102,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p42",
+        "point_number": 42,
+        "temperature_k": 300.0,
+        "pressure_pa": 8047330.0,
+        "density_kg_m3": 583.175,
+        "expanded_uncertainty": 0.102,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p43",
+        "point_number": 43,
+        "temperature_k": 300.0,
+        "pressure_pa": 10092220.0,
+        "density_kg_m3": 586.078,
+        "expanded_uncertainty": 0.103,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p44",
+        "point_number": 44,
+        "temperature_k": 300.0,
+        "pressure_pa": 12036900.0,
+        "density_kg_m3": 588.722,
+        "expanded_uncertainty": 0.103,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p49",
+        "point_number": 49,
+        "temperature_k": 320.0,
+        "pressure_pa": 2002380.0,
+        "density_kg_m3": 549.841,
+        "expanded_uncertainty": 0.203,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p50",
+        "point_number": 50,
+        "temperature_k": 320.0,
+        "pressure_pa": 4003410.0,
+        "density_kg_m3": 554.071,
+        "expanded_uncertainty": 0.103,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p51",
+        "point_number": 51,
+        "temperature_k": 320.0,
+        "pressure_pa": 6005320.0,
+        "density_kg_m3": 558.008,
+        "expanded_uncertainty": 0.103,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p52",
+        "point_number": 52,
+        "temperature_k": 320.0,
+        "pressure_pa": 8005600.0,
+        "density_kg_m3": 561.695,
+        "expanded_uncertainty": 0.103,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p53",
+        "point_number": 53,
+        "temperature_k": 320.0,
+        "pressure_pa": 10010900.0,
+        "density_kg_m3": 565.181,
+        "expanded_uncertainty": 0.103,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p54",
+        "point_number": 54,
+        "temperature_k": 320.0,
+        "pressure_pa": 12007860.0,
+        "density_kg_m3": 568.462,
+        "expanded_uncertainty": 0.103,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p55",
+        "point_number": 55,
+        "temperature_k": 330.0,
+        "pressure_pa": 206698.0,
+        "density_kg_m3": 4.4515,
+        "expanded_uncertainty": 0.0044,
+        "reported_significant_digits": 5
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p56",
+        "point_number": 56,
+        "temperature_k": 330.0,
+        "pressure_pa": 401468.0,
+        "density_kg_m3": 8.9808,
+        "expanded_uncertainty": 0.0071,
+        "reported_significant_digits": 5
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p57",
+        "point_number": 57,
+        "temperature_k": 330.0,
+        "pressure_pa": 501526.0,
+        "density_kg_m3": 12.0126,
+        "expanded_uncertainty": 0.0103,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p58",
+        "point_number": 58,
+        "temperature_k": 340.0,
+        "pressure_pa": 201081.0,
+        "density_kg_m3": 4.4272,
+        "expanded_uncertainty": 0.0044,
+        "reported_significant_digits": 5
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p59",
+        "point_number": 59,
+        "temperature_k": 340.0,
+        "pressure_pa": 401468.0,
+        "density_kg_m3": 8.9808,
+        "expanded_uncertainty": 0.0068,
+        "reported_significant_digits": 5
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p60",
+        "point_number": 60,
+        "temperature_k": 340.0,
+        "pressure_pa": 600354.0,
+        "density_kg_m3": 14.1335,
+        "expanded_uncertainty": 0.01,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p61",
+        "point_number": 61,
+        "temperature_k": 340.0,
+        "pressure_pa": 2003060.0,
+        "density_kg_m3": 523.546,
+        "expanded_uncertainty": 0.586,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p62",
+        "point_number": 62,
+        "temperature_k": 340.0,
+        "pressure_pa": 4002690.0,
+        "density_kg_m3": 529.184,
+        "expanded_uncertainty": 0.104,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p63",
+        "point_number": 63,
+        "temperature_k": 340.0,
+        "pressure_pa": 6003590.0,
+        "density_kg_m3": 534.286,
+        "expanded_uncertainty": 0.103,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p64",
+        "point_number": 64,
+        "temperature_k": 340.0,
+        "pressure_pa": 8004560.0,
+        "density_kg_m3": 538.959,
+        "expanded_uncertainty": 0.103,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p65",
+        "point_number": 65,
+        "temperature_k": 340.0,
+        "pressure_pa": 10005370.0,
+        "density_kg_m3": 543.286,
+        "expanded_uncertainty": 0.103,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    },
+    {
+      "kind": "pure_vapor_TP_density",
+      "observed": {
+        "id": "j.jct.2004.07.017/d14/p66",
+        "point_number": 66,
+        "temperature_k": 340.0,
+        "pressure_pa": 12005950.0,
+        "density_kg_m3": 547.319,
+        "expanded_uncertainty": 0.104,
+        "reported_significant_digits": 6
+      },
+      "observed_phase_basis": "Subcritical measured density below frozen critical density; no model phase label used for selection",
+      "reasons": [
+        "outside_temperature_domain",
+        "outside_pressure_domain",
+        "observed_density_not_gas_branch"
+      ]
+    }
+  ],
+  "unpaired": [
+    {
+      "id": "je0496701/d1/p15",
+      "reason": "missing_reported_vapor_composition"
+    },
+    {
+      "id": "j.jct.2004.07.017/d11/p1",
+      "reason": "pressure_only_no_saturated_vapor_density"
+    },
+    {
+      "id": "j.jct.2004.07.017/d11/p2",
+      "reason": "pressure_only_no_saturated_vapor_density"
+    },
+    {
+      "id": "j.jct.2004.07.017/d11/p3",
+      "reason": "pressure_only_no_saturated_vapor_density"
+    },
+    {
+      "id": "j.jct.2004.07.017/d11/p4",
+      "reason": "pressure_only_no_saturated_vapor_density"
+    },
+    {
+      "id": "j.jct.2004.07.017/d11/p5",
+      "reason": "pressure_only_no_saturated_vapor_density"
+    },
+    {
+      "id": "j.jct.2004.07.017/d11/p6",
+      "reason": "pressure_only_no_saturated_vapor_density"
+    },
+    {
+      "id": "j.jct.2004.07.017/d11/p7",
+      "reason": "pressure_only_no_saturated_vapor_density"
+    },
+    {
+      "id": "j.jct.2004.07.017/d11/p8",
+      "reason": "pressure_only_no_saturated_vapor_density"
+    },
+    {
+      "id": "j.jct.2004.07.017/d11/p9",
+      "reason": "pressure_only_no_saturated_vapor_density"
+    },
+    {
+      "id": "j.jct.2004.07.017/d11/p10",
+      "reason": "pressure_only_no_saturated_vapor_density"
+    },
+    {
+      "id": "j.jct.2004.07.017/d11/p11",
+      "reason": "pressure_only_no_saturated_vapor_density"
+    },
+    {
+      "id": "j.jct.2004.07.017/d11/p12",
+      "reason": "pressure_only_no_saturated_vapor_density"
+    },
+    {
+      "id": "j.jct.2004.07.017/d11/p13",
+      "reason": "pressure_only_no_saturated_vapor_density"
+    },
+    {
+      "id": "j.jct.2004.07.017/d11/p14",
+      "reason": "pressure_only_no_saturated_vapor_density"
+    }
+  ],
+  "assessment": {
+    "summary": [
+      {
+        "backend": "HEOS",
+        "quantity": "TP_constructed_beta",
+        "counts": {
+          "fail": 6,
+          "pass": 4
+        },
+        "maximum_error": 0.05458194470840039
+      },
+      {
+        "backend": "HEOS",
+        "quantity": "TP_x",
+        "counts": {
+          "pass": 9,
+          "fail": 1
+        },
+        "maximum_error": 0.026642761578688612
+      },
+      {
+        "backend": "HEOS",
+        "quantity": "TP_y",
+        "counts": {
+          "pass": 9,
+          "fail": 1
+        },
+        "maximum_error": 0.028003444315949477
+      },
+      {
+        "backend": "HEOS",
+        "quantity": "bubble_pressure",
+        "counts": {
+          "fail": 2,
+          "pass": 8
+        },
+        "maximum_error": 0.0418040091141941
+      },
+      {
+        "backend": "HEOS",
+        "quantity": "bubble_y",
+        "counts": {
+          "fail": 2,
+          "pass": 8
+        },
+        "maximum_error": 0.05869889444445009
+      },
+      {
+        "backend": "HEOS",
+        "quantity": "saturated_vapor_density",
+        "counts": {
+          "pass": 3
+        },
+        "maximum_error": 0.00027433195332067175
+      },
+      {
+        "backend": "HEOS",
+        "quantity": "saturation_pressure",
+        "counts": {
+          "pass": 3
+        },
+        "maximum_error": 0.00010040227931910912
+      },
+      {
+        "backend": "HEOS",
+        "quantity": "vapor_density_at_measured_pressure",
+        "counts": {
+          "pass": 8
+        },
+        "maximum_error": 0.00033765612227673554
+      },
+      {
+        "backend": "PR",
+        "quantity": "TP_constructed_beta",
+        "counts": {
+          "fail": 7,
+          "pass": 3
+        },
+        "maximum_error": 0.06426441020590923
+      },
+      {
+        "backend": "PR",
+        "quantity": "TP_x",
+        "counts": {
+          "pass": 9,
+          "fail": 1
+        },
+        "maximum_error": 0.02668053075255783
+      },
+      {
+        "backend": "PR",
+        "quantity": "TP_y",
+        "counts": {
+          "pass": 9,
+          "fail": 1
+        },
+        "maximum_error": 0.030017979988237964
+      },
+      {
+        "backend": "PR",
+        "quantity": "bubble_pressure",
+        "counts": {
+          "fail": 2,
+          "pass": 8
+        },
+        "maximum_error": 0.04171419413612513
+      },
+      {
+        "backend": "PR",
+        "quantity": "bubble_y",
+        "counts": {
+          "fail": 2,
+          "pass": 8
+        },
+        "maximum_error": 0.06054621325729548
+      },
+      {
+        "backend": "PR",
+        "quantity": "saturated_vapor_density",
+        "counts": {
+          "pass": 3
+        },
+        "maximum_error": 0.010012473599701203
+      },
+      {
+        "backend": "PR",
+        "quantity": "saturation_pressure",
+        "counts": {
+          "pass": 3
+        },
+        "maximum_error": 0.003762022314832626
+      },
+      {
+        "backend": "PR",
+        "quantity": "vapor_density_at_measured_pressure",
+        "counts": {
+          "pass": 8
+        },
+        "maximum_error": 0.005960773869710597
+      }
+    ],
+    "checks": [
+      {
+        "id": "je0496701/d1/p1",
+        "backend": "PR",
+        "quantity": "bubble_pressure",
+        "actual": 486331.4266636781,
+        "observed": 471100.0,
+        "absolute_error": 15231.426663678081,
+        "error": 0.032331621022454,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p1",
+        "backend": "PR",
+        "quantity": "bubble_y",
+        "actual": 0.38483492121829455,
+        "observed": 0.355,
+        "absolute_error": 0.029834921218294563,
+        "error": 0.029834921218294563,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p1",
+        "backend": "PR",
+        "quantity": "TP_x",
+        "actual": 0.15122573048381327,
+        "observed": 0.1692,
+        "absolute_error": 0.01797426951618672,
+        "error": 0.01797426951618672,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p1",
+        "backend": "PR",
+        "quantity": "TP_y",
+        "actual": 0.35418482285158864,
+        "observed": 0.355,
+        "absolute_error": 0.000815177148411339,
+        "error": 0.000815177148411339,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p1",
+        "backend": "PR",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.5462887531802477,
+        "observed": 0.5,
+        "absolute_error": 0.04628875318024772,
+        "error": 0.04628875318024772,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p1",
+        "backend": "HEOS",
+        "quantity": "bubble_pressure",
+        "actual": 486043.6564438356,
+        "observed": 471100.0,
+        "absolute_error": 14943.656443835585,
+        "error": 0.0317207736018586,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p1",
+        "backend": "HEOS",
+        "quantity": "bubble_y",
+        "actual": 0.382001549739267,
+        "observed": 0.355,
+        "absolute_error": 0.027001549739266995,
+        "error": 0.027001549739266995,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p1",
+        "backend": "HEOS",
+        "quantity": "TP_x",
+        "actual": 0.15149769743828623,
+        "observed": 0.1692,
+        "absolute_error": 0.017702302561713762,
+        "error": 0.017702302561713762,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p1",
+        "backend": "HEOS",
+        "quantity": "TP_y",
+        "actual": 0.35175597086012544,
+        "observed": 0.355,
+        "absolute_error": 0.003244029139874538,
+        "error": 0.003244029139874538,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p1",
+        "backend": "HEOS",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.5522982929585767,
+        "observed": 0.5,
+        "absolute_error": 0.052298292958576686,
+        "error": 0.052298292958576686,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p4",
+        "backend": "PR",
+        "quantity": "bubble_pressure",
+        "actual": 468250.53026418824,
+        "observed": 449500.0,
+        "absolute_error": 18750.530264188244,
+        "error": 0.04171419413612513,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p4",
+        "backend": "PR",
+        "quantity": "bubble_y",
+        "actual": 0.5944462132572955,
+        "observed": 0.5339,
+        "absolute_error": 0.06054621325729548,
+        "error": 0.06054621325729548,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p4",
+        "backend": "PR",
+        "quantity": "TP_x",
+        "actual": 0.28231946924744217,
+        "observed": 0.309,
+        "absolute_error": 0.02668053075255783,
+        "error": 0.02668053075255783,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p4",
+        "backend": "PR",
+        "quantity": "TP_y",
+        "actual": 0.563917979988238,
+        "observed": 0.5339,
+        "absolute_error": 0.030017979988237964,
+        "error": 0.030017979988237964,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p4",
+        "backend": "PR",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.49407409998920016,
+        "observed": 0.5,
+        "absolute_error": 0.005925900010799845,
+        "error": 0.005925900010799845,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p4",
+        "backend": "HEOS",
+        "quantity": "bubble_pressure",
+        "actual": 468290.90209683025,
+        "observed": 449500.0,
+        "absolute_error": 18790.90209683025,
+        "error": 0.0418040091141941,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p4",
+        "backend": "HEOS",
+        "quantity": "bubble_y",
+        "actual": 0.5925988944444501,
+        "observed": 0.5339,
+        "absolute_error": 0.05869889444445009,
+        "error": 0.05869889444445009,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p4",
+        "backend": "HEOS",
+        "quantity": "TP_x",
+        "actual": 0.2823572384213114,
+        "observed": 0.309,
+        "absolute_error": 0.026642761578688612,
+        "error": 0.026642761578688612,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p4",
+        "backend": "HEOS",
+        "quantity": "TP_y",
+        "actual": 0.5619034443159495,
+        "observed": 0.5339,
+        "absolute_error": 0.028003444315949477,
+        "error": 0.028003444315949477,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p4",
+        "backend": "HEOS",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.4975662650599989,
+        "observed": 0.5,
+        "absolute_error": 0.0024337349400010977,
+        "error": 0.0024337349400010977,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p5",
+        "backend": "PR",
+        "quantity": "bubble_pressure",
+        "actual": 366233.3335689289,
+        "observed": 371700.0,
+        "absolute_error": 5466.66643107112,
+        "error": 0.014707200514046597,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p5",
+        "backend": "PR",
+        "quantity": "bubble_y",
+        "actual": 0.6362064840610356,
+        "observed": 0.6425,
+        "absolute_error": 0.0062935159389643225,
+        "error": 0.0062935159389643225,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p5",
+        "backend": "PR",
+        "quantity": "TP_x",
+        "actual": 0.3391621544188748,
+        "observed": 0.3294,
+        "absolute_error": 0.009762154418874791,
+        "error": 0.009762154418874791,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p5",
+        "backend": "PR",
+        "quantity": "TP_y",
+        "actual": 0.6460879102723089,
+        "observed": 0.6425,
+        "absolute_error": 0.0035879102723089806,
+        "error": 0.0035879102723089806,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p5",
+        "backend": "PR",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.4782519641369575,
+        "observed": 0.5,
+        "absolute_error": 0.021748035863042525,
+        "error": 0.021748035863042525,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p5",
+        "backend": "HEOS",
+        "quantity": "bubble_pressure",
+        "actual": 366427.6917710482,
+        "observed": 371700.0,
+        "absolute_error": 5272.308228951821,
+        "error": 0.014184310543319398,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p5",
+        "backend": "HEOS",
+        "quantity": "bubble_y",
+        "actual": 0.6346233236061238,
+        "observed": 0.6425,
+        "absolute_error": 0.007876676393876125,
+        "error": 0.007876676393876125,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p5",
+        "backend": "HEOS",
+        "quantity": "TP_x",
+        "actual": 0.33875957776912485,
+        "observed": 0.3294,
+        "absolute_error": 0.009359577769124827,
+        "error": 0.009359577769124827,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p5",
+        "backend": "HEOS",
+        "quantity": "TP_y",
+        "actual": 0.6441688304579134,
+        "observed": 0.6425,
+        "absolute_error": 0.0016688304579134394,
+        "error": 0.0016688304579134394,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p5",
+        "backend": "HEOS",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.4819448688441077,
+        "observed": 0.5,
+        "absolute_error": 0.0180551311558923,
+        "error": 0.0180551311558923,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p6",
+        "backend": "PR",
+        "quantity": "bubble_pressure",
+        "actual": 524211.5630819071,
+        "observed": 532800.0,
+        "absolute_error": 8588.436918092892,
+        "error": 0.016119438660084254,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p6",
+        "backend": "PR",
+        "quantity": "bubble_y",
+        "actual": 0.673005542321422,
+        "observed": 0.6703,
+        "absolute_error": 0.00270554232142195,
+        "error": 0.00270554232142195,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p6",
+        "backend": "PR",
+        "quantity": "TP_x",
+        "actual": 0.39978280322736304,
+        "observed": 0.3878,
+        "absolute_error": 0.01198280322736306,
+        "error": 0.01198280322736306,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p6",
+        "backend": "PR",
+        "quantity": "TP_y",
+        "actual": 0.6836583538521834,
+        "observed": 0.6703,
+        "absolute_error": 0.013358353852183424,
+        "error": 0.013358353852183424,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p6",
+        "backend": "PR",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.4553657280033986,
+        "observed": 0.5,
+        "absolute_error": 0.044634271996601416,
+        "error": 0.044634271996601416,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p6",
+        "backend": "HEOS",
+        "quantity": "bubble_pressure",
+        "actual": 524498.1092293441,
+        "observed": 532800.0,
+        "absolute_error": 8301.89077065594,
+        "error": 0.01558162682180169,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p6",
+        "backend": "HEOS",
+        "quantity": "bubble_y",
+        "actual": 0.6716855142713158,
+        "observed": 0.6703,
+        "absolute_error": 0.0013855142713158353,
+        "error": 0.0013855142713158353,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p6",
+        "backend": "HEOS",
+        "quantity": "TP_x",
+        "actual": 0.3993293389100037,
+        "observed": 0.3878,
+        "absolute_error": 0.011529338910003739,
+        "error": 0.011529338910003739,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p6",
+        "backend": "HEOS",
+        "quantity": "TP_y",
+        "actual": 0.6820036475736405,
+        "observed": 0.6703,
+        "absolute_error": 0.011703647573640508,
+        "error": 0.011703647573640508,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p6",
+        "backend": "HEOS",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.45890502643575964,
+        "observed": 0.5,
+        "absolute_error": 0.041094973564240356,
+        "error": 0.041094973564240356,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p8",
+        "backend": "PR",
+        "quantity": "bubble_pressure",
+        "actual": 317511.5975152164,
+        "observed": 319700.0,
+        "absolute_error": 2188.4024847836117,
+        "error": 0.006845175116620619,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p8",
+        "backend": "PR",
+        "quantity": "bubble_y",
+        "actual": 0.746266387121571,
+        "observed": 0.7427,
+        "absolute_error": 0.0035663871215709797,
+        "error": 0.0035663871215709797,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p8",
+        "backend": "PR",
+        "quantity": "TP_x",
+        "actual": 0.43766464592397236,
+        "observed": 0.4327,
+        "absolute_error": 0.004964645923972388,
+        "error": 0.004964645923972388,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p8",
+        "backend": "PR",
+        "quantity": "TP_y",
+        "actual": 0.7499939481130412,
+        "observed": 0.7427,
+        "absolute_error": 0.007293948113041182,
+        "error": 0.007293948113041182,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p8",
+        "backend": "PR",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.4803755300077595,
+        "observed": 0.5,
+        "absolute_error": 0.01962446999224049,
+        "error": 0.01962446999224049,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p8",
+        "backend": "HEOS",
+        "quantity": "bubble_pressure",
+        "actual": 317991.8425507108,
+        "observed": 319700.0,
+        "absolute_error": 1708.157449289225,
+        "error": 0.005343001092553097,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p8",
+        "backend": "HEOS",
+        "quantity": "bubble_y",
+        "actual": 0.7454876136400654,
+        "observed": 0.7427,
+        "absolute_error": 0.0027876136400654117,
+        "error": 0.0027876136400654117,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p8",
+        "backend": "HEOS",
+        "quantity": "TP_x",
+        "actual": 0.436545740034706,
+        "observed": 0.4327,
+        "absolute_error": 0.0038457400347060022,
+        "error": 0.0038457400347060022,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p8",
+        "backend": "HEOS",
+        "quantity": "TP_y",
+        "actual": 0.7483930079103568,
+        "observed": 0.7427,
+        "absolute_error": 0.005693007910356762,
+        "error": 0.005693007910356762,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p8",
+        "backend": "HEOS",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.48470605817706525,
+        "observed": 0.5,
+        "absolute_error": 0.015293941822934753,
+        "error": 0.015293941822934753,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p9",
+        "backend": "PR",
+        "quantity": "bubble_pressure",
+        "actual": 591148.3237856244,
+        "observed": 593200.0,
+        "absolute_error": 2051.6762143756496,
+        "error": 0.0034586584868099286,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p9",
+        "backend": "PR",
+        "quantity": "bubble_y",
+        "actual": 0.7482033299188241,
+        "observed": 0.7433,
+        "absolute_error": 0.00490332991882414,
+        "error": 0.00490332991882414,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p9",
+        "backend": "PR",
+        "quantity": "TP_x",
+        "actual": 0.4832093528487831,
+        "observed": 0.4804,
+        "absolute_error": 0.0028093528487830866,
+        "error": 0.0028093528487830866,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p9",
+        "backend": "PR",
+        "quantity": "TP_y",
+        "actual": 0.7502535289771008,
+        "observed": 0.7433,
+        "absolute_error": 0.006953528977100887,
+        "error": 0.006953528977100887,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p9",
+        "backend": "PR",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.4817204741787878,
+        "observed": 0.5,
+        "absolute_error": 0.018279525821212173,
+        "error": 0.018279525821212173,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p9",
+        "backend": "HEOS",
+        "quantity": "bubble_pressure",
+        "actual": 591738.4085964944,
+        "observed": 593200.0,
+        "absolute_error": 1461.5914035056485,
+        "error": 0.0024639099856804594,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p9",
+        "backend": "HEOS",
+        "quantity": "bubble_y",
+        "actual": 0.747289893228308,
+        "observed": 0.7433,
+        "absolute_error": 0.003989893228308006,
+        "error": 0.003989893228308006,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p9",
+        "backend": "HEOS",
+        "quantity": "TP_x",
+        "actual": 0.48239328243477947,
+        "observed": 0.4804,
+        "absolute_error": 0.0019932824347794753,
+        "error": 0.0019932824347794753,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p9",
+        "backend": "HEOS",
+        "quantity": "TP_y",
+        "actual": 0.7487522293107564,
+        "observed": 0.7433,
+        "absolute_error": 0.005452229310756396,
+        "error": 0.005452229310756396,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p9",
+        "backend": "HEOS",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.4860235373490146,
+        "observed": 0.5,
+        "absolute_error": 0.0139764626509854,
+        "error": 0.0139764626509854,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p10",
+        "backend": "PR",
+        "quantity": "bubble_pressure",
+        "actual": 387946.4773008037,
+        "observed": 394400.0,
+        "absolute_error": 6453.522699196299,
+        "error": 0.016362887168347613,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p10",
+        "backend": "PR",
+        "quantity": "bubble_y",
+        "actual": 0.8458328349987773,
+        "observed": 0.8484,
+        "absolute_error": 0.002567165001222782,
+        "error": 0.002567165001222782,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p10",
+        "backend": "PR",
+        "quantity": "TP_x",
+        "actual": 0.6048678942655478,
+        "observed": 0.5906,
+        "absolute_error": 0.014267894265547754,
+        "error": 0.014267894265547754,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p10",
+        "backend": "PR",
+        "quantity": "TP_y",
+        "actual": 0.8532494298846487,
+        "observed": 0.8484,
+        "absolute_error": 0.004849429884648648,
+        "error": 0.004849429884648648,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p10",
+        "backend": "PR",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.4615162131465495,
+        "observed": 0.5,
+        "absolute_error": 0.0384837868534505,
+        "error": 0.0384837868534505,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p10",
+        "backend": "HEOS",
+        "quantity": "bubble_pressure",
+        "actual": 388898.2551647166,
+        "observed": 394400.0,
+        "absolute_error": 5501.744835283374,
+        "error": 0.013949657290272248,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p10",
+        "backend": "HEOS",
+        "quantity": "bubble_y",
+        "actual": 0.845348395776234,
+        "observed": 0.8484,
+        "absolute_error": 0.003051604223766047,
+        "error": 0.003051604223766047,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p10",
+        "backend": "HEOS",
+        "quantity": "TP_x",
+        "actual": 0.6027040367781817,
+        "observed": 0.5906,
+        "absolute_error": 0.012104036778181726,
+        "error": 0.012104036778181726,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p10",
+        "backend": "HEOS",
+        "quantity": "TP_y",
+        "actual": 0.851660295678645,
+        "observed": 0.8484,
+        "absolute_error": 0.003260295678644942,
+        "error": 0.003260295678644942,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p10",
+        "backend": "HEOS",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.4691425061480992,
+        "observed": 0.5,
+        "absolute_error": 0.030857493851900786,
+        "error": 0.030857493851900786,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p11",
+        "backend": "PR",
+        "quantity": "bubble_pressure",
+        "actual": 518246.78243324964,
+        "observed": 525500.0,
+        "absolute_error": 7253.217566750362,
+        "error": 0.013802507263083467,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p11",
+        "backend": "PR",
+        "quantity": "bubble_y",
+        "actual": 0.8356705266334331,
+        "observed": 0.836,
+        "absolute_error": 0.000329473366566857,
+        "error": 0.000329473366566857,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p11",
+        "backend": "PR",
+        "quantity": "TP_x",
+        "actual": 0.6070294952043759,
+        "observed": 0.5947,
+        "absolute_error": 0.012329495204375873,
+        "error": 0.012329495204375873,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p11",
+        "backend": "PR",
+        "quantity": "TP_y",
+        "actual": 0.8424292744332351,
+        "observed": 0.836,
+        "absolute_error": 0.006429274433235155,
+        "error": 0.006429274433235155,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p11",
+        "backend": "PR",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.4601555071566707,
+        "observed": 0.5,
+        "absolute_error": 0.039844492843329304,
+        "error": 0.039844492843329304,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p11",
+        "backend": "HEOS",
+        "quantity": "bubble_pressure",
+        "actual": 519301.2152175394,
+        "observed": 525500.0,
+        "absolute_error": 6198.7847824606,
+        "error": 0.011795974847689057,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p11",
+        "backend": "HEOS",
+        "quantity": "bubble_y",
+        "actual": 0.8350484585877829,
+        "observed": 0.836,
+        "absolute_error": 0.000951541412217094,
+        "error": 0.000951541412217094,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p11",
+        "backend": "HEOS",
+        "quantity": "TP_x",
+        "actual": 0.6052004143228051,
+        "observed": 0.5947,
+        "absolute_error": 0.01050041432280513,
+        "error": 0.01050041432280513,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p11",
+        "backend": "HEOS",
+        "quantity": "TP_y",
+        "actual": 0.840824935935673,
+        "observed": 0.836,
+        "absolute_error": 0.004824935935673014,
+        "error": 0.004824935935673014,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p11",
+        "backend": "HEOS",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.4674792968202657,
+        "observed": 0.5,
+        "absolute_error": 0.03252070317973432,
+        "error": 0.03252070317973432,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p12",
+        "backend": "PR",
+        "quantity": "bubble_pressure",
+        "actual": 716506.9286321847,
+        "observed": 720600.0,
+        "absolute_error": 4093.0713678152533,
+        "error": 0.005680087937573208,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p12",
+        "backend": "PR",
+        "quantity": "bubble_y",
+        "actual": 0.8531696849992579,
+        "observed": 0.8492,
+        "absolute_error": 0.003969684999257983,
+        "error": 0.003969684999257983,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p12",
+        "backend": "PR",
+        "quantity": "TP_x",
+        "actual": 0.654184389101358,
+        "observed": 0.6488,
+        "absolute_error": 0.005384389101357967,
+        "error": 0.005384389101357967,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p12",
+        "backend": "PR",
+        "quantity": "TP_y",
+        "actual": 0.8560253308034332,
+        "observed": 0.8492,
+        "absolute_error": 0.006825330803433283,
+        "error": 0.006825330803433283,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p12",
+        "backend": "PR",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.4697541048861802,
+        "observed": 0.5,
+        "absolute_error": 0.03024589511381981,
+        "error": 0.03024589511381981,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p12",
+        "backend": "HEOS",
+        "quantity": "bubble_pressure",
+        "actual": 717429.2576593644,
+        "observed": 720600.0,
+        "absolute_error": 3170.7423406356247,
+        "error": 0.004400142021420517,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p12",
+        "backend": "HEOS",
+        "quantity": "bubble_y",
+        "actual": 0.8525679310984919,
+        "observed": 0.8492,
+        "absolute_error": 0.003367931098491983,
+        "error": 0.003367931098491983,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p12",
+        "backend": "HEOS",
+        "quantity": "TP_x",
+        "actual": 0.652968231926908,
+        "observed": 0.6488,
+        "absolute_error": 0.0041682319269079615,
+        "error": 0.0041682319269079615,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p12",
+        "backend": "HEOS",
+        "quantity": "TP_y",
+        "actual": 0.8547846615912993,
+        "observed": 0.8492,
+        "absolute_error": 0.005584661591299334,
+        "error": 0.005584661591299334,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p12",
+        "backend": "HEOS",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.4758372161909071,
+        "observed": 0.5,
+        "absolute_error": 0.024162783809092925,
+        "error": 0.024162783809092925,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p14",
+        "backend": "PR",
+        "quantity": "bubble_pressure",
+        "actual": 576839.6928326922,
+        "observed": 586200.0,
+        "absolute_error": 9360.307167307823,
+        "error": 0.015967770670944768,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p14",
+        "backend": "PR",
+        "quantity": "bubble_y",
+        "actual": 0.885724788091765,
+        "observed": 0.8848,
+        "absolute_error": 0.0009247880917649942,
+        "error": 0.0009247880917649942,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p14",
+        "backend": "PR",
+        "quantity": "TP_x",
+        "actual": 0.7089739104519367,
+        "observed": 0.6934,
+        "absolute_error": 0.015573910451936679,
+        "error": 0.015573910451936679,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p14",
+        "backend": "PR",
+        "quantity": "TP_y",
+        "actual": 0.8928608625960873,
+        "observed": 0.8848,
+        "absolute_error": 0.008060862596087293,
+        "error": 0.008060862596087293,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p14",
+        "backend": "PR",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.43573558979409077,
+        "observed": 0.5,
+        "absolute_error": 0.06426441020590923,
+        "error": 0.06426441020590923,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "je0496701/d1/p14",
+        "backend": "HEOS",
+        "quantity": "bubble_pressure",
+        "actual": 578052.1394862885,
+        "observed": 586200.0,
+        "absolute_error": 8147.860513711465,
+        "error": 0.01389945498756647,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p14",
+        "backend": "HEOS",
+        "quantity": "bubble_y",
+        "actual": 0.8851738192178993,
+        "observed": 0.8848,
+        "absolute_error": 0.00037381921789925165,
+        "error": 0.00037381921789925165,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p14",
+        "backend": "HEOS",
+        "quantity": "TP_x",
+        "actual": 0.7069398885380549,
+        "observed": 0.6934,
+        "absolute_error": 0.013539888538054878,
+        "error": 0.013539888538054878,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p14",
+        "backend": "HEOS",
+        "quantity": "TP_y",
+        "actual": 0.891396065125144,
+        "observed": 0.8848,
+        "absolute_error": 0.006596065125143991,
+        "error": 0.006596065125143991,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "je0496701/d1/p14",
+        "backend": "HEOS",
+        "quantity": "TP_constructed_beta",
+        "actual": 0.4454180552915996,
+        "observed": 0.5,
+        "absolute_error": 0.05458194470840039,
+        "error": 0.05458194470840039,
+        "error_type": "absolute",
+        "limit": 0.02,
+        "status": "fail"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p5",
+        "backend": "PR",
+        "quantity": "saturated_vapor_density",
+        "actual": 6.4496697357453066,
+        "observed": 6.5149,
+        "absolute_error": 0.06523026425469336,
+        "error": 0.010012473599701203,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p5",
+        "backend": "PR",
+        "quantity": "saturation_pressure",
+        "actual": 256652.8202872082,
+        "observed": 257622.0,
+        "absolute_error": 969.1797127918107,
+        "error": 0.003762022314832626,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p5",
+        "backend": "PR",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 6.476066154316222,
+        "observed": 6.5149,
+        "absolute_error": 0.03883384568377757,
+        "error": 0.005960773869710597,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p5",
+        "backend": "HEOS",
+        "quantity": "saturated_vapor_density",
+        "actual": 6.516384099093,
+        "observed": 6.5149,
+        "absolute_error": 0.0014840990930000686,
+        "error": 0.00022780074797772317,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p5",
+        "backend": "HEOS",
+        "quantity": "saturation_pressure",
+        "actual": 257596.13416399725,
+        "observed": 257622.0,
+        "absolute_error": 25.86583600274753,
+        "error": 0.00010040227931910912,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p5",
+        "backend": "HEOS",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 6.517099795871021,
+        "observed": 6.5149,
+        "absolute_error": 0.0021997958710207044,
+        "error": 0.00033765612227673554,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p6",
+        "backend": "PR",
+        "quantity": "saturated_vapor_density",
+        "actual": 8.559829171635924,
+        "observed": 8.6426,
+        "absolute_error": 0.08277082836407601,
+        "error": 0.009577074996421912,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p6",
+        "backend": "PR",
+        "quantity": "saturation_pressure",
+        "actual": 345123.87892839697,
+        "observed": 346298.0,
+        "absolute_error": 1174.1210716030328,
+        "error": 0.003390493365838188,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p6",
+        "backend": "PR",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 8.592025069746393,
+        "observed": 8.6426,
+        "absolute_error": 0.05057493025360671,
+        "error": 0.005851818926434951,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p6",
+        "backend": "HEOS",
+        "quantity": "saturated_vapor_density",
+        "actual": 8.644958440387958,
+        "observed": 8.6426,
+        "absolute_error": 0.0023584403879581828,
+        "error": 0.00027288551916763277,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p6",
+        "backend": "HEOS",
+        "quantity": "saturation_pressure",
+        "actual": 346281.4379106405,
+        "observed": 346298.0,
+        "absolute_error": 16.56208935950417,
+        "error": 4.782611900589715e-05,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p6",
+        "backend": "HEOS",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 8.645421449558757,
+        "observed": 8.6426,
+        "absolute_error": 0.002821449558757294,
+        "error": 0.0003264584220902615,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p7",
+        "backend": "PR",
+        "quantity": "saturated_vapor_density",
+        "actual": 11.188979124512006,
+        "observed": 11.284,
+        "absolute_error": 0.09502087548799487,
+        "error": 0.008420850362282423,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p7",
+        "backend": "PR",
+        "quantity": "saturation_pressure",
+        "actual": 455053.3782877889,
+        "observed": 456235.0,
+        "absolute_error": 1181.621712211112,
+        "error": 0.0025899409563297686,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p7",
+        "backend": "PR",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 11.221954928839347,
+        "observed": 11.284,
+        "absolute_error": 0.06204507116065372,
+        "error": 0.005498499748374133,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p7",
+        "backend": "HEOS",
+        "quantity": "saturated_vapor_density",
+        "actual": 11.287095561761271,
+        "observed": 11.284,
+        "absolute_error": 0.00309556176127046,
+        "error": 0.00027433195332067175,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p7",
+        "backend": "HEOS",
+        "quantity": "saturation_pressure",
+        "actual": 456239.9542765157,
+        "observed": 456235.0,
+        "absolute_error": 4.954276515694801,
+        "error": 1.0859045263284932e-05,
+        "error_type": "relative",
+        "limit": 0.02,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d13/p7",
+        "backend": "HEOS",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 11.286954381912045,
+        "observed": 11.284,
+        "absolute_error": 0.002954381912044113,
+        "error": 0.0002618204459450649,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d14/p38",
+        "backend": "PR",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 4.951468404218852,
+        "observed": 4.9721,
+        "absolute_error": 0.020631595781147816,
+        "error": 0.004149473216779191,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d14/p38",
+        "backend": "HEOS",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 4.972955546221081,
+        "observed": 4.9721,
+        "absolute_error": 0.0008555462210804166,
+        "error": 0.00017206939142020808,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d14/p45",
+        "backend": "PR",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 4.80311584098592,
+        "observed": 4.8154,
+        "absolute_error": 0.01228415901408031,
+        "error": 0.0025510152872202326,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d14/p45",
+        "backend": "HEOS",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 4.81530531563288,
+        "observed": 4.8154,
+        "absolute_error": 9.468436712012362e-05,
+        "error": 1.9662824920073852e-05,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d14/p46",
+        "backend": "PR",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 4.603207220014263,
+        "observed": 4.6087,
+        "absolute_error": 0.005492779985736718,
+        "error": 0.0011918284951801415,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d14/p46",
+        "backend": "HEOS",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 4.608534268312887,
+        "observed": 4.6087,
+        "absolute_error": 0.00016573168711264685,
+        "error": 3.5960615165371335e-05,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d14/p47",
+        "backend": "PR",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 7.016576323504652,
+        "observed": 7.0328,
+        "absolute_error": 0.01622367649534784,
+        "error": 0.0023068587895785234,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d14/p47",
+        "backend": "HEOS",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 7.033346092888447,
+        "observed": 7.0328,
+        "absolute_error": 0.0005460928884470917,
+        "error": 7.764942674995616e-05,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d14/p48",
+        "backend": "PR",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 9.66744077117836,
+        "observed": 9.7079,
+        "absolute_error": 0.04045922882164099,
+        "error": 0.004167660237707536,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      },
+      {
+        "id": "j.jct.2004.07.017/d14/p48",
+        "backend": "HEOS",
+        "quantity": "vapor_density_at_measured_pressure",
+        "actual": 9.70930192082425,
+        "observed": 9.7079,
+        "absolute_error": 0.001401920824250169,
+        "error": 0.0001444103075073053,
+        "error_type": "relative",
+        "limit": 0.05,
+        "status": "pass"
+      }
+    ]
+  }
+}

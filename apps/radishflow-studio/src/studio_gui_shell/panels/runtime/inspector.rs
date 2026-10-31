@@ -651,9 +651,14 @@ impl ReadyAppState {
                 StudioShellLocale::En => "Open stream",
                 StudioShellLocale::ZhCn => "打开流股",
             };
-            let response = ui.small_button(label).on_hover_text(&action.hover_text);
+            let response = ui
+                .add_enabled(
+                    action.result_is_current(&self.platform_host.modeling_inputs().workspace),
+                    egui::Button::new(label).small(),
+                )
+                .on_hover_text(&action.hover_text);
             if response.clicked() {
-                self.dispatch_ui_command(&action.command_id);
+                self.dispatch_result_action(action);
             }
         });
     }

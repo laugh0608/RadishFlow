@@ -1,0 +1,19 @@
+{
+  "schema_version": 3,
+  "project": "../flowsheets/standalone-separator-basis.rfproj.json",
+  "queries": [
+    {
+      "id": "objects",
+      "query": {
+        "kind": "objects"
+      }
+    },
+    {
+      "id": "actions",
+      "query": {
+        "kind": "actions",
+        "scope": "project"
+      }
+    }
+  ]
+}

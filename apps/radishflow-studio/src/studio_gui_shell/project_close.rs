@@ -195,7 +195,15 @@ impl ReadyAppState {
         });
     }
 
-    fn close_window_without_confirmation(&mut self, window_id: StudioWindowHostId) -> bool {
+    pub(super) fn close_window_without_confirmation(
+        &mut self,
+        window_id: StudioWindowHostId,
+    ) -> bool {
+        if self.logical_window_count() <= 1 && self.background_busy() {
+            self.begin_background_exit(window_id);
+            return false;
+        }
+
         self.cancel_drag_session(Some(window_id));
         self.dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id });
         self.logical_window_count() == 0

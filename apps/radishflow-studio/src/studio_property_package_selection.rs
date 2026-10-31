@@ -1,3 +1,4 @@
+use std::sync::LazyLock;
 use std::time::SystemTime;
 
 use rf_types::{RfError, RfResult};
@@ -5,21 +6,29 @@ use rf_ui::AppState;
 
 pub const PROPERTY_PACKAGE_SELECT_COMMAND_PREFIX: &str = "project.property_package.select:";
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioBuiltinPropertyPackage {
     pub package_id: &'static str,
     pub label: &'static str,
     pub detail: &'static str,
-    pub component_summary: &'static str,
+    pub component_summary: String,
 }
 
-pub const STUDIO_BUILTIN_PROPERTY_PACKAGES: &[StudioBuiltinPropertyPackage] =
-    &[StudioBuiltinPropertyPackage {
-        package_id: "binary-hydrocarbon-lite-v1",
-        label: "Binary Hydrocarbon Lite",
-        detail: "Local built-in methane/ethane package for MVP beta authoring.",
-        component_summary: "Methane, Ethane",
-    }];
+pub static STUDIO_BUILTIN_PROPERTY_PACKAGES: LazyLock<[StudioBuiltinPropertyPackage; 1]> =
+    LazyLock::new(|| {
+        let descriptor = crate::builtin_property_package_data::descriptor();
+        [StudioBuiltinPropertyPackage {
+            package_id: &descriptor.manifest.package_id,
+            label: "Binary Hydrocarbon Lite",
+            detail: "Local built-in methane/ethane package for MVP beta authoring.",
+            component_summary: descriptor
+                .components
+                .iter()
+                .map(|component| component.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", "),
+        }]
+    });
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioPropertyPackageSelectionCommand {
@@ -55,10 +64,9 @@ pub fn property_package_select_command_from_id(
         .map(StudioPropertyPackageSelectionCommand::new)
 }
 
-pub fn builtin_property_package(package_id: &str) -> Option<StudioBuiltinPropertyPackage> {
+pub fn builtin_property_package(package_id: &str) -> Option<&'static StudioBuiltinPropertyPackage> {
     STUDIO_BUILTIN_PROPERTY_PACKAGES
         .iter()
-        .copied()
         .find(|package| package.package_id == package_id)
 }
 

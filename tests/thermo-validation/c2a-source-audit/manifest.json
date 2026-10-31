@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "files": {
+    ".gitignore": "32dae3052f331ee34d628ef535709b301259a45df7c7522c4d35dcf49873f00b",
+    "README.md": "187687837f0ee3505a6745666dbe170456f5814b854bad1a13dfd96c1ca0e980",
+    "THIRD_PARTY_NOTICES.md": "d0ee579ecd743abace2dd672de83e3337f0e9db77cdd0262ab0effc8f6fd2411",
+    "audit.py": "d614f2b50495ff725b43d315a205955913cf47070bfb143beea76fb1146db324",
+    "protocol.json": "131c5ccda991b1d80a465609eeae3c8339337f5081d46a7999fe34b9e2c1ad2f",
+    "research-sources.json": "3b2dd02f6de5c5da8721de0a285073702187e58b83413ee333422beeb6f0380e",
+    "results.json": "885ccd4eef6b334a5934e8af6e3083608d22f1357fa0ac7764af220315dadfd1",
+    "source-observations.json": "4ab883a2211bbb1729af1c9a3ade95b974b665bc7acc5960a0dede65d5557d04",
+    "test_audit.py": "22983d0b937cecf7c109463328ee03037ed006fd173fa5e3b592553fd4279afe"
+  }
+}

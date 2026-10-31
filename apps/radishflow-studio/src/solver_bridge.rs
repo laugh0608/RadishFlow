@@ -1,13 +1,22 @@
+pub(crate) mod execution;
+#[cfg(test)]
+mod execution_tests;
+pub use execution::{
+    CompletedWorkspaceSolve, PreparedWorkspaceSolve, WorkspaceExecutionOutcome,
+    WorkspaceSolveProgress, complete_workspace_solve, prepare_workspace_solve,
+};
+
 use std::path::Path;
 
-use rf_flash::PlaceholderTpFlashSolver;
-use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolveFailureContext, SolverServices};
-use rf_store::StoredAuthCacheIndex;
-use rf_thermo::{
-    CachedPropertyPackageProvider, PlaceholderThermoProvider, PropertyPackageProvider,
+use rf_property_package::{
+    CachedPropertyPackageProvider, LocalThermoContext, PackageFailureKind, PackageLoadError,
+    PropertyPackageProvider, prepare_local_context,
 };
-use rf_types::{ErrorCode, RfError, RfResult};
+use rf_solver::{SequentialModularSolver, SolveFailureContext, SolverServices};
+use rf_store::StoredAuthCacheIndex;
+use rf_types::{RfError, RfResult};
 use rf_ui::{AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, RunStatus};
+use std::time::SystemTime;
 
 pub(crate) const WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE: &str =
     "workspace.run.local_cache_unavailable";
@@ -57,13 +66,16 @@ impl StudioSolveRequest {
     }
 }
 
-pub fn next_solver_snapshot_sequence(app_state: &AppState) -> u64 {
+pub fn next_solver_snapshot_sequence(app_state: &AppState) -> RfResult<u64> {
     app_state
         .workspace
         .snapshot_history
         .back()
-        .map(|snapshot| snapshot.sequence + 1)
-        .unwrap_or(1)
+        .map_or(Some(1), |snapshot| snapshot.sequence.checked_add(1))
+        .ok_or_else(|| {
+            RfError::invalid_input("solver snapshot sequence exhausted")
+                .with_diagnostic_code("workspace.run.snapshot_sequence_exhausted")
+        })
 }
 
 pub fn solve_workspace_with_property_package<P>(
@@ -74,76 +86,27 @@ pub fn solve_workspace_with_property_package<P>(
 where
     P: PropertyPackageProvider,
 {
-    request.validate()?;
-
-    let revision = app_state.workspace.document.revision;
-    let package_id = request.package_id.as_str();
-    app_state.workspace.solve_session.begin_checking(revision);
-    app_state.workspace.solve_session.mark_runnable();
-    app_state.workspace.solve_session.begin_solving();
-
-    let thermo_system = match package_provider.load_system(package_id) {
-        Ok(system) => system,
-        Err(error) => {
-            let error = workspace_property_package_load_error(error);
-            record_solve_failure(
-                app_state,
-                revision,
-                format!(
-                    "failed to load property package `{package_id}`: {}",
-                    error.message()
-                ),
-                SolveFailureContext::from_error(&error),
-            );
-            return Err(error);
-        }
-    };
-
-    let thermo_provider = PlaceholderThermoProvider::new(thermo_system);
-    let flash_solver = PlaceholderTpFlashSolver;
-    let services = SolverServices {
-        thermo: &thermo_provider,
-        flash_solver: &flash_solver,
-    };
-    let solver_snapshot =
-        match SequentialModularSolver.solve(&services, &app_state.workspace.document.flowsheet) {
-            Ok(snapshot) => snapshot,
-            Err(error) => {
-                record_solve_failure(
-                    app_state,
-                    revision,
-                    format!(
-                        "flowsheet solve failed with package `{package_id}`: {}",
-                        error.message()
-                    ),
-                    SolveFailureContext::from_error(&error),
-                );
-                return Err(error);
-            }
-        };
-
-    app_state.store_solver_snapshot(
-        request.snapshot_id.as_str(),
-        request.sequence,
-        &solver_snapshot,
-    );
-    app_state.push_log(
-        AppLogLevel::Info,
-        format!(
-            "Solved document revision {} with property package `{}` into snapshot `{}`",
-            revision, package_id, request.snapshot_id
-        ),
-    );
-    Ok(())
+    let mut completion = prepare_workspace_solve(app_state, request)?
+        .execute_with_property_package(package_provider);
+    complete_workspace_solve(app_state, &mut completion);
+    completion.result().map(|_| ())
 }
 
-fn workspace_property_package_load_error(error: RfError) -> RfError {
-    if error.context().diagnostic_code().is_none()
-        && matches!(error.code(), ErrorCode::MissingEntity)
-    {
-        error.with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_PROPERTY_PACKAGE_MISSING)
-    } else {
-        error
+fn workspace_property_package_load_error(error: PackageLoadError) -> RfError {
+    match error.kind {
+        PackageFailureKind::Missing => error
+            .source
+            .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_PROPERTY_PACKAGE_MISSING),
+        PackageFailureKind::Expired | PackageFailureKind::UnsupportedSource => {
+            RfError::missing_entity(
+                "property package",
+                error.package_id.as_deref().unwrap_or_default(),
+            )
+            .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_PROPERTY_PACKAGE_MISSING)
+        }
+        _ => error
+            .source
+            .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE),
     }
 }
 
@@ -153,16 +116,10 @@ pub fn solve_workspace_from_auth_cache(
     auth_cache_index: &StoredAuthCacheIndex,
     request: &StudioSolveRequest,
 ) -> RfResult<()> {
-    let provider =
-        CachedPropertyPackageProvider::new(cache_root, auth_cache_index).map_err(|error| {
-            match error.context().diagnostic_code() {
-                Some(_) => error,
-                None => {
-                    error.with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE)
-                }
-            }
-        })?;
-    solve_workspace_with_property_package(app_state, &provider, request)
+    let mut completion = prepare_workspace_solve(app_state, request)?
+        .execute_from_auth_cache(cache_root, auth_cache_index);
+    complete_workspace_solve(app_state, &mut completion);
+    completion.result().map(|_| ())
 }
 
 fn record_solve_failure(
@@ -195,11 +152,11 @@ mod tests {
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
     use rf_model::Flowsheet;
+    use rf_property_package::InMemoryPropertyPackageProvider;
     use rf_store::{
         StoredAuthCacheIndex, StoredCredentialReference, StoredPropertyPackageRecord,
         StoredPropertyPackageSource, parse_project_file_json,
     };
-    use rf_thermo::InMemoryPropertyPackageProvider;
     use rf_ui::{AppState, DocumentMetadata, FlowsheetDocument, RunStatus};
 
     use super::{
@@ -248,7 +205,7 @@ mod tests {
             DocumentMetadata::new("doc-2", "Heater Demo", timestamp(20)),
         );
 
-        assert_eq!(next_solver_snapshot_sequence(&app_state), 1);
+        assert_eq!(next_solver_snapshot_sequence(&app_state).unwrap(), 1);
         solve_workspace_with_property_package(
             &mut app_state,
             &provider,
@@ -256,7 +213,7 @@ mod tests {
         )
         .expect("expected solve");
 
-        assert_eq!(next_solver_snapshot_sequence(&app_state), 2);
+        assert_eq!(next_solver_snapshot_sequence(&app_state).unwrap(), 2);
     }
 
     #[test]

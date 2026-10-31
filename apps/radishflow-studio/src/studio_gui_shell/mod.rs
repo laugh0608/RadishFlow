@@ -51,6 +51,7 @@ mod project_picker;
 mod project_read_only;
 mod project_save;
 mod result_export;
+mod result_review;
 mod result_table;
 mod state_presentation;
 mod unit_deletion;
@@ -130,7 +131,12 @@ enum AppState {
     Failed(String),
 }
 
+mod background_run;
+
 struct ReadyAppState {
+    background_runs: Option<radishflow_studio::SharedStudioRunOwner>,
+    pending_run_exit: Option<background_run::PendingRunExit>,
+    background_run_details_open: bool,
     platform_host: StudioGuiPlatformHost,
     platform_timer_executor: EguiPlatformTimerExecutor,
     command_palette: CommandPaletteState,
@@ -210,6 +216,8 @@ struct DropPreviewOverlayAnchor {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct CommandPaletteState {
+    background_target_captured: bool,
+    background_target: Option<radishflow_studio::StudioRunActivity>,
     open: bool,
     query: String,
     selected_index: usize,
@@ -365,7 +373,11 @@ impl RadishFlowStudioApp {
         let config = studio_shell_runtime_config(None);
         let preferences_path = default_studio_preferences_path();
         let state = match ReadyAppState::from_config(&config, preferences_path) {
-            Ok(ready) => AppState::Ready(ready),
+            Ok(mut ready) => {
+                // The desktop application owns workers across replaceable document hosts.
+                ready.enable_background_runs();
+                AppState::Ready(ready)
+            }
             Err(error) => AppState::Failed(format!(
                 "Studio 初始化失败 [{}]: {}",
                 error.code().as_str(),
@@ -475,6 +487,9 @@ impl ReadyAppState {
         let modeling_problems =
             modeling_problems::ModelingProblemsState::new(platform_host.document());
         let mut ready = ReadyAppState {
+            background_runs: None,
+            pending_run_exit: None,
+            background_run_details_open: false,
             platform_host,
             platform_timer_executor: EguiPlatformTimerExecutor::default(),
             command_palette: CommandPaletteState::default(),
@@ -748,6 +763,8 @@ impl CommandPaletteState {
     }
 
     fn open(&mut self) {
+        self.background_target_captured = false;
+        self.background_target = None;
         self.open = true;
         self.query.clear();
         self.selected_index = 0;
@@ -755,6 +772,8 @@ impl CommandPaletteState {
     }
 
     fn close(&mut self) {
+        self.background_target_captured = false;
+        self.background_target = None;
         self.open = false;
         self.query.clear();
         self.selected_index = 0;

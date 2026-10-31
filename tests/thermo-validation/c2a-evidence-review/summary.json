@@ -1,0 +1,348 @@
+{
+  "phase": {
+    "total_states": 102,
+    "raw_label_anomalies": 27,
+    "in_domain_anomalies": 25,
+    "repeat_and_default_parameters_exact": true,
+    "diagnostic_root_checks": [
+      {
+        "id": "grid-02",
+        "in_domain": true,
+        "independent_root_relative_error": 6.439293542825908e-14,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "grid-03",
+        "in_domain": true,
+        "independent_root_relative_error": 3.497202527569243e-14,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "grid-10",
+        "in_domain": true,
+        "independent_root_relative_error": 5.218048215738236e-14,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "grid-11",
+        "in_domain": true,
+        "independent_root_relative_error": 1.9984014443252818e-14,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "grid-12",
+        "in_domain": true,
+        "independent_root_relative_error": 2.5979218776228663e-14,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "grid-15",
+        "in_domain": true,
+        "independent_root_relative_error": 9.992007221626409e-15,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "grid-19",
+        "in_domain": true,
+        "independent_root_relative_error": 2.6645352591003757e-14,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "grid-20",
+        "in_domain": true,
+        "independent_root_relative_error": 5.440092820663267e-15,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "grid-21",
+        "in_domain": true,
+        "independent_root_relative_error": 2.731148640577885e-14,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "grid-22",
+        "in_domain": true,
+        "independent_root_relative_error": 8.326672684688674e-15,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "grid-23",
+        "in_domain": true,
+        "independent_root_relative_error": 1.2545520178264269e-14,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "grid-24",
+        "in_domain": true,
+        "independent_root_relative_error": 1.3322676295501878e-15,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "grid-27",
+        "in_domain": true,
+        "independent_root_relative_error": 6.661338147750939e-16,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "holdout-02",
+        "in_domain": true,
+        "independent_root_relative_error": 1.1546319456101628e-14,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "holdout-07",
+        "in_domain": true,
+        "independent_root_relative_error": 2.7644553313166398e-14,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "holdout-08",
+        "in_domain": true,
+        "independent_root_relative_error": 4.107825191113079e-15,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "boundary-T320-z0.8-dew-0.9999",
+        "in_domain": false,
+        "independent_root_relative_error": 4.884981308350689e-15,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "boundary-T320-z0.8-dew-1.0001",
+        "in_domain": false,
+        "independent_root_relative_error": 4.551914400963142e-15,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "pure-TP-Propane-280-1000000",
+        "in_domain": true,
+        "independent_root_relative_error": 6.661338147750939e-16,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "pure-TP-Propane-300-1000000",
+        "in_domain": true,
+        "independent_root_relative_error": 3.3306690738754696e-16,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "pure-TP-n-Butane-280-200000",
+        "in_domain": true,
+        "independent_root_relative_error": 0.0,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "pure-TP-n-Butane-280-500000",
+        "in_domain": true,
+        "independent_root_relative_error": 5.551115123125783e-16,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "pure-TP-n-Butane-280-1000000",
+        "in_domain": true,
+        "independent_root_relative_error": 8.881784197001252e-16,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "pure-TP-n-Butane-300-500000",
+        "in_domain": true,
+        "independent_root_relative_error": 4.440892098500626e-16,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "pure-TP-n-Butane-300-1000000",
+        "in_domain": true,
+        "independent_root_relative_error": 6.661338147750939e-16,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "pure-TP-n-Butane-320-500000",
+        "in_domain": true,
+        "independent_root_relative_error": 2.220446049250313e-16,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      },
+      {
+        "id": "pure-TP-n-Butane-320-1000000",
+        "in_domain": true,
+        "independent_root_relative_error": 5.551115123125783e-16,
+        "imposed_root_relative_error": 0.0,
+        "root_comparison_limit": 1e-06
+      }
+    ],
+    "v7_fresh_statuses": {
+      "ok": 89,
+      "reference_error": 13
+    },
+    "v7_fresh_phases": {
+      "5": 89,
+      "error": 13
+    }
+  },
+  "new_experiments": [
+    {
+      "backend": "HEOS",
+      "quantity": "TP_constructed_beta",
+      "counts": {
+        "fail": 6,
+        "pass": 4
+      },
+      "maximum_error": 0.05458194470840039
+    },
+    {
+      "backend": "HEOS",
+      "quantity": "TP_x",
+      "counts": {
+        "pass": 9,
+        "fail": 1
+      },
+      "maximum_error": 0.026642761578688612
+    },
+    {
+      "backend": "HEOS",
+      "quantity": "TP_y",
+      "counts": {
+        "pass": 9,
+        "fail": 1
+      },
+      "maximum_error": 0.028003444315949477
+    },
+    {
+      "backend": "HEOS",
+      "quantity": "bubble_pressure",
+      "counts": {
+        "fail": 2,
+        "pass": 8
+      },
+      "maximum_error": 0.0418040091141941
+    },
+    {
+      "backend": "HEOS",
+      "quantity": "bubble_y",
+      "counts": {
+        "fail": 2,
+        "pass": 8
+      },
+      "maximum_error": 0.05869889444445009
+    },
+    {
+      "backend": "HEOS",
+      "quantity": "saturated_vapor_density",
+      "counts": {
+        "pass": 3
+      },
+      "maximum_error": 0.00027433195332067175
+    },
+    {
+      "backend": "HEOS",
+      "quantity": "saturation_pressure",
+      "counts": {
+        "pass": 3
+      },
+      "maximum_error": 0.00010040227931910912
+    },
+    {
+      "backend": "HEOS",
+      "quantity": "vapor_density_at_measured_pressure",
+      "counts": {
+        "pass": 8
+      },
+      "maximum_error": 0.00033765612227673554
+    },
+    {
+      "backend": "PR",
+      "quantity": "TP_constructed_beta",
+      "counts": {
+        "fail": 7,
+        "pass": 3
+      },
+      "maximum_error": 0.06426441020590923
+    },
+    {
+      "backend": "PR",
+      "quantity": "TP_x",
+      "counts": {
+        "pass": 9,
+        "fail": 1
+      },
+      "maximum_error": 0.02668053075255783
+    },
+    {
+      "backend": "PR",
+      "quantity": "TP_y",
+      "counts": {
+        "pass": 9,
+        "fail": 1
+      },
+      "maximum_error": 0.030017979988237964
+    },
+    {
+      "backend": "PR",
+      "quantity": "bubble_pressure",
+      "counts": {
+        "fail": 2,
+        "pass": 8
+      },
+      "maximum_error": 0.04171419413612513
+    },
+    {
+      "backend": "PR",
+      "quantity": "bubble_y",
+      "counts": {
+        "fail": 2,
+        "pass": 8
+      },
+      "maximum_error": 0.06054621325729548
+    },
+    {
+      "backend": "PR",
+      "quantity": "saturated_vapor_density",
+      "counts": {
+        "pass": 3
+      },
+      "maximum_error": 0.010012473599701203
+    },
+    {
+      "backend": "PR",
+      "quantity": "saturation_pressure",
+      "counts": {
+        "pass": 3
+      },
+      "maximum_error": 0.003762022314832626
+    },
+    {
+      "backend": "PR",
+      "quantity": "vapor_density_at_measured_pressure",
+      "counts": {
+        "pass": 8
+      },
+      "maximum_error": 0.005960773869710597
+    }
+  ],
+  "baseline_scores": "Unchanged; never aggregate this supplement into a replacement acceptance score"
+}

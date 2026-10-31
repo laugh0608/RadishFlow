@@ -1,20 +1,14 @@
-use std::collections::BTreeMap;
 use std::path::Path;
+use std::time::SystemTime;
 
-use rf_flash::PlaceholderTpFlashSolver;
+use rf_property_package::{
+    InMemoryPropertyPackageProvider, PackageFailureKind, PackageLoadError, PropertyPackageManifest,
+    PropertyPackageProvider, PropertyPackageSource, load_property_package_files,
+    prepare_local_context,
+};
 use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolveSnapshot, SolverServices};
-use rf_store::{
-    StoredAntoineCoefficients, StoredLiquidPhaseModel, StoredProjectFile,
-    StoredPropertyPackageClassification, StoredPropertyPackageManifest,
-    StoredPropertyPackagePayload, StoredPropertyPackageSource, StoredThermoComponent,
-    StoredThermoMethod, StoredVaporPhaseModel, parse_project_file_json,
-    read_property_package_manifest, read_property_package_payload,
-};
-use rf_thermo::{
-    AntoineCoefficients, LiquidPhaseModel, PlaceholderThermoProvider, PropertyPackageManifest,
-    PropertyPackageProvider, PropertyPackageSource, ThermoComponent, ThermoMethod, ThermoSystem,
-    VaporPhaseModel,
-};
+use rf_store::{StoredProjectFile, parse_project_file_json};
+use rf_thermo::{AntoineCoefficients, ThermoComponent, ThermoSystem};
 use rf_types::{ComponentId, RfError, RfResult};
 use serde::Serialize;
 
@@ -24,7 +18,7 @@ const DEMO_REFERENCE_PRESSURE_PA: f64 = 100_000.0;
 
 #[derive(Debug)]
 pub struct Engine {
-    package_provider: EnginePropertyPackageRegistry,
+    package_provider: InMemoryPropertyPackageProvider,
     project: Option<StoredProjectFile>,
     latest_snapshot: Option<SolveSnapshot>,
     last_error: Option<RfError>,
@@ -59,12 +53,14 @@ impl Engine {
             RfError::invalid_input("ffi engine must load a flowsheet before solving")
                 .with_diagnostic_code("ffi.engine_state.flowsheet_not_loaded")
         })?;
-        let thermo_system = self.package_provider.load_system(package_id)?;
-        let thermo_provider = PlaceholderThermoProvider::new(thermo_system);
-        let flash_solver = PlaceholderTpFlashSolver;
+        let context = self
+            .package_provider
+            .load_package(package_id, SystemTime::now())
+            .and_then(prepare_local_context)
+            .map_err(package_error_for_ffi)?;
         let services = SolverServices {
-            thermo: &thermo_provider,
-            flash_solver: &flash_solver,
+            thermo: context.thermo(),
+            flash_solver: context.tp_flash(),
         };
         let snapshot = SequentialModularSolver.solve(&services, &project.document.flowsheet)?;
 
@@ -117,16 +113,10 @@ impl Engine {
             .with_diagnostic_code("ffi.property_package.payload_not_found"));
         }
 
-        let stored_manifest = read_property_package_manifest(manifest_path)?;
-        let stored_payload = read_property_package_payload(payload_path)?;
-        stored_manifest.validate()?;
-        stored_payload.validate_against_manifest(&stored_manifest)?;
-
-        let package_id = stored_manifest.package_id.clone();
-        let runtime_manifest = property_package_manifest_from_stored(stored_manifest)?;
-        let runtime_system = thermo_system_from_stored_payload(stored_payload);
-        self.package_provider
-            .insert(runtime_manifest, runtime_system);
+        let package = load_property_package_files(manifest_path, payload_path, SystemTime::now())
+            .map_err(package_error_for_ffi)?;
+        let package_id = package.manifest().package_id.clone();
+        self.package_provider.insert(package);
         Ok(package_id)
     }
 
@@ -144,7 +134,7 @@ impl Engine {
     }
 
     pub fn property_package_list_json(&self) -> RfResult<String> {
-        let manifests = self.package_provider.list_manifests();
+        let manifests = self.package_provider.registered_manifests();
         let json = manifests
             .iter()
             .map(FfiPropertyPackageManifestJson::from_manifest)
@@ -180,43 +170,18 @@ impl Default for Engine {
     }
 }
 
-#[derive(Debug, Clone, Default)]
-struct EnginePropertyPackageRegistry {
-    packages: BTreeMap<String, (PropertyPackageManifest, ThermoSystem)>,
+fn build_demo_package_provider() -> InMemoryPropertyPackageProvider {
+    InMemoryPropertyPackageProvider::try_new(vec![build_demo_package()])
+        .expect("valid built-in demo package")
 }
 
-impl EnginePropertyPackageRegistry {
-    fn with_demo_package() -> Self {
-        let mut registry = Self::default();
-        let (manifest, system) = build_demo_package();
-        registry.insert(manifest, system);
-        registry
+fn package_error_for_ffi(error: PackageLoadError) -> RfError {
+    match error.kind {
+        PackageFailureKind::Expired | PackageFailureKind::UnsupportedSource => {
+            error.into_rf_error()
+        }
+        _ => error.source,
     }
-
-    fn insert(&mut self, manifest: PropertyPackageManifest, system: ThermoSystem) {
-        self.packages
-            .insert(manifest.package_id.clone(), (manifest, system));
-    }
-}
-
-impl PropertyPackageProvider for EnginePropertyPackageRegistry {
-    fn list_manifests(&self) -> Vec<PropertyPackageManifest> {
-        self.packages
-            .values()
-            .map(|(manifest, _)| manifest.clone())
-            .collect()
-    }
-
-    fn load_system(&self, package_id: &str) -> RfResult<ThermoSystem> {
-        self.packages
-            .get(package_id)
-            .map(|(_, system)| system.clone())
-            .ok_or_else(|| RfError::missing_entity("property package", package_id))
-    }
-}
-
-fn build_demo_package_provider() -> EnginePropertyPackageRegistry {
-    EnginePropertyPackageRegistry::with_demo_package()
 }
 
 fn build_demo_antoine_coefficients(k_value: f64) -> AntoineCoefficients {
@@ -254,101 +219,6 @@ fn build_demo_package() -> (PropertyPackageManifest, ThermoSystem) {
         ),
         ThermoSystem::binary([first, second]),
     )
-}
-
-fn property_package_manifest_from_stored(
-    stored_manifest: StoredPropertyPackageManifest,
-) -> RfResult<PropertyPackageManifest> {
-    let source = property_package_source_from_stored(stored_manifest.source);
-    let classification =
-        property_package_classification_from_stored(stored_manifest.classification);
-
-    let mut manifest = PropertyPackageManifest::new(
-        stored_manifest.package_id,
-        stored_manifest.version,
-        source,
-        stored_manifest.component_ids,
-    );
-    manifest.classification = classification;
-    manifest.hash = stored_manifest.hash;
-    manifest.size_bytes = stored_manifest.size_bytes;
-    manifest.expires_at = stored_manifest.expires_at;
-    Ok(manifest)
-}
-
-fn thermo_system_from_stored_payload(payload: StoredPropertyPackagePayload) -> ThermoSystem {
-    let components = payload
-        .components
-        .into_iter()
-        .map(thermo_component_from_stored)
-        .collect();
-
-    ThermoSystem {
-        components,
-        method: thermo_method_from_stored(payload.method),
-    }
-}
-
-fn thermo_component_from_stored(component: StoredThermoComponent) -> ThermoComponent {
-    ThermoComponent {
-        id: component.id,
-        name: component.name,
-        antoine: component.antoine.map(antoine_coefficients_from_stored),
-        liquid_heat_capacity_j_per_mol_k: component.liquid_heat_capacity_j_per_mol_k,
-        vapor_heat_capacity_j_per_mol_k: component.vapor_heat_capacity_j_per_mol_k,
-    }
-}
-
-fn antoine_coefficients_from_stored(
-    coefficients: StoredAntoineCoefficients,
-) -> AntoineCoefficients {
-    AntoineCoefficients::new(coefficients.a, coefficients.b, coefficients.c)
-}
-
-fn thermo_method_from_stored(method: StoredThermoMethod) -> ThermoMethod {
-    ThermoMethod {
-        liquid_phase_model: liquid_phase_model_from_stored(method.liquid_phase_model),
-        vapor_phase_model: vapor_phase_model_from_stored(method.vapor_phase_model),
-    }
-}
-
-fn liquid_phase_model_from_stored(model: StoredLiquidPhaseModel) -> LiquidPhaseModel {
-    match model {
-        StoredLiquidPhaseModel::IdealSolution => LiquidPhaseModel::IdealSolution,
-    }
-}
-
-fn vapor_phase_model_from_stored(model: StoredVaporPhaseModel) -> VaporPhaseModel {
-    match model {
-        StoredVaporPhaseModel::IdealGas => VaporPhaseModel::IdealGas,
-    }
-}
-
-fn property_package_source_from_stored(
-    source: StoredPropertyPackageSource,
-) -> PropertyPackageSource {
-    match source {
-        StoredPropertyPackageSource::LocalBundled => PropertyPackageSource::LocalBundled,
-        StoredPropertyPackageSource::RemoteDerivedPackage => {
-            PropertyPackageSource::RemoteDerivedPackage
-        }
-        StoredPropertyPackageSource::RemoteEvaluationService => {
-            PropertyPackageSource::RemoteEvaluationService
-        }
-    }
-}
-
-fn property_package_classification_from_stored(
-    classification: StoredPropertyPackageClassification,
-) -> rf_thermo::PropertyPackageClassification {
-    match classification {
-        StoredPropertyPackageClassification::Derived => {
-            rf_thermo::PropertyPackageClassification::Derived
-        }
-        StoredPropertyPackageClassification::RemoteOnly => {
-            rf_thermo::PropertyPackageClassification::RemoteOnly
-        }
-    }
 }
 
 #[derive(Debug, Serialize)]
@@ -530,11 +400,11 @@ fn package_source_label(source: PropertyPackageSource) -> &'static str {
 }
 
 fn package_classification_label(
-    classification: rf_thermo::PropertyPackageClassification,
+    classification: rf_property_package::PropertyPackageClassification,
 ) -> &'static str {
     match classification {
-        rf_thermo::PropertyPackageClassification::Derived => "derived",
-        rf_thermo::PropertyPackageClassification::RemoteOnly => "remote-only",
+        rf_property_package::PropertyPackageClassification::Derived => "derived",
+        rf_property_package::PropertyPackageClassification::RemoteOnly => "remote-only",
     }
 }
 

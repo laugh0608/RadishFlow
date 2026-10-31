@@ -1,5 +1,8 @@
 use std::collections::BTreeMap;
 
+mod catalog_compatibility;
+mod control;
+
 use rf_flash::PlaceholderTpFlashSolver;
 use rf_model::{
     Component, Composition, Flowsheet, MaterialStreamState, UnitNode, UnitOperationParameters,
@@ -20,7 +23,7 @@ use super::{
     FlowsheetSolver, SequentialModularSolver, SolveDiagnosticSeverity, SolveFailureContext,
     SolveStatus, SolverDiagnosticCode, SolverServices, find_port, instantiate_operation,
     materialized_output_stream, port_stream_id, resolved_stream_for_port, solver_step_error,
-    solver_step_execution_error, solver_step_lookup_error, stream_for_port,
+    solver_step_execution_error, solver_step_lookup_error,
 };
 
 fn assert_close(actual: f64, expected: f64, tolerance: f64) {
@@ -2039,7 +2042,7 @@ fn port_stream_id_reports_unit_port_context_for_missing_stream_id() {
 }
 
 #[test]
-fn stream_for_port_reports_unit_port_context_for_missing_stream_reference() {
+fn instantiate_operation_reports_unit_port_context_for_missing_stream_reference() {
     let mut flowsheet = Flowsheet::new("missing-stream-helper");
     let unit = build_feed_node("feed-1", "Feed", "stream-missing");
 
@@ -2047,7 +2050,9 @@ fn stream_for_port_reports_unit_port_context_for_missing_stream_reference() {
         .insert_unit(unit.clone())
         .expect("expected unit insert");
 
-    let error = stream_for_port(&unit, "outlet", &flowsheet).expect_err("expected missing stream");
+    let error = instantiate_operation(&unit, &flowsheet)
+        .err()
+        .expect("expected missing stream");
 
     assert_eq!(error.code().as_str(), "missing_entity");
     assert!(error.message().contains(

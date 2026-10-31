@@ -1,6 +1,6 @@
 # 开发专题索引
 
-更新时间：2026-10-15
+更新时间：2026-10-22
 
 ## 用途
 
@@ -21,7 +21,7 @@
 
 2026-09-16 确认单位系统、规格分析与确定性辅助、设备设计与校核三条主线，单位专题进入 Active，U1、U2-I1—I4 与 U3 首批结果 / 输出已接通；A1 已进入共享检查基础，其余新专题为 Draft / 规划已确认。UI 旧主稿需重审功能分区，见 [UI 重设计计划](../architecture/studio-ui-topic-plan.md)。B3-5 无界面建模已接通；2026-10-11 完成[六类盘点与 A1 首批范围](modeling-assistance-and-specifications.md#a1-首批范围与实现)，A1-I1 / I2 已完成共享检查、问题闭环和 macOS 代表验收；A2-I1 动作与生命周期基础已实现并通过自动回归，I2 局部 UI 已认可并通过 Pencil 静态复核，I2 接线与 I3 自动 / macOS 代表验收完成，I5 限制保持。
 
-2026-10-11 [G0 + E0/S0 首批方案](equipment-design-and-rating.md#首批方案审定入口2026-10-11)已认可；单位兼容、[G0 数据基础](engineering-basis-and-cases.md)及 v3 基础存储已独立完成。B04 方法门禁已核销，Pencil 六图静态复核通过并获认可；2026-10-15 G1 / S1 数据 / 纯计算及正式事务与结果有效性已实现；完整设备保存、最小 Studio v3 生命周期与独立单工况设备 UI 已完成，设备页 Undo / Redo 已接通；后续为当前计算表导出及剩余验收，I5 不变。目标反算归建模求解，压力 / 公用工程与候选权衡归设备专题，工程检查 / 交付归结果专题；各切片见路线图，均未改变已实现能力声明。
+2026-10-11 [G0 + E0/S0 首批方案](equipment-design-and-rating.md#首批方案审定入口2026-10-11)已认可；单位兼容、[G0 数据基础](engineering-basis-and-cases.md)及 v3 基础存储已独立完成。B04 方法门禁已核销，Pencil 六图静态复核通过并获认可；2026-10-15 G1 / S1 数据 / 纯计算及正式事务与结果有效性已实现；完整设备保存、最小 Studio v3 生命周期与独立单工况设备 UI 已完成，设备页 Undo / Redo 已接通；2026-10-20 当前计算表 CSV / JSON 导出及自动 / macOS 代表验证已完成，[S2 / G2 方案](equipment/separator-sizing-and-rating.md#s2--g2-实施方案2026-10-20已确认)已确认，S2-A1—A3 已完成计算、事务 / 保存、单行 UI / 校核导出及代表验证；G2-B1—B3 有限矩阵已完成；C1 采纳 UI、固定证据 / 保存及输出已接通，流程关联未实现，I5 不变。目标反算归建模求解，压力 / 公用工程与候选权衡归设备专题，工程检查 / 交付归结果专题；各切片见路线图，均未改变已实现能力声明。
 
 2026-09-26 确认 [装置工程与数字孪生愿景](../architecture/simulation-platform.md#装置工程与数字孪生愿景)：同一工厂 / 装置工程关联多模型、工况与运行任务。目录 / 交付包归 [生命周期规划](project-lifecycle-storage.md#装置工程容器规划)，配置及场景归 [工程基础](engineering-basis-and-cases.md#装置配置与运行场景规划)，未来 DT0—DT4 依赖与退出依据归 [路线图](../radishflow-mvp-roadmap.md#装置工程与数字孪生的演进切片)。均为规划，现场接入与在线优化未实现，近期顺序保持。
 
@@ -42,14 +42,14 @@
 | 项目物性基础与组分选择 | Active | 稳定内置 package、项目组分、保存 / 重开和运行请求之间的同一事实源 | `property-basis-and-components.md` |
 | 流程图建模与求解闭环 | Active | 维护受控单元、连接、readiness、Run Panel 和 solver 之间的边界 | `flowsheet-modeling-and-solve.md` |
 | 结果审阅、诊断与恢复 | Active | 结果与恢复保持同源；V1—V4 流向、着色、设备三维和回放为新增规划 | [结果与可视化](results-review-diagnostics.md) |
-| 运行、消息与诊断 | Draft | 当前问题、执行事件、状态联动及 N0—N5 运行控制规划；已有恢复保持 | [运行与诊断](runtime-messages-and-diagnostics.md) |
+| 运行、消息与诊断 | 部分实现 | AF3 后台 / 取消 / 生命周期及 AF4b 类型化回执已接通；完整 N0—N5 待续 | [运行与诊断](runtime-messages-and-diagnostics.md) |
 | 项目生命周期与存储 | Active | 明确打开、保存、另存为、最近项目、sidecar 和脏改确认的长期边界 | `project-lifecycle-storage.md` |
 | CAPE-OPEN PMC 适配层 | Active | 完善 `.NET 10` PMC 生命周期与调用可靠性，保持 COM 注册和 PME 验证基线 | `capeopen-pmc-adapter.md` |
-| 工程设计基础、工况与数据来源 | Draft | 共享基础 / 来源、单工况与设备事务已实现；通用工况矩阵后续推进 | [工程基础](engineering-basis-and-cases.md) |
+| 工程设计基础、工况与数据来源 | Draft | 共享基础 / 来源、单工况与设备事务已实现；G2-B1—B3 完成；C1 固定采纳、UI / 保存 / 证据输出及代表验证完成 | [工程基础](engineering-basis-and-cases.md) |
 | 单位系统与输入显示 | Active | U1、U2-I1—I4 与 U3 首批结果 / 输出已接通；I5 按确认节点补验 | [单位系统](units-and-quantity-system.md) |
 | 颜色与状态系统 | Active | V0 首批数值字段及设置 / 保存已接通；其他消费者和运行态验收待续 | [颜色与状态](color-and-state-system.md) |
 | 规格分析与建模辅助 | Draft | 分层规格 / 自由度检查、可解释规则与固定工作流、未来 Agent 入口 | [建模辅助](modeling-assistance-and-specifications.md) |
-| 设备设计与性能校核 | Draft | 独立分离器首批计算 / UI / 保存已实现；流程关联、校核与采纳后续推进 | [设备工程](equipment-design-and-rating.md) |
+| 设备设计与性能校核 | Draft | 独立分离器尺寸 / 校核、UI / 保存 / 导出已实现；G2-B1—B3 完成；C1 采纳 UI / 保存 / 证据输出及代表验证完成、流程关联后续 | [设备工程](equipment-design-and-rating.md) |
 
 UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-plan.md)，承载 R0—R2 功能分区重评与 Pencil 设计验收，不以画稿完成冒充代码实现。
 
@@ -59,7 +59,7 @@ UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-p
 
 | 专题 | 当前状态 | 父专题与范围 | 入口 |
 | --- | --- | --- | --- |
-| 统一变量与对象浏览器 | Draft / 2026-09-28 方向已确认 | Studio 主工作流；工程视图、变量树、稳定引用、受控编辑和跨端消费，复用已有 B3 基础；VB0—VB3 待实施 | [变量与对象浏览器](variable-and-object-browser.md) |
+| 统一变量与对象浏览器 | 部分实现 / AF4a、AF4b 已完成 | 工程发现与正式动作已接通；完整浏览工作区、路径协议、关注项和新版 CLI 待续 | [变量与对象浏览器](variable-and-object-browser.md) |
 
 ### 运行、消息与诊断
 
@@ -106,7 +106,7 @@ UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-p
 | 专题 | 当前状态 | 父专题 | 入口 |
 | --- | --- | --- | --- |
 | Material Stream 物流股 | Active | 流程图建模与求解闭环 / 结果审阅、诊断与恢复 | `modeling/material-stream.md` |
-| 模型目录、发现与运行实例 | Draft / 2026-09-29 方向已确认 | 流程图建模与求解闭环 / 项目物性基础；MC0—MC3 待实施 | [模型装配](modeling/model-catalog-and-runtime.md) |
+| 模型目录、发现与运行实例 | AF2a / AF2b 已实施 | 流程图建模与求解闭环 / 项目物性基础；外部扩展待实施 | [模型装配](modeling/model-catalog-and-runtime.md) |
 | 多策略求解与问题装配 | Draft / 2026-09-29 方向已确认 | 流程图建模与求解闭环；SM、联立模块、EO、混合分区与 QS0—QS4 待实施 | [多策略求解](modeling/solver-strategies-and-assembly.md) |
 
 ### 平台与服务

@@ -1,32 +1,53 @@
 //! Application-owned device editor. Formal inputs, text drafts, checks and history
 //! remain distinct; all shell actions use the same command boundary.
+mod actions;
+mod adoption;
+pub use actions::*;
 mod drafts;
+mod gui_actions;
+pub use adoption::{
+    DimensionAdjustmentDraft, GeometryAdoptionDestination, GeometryAdoptionDraft,
+    GeometryAdoptionPreview, PreparedEditorGeometryAdoption,
+};
+mod membership;
+mod rating_drafts;
+mod rating_editor;
 mod transaction;
 use super::*;
 pub use drafts::*;
+pub use rating_drafts::*;
 use rf_model::{
     engineering::{BasisEntry, SourceRecord},
     equipment::SeparatorSizingTask,
 };
 use rf_types::units::{ConversionError, DisplayUnitSet};
-pub use rf_unitops::separator_sizing;
+pub use rf_unitops::{separator_rating, separator_sizing};
 use separator_sizing::SizingIssue;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum EquipmentEditorTarget {
     Task(EquipmentTaskId),
+    RatingTask(EquipmentTaskId),
+    RatingGeometry(EquipmentTaskId),
+    RatingCase(EquipmentCaseKey),
     Source(SourceId),
     Basis(BasisEntryId),
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EquipmentDraft {
     Task(SeparatorTaskDraft),
+    RatingTask(RatingLabelsDraft),
+    RatingGeometry(RatingGeometryDraft),
+    RatingCase(RatingCaseDraft),
     Source(SourceDraft),
     Basis(BasisDraft),
 }
 #[derive(Debug, Clone, PartialEq)]
 enum RecordBaseline {
     Task(SeparatorSizingTask),
+    RatingTask(SeparatorRatingTask),
+    RatingGeometry(rf_model::equipment::SeparatorGivenGeometry),
+    RatingCase(rf_model::equipment::SeparatorRatingCase),
     Source(SourceRecord),
     Basis(Option<BasisEntry>),
 }
@@ -60,6 +81,12 @@ pub enum EquipmentEditError {
     AccessDate,
     ObservationValue,
     Field(EquipmentField, Box<EquipmentEditError>),
+    RatingGeometryField(RatingGeometryField, Box<EquipmentEditError>),
+    RatingInput(
+        rf_model::equipment::SeparatorRatingInput,
+        Box<EquipmentEditError>,
+    ),
+    UnsupportedEditorAction,
     MissingEditor,
     StaleEditor,
     DraftTypeMismatch,
@@ -81,7 +108,19 @@ impl From<EngineeringError> for EquipmentEditError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EquipmentEditorCommand {
+    PreviewGeometryAdoption(Box<GeometryAdoptionDraft>),
+    ConfirmGeometryAdoption(EngineeringCheckpoint),
+    CancelGeometryAdoption,
     CreateTask,
+    CreateRatingTask,
+    AddRatingCase {
+        task: EquipmentTaskId,
+        copy_from: Option<EngineeringCaseId>,
+    },
+    ReorderRatingCases {
+        task: EquipmentTaskId,
+        cases: Vec<EngineeringCaseId>,
+    },
     CreateSource,
     NewBasis,
     Select(EquipmentEditorTarget),
@@ -100,9 +139,15 @@ pub enum EquipmentEditorCommand {
     CancelConfirmation,
     Check(EquipmentTaskId),
     Calculate(EquipmentTaskId),
+    CheckRating(EquipmentCaseKey),
+    CalculateRating(EquipmentCaseKey),
 }
 #[derive(Debug, Clone, PartialEq)]
 enum PendingOperation {
+    AddCase {
+        prepared: PreparedEngineeringEdit,
+        target: EquipmentEditorTarget,
+    },
     Apply {
         prepared: PreparedEngineeringEdit,
         target: EquipmentEditorTarget,
@@ -137,6 +182,18 @@ impl EquipmentConfirmation {
     pub fn is_delete(&self) -> bool {
         matches!(self.operation, PendingOperation::Delete { .. })
     }
+    pub fn upgrades_rating_method(&self) -> bool {
+        matches!(self.operation, PendingOperation::AddCase { .. })
+    }
+    pub fn deleted_rating_case(&self) -> Option<&EquipmentCaseKey> {
+        match &self.operation {
+            PendingOperation::Delete {
+                target: EquipmentEditorTarget::RatingCase(key),
+                ..
+            } => Some(key),
+            _ => None,
+        }
+    }
     pub fn is_history(&self) -> bool {
         matches!(self.operation, PendingOperation::History { .. })
     }
@@ -147,6 +204,12 @@ struct InputCheck {
     issues: Vec<SizingIssue>,
 }
 #[derive(Debug, Clone, PartialEq)]
+struct RatingInputCheck {
+    session: EngineeringCheckpoint,
+    formal: ResultGeneration,
+    issues: Vec<rf_unitops::separator_rating::RatingIssue>,
+}
+#[derive(Debug, Clone, PartialEq)]
 pub struct EquipmentEditorState {
     active: Option<EquipmentEditorTarget>,
     drafts: BTreeMap<EquipmentEditorTarget, EquipmentDraftRecord>,
@@ -154,8 +217,11 @@ pub struct EquipmentEditorState {
     next_generation: u64,
     next_identity: u64,
     pending: Option<EquipmentConfirmation>,
+    adoption_preview: Option<GeometryAdoptionPreview>,
     checks: BTreeMap<EquipmentTaskId, InputCheck>,
+    rating_checks: BTreeMap<EquipmentCaseKey, RatingInputCheck>,
     error: Option<EquipmentEditError>,
+    target_errors: BTreeMap<EquipmentEditorTarget, EquipmentEditError>,
 }
 impl Default for EquipmentEditorState {
     fn default() -> Self {
@@ -166,12 +232,53 @@ impl Default for EquipmentEditorState {
             next_generation: 0,
             next_identity: 0,
             pending: None,
+            adoption_preview: None,
             checks: BTreeMap::new(),
+            rating_checks: BTreeMap::new(),
             error: None,
+            target_errors: BTreeMap::new(),
         }
     }
 }
 impl EquipmentEditorState {
+    /// Apply the same draft gate as inline calculation, then freeze formal inputs.
+    /// The caller must reserve its worker slot before invoking this method.
+    pub fn prepare_calculation(
+        &mut self,
+        session: &mut EngineeringSession,
+        command: &EquipmentEditorCommand,
+    ) -> Result<CalculationRequest, EquipmentEditError> {
+        let result = match command {
+            EquipmentEditorCommand::Calculate(task) => {
+                if self.pending_for_task(task, session) {
+                    Err(EquipmentEditError::PendingDrafts)
+                } else {
+                    session.begin_calculation(task).map_err(Into::into)
+                }
+            }
+            EquipmentEditorCommand::CalculateRating(member) => {
+                if self.pending_for_case(member, session) {
+                    Err(EquipmentEditError::PendingDrafts)
+                } else {
+                    session.begin_rating(member).map_err(Into::into)
+                }
+            }
+            _ => Err(EquipmentEditError::UnsupportedEditorAction),
+        };
+        self.error = result.as_ref().err().cloned();
+        if result.is_ok() {
+            match command {
+                EquipmentEditorCommand::Calculate(task) => {
+                    self.checks.remove(task);
+                }
+                EquipmentEditorCommand::CalculateRating(member) => {
+                    self.rating_checks.remove(member);
+                }
+                _ => unreachable!(),
+            }
+        }
+        result
+    }
     pub fn active(&self) -> Option<&EquipmentEditorTarget> {
         self.active.as_ref()
     }
@@ -185,7 +292,9 @@ impl EquipmentEditorState {
         self.pending.as_ref()
     }
     pub fn error(&self) -> Option<&EquipmentEditError> {
-        self.error.as_ref()
+        self.error
+            .as_ref()
+            .or_else(|| self.active.as_ref().and_then(|t| self.target_errors.get(t)))
     }
     pub fn pending_targets(&self) -> Vec<EquipmentEditorTarget> {
         self.drafts
@@ -203,12 +312,52 @@ impl EquipmentEditorState {
                 return false;
             }
             let record = match target {
-                EquipmentEditorTarget::Task(id) => return id == task,
+                EquipmentEditorTarget::Task(id)
+                | EquipmentEditorTarget::RatingTask(id)
+                | EquipmentEditorTarget::RatingGeometry(id) => return id == task,
+                EquipmentEditorTarget::RatingCase(key) => return key.task_id == *task,
                 EquipmentEditorTarget::Source(id) => EngineeringRecordId::Source(id.clone()),
                 EquipmentEditorTarget::Basis(id) => EngineeringRecordId::Basis(id.clone()),
             };
             super::impact::task_references(session.inputs(), task, &record)
         })
+    }
+    pub fn pending_for_case(
+        &self,
+        member: &EquipmentCaseKey,
+        session: &EngineeringSession,
+    ) -> bool {
+        self.drafts.iter().any(|(target, draft)| {
+            if !draft.is_pending() {
+                return false;
+            }
+            let record = match target {
+                EquipmentEditorTarget::Task(id) | EquipmentEditorTarget::RatingTask(id) => {
+                    EngineeringRecordId::Task(id.clone())
+                }
+                EquipmentEditorTarget::RatingGeometry(id) => {
+                    EngineeringRecordId::Geometry(id.clone())
+                }
+                EquipmentEditorTarget::RatingCase(key) => {
+                    return key == member;
+                }
+                EquipmentEditorTarget::Source(id) => EngineeringRecordId::Source(id.clone()),
+                EquipmentEditorTarget::Basis(id) => EngineeringRecordId::Basis(id.clone()),
+            };
+            super::impact::case_references(session.inputs(), member, &record)
+        })
+    }
+    pub fn checked_rating_issues(
+        &self,
+        member: &EquipmentCaseKey,
+        session: &EngineeringSession,
+    ) -> Option<&[rf_unitops::separator_rating::RatingIssue]> {
+        self.rating_checks
+            .get(member)
+            .filter(|c| {
+                c.session == session.identity && Some(c.formal) == session.case_generation(member)
+            })
+            .map(|c| c.issues.as_slice())
     }
     pub fn checked_issues(
         &self,
@@ -228,17 +377,25 @@ impl EquipmentEditorState {
         units: &DisplayUnitSet,
         command: EquipmentEditorCommand,
     ) -> Result<(), EquipmentEditError> {
+        let target = command.error_target().or_else(|| self.active.clone());
+        let selecting = matches!(command, EquipmentEditorCommand::Select(_));
         let mut staged = self.clone();
         let mut formal = session.clone();
         match staged.execute(&mut formal, units, command) {
             Ok(()) => {
                 staged.error = None;
+                if !selecting && let Some(target) = &target {
+                    staged.target_errors.remove(target);
+                }
                 *self = staged;
                 *session = formal;
                 Ok(())
             }
             Err(error) => {
                 self.error = Some(error.clone());
+                if let Some(target) = target {
+                    self.target_errors.insert(target, error.clone());
+                }
                 Err(error)
             }
         }
@@ -253,5 +410,7 @@ impl EquipmentEditorState {
     }
 }
 
+#[cfg(test)]
+mod rating_tests;
 #[cfg(test)]
 mod tests;

@@ -1,0 +1,351 @@
+{
+  "schema_version": 3,
+  "project": "../flowsheets/standalone-separator-basis.rfproj.json",
+  "expected_project": {
+    "document_id": "example-standalone-separator",
+    "file_sha256": "21811d9944619a7ecb47b91accf0cafc3d567cba749e27e8f3d4cb9441374853"
+  },
+  "steps": [
+    {
+      "id": "source",
+      "action": {
+        "kind": "create_source"
+      }
+    },
+    {
+      "id": "source_input",
+      "action": {
+        "kind": "update_source",
+        "source": {
+          "step": "source",
+          "output": "source"
+        },
+        "expected_revision": {
+          "step": "source",
+          "output": "source"
+        },
+        "data": {
+          "kind": "assumed",
+          "title": "S0-B01 public synthetic arithmetic inputs",
+          "reference": "Synthetic verification only; no physical accuracy claim",
+          "locator": "AF4c public example",
+          "publication_version": "1",
+          "accessed_on": "2026-10-26",
+          "adoption_note": "Explicit synthetic assumptions for software workflow verification",
+          "review": "adopted",
+          "applicability": {
+            "fluid_system": "Synthetic two-phase fluid",
+            "phase": "both",
+            "operating_conditions": {
+              "temperature_k": 300.0,
+              "pressure_pa": 100000.0
+            },
+            "scope": "Full cylinder, effective whole-vessel K, working volume criteria"
+          },
+          "observations": []
+        }
+      }
+    },
+    {
+      "id": "hold_time",
+      "action": {
+        "kind": "create_basis",
+        "data": {
+          "name": "Required working volume time",
+          "value": {
+            "quantity": "duration",
+            "value_si": 120.0
+          },
+          "source": {
+            "step": "source",
+            "output": "source"
+          }
+        }
+      }
+    },
+    {
+      "id": "sizing",
+      "action": {
+        "kind": "create_sizing_task"
+      }
+    },
+    {
+      "id": "sizing_input",
+      "action": {
+        "kind": "update_sizing_task",
+        "task": {
+          "step": "sizing",
+          "output": "task"
+        },
+        "expected_revision": {
+          "step": "sizing",
+          "output": "task"
+        },
+        "data": {
+          "tag": "V-101",
+          "name": "Synthetic preliminary sizing",
+          "case": {
+            "name": "S0-B01",
+            "purpose": "Software arithmetic workflow verification",
+            "fluid_system": "Synthetic two-phase fluid",
+            "geometry_applicability": {
+              "orientation": "vertical",
+              "gas_direction": "upward",
+              "geometry": "full_equal_diameter_cylinder",
+              "internals_description": "No reduction of effective full-cylinder area; synthetic assumption"
+            },
+            "case_applicability": {
+              "service": "clean_non_foaming_two_phase",
+              "k_basis": "effective_whole_vessel_for_declared_internals",
+              "flow_basis": "actual_at_operating_conditions"
+            },
+            "applicability_sources": [
+              {
+                "step": "source",
+                "output": "source"
+              }
+            ],
+            "inputs": {
+              "operating_temperature": {
+                "kind": "direct",
+                "value": {
+                  "quantity": "absolute_temperature",
+                  "value_si": 300.0
+                },
+                "source": {
+                  "step": "source",
+                  "output": "source"
+                }
+              },
+              "operating_pressure": {
+                "kind": "direct",
+                "value": {
+                  "quantity": "absolute_pressure",
+                  "value_si": 100000.0
+                },
+                "source": {
+                  "step": "source",
+                  "output": "source"
+                }
+              },
+              "gas_volume_flow": {
+                "kind": "direct",
+                "value": {
+                  "quantity": "actual_volume_flow",
+                  "value_si": 0.8
+                },
+                "source": {
+                  "step": "source",
+                  "output": "source"
+                }
+              },
+              "liquid_volume_flow": {
+                "kind": "direct",
+                "value": {
+                  "quantity": "actual_volume_flow",
+                  "value_si": 0.005
+                },
+                "source": {
+                  "step": "source",
+                  "output": "source"
+                }
+              },
+              "gas_density": {
+                "kind": "direct",
+                "value": {
+                  "quantity": "mass_density",
+                  "value_si": 10.0
+                },
+                "source": {
+                  "step": "source",
+                  "output": "source"
+                }
+              },
+              "liquid_density": {
+                "kind": "direct",
+                "value": {
+                  "quantity": "mass_density",
+                  "value_si": 1010.0
+                },
+                "source": {
+                  "step": "source",
+                  "output": "source"
+                }
+              },
+              "effective_k": {
+                "kind": "direct",
+                "value": {
+                  "quantity": "velocity",
+                  "value_si": 0.1
+                },
+                "source": {
+                  "step": "source",
+                  "output": "source"
+                }
+              },
+              "gas_velocity_utilization": {
+                "kind": "direct",
+                "value": {
+                  "quantity": "dimensionless_ratio",
+                  "value_si": 0.8
+                },
+                "source": {
+                  "step": "source",
+                  "output": "source"
+                }
+              },
+              "working_volume_time": {
+                "kind": "basis",
+                "basis": {
+                  "step": "hold_time",
+                  "output": "basis"
+                }
+              },
+              "maximum_working_liquid_height": {
+                "kind": "direct",
+                "value": {
+                  "quantity": "length",
+                  "value_si": 1.0
+                },
+                "source": {
+                  "step": "source",
+                  "output": "source"
+                }
+              }
+            }
+          },
+          "axial_sections": {}
+        }
+      }
+    },
+    {
+      "id": "check_sizing",
+      "action": {
+        "kind": "check_sizing",
+        "task": {
+          "step": "sizing",
+          "output": "task"
+        }
+      }
+    },
+    {
+      "id": "size",
+      "action": {
+        "kind": "size",
+        "task": {
+          "step": "sizing",
+          "output": "task"
+        },
+        "expected_revision": {
+          "step": "sizing_input",
+          "output": "task"
+        }
+      }
+    },
+    {
+      "id": "adopt",
+      "action": {
+        "kind": "adopt_geometry",
+        "source": {
+          "step": "sizing",
+          "output": "task"
+        },
+        "expected_revision": {
+          "step": "sizing_input",
+          "output": "task"
+        },
+        "target": {
+          "kind": "new",
+          "tag": "V-102",
+          "name": "Synthetic adopted geometry",
+          "copy_case": true
+        },
+        "adjustments": {}
+      }
+    },
+    {
+      "id": "check_rating",
+      "action": {
+        "kind": "check_rating",
+        "task": {
+          "step": "adopt",
+          "output": "task"
+        },
+        "case": {
+          "step": "adopt",
+          "output": "case"
+        }
+      }
+    },
+    {
+      "id": "rate",
+      "action": {
+        "kind": "rate",
+        "task": {
+          "step": "adopt",
+          "output": "task"
+        },
+        "case": {
+          "step": "adopt",
+          "output": "case"
+        },
+        "expected_case_revision": {
+          "step": "adopt",
+          "output": "case"
+        },
+        "expected_geometry_revision": {
+          "step": "adopt",
+          "output": "geometry"
+        }
+      }
+    }
+  ],
+  "queries": [
+    {
+      "id": "objects",
+      "query": {
+        "kind": "objects"
+      }
+    },
+    {
+      "id": "sizing_result",
+      "query": {
+        "kind": "results",
+        "scope": {
+          "object": {
+            "case": {
+              "task": {
+                "step": "sizing",
+                "output": "task"
+              },
+              "case": {
+                "step": "sizing",
+                "output": "case"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "rating_result",
+      "query": {
+        "kind": "results",
+        "scope": {
+          "object": {
+            "case": {
+              "task": {
+                "step": "adopt",
+                "output": "task"
+              },
+              "case": {
+                "step": "adopt",
+                "output": "case"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

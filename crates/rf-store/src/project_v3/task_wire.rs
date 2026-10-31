@@ -23,6 +23,8 @@ macro_rules! wire_enum {
         impl From<$wire> for $model { fn from(value: $wire) -> Self { match value { $($wire::$variant => Self::$variant),+ } } }
     };
 }
+pub(super) use wire_enum;
+
 wire_enum!(InputKey, SeparatorInput, {
     OperatingTemperature => "operatingTemperature", OperatingPressure => "operatingPressure",
     GasVolumeFlow => "gasActualVolumeFlow", LiquidVolumeFlow => "liquidActualVolumeFlow",
@@ -49,7 +51,6 @@ pub(super) struct TaskWire {
     revision: u64,
     tag: String,
     name: String,
-    kind: String,
     method: MethodWire,
     case: CaseWire,
     #[serde(deserialize_with = "bindings")]
@@ -63,9 +64,9 @@ pub(super) struct TaskWire {
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct MethodWire {
-    id: String,
-    version: u32,
+pub(super) struct MethodWire {
+    pub(super) id: String,
+    pub(super) version: u32,
 }
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -96,14 +97,14 @@ struct ApplicabilityWire {
     flow_basis: Option<FlowBasis>,
     internals_description: String,
 }
-fn declaration<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
+pub(super) fn declaration<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
     de: D,
 ) -> Result<Option<T>, D::Error> {
     Option::<T>::deserialize(de)
 }
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
-enum BindingWire {
+pub(super) enum BindingWire {
     #[serde(rename_all = "camelCase")]
     Direct {
         #[serde(with = "quantity_id")]
@@ -231,7 +232,6 @@ impl From<&SeparatorSizingTask> for TaskWire {
             revision: t.revision,
             tag: t.tag.clone(),
             name: t.name.clone(),
-            kind: TASK_KIND.into(),
             method: MethodWire {
                 id: t.method.id.clone(),
                 version: t.method.version,
@@ -266,7 +266,7 @@ impl From<&SeparatorSizingTask> for TaskWire {
         }
     }
 }
-fn bindings<'de, D: Deserializer<'de>, K: Deserialize<'de> + Ord + fmt::Debug>(
+pub(super) fn bindings<'de, D: Deserializer<'de>, K: Deserialize<'de> + Ord + fmt::Debug>(
     de: D,
 ) -> Result<BTreeMap<K, BindingWire>, D::Error> {
     struct Bindings<K>(PhantomData<K>);
@@ -301,12 +301,14 @@ struct TaskProject {
 #[derive(Deserialize)]
 struct TaskEngineering {
     #[serde(deserialize_with = "tasks")]
-    tasks: Vec<TaskWire>,
+    tasks: Vec<super::equipment_wire::EquipmentWire>,
 }
-fn tasks<'de, D: Deserializer<'de>>(de: D) -> Result<Vec<TaskWire>, D::Error> {
+fn tasks<'de, D: Deserializer<'de>>(
+    de: D,
+) -> Result<Vec<super::equipment_wire::EquipmentWire>, D::Error> {
     indexed(de, "engineering.tasks")
 }
-pub(super) fn decode(contents: &str) -> rf_types::RfResult<Vec<SeparatorSizingTask>> {
+pub(super) fn decode(contents: &str) -> rf_types::RfResult<Vec<EquipmentTask>> {
     let project: TaskProject = serde_json::from_str(contents).map_err(super::json_error)?;
     Ok(project
         .engineering

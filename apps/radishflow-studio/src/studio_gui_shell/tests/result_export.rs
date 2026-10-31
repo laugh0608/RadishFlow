@@ -314,3 +314,56 @@ fn conversion_failure_preserves_file_and_clipboard_without_invalidating_si_resul
     fs::remove_file(path).unwrap();
     fs::remove_file(project_path).unwrap();
 }
+
+#[test]
+fn result_review_rejects_identical_ids_from_another_session_and_preserves_drafts() {
+    let config = synced_workspace_config();
+    let mut first = ready_app_state(&config);
+    let mut second = ready_app_state(&config);
+    first.dispatch_ui_command("run_panel.run_manual");
+    second.dispatch_ui_command("run_panel.run_manual");
+    let old = current_snapshot(&first);
+    let current = current_snapshot(&second);
+    assert_eq!(
+        (&old.snapshot_id, old.sequence, old.document_revision),
+        (
+            &current.snapshot_id,
+            current.sequence,
+            current.document_revision
+        )
+    );
+    assert_ne!(old.result_guard, current.result_guard);
+    let path = output_path("foreign-session");
+    second.export_solve_snapshot_to_path(&old, path.clone());
+    assert!(!path.exists());
+    let key = "stream:stream-feed:pressure_pa";
+    second.dispatch_ui_command("inspector.focus_stream:stream-feed");
+    second.dispatch_inspector_field_draft_update(
+        radishflow_studio::inspector_draft_update_command_id(key),
+        "123456",
+    );
+    let before = second.platform_host.modeling_inputs().workspace.clone();
+    let old_action = &old.steps[0].unit_action;
+    second.dispatch_result_action(old_action);
+    assert_eq!(second.platform_host.modeling_inputs().workspace, before);
+    let action = &current.steps[0].unit_action;
+    assert!(action.result_is_current(&before));
+    second.dispatch_result_action(action);
+    assert_eq!(
+        second
+            .platform_host
+            .modeling_inputs()
+            .workspace
+            .drafts
+            .fields,
+        before.drafts.fields
+    );
+    assert_eq!(second.platform_host.document(), &before.document);
+    let mut missing = action.clone();
+    missing.command_id = radishflow_studio::inspector_target_command_id(
+        &rf_ui::InspectorTarget::Unit("missing".into()),
+    );
+    assert!(!missing.result_is_current(&second.platform_host.modeling_inputs().workspace));
+    first.dispatch_ui_command("run_panel.run_manual");
+    assert!(!old_action.result_is_current(&first.platform_host.modeling_inputs().workspace));
+}

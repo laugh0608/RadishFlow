@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-10-15
+更新时间：2026-10-31
 
 ## 用途
 
@@ -16,11 +16,11 @@
 
 - 自 2026-09-12 起恢复正常开发和迭代，取消此前业务停更限制；模拟核心、物性、单元、Studio、生命周期、互操作和发布准备按规划推进，外部贡献按贡献流程评审。
 - MVP 第一阶段 M1-M5、MVP α / β 与通用小流程建模 v1 已阶段性收口，后续迭代以现有能力与验证证据为起点。
-- 2026-09-13 起，近期主线调整为基础功能与使用闭环完善；独立数值研究不作为编辑、保存等基础功能的统一前置门禁，基本正确性与可靠性仍随功能验证。
+- 2026-10-23 再次确认基础架构优先：先贯通工程生命周期、模型装配、运行任务、应用命令与结果链路，再逐步充实物性、单元和算法；延续 2026-09-13 的基础闭环安排。独立数值研究不作为基础功能的统一前置门禁，物理能力仍独立验收。
 - 长期覆盖稳态、动态、瞬态、间歇 / 半间歇，以及递归分块、序贯模块、联立模块和联立方程；统一 API 明确采用变量 / 动作浏览树，支持 COM 自动化和操作录制 / 回放。领域与术语边界见 [模拟平台长期规划](../architecture/simulation-platform.md)；目标不表示已实现或同时排期。
 - 插件、分层许可与公共 API 授权 / 配额已纳入 [规划](../radishflow-mvp-roadmap.md#插件与公共-api-的实施切片)；运行时、许可政策、接口和部署待切片决策。
-- 2026-09-16 确认 [单位系统](../topics/units-and-quantity-system.md)、[规格分析与确定性辅助](../topics/modeling-assistance-and-specifications.md)、[设备设计与校核](../topics/equipment-design-and-rating.md) 规划。B3-5 后优先单位与规格基础；设备工程不等待完整动态；未来 Agent 复用统一入口，当前不接入 AI。
-- 补充 [工程基础、工况与来源](../topics/engineering-basis-and-cases.md)、目标反算、工程检查、压力 / 公用工程、候选权衡与交付。G0 优先纳入近期设计，G1 / G2 随单位、规格和设备推进，详见 [配套切片](../radishflow-mvp-roadmap.md#工程工作流的配套切片)。
+- [单位系统](../topics/units-and-quantity-system.md)、[规格与辅助](../topics/modeling-assistance-and-specifications.md)、[设备设计与校核](../topics/equipment-design-and-rating.md) 首批已有实现，进展见下文；设备工程不等待完整动态，未来 Agent 复用统一入口，当前不接入 AI。
+- [工程基础、工况与来源](../topics/engineering-basis-and-cases.md) 已支撑当前设备链路；目标反算、工程检查、压力 / 公用工程和交付按 [配套切片](../radishflow-mvp-roadmap.md#工程工作流的配套切片) 扩展，近期顺序服从 AF。
 - 旧 `.pen` 保留，新增分区按 [UI 计划](../architecture/studio-ui-topic-plan.md) 评审；U2 / V0 局部画板已获认可。
 - 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
 
@@ -35,44 +35,51 @@
 
 ### 当前优先级
 
-1. 完善基础功能：核对组分 / 物性选择、对象与连接编辑、参数、运行反馈、结果审阅、undo / redo、保存 / 重开。按 [Studio 基础功能切片](../topics/studio-main-workflow.md#基础功能完善切片) 建立实现与验收清单，先补普通用户操作的实际缺口。
-2. B3-5、U1—U3、A1—A2 首批及独立设备单工况闭环已接通；优先补当前计算表导出与代表验收，I5 未验项保持。
-3. 随主路径需求完善运行与扩展基础：逐步建立变量 / 动作元数据与浏览树、统一命令、COM / 无界面调用、操作录制与回放，并明确任务、取消、进度和过期结果处理。接口服务实际操作，不预建空框架。
-4. 基础闭环稳定后集中推进数值与工程能力，先按递归分块与循环块扩展序贯求解；具体模型明确工况、独立基准与鲁棒性要求；按设备需求补物性，先评估分离器初步尺寸和换热器热工闭环。联立模块 / 联立方程、动态、瞬态、间歇与 APC 研究按依赖逐步实施。
-5. 持续处理可靠性与跨平台问题。第一轮 Flash、保存恢复与 native 生命周期修复已收口；保持对应回归、固定工具链和 CI，发布前另行完成平台、GUI 与 PME 验收。
+1. 按 [代码链路审计](../architecture/overview.md#工程基础链路审计2026-10-23) 和 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 推进。AF0 已完成；AF2a 内建目录 / 工厂、AF2b 单包上下文已接通。AF1 未定因，独立跟踪。
+2. AF3—AF5b 已完成；新版 CLI 首版磁盘只读，下一步 AF6 扩展边界审查。
+3. C2-A 后续方法对比方案已认可，排期服从基础主线；原精度失败不变。C2-B / C3 暂不实施，不以共享基础为名接入新 PR 产品链或流程设备物理关联。
+4. 基础契约中提前审查 EO / 动态 / 瞬态的扩展边界，具体物性、单元、递归分块 / recycle 和高级算法按真实场景逐步填入；每项另做物理验证。
+5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
 
 2026-09-13 的 B0 / B1 主路径基线见 [建模专题](../topics/flowsheet-modeling-and-solve.md) 和 [生命周期专题](../topics/project-lifecycle-storage.md)。账户联合登录仍为待架构决策的 Draft。
 
-### 最近实现进展（2026-10-15）
+### 最近进展（截至 2026-10-26）
 
-- G1 / S1 已完成独立单工况计算、事务、v3 保存及设备 UI；B01—03 与 B04 代码对照通过。自动与 macOS 代表验证见 [W42](../devlogs/2026-10/2026-W42.md)。
+- AF4c / AF5b 已完成 CLI v3、来源 / 导航 / 输出及代表验证，见 [W44](../devlogs/2026-10/2026-W44.md)。
 
-- B3-1—B3-5 变量 / 动作与 CLI 建模、U1—U3 单位及输出首批已接通；历史证据见 [W38](../devlogs/2026-09/2026-W38.md) 与 [W41](../devlogs/2026-10/2026-W41.md)。
+- AF1 已补 picker 诊断，根因未定；实窗与回归见 [W43](../devlogs/2026-10/2026-W43.md)。
 
-- I5 按已确认条件补验；本批不改变 SI、旧文件或 CLI 协议。
+- [AF2a](../topics/modeling/model-catalog-and-runtime.md#af2a-内建目录与工厂)六类目录 / 工厂已接通，旧 kind、格式和诊断保持。
+
+- G1 / S1、S2-A、G2-B 及 C1 采纳 UI / 固定证据 / 输出已完成，证据见 [W43](../devlogs/2026-10/2026-W43.md)。
+
+- AF0 审计与排序已完成；C2-A 三轮材料已提交，原表审计待审、精度仍未达标。
+
+- B3、U1—U3 首批已接通；证据见 [W38](../devlogs/2026-09/2026-W38.md) 与 [W41](../devlogs/2026-10/2026-W41.md)。
 
 ### 下一步
 
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
-- [x] [A1 首批](../topics/modeling-assistance-and-specifications.md#a1-i2-实现与验收状态2026-10-11)与 A2-I1—I3 已完成共享检查、问题及推荐闭环，Pencil 静态、自动与 macOS 代表验收通过；I5 不变。
-- [x] G0 + E0/S0 三批基础已实现；B04 已核销，六张局部画板已认可。
-- [x] G1 / S1 数据、计算、事务、结果资格、完整保存、Studio v3 生命周期及独立设备 UI / 历史已完成。
-- [ ] 下一批优先推进[当前设备计算表 CSV / JSON 导出](../topics/equipment/separator-sizing-and-rating.md#后续事项2026-10-15)：保留输入 / 单位、方法、结果与来源依据；仅输出合格当前候选，写入前重验资格，并完成自动及 macOS 文件保存验证。
-- [ ] 随导出补齐设备页剩余代表验收；之后再评审多工况及 S2 流程关联，I5 与跨平台未验项仍按既定节点处理。
+- [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)的设备数据 / 事务 / 保存 / UI / 输出及代表验证完成，流程关联未实现。
+- [x] AF0 代码审计、功能断点与依赖切片已整理，基础架构优先安排已同步；不代表后续切片实施完成。
+- [ ] 按 [AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23) 捕获异常现场，定因后确认修复并验收；未复现不等于收口。
+- [x] AF2a / b 装配、AF3 后台运行、AF4a / AF5a 查询与 AF4b 正式动作 / GUI 已完成。
+- [x] [AF4c 契约](../topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)四片完成，v3 覆盖及磁盘边界已验证，旧协议保持。
+- [x] AF5b 来源、导航、输出及代表验证完成。
+- [ ] 按[接下来事项](../topics/variable-and-object-browser.md#接下来事项2026-10-26-日终建议)审查 AF6，再审定实现。
+- [ ] [C2-A 方法对比](../thermo/mvp-model.md#c2-a-后续方法对比与排期)已认可、尚未实施；第三轮来源审计仍待审，混合物气相仍缺，B / C3 不开工。
 - [ ] 全局 R0 待评审；U / A / 设备局部稿通过不代表全局定稿。
-- [ ] 2026-09-17 已确认 [可视化 V1—V4](../radishflow-mvp-roadmap.md#颜色与流程可视化的配套切片)：U3 后二维流向 / 数据着色，设备几何就绪后局部三维，真实时间结果后动态回放。均未实现，不阻塞 U2；整厂三维另评估。
+- [ ] [可视化 V1—V4](../radishflow-mvp-roadmap.md#颜色与流程可视化的配套切片)方向已确认、均未实现：二维流向 / 数据着色随结果基础，局部三维依赖设备几何，动态回放依赖真实时间结果；整厂三维另评估。
 
-### 最新规划
+### 相关规划
 
-- 2026-09-29 确认 [模型目录与运行装配 MC0—MC3](../topics/modeling/model-catalog-and-runtime.md)：细化实例、发现 / 工厂及物性上下文；CAPE-OPEN 宿主加载仍未实现，保持 U2 优先。
+- [模型装配 MC0—MC3](../topics/modeling/model-catalog-and-runtime.md) 与 [多策略 QS0—QS4](../topics/modeling/solver-strategies-and-assembly.md) 方向已确认；现有模型装配先按 AF2 推进，算法按 P3 / P4 分期；第三方宿主未实现。
 
-- 同日确认 [多策略求解 QS0—QS4](../topics/modeling/solver-strategies-and-assembly.md)：P3 分块 SM / 循环，P4 联立模块、EO 与混合分区；新增能力待实施，不改变近期顺序。
+- [变量与对象浏览器 VB0—VB3](../topics/variable-and-object-browser.md) 的后续跨端覆盖衔接 AF4；已有变量读写不等于全部工程对象已覆盖。
 
-- 2026-09-28 确认 [变量与对象浏览器 VB0—VB3](../topics/variable-and-object-browser.md)：先局部设计，再衔接单位与 P2；新增能力待实施，保持 U2 优先。
+- [装置工程与数字孪生](../architecture/simulation-platform.md#装置工程与数字孪生愿景) 按 DT0—DT4 分期，未因本轮架构梳理启动实施。
 
-- 2026-09-26 确认 [装置工程与数字孪生愿景](../architecture/simulation-platform.md#装置工程与数字孪生愿景)：同一工厂 / 装置工程共用基础，关联多模型、工况与运行任务。目录 / 交付包、现场跟踪和优化按 [DT0—DT4](../radishflow-mvp-roadmap.md#装置工程与数字孪生的演进切片) 演进；尚未实现，保持 U2 优先，现有格式和接口不变。
-
-- [运行与诊断 N0—N5](../topics/runtime-messages-and-diagnostics.md) 已确认，补入开发者诊断与模型验证。N0 随 U2 / V0，N1 衔接 A1 / A2，其余按能力推进；后台、暂停和开发工作台未实现。详见 [W39](../devlogs/2026-09/2026-W39.md)，保持 U2 优先与结果门禁。
+- [运行与诊断 N0—N5](../topics/runtime-messages-and-diagnostics.md) 的任务基础与结果联动衔接 AF3 / AF5；GUI 后台与取消已接通；暂停和开发工作台待续。
 
 ### 后续事项
 
@@ -83,14 +90,14 @@
 ## 当前能力基线
 
 - 受控流程可覆盖 `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum`，以及显式输入、运行、保存、重开、rerun 和轻量结果审阅。
-- Studio 已形成 Home、独立物性页、独立设备页、流程图工作台、模块设置 / 结果和运行状态区域的主路径；设备单工况计算与流程 Run 分离。
+- Studio 已形成 Home、独立物性页、独立设备页、流程图工作台、模块设置 / 结果和运行状态区域的主路径；设备计算与流程 Run 分离，支持尺寸、逐行校核及有限矩阵 CSV / JSON。
 - Rust Core 与 `.NET 10` 适配层保持隔离；CAPE-OPEN / COM 语义不进入 Rust Core。
 - 数值实现仍使用演示物性、常热容显热和简化单元行为；golden、结果透传与用户路径验收不等于独立物理准确性证明，见 [热力学模型](../thermo/mvp-model.md)。
 - 能力、命令和验收证据以 `docs/topics/`、`docs/mvp/`、`docs/reference/` 与历史周志为准。
 
 ## 已知差异与风险路由
 
-- 架构目标与实际实现差异：`rf-thermo` 缓存装载依赖、`rf-canvas` 占位和 Studio 同步求解见 [架构总览](../architecture/overview.md)。
+- 架构差异：`rf-canvas` 占位与 Studio 执行边界见 [架构总览](../architecture/overview.md)。
 - 原生句柄释放与并发调用契约及验证范围见 [CAPE-OPEN 专题](../topics/capeopen-pmc-adapter.md)。
 - Windows 保存替换与回滚失败的恢复契约见 [项目生命周期专题](../topics/project-lifecycle-storage.md)。
 
@@ -108,15 +115,15 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 ## 当前验证基线
 
-- 文档、协作入口或仓库治理改动：执行 `cargo test --locked -p xtask` 与 `cargo run --locked --quiet -p xtask -- check-repository-governance`，并检查文档体量和工作区差异。
+- 文档改动：运行 `xtask` 的 `check-repository-governance`、`check-text-files`，检查文档体量和 diff；仅验证工具 / 编排变化另跑 `cargo test --locked -p xtask`。
 - 阶段收口或跨模块治理变化：在 macOS / Linux / CI 执行 `./scripts/check-repo.sh`；Windows 使用 `pwsh ./scripts/check-repo.ps1`。
-- `check-repo` 是正式仓库级入口，统一执行治理与文本门禁、Rust workspace 格式、构建、测试和 clippy 基线。
+- `check-repo` 统一执行治理、文本、格式、严格 Clippy 和测试并报告计时；CI 按 [ADR](../adr/0001-branch-and-pr-governance.md) 路由，稳定主线保持完整覆盖。
 - `adapters/reference/` 下的外部参考资料保留上游编码、BOM 和换行格式，不为通过仓库文本门禁而批量改写。
 - 重要验证若出现明显的沙盒权限、受限 restore、project reference 解析或 native 装载差异，先按 Agent 协作规则告知用户，再申请最小范围真实环境复验。
 
 最近通过记录：
 
-- 2026-10-15：主机正式基线 1,484 项通过；G1 / S1 数据 / 纯计算及正式事务与结果有效性通过自动验证，B04 代码对照已完成；完整设备保存、最小 Studio v3 生命周期及独立设备 UI 通过自动 / macOS 代表验证；导出、多工况、流程关联及 I5 未验项保持。证据见 W42。
+- 2026-10-31：macOS `check-repo` 1,811 项、严格 Clippy 通过（23.59 秒）；Windows 复验见 PR #17，AF5b 实窗见 [W44](../devlogs/2026-10/2026-W44.md)。
 
 - 既有功能与实窗证据见 [W38](../devlogs/2026-09/2026-W38.md)，跨平台、native 与 `.NET` 历史基线见 [W37](../devlogs/2026-09/2026-W37.md)，更早记录见 [W36](../devlogs/2026-09/2026-W36.md)；历史证据不替代新增路径或发布验收。
 
@@ -143,7 +150,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 - 代码风格、命名和抽象判断：`docs/development/code-style.md`
 - 分支与 PR 治理：`docs/adr/0001-branch-and-pr-governance.md`
 - 单位 / 建模辅助 / 设备设计的详细规划见本文当前结论链接；分离器与换热器子专题从设备专题进入。UI 功能分区、旧稿状态和 R0—R2 见 UI 计划。
-- 最新周志：[W42](../devlogs/2026-10/2026-W42.md)；U / A 与设备准备见 W41，其他历史证据按专题进入。
+- 最新周志：[W44](../devlogs/2026-10/2026-W44.md)；AF 已实现证据见 W43，设备基础 / UI 见 W42，U / A 见 W41。
 
 ## 更新规则
 

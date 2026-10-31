@@ -4,8 +4,10 @@ use std::{
     fs, io,
     path::{Path, PathBuf},
     process::Command,
+    time::Instant,
 };
 
+mod ci_validation;
 mod private_resources;
 mod repository_governance;
 
@@ -35,7 +37,10 @@ const TEXT_CHECK_EXCLUDED_PREFIXES: &[&str] = &[
 ];
 
 fn main() {
-    if let Err(error) = run() {
+    let started = Instant::now();
+    let result = run();
+    eprintln!("Total elapsed: {:.2}s", started.elapsed().as_secs_f64());
+    if let Err(error) = result {
         eprintln!("error: {error}");
         std::process::exit(1);
     }
@@ -58,25 +63,38 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             ensure_no_extra_args(args)?;
             check_text_files(&repo_root)?;
         }
+        "plan-pr-checks" => ci_validation::plan_pr_checks(&repo_root, args)?,
+        "check-pr-results" => {
+            ensure_no_extra_args(args)?;
+            ci_validation::check_pr_results()?;
+        }
         "validate-workspace" => {
             let options = WorkspaceValidationOptions::parse(args)?;
-            validate_workspace(&repo_root, options.skip_clippy)?;
+            validate_workspace(&repo_root, options.skip_clippy, options.skip_format)?;
         }
         "check-repository-governance" => {
             let options = RepositoryGovernanceOptions::parse(args)?;
-            check_repository_governance(&repo_root, options.base_ref.as_deref())?;
+            timed("repository governance", || {
+                check_repository_governance(&repo_root, options.base_ref.as_deref())
+            })?;
         }
         "check-repo" => {
             let options = RepoCheckOptions::parse(args)?;
 
-            check_repository_governance(&repo_root, options.base_ref.as_deref())?;
+            timed("repository governance", || {
+                check_repository_governance(&repo_root, options.base_ref.as_deref())
+            })?;
 
             if !options.skip_text_files {
-                check_text_files(&repo_root)?;
+                timed("text files", || check_text_files(&repo_root))?;
             }
 
-            validate_workspace(&repo_root, options.skip_clippy)?;
-            println!("Repository checks passed.");
+            validate_workspace(&repo_root, options.skip_clippy, false)?;
+            if options.skip_clippy || options.skip_text_files {
+                println!("Partial repository checks passed; skipped checks are not validated.");
+            } else {
+                println!("Repository checks passed.");
+            }
         }
         _ => {
             return Err(
@@ -92,9 +110,11 @@ fn usage() -> &'static str {
     "Usage:
   cargo run -p xtask -- check-text-files
   cargo run -p xtask -- check-private-resources
-  cargo run -p xtask -- validate-workspace [--skip-clippy]
+  cargo run --target-dir target/xtask -p xtask -- validate-workspace [--skip-clippy] [--skip-format]
+  cargo run -p xtask -- plan-pr-checks --base-ref <ref> --target-branch <branch>
+  cargo run -p xtask -- check-pr-results
   cargo run -p xtask -- check-repository-governance [--base-ref <ref>]
-  cargo run -p xtask -- check-repo [--skip-clippy] [--skip-text-files] [--base-ref <ref>]"
+  cargo run --target-dir target/xtask -p xtask -- check-repo [--skip-clippy] [--skip-text-files] [--base-ref <ref>]"
 }
 
 fn resolve_repo_root() -> Result<PathBuf, io::Error> {
@@ -240,12 +260,17 @@ fn inspect_text_bytes(relative_path: &str, bytes: &[u8]) -> Vec<String> {
     errors
 }
 
-fn validate_workspace(repo_root: &Path, skip_clippy: bool) -> Result<(), io::Error> {
-    run_checked_command(repo_root, "cargo", &["fmt", "--all", "--check"])?;
-    run_checked_command(repo_root, "cargo", &["check", "--locked", "--workspace"])?;
-    run_checked_command(repo_root, "cargo", &["test", "--locked", "--workspace"])?;
-
-    if !skip_clippy {
+fn validate_workspace(
+    repo_root: &Path,
+    skip_clippy: bool,
+    skip_format: bool,
+) -> Result<(), io::Error> {
+    if !skip_format {
+        run_checked_command(repo_root, "cargo", &["fmt", "--all", "--check"])?;
+    }
+    if skip_clippy {
+        run_checked_command(repo_root, "cargo", &["check", "--locked", "--workspace"])?;
+    } else {
         run_checked_command(
             repo_root,
             "cargo",
@@ -260,26 +285,42 @@ fn validate_workspace(repo_root: &Path, skip_clippy: bool) -> Result<(), io::Err
             ],
         )?;
     }
-
+    run_checked_command(repo_root, "cargo", &["test", "--locked", "--workspace"])?;
+    if skip_clippy || skip_format {
+        println!(
+            "Partial workspace validation passed; omitted checks must be accounted for separately."
+        );
+    }
     Ok(())
 }
 
+fn timed<T>(label: &str, operation: impl FnOnce() -> Result<T, io::Error>) -> Result<T, io::Error> {
+    println!("==> {label}");
+    let started = Instant::now();
+    let result = operation();
+    println!(
+        "<== {label}: {} ({:.2}s)",
+        if result.is_ok() { "passed" } else { "failed" },
+        started.elapsed().as_secs_f64()
+    );
+    result
+}
+
 fn run_checked_command(repo_root: &Path, file_path: &str, args: &[&str]) -> Result<(), io::Error> {
-    println!("==> {file_path} {}", args.join(" "));
-
-    let status = Command::new(file_path)
-        .current_dir(repo_root)
-        .args(args)
-        .status()?;
-
-    if status.success() {
-        return Ok(());
-    }
-
-    Err(io::Error::other(format!(
-        "command failed: {file_path} {}",
-        args.join(" ")
-    )))
+    timed(&format!("{file_path} {}", args.join(" ")), || {
+        let status = Command::new(file_path)
+            .current_dir(repo_root)
+            .args(args)
+            .status()?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(io::Error::other(format!(
+                "command failed: {file_path} {}",
+                args.join(" ")
+            )))
+        }
+    })
 }
 
 fn invalid_input(message: impl Into<String>) -> io::Error {
@@ -289,6 +330,7 @@ fn invalid_input(message: impl Into<String>) -> io::Error {
 #[derive(Default)]
 struct WorkspaceValidationOptions {
     skip_clippy: bool,
+    skip_format: bool,
 }
 
 impl WorkspaceValidationOptions {
@@ -298,6 +340,7 @@ impl WorkspaceValidationOptions {
         for arg in args {
             match arg.as_str() {
                 "--skip-clippy" => options.skip_clippy = true,
+                "--skip-format" => options.skip_format = true,
                 _ => return Err(invalid_input(format!("unsupported argument `{arg}`"))),
             }
         }

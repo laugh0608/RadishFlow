@@ -4,7 +4,7 @@ use rf_types::units::*;
 use rf_unitops::separator_sizing::method;
 
 // Public synthetic arithmetic fixture S0-B01. No proprietary engineering data.
-fn fixture() -> (SeparatorSizingTask, EngineeringBasis) {
+pub(super) fn fixture() -> (SeparatorSizingTask, EngineeringBasis) {
     let source = SourceRecord {
         id: "synthetic".into(),
         revision: 1,
@@ -88,7 +88,7 @@ fn session() -> EngineeringSession {
         "project".into(),
         EngineeringInputs {
             basis,
-            tasks: vec![task],
+            tasks: vec![task.into()],
         },
     )
     .unwrap()
@@ -367,6 +367,7 @@ fn transitive_source_evidence_is_tracked_and_referenced_source_cannot_be_deleted
         impacts,
         vec![TaskImpact {
             task_id: id(),
+            case_id: "case-1".into(),
             input_changed: false,
             evidence_changed: true
         }]
@@ -550,7 +551,14 @@ fn failure_replaces_previous_candidate_and_undo_requires_explicit_recalculation(
 #[test]
 fn counter_overflow_is_atomic_and_revision_conflicts_and_duplicate_tags_are_rejected() {
     let mut state = session();
-    state.generations.get_mut(&id()).unwrap().input = u64::MAX;
+    state
+        .generations
+        .get_mut(&EquipmentCaseKey {
+            task_id: id(),
+            case_id: task(&state).case.id,
+        })
+        .unwrap()
+        .input = u64::MAX;
     let before = state.clone();
     let mut next = task(&state);
     set(&mut next, SeparatorInput::GasVolumeFlow, 1.1);
@@ -594,7 +602,7 @@ fn record_revision_overflow_is_atomic() {
         "project".into(),
         EngineeringInputs {
             basis,
-            tasks: vec![task],
+            tasks: vec![task.into()],
         },
     )
     .unwrap();
@@ -628,6 +636,7 @@ fn equipment_history_and_calculation_are_isolated_from_flow_and_presentation() {
         RunStatus::Converged,
         DiagnosticSummary::new(0, DiagnosticSeverity::Info, "ok"),
     ));
+    let mut flow_receipt = app.prepare_flow_run().into_receipt();
     let flow_before = app.workspace.solve_session.clone();
     let history_before = app.workspace.command_history.clone();
     edit(&mut app.workspace.engineering, 1.1);
@@ -647,6 +656,10 @@ fn equipment_history_and_calculation_are_isolated_from_flow_and_presentation() {
         .apply(ProjectPresentationCommand::Apply(
             DisplayUnitSet::engineering(),
         ));
+    assert_eq!(
+        app.accept_flow_run(&mut flow_receipt),
+        crate::FlowRunDisposition::Applied
+    );
     app.commit_document_change(
         DocumentCommand::MoveUnit {
             unit_id: "unrelated".into(),

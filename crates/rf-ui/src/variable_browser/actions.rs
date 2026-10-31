@@ -3,6 +3,12 @@ use crate::UnitInspectorDraftField;
 use crate::state::unit_inspector::unit_inspector_draft_fields;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ActionExecution {
+    Inline,
+    Background,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActionKind {
     SetUnitParameter,
     RenameUnit,
@@ -45,6 +51,13 @@ pub struct ActionDescriptor {
 impl VariableBrowser<'_> {
     /// Describes existing actions, without providing invocation or claiming current availability.
     pub fn actions(&self, object: Option<&ObjectId>) -> Result<Vec<ActionDescriptor>, BrowseError> {
+        self.actions_with_execution(object, ActionExecution::Inline)
+    }
+    pub fn actions_with_execution(
+        &self,
+        object: Option<&ObjectId>,
+        execution: ActionExecution,
+    ) -> Result<Vec<ActionDescriptor>, BrowseError> {
         use ActionKind::*;
         use ParameterType::*;
         let parameter = |name, kind, optional| ActionParameter {
@@ -171,8 +184,15 @@ impl VariableBrowser<'_> {
                     preconditions: "物性包可显式选择或使用 Preferred；无待提交或无效草稿；物性、组分与模型输入就绪；运行时执行 readiness 和求解校验。",
                     modifies_document: false,
                     undoable: false,
-                    asynchronous: false,
-                    returns: "运行 outcome 与控制状态（含阻塞 / 失败）；同步执行，无任务取消承诺",
+                    asynchronous: execution == ActionExecution::Background,
+                    returns: match execution {
+                        ActionExecution::Inline => {
+                            "运行 outcome 与控制状态（含阻塞 / 失败）；同步执行，无任务取消承诺"
+                        }
+                        ActionExecution::Background => {
+                            "提交回执与运行身份；可请求取消，终态须待执行结束并接收 / 丢弃"
+                        }
+                    },
                 },
             ],
         })

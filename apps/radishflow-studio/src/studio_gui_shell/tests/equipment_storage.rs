@@ -1,7 +1,7 @@
 use super::*;
 use rf_types::units::{DisplayUnitSet, MeasurementUnit, QuantityKind};
 
-fn v3_file(name: &str, unknown: bool) -> PathBuf {
+pub(super) fn v3_file(name: &str, unknown: bool) -> PathBuf {
     let path = test_preferences_path(name).with_extension("rfproj.json");
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     fs::write(

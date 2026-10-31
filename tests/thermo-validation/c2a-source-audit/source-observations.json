@@ -1,0 +1,71 @@
+{
+  "sources": [
+    {
+      "id": "Seong2008",
+      "doi": "10.1021/je800377b",
+      "table": "Table 3, p.2785",
+      "uncertainty_location": "Experimental section, p.2784",
+      "preview": "https://de.scribd.com/document/556799908/Vapor-Liquid-Equilibria-for-Propane-R290-n-Butane-R600-at-Various-Temperatures",
+      "access": "public preview text; no publisher-authenticated PDF or visual table verification",
+      "author_uncertainty": {
+        "temperature_k": 0.01,
+        "pressure_pa": 1000,
+        "x": 0.002,
+        "y": 0.002,
+        "coverage_factor": null,
+        "meaning": "author estimate; confidence/coverage not established here"
+      }
+    },
+    {
+      "id": "Kayukawa2005",
+      "doi": "10.1021/je0496701",
+      "table": "Table 2, p.580",
+      "uncertainty_location": "Table 1, p.580",
+      "preview": "https://www.scribd.com/document/615710033/Experimental-data-for-Prapane-Butane",
+      "access": "public preview text; no publisher-authenticated PDF or visual table verification",
+      "author_uncertainty": {
+        "temperature_k": 0.003,
+        "pressure_relative": 0.00027,
+        "pressure_additive_pa": 1040,
+        "x": 0.0011,
+        "y": 0.0011,
+        "coverage_factor": 2,
+        "meaning": "author expanded uncertainty"
+      }
+    }
+  ],
+  "points": [
+    {
+      "source": "Seong2008",
+      "pack": "c2a-pr76",
+      "pressure_id": "je800377b/d3/p17",
+      "composition_id": "je800377b/d4/p17",
+      "temperature_k": 283.15,
+      "pressure_pa": 216000.0,
+      "x_propane": 0.146,
+      "y_propane": 0.322
+    },
+    {
+      "source": "Kayukawa2005",
+      "pack": "c2a-evidence-review",
+      "pressure_id": "je0496701/d1/p1",
+      "composition_id": "je0496701/d2/p1",
+      "temperature_k": 310.0,
+      "pressure_pa": 471100.0,
+      "x_propane": 0.1692,
+      "y_propane": 0.355
+    },
+    {
+      "source": "Kayukawa2005",
+      "pack": "c2a-evidence-review",
+      "pressure_id": "je0496701/d1/p4",
+      "composition_id": "je0496701/d2/p4",
+      "temperature_k": 300.0,
+      "pressure_pa": 449500.0,
+      "x_propane": 0.309,
+      "y_propane": 0.5339
+    }
+  ],
+  "identity": "Propane is component 1; x/y are liquid/vapor mole fractions. P converted from MPa (Seong) or kPa (Kayukawa) to Pa; no mass-fraction reinterpretation.",
+  "unpaired_policy": "Kayukawa preview has incomplete rows; preserve existing unmatched rows. No new dew-only record inferred from flattened column positions."
+}

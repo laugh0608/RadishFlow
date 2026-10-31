@@ -1,6 +1,11 @@
+mod query;
 use super::*;
+pub use query::*;
 use rf_model::equipment::EquipmentMethod;
-use rf_unitops::separator_sizing::{self, SeparatorCandidate, SizingFailure};
+use rf_unitops::{
+    separator_rating::{self, RatingFailure, SeparatorRatingResult},
+    separator_sizing::{self, SeparatorCandidate, SizingFailure},
+};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct ResultGeneration {
@@ -17,37 +22,77 @@ pub struct ResultStaleness {
     pub evidence_changed: bool,
     pub task_missing: bool,
 }
-
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct CalculationKey {
+pub(super) struct CalculationKey {
     document: DocumentId,
     session: EngineeringCheckpoint,
-    task: EquipmentTaskId,
-    case: EngineeringCaseId,
+    member: EquipmentCaseKey,
     method: EquipmentMethod,
     generation: ResultGeneration,
     eligibility: EngineeringCheckpoint,
 }
-
+#[derive(Debug, Clone, PartialEq)]
+enum CalculationOutcome {
+    Sizing(Result<SeparatorCandidate, SizingFailure>),
+    Rating(Result<SeparatorRatingResult, RatingFailure>),
+}
+impl CalculationOutcome {
+    fn is_ok(&self) -> bool {
+        match self {
+            Self::Sizing(r) => r.is_ok(),
+            Self::Rating(r) => r.is_ok(),
+        }
+    }
+}
 /// Frozen inputs with an unforgeable qualification key. Execution has no IO or
 /// session mutation. Completion must return through the owning session.
 #[derive(Debug)]
 pub struct CalculationRequest {
+    origin: EquipmentResultOrigin,
     key: CalculationKey,
     request: CalculationId,
-    task: SeparatorSizingTask,
+    task: EquipmentTask,
     basis: EngineeringBasis,
 }
+/// Read-only publication authority for an in-flight calculation. Revocation is
+/// exact: it cannot remove a newer request for the same member.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CalculationQualification {
+    key: CalculationKey,
+    request: CalculationId,
+}
+impl CalculationQualification {
+    pub fn id(&self) -> &CalculationId {
+        &self.request
+    }
+    pub fn member(&self) -> &EquipmentCaseKey {
+        &self.key.member
+    }
+}
 impl CalculationRequest {
-    pub fn task(&self) -> &SeparatorSizingTask {
+    pub fn qualification(&self) -> CalculationQualification {
+        CalculationQualification {
+            key: self.key.clone(),
+            request: self.request.clone(),
+        }
+    }
+    pub fn task(&self) -> &EquipmentTask {
         &self.task
     }
     pub fn basis(&self) -> &EngineeringBasis {
         &self.basis
     }
     pub fn execute(self) -> CompletedCalculation {
-        let outcome = separator_sizing::calculate(&self.task, &self.basis);
+        let outcome = match &self.task {
+            EquipmentTask::SeparatorSizing(t) => {
+                CalculationOutcome::Sizing(separator_sizing::calculate(t, &self.basis))
+            }
+            EquipmentTask::SeparatorRating(t) => CalculationOutcome::Rating(
+                separator_rating::calculate_case(t, &self.key.member.case_id, &self.basis),
+            ),
+        };
         CompletedCalculation {
+            origin: self.origin,
             key: self.key,
             request: self.request,
             outcome,
@@ -56,15 +101,22 @@ impl CalculationRequest {
 }
 #[derive(Debug)]
 pub struct CompletedCalculation {
+    origin: EquipmentResultOrigin,
     key: CalculationKey,
     request: CalculationId,
-    outcome: Result<SeparatorCandidate, SizingFailure>,
+    outcome: CalculationOutcome,
+}
+impl CompletedCalculation {
+    pub fn succeeded(&self) -> bool {
+        self.outcome.is_ok()
+    }
 }
 #[derive(Debug, Clone, PartialEq)]
 pub(super) struct CalculationRecord {
+    origin: EquipmentResultOrigin,
     id: CalculationId,
     key: CalculationKey,
-    outcome: Result<SeparatorCandidate, SizingFailure>,
+    outcome: CalculationOutcome,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EquipmentResultStatus {
@@ -75,35 +127,108 @@ pub enum EquipmentResultStatus {
 }
 
 impl EngineeringSession {
-    pub fn generation(&self, task: &EquipmentTaskId) -> Option<ResultGeneration> {
-        self.current.task(task)?;
-        self.generations.get(task).copied()
+    pub fn calculation_belongs_to_session(&self, qualification: &CalculationQualification) -> bool {
+        self.identity == qualification.key.session && self.document_id == qualification.key.document
     }
-    fn calculation_key(&self, task: &EquipmentTaskId) -> Option<CalculationKey> {
-        let record = self.current.task(task)?;
+    pub fn calculation_is_current(&self, qualification: &CalculationQualification) -> bool {
+        self.calculation_key(&qualification.key.member).as_ref() == Some(&qualification.key)
+            && self.pending.get(&qualification.key.member) == Some(&qualification.request)
+    }
+    pub fn revoke_calculation(&mut self, qualification: &CalculationQualification) -> bool {
+        if self.pending.get(&qualification.key.member) == Some(&qualification.request) {
+            self.pending.remove(&qualification.key.member);
+            true
+        } else {
+            false
+        }
+    }
+    pub fn case_calculation_pending(&self, member: &EquipmentCaseKey) -> bool {
+        self.pending.contains_key(member)
+    }
+    // Task-only compatibility APIs require an unambiguous single member.
+    // Matrix consumers must use explicit case APIs.
+    fn member(&self, task: &EquipmentTaskId) -> Option<EquipmentCaseKey> {
+        let t = self.current.equipment_task(task)?;
+        let mut cases = t.case_ids();
+        let case_id = cases.next()?.clone();
+        if cases.next().is_some() {
+            return None;
+        }
+        Some(EquipmentCaseKey {
+            task_id: task.clone(),
+            case_id,
+        })
+    }
+    fn historical_member(&self, task: &EquipmentTaskId) -> Option<EquipmentCaseKey> {
+        if self.current.equipment_task(task).is_some() {
+            self.member(task)
+        } else {
+            self.results.keys().find(|k| k.task_id == *task).cloned()
+        }
+    }
+    pub fn generation(&self, task: &EquipmentTaskId) -> Option<ResultGeneration> {
+        self.case_generation(&self.member(task)?)
+    }
+    pub fn case_generation(&self, member: &EquipmentCaseKey) -> Option<ResultGeneration> {
+        self.calculation_key(member).map(|k| k.generation)
+    }
+    pub(super) fn calculation_key(&self, member: &EquipmentCaseKey) -> Option<CalculationKey> {
+        let record = self.current.equipment_task(&member.task_id)?;
+        if !record.case_ids().any(|id| *id == member.case_id) {
+            return None;
+        }
         Some(CalculationKey {
             document: self.document_id.clone(),
             session: self.identity.clone(),
-            task: task.clone(),
-            case: record.case.id.clone(),
-            method: record.method.clone(),
-            generation: *self.generations.get(task)?,
-            eligibility: self.eligibility.get(task)?.clone(),
+            member: member.clone(),
+            method: record.method().clone(),
+            generation: *self.generations.get(member)?,
+            eligibility: self.eligibility.get(member)?.clone(),
         })
     }
     pub fn begin_calculation(
         &mut self,
         task: &EquipmentTaskId,
     ) -> Result<CalculationRequest, EngineeringError> {
-        let key = self.calculation_key(task).ok_or_else(|| {
+        let member = self.member(task).ok_or_else(|| {
             EngineeringError::MissingRecord(EngineeringRecordId::Task(task.clone()))
         })?;
+        self.begin_case_calculation(&member)
+    }
+    pub fn begin_rating(
+        &mut self,
+        member: &EquipmentCaseKey,
+    ) -> Result<CalculationRequest, EngineeringError> {
+        self.current.rating_task(&member.task_id).ok_or_else(|| {
+            EngineeringError::MissingRecord(EngineeringRecordId::Task(member.task_id.clone()))
+        })?;
+        self.begin_case_calculation(member)
+    }
+    fn begin_case_calculation(
+        &mut self,
+        member: &EquipmentCaseKey,
+    ) -> Result<CalculationRequest, EngineeringError> {
+        self.calculation_key(member).ok_or_else(|| {
+            EngineeringError::MissingRecord(EngineeringRecordId::Case(member.case_id.clone()))
+        })?;
+        // Rating reruns immediately revoke the previous row result. Preserve the
+        // existing sizing lifecycle, whose current candidate is replaced on completion.
+        if self.current.rating_task(&member.task_id).is_some() {
+            self.eligibility
+                .insert(member.clone(), EngineeringCheckpoint::fresh());
+        }
+        let key = self.calculation_key(member).expect("checked member");
         let request = CalculationId(EngineeringCheckpoint::fresh());
-        self.pending.insert(task.clone(), request.clone());
+        self.pending.insert(member.clone(), request.clone());
         Ok(CalculationRequest {
+            origin: EquipmentResultOrigin::capture(self, &key, &request),
             key,
             request,
-            task: self.current.task(task).expect("key checked task").clone(),
+            task: self
+                .current
+                .equipment_task(&member.task_id)
+                .expect("checked task")
+                .clone(),
             basis: self.current.basis.clone(),
         })
     }
@@ -111,22 +236,23 @@ impl EngineeringSession {
         &mut self,
         completed: CompletedCalculation,
     ) -> Result<EquipmentResultStatus, EngineeringError> {
-        if self.calculation_key(&completed.key.task).as_ref() != Some(&completed.key)
-            || self.pending.get(&completed.key.task) != Some(&completed.request)
+        if self.calculation_key(&completed.key.member).as_ref() != Some(&completed.key)
+            || self.pending.get(&completed.key.member) != Some(&completed.request)
         {
             return Err(EngineeringError::StaleCalculation);
         }
-        let id = completed.key.task.clone();
-        self.pending.remove(&id);
+        let member = completed.key.member.clone();
+        self.pending.remove(&member);
         self.results.insert(
-            id.clone(),
+            member.clone(),
             CalculationRecord {
+                origin: completed.origin,
                 id: completed.request,
                 key: completed.key,
                 outcome: completed.outcome,
             },
         );
-        Ok(self.result_status(&id))
+        Ok(self.case_result_status(&member))
     }
     pub fn calculate(
         &mut self,
@@ -135,11 +261,24 @@ impl EngineeringSession {
         let completed = self.begin_calculation(task)?.execute();
         self.complete_calculation(completed)
     }
+    pub fn calculate_rating(
+        &mut self,
+        member: &EquipmentCaseKey,
+    ) -> Result<EquipmentResultStatus, EngineeringError> {
+        let completed = self.begin_rating(member)?.execute();
+        self.complete_calculation(completed)
+    }
     pub fn result_status(&self, task: &EquipmentTaskId) -> EquipmentResultStatus {
-        let Some(record) = self.results.get(task) else {
+        self.historical_member(task)
+            .map_or(EquipmentResultStatus::Missing, |k| {
+                self.case_result_status(&k)
+            })
+    }
+    pub fn case_result_status(&self, member: &EquipmentCaseKey) -> EquipmentResultStatus {
+        let Some(record) = self.results.get(member) else {
             return EquipmentResultStatus::Missing;
         };
-        if self.calculation_key(task).as_ref() != Some(&record.key) {
+        if self.calculation_key(member).as_ref() != Some(&record.key) {
             return EquipmentResultStatus::Stale;
         }
         if record.outcome.is_ok() {
@@ -149,42 +288,71 @@ impl EngineeringSession {
         }
     }
     pub fn calculation_id(&self, task: &EquipmentTaskId) -> Option<&CalculationId> {
-        self.results.get(task).map(|record| &record.id)
+        self.case_calculation_id(&self.historical_member(task)?)
+    }
+    pub fn case_calculation_id(&self, member: &EquipmentCaseKey) -> Option<&CalculationId> {
+        self.results.get(member).map(|r| &r.id)
     }
     pub fn staleness(&self, task: &EquipmentTaskId) -> Option<ResultStaleness> {
-        if self.result_status(task) != EquipmentResultStatus::Stale {
+        self.case_staleness(&self.historical_member(task)?)
+    }
+    pub fn case_staleness(&self, member: &EquipmentCaseKey) -> Option<ResultStaleness> {
+        if self.case_result_status(member) != EquipmentResultStatus::Stale {
             return None;
         }
-        let record = self.results.get(task)?;
-        let generation = self.generations.get(task)?;
+        let record = self.results.get(member)?;
+        let generation = self.generations.get(member)?;
         Some(ResultStaleness {
             input_changed: generation.input != record.key.generation.input,
             evidence_changed: generation.evidence != record.key.generation.evidence,
-            task_missing: self.current.task(task).is_none(),
+            task_missing: self.current.equipment_task(&member.task_id).is_none(),
         })
     }
-    /// Sole access to a candidate eligible for current display/export. Labels may
-    /// have changed since capture; current labels come from inputs().task(id).
+    /// Sole access to sizing evidence eligible for current display/export.
     pub fn current_candidate(&self, task: &EquipmentTaskId) -> Option<&SeparatorCandidate> {
         if self.result_status(task) != EquipmentResultStatus::Current {
             return None;
         }
-        self.results.get(task)?.outcome.as_ref().ok()
+        self.historical_outcome(task)?.as_ref().ok()
     }
     pub fn current_failure(&self, task: &EquipmentTaskId) -> Option<&SizingFailure> {
         if self.result_status(task) != EquipmentResultStatus::Failed {
             return None;
         }
-        self.results.get(task)?.outcome.as_ref().err()
+        self.historical_outcome(task)?.as_ref().err()
+    }
+    pub fn current_rating(&self, member: &EquipmentCaseKey) -> Option<&SeparatorRatingResult> {
+        if self.case_result_status(member) != EquipmentResultStatus::Current {
+            return None;
+        }
+        self.historical_rating(member)?.as_ref().ok()
+    }
+    pub fn current_rating_failure(&self, member: &EquipmentCaseKey) -> Option<&RatingFailure> {
+        if self.case_result_status(member) != EquipmentResultStatus::Failed {
+            return None;
+        }
+        self.historical_rating(member)?.as_ref().err()
     }
     /// Historical evidence only; the caller must label it with result_status().
     pub fn historical_outcome(
         &self,
         task: &EquipmentTaskId,
     ) -> Option<&Result<SeparatorCandidate, SizingFailure>> {
-        self.results.get(task).map(|r| &r.outcome)
+        match &self.results.get(&self.historical_member(task)?)?.outcome {
+            CalculationOutcome::Sizing(r) => Some(r),
+            _ => None,
+        }
     }
-    /// Cache clearing is not an input edit. Pending completion is revoked too.
+    /// Historical evidence only; never grants current display/export eligibility.
+    pub fn historical_rating(
+        &self,
+        member: &EquipmentCaseKey,
+    ) -> Option<&Result<SeparatorRatingResult, RatingFailure>> {
+        match &self.results.get(member)?.outcome {
+            CalculationOutcome::Rating(r) => Some(r),
+            _ => None,
+        }
+    }
     pub fn clear_results(&mut self) {
         self.results.clear();
         self.pending.clear();

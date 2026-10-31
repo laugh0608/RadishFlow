@@ -1,6 +1,6 @@
 # Auth And Entitlement Architecture
 
-更新时间：2026-09-14
+更新时间：2026-10-24
 
 > 本文保留历史目标架构。当前已有客户端 DTO、HTTP transport、缓存与租约编排，但本仓库未交付控制面服务端，也没有由这些单元测试证明的真实登录、授权和资产分发完整闭环。后续实现按当前优先级与专题范围推进，见 [当前状态](../status/current.md) 与 [控制面专题](../topics/platform/control-plane-service.md)。
 
@@ -497,7 +497,7 @@ RadishFlow Studio
 - 下载 DTO 是控制面 / 资产分发协议对象，不直接等同于本地 `StoredPropertyPackagePayload`
 - 当前协议映射层正式收口到 `apps/radishflow-studio`，由应用层把下载 JSON 映射为 `StoredPropertyPackagePayload` 并继续走本地缓存落盘
 - `PropertyPackageLeaseGrant.hash` / `PropertyPackageManifest.hash` 与 `sizeBytes` 当前正式绑定“协议映射后的 `StoredPropertyPackagePayload` 规范化 JSON 字节”，不绑定原始 HTTP 响应外壳
-- 桌面端当前先在 `apps/radishflow-studio` 收口下载获取抽象；后续真实 HTTP 客户端只负责实现 fetcher，不再改动本地缓存 DTO 或 `rf-thermo` provider 口径
+- 桌面端当前先在 `apps/radishflow-studio` 收口下载获取抽象；后续真实 HTTP 客户端只负责实现 fetcher，不再改动本地缓存 DTO 或 `rf-property-package` 装载口径
 - 当前也已补 `PropertyPackageDownloadHttpRequest` / `Response` 与 transport 端口，把原始 HTTP 请求、响应头/状态码与下载协议映射层显式分开
 - 当前仓库已补首个基于 `reqwest + rustls` 的 blocking HTTP transport，作为 `PropertyPackageDownloadHttpTransport` 的默认真实实现
 - 下载抓取错误当前正式区分 `timeout`、连接失败、限流/服务不可用、鉴权失败、找不到资源、无效响应和其他瞬时/永久错误，由 `apps/radishflow-studio` 负责收口
@@ -506,7 +506,7 @@ RadishFlow Studio
 - 当前下载 transport 默认直接对 `downloadUrl` 发起 `GET` 请求，并发送 `Accept: application/json`；不额外叠加长期 bearer token 到下载通道
 - 下载落盘当前正式要求失败回滚：若 `payload.rfpkg`、`manifest.json` 或 `index.json` 任一步写入失败，必须恢复或清理已写半成品，避免损坏现有缓存
 - `rf-store` 继续只理解本地持久化 DTO，不直接理解控制面下载协议
-- `rf-thermo` 继续只理解本地缓存结果，不直接解析下载响应 JSON
+- `rf-property-package` 装载本地受检数据，`rf-thermo` 只消费解析后的数值数据；两者不解析下载响应 JSON
 
 ### `OfflineLeaseRefreshRequest`
 
@@ -597,7 +597,7 @@ RadishFlow Studio
 
 职责：
 
-- 作为应用组合根装配 `rf-ui`、`rf-store`、`rf-thermo` 与后续控制面客户端
+- 作为应用组合根装配 `rf-ui`、`rf-store`、`rf-property-package` 与后续控制面客户端
 - 承接 `AuthSessionState` / `EntitlementState` 与 `StoredAuthCacheIndex` 之间的桥接和同步
 - 负责把离线刷新、下载完成和缓存索引更新收口成单一路径
 - 负责 entitlement panel driver、启动预检、会话内调度策略与 session event 宿主
@@ -777,12 +777,12 @@ RadishFlow Studio
 - 本地 `payload.rfpkg` 当前第一版内部仍采用带 `kind` / `schemaVersion` 的 JSON DTO，承载 `ThermoSystem` 所需的组分、Antoine 参数占位和相模型信息；后续若改为压缩包或二进制格式，必须通过显式迁移切换
 - 授权缓存索引是“运行态缓存真相源”，项目文件仍然只描述用户编辑的流程图语义
 
-### `rf-thermo`
+### `rf-thermo` 与 `rf-property-package`
 
 职责：
 
-- 通过稳定接口读取本地已授权派生物性包
-- 对上层隐藏包格式细节
+- `rf-thermo` 通过 `ThermoProvider` 消费已解析数据，提供本地数值求值
+- `rf-property-package` 通过稳定接口装载受检包、隐藏格式细节并构造本地上下文；应用层仍负责先执行授权政策
 
 不应承担：
 
@@ -800,8 +800,8 @@ RadishFlow Studio
 当前进一步冻结以下本地缓存 provider 行为：
 
 - `PropertyPackageProvider` 的本地缓存实现必须显式接收应用私有缓存根目录和 `StoredAuthCacheIndex`，而不是自己推断登录态或联网刷新授权
-- provider 构造阶段就应校验 `StoredAuthCacheIndex`、本地 `manifest.json` 和本地 `payload.rfpkg` 三者是否一致，不把索引漂移问题拖进求解热路径
-- provider 当前只暴露“未过期、存在本地 payload、manifest/payload 与索引一致”的本地包；`RemoteEvaluationService` 记录不进入本地 provider 列表
+- AF2b 起构造只校验 `StoredAuthCacheIndex`；装载时校验选定包的索引 / manifest / payload 一致性，进入数值热路径前冻结数据，无关包损坏不阻断已选包
+- `list_packages` 报告各条 manifest 的可用性，包括到期 / 远端 / 资源错误；不预读 payload。`load_package` 拒绝到期或远端求值来源，仅返回已校验的本地数据；发现成功不等同于运行资格或授权通过
 - 当前仓库已在 `examples/sample-components/property-packages/` 提供首个真实样例包和对应下载 JSON，用于校验上述本地缓存链路、协议映射和 provider 装载行为
 
 ### `rf-solver`

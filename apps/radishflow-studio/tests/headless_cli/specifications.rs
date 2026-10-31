@@ -128,6 +128,9 @@ fn a1_shared_checks_preserve_gui_and_both_cli_run_contracts() {
             StudioWorkspaceRunOutcome::Blocked(_) => "blocked",
             StudioWorkspaceRunOutcome::Failed(_) => "failed",
             StudioWorkspaceRunOutcome::Skipped(_) => panic!("unexpected skip"),
+            StudioWorkspaceRunOutcome::Background(_) => {
+                panic!("headless comparison requires inline execution")
+            }
         };
         assert_eq!(gui_status, status, "{case}");
         if let Some(code) = diagnostic {

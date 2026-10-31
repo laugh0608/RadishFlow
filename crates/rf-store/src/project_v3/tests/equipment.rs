@@ -1,6 +1,6 @@
 use super::*;
 
-fn task() -> Value {
+pub(super) fn task() -> Value {
     json!({"id":"task-1","revision":4,"tag":"V-101","name":"Storage fixture", "kind":"verticalGasLiquidSeparatorSizing",
         "method":{"id":"radishflow.separator.vertical-sb-working-volume","version":1},
         "case":{"id":"case-1","name":"Incomplete case","purpose":"Storage tests only","fluidSystem":"declared fluid",
@@ -38,12 +38,15 @@ fn complete_payload_and_all_bindings_round_trip_without_inference() {
     };
     let tasks = &project.engineering.as_ref().unwrap().tasks;
     assert_eq!(tasks.len(), 2);
-    assert_eq!(tasks[0].revision, 4);
+    assert_eq!(tasks[0].revision(), 4);
     assert_eq!(
-        tasks[0].case.applicability.orientation,
+        tasks[0].as_sizing().unwrap().case.applicability.orientation,
         Some(rf_model::equipment::SeparatorOrientation::Horizontal)
     );
-    assert_eq!(tasks[1].case.applicability.orientation, None);
+    assert_eq!(
+        tasks[1].as_sizing().unwrap().case.applicability.orientation,
+        None
+    );
     let encoded = to_pretty_json(&parsed).unwrap();
     assert_eq!(serde_json::from_str::<Value>(&encoded).unwrap(), value);
     assert_eq!(parse(&encoded).unwrap(), parsed);
@@ -179,9 +182,12 @@ fn known_equipment_writes_upgrade_only_with_explicit_consent_and_protect_unknown
     let ProjectV3Read::Editable(mut invalid) = project else {
         unreachable!();
     };
-    invalid.engineering.as_mut().unwrap().tasks[0]
-        .method
-        .version = 999;
+    let rf_model::equipment::EquipmentTask::SeparatorSizing(task) =
+        &mut invalid.engineering.as_mut().unwrap().tasks[0]
+    else {
+        unreachable!()
+    };
+    task.method.version = 999;
     assert!(to_pretty_json(&ProjectV3Read::Editable(invalid)).is_err());
     fs::remove_dir_all(root).unwrap();
 }

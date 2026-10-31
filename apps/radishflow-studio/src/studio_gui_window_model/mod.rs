@@ -1,3 +1,4 @@
+mod result_navigation;
 use std::collections::BTreeSet;
 
 mod drop_preview;
@@ -172,6 +173,7 @@ pub struct StudioGuiWindowCanvasAreaModel {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowRuntimeAreaModel {
+    pub result_review: crate::FlowResultReview,
     pub title: &'static str,
     pub workspace_document: StudioGuiWorkspaceDocumentSnapshot,
     pub example_projects: Vec<StudioExampleProjectModel>,
@@ -192,6 +194,8 @@ pub struct StudioGuiWindowRuntimeAreaModel {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowSolveSnapshotModel {
+    pub origin: Option<rf_ui::result_query::FlowResultOrigin>,
+    pub result_guard: Option<crate::FlowResultGuard>,
     pub snapshot_id: String,
     pub sequence: u64,
     pub document_revision: u64,
@@ -275,6 +279,7 @@ pub struct StudioGuiWindowFailureDiagnosticPortTargetModel {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowCommandActionModel {
+    pub result_guard: Option<crate::FlowResultGuard>,
     pub label: String,
     pub hover_text: String,
     pub command_id: String,
@@ -401,6 +406,7 @@ pub struct StudioGuiWindowStreamResultReferenceModel {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowStreamResultModel {
+    pub result_guard: Option<crate::FlowResultGuard>,
     pub stream_id: String,
     pub label: String,
     pub temperature_k: f64,
@@ -1445,7 +1451,7 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
                     snapshot.runtime.workspace_document.revision,
                 )
             });
-    let latest_failure = latest_solve_snapshot
+    let mut latest_failure = latest_solve_snapshot
         .is_none()
         .then(|| {
             failure_result_model_from_control_state(
@@ -1454,6 +1460,9 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
             )
         })
         .flatten();
+    if let Some(failure) = &mut latest_failure {
+        result_navigation::qualify_failure(failure, snapshot.runtime.result_review.guard.as_ref());
+    }
     let active_inspector_detail = snapshot
         .runtime
         .active_inspector_detail
@@ -1497,6 +1506,7 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
         });
 
     StudioGuiWindowRuntimeAreaModel {
+        result_review: snapshot.runtime.result_review.clone(),
         title: "Runtime",
         workspace_document: snapshot.runtime.workspace_document.clone(),
         example_projects: snapshot.runtime.example_projects.clone(),
@@ -1705,6 +1715,7 @@ fn failure_recovery_action_model(
     action: &rf_ui::RunPanelRecoveryAction,
 ) -> StudioGuiWindowCommandActionModel {
     StudioGuiWindowCommandActionModel {
+        result_guard: None,
         label: action.title.to_string(),
         hover_text: format!("{}: {}", action.effect_detail(), action.detail),
         command_id: "run_panel.recover_failure".to_string(),
@@ -1757,6 +1768,7 @@ fn inspector_target_model_from_ui(
                 summary: summary.clone(),
                 command_id: command_id.clone(),
                 action: StudioGuiWindowCommandActionModel {
+                    result_guard: None,
                     label: format!("Unit {target_id}"),
                     hover_text: summary,
                     command_id,
@@ -1773,6 +1785,7 @@ fn inspector_target_model_from_ui(
                 summary: summary.clone(),
                 command_id: command_id.clone(),
                 action: StudioGuiWindowCommandActionModel {
+                    result_guard: None,
                     label: format!("Stream {target_id}"),
                     hover_text: summary,
                     command_id,
@@ -1806,13 +1819,19 @@ fn inspector_target_detail_model_from_snapshot(
     let related_diagnostics = latest_solve_snapshot
         .map(|snapshot| related_diagnostics_for_target(snapshot, &detail.target))
         .unwrap_or_default();
-    let diagnostic_actions = inspector_detail_diagnostic_actions(
+    let mut diagnostic_actions = inspector_detail_diagnostic_actions(
         &target,
         latest_unit_result.as_ref(),
         &related_steps,
         &related_diagnostics,
     );
 
+    if let Some(result) = latest_solve_snapshot {
+        result_navigation::qualify_diagnostics(
+            &mut diagnostic_actions,
+            result.result_guard.as_ref(),
+        );
+    }
     StudioGuiWindowInspectorTargetDetailModel {
         target,
         title: detail.title.clone(),
@@ -1945,6 +1964,7 @@ fn inspector_composition_component_action_model_from_snapshot(
         component_id: action.component_id.clone(),
         component_name: action.component_name.clone(),
         action: StudioGuiWindowCommandActionModel {
+            result_guard: None,
             label: format!("Add {}", action.component_name),
             hover_text: format!(
                 "Add component `{}` to this stream composition with an explicit zero mole fraction",
@@ -2001,6 +2021,7 @@ fn inspector_field_status_label(
 fn inspector_stream_action(stream_id: &str) -> StudioGuiWindowCommandActionModel {
     let target = rf_ui::InspectorTarget::Stream(rf_types::StreamId::new(stream_id.to_string()));
     StudioGuiWindowCommandActionModel {
+        result_guard: None,
         label: stream_id.to_string(),
         hover_text: format!("Stream {stream_id}"),
         command_id: crate::inspector_target_command_id(&target),
@@ -2010,6 +2031,7 @@ fn inspector_stream_action(stream_id: &str) -> StudioGuiWindowCommandActionModel
 fn inspector_unit_action(unit_id: &str) -> StudioGuiWindowCommandActionModel {
     let target = rf_ui::InspectorTarget::Unit(rf_types::UnitId::new(unit_id.to_string()));
     StudioGuiWindowCommandActionModel {
+        result_guard: None,
         label: unit_id.to_string(),
         hover_text: format!("Unit {unit_id}"),
         command_id: crate::inspector_target_command_id(&target),
@@ -2206,7 +2228,13 @@ fn diagnostic_model_from_ui(
         .map(|stream_id| stream_id.as_str().to_string())
         .collect::<Vec<_>>();
 
-    let target_candidates = diagnostic_target_candidates_from_ui(diagnostic);
+    let mut target_candidates = diagnostic_target_candidates_from_ui(diagnostic);
+    for target in &mut target_candidates {
+        target.action = target
+            .action
+            .clone()
+            .with_result_guard(presentation.guard.as_ref());
+    }
     let diagnostic_actions = target_candidates
         .iter()
         .map(|target| diagnostic_target_action_from_target("Diagnostic", target))

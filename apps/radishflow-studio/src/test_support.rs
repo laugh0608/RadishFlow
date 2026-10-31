@@ -2,17 +2,17 @@ use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rf_flash::estimate_bubble_dew_window;
+use rf_property_package::{
+    InMemoryPropertyPackageProvider, PropertyPackageManifest as ThermoPropertyPackageManifest,
+    PropertyPackageSource as ThermoPropertyPackageSource,
+};
 use rf_store::{
     StoredAuthCacheIndex, StoredProjectFile, StoredPropertyPackageManifest,
     StoredPropertyPackagePayload, StoredPropertyPackageRecord, StoredPropertyPackageSource,
     parse_project_file_json, project_file_to_pretty_json, property_package_payload_integrity,
     write_property_package_manifest, write_property_package_payload,
 };
-use rf_thermo::{
-    AntoineCoefficients, InMemoryPropertyPackageProvider, PlaceholderThermoProvider,
-    PropertyPackageManifest as ThermoPropertyPackageManifest,
-    PropertyPackageSource as ThermoPropertyPackageSource, ThermoComponent, ThermoSystem,
-};
+use rf_thermo::{AntoineCoefficients, PlaceholderThermoProvider, ThermoComponent, ThermoSystem};
 use rf_types::{ComponentId, PhaseEquilibriumRegion, StreamId, UnitId};
 
 #[doc(hidden)]
@@ -506,7 +506,7 @@ pub fn build_official_binary_hydrocarbon_in_memory_provider(
     );
     let [first, second] = binary_hydrocarbon_lite_components(&payload);
 
-    InMemoryPropertyPackageProvider::new(vec![(
+    InMemoryPropertyPackageProvider::try_new(vec![(
         ThermoPropertyPackageManifest::new(
             package_id,
             &payload.version,
@@ -518,6 +518,7 @@ pub fn build_official_binary_hydrocarbon_in_memory_provider(
             build_thermo_component_from_stored_component(second),
         ]),
     )])
+    .expect("valid test property packages")
 }
 
 #[doc(hidden)]
