@@ -23,7 +23,7 @@ pub enum RunPanelRecoveryMutation {
     },
 }
 
-use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState, SolveSnapshot};
+use crate::run::{RunStatus, SimulationMode, SolvePendingReason, SolveSessionState};
 use crate::state::AppLogEntry;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -223,7 +223,7 @@ pub struct RunPanelState {
 impl RunPanelState {
     pub fn from_runtime(
         solve_session: &SolveSessionState,
-        latest_snapshot: Option<&SolveSnapshot>,
+        latest_snapshot: Option<&crate::FlowSnapshotHeader>,
         latest_log_entry: Option<&AppLogEntry>,
     ) -> Self {
         let simulation_mode = solve_session.mode;

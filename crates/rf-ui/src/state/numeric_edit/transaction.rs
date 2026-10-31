@@ -19,6 +19,9 @@ pub(super) fn field_key(id: &VariableId) -> Result<String, NumericEditError> {
         (ObjectId::Unit(unit), VariableField::OutletTemperature) => {
             unit_inspector_draft_key(unit, &UnitInspectorDraftField::OutletTemperatureK)
         }
+        (ObjectId::Unit(unit), VariableField::OutletASplitFraction) => {
+            unit_inspector_draft_key(unit, &UnitInspectorDraftField::OutletASplitFraction)
+        }
         (ObjectId::Unit(unit), VariableField::OutletPressure) => {
             unit_inspector_draft_key(unit, &UnitInspectorDraftField::OutletPressurePa)
         }
@@ -55,6 +58,9 @@ impl WorkspaceState {
                 let field = match field {
                     VariableField::OutletTemperature => UnitInspectorDraftField::OutletTemperatureK,
                     VariableField::OutletPressure => UnitInspectorDraftField::OutletPressurePa,
+                    VariableField::OutletASplitFraction => {
+                        UnitInspectorDraftField::OutletASplitFraction
+                    }
                     _ => return Err(NumericEditError::UnsupportedField),
                 };
                 (

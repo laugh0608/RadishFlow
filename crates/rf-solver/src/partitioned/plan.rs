@@ -15,17 +15,7 @@ pub fn assemble_partitioned_plan(
             "partitioned solve requires units and registered components",
         ));
     }
-    if !options.boundary.temperature_k.is_finite()
-        || options.boundary.temperature_k <= 0.0
-        || !options.boundary.pressure_pa.is_finite()
-        || options.boundary.pressure_pa <= 0.0
-        || !(1..=MAX_ITERATION_EVALUATIONS).contains(&options.max_iteration_evaluations)
-    {
-        return Err(failure(
-            "invalid_options",
-            "positive finite fixed T/P and iteration budget in 1..=500 are required",
-        ));
-    }
+    options.validate_configuration()?;
     for (id, unit) in &flowsheet.units {
         if id != &unit.id {
             return Err(

@@ -46,6 +46,48 @@ pub struct RecycleSolveOptions {
 }
 
 impl RecycleSolveOptions {
+    /// Validate committed configuration without requiring a completed flowsheet.
+    pub fn validate_configuration(&self) -> RfResult<()> {
+        if !self.boundary.temperature_k.is_finite()
+            || self.boundary.temperature_k <= 0.0
+            || !self.boundary.pressure_pa.is_finite()
+            || self.boundary.pressure_pa <= 0.0
+            || !(1..=MAX_ITERATION_EVALUATIONS).contains(&self.max_iteration_evaluations)
+        {
+            return Err(failure(
+                "invalid_options",
+                "positive finite fixed T/P and iteration budget in 1..=500 are required",
+            ));
+        }
+        let mut seen = std::collections::BTreeSet::new();
+        for tear in &self.tears {
+            if tear.stream_id.as_str().trim().is_empty() || !seen.insert(&tear.stream_id) {
+                return Err(
+                    failure("duplicate_tear", "tear stream must be nonblank and unique")
+                        .with_related_stream_id(tear.stream_id.clone()),
+                );
+            }
+            for target in [&tear.source, &tear.sink] {
+                if target.unit_id.as_str().trim().is_empty() || target.port_name.trim().is_empty() {
+                    return Err(failure("tear_binding", "blank unit or port binding"));
+                }
+            }
+            for (values, positive) in [
+                (&tear.initial_component_flows_mol_s, false),
+                (&tear.component_scales_mol_s, true),
+            ] {
+                if let Some(values) = values {
+                    checks::validate_vector(
+                        &values.keys().cloned().collect::<Vec<_>>(),
+                        values,
+                        positive,
+                    )?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn new(boundary: FixedRecycleBoundary, tears: Vec<TearSpecification>) -> Self {
         Self {
             boundary,
@@ -233,8 +275,10 @@ pub enum PartitionedStage {
     Completing,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PartitionedProgress {
+    pub evaluation: Option<usize>,
+    pub residual: Option<ResidualSample>,
     pub phase: Option<EvaluationPhase>,
     pub stage: PartitionedStage,
     pub block: Option<usize>,

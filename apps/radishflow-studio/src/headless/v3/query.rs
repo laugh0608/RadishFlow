@@ -350,13 +350,19 @@ fn adapter_action(kind: &str, modifies: bool) -> Value {
 }
 
 fn read_only(
-    project: &rf_store::project_v3::ReadOnlyProjectV3,
+    project: &crate::StudioReadOnlyProject,
     kind: &QueryKind,
     bindings: &Bindings,
 ) -> Result<Value, Failure> {
     // Only a borrowed flow-input projection. Unknown equipment never becomes an
     // editable AppState, and this path has no command or execution dispatcher.
-    let stored = project.document();
+    let stored = project.legacy_document().ok_or_else(|| {
+        Failure::new(
+            Stage::Project,
+            Code::UnsupportedCapability,
+            "unsupported project format",
+        )
+    })?;
     let mut document = rf_ui::FlowsheetDocument::new(
         stored.flowsheet.clone(),
         rf_ui::DocumentMetadata::new(

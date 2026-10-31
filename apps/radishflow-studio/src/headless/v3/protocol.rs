@@ -172,7 +172,9 @@ pub struct ProjectSnapshot {
     pub read_only: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub read_only_reason: Option<Code>,
-    pub equipment_task_count: usize,
+    pub equipment_task_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub in_memory_required_project_schema_version: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]

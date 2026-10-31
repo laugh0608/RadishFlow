@@ -40,6 +40,8 @@ pub(super) fn solve(
 ) -> Result<PartitionedSolveResult, Box<PartitionedSolveFailure>> {
     let started = Instant::now();
     let initial_progress = PartitionedProgress {
+        evaluation: None,
+        residual: None,
         phase: None,
         stage: PartitionedStage::AssemblyStarted,
         block: None,
@@ -53,6 +55,8 @@ pub(super) fn solve(
             active_recycle: None,
             active_units: Vec::new(),
             stage: PartitionedProgress {
+                evaluation: None,
+                residual: None,
                 phase: None,
                 stage,
                 block: None,
@@ -84,6 +88,8 @@ pub(super) fn solve(
     let assembly_elapsed = started.elapsed();
     if control
         .checkpoint(PartitionedProgress {
+            evaluation: None,
+            residual: None,
             phase: None,
             stage: PartitionedStage::AssemblyCompleted,
             block: None,
@@ -124,6 +130,8 @@ pub(super) fn solve(
         },
         block_index: 0,
         progress: PartitionedProgress {
+            evaluation: None,
+            residual: None,
             phase: None,
             stage: PartitionedStage::Initializing,
             block: None,
@@ -169,6 +177,28 @@ impl TrialExecution<'_, '_> {
             _ => None,
         };
         self.progress = PartitionedProgress {
+            evaluation: match stage {
+                PartitionedStage::IterationStarted => Some(
+                    self.active_recycle
+                        .as_ref()
+                        .map_or(1, |r| r.iteration_evaluations + 1),
+                ),
+                PartitionedStage::IterationCompleted => self
+                    .active_recycle
+                    .as_ref()
+                    .map(|r| r.iteration_evaluations),
+                PartitionedStage::VerificationStarted | PartitionedStage::VerificationCompleted => {
+                    Some(1)
+                }
+                PartitionedStage::UnitStarted | PartitionedStage::UnitCompleted => {
+                    self.progress.evaluation
+                }
+                _ => None,
+            },
+            residual: self
+                .active_recycle
+                .as_ref()
+                .and_then(|r| r.residual_trace.last().cloned()),
             phase,
             stage,
             block: if matches!(stage, PartitionedStage::Initializing) {

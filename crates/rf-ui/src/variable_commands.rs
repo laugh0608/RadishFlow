@@ -148,6 +148,9 @@ pub(crate) fn input_command(
             let field = match id.field {
                 VariableField::OutletTemperature => UnitInspectorDraftField::OutletTemperatureK,
                 VariableField::OutletPressure => UnitInspectorDraftField::OutletPressurePa,
+                VariableField::OutletASplitFraction => {
+                    UnitInspectorDraftField::OutletASplitFraction
+                }
                 _ => return Err(VariableWriteError::ReadOnly),
             };
             Ok(DocumentCommand::SetUnitParameter {

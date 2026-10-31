@@ -378,3 +378,19 @@ impl Aliases {
         value
     }
 }
+
+pub fn digest_v4(
+    file_sha256: &str,
+    review: &Value,
+    resources: Option<&FlowResources>,
+    preview: &Value,
+) -> Result<String, Failure> {
+    let mut material = json!({"namespace":"headless-v4-confirm-v1","file_sha256":file_sha256,"review":review,"flow_resources":resources,"preview":preview});
+    normalize_numbers(&mut material);
+    let mut bytes = Vec::new();
+    canonical(&material, &mut bytes).map_err(super::invalid_request)?;
+    Ok(format!(
+        "headless-v4-confirm-v1:{}",
+        rf_store::sha256_hex(&bytes)
+    ))
+}

@@ -247,3 +247,13 @@ fn studio_modeling_unit_parameter_label_zh(parameter: StudioModelingUnitParamete
         StudioModelingUnitParameter::OutletASplitFraction => "出口 A 分流比例",
     }
 }
+
+pub fn studio_workspace_modeling_run_blocker(
+    workspace: &rf_ui::WorkspaceState,
+) -> Option<StudioModelingRunBlocker> {
+    let report = crate::modeling_specifications::check_workspace_modeling_specifications(
+        workspace,
+        crate::modeling_specifications::ModelingCheckSessionId(0),
+    );
+    studio_modeling_report_run_blocker(&report)
+}

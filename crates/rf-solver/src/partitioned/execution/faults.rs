@@ -96,6 +96,8 @@ fn inject(
         costs: SolveCosts::default(),
         block_index: 0,
         progress: PartitionedProgress {
+            evaluation: None,
+            residual: None,
             phase: None,
             stage: PartitionedStage::Initializing,
             block: None,

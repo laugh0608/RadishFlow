@@ -10,7 +10,7 @@ mod session_tests;
 pub use identity::{SpecificationProblemKey, SpecificationProblemReason, SpecificationTarget};
 pub use session::{
     ModelingCheckFailure, ModelingCheckPhase, ModelingCheckSession, ModelingCheckTicket,
-    SpecificationEntry, SpecificationEntryState,
+    SpecificationEntry, SpecificationEntryState, WorkspaceModelingCheckTicket,
 };
 
 use rf_flowsheet::pressure_context::DocumentPressureContext;
@@ -199,6 +199,7 @@ pub struct FeedSpecificationInput {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModelingSpecificationReport {
+    pub plan_generation: Option<rf_ui::flow_plan::FlowPlanGeneration>,
     pub identity: SpecificationReportIdentity,
     pub method: SpecificationAnalysisMethod,
     pub contract_version: u32,
@@ -222,8 +223,15 @@ pub fn check_modeling_specifications(
     document: &FlowsheetDocument,
     session: ModelingCheckSessionId,
 ) -> ModelingSpecificationReport {
-    let checks = check_inputs(&document.flowsheet);
+    report_from_checks(document, session, check_inputs(&document.flowsheet))
+}
+fn report_from_checks(
+    document: &FlowsheetDocument,
+    session: ModelingCheckSessionId,
+    checks: InputChecks,
+) -> ModelingSpecificationReport {
     ModelingSpecificationReport {
+        plan_generation: None,
         identity: SpecificationReportIdentity {
             document_id: document.metadata.document_id.clone(),
             session,
@@ -275,3 +283,17 @@ pub(crate) fn check_inputs(flowsheet: &Flowsheet) -> InputChecks {
 
 #[cfg(test)]
 mod tests;
+
+/// Formal consumers include the applied execution plan in topology analysis.
+pub fn check_workspace_modeling_specifications(
+    workspace: &rf_ui::WorkspaceState,
+    session: ModelingCheckSessionId,
+) -> ModelingSpecificationReport {
+    let checks = checks::check_inputs_with_plan(
+        &workspace.document.flowsheet,
+        workspace.flow_plan.current(),
+    );
+    let mut report = report_from_checks(&workspace.document, session, checks);
+    report.plan_generation = Some(workspace.flow_plan.generation().clone());
+    report
+}

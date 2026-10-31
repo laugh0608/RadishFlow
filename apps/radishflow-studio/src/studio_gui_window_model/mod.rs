@@ -192,8 +192,29 @@ pub struct StudioGuiWindowRuntimeAreaModel {
     pub latest_log_entry: Option<rf_ui::AppLogEntry>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResultExecutionLocation {
+    Step(usize),
+    Block(usize),
+    NotRun,
+}
+impl std::fmt::Display for ResultExecutionLocation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Step(i) => write!(f, "#{i}"),
+            Self::Block(i) => write!(f, "Block #{}", i + 1),
+            Self::NotRun => f.write_str("Not run"),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub struct StudioGuiWindowPartitionedModel {
+    pub result: std::sync::Arc<rf_solver::partitioned::PartitionedSolveResult>,
+    pub units: Vec<StudioGuiWindowUnitExecutionResultModel>,
+}
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowSolveSnapshotModel {
+    pub partitioned: Option<StudioGuiWindowPartitionedModel>,
     pub origin: Option<rf_ui::result_query::FlowResultOrigin>,
     pub result_guard: Option<crate::FlowResultGuard>,
     pub snapshot_id: String,
@@ -235,7 +256,7 @@ pub struct StudioGuiWindowResultReviewSummaryModel {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowResultReviewUnitModel {
     pub unit_id: String,
-    pub step_index: usize,
+    pub location: ResultExecutionLocation,
     pub status_label: &'static str,
     pub summary: String,
     pub consumed_stream_ids: Vec<String>,
@@ -388,7 +409,7 @@ pub struct StudioGuiWindowInspectorTargetPortModel {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioGuiWindowUnitExecutionResultModel {
     pub unit_id: String,
-    pub step_index: usize,
+    pub location: ResultExecutionLocation,
     pub status_label: &'static str,
     pub summary: String,
     pub consumed_stream_results: Vec<StudioGuiWindowStreamResultReferenceModel>,
@@ -549,7 +570,7 @@ pub struct StudioGuiWindowResultInspectorStreamOptionModel {
 pub struct StudioGuiWindowResultInspectorUnitOptionModel {
     pub unit_id: String,
     pub status_label: &'static str,
-    pub step_index: usize,
+    pub location: ResultExecutionLocation,
     pub summary: String,
     pub is_selected: bool,
     pub focus_action: StudioGuiWindowCommandActionModel,
@@ -1191,7 +1212,7 @@ fn run_context_status_items(
             .filter(|metric| {
                 matches!(
                     metric.label,
-                    "Run" | "Convergence" | "Steps" | "Diagnostics"
+                    "Run" | "Convergence" | "Steps" | "Blocks" | "Diagnostics"
                 )
             })
             .map(|metric| StudioGuiWindowContextToolbarStatusModel {
@@ -2095,6 +2116,13 @@ fn latest_unit_result_for_target(
     let rf_ui::InspectorTarget::Unit(unit_id) = target else {
         return None;
     };
+    if let Some(partitioned) = &snapshot.partitioned {
+        return partitioned
+            .units
+            .iter()
+            .find(|u| u.unit_id == unit_id.as_str())
+            .cloned();
+    }
     snapshot
         .steps
         .iter()
@@ -2102,7 +2130,7 @@ fn latest_unit_result_for_target(
         .find(|step| step.unit_id == unit_id.as_str())
         .map(|step| StudioGuiWindowUnitExecutionResultModel {
             unit_id: step.unit_id.clone(),
-            step_index: step.index,
+            location: ResultExecutionLocation::Step(step.index),
             status_label: step.execution_status_label,
             summary: step.summary.clone(),
             consumed_stream_results: step.consumed_stream_results.clone(),
@@ -2113,7 +2141,7 @@ fn latest_unit_result_for_target(
 }
 
 fn stale_solve_snapshot_model_from_ui(
-    snapshot: &rf_ui::SolveSnapshot,
+    snapshot: &rf_ui::FlowResultRecord,
     current_document_revision: u64,
 ) -> StudioGuiWindowStaleSolveSnapshotModel {
     StudioGuiWindowStaleSolveSnapshotModel {
@@ -2177,7 +2205,7 @@ fn result_review_summary_model_from_parts(
         .into_iter()
         .map(|step| StudioGuiWindowResultReviewUnitModel {
             unit_id: step.unit_id.clone(),
-            step_index: step.index,
+            location: ResultExecutionLocation::Step(step.index),
             status_label: step.execution_status_label,
             summary: step.summary.clone(),
             consumed_stream_ids: step.consumed_stream_ids().map(str::to_string).collect(),
@@ -2450,3 +2478,6 @@ fn diagnostic_severity_label(severity: rf_ui::DiagnosticSeverity) -> &'static st
 pub(crate) mod test_support;
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod partitioned_tests;

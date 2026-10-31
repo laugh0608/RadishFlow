@@ -146,15 +146,23 @@ impl StudioGuiWindowSolveSnapshotModel {
             })
             .collect();
 
-        let unit_id_order: Vec<String> = self.steps.iter().map(|step| step.unit_id.clone()).fold(
-            Vec::new(),
-            |mut acc, unit_id| {
+        let unit_ids = self
+            .partitioned
+            .as_ref()
+            .map(|p| {
+                p.units
+                    .iter()
+                    .map(|u| u.unit_id.clone())
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_else(|| self.steps.iter().map(|s| s.unit_id.clone()).collect());
+        let unit_id_order: Vec<String> =
+            unit_ids.into_iter().fold(Vec::new(), |mut acc, unit_id| {
                 if !acc.iter().any(|existing| existing == &unit_id) {
                     acc.push(unit_id);
                 }
                 acc
-            },
-        );
+            });
         let selected_unit_id = requested_unit_id
             .filter(|unit_id| unit_id_order.iter().any(|existing| existing == *unit_id))
             .map(str::to_string)
@@ -195,22 +203,43 @@ impl StudioGuiWindowSolveSnapshotModel {
             })
             .unwrap_or_default();
         let selected_unit = selected_unit_id.as_deref().and_then(|selected_unit| {
-            unit_related_steps
-                .last()
-                .map(|step| StudioGuiWindowUnitExecutionResultModel {
-                    unit_id: selected_unit.to_string(),
-                    step_index: step.index,
-                    status_label: step.execution_status_label,
-                    summary: step.summary.clone(),
-                    consumed_stream_results: step.consumed_stream_results.clone(),
-                    consumed_stream_actions: step.consumed_stream_actions.clone(),
-                    produced_stream_results: step.produced_stream_results.clone(),
-                    produced_stream_actions: step.produced_stream_actions.clone(),
+            self.partitioned
+                .as_ref()
+                .and_then(|p| p.units.iter().find(|u| u.unit_id == selected_unit))
+                .cloned()
+                .or_else(|| {
+                    unit_related_steps
+                        .last()
+                        .map(|step| StudioGuiWindowUnitExecutionResultModel {
+                            unit_id: selected_unit.to_string(),
+                            location: ResultExecutionLocation::Step(step.index),
+                            status_label: step.execution_status_label,
+                            summary: step.summary.clone(),
+                            consumed_stream_results: step.consumed_stream_results.clone(),
+                            consumed_stream_actions: step.consumed_stream_actions.clone(),
+                            produced_stream_results: step.produced_stream_results.clone(),
+                            produced_stream_actions: step.produced_stream_actions.clone(),
+                        })
                 })
         });
         let unit_options: Vec<StudioGuiWindowResultInspectorUnitOptionModel> = unit_id_order
             .iter()
             .map(|unit_id| {
+                if let Some(unit) = self
+                    .partitioned
+                    .as_ref()
+                    .and_then(|p| p.units.iter().find(|u| &u.unit_id == unit_id))
+                {
+                    return StudioGuiWindowResultInspectorUnitOptionModel {
+                        unit_id: unit_id.clone(),
+                        status_label: unit.status_label,
+                        location: unit.location,
+                        summary: format!("{} | {} | {}", unit_id, unit.location, unit.summary),
+                        is_selected: selected_unit_id.as_ref() == Some(unit_id),
+                        focus_action: result_inspector_unit_focus_action(unit_id)
+                            .with_result_guard(self.result_guard.as_ref()),
+                    };
+                }
                 let last_step = self
                     .steps
                     .iter()
@@ -229,7 +258,9 @@ impl StudioGuiWindowSolveSnapshotModel {
                 StudioGuiWindowResultInspectorUnitOptionModel {
                     unit_id: unit_id.clone(),
                     status_label,
-                    step_index,
+                    location: last_step
+                        .map(|s| ResultExecutionLocation::Step(s.index))
+                        .unwrap_or(ResultExecutionLocation::NotRun),
                     summary,
                     is_selected: selected_unit_id
                         .as_deref()

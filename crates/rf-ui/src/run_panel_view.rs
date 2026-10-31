@@ -124,6 +124,7 @@ fn run_status_label(status: RunStatus) -> &'static str {
 
 fn solve_pending_reason_label(reason: SolvePendingReason) -> &'static str {
     match reason {
+        SolvePendingReason::PlanChanged => "Run plan changed",
         SolvePendingReason::DocumentRevisionAdvanced => "Document changed",
         SolvePendingReason::ModeActivated => "Mode activated",
         SolvePendingReason::ManualRunRequested => "Manual run requested",

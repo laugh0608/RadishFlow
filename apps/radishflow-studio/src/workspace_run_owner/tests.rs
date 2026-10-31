@@ -1074,3 +1074,5 @@ fn current_cache_preparation_failure_is_published_and_clears_its_pending_attempt
     assert!(app.workspace.pending_flow_run().is_none());
     assert!(app.workspace.snapshot_history.is_empty());
 }
+
+mod partitioned;

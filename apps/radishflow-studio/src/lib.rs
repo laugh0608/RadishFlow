@@ -5,6 +5,7 @@ mod builtin_property_package_data;
 mod confirmed_input_action;
 mod control_plane_client;
 mod control_plane_sync;
+pub mod flow_plan_actions;
 pub use confirmed_input_action::{StudioConfirmedInputAction, StudioInputAction};
 mod document_history_driver;
 mod document_lifecycle_driver;
@@ -106,7 +107,7 @@ pub use document_history_driver::{
 pub use document_lifecycle_driver::{
     DocumentLifecycleOutcome, FILE_SAVE_AS_COMMAND_ID, FILE_SAVE_COMMAND_ID,
     ProjectSaveCompatibility, StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand,
-    StudioProjectOpen, dispatch_document_lifecycle, load_project_app_state,
+    StudioProjectOpen, StudioReadOnlyProject, dispatch_document_lifecycle, load_project_app_state,
     project_save_compatibility, project_save_requires_upgrade, project_save_version,
     read_studio_project,
 };
@@ -320,7 +321,7 @@ pub use studio_gui_window_layout::{
     StudioGuiWindowTitlebarModel,
 };
 pub use studio_gui_window_model::{
-    StudioGuiQuantityPresentationError, StudioGuiWindowCanvasAreaModel,
+    ResultExecutionLocation, StudioGuiQuantityPresentationError, StudioGuiWindowCanvasAreaModel,
     StudioGuiWindowCommandActionModel, StudioGuiWindowCommandAreaModel,
     StudioGuiWindowCommandListItemModel, StudioGuiWindowCommandListSectionModel,
     StudioGuiWindowCommandPaletteItemModel, StudioGuiWindowCompositionResultModel,
@@ -456,3 +457,6 @@ pub use workspace_run_owner::{
     WorkspaceRunOwner, WorkspaceRunPhase, WorkspaceRunProgress, WorkspaceRunState,
     WorkspaceRunSubmission, WorkspaceRunSummary,
 };
+
+#[cfg(test)]
+mod qs1_test_support;

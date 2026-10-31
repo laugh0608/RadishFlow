@@ -150,7 +150,8 @@ pub fn build_workspace_solve_request(
         revision,
         sequence
     );
-    let request = StudioSolveRequest::new(package_id, snapshot_id, sequence);
+    let request = StudioSolveRequest::new(package_id, snapshot_id, sequence)
+        .with_selected_plan(&app_state.workspace);
     request.validate()?;
     Ok(request)
 }

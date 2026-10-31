@@ -183,6 +183,7 @@ fn canvas_presentation_reports_pending_canvas_edit() {
                 false,
                 true
             ),
+            ("canvas.begin_place_unit.splitter", "Splitter", false, false),
         ]
     );
     assert_eq!(

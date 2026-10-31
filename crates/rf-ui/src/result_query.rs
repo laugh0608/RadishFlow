@@ -1,8 +1,8 @@
 //! Session-bound result reads. Execution evidence travels with the accepted result,
 //! never with the current package selection or a second mutable result cache.
 use crate::{
-    DiagnosticSummary, DocumentId, FlowRunId, FlowRunQualification, FlowRunReceipt, SolveSnapshot,
-    WorkspaceState, latest_snapshot, stale_snapshot,
+    DiagnosticSummary, DocumentId, FlowRunId, FlowRunQualification, FlowRunReceipt, WorkspaceState,
+    latest_snapshot, stale_snapshot,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,7 +36,14 @@ pub struct ExecutedPropertyPackage {
     pub flash_implementation: &'static str,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExecutedFlowPlan {
+    pub method: &'static str,
+    pub acceptance_contract_version: u32,
+    pub configuration_sha256: String,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FlowExecutionEvidence {
+    pub plan: Option<ExecutedFlowPlan>,
     pub run_id: FlowRunId,
     pub solver_implementation: &'static str,
     /// None when preparation failed before a validated package was obtained.
@@ -45,6 +52,7 @@ pub struct FlowExecutionEvidence {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FlowResultOrigin {
     qualification: FlowRunQualification,
+    plan_generation: crate::flow_plan::FlowPlanGeneration,
     execution: Option<FlowExecutionEvidence>,
 }
 impl FlowResultOrigin {
@@ -54,18 +62,29 @@ impl FlowResultOrigin {
     pub fn revision(&self) -> u64 {
         self.qualification.revision()
     }
+    pub fn with_plan_evidence(mut self, plan: ExecutedFlowPlan) -> Self {
+        if let Some(e) = &mut self.execution {
+            e.plan = Some(plan);
+        }
+        self
+    }
     pub fn execution(&self) -> Option<&FlowExecutionEvidence> {
         self.execution.as_ref()
     }
     pub(crate) fn local(workspace: &WorkspaceState) -> Self {
         Self {
             qualification: workspace.flow_run_qualification(),
+            plan_generation: workspace.flow_plan.generation().clone(),
             execution: None,
         }
+    }
+    pub(crate) fn same_plan(&self, workspace: &WorkspaceState) -> bool {
+        self.plan_generation == *workspace.flow_plan.generation()
     }
     fn current_for(&self, workspace: &WorkspaceState) -> bool {
         self.qualification
             .same_input(&workspace.flow_run_qualification())
+            && self.plan_generation == *workspace.flow_plan.generation()
     }
     fn belongs_to(&self, workspace: &WorkspaceState) -> bool {
         self.qualification
@@ -80,7 +99,9 @@ impl FlowRunReceipt {
     ) -> FlowResultOrigin {
         FlowResultOrigin {
             qualification: self.qualification().clone(),
+            plan_generation: self.plan_generation().clone(),
             execution: Some(FlowExecutionEvidence {
+                plan: None,
                 run_id: self.run_id().clone(),
                 solver_implementation,
                 package,
@@ -90,6 +111,7 @@ impl FlowRunReceipt {
 }
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct FlowFailureRecord {
+    pub partitioned: Option<std::sync::Arc<rf_solver::partitioned::PartitionedSolveFailure>>,
     pub origin: FlowResultOrigin,
     pub diagnostic: DiagnosticSummary,
 }
@@ -97,6 +119,7 @@ pub(crate) struct FlowFailureRecord {
 pub enum FlowResultUnavailable {
     NoResult,
     InputChanged,
+    PlanChanged,
     DifferentSession,
     UnqualifiedSnapshot,
 }
@@ -104,7 +127,7 @@ pub enum FlowResultUnavailable {
 #[derive(Debug)]
 pub enum FlowResultView<'a> {
     Current {
-        snapshot: &'a SolveSnapshot,
+        snapshot: &'a crate::FlowResultRecord,
         origin: &'a FlowResultOrigin,
     },
     Stale {
@@ -135,13 +158,18 @@ impl WorkspaceState {
             return match &snapshot.origin {
                 Some(origin)
                     if origin.current_for(self)
+                        && snapshot.matches_plan(self.flow_plan.current())
                         && snapshot.document_revision == self.document.revision =>
                 {
                     FlowResultView::Current { snapshot, origin }
                 }
                 Some(origin) if origin.belongs_to(self) => FlowResultView::Stale {
                     origin: Some(origin),
-                    reason: FlowResultUnavailable::InputChanged,
+                    reason: if origin.plan_generation != *self.flow_plan.generation() {
+                        FlowResultUnavailable::PlanChanged
+                    } else {
+                        FlowResultUnavailable::InputChanged
+                    },
                 },
                 Some(_) => FlowResultView::Missing {
                     reason: FlowResultUnavailable::DifferentSession,
@@ -165,7 +193,11 @@ impl WorkspaceState {
             return match &snapshot.origin {
                 Some(origin) if origin.belongs_to(self) => FlowResultView::Stale {
                     origin: Some(origin),
-                    reason: FlowResultUnavailable::InputChanged,
+                    reason: if origin.plan_generation != *self.flow_plan.generation() {
+                        FlowResultUnavailable::PlanChanged
+                    } else {
+                        FlowResultUnavailable::InputChanged
+                    },
                 },
                 Some(_) => FlowResultView::Missing {
                     reason: FlowResultUnavailable::DifferentSession,
@@ -188,6 +220,26 @@ impl crate::AppState {
             && let Some(failure) = &mut self.workspace.flow_failure
         {
             failure.origin = origin;
+        }
+    }
+}
+
+impl WorkspaceState {
+    pub fn partitioned_failure_evidence(
+        &self,
+    ) -> Option<&rf_solver::partitioned::PartitionedSolveFailure> {
+        if matches!(self.flow_result(), FlowResultView::Failed { .. }) {
+            self.flow_failure.as_ref()?.partitioned.as_deref()
+        } else {
+            None
+        }
+    }
+    pub fn attach_partitioned_failure(
+        &mut self,
+        failure: rf_solver::partitioned::PartitionedSolveFailure,
+    ) {
+        if let Some(record) = &mut self.flow_failure {
+            record.partitioned = Some(std::sync::Arc::new(failure));
         }
     }
 }

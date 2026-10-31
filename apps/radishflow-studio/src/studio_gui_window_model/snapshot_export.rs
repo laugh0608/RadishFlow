@@ -121,29 +121,42 @@ impl StudioGuiWindowSolveSnapshotModel {
             ]));
         }
 
-        lines.extend([
-            String::new(),
-            "Steps".to_string(),
-            tsv_row([
-                "index",
-                "unit_id",
-                "status",
-                "summary",
-                "consumed_streams",
-                "produced_streams",
-            ]),
-        ]);
-        for step in &self.steps {
-            lines.push(tsv_row([
-                step.index.to_string().as_str(),
-                step.unit_id.as_str(),
-                step.execution_status_label,
-                step.summary.as_str(),
-                format_stream_references(&step.consumed_stream_results).as_str(),
-                format_stream_references(&step.produced_stream_results).as_str(),
-            ]));
+        if let Some(partitioned) = &self.partitioned {
+            for unit in &partitioned.units {
+                lines.push(tsv_row([
+                    unit.unit_id.as_str(),
+                    unit.location.to_string().as_str(),
+                    unit.status_label,
+                    unit.summary.as_str(),
+                    format_stream_references(&unit.consumed_stream_results).as_str(),
+                    format_stream_references(&unit.produced_stream_results).as_str(),
+                ]));
+            }
+            lines.extend(partitioned_export_lines(&partitioned.result));
+        } else {
+            lines.extend([
+                String::new(),
+                "Steps".to_string(),
+                tsv_row([
+                    "index",
+                    "unit_id",
+                    "status",
+                    "summary",
+                    "consumed_streams",
+                    "produced_streams",
+                ]),
+            ]);
+            for step in &self.steps {
+                lines.push(tsv_row([
+                    step.index.to_string().as_str(),
+                    step.unit_id.as_str(),
+                    step.execution_status_label,
+                    step.summary.as_str(),
+                    format_stream_references(&step.consumed_stream_results).as_str(),
+                    format_stream_references(&step.produced_stream_results).as_str(),
+                ]));
+            }
         }
-
         lines.extend([
             String::new(),
             "Diagnostics".to_string(),
@@ -228,4 +241,82 @@ fn format_review_units(units: &[StudioGuiWindowResultReviewUnitModel]) -> String
         })
         .collect::<Vec<_>>()
         .join("; ")
+}
+
+fn partitioned_export_lines(
+    result: &rf_solver::partitioned::PartitionedSolveResult,
+) -> Vec<String> {
+    let mut lines = vec![
+        String::new(),
+        "Dependency blocks".into(),
+        "Fixed T/P material closure; full energy solution is not provided.".into(),
+    ];
+    for (index, block) in result.blocks.iter().enumerate() {
+        lines.push(format!(
+            "block {}: {:?} · {}",
+            index + 1,
+            block.kind,
+            block
+                .members
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ));
+        if let Some(r) = &block.recycle {
+            lines.push(format!(
+                "tear: {}.{} → {} → {}.{}",
+                r.tear.source.unit_id,
+                r.tear.source.port_name,
+                r.tear.stream_id,
+                r.tear.sink.unit_id,
+                r.tear.sink.port_name
+            ));
+            lines.push(format!(
+                "boundary: {} K / {} Pa; iterations: {}; independent verification: {}",
+                r.boundary.temperature_k,
+                r.boundary.pressure_pa,
+                r.iteration_evaluations,
+                r.verification_evaluations
+            ));
+            lines.push(format!("tolerances: component {:.6e} mol/s; scaled {:.6e}; total {:.6e} mol/s; temperature {:.6e} K; pressure {:.6e} Pa",r.tolerances.component_absolute_flow_mol_s,r.tolerances.scaled_flow,r.tolerances.total_absolute_flow_mol_s,r.tolerances.temperature_k,r.tolerances.pressure_pa));
+            for (id, residual) in &r.residuals_mol_s {
+                lines.push(format!(
+                    "{id}: residual {residual:.9e} mol/s; scale {:.9e} mol/s",
+                    r.component_scales_mol_s[id]
+                ));
+            }
+            for (kind, stream) in [("assumed", &r.assumed), ("returned", &r.returned)] {
+                lines.push(format!(
+                    "{kind}: {} | T {} K | P {} Pa | F {:.9e} mol/s",
+                    stream.id,
+                    stream.temperature_k,
+                    stream.pressure_pa,
+                    stream.total_molar_flow_mol_s
+                ));
+                for (id, x) in &stream.overall_mole_fractions {
+                    lines.push(format!(
+                        "{kind} {id}: {:.9e} mol/s",
+                        x * stream.total_molar_flow_mol_s
+                    ));
+                }
+            }
+            for sample in &r.residual_trace {
+                lines.push(format!(
+                    "{:?} {}: raw {:.9e} mol/s; scaled {:.9e}",
+                    sample.phase, sample.evaluation, sample.max_absolute_mol_s, sample.max_scaled
+                ));
+            }
+        }
+    }
+    let c = &result.costs;
+    lines.push(format!(
+        "actual calls: local {}; thermo {}; flash {}; constructions {}; elapsed {:.6e} s",
+        c.local_unit_calls,
+        c.thermo_calls,
+        c.flash_calls,
+        c.operation_constructions,
+        c.elapsed.as_secs_f64()
+    ));
+    lines
 }

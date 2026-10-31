@@ -35,6 +35,7 @@ mod canvas_navigation;
 mod chrome;
 mod equipment;
 mod failure_recovery;
+mod flow_plan;
 mod fonts;
 mod home_dashboard;
 mod input_departure;
@@ -157,6 +158,7 @@ struct ReadyAppState {
     screen: StudioShellScreen,
     equipment: equipment::EquipmentPageState,
     material: material_balance::MaterialPanelState,
+    flow_plan: flow_plan::FlowPlanPanelState,
     left_sidebar_tab: StudioShellLeftSidebarTab,
     right_sidebar_tab: StudioShellRightSidebarTab,
     bottom_drawer_tab: StudioShellBottomDrawerTab,
@@ -493,6 +495,7 @@ impl ReadyAppState {
             pending_run_exit: None,
             background_run_details_open: false,
             material: material_balance::MaterialPanelState::default(),
+            flow_plan: flow_plan::FlowPlanPanelState::default(),
             platform_host,
             platform_timer_executor: EguiPlatformTimerExecutor::default(),
             command_palette: CommandPaletteState::default(),

@@ -13,7 +13,7 @@ use crate::{
     WorkspaceRunPackageSelection, WorkspaceSolveDispatch, WorkspaceSolveService,
     WorkspaceSolveSkipReason, WorkspaceSolveTrigger, resolve_workspace_run_package_id,
     solver_bridge::WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE,
-    studio_modeling_run_blocked_detail_en, studio_modeling_run_blocker,
+    studio_modeling_run_blocked_detail_en,
     workspace_run_command::{
         WORKSPACE_RUN_DIAGNOSTIC_CACHED_PACKAGE_MISSING,
         WORKSPACE_RUN_DIAGNOSTIC_ENTITLEMENT_MISMATCH,
@@ -610,12 +610,11 @@ pub(crate) fn workspace_pending_inspector_draft_block(
 }
 
 fn workspace_modeling_readiness_block(app_state: &AppState) -> Option<StudioWorkspaceRunBlocked> {
-    studio_modeling_run_blocker(&app_state.workspace.document).map(|blocker| {
-        StudioWorkspaceRunBlocked {
+    crate::studio_modeling_readiness::studio_workspace_modeling_run_blocker(&app_state.workspace)
+        .map(|blocker| StudioWorkspaceRunBlocked {
             reason: modeling_readiness_blocked_reason(&blocker.task),
             message: studio_modeling_run_blocked_detail_en(&blocker.task),
-        }
-    })
+        })
 }
 
 fn modeling_readiness_blocked_reason(

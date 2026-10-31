@@ -94,7 +94,7 @@ fn result_consumers_use_project_units_from_si_and_preserve_the_raw_snapshot() {
             ["26.85 °C", "1 bar", "3.6 kmol/h", "-2.5 kJ/mol"],
         ),
     ] {
-        let model = solve_snapshot_model_from_ui(&raw, &units);
+        let model = solve_snapshot_model_from_ui(&raw.clone().into(), &units);
         assert!(model.presentation_errors.is_empty());
         assert_eq!(model.display_units, units);
         assert_eq!(model.snapshot_id, "units-fixture");
@@ -127,7 +127,7 @@ fn result_consumers_use_project_units_from_si_and_preserve_the_raw_snapshot() {
         assert_eq!(stream.temperature_k, 300.0);
         assert_eq!(stream.pressure_pa, 100_000.0);
     }
-    let model = solve_snapshot_model_from_ui(&raw, &custom_units());
+    let model = solve_snapshot_model_from_ui(&raw.clone().into(), &custom_units());
     let stream = &model.streams[0];
     assert_eq!(stream.composition_text, "a=35 mol%, b=65 mol%");
     assert_eq!(stream.composition_rows[0].fraction_text, "35 mol%");
@@ -152,7 +152,7 @@ fn comparisons_use_difference_semantics_and_do_not_invent_missing_values() {
     raw.streams[1]
         .overall_mole_fractions
         .push(("only-compared".into(), 0.0));
-    let model = solve_snapshot_model_from_ui(&raw, &custom_units());
+    let model = solve_snapshot_model_from_ui(&raw.clone().into(), &custom_units());
     let comparison = model
         .result_inspector_with_comparison(Some("base"), Some("compared"))
         .comparison
@@ -186,7 +186,7 @@ fn conversion_errors_are_explicit_and_prevent_any_successful_text_export() {
     let mut raw = raw_snapshot();
     raw.streams[0].temperature_k = f64::NAN;
     raw.streams[1].total_molar_flow_mol_s = f64::MAX;
-    let model = solve_snapshot_model_from_ui(&raw, &DisplayUnitSet::engineering());
+    let model = solve_snapshot_model_from_ui(&raw.clone().into(), &DisplayUnitSet::engineering());
     assert_eq!(model.status_label, "Converged");
     assert!(
         model.streams[0]

@@ -151,7 +151,7 @@ impl StudioGuiCommandRegistry {
         model: &StudioAppHostUiCommandModel,
         canvas: &StudioGuiCanvasState,
         canvas_target_window_id: Option<StudioWindowHostId>,
-        latest_solve_snapshot: Option<&rf_ui::SolveSnapshot>,
+        latest_solve_snapshot: Option<&rf_ui::FlowResultRecord>,
     ) -> Self {
         Self::from_surfaces_with_results_for_platform(
             model,
@@ -166,7 +166,7 @@ impl StudioGuiCommandRegistry {
         model: &StudioAppHostUiCommandModel,
         canvas: &StudioGuiCanvasState,
         canvas_target_window_id: Option<StudioWindowHostId>,
-        latest_solve_snapshot: Option<&rf_ui::SolveSnapshot>,
+        latest_solve_snapshot: Option<&rf_ui::FlowResultRecord>,
         platform: StudioGuiShortcutPlatform,
     ) -> Self {
         let mut run_panel = Vec::new();
@@ -375,7 +375,7 @@ impl StudioGuiCommandRegistry {
 }
 
 fn result_snapshot_command_entries(
-    snapshot: &rf_ui::SolveSnapshot,
+    snapshot: &rf_ui::FlowResultRecord,
     target_window_id: Option<StudioWindowHostId>,
 ) -> Vec<StudioGuiCommandEntry> {
     let Some(target_window_id) = target_window_id else {
@@ -387,23 +387,47 @@ fn result_snapshot_command_entries(
     });
 
     let mut seen_units = BTreeSet::new();
-    let unit_commands = snapshot.steps.iter().filter_map(move |step| {
-        if !seen_units.insert(step.unit_id.clone()) {
-            return None;
-        }
-        Some(result_unit_command_entry(
-            snapshot,
-            step,
-            seen_units.len() - 1,
-            target_window_id,
-        ))
-    });
+    let unit_commands = match snapshot {
+        rf_ui::FlowResultRecord::Acyclic(s) => s
+            .steps
+            .iter()
+            .filter_map(|step| {
+                if !seen_units.insert(step.unit_id.clone()) {
+                    return None;
+                }
+                Some(result_unit_command_entry(
+                    snapshot,
+                    &step.unit_id,
+                    format!("Latest step #{}, {}", step.index, step.summary),
+                    seen_units.len() - 1,
+                    target_window_id,
+                ))
+            })
+            .collect::<Vec<_>>(),
+        rf_ui::FlowResultRecord::Partitioned(s) => s
+            .result
+            .blocks
+            .iter()
+            .enumerate()
+            .flat_map(|(block, b)| b.members.iter().map(move |id| (block, id)))
+            .enumerate()
+            .map(|(index, (block, id))| {
+                result_unit_command_entry(
+                    snapshot,
+                    id,
+                    format!("Final local evaluation in block #{}", block + 1),
+                    index,
+                    target_window_id,
+                )
+            })
+            .collect(),
+    };
 
     stream_commands.chain(unit_commands).collect()
 }
 
 fn result_stream_command_entry(
-    snapshot: &rf_ui::SolveSnapshot,
+    snapshot: &rf_ui::FlowResultRecord,
     stream: &rf_ui::StreamStateSnapshot,
     index: usize,
     target_window_id: StudioWindowHostId,
@@ -450,22 +474,26 @@ fn result_stream_command_entry(
 }
 
 fn result_unit_command_entry(
-    snapshot: &rf_ui::SolveSnapshot,
-    step: &rf_ui::StepSnapshot,
+    snapshot: &rf_ui::FlowResultRecord,
+    unit_id: &rf_types::UnitId,
+    detail: String,
     index: usize,
     target_window_id: StudioWindowHostId,
 ) -> StudioGuiCommandEntry {
-    let target = rf_ui::InspectorTarget::Unit(step.unit_id.clone());
+    let target = rf_ui::InspectorTarget::Unit(unit_id.clone());
     let command_id = crate::inspector_target_command_id(&target);
     StudioGuiCommandEntry {
         command_id,
-        label: format!("Inspect Result Unit {}", step.unit_id.as_str()),
+        label: format!("Inspect Result Unit {}", unit_id.as_str()),
         detail: format!(
-            "Open the Unit Inspector for result unit `{}` from SolveSnapshot `{}`. Latest step #{}, {}",
-            step.unit_id.as_str(),
+            "Open the Unit Inspector for result unit `{}` from {} `{}`. {}",
+            unit_id.as_str(),
+            match snapshot {
+                rf_ui::FlowResultRecord::Acyclic(_) => "SolveSnapshot",
+                rf_ui::FlowResultRecord::Partitioned(_) => "PartitionedSolveResult",
+            },
             snapshot.id.as_str(),
-            step.index,
-            step.summary
+            detail
         ),
         enabled: true,
         sort_order: 700u16.saturating_add(index.min(u16::MAX as usize - 700) as u16),
@@ -473,7 +501,7 @@ fn result_unit_command_entry(
         menu_path: vec![
             "Results".to_string(),
             "Units".to_string(),
-            step.unit_id.as_str().to_string(),
+            unit_id.as_str().to_string(),
         ],
         search_terms: vec![
             "result".to_string(),
@@ -483,8 +511,8 @@ fn result_unit_command_entry(
             "unit".to_string(),
             "inspect".to_string(),
             snapshot.id.as_str().to_string(),
-            step.unit_id.as_str().to_string(),
-            step.summary.clone(),
+            unit_id.as_str().to_string(),
+            detail,
         ],
         shortcut: None,
         shortcut_aliases: Vec::new(),
@@ -662,6 +690,11 @@ fn command_defaults(
         "canvas.begin_place_unit.valve" => StudioGuiCommandDefaults {
             menu_path: &["Canvas", "Place Unit", "Valve"],
             search_terms: &["canvas", "place", "unit", "valve"],
+            shortcut: None,
+        },
+        "canvas.begin_place_unit.splitter" => StudioGuiCommandDefaults {
+            menu_path: &["Canvas", "Place Unit", "Splitter"],
+            search_terms: &["canvas", "place", "unit", "splitter"],
             shortcut: None,
         },
         "canvas.begin_place_unit.flash_drum" => StudioGuiCommandDefaults {

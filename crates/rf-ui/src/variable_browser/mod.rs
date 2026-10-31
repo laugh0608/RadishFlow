@@ -31,8 +31,8 @@ pub enum BrowseError {
 
 pub struct VariableBrowser<'a> {
     pub document: &'a FlowsheetDocument,
-    current: Option<&'a SolveSnapshot>,
-    stale: Option<&'a SolveSnapshot>,
+    current: Option<&'a crate::FlowSnapshotHeader>,
+    stale: Option<&'a crate::FlowSnapshotHeader>,
 }
 
 impl<'a> VariableBrowser<'a> {
@@ -49,8 +49,8 @@ impl<'a> VariableBrowser<'a> {
         };
         Self {
             document: &workspace.document,
-            current,
-            stale,
+            current: current.map(|s| &**s),
+            stale: stale.map(|s| &**s),
         }
     }
 
@@ -64,10 +64,13 @@ impl<'a> VariableBrowser<'a> {
     ) -> Self {
         Self {
             document,
-            current: current.filter(|s| s.document_revision == document.revision),
+            current: current
+                .filter(|s| s.document_revision == document.revision)
+                .map(|s| &s.common),
             stale: stale
                 .filter(|s| s.document_revision != document.revision)
-                .or(current.filter(|s| s.document_revision != document.revision)),
+                .or(current.filter(|s| s.document_revision != document.revision))
+                .map(|s| &s.common),
         }
     }
 

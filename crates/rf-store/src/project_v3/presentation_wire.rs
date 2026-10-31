@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(super) struct PresentationWire {
+pub(crate) struct PresentationWire {
     display_units: Vec<DisplayUnitChoice>,
 }
 #[derive(Serialize, Deserialize)]
@@ -16,7 +16,7 @@ struct DisplayUnitChoice {
     unit_id: String,
 }
 impl PresentationWire {
-    pub(super) fn into_display_units(self) -> RfResult<DisplayUnitSet> {
+    pub(crate) fn into_display_units(self) -> RfResult<DisplayUnitSet> {
         let entries = self
             .display_units
             .into_iter()

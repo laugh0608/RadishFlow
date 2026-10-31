@@ -25,6 +25,7 @@ pub enum RunStatus {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SolvePendingReason {
+    PlanChanged,
     DocumentRevisionAdvanced,
     ModeActivated,
     ManualRunRequested,
@@ -79,15 +80,20 @@ pub struct StepSnapshot {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SolveSnapshot {
-    pub origin: Option<crate::result_query::FlowResultOrigin>,
-    pub id: SolveSnapshotId,
-    pub document_revision: u64,
-    pub sequence: u64,
-    pub status: RunStatus,
-    pub summary: DiagnosticSummary,
-    pub diagnostics: Vec<DiagnosticSnapshot>,
-    pub streams: Vec<StreamStateSnapshot>,
+    pub common: crate::flow_results::FlowSnapshotHeader,
     pub steps: Vec<StepSnapshot>,
+}
+
+impl std::ops::Deref for SolveSnapshot {
+    type Target = crate::flow_results::FlowSnapshotHeader;
+    fn deref(&self) -> &Self::Target {
+        &self.common
+    }
+}
+impl std::ops::DerefMut for SolveSnapshot {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.common
+    }
 }
 
 impl SolveSnapshot {
@@ -99,14 +105,16 @@ impl SolveSnapshot {
         summary: DiagnosticSummary,
     ) -> Self {
         Self {
-            origin: None,
-            id: id.into(),
-            document_revision,
-            sequence,
-            status,
-            summary,
-            diagnostics: Vec::new(),
-            streams: Vec::new(),
+            common: crate::flow_results::FlowSnapshotHeader {
+                origin: None,
+                id: id.into(),
+                document_revision,
+                sequence,
+                status,
+                summary,
+                diagnostics: Vec::new(),
+                streams: Vec::new(),
+            },
             steps: Vec::new(),
         }
     }
@@ -118,41 +126,43 @@ impl SolveSnapshot {
         snapshot: &rf_solver::SolveSnapshot,
     ) -> Self {
         Self {
-            origin: None,
-            id: id.into(),
-            document_revision,
-            sequence,
-            status: map_solver_status(snapshot.status),
-            summary: DiagnosticSummary {
+            common: crate::flow_results::FlowSnapshotHeader {
+                origin: None,
+                id: id.into(),
                 document_revision,
-                highest_severity: map_solver_severity(snapshot.summary.highest_severity),
-                primary_code: snapshot
-                    .diagnostics
-                    .first()
-                    .map(|diagnostic| diagnostic.code.clone()),
-                primary_message: snapshot.summary.primary_message.clone(),
-                diagnostic_count: snapshot.summary.diagnostic_count,
-                related_unit_ids: snapshot.summary.related_unit_ids.clone(),
-                related_stream_ids: snapshot.summary.related_stream_ids.clone(),
-                related_port_targets: Vec::new(),
-            },
-            diagnostics: snapshot
-                .diagnostics
-                .iter()
-                .map(|diagnostic| DiagnosticSnapshot {
-                    severity: map_solver_severity(diagnostic.severity),
-                    code: diagnostic.code.clone(),
-                    message: diagnostic.message.clone(),
-                    related_unit_ids: diagnostic.related_unit_ids.clone(),
-                    related_stream_ids: diagnostic.related_stream_ids.clone(),
+                sequence,
+                status: map_solver_status(snapshot.status),
+                summary: DiagnosticSummary {
+                    document_revision,
+                    highest_severity: map_solver_severity(snapshot.summary.highest_severity),
+                    primary_code: snapshot
+                        .diagnostics
+                        .first()
+                        .map(|diagnostic| diagnostic.code.clone()),
+                    primary_message: snapshot.summary.primary_message.clone(),
+                    diagnostic_count: snapshot.summary.diagnostic_count,
+                    related_unit_ids: snapshot.summary.related_unit_ids.clone(),
+                    related_stream_ids: snapshot.summary.related_stream_ids.clone(),
                     related_port_targets: Vec::new(),
-                })
-                .collect(),
-            streams: snapshot
-                .streams
-                .values()
-                .map(stream_state_snapshot_from_model)
-                .collect(),
+                },
+                diagnostics: snapshot
+                    .diagnostics
+                    .iter()
+                    .map(|diagnostic| DiagnosticSnapshot {
+                        severity: map_solver_severity(diagnostic.severity),
+                        code: diagnostic.code.clone(),
+                        message: diagnostic.message.clone(),
+                        related_unit_ids: diagnostic.related_unit_ids.clone(),
+                        related_stream_ids: diagnostic.related_stream_ids.clone(),
+                        related_port_targets: Vec::new(),
+                    })
+                    .collect(),
+                streams: snapshot
+                    .streams
+                    .values()
+                    .map(stream_state_snapshot_from_model)
+                    .collect(),
+            },
             steps: snapshot
                 .steps
                 .iter()
@@ -181,7 +191,9 @@ impl SolveSnapshot {
     }
 }
 
-fn stream_state_snapshot_from_model(stream: &rf_model::MaterialStreamState) -> StreamStateSnapshot {
+pub(crate) fn stream_state_snapshot_from_model(
+    stream: &rf_model::MaterialStreamState,
+) -> StreamStateSnapshot {
     StreamStateSnapshot {
         stream_id: stream.id.clone(),
         label: stream.name.clone(),
@@ -288,7 +300,7 @@ impl SolveSessionState {
         self.status = RunStatus::Solving;
     }
 
-    pub fn complete_with_snapshot(&mut self, snapshot: &SolveSnapshot) {
+    pub fn complete_with_snapshot(&mut self, snapshot: &crate::flow_results::FlowSnapshotHeader) {
         self.observed_revision = snapshot.document_revision;
         self.latest_snapshot = Some(snapshot.id.clone());
         self.latest_diagnostic = Some(snapshot.summary.clone());

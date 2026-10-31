@@ -1,3 +1,4 @@
+use super::ResultExecutionLocation;
 use std::{
     fs,
     path::PathBuf,
@@ -852,7 +853,7 @@ fn assert_non_flash_intermediate_unit_summary_and_context(
         assert_eq!(unit.unit_id, unit_id);
         assert_eq!(unit.status_label, "Converged");
         assert!(
-            unit.step_index >= 1,
+            matches!(unit.location, ResultExecutionLocation::Step(i) if i >= 1),
             "expected {surface} unit `{unit_id}` to point at an executed solve step"
         );
         assert_eq!(
@@ -1292,7 +1293,7 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
 
     assert_eq!(window.canvas.title, "Canvas");
     assert_eq!(window.canvas.suggestion_count, 1);
-    assert_eq!(window.canvas.enabled_action_count, 8);
+    assert_eq!(window.canvas.enabled_action_count, 9);
     assert_eq!(
         window.canvas.focused_suggestion_id.as_deref(),
         Some("local.flash_drum.connect_inlet.flash-1.stream-heated")
@@ -1814,7 +1815,7 @@ fn studio_gui_window_model_surfaces_bootstrap_workspace_results_and_diagnostics(
         .expect("expected active unit detail to expose latest execution result");
     assert_eq!(unit_result.unit_id, "heater-1");
     assert_eq!(unit_result.status_label, "Converged");
-    assert_eq!(unit_result.step_index, 1);
+    assert_eq!(unit_result.location, ResultExecutionLocation::Step(1));
     assert_eq!(
         unit_result
             .consumed_stream_results
@@ -2213,7 +2214,7 @@ fn studio_gui_window_model_surfaces_current_module_results_for_active_unit() {
         .iter()
         .find(|unit| unit.unit_id == "heater-1")
         .expect("expected heater review unit");
-    assert_eq!(review_unit.step_index, unit_result.step_index);
+    assert_eq!(review_unit.location, unit_result.location);
     assert_eq!(review_unit.status_label, unit_result.status_label);
     assert_eq!(
         review_unit.consumed_stream_ids,

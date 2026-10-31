@@ -500,7 +500,7 @@ fn canvas_units_in_layout_order(flowsheet: &rf_model::Flowsheet) -> Vec<&rf_mode
 }
 
 fn canvas_diagnostics_from_runtime(
-    latest_solve_snapshot: Option<&rf_ui::SolveSnapshot>,
+    latest_solve_snapshot: Option<&rf_ui::FlowResultRecord>,
     latest_diagnostic: Option<&rf_ui::DiagnosticSummary>,
     notice: Option<&rf_ui::RunPanelNotice>,
     document_revision: u64,

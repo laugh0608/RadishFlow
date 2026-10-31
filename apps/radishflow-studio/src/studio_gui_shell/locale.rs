@@ -228,6 +228,9 @@ impl StudioShellLocale {
             "Snapshot" => Cow::Borrowed("快照"),
             "Convergence" => Cow::Borrowed("收敛"),
             "Steps" => Cow::Borrowed("步骤"),
+            "Blocks" => Cow::Borrowed("依赖块"),
+            "Dependency blocks" => Cow::Borrowed("依赖分块"),
+            "Run plan changed" => Cow::Borrowed("运行计划已改变"),
             "Diagnostics" => Cow::Borrowed("诊断"),
             "Streams" => Cow::Borrowed("流股"),
             "Units" => Cow::Borrowed("单元"),
@@ -820,6 +823,37 @@ impl ShellText {
             ShellText::UnitsSi => "单位: SI",
             ShellText::SolverSequentialModular => "求解器: 顺序模块法",
             ShellText::FlowsheetMode => "流程图模式",
+        }
+    }
+}
+
+impl StudioShellLocale {
+    pub(super) fn flow_snapshot_counts(
+        self,
+        snapshot: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
+    ) -> String {
+        if let Some(partitioned) = &snapshot.partitioned {
+            if self == Self::ZhCn {
+                format!(
+                    "{} 条流股 · {} 个依赖块 · {} 条诊断",
+                    snapshot.stream_count,
+                    partitioned.result.blocks.len(),
+                    snapshot.diagnostic_count
+                )
+            } else {
+                format!(
+                    "{} streams · {} dependency blocks · {} diagnostics",
+                    snapshot.stream_count,
+                    partitioned.result.blocks.len(),
+                    snapshot.diagnostic_count
+                )
+            }
+        } else {
+            self.solve_snapshot_counts(
+                snapshot.stream_count,
+                snapshot.step_count,
+                snapshot.diagnostic_count,
+            )
         }
     }
 }

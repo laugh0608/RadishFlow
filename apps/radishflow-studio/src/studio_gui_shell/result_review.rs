@@ -27,6 +27,11 @@ pub(super) fn flow(
                 "没有可用计算结果或来源。",
                 "No available calculation result or origin.",
             ),
+            FlowResultUnavailable::PlanChanged => label(
+                l,
+                "运行计划已变更，请重新运行。",
+                "Run plan changed. Run again.",
+            ),
             FlowResultUnavailable::InputChanged => label(
                 l,
                 "正式输入已变化；请重新运行。",

@@ -5,12 +5,6 @@ pub(super) fn prepare_builtin_unit_creation(
     builtin_kind: BuiltinUnitKind,
     allocated_unit_ids: &BTreeSet<UnitId>,
 ) -> RfResult<(DocumentCommand, Flowsheet, UnitId)> {
-    if builtin_kind == BuiltinUnitKind::Splitter {
-        return Err(RfError::invalid_input(
-            "Splitter authoring requires versioned project and application support",
-        )
-        .with_diagnostic_code("ui.unsupported_model_capability"));
-    }
     let spec = rf_unitops::catalog::builtin_model(builtin_kind).spec;
     let unit_id = next_canvas_unit_id(flowsheet, builtin_kind, allocated_unit_ids);
     let unit = UnitNode::new(
@@ -44,6 +38,7 @@ pub(super) fn parse_canvas_unit_kind(unit_kind: &str) -> Option<BuiltinUnitKind>
     match normalized.as_str() {
         "feed" => Some(BuiltinUnitKind::Feed),
         "mixer" => Some(BuiltinUnitKind::Mixer),
+        "splitter" => Some(BuiltinUnitKind::Splitter),
         "heater" => Some(BuiltinUnitKind::Heater),
         "cooler" => Some(BuiltinUnitKind::Cooler),
         "valve" => Some(BuiltinUnitKind::Valve),
@@ -316,13 +311,14 @@ pub(super) fn validate_connection_endpoint(
 pub(super) fn apply_run_panel_recovery_mutation(
     flowsheet: &Flowsheet,
     mutation: &RunPanelRecoveryMutation,
+    reserved: &BTreeSet<StreamId>,
 ) -> RfResult<(DocumentCommand, Flowsheet)> {
     match mutation {
         RunPanelRecoveryMutation::DeleteStream { stream_id } => {
             apply_delete_stream_mutation(flowsheet, stream_id)
         }
         RunPanelRecoveryMutation::CreateAndBindOutletStream { unit_id, port_name } => {
-            apply_create_and_bind_outlet_stream_mutation(flowsheet, unit_id, port_name)
+            apply_create_and_bind_outlet_stream_mutation(flowsheet, unit_id, port_name, reserved)
         }
         RunPanelRecoveryMutation::DisconnectPortAndDeleteStream {
             unit_id,
@@ -507,9 +503,11 @@ pub(super) fn apply_create_and_bind_outlet_stream_mutation(
     flowsheet: &Flowsheet,
     unit_id: &UnitId,
     port_name: &str,
+    reserved: &BTreeSet<StreamId>,
 ) -> RfResult<(DocumentCommand, Flowsheet)> {
     let mut next_flowsheet = flowsheet.clone();
-    let stream_id = next_available_placeholder_stream_id(&next_flowsheet, unit_id, port_name);
+    let stream_id =
+        next_available_placeholder_stream_id(&next_flowsheet, unit_id, port_name, reserved);
     let stream_name = format!("{} {} Stream", unit_id.as_str(), port_name);
     next_flowsheet.insert_stream(MaterialStreamState::new(stream_id.clone(), stream_name))?;
     bind_material_stream_port(&mut next_flowsheet, unit_id, port_name, &stream_id)?;
@@ -807,6 +805,7 @@ pub(super) fn next_available_placeholder_stream_id(
     flowsheet: &Flowsheet,
     unit_id: &UnitId,
     port_name: &str,
+    reserved: &BTreeSet<StreamId>,
 ) -> StreamId {
     let base = format!("stream-{}-{}", unit_id.as_str(), port_name);
     let mut candidate = base.clone();
@@ -814,6 +813,7 @@ pub(super) fn next_available_placeholder_stream_id(
     while flowsheet
         .streams
         .contains_key(&StreamId::new(candidate.as_str()))
+        || reserved.contains(&StreamId::new(candidate.as_str()))
     {
         candidate = format!("{base}-{suffix}");
         suffix += 1;

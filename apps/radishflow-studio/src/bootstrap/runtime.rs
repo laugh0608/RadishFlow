@@ -468,6 +468,61 @@ impl BootstrapSession {
     ) -> RfResult<crate::StudioBackgroundRunReply> {
         use crate::StudioBackgroundRunAction;
         match action {
+            StudioBackgroundRunAction::ConfigureFlowPlan {
+                expected,
+                access,
+                command,
+            } => {
+                let discard_draft = matches!(
+                    command,
+                    rf_ui::flow_plan::FlowPlanCommand::Apply(_)
+                        | rf_ui::flow_plan::FlowPlanCommand::RestoreSaved
+                );
+                let had_draft = self.app_state.workspace.flow_plan.draft().is_some();
+                let receipt = crate::flow_plan_actions::execute_flow_plan_action(
+                    &mut self.app_state,
+                    access,
+                    &expected,
+                    command,
+                )?;
+                if receipt.changed || discard_draft {
+                    self.app_state.workspace.flow_plan.discard_draft();
+                }
+                return Ok(crate::StudioBackgroundRunReply {
+                    changed: receipt.changed || (discard_draft && had_draft),
+                    ..Default::default()
+                });
+            }
+            StudioBackgroundRunAction::FlowPlanDraft { access, draft } => {
+                if access != crate::flow_actions::FlowEditAccess::Editable {
+                    return Err(RfError::invalid_input("project is read-only"));
+                }
+                if let Some(draft) = draft {
+                    if !draft.context().is_current(&self.app_state.workspace) {
+                        return Err(RfError::invalid_input("plan draft context changed"));
+                    }
+                    self.app_state.workspace.flow_plan.set_draft(draft);
+                } else {
+                    self.app_state.workspace.flow_plan.discard_draft();
+                }
+                return Ok(crate::StudioBackgroundRunReply {
+                    changed: true,
+                    ..Default::default()
+                });
+            }
+            StudioBackgroundRunAction::EditFlow { access, request } => {
+                let receipt = crate::flow_actions::execute_flow_action(
+                    &mut self.app_state,
+                    access,
+                    &request,
+                    SystemTime::now(),
+                )
+                .map_err(|e| RfError::invalid_input(e.to_string()))?;
+                return Ok(crate::StudioBackgroundRunReply {
+                    changed: receipt.invalidates_flow_results(),
+                    ..Default::default()
+                });
+            }
             StudioBackgroundRunAction::ConfigureMaterial {
                 expected,
                 access,
@@ -573,7 +628,10 @@ impl BootstrapSession {
                 owner.resume_submissions();
                 false
             }
-            StudioBackgroundRunAction::Install(_)
+            StudioBackgroundRunAction::ConfigureFlowPlan { .. }
+            | StudioBackgroundRunAction::FlowPlanDraft { .. }
+            | StudioBackgroundRunAction::EditFlow { .. }
+            | StudioBackgroundRunAction::Install(_)
             | StudioBackgroundRunAction::ConfigureMaterial { .. }
             | StudioBackgroundRunAction::RunMaterial { .. } => unreachable!(),
         };

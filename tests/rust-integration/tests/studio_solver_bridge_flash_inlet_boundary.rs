@@ -582,7 +582,9 @@ fn assert_near_boundary_cases_across_chain<F>(
             .workspace
             .snapshot_history
             .back()
-            .expect("expected stored snapshot");
+            .expect("expected stored snapshot")
+            .acyclic()
+            .expect("acyclic test result");
         for stream_id in source_stream_ids {
             let source_stream = find_snapshot_stream(snapshot, stream_id);
             assert_step_consumes_snapshot_stream(

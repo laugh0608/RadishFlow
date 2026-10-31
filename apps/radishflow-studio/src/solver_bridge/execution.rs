@@ -1,18 +1,24 @@
 use super::*;
 use rf_model::Flowsheet;
 use rf_property_package::{PackageProvenance, PropertyPackageDescriptor};
+use rf_solver::partitioned::{
+    PartitionedFailureKind, PartitionedProgress, PartitionedSequentialSolver,
+    PartitionedSolveFailure, PartitionedSolveResult, PartitionedSolverControl,
+};
 use rf_solver::{ControlledSolveOutcome, SolveProgress, SolverControl};
+use rf_ui::flow_plan::FlowPlanConfiguration;
 use rf_ui::{FlowRunDisposition, FlowRunId, FlowRunReceipt, FrozenFlowRun, SolveSnapshot};
 use std::ops::ControlFlow;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum WorkspaceSolveProgress {
     Preparing,
     Ready,
     Solving(SolveProgress),
+    Partitioned(PartitionedProgress),
 }
 
-pub(crate) trait WorkspaceSolveControl: SolverControl {
+pub(crate) trait WorkspaceSolveControl: SolverControl + PartitionedSolverControl {
     fn before_load(&mut self) -> ControlFlow<()>;
     fn ready(&mut self) -> RfResult<ControlFlow<()>>;
 }
@@ -20,6 +26,11 @@ pub(crate) trait WorkspaceSolveControl: SolverControl {
 struct InlineControl;
 impl SolverControl for InlineControl {
     fn checkpoint(&mut self, _: SolveProgress) -> ControlFlow<()> {
+        ControlFlow::Continue(())
+    }
+}
+impl PartitionedSolverControl for InlineControl {
+    fn checkpoint(&mut self, _: PartitionedProgress) -> ControlFlow<()> {
         ControlFlow::Continue(())
     }
 }
@@ -44,6 +55,7 @@ pub enum WorkspaceExecutionOutcome {
 #[derive(Debug)]
 pub(crate) struct WorkspaceSolveJob {
     flowsheet: Flowsheet,
+    plan: FlowPlanConfiguration,
     request: StudioSolveRequest,
 }
 
@@ -54,6 +66,7 @@ pub(crate) enum WorkspacePackageLoadError {
 
 #[derive(Debug)]
 pub(crate) struct WorkspaceSolveOutput {
+    plan: FlowPlanConfiguration,
     request: StudioSolveRequest,
     outcome: SolveOutcome,
     package: Option<ExecutedPackage>,
@@ -70,6 +83,9 @@ pub struct PreparedWorkspaceSolve {
 #[derive(Debug)]
 enum SolveOutcome {
     Cancelled,
+    PartitionedCancelled(Box<PartitionedSolveFailure>),
+    PartitionedSucceeded(Box<PartitionedSolveResult>),
+    PartitionedFailed(Box<PartitionedSolveFailure>),
     InfrastructureFailed(RfError),
     Succeeded(Box<rf_solver::SolveSnapshot>),
     Failed {
@@ -94,6 +110,7 @@ struct ExecutedPackage {
 /// The non-cloneable receipt makes repeated delivery explicitly one-shot.
 #[derive(Debug)]
 pub struct CompletedWorkspaceSolve {
+    plan: FlowPlanConfiguration,
     receipt: FlowRunReceipt,
     request: StudioSolveRequest,
     outcome: SolveOutcome,
@@ -105,6 +122,26 @@ pub fn prepare_workspace_solve(
     request: &StudioSolveRequest,
 ) -> RfResult<PreparedWorkspaceSolve> {
     request.validate()?;
+    match &request.expected_plan {
+        FlowPlanExpectation::LegacyAcyclic
+            if app_state.workspace.flow_plan.current() != &FlowPlanConfiguration::Acyclic =>
+        {
+            return Err(
+                RfError::invalid_input("legacy run requires the acyclic plan")
+                    .with_diagnostic_code("workspace.run.unsupported_plan"),
+            );
+        }
+        FlowPlanExpectation::Selected(expected) if !expected.is_current(&app_state.workspace) => {
+            return Err(RfError::invalid_input("run plan expectation changed")
+                .with_diagnostic_code("workspace.run.plan_changed"));
+        }
+        _ => {}
+    }
+    app_state
+        .workspace
+        .flow_plan
+        .current()
+        .validate_configuration()?;
     Ok(PreparedWorkspaceSolve {
         input: app_state.prepare_flow_run(),
         request: request.clone(),
@@ -112,6 +149,9 @@ pub fn prepare_workspace_solve(
 }
 
 impl PreparedWorkspaceSolve {
+    pub fn plan(&self) -> &FlowPlanConfiguration {
+        self.input.plan()
+    }
     pub fn run_id(&self) -> &FlowRunId {
         self.input.receipt().run_id()
     }
@@ -129,11 +169,12 @@ impl PreparedWorkspaceSolve {
     }
 
     pub(crate) fn into_job(self) -> (FlowRunReceipt, WorkspaceSolveJob) {
-        let (flowsheet, receipt) = self.input.into_parts();
+        let (flowsheet, plan, receipt) = self.input.into_planned_parts();
         (
             receipt,
             WorkspaceSolveJob {
                 flowsheet,
+                plan,
                 request: self.request,
             },
         )
@@ -251,22 +292,40 @@ impl WorkspaceSolveJob {
             thermo: context.thermo(),
             flash_solver: context.tp_flash(),
         };
-        let outcome =
-            match SequentialModularSolver.solve_controlled(&services, &self.flowsheet, control) {
-                Ok(ControlledSolveOutcome::Completed(snapshot)) => {
-                    SolveOutcome::Succeeded(Box::new(snapshot))
+        let outcome = match &self.plan {
+            FlowPlanConfiguration::Acyclic => {
+                match SequentialModularSolver.solve_controlled(&services, &self.flowsheet, control)
+                {
+                    Ok(ControlledSolveOutcome::Completed(snapshot)) => {
+                        SolveOutcome::Succeeded(Box::new(snapshot))
+                    }
+                    Ok(ControlledSolveOutcome::Cancelled) => SolveOutcome::Cancelled,
+                    Err(error) => SolveOutcome::Failed {
+                        message: format!(
+                            "flowsheet solve failed with package `{}`: {}",
+                            self.request.package_id,
+                            error.message()
+                        ),
+                        error,
+                        package_log: None,
+                    },
                 }
-                Ok(ControlledSolveOutcome::Cancelled) => SolveOutcome::Cancelled,
-                Err(error) => SolveOutcome::Failed {
-                    message: format!(
-                        "flowsheet solve failed with package `{}`: {}",
-                        self.request.package_id,
-                        error.message()
-                    ),
-                    error,
-                    package_log: None,
-                },
-            };
+            }
+            FlowPlanConfiguration::Partitioned(options) => {
+                match PartitionedSequentialSolver.solve_controlled(
+                    &services,
+                    &self.flowsheet,
+                    options,
+                    control,
+                ) {
+                    Ok(result) => SolveOutcome::PartitionedSucceeded(Box::new(result)),
+                    Err(failure) if failure.kind == PartitionedFailureKind::Cancelled => {
+                        SolveOutcome::PartitionedCancelled(failure)
+                    }
+                    Err(failure) => SolveOutcome::PartitionedFailed(failure),
+                }
+            }
+        };
         self.output(outcome, package)
     }
 
@@ -276,6 +335,7 @@ impl WorkspaceSolveJob {
         package: Option<ExecutedPackage>,
     ) -> WorkspaceSolveOutput {
         WorkspaceSolveOutput {
+            plan: self.plan,
             request: self.request,
             outcome,
             package,
@@ -287,6 +347,7 @@ impl CompletedWorkspaceSolve {
     pub(crate) fn from_output(receipt: FlowRunReceipt, output: WorkspaceSolveOutput) -> Self {
         Self {
             receipt,
+            plan: output.plan,
             request: output.request,
             outcome: output.outcome,
             package: output.package,
@@ -296,9 +357,11 @@ impl CompletedWorkspaceSolve {
     pub(crate) fn infrastructure_failure(
         receipt: FlowRunReceipt,
         request: StudioSolveRequest,
+        plan: FlowPlanConfiguration,
         error: RfError,
     ) -> Self {
         Self {
+            plan,
             receipt,
             request,
             outcome: SolveOutcome::InfrastructureFailed(error),
@@ -308,8 +371,12 @@ impl CompletedWorkspaceSolve {
 
     pub fn execution_outcome(&self) -> WorkspaceExecutionOutcome {
         match self.outcome {
-            SolveOutcome::Succeeded(_) => WorkspaceExecutionOutcome::Succeeded,
-            SolveOutcome::Cancelled => WorkspaceExecutionOutcome::Cancelled,
+            SolveOutcome::Succeeded(_) | SolveOutcome::PartitionedSucceeded(_) => {
+                WorkspaceExecutionOutcome::Succeeded
+            }
+            SolveOutcome::Cancelled | SolveOutcome::PartitionedCancelled(_) => {
+                WorkspaceExecutionOutcome::Cancelled
+            }
             SolveOutcome::InfrastructureFailed(_) => {
                 WorkspaceExecutionOutcome::InfrastructureFailed
             }
@@ -321,12 +388,34 @@ impl CompletedWorkspaceSolve {
         self.receipt.run_id()
     }
 
+    pub fn partitioned_failure_evidence(&self) -> Option<&PartitionedSolveFailure> {
+        match &self.outcome {
+            SolveOutcome::PartitionedFailed(e) | SolveOutcome::PartitionedCancelled(e) => Some(e),
+            _ => None,
+        }
+    }
+    pub fn completion_result(&self) -> RfResult<()> {
+        match &self.outcome {
+            SolveOutcome::PartitionedSucceeded(_) => Ok(()),
+            SolveOutcome::PartitionedFailed(failure) => Err(failure.error.clone()),
+            SolveOutcome::PartitionedCancelled(_) => {
+                Err(RfError::invalid_input("workspace solve cancelled")
+                    .with_diagnostic_code("workspace.run.cancelled"))
+            }
+            _ => self.result().map(|_| ()),
+        }
+    }
     pub fn result(&self) -> RfResult<&rf_solver::SolveSnapshot> {
         match &self.outcome {
             SolveOutcome::Cancelled => Err(RfError::invalid_input("workspace solve cancelled")
                 .with_diagnostic_code("workspace.run.cancelled")),
             SolveOutcome::InfrastructureFailed(error) => Err(error.clone()),
             SolveOutcome::Succeeded(snapshot) => Ok(snapshot),
+            SolveOutcome::PartitionedSucceeded(_) => Err(RfError::invalid_input(
+                "partitioned results require the typed flow result query",
+            )),
+            SolveOutcome::PartitionedFailed(failure)
+            | SolveOutcome::PartitionedCancelled(failure) => Err(failure.error.clone()),
             SolveOutcome::Failed { error, .. } | SolveOutcome::PreparationFailed { error, .. } => {
                 Err(error.clone())
             }
@@ -369,16 +458,77 @@ fn complete_with_publication(
     if disposition != FlowRunDisposition::Applied {
         return disposition;
     }
+    let mismatched = matches!(
+        (&completion.plan, &completion.outcome),
+        (
+            FlowPlanConfiguration::Acyclic,
+            SolveOutcome::PartitionedSucceeded(_)
+                | SolveOutcome::PartitionedFailed(_)
+                | SolveOutcome::PartitionedCancelled(_)
+        ) | (
+            FlowPlanConfiguration::Partitioned(_),
+            SolveOutcome::Succeeded(_)
+        )
+    );
+    if mismatched {
+        completion.outcome = SolveOutcome::InfrastructureFailed(
+            RfError::invalid_input("result payload does not match frozen run plan")
+                .with_diagnostic_code("workspace.run.plan_payload_mismatch"),
+        );
+    }
     let revision = completion.receipt.revision();
-    let origin = completion.receipt.result_origin(
-        concat!(
+    let implementation = match &completion.plan {
+        FlowPlanConfiguration::Acyclic => concat!(
             "rf-solver::SequentialModularSolver@",
             env!("CARGO_PKG_VERSION")
         ),
-        completion.package.as_ref().map(executed_package_evidence),
-    );
+        FlowPlanConfiguration::Partitioned(_) => concat!(
+            "rf-solver::PartitionedSequentialSolver@",
+            env!("CARGO_PKG_VERSION")
+        ),
+    };
+    let origin = completion
+        .receipt
+        .result_origin(
+            implementation,
+            completion.package.as_ref().map(executed_package_evidence),
+        )
+        .with_plan_evidence(rf_ui::result_query::ExecutedFlowPlan {
+            method: match &completion.plan {
+                FlowPlanConfiguration::Acyclic => "radishflow.acyclic-sm/1",
+                FlowPlanConfiguration::Partitioned(_) => "radishflow.partitioned-sm/1",
+            },
+            acceptance_contract_version: 1,
+            configuration_sha256: rf_store::sha256_hex(
+                &serde_json::to_vec(&crate::flow_plan_actions::stored_flow_plan(
+                    &completion.plan,
+                ))
+                .expect("validated frozen plan is serializable"),
+            ),
+        });
     match &completion.outcome {
-        SolveOutcome::Cancelled => {}
+        SolveOutcome::Cancelled | SolveOutcome::PartitionedCancelled(_) => {}
+        SolveOutcome::PartitionedSucceeded(result) => {
+            let mut accepted = rf_ui::PartitionedFlowSnapshot::new(
+                completion.request.snapshot_id.as_str(),
+                revision,
+                completion.request.sequence,
+                (**result).clone(),
+            );
+            accepted.origin = Some(origin.clone());
+            app_state.store_snapshot(accepted);
+        }
+        SolveOutcome::PartitionedFailed(failure) => {
+            record_solve_failure(
+                app_state,
+                revision,
+                failure.error.to_string(),
+                SolveFailureContext::from_error(&failure.error),
+            );
+            app_state
+                .workspace
+                .attach_partitioned_failure((**failure).clone());
+        }
         SolveOutcome::InfrastructureFailed(error) => record_solve_failure(
             app_state,
             revision,
@@ -437,7 +587,9 @@ fn complete_with_publication(
     }
     if matches!(
         completion.outcome,
-        SolveOutcome::Failed { .. } | SolveOutcome::InfrastructureFailed(_)
+        SolveOutcome::Failed { .. }
+            | SolveOutcome::PartitionedFailed(_)
+            | SolveOutcome::InfrastructureFailed(_)
     ) || (publish_preparation_failure
         && matches!(completion.outcome, SolveOutcome::PreparationFailed { .. }))
     {
@@ -484,3 +636,6 @@ fn package_failure_message(error: &PackageLoadError) -> String {
         error.source.message()
     )
 }
+
+#[cfg(test)]
+mod plan_contract_tests;

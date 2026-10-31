@@ -234,7 +234,10 @@ impl ReadyAppState {
                     else { "The project remains v3. Older versions that only support sizing will open the rating project read-only. Use Save As to keep the original." });
                 }
                 ProjectSaveCompatibility::Format { version, includes_rating } => {
-                    ui.label(if zh {
+                    ui.label(if version == 4 {
+                        if zh { "保存为 v4 并声明工程所需的模型与计划能力，保留正式输入和显示设置。早期格式读者将拒绝；不支持所需能力的 v4 程序将整份只读。可另存为以保留原件。".to_string() }
+                        else { "Save as v4 with explicit model and plan capabilities, preserving formal inputs and display settings. Earlier format readers reject it; v4 readers without the required capabilities open the whole project read-only. Use Save As to keep the original.".to_string() }
+                    } else if zh {
                         format!("此工程将保存为 v{version}，保留正式输入和显示设置，旧版程序无法读取。可另存为以保留原件。")
                     } else {
                         format!("Save as v{version} to preserve formal inputs and display settings. Older versions cannot read it. Use Save As to keep the original.")

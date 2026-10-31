@@ -108,8 +108,8 @@ UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-p
 | Material Stream 物流股 | Active | 流程图建模与求解闭环 / 结果审阅、诊断与恢复 | `modeling/material-stream.md` |
 | 模型目录、发现与运行实例 | AF2a / AF2b 已实施 | 流程图建模与求解闭环 / 项目物性基础；外部扩展待实施 | [模型装配](modeling/model-catalog-and-runtime.md) |
 | 多策略求解与问题装配 | QS0 有限物料任务已接通 | 装配 / 纯求值、直接后端、正式运行及跨端结果；QS1—QS4 按能力分期 | [多策略求解](modeling/solver-strategies-and-assembly.md) |
-| 分块序贯模块与回流求解 | QS1-A/B 核心已实现 | Splitter、SCC / 显式撕裂、循环 / 复核与故障验证；版本化保存及 GUI / CLI 待审 | [QS1](modeling/recycle-and-block-execution.md) |
-| 回流工程与正式接入 | QS1-C 方案待确认 | 项目 v4、独立计划 / 双资格、建模入口、GUI / CLI v4 的 C01—C06 | [QS1-C](modeling/recycle-project-and-consumers.md) |
+| 分块序贯模块与回流求解 | QS1-A/B 核心已实现 | Splitter、SCC / 显式撕裂、循环 / 复核与故障验证；版本化保存及 GUI / CLI 已按 QS1-C 接通 | [QS1](modeling/recycle-and-block-execution.md) |
+| 回流工程与正式接入 | QS1-C 已实现 | 项目 v4、独立计划 / 双资格、显式闭环建模、已认可 GUI 与 CLI v4 | [QS1-C](modeling/recycle-project-and-consumers.md) |
 
 ### 平台与服务
 

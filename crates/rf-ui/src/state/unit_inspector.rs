@@ -5,6 +5,7 @@ pub enum UnitInspectorDraftField {
     Name,
     OutletTemperatureK,
     OutletPressurePa,
+    OutletASplitFraction,
 }
 
 impl UnitInspectorDraftField {
@@ -13,6 +14,7 @@ impl UnitInspectorDraftField {
             Self::Name => "name",
             Self::OutletTemperatureK => "outlet_temperature_k",
             Self::OutletPressurePa => "outlet_pressure_pa",
+            Self::OutletASplitFraction => "outlet_a_split_fraction",
         }
     }
 
@@ -25,6 +27,7 @@ impl UnitInspectorDraftField {
             "name" => Some(Self::Name),
             "outlet_temperature_k" => Some(Self::OutletTemperatureK),
             "outlet_pressure_pa" => Some(Self::OutletPressurePa),
+            "outlet_a_split_fraction" => Some(Self::OutletASplitFraction),
             _ => None,
         }
     }
@@ -76,6 +79,9 @@ impl AppState {
                 }
                 UnitInspectorDraftField::OutletPressurePa => {
                     crate::variable_browser::VariableField::OutletPressure
+                }
+                UnitInspectorDraftField::OutletASplitFraction => {
+                    crate::variable_browser::VariableField::OutletASplitFraction
                 }
                 UnitInspectorDraftField::Name => unreachable!(),
             };
@@ -259,6 +265,7 @@ pub fn unit_inspector_parameter_value(
     let unit = flowsheet.units.get(unit_id)?;
     match field {
         UnitInspectorDraftField::Name => None,
+        UnitInspectorDraftField::OutletASplitFraction => unit.parameters.outlet_a_split_fraction,
         UnitInspectorDraftField::OutletTemperatureK => unit
             .parameters
             .outlet_temperature_k
@@ -278,6 +285,9 @@ pub fn unit_inspector_parameter_is_explicit(
 ) -> bool {
     match field {
         UnitInspectorDraftField::Name => true,
+        UnitInspectorDraftField::OutletASplitFraction => {
+            unit.parameters.outlet_a_split_fraction.is_some()
+        }
         UnitInspectorDraftField::OutletTemperatureK => {
             unit.parameters.outlet_temperature_k.is_some()
         }
@@ -307,20 +317,15 @@ pub(crate) fn unit_inspector_draft_fields(unit: &UnitNode) -> Vec<UnitInspectorD
     use rf_unitops::specifications::{UnitParameter, input_specification};
     let mut fields = vec![UnitInspectorDraftField::Name];
     if let Some(kind) = BuiltinUnitKind::parse(&unit.kind) {
-        fields.extend(
-            input_specification(kind)
-                .parameters
-                .iter()
-                .filter_map(|parameter| match parameter {
-                    UnitParameter::OutletTemperature => {
-                        Some(UnitInspectorDraftField::OutletTemperatureK)
-                    }
-                    UnitParameter::OutletPressure => {
-                        Some(UnitInspectorDraftField::OutletPressurePa)
-                    }
-                    UnitParameter::OutletASplitFraction => None,
-                }),
-        );
+        fields.extend(input_specification(kind).parameters.iter().map(
+            |parameter| match parameter {
+                UnitParameter::OutletTemperature => UnitInspectorDraftField::OutletTemperatureK,
+                UnitParameter::OutletPressure => UnitInspectorDraftField::OutletPressurePa,
+                UnitParameter::OutletASplitFraction => {
+                    UnitInspectorDraftField::OutletASplitFraction
+                }
+            },
+        ));
     }
     fields
 }
@@ -386,6 +391,9 @@ pub(super) fn apply_unit_parameter_value(
         UnitInspectorDraftField::Name => {
             unreachable!("name edit returns before numeric assignment")
         }
+        UnitInspectorDraftField::OutletASplitFraction => {
+            unit.parameters.outlet_a_split_fraction = Some(*value);
+        }
         UnitInspectorDraftField::OutletTemperatureK => {
             unit.parameters.outlet_temperature_k = Some(*value);
         }
@@ -398,6 +406,7 @@ pub(super) fn apply_unit_parameter_value(
         if let Some(stream) = flowsheet.streams.get_mut(&stream_id) {
             match field {
                 UnitInspectorDraftField::Name => unreachable!("name edits never change streams"),
+                UnitInspectorDraftField::OutletASplitFraction => {}
                 UnitInspectorDraftField::OutletTemperatureK => {
                     stream.temperature_k = *value;
                 }
@@ -425,6 +434,7 @@ pub(crate) fn is_valid_unit_parameter_value_for_unit(
     let parameter = match field {
         UnitInspectorDraftField::OutletTemperatureK => UnitParameter::OutletTemperature,
         UnitInspectorDraftField::OutletPressurePa => UnitParameter::OutletPressure,
+        UnitInspectorDraftField::OutletASplitFraction => UnitParameter::OutletASplitFraction,
         UnitInspectorDraftField::Name => return false,
     };
     let context = document_pressure_context(flowsheet, unit, kind);

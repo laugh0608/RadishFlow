@@ -1,0 +1,372 @@
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 4,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "fixed-tp-recycle-binary-hydrocarbon",
+      "thermo": {
+        "property_package_id": "binary-hydrocarbon-lite-v1"
+      },
+      "components": {
+        "methane": {
+          "id": "methane",
+          "name": "Methane",
+          "formula": "CH4"
+        },
+        "ethane": {
+          "id": "ethane",
+          "name": "Ethane",
+          "formula": "C2H6"
+        }
+      },
+      "streams": {
+        "s-fa": {
+          "id": "s-fa",
+          "name": "Fresh feed A",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 2.0,
+          "overall_mole_fractions": {
+            "methane": 0.8,
+            "ethane": 0.2
+          },
+          "phases": []
+        },
+        "s-fb": {
+          "id": "s-fb",
+          "name": "Fresh feed B",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 3.0,
+          "overall_mole_fractions": {
+            "methane": 0.2,
+            "ethane": 0.8
+          },
+          "phases": []
+        },
+        "s-fresh": {
+          "id": "s-fresh",
+          "name": "Mixed fresh feed",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 97.0,
+          "overall_mole_fractions": {
+            "methane": 0.9,
+            "ethane": 0.1
+          },
+          "phases": []
+        },
+        "s-circulation": {
+          "id": "s-circulation",
+          "name": "Circulation",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 83.0,
+          "overall_mole_fractions": {
+            "methane": 0.7,
+            "ethane": 0.3
+          },
+          "phases": []
+        },
+        "s-recycle": {
+          "id": "s-recycle",
+          "name": "Recycle",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 79.0,
+          "overall_mole_fractions": {
+            "methane": 0.3,
+            "ethane": 0.7
+          },
+          "phases": []
+        },
+        "s-bleed": {
+          "id": "s-bleed",
+          "name": "Bleed",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 91.0,
+          "overall_mole_fractions": {
+            "methane": 0.1,
+            "ethane": 0.9
+          },
+          "phases": []
+        },
+        "s-product": {
+          "id": "s-product",
+          "name": "Product",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 101.0,
+          "overall_mole_fractions": {
+            "methane": 0.6,
+            "ethane": 0.4
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "feed-1": {
+          "id": "feed-1",
+          "name": "feed-1",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-fa"
+            }
+          ],
+          "parameters": {
+            "outlet_temperature_k": 300.0,
+            "outlet_pressure_pa": 650000.0
+          }
+        },
+        "feed-2": {
+          "id": "feed-2",
+          "name": "feed-2",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-fb"
+            }
+          ],
+          "parameters": {
+            "outlet_temperature_k": 300.0,
+            "outlet_pressure_pa": 650000.0
+          }
+        },
+        "mixer-1": {
+          "id": "mixer-1",
+          "name": "Fresh mixer",
+          "kind": "mixer",
+          "ports": [
+            {
+              "name": "inlet_a",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-fa"
+            },
+            {
+              "name": "inlet_b",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-fb"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-fresh"
+            }
+          ],
+          "parameters": {
+            "outlet_pressure_pa": 650000.0
+          }
+        },
+        "mixer-2": {
+          "id": "mixer-2",
+          "name": "Recycle mixer",
+          "kind": "mixer",
+          "ports": [
+            {
+              "name": "inlet_a",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-fresh"
+            },
+            {
+              "name": "inlet_b",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-recycle"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-circulation"
+            }
+          ],
+          "parameters": {
+            "outlet_pressure_pa": 650000.0
+          }
+        },
+        "splitter-1": {
+          "id": "splitter-1",
+          "name": "Recycle splitter",
+          "kind": "splitter",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-circulation"
+            },
+            {
+              "name": "outlet_a",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-recycle"
+            },
+            {
+              "name": "outlet_b",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-bleed"
+            }
+          ],
+          "parameters": {
+            "outlet_a_split_fraction": 0.6
+          }
+        },
+        "heater-1": {
+          "id": "heater-1",
+          "name": "Product heater",
+          "kind": "heater",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-bleed"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-product"
+            }
+          ],
+          "parameters": {
+            "outlet_temperature_k": 300.0,
+            "outlet_pressure_pa": 650000.0
+          }
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-qs1-fixed-tp-recycle",
+      "title": "Fixed-T/P Binary Recycle",
+      "schemaVersion": 1,
+      "createdAt": "2026-10-31T00:00:00Z",
+      "updatedAt": "2026-10-31T00:00:00Z"
+    }
+  },
+  "requiredCapabilities": [
+    {
+      "id": "radishflow.flow-plan",
+      "version": 1
+    },
+    {
+      "id": "radishflow.solver.partitioned-sm",
+      "version": 1
+    },
+    {
+      "id": "radishflow.unit.splitter",
+      "version": 1
+    }
+  ],
+  "presentation": {
+    "displayUnits": [
+      {
+        "quantityId": "absolute_temperature",
+        "unitId": "kelvin"
+      },
+      {
+        "quantityId": "temperature_difference",
+        "unitId": "kelvin_difference"
+      },
+      {
+        "quantityId": "absolute_pressure",
+        "unitId": "pascal"
+      },
+      {
+        "quantityId": "molar_flow",
+        "unitId": "mole_per_second"
+      },
+      {
+        "quantityId": "mole_fraction",
+        "unitId": "mole_per_mole"
+      },
+      {
+        "quantityId": "molar_phase_fraction",
+        "unitId": "mole_per_mole"
+      },
+      {
+        "quantityId": "molar_enthalpy",
+        "unitId": "joule_per_mole"
+      },
+      {
+        "quantityId": "actual_volume_flow",
+        "unitId": "cubic_metre_per_second"
+      },
+      {
+        "quantityId": "mass_density",
+        "unitId": "kilogram_per_cubic_metre"
+      },
+      {
+        "quantityId": "velocity",
+        "unitId": "metre_per_second"
+      },
+      {
+        "quantityId": "duration",
+        "unitId": "second"
+      },
+      {
+        "quantityId": "length",
+        "unitId": "metre"
+      },
+      {
+        "quantityId": "area",
+        "unitId": "square_metre"
+      },
+      {
+        "quantityId": "volume",
+        "unitId": "cubic_metre"
+      },
+      {
+        "quantityId": "dimensionless_ratio",
+        "unitId": "one"
+      }
+    ]
+  },
+  "simulation": {
+    "steadyStatePlan": {
+      "method": {
+        "id": "radishflow.partitioned-sm",
+        "version": 1
+      },
+      "acceptanceContractVersion": 1,
+      "fixedBoundary": {
+        "temperatureK": 300.0,
+        "pressurePa": 650000.0
+      },
+      "maxIterationEvaluations": 500,
+      "tears": [
+        {
+          "streamId": "s-recycle",
+          "source": {
+            "unitId": "splitter-1",
+            "port": "outlet_a"
+          },
+          "sink": {
+            "unitId": "mixer-2",
+            "port": "inlet_b"
+          },
+          "initialization": {
+            "kind": "zero_component_flows"
+          },
+          "residualScaling": {
+            "kind": "evaluated_fresh_total"
+          }
+        }
+      ]
+    }
+  }
+}

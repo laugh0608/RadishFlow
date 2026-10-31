@@ -9,11 +9,25 @@ use rf_ui::BuiltinUnitKind;
 use super::*;
 
 pub(super) fn check_inputs(flowsheet: &Flowsheet) -> InputChecks {
+    check_inputs_with_plan(flowsheet, &rf_ui::flow_plan::FlowPlanConfiguration::Acyclic)
+}
+
+pub(super) fn check_inputs_with_plan(
+    flowsheet: &Flowsheet,
+    plan: &rf_ui::flow_plan::FlowPlanConfiguration,
+) -> InputChecks {
     let mut checks = InputChecks::default();
     if flowsheet.units.is_empty() {
         checks.problems.push(SpecificationProblem::EmptyFlowsheet);
     }
-    let topology_valid = match rf_solver::sequential_execution_order(flowsheet) {
+    let topology_valid = match match plan {
+        rf_ui::flow_plan::FlowPlanConfiguration::Acyclic => {
+            rf_solver::sequential_execution_order(flowsheet).map(|_| ())
+        }
+        rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(options) => {
+            rf_solver::partitioned::assemble_partitioned_plan(flowsheet, options).map(|_| ())
+        }
+    } {
         Ok(_) => true,
         Err(error) => {
             // Empty workspaces keep the existing "place first unit" readiness.
@@ -128,6 +142,20 @@ pub(super) fn check_inputs(flowsheet: &Flowsheet) -> InputChecks {
             );
             continue;
         };
+        if matches!(
+            plan,
+            rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(_)
+        ) {
+            // Cyclic inlet pressure comes from the frozen fixed boundary and evaluated
+            // streams. Document templates cannot prove the recycle inlet pressure.
+            checks.coverage(
+                scope,
+                SpecificationCoverage::AwaitingExecution(document_pressure_context(
+                    flowsheet, unit, kind,
+                )),
+            );
+            continue;
+        }
         let context = document_pressure_context(flowsheet, unit, kind);
         let Some(limit) = context.limit() else {
             let missing_inputs = context.gaps.iter().any(|gap| {

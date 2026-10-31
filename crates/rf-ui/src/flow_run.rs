@@ -62,6 +62,7 @@ impl FlowRunAcceptance {
 #[derive(Debug)]
 pub struct FlowRunReceipt {
     qualification: FlowRunQualification,
+    plan_generation: crate::flow_plan::FlowPlanGeneration,
     run_id: FlowRunId,
     settled: bool,
 }
@@ -77,6 +78,16 @@ pub struct FlowRunQualification {
     revision: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FlowExecutionQualification {
+    pub input: FlowRunQualification,
+    pub plan: crate::flow_plan::FlowPlanGeneration,
+}
+impl FlowExecutionQualification {
+    pub fn same_input(&self, other: &Self) -> bool {
+        self.input.same_input(&other.input) && self.plan == other.plan
+    }
+}
 impl FlowRunQualification {
     pub fn document_id(&self) -> &DocumentId {
         &self.document_id
@@ -94,6 +105,16 @@ impl FlowRunQualification {
 }
 
 impl FlowRunReceipt {
+    pub fn execution_qualification(&self) -> FlowExecutionQualification {
+        FlowExecutionQualification {
+            input: self.qualification.clone(),
+            plan: self.plan_generation.clone(),
+        }
+    }
+    pub fn plan_generation(&self) -> &crate::flow_plan::FlowPlanGeneration {
+        &self.plan_generation
+    }
+
     pub fn qualification(&self) -> &FlowRunQualification {
         &self.qualification
     }
@@ -112,10 +133,15 @@ impl FlowRunReceipt {
 #[derive(Debug)]
 pub struct FrozenFlowRun {
     flowsheet: Flowsheet,
+    plan: crate::flow_plan::FlowPlanConfiguration,
     receipt: FlowRunReceipt,
 }
 
 impl FrozenFlowRun {
+    pub fn plan(&self) -> &crate::flow_plan::FlowPlanConfiguration {
+        &self.plan
+    }
+
     pub fn flowsheet(&self) -> &Flowsheet {
         &self.flowsheet
     }
@@ -124,6 +150,15 @@ impl FrozenFlowRun {
         &self.receipt
     }
 
+    pub fn into_planned_parts(
+        self,
+    ) -> (
+        Flowsheet,
+        crate::flow_plan::FlowPlanConfiguration,
+        FlowRunReceipt,
+    ) {
+        (self.flowsheet, self.plan, self.receipt)
+    }
     pub fn into_parts(self) -> (Flowsheet, FlowRunReceipt) {
         (self.flowsheet, self.receipt)
     }
@@ -138,6 +173,7 @@ pub enum FlowRunDiscardReason {
     DifferentSession,
     InputChanged,
     AcceptanceRevoked,
+    PlanChanged,
     Superseded,
     AlreadySettled,
 }
@@ -176,6 +212,12 @@ impl WorkspaceState {
 }
 
 impl WorkspaceState {
+    pub fn flow_execution_qualification(&self) -> FlowExecutionQualification {
+        FlowExecutionQualification {
+            input: self.flow_run_qualification(),
+            plan: self.flow_plan.generation().clone(),
+        }
+    }
     pub fn flow_run_qualification(&self) -> FlowRunQualification {
         let state = &self.flow_run_acceptance;
         FlowRunQualification {
@@ -202,8 +244,10 @@ impl AppState {
         state.pending = Some(run_id.clone());
         FrozenFlowRun {
             flowsheet: self.workspace.document.flowsheet.clone(),
+            plan: self.workspace.flow_plan.current().clone(),
             receipt: FlowRunReceipt {
                 qualification,
+                plan_generation: self.workspace.flow_plan.generation().clone(),
                 run_id,
                 settled: false,
             },
@@ -228,6 +272,8 @@ impl AppState {
             || self.workspace.document.revision != receipt.qualification.revision
         {
             Some(Reason::InputChanged)
+        } else if receipt.plan_generation != *self.workspace.flow_plan.generation() {
+            Some(Reason::PlanChanged)
         } else if state.epoch != receipt.qualification.epoch {
             Some(Reason::AcceptanceRevoked)
         } else if state.pending.as_ref() != Some(&receipt.run_id) {

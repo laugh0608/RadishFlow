@@ -6,11 +6,11 @@
 读者：负责 store、工作区事务、运行所有者、结果查询、Studio 与本地自动化的协作者。
 不包含：新增求解算法 / 物理范围、跨进程运行服务、结果历史持久化、公共 FFI / COM 扩展或发布。
 
-- 状态：**方案完成、QS1-C01—C06 待所有者确认；未实施。** 核对基线 `81832068`，既有正式基线为 1,893 项测试。
+- 状态：**所有者已确认 QS1-C01—C06 及五张局部画板；C-A / B / C 实施与 C-D 代表验证完成，正式门禁通过 1,931 项测试。** 实施前核对基线 `81832068`；平台与历史读者缺口见文末。
 - 父专题：[QS1 分块回流核心](recycle-and-block-execution.md)。D01—D05 已批准并完成 A/B；本篇展开原 D06，数值范围及验收容差继续以父专题为准。
 - 本篇长期承载跨保存 / 任务 / 消费者的契约。父专题已有案例、算法和核心证据，继续加入以下内容会超过专题体量目标；生命周期、结果和 CLI 文档只保留职责及链接，避免分别定义计划身份。
 
-## 已核对的断点
+## 实施前核对的断点
 
 | 位置 | 当前事实 | QS1-C 必须处理 |
 | --- | --- | --- |
@@ -24,7 +24,7 @@
 | [规格检查](../../../apps/radishflow-studio/src/modeling_specifications/checks.rs) | 直接调用 sequential_execution_order；Mixer 压力上下文沿无环传播 | 将通用输入规则与计划可执行性分开；循环边界不能被旧无环检查误报或从模板推定压力 |
 | [CLI v3](../../../apps/radishflow-studio/src/headless/v3/mod.rs) | query / execute 固定 schema_version=3，却共用 Studio 项目 parser；六类建模词汇 | 增加新协议分派；Studio 读 v4 后，旧 v3 也须在入口拒绝 v4，防止支持范围被共享 parser 悄然扩大 |
 
-以上为源码核对，不是新格式读写或 QS1 GUI / CLI 的产品验证。
+上表记录实施前的源码断点；当前实现与验证落点见文末。
 
 ## QS1-C01：项目 v4 与能力保护
 
@@ -220,9 +220,9 @@ v4 不复制整套 v3 执行逻辑；按需要提取传输中立的解析 / 引�
 - 已知 v4 + 未知能力只读、未知外层拒绝、已知能力未知字段报错；完整保留 v3 工程基础 / 设备 / 固定证据和呈现单位，不丢字段或降版覆盖。
 - 当前可用历史 reader / CLI / FFI 代表对新格式的拒绝、保存重开与计划 / 物理字段验证；可用性与数值验证分别记录，缺少历史可执行环境时保留缺口。
 
-## 待确认项与本轮边界
+## 确认项与实施边界
 
-| 决策 | 需要确认的具体变化 |
+| 决策 | 已确认的具体变化 |
 | --- | --- |
 | QS1-C01 | 新工程外层 v4、必填能力清单及 simulation 区、严格新 DTO / 只读 / 升级与旧 writer 守卫拆分 |
 | QS1-C02 | 活动稳态计划作为独立项目模拟配置；独立事务 / 草稿 / 历史 / generation、simulation_dirty 与保存基线 |
@@ -231,4 +231,26 @@ v4 不复制整套 v3 执行逻辑；按需要提取传输中立的解析 / 引�
 | QS1-C05 | Run / F5 使用已应用计划及上述局部交互；确认方向后出画板，画板认可后再接 GUI |
 | QS1-C06 | CLI 新 schema_version=4、计划 / 块级结果与新动作；旧协议入口拒绝新工程，FFI / COM 范围保持 |
 
-本轮只做源码审查与方案文档，不实现 v4、应用模型 / 接口、CLI 或 GUI，不创建声称可运行的新格式样例。文档执行治理 / 链接、文本、体量与 diff 检查；不重跑未改动的 1,893 项产品基线，也不宣称新格式、历史读者、真实窗口或跨平台已经验收。批准后按上表推进，新增实质范围仍先确认。
+C01—C06 已获所有者明确批准，五张局部画板也已认可；按上述批次实施，新增实质范围仍先确认。实施证据归本篇各阶段状态和 W44，未验内容不能以方案或 A/B 基线代替。
+
+### 局部画板（2026-10-31，已认可）
+
+源文件为 [studio-client-main.pen](../../architecture/designs/studio-client-main.pen)，新增五个 QS1-C 分区；保留原设计和 QS0 分区。静态检查确认布局、文字可读性与边界，PNG 是评审稿，不是运行态截图：
+
+- [配置 / 绑定](../../architecture/designs/reviews/2026-10-31-qs1-c/V53oyj.png)：计划 / 显式 tear、物理比例独立、原 Run / QS0。
+- [Current 块详情](../../architecture/designs/reviews/2026-10-31-qs1-c/ugP6O.png)：生产者结果、assumed / returned、残差与实际调用。
+- [400 px 英文草稿 / 过期](../../architecture/designs/reviews/2026-10-31-qs1-c/L5y3ww.png)：未完成指数、输入单位、应用后过期与键盘。
+- [取消 / 失败](../../architecture/designs/reviews/2026-10-31-qs1-c/aCfoN.png)：名额占用到退出、预算失败、正式值与诊断分开。
+- [升级 / 只读](../../architecture/designs/reviews/2026-10-31-qs1-c/YhPvL.png)：取消为默认焦点，未知能力不建立部分可编辑工作区。
+
+## 已实现的链路与验证落点（2026-10-31）
+
+- **保存与配置：** [v4 codec](../../../crates/rf-store/src/project_v4/mod.rs)严格区分已知可编辑与未知能力只读，复用 v3 工程 / 单位区而不放宽旧格式守卫。[生命周期](../../../apps/radishflow-studio/src/document_lifecycle_driver/flow_plan.rs)按版本分派、显式升级并检查目标原字节；v4 往返覆盖 rating / adoption 固定输入和全部显示单位。正式计划、saved baseline、独立历史与数值草稿位于 [flow_plan](../../../crates/rf-ui/src/flow_plan.rs)，计划引用的失效身份在重开后仍保留给分配器；保存不提交或丢弃草稿，重开无运行结果。
+- **运行与结果：** 正式请求不论 Acyclic / Partitioned 都捕获 Selected 计划期望；旧 StudioSolveRequest::new 保持 LegacyAcyclic。job 冻结实际计划与图，沿既有授权 / Ready / 单 worker 分派；计划变化撤销 Flow，释放仍等待 worker 实退，QS0 不误取消。[FlowResultRecord](../../../crates/rf-ui/src/flow_results.rs)类型区分旧 steps 与真实分块；结果来源包含实际方法、验收契约、规范配置 SHA-256 和加载包证据。缺少构建 / commit 证据时不伪造版本事实。
+- **建模与报告：** Splitter 通过正式创建 / 字段 / 既有数值编辑与历史链路，比例无缺省值且限定 [0,1]。ConnectExact 是独立显式事务，检查规范端口、方向、占用、流股唯一端点与身份保留；旧自动建议仍要求无环。工作区规格报告、检查 ticket 与建议预览绑定计划 generation；循环入口压力不从旧模板推出证明。
+- **GUI：** 五张画板已逐一认可后接线。运行页配置 / tear 绑定、输入单位、逐组分初值 / 尺度、应用 / 恢复 / Undo / Redo、草稿保留、显式连接、Current / Stale / Failed 与块详情已接通。块详情保留最终真实局部 I/O、assumed / returned、残差 / 容差 / 轨迹与实际调用；状态汇总按实际载荷显示块数和算法。结果表 / Inspector / 来源与轻量输出复用资格；写前计划改变拒绝旧捕获。
+- **CLI：** [v4 DTO / 适配](../../../apps/radishflow-studio/src/headless/v4/mod.rs)与旧 DTO 分离，共用有序执行、引用、领域动作、授权与影响确认。查询 / 执行只动本次内存副本，入口原文件版本 / SHA 与内存所需保存版本分列；v3 在资源读取前拒绝 v4。配置与运行均检查 plan_revision，设备提案使用独立 headless-v4-confirm-v1 摘要并纳入前序计划动作。成功输出块和生产者流股；失败的试算值仅在 diagnostic_evidence，非 Current 不给正式 fields。
+
+[公开回流工程](../../../examples/flowsheets/fixed-tp-recycle-binary-hydrocarbon.rfproj.json)为 300 K / 650000 Pa、两股 2 / 3 mol/s 新鲜进料、Mixer + Splitter 的 0.6 回流与下游 Heater；非进料模板故意偏离解。正式动作构建同一场景的应用测试与 CLI v4 均得到五块、48 次迭代 + 1 次独立复核、102 次局部调用，重复求值一致；0.99 达预算失败与 1 无有限稳态不发布结果。数值边界与串联 SCC 的完整 A/B 矩阵继续由父专题维护，接线不放宽核心范围。
+
+定向验证还覆盖计划 A→B→A、Ready 前撤销后等待 join、错载荷类型、报告过期、保留失效 ID、未完成数值 / 输入单位、计划编辑不误伤在途 QS0、旧输出 / 覆盖确认资格与旧 v1/v2/v3 代表。400 px 中英 egui 帧验证草稿保留；macOS 实窗验证开 v4 → Run → 循环块 48+1 → 预算 500 改 499 后 Stale → 另存临时副本 → 重开 499 / Missing → F5 重算 Current。历史独立可执行版本、Windows / Linux 原生窗口及 .NET / COM / PME 未在本轮复验；固定温压物料通过不表示完整能量求解或独立工业物理准确性。正式门禁、命令和最终数量在 [W44](../../devlogs/2026-10/2026-W44.md)记录。

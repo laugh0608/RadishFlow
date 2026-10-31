@@ -1048,6 +1048,11 @@ mod tests {
                     "canvas.begin_place_unit.flash_drum",
                     true
                 ),
+                (
+                    StudioGuiCanvasPlaceUnitKind::Splitter,
+                    "canvas.begin_place_unit.splitter",
+                    true
+                ),
             ]
         );
         assert!(

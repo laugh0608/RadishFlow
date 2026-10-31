@@ -42,6 +42,7 @@ pub struct SpecificationEntry {
 /// Replacing the workspace advances its session even for the same persisted ID.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModelingCheckSession {
+    plan_generation: Option<rf_ui::flow_plan::FlowPlanGeneration>,
     identity: SpecificationReportIdentity,
     generation: u64,
     phase: ModelingCheckPhase,
@@ -53,6 +54,7 @@ pub struct ModelingCheckSession {
 impl ModelingCheckSession {
     pub fn new(document: &FlowsheetDocument) -> Self {
         Self {
+            plan_generation: None,
             identity: SpecificationReportIdentity {
                 document_id: document.metadata.document_id.clone(),
                 session: ModelingCheckSessionId(1),
@@ -80,6 +82,9 @@ impl ModelingCheckSession {
 
     pub fn identity(&self) -> &SpecificationReportIdentity {
         &self.identity
+    }
+    pub fn plan_generation(&self) -> Option<&rf_ui::flow_plan::FlowPlanGeneration> {
+        self.plan_generation.as_ref()
     }
     pub fn phase(&self) -> &ModelingCheckPhase {
         &self.phase
@@ -224,4 +229,65 @@ impl ModelingCheckSession {
             self.recheck(document);
         }
     }
+}
+
+impl ModelingCheckSession {
+    pub fn refresh_workspace(&mut self, workspace: &rf_ui::WorkspaceState) {
+        let changed = self.plan_generation.as_ref() != Some(workspace.flow_plan.generation());
+        self.observe_document(&workspace.document);
+        if changed
+            || matches!(
+                self.phase,
+                ModelingCheckPhase::NotChecked | ModelingCheckPhase::Stale
+            )
+        {
+            self.recheck_workspace(workspace);
+        }
+    }
+    pub fn begin_workspace(
+        &mut self,
+        workspace: &rf_ui::WorkspaceState,
+    ) -> WorkspaceModelingCheckTicket {
+        let ticket = self.begin(&workspace.document);
+        WorkspaceModelingCheckTicket {
+            ticket,
+            plan: rf_ui::flow_plan::FlowPlanEditContext::capture(workspace),
+        }
+    }
+    pub fn finish_workspace(
+        &mut self,
+        ticket: &WorkspaceModelingCheckTicket,
+        result: Result<ModelingSpecificationReport, ModelingCheckFailure>,
+        workspace: &rf_ui::WorkspaceState,
+    ) -> bool {
+        if !ticket.plan.is_current(workspace) {
+            self.phase = ModelingCheckPhase::Stale;
+            return false;
+        }
+        let result = result.and_then(|report| {
+            if report.plan_generation.as_ref() != Some(workspace.flow_plan.generation()) {
+                Err(ModelingCheckFailure::RejectedReportIdentity)
+            } else {
+                Ok(report)
+            }
+        });
+        let accepted = self.finish(&ticket.ticket, result, &workspace.document);
+        if accepted {
+            self.plan_generation = Some(workspace.flow_plan.generation().clone());
+        }
+        accepted
+    }
+    pub fn recheck_workspace(&mut self, workspace: &rf_ui::WorkspaceState) {
+        let ticket = self.begin_workspace(workspace);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            check_workspace_modeling_specifications(workspace, ticket.ticket.identity.session)
+        }))
+        .map_err(|_| ModelingCheckFailure::Panicked);
+        self.finish_workspace(&ticket, result, workspace);
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorkspaceModelingCheckTicket {
+    ticket: ModelingCheckTicket,
+    plan: rf_ui::flow_plan::FlowPlanEditContext,
 }

@@ -77,6 +77,7 @@ pub enum ProjectPresentationCommand {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ProjectSaveState {
     pub document_dirty: bool,
+    pub simulation_dirty: bool,
     pub presentation_dirty: bool,
     pub engineering_dirty: bool,
     pub pending_input_count: usize,
@@ -84,7 +85,10 @@ pub struct ProjectSaveState {
 
 impl ProjectSaveState {
     pub fn has_unsaved_changes(self) -> bool {
-        self.document_dirty || self.presentation_dirty || self.engineering_dirty
+        self.document_dirty
+            || self.presentation_dirty
+            || self.engineering_dirty
+            || self.simulation_dirty
     }
 
     pub fn needs_close_confirmation(self) -> bool {
@@ -224,11 +228,13 @@ impl ProjectPresentationState {
 impl super::WorkspaceState {
     pub fn project_save_state(&self) -> ProjectSaveState {
         ProjectSaveState {
+            simulation_dirty: self.flow_plan.is_dirty(),
             document_dirty: self.last_saved_revision != Some(self.document.revision),
             presentation_dirty: self.project_presentation.is_dirty(),
             engineering_dirty: self.engineering.is_dirty(),
             pending_input_count: self.drafts.pending_count()
-                + self.equipment_editor.pending_count(),
+                + self.equipment_editor.pending_count()
+                + self.flow_plan.pending_count(),
         }
     }
 }

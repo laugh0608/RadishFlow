@@ -454,11 +454,13 @@ impl AppLogFeed {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceState {
+    pub flow_plan: crate::flow_plan::FlowPlanState,
     pub(crate) material_balance: crate::material_balance::MaterialBalanceState,
     pub(crate) flow_failure: Option<crate::result_query::FlowFailureRecord>,
     pub(crate) flow_run_acceptance: crate::flow_run::FlowRunAcceptance,
     // Retain identities across deletion and history branching for this document session.
     allocated_unit_ids: BTreeSet<UnitId>,
+    allocated_stream_ids: BTreeSet<StreamId>,
     pub document: FlowsheetDocument,
     pub document_path: Option<PathBuf>,
     pub project_presentation: ProjectPresentationState,
@@ -471,7 +473,7 @@ pub struct WorkspaceState {
     pub drafts: InspectorDraftState,
     pub command_history: CommandHistory,
     pub solve_session: SolveSessionState,
-    pub snapshot_history: VecDeque<SolveSnapshot>,
+    pub snapshot_history: VecDeque<crate::FlowResultRecord>,
     pub run_panel: RunPanelState,
 }
 
@@ -482,6 +484,7 @@ impl WorkspaceState {
         let run_panel = RunPanelState::from_runtime(&solve_session, None, None);
 
         Self {
+            flow_plan: crate::flow_plan::FlowPlanState::default(),
             material_balance: crate::material_balance::MaterialBalanceState::default(),
             flow_run_acceptance: crate::flow_run::FlowRunAcceptance::new(),
             engineering: crate::engineering::EngineeringSession::new(
@@ -489,6 +492,7 @@ impl WorkspaceState {
             ),
             equipment_editor: crate::engineering::editor::EquipmentEditorState::default(),
             allocated_unit_ids: document.flowsheet.units.keys().cloned().collect(),
+            allocated_stream_ids: document.flowsheet.streams.keys().cloned().collect(),
             document,
             document_path: None,
             project_presentation: ProjectPresentationState::default(),
@@ -515,6 +519,10 @@ impl WorkspaceState {
         let after = next_flowsheet.clone();
         self.allocated_unit_ids.extend(before.units.keys().cloned());
         self.allocated_unit_ids.extend(after.units.keys().cloned());
+        self.allocated_stream_ids
+            .extend(before.streams.keys().cloned());
+        self.allocated_stream_ids
+            .extend(after.streams.keys().cloned());
         let revision = self.document.replace_flowsheet(next_flowsheet, changed_at);
         self.command_history
             .record(CommandHistoryEntry::with_snapshots(
@@ -597,7 +605,8 @@ impl WorkspaceState {
         }
     }
 
-    pub fn store_snapshot(&mut self, mut snapshot: SolveSnapshot, limit: usize) {
+    pub fn store_snapshot(&mut self, snapshot: impl Into<crate::FlowResultRecord>, limit: usize) {
+        let mut snapshot = snapshot.into();
         if snapshot.origin.is_none() {
             snapshot.origin = Some(crate::result_query::FlowResultOrigin::local(self));
         }
@@ -727,7 +736,7 @@ impl AppState {
         }))
     }
 
-    pub fn store_snapshot(&mut self, snapshot: SolveSnapshot) {
+    pub fn store_snapshot(&mut self, snapshot: impl Into<crate::FlowResultRecord>) {
         let limit = self.preferences.effective_snapshot_history_limit();
         self.workspace.store_snapshot(snapshot, limit);
         self.refresh_run_panel_state();
@@ -776,6 +785,7 @@ impl AppState {
 
     pub fn record_failure(&mut self, revision: u64, status: RunStatus, summary: DiagnosticSummary) {
         self.workspace.flow_failure = Some(crate::result_query::FlowFailureRecord {
+            partitioned: None,
             origin: crate::result_query::FlowResultOrigin::local(&self.workspace),
             diagnostic: summary.clone(),
         });
@@ -792,7 +802,7 @@ impl AppState {
     pub fn refresh_run_panel_state(&mut self) {
         let state = RunPanelState::from_runtime(
             &self.workspace.solve_session,
-            latest_snapshot(&self.workspace),
+            latest_snapshot(&self.workspace).map(|s| &**s),
             self.log_feed.entries.back(),
         );
         self.sync_run_panel_state(state);
@@ -1214,8 +1224,11 @@ impl AppState {
             return None;
         }
         if let Some(mutation) = action.mutation.as_ref()
-            && let Ok((command, next_flowsheet)) =
-                apply_run_panel_recovery_mutation(&self.workspace.document.flowsheet, mutation)
+            && let Ok((command, next_flowsheet)) = apply_run_panel_recovery_mutation(
+                &self.workspace.document.flowsheet,
+                mutation,
+                &self.workspace.allocated_stream_ids,
+            )
         {
             self.commit_document_change(command, next_flowsheet, SystemTime::now());
         }
@@ -1355,7 +1368,7 @@ pub fn latest_snapshot_id(workspace: &WorkspaceState) -> Option<&SolveSnapshotId
     latest_snapshot(workspace).map(|snapshot| &snapshot.id)
 }
 
-pub fn latest_snapshot(workspace: &WorkspaceState) -> Option<&SolveSnapshot> {
+pub fn latest_snapshot(workspace: &WorkspaceState) -> Option<&crate::FlowResultRecord> {
     let latest_snapshot_id = workspace.solve_session.latest_snapshot.as_ref()?;
     let snapshot = workspace
         .snapshot_history
@@ -1365,17 +1378,20 @@ pub fn latest_snapshot(workspace: &WorkspaceState) -> Option<&SolveSnapshot> {
     (snapshot.document_revision == workspace.solve_session.observed_revision).then_some(snapshot)
 }
 
-pub fn stale_snapshot(workspace: &WorkspaceState) -> Option<&SolveSnapshot> {
+pub fn stale_snapshot(workspace: &WorkspaceState) -> Option<&crate::FlowResultRecord> {
     if workspace.solve_session.latest_snapshot.is_some()
         || workspace.solve_session.pending_reason
             != Some(SolvePendingReason::DocumentRevisionAdvanced)
+            && workspace.solve_session.pending_reason != Some(SolvePendingReason::PlanChanged)
     {
         return None;
     }
 
-    workspace
-        .snapshot_history
-        .iter()
-        .rev()
-        .find(|snapshot| snapshot.document_revision != workspace.solve_session.observed_revision)
+    workspace.snapshot_history.iter().rev().find(|snapshot| {
+        snapshot.document_revision != workspace.solve_session.observed_revision
+            || snapshot
+                .origin
+                .as_ref()
+                .is_some_and(|origin| !origin.same_plan(workspace))
+    })
 }

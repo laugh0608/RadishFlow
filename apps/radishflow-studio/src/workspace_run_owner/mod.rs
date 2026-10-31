@@ -72,7 +72,7 @@ pub enum WorkspaceRunCancelReply {
     UnknownRun,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceRunState {
     pub run_id: FlowRunId,
     pub phase: WorkspaceRunPhase,
@@ -94,6 +94,7 @@ pub struct WorkspaceRunSummary {
 }
 
 struct ActiveRun {
+    plan: rf_ui::flow_plan::FlowPlanConfiguration,
     receipt: FlowRunReceipt,
     request: StudioSolveRequest,
     authorization: RunAuthorization,
@@ -208,7 +209,8 @@ impl WorkspaceRunOwner {
             let id = active.receipt.run_id().clone();
             if active.cancel_reason.is_none()
                 && active.request.package_id == package
-                && active.receipt.qualification() == &app.flow_run_qualification()
+                && active.receipt.execution_qualification()
+                    == app.workspace.flow_execution_qualification()
                 && app.workspace.pending_flow_run() == Some(&id)
             {
                 WorkspaceRunSubmission::AlreadyRunning(id)
@@ -230,6 +232,7 @@ impl WorkspaceRunOwner {
         spawner: &impl WorkerSpawner,
     ) -> RfResult<WorkspaceRunSubmission> {
         let prepared = prepare_workspace_solve(app, &request)?;
+        let plan = prepared.plan().clone();
         let (receipt, job) = prepared.into_job();
         let id = receipt.run_id().clone();
         let (channels, control, result) = WorkerChannels::new(id.clone());
@@ -243,6 +246,7 @@ impl WorkspaceRunOwner {
                 let mut completion = CompletedWorkspaceSolve::infrastructure_failure(
                     receipt,
                     request,
+                    plan.clone(),
                     error.clone(),
                 );
                 let disposition = complete_background_workspace_solve(app, &mut completion);
@@ -262,6 +266,7 @@ impl WorkspaceRunOwner {
         self.active = Some(Box::new(ActiveRun {
             receipt,
             request,
+            plan,
             authorization,
             submitted_at: now,
             started_at: None,
@@ -366,7 +371,8 @@ impl WorkspaceRunOwner {
             let reason = match app.as_deref() {
                 None => Some(WorkspaceRunCancelReason::Detached),
                 Some(app)
-                    if active.receipt.qualification() != &app.flow_run_qualification()
+                    if active.receipt.execution_qualification()
+                        != app.workspace.flow_execution_qualification()
                         || app.workspace.pending_flow_run() != Some(active.receipt.run_id()) =>
                 {
                     Some(WorkspaceRunCancelReason::QualificationChanged)
@@ -438,12 +444,14 @@ impl WorkspaceRunOwner {
                 CompletedWorkspaceSolve::infrastructure_failure(
                     active.receipt,
                     active.request,
+                    active.plan,
                     infrastructure_error("worker_panicked", "solve worker panicked"),
                 )
             }
             (Ok(()), None) => CompletedWorkspaceSolve::infrastructure_failure(
                 active.receipt,
                 active.request,
+                active.plan,
                 infrastructure_error(
                     "completion_disconnected",
                     "solve worker exited without a terminal payload",
@@ -463,7 +471,7 @@ impl WorkspaceRunOwner {
             disposition,
             cancellation: active.cancel_reason,
             diagnostic_code: completion
-                .result()
+                .completion_result()
                 .err()
                 .and_then(|error| error.context().diagnostic_code().map(str::to_owned)),
         };

@@ -284,3 +284,6 @@ fn v3_process_later_failure_retains_edits_and_calculation_failure_has_terminal_r
     assert_eq!(r["steps"][1]["terminal"], "failed");
     assert_eq!(r["steps"][1]["result"]["status"], "failed");
 }
+
+#[path = "v4.rs"]
+mod v4;

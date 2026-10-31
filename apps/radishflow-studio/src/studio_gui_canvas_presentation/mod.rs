@@ -544,6 +544,7 @@ pub enum StudioGuiCanvasPlaceUnitKind {
     Cooler,
     Valve,
     FlashDrum,
+    Splitter,
 }
 
 impl StudioGuiCanvasPlaceUnitKind {
@@ -555,6 +556,7 @@ impl StudioGuiCanvasPlaceUnitKind {
             Self::Cooler,
             Self::Valve,
             Self::FlashDrum,
+            Self::Splitter,
         ]
     }
 
@@ -565,6 +567,7 @@ impl StudioGuiCanvasPlaceUnitKind {
             Self::Heater => "canvas.begin_place_unit.heater",
             Self::Cooler => "canvas.begin_place_unit.cooler",
             Self::Valve => "canvas.begin_place_unit.valve",
+            Self::Splitter => "canvas.begin_place_unit.splitter",
             Self::FlashDrum => "canvas.begin_place_unit.flash_drum",
         }
     }
@@ -576,6 +579,7 @@ impl StudioGuiCanvasPlaceUnitKind {
             Self::Heater => "Heater",
             Self::Cooler => "Cooler",
             Self::Valve => "Valve",
+            Self::Splitter => "Splitter",
             Self::FlashDrum => "Flash Drum",
         }
     }
@@ -587,6 +591,7 @@ impl StudioGuiCanvasPlaceUnitKind {
             Self::Heater => "Place Heater",
             Self::Cooler => "Place Cooler",
             Self::Valve => "Place Valve",
+            Self::Splitter => "Place Splitter",
             Self::FlashDrum => "Place Flash Drum",
         }
     }
@@ -598,6 +603,7 @@ impl StudioGuiCanvasPlaceUnitKind {
             Self::Heater => "Start placing a Heater on the canvas",
             Self::Cooler => "Start placing a Cooler on the canvas",
             Self::Valve => "Start placing a Valve on the canvas",
+            Self::Splitter => "Start placing a Splitter on the canvas",
             Self::FlashDrum => "Start placing a Flash Drum on the canvas",
         }
     }
@@ -609,6 +615,7 @@ impl StudioGuiCanvasPlaceUnitKind {
             Self::Heater => "Place Heater",
             Self::Cooler => "Place Cooler",
             Self::Valve => "Place Valve",
+            Self::Splitter => "Place Splitter",
             Self::FlashDrum => "Place Flash Drum",
         }
     }
@@ -620,6 +627,7 @@ impl StudioGuiCanvasPlaceUnitKind {
             Self::Heater => 2,
             Self::Cooler => 3,
             Self::Valve => 4,
+            Self::Splitter => 6,
             Self::FlashDrum => 5,
         }
     }

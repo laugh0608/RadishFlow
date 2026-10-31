@@ -248,7 +248,10 @@ pub(super) fn assert_case_review_summary_covers_flow(
             .rev()
             .find(|step| step.unit_id == unit.unit_id)
             .unwrap_or_else(|| panic!("expected latest step for unit `{}`", unit.unit_id));
-        assert_eq!(unit.step_index, step.index);
+        assert_eq!(
+            unit.location,
+            radishflow_studio::ResultExecutionLocation::Step(step.index)
+        );
         assert_eq!(unit.status_label, step.execution_status_label);
         assert_eq!(unit.summary, step.summary);
         assert_eq!(
@@ -332,9 +335,9 @@ pub(super) fn assert_bottom_result_table_contains_streams_and_steps(
         assert!(
             texts
                 .iter()
-                .any(|text| text.contains(&format!("#{}", unit.step_index))),
+                .any(|text| text.contains(&unit.location.to_string())),
             "expected bottom result table to render review step index #{} for `{unit_id}`, rendered texts: {:?}",
-            unit.step_index,
+            unit.location,
             texts
         );
         for stream_id in unit

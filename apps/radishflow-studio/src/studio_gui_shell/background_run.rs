@@ -246,14 +246,19 @@ impl ReadyAppState {
                 }
             });
             if let Some(owner) = &self.background_runs
-                && let Some(progress) = owner.borrow().flow_progress()
-                && let radishflow_studio::WorkspaceSolveProgress::Solving(progress) = progress.progress {
-                if let Some(unit) = progress.current_unit {
-                    ui.label(if zh { format!("当前单元：{unit}") } else { format!("Current unit: {unit}") });
-                }
-                if let Some(total) = progress.total_units {
-                    ui.label(if zh { format!("已完成 {} / {total} 个单元", progress.completed_units) }
-                        else { format!("{} / {total} units completed", progress.completed_units) });
+                && let Some(progress) = owner.borrow().flow_progress() {
+                match progress.progress {
+                    radishflow_studio::WorkspaceSolveProgress::Solving(progress) => {
+                        if let Some(unit) = progress.current_unit { ui.label(if zh { format!("当前单元：{unit}") } else { format!("Current unit: {unit}") }); }
+                        if let Some(total) = progress.total_units { ui.label(if zh { format!("已完成 {} / {total} 个单元",progress.completed_units) } else { format!("{} / {total} units completed",progress.completed_units) }); }
+                    }
+                    radishflow_studio::WorkspaceSolveProgress::Partitioned(progress) => {
+                        if let Some(block) = progress.block { ui.label(format!("{} {}",if zh {"依赖块"} else {"Block"},block+1)); }
+                        if let Some(unit) = progress.unit { ui.label(format!("{}: {unit}",if zh {"当前单元"} else {"Current unit"})); }
+                        if let Some(evaluation) = progress.evaluation { ui.label(format!("{} #{evaluation}",match progress.phase {Some(rf_solver::partitioned::EvaluationPhase::Verification)=>if zh {"独立复核"} else {"Independent verification"},_=>if zh {"迭代求值"} else {"Iteration evaluation"}})); }
+                        if let Some(sample) = progress.residual { ui.label(format!("{}: {:.3e} mol/s · scaled {:.3e}",if zh {"最近完成残差"} else {"Last completed residual"},sample.max_absolute_mol_s,sample.max_scaled)); }
+                    }
+                    _ => {}
                 }
             }
             if let Ok(elapsed) = activity.submitted_at.elapsed() {

@@ -2,7 +2,7 @@
 
 更新时间：2026-10-31
 
-用途：说明 Studio 旧 v1 / v2 与 AF4c v3 命令、JSON 请求 / 响应和错误语义。
+用途：说明 Studio 旧 v1 / v2、AF4c v3 与 QS1-C v4 命令、JSON 请求 / 响应和错误语义。
 
 读者：使用本地脚本执行参数化工况的用户及适配器开发者。
 
@@ -294,6 +294,54 @@ target/debug/radishflow-studio --headless execute examples/automation/size-adopt
 本批自动验收在 macOS 执行；真实进程测试逐字节比较工程、受控合成本地缓存、已有 sidecar 和整个测试目录清单，覆盖确认重放、来源改变、连续确认、失败终态和旧协议拒绝 v3。Windows / Linux 原生运行、桌面实窗、COM、物理准确性与发布验收不由这些 CLI 测试替代。
 
 
-## QS1-C CLI v4 提案（待确认、不可调用）
+## QS1-C CLI v4（2026-10-31，已实现）
 
-当前 query / execute 仍为 schema_version=3。拟定的 [QS1-C06](../topics/modeling/recycle-project-and-consumers.md#qs1-c06cli-v4-与兼容消费)使用新 schema_version=4 接入计划查询 / 应用、Splitter / 显式连接和分块结果；请求与工程版本分别判定，旧 v3 明确拒绝 v4 工程。仍只操作本次内存副本，不提供工程保存或文件导出。此处仅作方案导航，不改变以上已实现的词汇、请求 / 回应或退出码。
+`query` / `execute` 根据请求 `schema_version` 显式分派 3 / 4；请求版本与工程版本独立。v4 读取已知工程 v1—v4，未知 v4 能力只给安全元数据与只读原因，不进入可编辑工作区。v3 在任何编辑 / 资源读取 / 求解前拒绝工程 v4；inspect / run v1/v2 和现有 FFI 保持原能力。v4 不增加保存、项目 JSON 导出、sidecar / 偏好或缓存写入；路径、expected_project 原始文件 SHA-256、请求局部步骤引用和退出码延续 v3。
+
+新增严格词汇：
+
+| 入口 | v4 增量 |
+| --- | --- |
+| `results` / `actions` 的 `scope: "flow_plan"` | 正式 configuration、plan_revision、计划拓扑 ready / not_ready、simulation_dirty、方法与动作；ready 不替代输入 / 物性 / 授权检查 |
+| `configure_flow_plan` | 必填 expected_plan_revision 与整份 plan，原子应用；允许保存边界尚未就绪但形状合法的配置，不修改物理 revision |
+| `run_flow` | 同时必填 expected_revision 和 expected_plan_revision；只运行已应用计划，实际 Run 仍要求 flow_resources |
+| `create_unit` | unit_kind 新增 splitter；原六类保留 |
+| `write` | Splitter 输入 field 新增 outlet_a_split_fraction，Number / SI / DimensionlessRatio / [0,1]，无缺省比例 |
+| `connect_exact` | 必填 expected_revision、source / sink `{unit,port}` 和 stream 身份；允许显式闭环，不替换已占用端口；旧 connect 仍使用原无环建议规则 |
+
+计划 DTO 独立于文件 DTO。method 是 `radishflow.acyclic-sm/1` 或 `radishflow.partitioned-sm/1`；无环计划只有 method。分块计划示例：
+
+```json
+{
+  "kind": "configure_flow_plan",
+  "expected_plan_revision": 0,
+  "plan": {
+    "method": "radishflow.partitioned-sm/1",
+    "acceptance_contract_version": 1,
+    "temperature_k": 300,
+    "pressure_pa": 650000,
+    "max_iteration_evaluations": 500,
+    "tears": [{
+      "stream": {"id": "s-recycle"},
+      "source": {"unit": {"id": "splitter-1"}, "port": "outlet_a"},
+      "sink": {"unit": {"id": "mixer-2"}, "port": "inlet_b"},
+      "initialization": {"kind": "zero_component_flows"},
+      "residual_scaling": {"kind": "evaluated_fresh_total"}
+    }]
+  }
+}
+```
+
+初值也可为 `{"kind":"component_flows","values":[{"component_id":"methane","value_mol_s":0}]}`；尺度可为 `component_values`，同样使用 values。运行就绪时显式向量必须完整绑定项目组分，初值非负、尺度严格正，重复条目和非有限数拒绝。上述单条仅说明形状，不是二元工程的完整向量。撕裂流股和端点支持 v3 身份引用；plan revision 的前序引用使用 `{"step":"configure","output":"plan"}`，只接受已经成功且确实输出计划修订的步骤。预算为 1—500 整数，独立最终复核另计一次。
+
+入口 response.project 保留实际读取的 project_schema_version / file_sha256；另有 in_memory_required_project_schema_version，表示当前内存状态需要的保存版本，不声称已写盘。结果 `execution_kind=acyclic_sm|partitioned_sm`：Current 分块载荷包含生产者 streams、按执行顺序的 blocks / members、最终真实局部 I/O、assumed / returned、逐组分残差 / 尺度 / 固定容差、独立复核与实际 costs。来源包含实际方法 / 验收契约 / 规范配置指纹和已加载包证据；运行身份继续使用请求内 step 引用。Stale / Missing / Failed 不给正式 fields；失败试算值、残差和调用数只在 diagnostic_evidence。
+
+设备提案沿用相同领域预览与规范摘要编码；v4 使用 `headless-v4-confirm-v1:`，覆盖原文件、前序动作、正式计划及内存能力变化，旧 v3 摘要不能代用。计划改变或改回后，既有结果 / 在途任务 / 已准备输出的资格都需要重验；计划资格不并入 QS0 或普通工程编辑身份。
+
+可直接查询[公开回流工程](../../examples/flowsheets/fixed-tp-recycle-binary-hydrocarbon.rfproj.json)：
+
+```sh
+target/debug/radishflow-studio --headless query examples/automation/query-recycle-v4.request.json
+```
+
+[运行请求模板](../../examples/automation/run-recycle-v4.request.template.json)给出完整期望与显式资源位置；先将 flow_resources 指向已有、未到期的 binary-hydrocarbon-lite-v1 缓存 / 索引，工程内容改变后重新 query 获取入口 SHA。CLI 不创建替代物性包。本机代表得到 48 次迭代 + 1 次复核、102 次局部调用；0.99 达预算失败和 1 无有限稳态的证据不发布为 Current。测试、实窗与未测平台边界见 [QS1-C](../topics/modeling/recycle-project-and-consumers.md)及 [W44](../devlogs/2026-10/2026-W44.md)。

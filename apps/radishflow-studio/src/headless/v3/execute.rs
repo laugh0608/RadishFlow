@@ -13,6 +13,12 @@ use std::path::Path;
 
 pub fn file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     let bytes = super::request_bytes(path)?;
+    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(super::invalid_request)?["schema_version"]
+        == 4
+    {
+        response.schema_version = 4;
+        return super::super::v4::execute_file(path, &bytes, response);
+    }
     let request: ExecuteRequest = serde_json::from_slice(&bytes).map_err(super::invalid_request)?;
     debug_assert_eq!(request.schema_version, 3);
     super::runs::validate_resources(&request)?;
@@ -61,60 +67,39 @@ pub fn file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     let mut refs = Bindings::default();
     let mut executions = Executions::default();
     let mut aliases = Aliases::default();
-    for (index, step) in request.steps.iter().enumerate() {
-        let result = if super::runs::is_run(&step.action) {
-            reject_unneeded_confirmation(step)
-                .and_then(|()| {
-                    super::runs::execute(
-                        &mut app,
-                        step,
-                        &refs,
-                        &mut executions,
-                        request.flow_resources.as_ref(),
-                        path.parent().unwrap_or(Path::new(".")),
-                    )
-                })
-                .map(|r| (r.receipt, r.error))
-        } else {
-            step_action(
-                &mut app,
-                step,
-                &mut refs,
-                &mut aliases,
-                &file_hash,
-                &request.steps[..=index],
-                request.flow_resources.as_ref(),
-            )
-            .map(|r| (r, None))
-        };
-        match result {
-            Ok((mut receipt, error)) => {
-                receipt["id"] = json!(step.id);
-                if let Some(mut error) = error {
-                    error.step_id = Some(step.id.clone());
-                    if error.target.is_none() {
-                        error.target = step.action.target().map(Box::new);
-                    }
-                    receipt["error"] = json!(error);
-                    response.steps.push(receipt);
-                    response.fail(error);
-                    break;
-                }
-                refs.0.entry(step.id.clone()).or_default();
-                response.steps.push(receipt);
+    super::super::engine::steps(
+        &mut app,
+        &request.steps,
+        response,
+        &mut refs,
+        |app, refs, index, step| {
+            if super::runs::is_run(&step.action) {
+                reject_unneeded_confirmation(step)
+                    .and_then(|()| {
+                        super::runs::execute(
+                            app,
+                            step,
+                            refs,
+                            &mut executions,
+                            request.flow_resources.as_ref(),
+                            path.parent().unwrap_or(Path::new(".")),
+                        )
+                    })
+                    .map(|r| (r.receipt, r.error))
+            } else {
+                step_action(
+                    app,
+                    step,
+                    refs,
+                    &mut aliases,
+                    &file_hash,
+                    &request.steps[..=index],
+                    request.flow_resources.as_ref(),
+                )
+                .map(|r| (r, None))
             }
-            Err(mut e) => {
-                e.stage = Stage::Step;
-                if e.target.is_none() {
-                    e.target = step.action.target().map(Box::new);
-                }
-                e.step_id = Some(step.id.clone());
-                response.steps.push(json!({"id":step.id,"outcome":match e.status {Status::ConfirmationRequired=>"confirmation_required",_=>"rejected"},"error":e}));
-                response.fail(e);
-                break;
-            }
-        }
-    }
+        },
+    );
     for q in &request.queries {
         query::push_reply(
             q,
@@ -124,7 +109,7 @@ pub fn file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     }
     Ok(())
 }
-fn step_action(
+pub(in crate::headless) fn step_action(
     app: &mut rf_ui::AppState,
     step: &Step,
     refs: &mut Bindings,
@@ -132,6 +117,20 @@ fn step_action(
     file_hash: &str,
     prefix: &[Step],
     resources: Option<&FlowResources>,
+) -> Result<Value, Failure> {
+    step_action_review(app, step, refs, aliases, file_hash, prefix, resources, None)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(in crate::headless) fn step_action_review(
+    app: &mut rf_ui::AppState,
+    step: &Step,
+    refs: &mut Bindings,
+    aliases: &mut Aliases,
+    file_hash: &str,
+    prefix: &[Step],
+    resources: Option<&FlowResources>,
+    review_v4: Option<&Value>,
 ) -> Result<Value, Failure> {
     // The entire step is isolated, including the domain's confirmation state.
     let mut staged = app.clone();
@@ -187,7 +186,11 @@ fn step_action(
                 .expect("domain validated current candidate");
             preview["candidate"] = aliases.candidate(candidate);
         }
-        let digest = super::confirmation::digest(file_hash, prefix, resources, &preview)?;
+        let digest = if let Some(review) = review_v4 {
+            super::confirmation::digest_v4(file_hash, review, resources, &preview)?
+        } else {
+            super::confirmation::digest(file_hash, prefix, resources, &preview)?
+        };
         let matches = step
             .confirmation
             .as_ref()

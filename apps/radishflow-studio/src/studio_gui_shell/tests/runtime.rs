@@ -493,9 +493,9 @@ fn assert_rendered_unit_summary_surface(
     assert!(
         texts
             .iter()
-            .any(|text| text.contains(&format!("#{}", unit.step_index))),
+            .any(|text| text.contains(&unit.location.to_string())),
         "expected {surface} to render unit step index `#{}`, rendered texts: {:?}",
-        unit.step_index,
+        unit.location,
         texts
     );
     assert!(

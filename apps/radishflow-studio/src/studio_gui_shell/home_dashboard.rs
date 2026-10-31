@@ -963,30 +963,38 @@ fn parent_display(project_path: &Path) -> String {
 fn recent_case_tile_from_path(
     project_path: &Path,
 ) -> radishflow_studio::StudioGuiWindowHomeCaseTileModel {
-    let project_file = project_path
+    let opened = project_path
         .exists()
-        .then(|| rf_store::read_project_file(project_path).ok())
+        .then(|| radishflow_studio::read_studio_project(project_path).ok())
         .flatten();
-    let title = project_file
-        .as_ref()
-        .and_then(|project| non_empty_trimmed(&project.document.metadata.title))
+    let document = match &opened {
+        Some(radishflow_studio::StudioProjectOpen::Editable(app)) => Some(&app.workspace.document),
+        _ => None,
+    };
+    let metadata_title = match &opened {
+        Some(radishflow_studio::StudioProjectOpen::Editable(app)) => {
+            Some(app.workspace.document.metadata.title.as_str())
+        }
+        Some(radishflow_studio::StudioProjectOpen::ReadOnly(project)) => {
+            Some(project.metadata().title.as_str())
+        }
+        None => None,
+    };
+    let title = metadata_title
+        .and_then(non_empty_trimmed)
         .unwrap_or_else(|| recent_case_title_from_path(project_path));
-    let detail = project_file
-        .as_ref()
-        .map(|project| project.document.flowsheet.name.clone())
+    let detail = document
+        .map(|d| d.flowsheet.name.clone())
         .unwrap_or_else(|| parent_display(project_path));
-    let package_summary = project_file
-        .as_ref()
-        .and_then(|project| project.document.flowsheet.property_package_id())
+    let package_summary = document
+        .and_then(|d| d.flowsheet.property_package_id())
         .map(property_package_summary_from_id)
         .unwrap_or_else(|| "Unselected".to_string());
-    let component_summary = project_file
-        .as_ref()
-        .map(|project| component_summary_from_flowsheet(&project.document.flowsheet))
+    let component_summary = document
+        .map(|d| component_summary_from_flowsheet(&d.flowsheet))
         .unwrap_or_else(|| "Components unavailable".to_string());
-    let thumbnail = project_file
-        .as_ref()
-        .map(|project| thumbnail_from_flowsheet(&project.document.flowsheet))
+    let thumbnail = document
+        .map(|d| thumbnail_from_flowsheet(&d.flowsheet))
         .unwrap_or_else(|| radishflow_studio::StudioGuiWindowThumbnailFlowModel {
             nodes: Vec::new(),
             edges: Vec::new(),

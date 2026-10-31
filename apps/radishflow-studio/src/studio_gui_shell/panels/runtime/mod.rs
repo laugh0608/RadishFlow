@@ -225,7 +225,7 @@ impl ReadyAppState {
                 self.locale.runtime_label(unit.status_label).as_ref(),
                 run_status_color(unit.status_label),
             );
-            ui.small(format!("#{}", unit.step_index));
+            ui.small(unit.location.to_string());
         });
         render_wrapped_small(ui, compact_unit_result_summary(&unit.summary));
         self.render_module_results_stream_chips(
@@ -717,11 +717,7 @@ impl ReadyAppState {
                         self.locale.runtime_label(snapshot.status_label).as_ref(),
                         run_status_color(snapshot.status_label),
                     );
-                    ui.small(self.locale.solve_snapshot_counts(
-                        snapshot.stream_count,
-                        snapshot.step_count,
-                        snapshot.diagnostic_count,
-                    ));
+                    ui.small(self.locale.flow_snapshot_counts(snapshot));
                 });
                 ui.small(
                     self.locale

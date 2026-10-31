@@ -643,7 +643,24 @@ impl ReadyAppState {
                             .display_units(),
                     ));
                     ui.separator();
-                    ui.small(self.locale.text(ShellText::SolverSequentialModular));
+                    ui.small(
+                        if matches!(
+                            self.platform_host
+                                .modeling_inputs()
+                                .workspace
+                                .flow_plan
+                                .current(),
+                            rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(_)
+                        ) {
+                            if self.locale == StudioShellLocale::ZhCn {
+                                "求解器: 分块回流（固定温压）"
+                            } else {
+                                "Solver: Partitioned recycle (fixed T/P)"
+                            }
+                        } else {
+                            self.locale.text(ShellText::SolverSequentialModular)
+                        },
+                    );
                     ui.separator();
                     ui.small(self.locale.text(ShellText::FlowsheetMode));
                     if let Some(selection) = window.canvas.widget.view().current_selection.as_ref()
@@ -1525,11 +1542,7 @@ impl ReadyAppState {
             if snapshot.diagnostics.is_empty() {
                 ui.small(self.locale.text(ShellText::NoDiagnostics));
             } else {
-                ui.small(self.locale.solve_snapshot_counts(
-                    snapshot.stream_count,
-                    snapshot.step_count,
-                    snapshot.diagnostic_count,
-                ));
+                ui.small(self.locale.flow_snapshot_counts(snapshot));
             }
             return;
         }
@@ -1583,11 +1596,7 @@ impl ReadyAppState {
                 self.locale
                     .snapshot_identity(&snapshot.snapshot_id, snapshot.sequence),
             );
-            ui.small(self.locale.solve_snapshot_counts(
-                snapshot.stream_count,
-                snapshot.step_count,
-                snapshot.diagnostic_count,
-            ));
+            ui.small(self.locale.flow_snapshot_counts(snapshot));
             ui.add_space(6.0);
         }
         egui::Grid::new("bottom-convergence-summary")
@@ -1598,7 +1607,7 @@ impl ReadyAppState {
                 for metric in &window.status_summary.metrics {
                     if !matches!(
                         metric.label,
-                        "Run" | "Convergence" | "Steps" | "Diagnostics"
+                        "Run" | "Convergence" | "Steps" | "Blocks" | "Diagnostics"
                     ) {
                         continue;
                     }
@@ -1710,7 +1719,18 @@ impl ReadyAppState {
             if self.screen == StudioShellScreen::Run {
                 egui::ScrollArea::vertical()
                     .id_salt("material-balance-page")
-                    .show(ui, |ui| self.render_material_balance(ui));
+                    .show(ui, |ui| {
+                        self.render_flow_plan(ui);
+                        ui.separator();
+                        ui.collapsing(
+                            if self.locale == StudioShellLocale::ZhCn {
+                                "物料衡算（独立任务）"
+                            } else {
+                                "Material balance (independent task)"
+                            },
+                            |ui| self.render_material_balance(ui),
+                        );
+                    });
                 return;
             }
             self.render_region(

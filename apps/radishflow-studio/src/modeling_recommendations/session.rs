@@ -7,6 +7,7 @@ use rf_ui::{AppState, DateTimeUtc, FlowsheetDocument};
 /// problems and recommendations, without a second independent problem projection.
 #[derive(Debug)]
 pub struct ModelingRecommendationSession {
+    plan_generation: Option<rf_ui::flow_plan::FlowPlanGeneration>,
     checks: ModelingCheckSession,
     identity: SpecificationReportIdentity,
     owner: Arc<()>,
@@ -24,6 +25,7 @@ impl ModelingRecommendationSession {
 
     pub fn from_checks(checks: ModelingCheckSession) -> Self {
         Self {
+            plan_generation: None,
             identity: checks.identity().clone(),
             checks,
             owner: Arc::new(()),
@@ -54,6 +56,14 @@ impl ModelingRecommendationSession {
     }
 
     fn synchronize_identity(&mut self) {
+        let generation = self.checks.plan_generation();
+        if self.plan_generation.as_ref() != generation {
+            self.plan_generation = generation.cloned();
+            self.owner = Arc::new(());
+            self.entries.clear();
+            self.previews.clear();
+            self.ignored.clear();
+        }
         let identity = self.checks.identity();
         if &self.identity != identity {
             if self.identity.document_id != identity.document_id
@@ -71,7 +81,7 @@ impl ModelingRecommendationSession {
 
     /// Refreshes ephemeral state only; the application is immutable throughout.
     pub fn refresh(&mut self, app: &AppState) {
-        self.checks.refresh(&app.workspace.document);
+        self.checks.refresh_workspace(&app.workspace);
         self.synchronize_identity();
         self.entries = self
             .checks
@@ -96,7 +106,7 @@ impl ModelingRecommendationSession {
     }
 
     pub fn recheck(&mut self, app: &AppState) {
-        self.checks.recheck(&app.workspace.document);
+        self.checks.recheck_workspace(&app.workspace);
         self.refresh(app);
     }
 
@@ -185,8 +195,8 @@ impl ModelingRecommendationSession {
         preview: &RecommendationPreview,
         changed_at: DateTimeUtc,
     ) -> Result<RecommendationReceipt, RecommendationError> {
-        self.accept_with_recheck(app, preview, changed_at, |checks, document| {
-            checks.recheck(document)
+        self.accept_with_recheck(app, preview, changed_at, |checks, workspace| {
+            checks.recheck_workspace(workspace)
         })
     }
 
@@ -236,7 +246,7 @@ impl ModelingRecommendationSession {
         app: &mut AppState,
         preview: &RecommendationPreview,
         changed_at: DateTimeUtc,
-        recheck: impl FnOnce(&mut ModelingCheckSession, &FlowsheetDocument),
+        recheck: impl FnOnce(&mut ModelingCheckSession, &rf_ui::WorkspaceState),
     ) -> Result<RecommendationReceipt, RecommendationError> {
         self.validate_preview(app, preview)?;
         let entry = self.current(&preview.recommendation.key)?;
@@ -276,7 +286,7 @@ impl ModelingRecommendationSession {
         // From here the edit has committed. Recheck failure is an outcome, never an
         // action error: returning an error would invite a duplicate transaction.
         self.previews.clear();
-        recheck(&mut self.checks, &app.workspace.document);
+        recheck(&mut self.checks, &app.workspace);
         self.refresh(app);
         let receipt = RecommendationReceipt {
             key: preview.recommendation.key.clone(),

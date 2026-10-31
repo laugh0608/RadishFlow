@@ -5,6 +5,7 @@ mod equipment_wire;
 mod file_io;
 mod presentation_wire;
 mod rating_wire;
+pub(crate) mod shared;
 mod task_wire;
 pub use file_io::{read, write, write_upgraded};
 

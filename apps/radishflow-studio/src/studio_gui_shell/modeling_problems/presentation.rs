@@ -334,6 +334,9 @@ pub(super) fn draft_target(key: &str) -> Option<SpecificationTarget> {
             rf_ui::UnitInspectorDraftField::Name => VariableField::Name,
             rf_ui::UnitInspectorDraftField::OutletTemperatureK => VariableField::OutletTemperature,
             rf_ui::UnitInspectorDraftField::OutletPressurePa => VariableField::OutletPressure,
+            rf_ui::UnitInspectorDraftField::OutletASplitFraction => {
+                VariableField::OutletASplitFraction
+            }
         };
         return Some(SpecificationTarget::Field {
             object: ObjectId::Unit(unit),

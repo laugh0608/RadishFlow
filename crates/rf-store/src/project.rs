@@ -66,10 +66,14 @@ pub struct StoredProjectDocument {
 }
 
 impl StoredProjectDocument {
-    pub fn validate(&self) -> RfResult<()> {
+    pub(crate) fn validate_common(&self) -> RfResult<()> {
         self.metadata.validate()?;
-        validate_legacy_flow_capabilities(&self.flowsheet)?;
         validate_flowsheet_thermo_config(&self.flowsheet)
+    }
+
+    pub fn validate(&self) -> RfResult<()> {
+        self.validate_common()?;
+        validate_legacy_flow_capabilities(&self.flowsheet)
     }
 }
 

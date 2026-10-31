@@ -448,8 +448,13 @@ impl StudioGuiWindowModuleResultsModel {
             state: StudioGuiWindowModuleResultsState::Current,
             state_label: module_results_state_label(StudioGuiWindowModuleResultsState::Current),
             detail: format!(
-                "Snapshot {} step #{} for {}.",
-                snapshot.snapshot_id, selected_unit_result.step_index, selected_unit.target_id
+                "Snapshot {} {} for {}.",
+                snapshot.snapshot_id,
+                match selected_unit_result.location {
+                    super::ResultExecutionLocation::Step(i) => format!("step #{i}"),
+                    other => other.to_string(),
+                },
+                selected_unit.target_id
             ),
             selected_unit: Some(selected_unit),
             snapshot_id: Some(snapshot.snapshot_id.clone()),
@@ -490,10 +495,20 @@ impl StudioGuiWindowStatusSummaryModel {
                     .map(|_| "Stale".to_string())
             })
             .unwrap_or_else(|| "N/A".to_string());
+        let partitioned = runtime
+            .latest_solve_snapshot
+            .as_ref()
+            .and_then(|s| s.partitioned.as_ref());
         let step_value = runtime
             .latest_solve_snapshot
             .as_ref()
-            .map(|snapshot| snapshot.step_count.to_string())
+            .map(|snapshot| {
+                snapshot
+                    .partitioned
+                    .as_ref()
+                    .map_or(snapshot.step_count, |p| p.result.blocks.len())
+                    .to_string()
+            })
             .unwrap_or_else(|| "N/A".to_string());
         let (unit_value, unit_status_label) =
             if let Some(snapshot) = runtime.latest_solve_snapshot.as_ref() {
@@ -552,11 +567,24 @@ impl StudioGuiWindowStatusSummaryModel {
                         .to_string(),
                 },
                 StudioGuiWindowStatusSummaryMetricModel {
-                    label: "Steps",
+                    label: if partitioned.is_some() {
+                        "Blocks"
+                    } else {
+                        "Steps"
+                    },
                     value: step_value,
-                    status_label: "Sequential steps".to_string(),
-                    detail: "Sequential modular solve steps; no fabricated iteration count."
-                        .to_string(),
+                    status_label: if partitioned.is_some() {
+                        "Dependency blocks"
+                    } else {
+                        "Sequential steps"
+                    }
+                    .to_string(),
+                    detail: if partitioned.is_some() {
+                        "Completed dependency blocks; recycle evaluations are reported separately."
+                    } else {
+                        "Sequential modular solve steps; no fabricated iteration count."
+                    }
+                    .to_string(),
                 },
                 StudioGuiWindowStatusSummaryMetricModel {
                     label: "Units",

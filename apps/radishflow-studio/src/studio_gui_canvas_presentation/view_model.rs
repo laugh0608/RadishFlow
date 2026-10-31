@@ -1211,6 +1211,7 @@ fn canvas_view_mode_label(view_mode: rf_ui::CanvasViewMode) -> &'static str {
 
 fn solve_pending_reason_label(reason: rf_ui::SolvePendingReason) -> &'static str {
     match reason {
+        rf_ui::SolvePendingReason::PlanChanged => "PlanChanged",
         rf_ui::SolvePendingReason::DocumentRevisionAdvanced => "DocumentRevisionAdvanced",
         rf_ui::SolvePendingReason::ModeActivated => "ModeActivated",
         rf_ui::SolvePendingReason::ManualRunRequested => "ManualRunRequested",

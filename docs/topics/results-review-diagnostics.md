@@ -300,6 +300,6 @@ CLI v1 / v2 / v3、FFI 与工程 schema 保持现状；AF5b 不增加 CLI 保存
 不改数值方法、物理准确性结论、C1 采纳映射、C3 流程关联、持久化运行历史、工程格式、COM / 录制、全局诊断工作台或原生文件面板架构。AF1 继续独立定因，本方案不把输出资格整理当作其修复证据。
 
 
-## QS1-C 块级结果与计划资格方案（2026-10-31，待确认）
+## QS1-C 块级结果与计划资格（2026-10-31，已实现）
 
-[QS1-C03](modeling/recycle-project-and-consumers.md#qs1-c03执行分派结果与资格)建议独立块级载荷、实际算法 / 包来源和输入＋计划双资格。正式计划变化既撤销在途接收，也使已接受结果 Stale；改回旧值不复活结果，不改变 FlowEditContext 或 QS0 的输入身份。变量、GUI / CLI 和写前输出守卫共用资格，assumed / returned 保持真实差异，部分块仅作失败证据。当前 AF5 已实现接口仍只支持旧流程快照；新增契约待确认，不将 A/B 核心结果视作正式消费者已接通。
+[QS1-C03](modeling/recycle-project-and-consumers.md#qs1-c03执行分派结果与资格)已接通独立块级载荷、实际算法 / 包来源和输入＋计划双资格。正式计划变化既撤销在途接收，也使已接受结果 Stale；改回旧值不复活结果，不改变 FlowEditContext 或 QS0 的输入身份。变量、GUI / CLI 和写前输出守卫共用资格，assumed / returned 保持真实差异，部分块仅作失败证据。FlowResultRecord 显式区分旧 steps 和分块；Current 设备详情使用真实最终 I/O，轻量输出带块、核验 / 调用证据及实际方法 / 配置指纹。正式请求均捕获计划期望，旧构造入口仍为 LegacyAcyclic；非 Current 仅提供状态与诊断，不复用旧数值。验证和未测平台见 QS1-C / W44。

@@ -12,6 +12,7 @@ pub enum VariableField {
     Name,
     OutletTemperature,
     OutletPressure,
+    OutletASplitFraction,
     Temperature,
     Pressure,
     MolarFlow,
@@ -162,6 +163,10 @@ impl VariableBrowser<'_> {
                 for field in unit_inspector_draft_fields(unit) {
                     let (metric, value) = match field {
                         UnitInspectorDraftField::Name => continue,
+                        UnitInspectorDraftField::OutletASplitFraction => (
+                            VariableField::OutletASplitFraction,
+                            unit.parameters.outlet_a_split_fraction,
+                        ),
                         UnitInspectorDraftField::OutletTemperatureK => (
                             VariableField::OutletTemperature,
                             unit.parameters.outlet_temperature_k,
@@ -381,6 +386,7 @@ impl VariableField {
     pub const fn quantity(&self) -> Option<QuantityKind> {
         match self {
             Self::Name => None,
+            Self::OutletASplitFraction => Some(QuantityKind::DimensionlessRatio),
             Self::OutletTemperature | Self::Temperature => Some(QuantityKind::AbsoluteTemperature),
             Self::OutletPressure | Self::Pressure => Some(QuantityKind::AbsolutePressure),
             Self::MolarFlow => Some(QuantityKind::MolarFlow),
@@ -405,6 +411,9 @@ impl VariableField {
         });
         match self {
             Self::Name => ("名称 / Name".into(), None),
+            Self::OutletASplitFraction => {
+                ("出口 A 分流比 / Outlet A split fraction".into(), fraction)
+            }
             Self::OutletTemperature => ("出口温度 / Outlet temperature".into(), positive),
             Self::OutletPressure => ("出口压力 / Outlet pressure".into(), positive),
             Self::Temperature => ("温度 / Temperature".into(), positive),

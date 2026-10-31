@@ -136,13 +136,13 @@ impl ReadyAppState {
                 self.locale.runtime_label(unit.status_label).as_ref(),
                 run_status_color(unit.status_label),
             );
-            ui.small(format!("#{}", unit.step_index));
+            ui.small(unit.location.to_string());
         });
         render_wrapped_label(ui, &unit.summary);
         if !unit.consumed_stream_results.is_empty() {
             self.render_stream_result_reference_grid(
                 ui,
-                format!("unit-consumed-streams:{}:{}", unit.unit_id, unit.step_index),
+                format!("unit-consumed-streams:{}:{}", unit.unit_id, unit.location),
                 self.locale.text(ShellText::InspectorConsumedStreams),
                 &unit.consumed_stream_results,
             );
@@ -150,7 +150,7 @@ impl ReadyAppState {
         if !unit.produced_stream_results.is_empty() {
             self.render_stream_result_reference_grid(
                 ui,
-                format!("unit-produced-streams:{}:{}", unit.unit_id, unit.step_index),
+                format!("unit-produced-streams:{}:{}", unit.unit_id, unit.location),
                 self.locale.text(ShellText::InspectorProducedStreams),
                 &unit.produced_stream_results,
             );

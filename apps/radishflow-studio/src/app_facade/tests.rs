@@ -192,11 +192,14 @@ fn facade_runs_workspace_command_from_auth_cache() {
     );
     assert_eq!(
         dispatch.outcome,
-        StudioWorkspaceRunOutcome::Started(crate::StudioSolveRequest::new(
-            OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
-            "doc-app-facade-rev-0-seq-1",
-            1,
-        ))
+        StudioWorkspaceRunOutcome::Started(
+            crate::StudioSolveRequest::new(
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+                "doc-app-facade-rev-0-seq-1",
+                1,
+            )
+            .with_selected_plan(&app_state.workspace)
+        )
     );
     assert_eq!(
         dispatch.latest_snapshot_id.as_deref(),
@@ -392,11 +395,14 @@ fn facade_resumes_workspace_from_hold_and_runs_automatic_dispatch() {
     };
     assert_eq!(
         dispatch.outcome,
-        StudioWorkspaceRunOutcome::Started(crate::StudioSolveRequest::new(
-            OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
-            "doc-app-resume-rev-0-seq-1",
-            1,
-        ))
+        StudioWorkspaceRunOutcome::Started(
+            crate::StudioSolveRequest::new(
+                OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+                "doc-app-resume-rev-0-seq-1",
+                1,
+            )
+            .with_selected_plan(&app_state.workspace)
+        )
     );
     assert_eq!(dispatch.simulation_mode, SimulationMode::Active);
     assert_eq!(dispatch.pending_reason, None);

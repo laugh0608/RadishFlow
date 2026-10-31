@@ -1,5 +1,5 @@
 //! Owned, read-only projections for consumers that outlive one workspace borrow.
-use rf_ui::{DiagnosticSummary, SolveSnapshot, WorkspaceState, result_query::*};
+use rf_ui::{DiagnosticSummary, FlowSnapshotHeader, WorkspaceState, result_query::*};
 use std::sync::Arc;
 
 /// Session-local evidence. Never serialize this guard or substitute document IDs
@@ -21,7 +21,7 @@ enum FlowResultIdentity {
     },
 }
 impl FlowResultGuard {
-    pub fn from_snapshot(snapshot: &SolveSnapshot) -> Option<Self> {
+    pub fn from_snapshot(snapshot: &FlowSnapshotHeader) -> Option<Self> {
         snapshot.origin.as_ref().map(|origin| {
             Self(Arc::new(FlowResultIdentity::Current {
                 origin: origin.clone(),
@@ -121,6 +121,19 @@ pub fn flow_origin_lines(origin: Option<&FlowResultOrigin>) -> Vec<(String, Stri
             execution.solver_implementation.into(),
         ),
     ]);
+    if let Some(plan) = &execution.plan {
+        rows.extend([
+            ("solver_method".into(), plan.method.into()),
+            (
+                "acceptance_contract_version".into(),
+                plan.acceptance_contract_version.to_string(),
+            ),
+            (
+                "plan_configuration_sha256".into(),
+                plan.configuration_sha256.clone(),
+            ),
+        ]);
+    }
     let Some(package) = &execution.package else {
         rows.push(("package".into(), "not loaded during preparation".into()));
         return rows;

@@ -370,3 +370,6 @@ fn unsupported_record_deletion_is_an_execution_gate_not_a_parse_error() {
     assert_eq!(r["error"]["code"], "unsupported_capability");
     assert_eq!(r["error"]["step_id"], "delete");
 }
+
+#[path = "v4_tests.rs"]
+mod v4;

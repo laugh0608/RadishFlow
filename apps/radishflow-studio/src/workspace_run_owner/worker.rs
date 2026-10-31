@@ -24,7 +24,7 @@ use crate::{
 pub(super) type PackageLoader =
     Box<dyn FnOnce(&str) -> Result<LocalThermoContext, WorkspacePackageLoadError> + Send>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceRunProgress {
     pub run_id: FlowRunId,
     pub sequence: u64,
@@ -125,6 +125,14 @@ impl SolverControl for WorkerControl {
     }
 }
 
+impl rf_solver::partitioned::PartitionedSolverControl for WorkerControl {
+    fn checkpoint(
+        &mut self,
+        progress: rf_solver::partitioned::PartitionedProgress,
+    ) -> ControlFlow<()> {
+        self.emit(WorkspaceSolveProgress::Partitioned(progress))
+    }
+}
 impl WorkspaceSolveControl for WorkerControl {
     fn before_load(&mut self) -> ControlFlow<()> {
         self.emit(WorkspaceSolveProgress::Preparing)

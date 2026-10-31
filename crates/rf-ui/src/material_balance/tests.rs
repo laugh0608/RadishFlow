@@ -294,3 +294,34 @@ fn calculation_table_uses_project_units_and_output_guard_covers_execution_and_di
     calculate(&mut w);
     assert!(converted.tsv(&w).is_none());
 }
+
+#[test]
+fn flow_plan_edits_do_not_cancel_or_stale_the_independent_material_job() {
+    use crate::flow_plan::*;
+    let mut w = fixture();
+    let (input, mut receipt) = w.prepare_material_balance().unwrap();
+    let plan =
+        FlowPlanConfiguration::Partitioned(rf_solver::partitioned::RecycleSolveOptions::new(
+            rf_solver::partitioned::FixedRecycleBoundary {
+                temperature_k: 300.0,
+                pressure_pa: 100000.0,
+            },
+            vec![],
+        ));
+    w.apply_flow_plan(
+        &FlowPlanEditContext::capture(&w),
+        FlowPlanCommand::Apply(plan),
+    )
+    .unwrap();
+    assert_eq!(
+        w.complete_material_balance(&mut receipt, input.execute(&mut Continue)),
+        MaterialBalanceDisposition::Applied
+    );
+    let guard = MaterialBalanceResultGuard::capture(&w).unwrap();
+    w.apply_flow_plan(
+        &FlowPlanEditContext::capture(&w),
+        FlowPlanCommand::Apply(FlowPlanConfiguration::Acyclic),
+    )
+    .unwrap();
+    assert!(guard.read(&w).is_some());
+}

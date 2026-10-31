@@ -529,6 +529,19 @@ pub(crate) struct BackgroundRunSession {
 
 #[derive(Debug, Clone)]
 pub enum StudioBackgroundRunAction {
+    ConfigureFlowPlan {
+        expected: rf_ui::flow_plan::FlowPlanEditContext,
+        access: crate::flow_actions::FlowEditAccess,
+        command: rf_ui::flow_plan::FlowPlanCommand,
+    },
+    FlowPlanDraft {
+        access: crate::flow_actions::FlowEditAccess,
+        draft: Option<rf_ui::flow_plan::FlowPlanDraft>,
+    },
+    EditFlow {
+        access: crate::flow_actions::FlowEditAccess,
+        request: crate::flow_actions::FlowActionRequest,
+    },
     ConfigureMaterial {
         expected: crate::flow_actions::FlowEditContext,
         access: crate::run_actions::StudioRunAccess,
