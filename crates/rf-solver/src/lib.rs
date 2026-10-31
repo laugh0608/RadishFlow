@@ -1,3 +1,4 @@
+pub mod component_balance;
 mod control;
 pub use control::{ControlledSolveOutcome, SolveProgress, SolveStage, SolverControl};
 

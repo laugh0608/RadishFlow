@@ -1,4 +1,5 @@
 pub mod catalog;
+pub mod component_balance;
 pub mod separator_adoption;
 mod separator_evidence;
 mod separator_hydraulics;
@@ -7,6 +8,8 @@ pub mod separator_sizing;
 pub mod specifications;
 
 use std::collections::{BTreeMap, BTreeSet};
+
+use component_balance::{mixed_composition, normalized_composition, validated_total_flow};
 
 use rf_flash::{TpFlashInput, TpFlashSolver, estimate_bubble_dew_window};
 use rf_model::{Composition, MaterialStreamState, PhaseState, UnitNode, UnitPort};
@@ -887,75 +890,6 @@ fn validate_mixer_outlet_pressure(pressure_pa: f64, inlet_pressure_limit_pa: f64
         )));
     }
     Ok(())
-}
-
-fn validated_total_flow(stream: &MaterialStreamState) -> RfResult<f64> {
-    if !stream.total_molar_flow_mol_s.is_finite() || stream.total_molar_flow_mol_s < 0.0 {
-        return Err(RfError::invalid_input(format!(
-            "stream `{}` total molar flow must be a finite non-negative value",
-            stream.id
-        )));
-    }
-
-    Ok(stream.total_molar_flow_mol_s)
-}
-
-fn normalized_composition(stream: &MaterialStreamState) -> RfResult<Composition> {
-    use specifications::{CompositionCheck, CompositionPolicy, check_composition};
-    let check = check_composition(
-        &stream.overall_mole_fractions,
-        CompositionPolicy::NonnegativeWeights,
-    );
-    let message = match check {
-        CompositionCheck::Empty => Some("must define at least one overall mole fraction entry"),
-        CompositionCheck::InvalidFractions(_) => {
-            Some("overall mole fractions must be finite non-negative values")
-        }
-        CompositionCheck::InvalidTotal { .. } | CompositionCheck::Unnormalized { .. } => {
-            Some("overall mole fractions must sum to a positive finite value")
-        }
-        CompositionCheck::Valid { .. } => None,
-    };
-    if let Some(message) = message {
-        return Err(RfError::invalid_input(format!(
-            "stream `{}` {message}",
-            stream.id
-        )));
-    }
-    let CompositionCheck::Valid { sum } = check else {
-        unreachable!("invalid composition returned its error");
-    };
-    Ok(stream
-        .overall_mole_fractions
-        .iter()
-        .map(|(component_id, value)| (component_id.clone(), value / sum))
-        .collect())
-}
-
-fn mixed_composition(streams: [&MaterialStreamState; 2]) -> RfResult<Composition> {
-    let mut component_molar_flows = Composition::new();
-    let mut total_flow = 0.0;
-
-    for stream in streams {
-        let flow = validated_total_flow(stream)?;
-        let normalized = normalized_composition(stream)?;
-        total_flow += flow;
-
-        for (component_id, fraction) in normalized {
-            *component_molar_flows.entry(component_id).or_insert(0.0) += flow * fraction;
-        }
-    }
-
-    if !total_flow.is_finite() || total_flow <= 0.0 {
-        return Err(RfError::invalid_input(
-            "mixed stream total molar flow must be a positive finite value",
-        ));
-    }
-
-    Ok(component_molar_flows
-        .into_iter()
-        .map(|(component_id, molar_flow)| (component_id, molar_flow / total_flow))
-        .collect())
 }
 
 fn weighted_average_by_flow(items: [(f64, f64); 2], label: &str) -> RfResult<f64> {

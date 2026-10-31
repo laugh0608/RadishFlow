@@ -77,7 +77,7 @@ fn build_stream(
     )
 }
 
-fn build_provider() -> PlaceholderThermoProvider {
+pub(super) fn build_provider() -> PlaceholderThermoProvider {
     let pressure_pa = 100_000.0_f64;
     let mut first = ThermoComponent::new(ComponentId::new("component-a"), "Component A");
     first.antoine = Some(build_test_antoine_coefficients(2.0, pressure_pa));

@@ -42,6 +42,18 @@ pub struct BuiltinModelDefinition {
 }
 
 impl BuiltinModelDefinition {
+    /// A material-only capability, independent of the local run service contract.
+    pub const fn component_balance_capability(
+        &self,
+    ) -> Option<crate::component_balance::ComponentBalanceCapability> {
+        use crate::component_balance::ComponentBalanceCapability::*;
+        match self.spec.kind {
+            BuiltinUnitKind::Feed => Some(FixedFeedBoundary),
+            BuiltinUnitKind::Mixer => Some(TwoInletMixing),
+            _ => None,
+        }
+    }
+
     const fn new(
         spec: &'static UnitOperationSpec,
         thermo: ServiceRequirement,

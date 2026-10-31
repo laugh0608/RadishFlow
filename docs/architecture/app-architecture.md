@@ -14,7 +14,7 @@
 
 长期边界见 [模拟平台规划](simulation-platform.md)：`SimulationMode::Active / Hold` 表示运行触发策略，工程模型、运行任务与数值状态分离。COM / 脚本及录制共用描述和应用命令；`CommandHistory` 只负责文档 Undo / Redo，运行、保存、导出与动态检查点另有契约。CLI 已支持参数化运行与有序建模，见 [Studio B3-5](../topics/studio-main-workflow.md#b3-5无界面创建连接与步骤身份引用)。
 
-AF6 的[代码链路与场景审查](../topics/modeling/solver-strategies-and-assembly.md#af6-扩展边界复核2026-10-31)已形成待审方案：工程与索引在提交时捕获，数值上下文装载后固定，经 Ready 重验才执行；数学试算工作区归单次执行，UI / store 只消费正式输入与有资格的结果。现有单元步骤、快照序号和墙钟不承载积分时间。有限方程能力、任务选项及时间结果均须另行审定，当前接口与格式未改变。
+AF6 的[代码链路与场景审查](../topics/modeling/solver-strategies-and-assembly.md#af6-扩展边界复核2026-10-31)已形成待审方案：工程与索引在提交时捕获，数值上下文装载后固定，经 Ready 重验才执行；数学试算工作区归单次执行，UI / store 只消费正式输入与有资格的结果。现有单元步骤、快照序号和墙钟不承载积分时间。有限组分衡算已按批准范围接入 unitops / solver 核心；应用任务选项、结果与格式保持，后续接入另审。
 
 ## 冻结决策
 

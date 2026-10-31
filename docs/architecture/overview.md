@@ -141,7 +141,7 @@ Studio 已形成多层 host / driver / runtime / snapshot / window model，以�
 
 ## 工程基础链路审计（2026-10-23）
 
-2026-10-24 后续：AF2a 已将六类构造移至 `rf-unitops::catalog`，UI 创建与 solver 共用描述，保留原 kind / 参数 / 诊断；AF2b 另已迁出物性资源职责并接通共享上下文；AF3a—c 已接任务身份、后台流程 / 设备与 GUI 生命周期；AF4a / AF5a 已补工程发现与结果来源，AF4b 已接正式动作和 GUI 消费。2026-10-26 AF4c 已补 CLI v3，AF5b 已补 GUI 来源、定位和输出；2026-10-31 [AF6 审查材料](../topics/modeling/solver-strategies-and-assembly.md#af6-扩展边界复核2026-10-31)已定位实际冻结 / 发布边界，并列出有限 EO 与积存时间模型的缺项；首个实现方案待审定。下表保留 10 月 23 日审计基线，不作为当前缺口清单；各项状态与验收从 [AF 路线图](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)进入对应专题。
+2026-10-24 后续：AF2a 已将六类构造移至 `rf-unitops::catalog`，UI 创建与 solver 共用描述，保留原 kind / 参数 / 诊断；AF2b 另已迁出物性资源职责并接通共享上下文；AF3a—c 已接任务身份、后台流程 / 设备与 GUI 生命周期；AF4a / AF5a 已补工程发现与结果来源，AF4b 已接正式动作和 GUI 消费。2026-10-26 AF4c 已补 CLI v3，AF5b 已补 GUI 来源、定位和输出；2026-10-31 [AF6 审查材料](../topics/modeling/solver-strategies-and-assembly.md#af6-扩展边界复核2026-10-31)已定位实际冻结 / 发布边界，并列出有限 EO 与积存时间模型的缺项；首个有限组分衡算核心随后获准并已实现，入口见[QS0 首片](../topics/modeling/solver-strategies-and-assembly.md#qs0-首片实施2026-10-31)，应用 / 后端接入待审。下表保留 10 月 23 日审计基线，不作为当前缺口清单；各项状态与验收从 [AF 路线图](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)进入对应专题。
 
 基于 `9fd5650d` 的代码静态核对；本轮只修改文档，没有运行桌面窗口、性能测量或重新验收产品功能。下表的“已有”指代码中可定位的能力，自动测试位置是既有证据入口，不表示本轮重跑。原生保存症状来自 [W43 已有复现](../devlogs/2026-10/2026-W43.md#2026-10-22-原生保存定向复现与-c2-待审方案)。实施顺序和退出标准只在 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 维护。
 
