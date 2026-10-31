@@ -1,5 +1,5 @@
 //! Owned, read-only projections for consumers that outlive one workspace borrow.
-use rf_ui::{DiagnosticSummary, FlowSnapshotHeader, WorkspaceState, result_query::*};
+use rf_ui::{DiagnosticSummary, FlowResultRecord, WorkspaceState, result_query::*};
 use std::sync::Arc;
 
 /// Session-local evidence. Never serialize this guard or substitute document IDs
@@ -14,19 +14,36 @@ enum FlowResultIdentity {
         origin: FlowResultOrigin,
         snapshot_id: String,
         sequence: u64,
+        payload: FlowResultPayload,
     },
     Failed {
         origin: FlowResultOrigin,
         diagnostic: DiagnosticSummary,
     },
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FlowResultPayload {
+    Acyclic,
+    Partitioned,
+    Simultaneous,
+}
+impl FlowResultPayload {
+    fn of(snapshot: &FlowResultRecord) -> Self {
+        match snapshot {
+            FlowResultRecord::Acyclic(_) => Self::Acyclic,
+            FlowResultRecord::Partitioned(_) => Self::Partitioned,
+            FlowResultRecord::Simultaneous(_) => Self::Simultaneous,
+        }
+    }
+}
 impl FlowResultGuard {
-    pub fn from_snapshot(snapshot: &FlowSnapshotHeader) -> Option<Self> {
+    pub fn from_snapshot(snapshot: &FlowResultRecord) -> Option<Self> {
         snapshot.origin.as_ref().map(|origin| {
             Self(Arc::new(FlowResultIdentity::Current {
                 origin: origin.clone(),
                 snapshot_id: snapshot.id.as_str().into(),
                 sequence: snapshot.sequence,
+                payload: FlowResultPayload::of(snapshot),
             }))
         })
     }
@@ -41,12 +58,14 @@ impl FlowResultGuard {
                     origin: expected,
                     snapshot_id,
                     sequence,
+                    payload,
                 },
                 FlowResultView::Current { snapshot, origin },
             ) => {
                 expected == origin
                     && snapshot_id == snapshot.id.as_str()
                     && *sequence == snapshot.sequence
+                    && *payload == FlowResultPayload::of(snapshot)
             }
             (
                 FlowResultIdentity::Failed {
@@ -133,6 +152,23 @@ pub fn flow_origin_lines(origin: Option<&FlowResultOrigin>) -> Vec<(String, Stri
                 plan.configuration_sha256.clone(),
             ),
         ]);
+        if let Some(modular) = &plan.modular {
+            rows.extend([
+                ("solver_capability".into(), modular.capability.into()),
+                (
+                    "solver_capability_version".into(),
+                    modular.capability_version.to_string(),
+                ),
+                (
+                    "response_contract_version".into(),
+                    modular.response_contract_version.to_string(),
+                ),
+                (
+                    "core_method".into(),
+                    modular.core_method.unwrap_or("not invoked").into(),
+                ),
+            ]);
+        }
     }
     let Some(package) = &execution.package else {
         rows.push(("package".into(), "not loaded during preparation".into()));

@@ -1,6 +1,6 @@
 use super::*;
 use crate::{qs1_test_support::*, test_support::*};
-fn execute(app: &mut AppState) -> CompletedWorkspaceSolve {
+pub(super) fn execute(app: &mut AppState) -> CompletedWorkspaceSolve {
     let request =
         crate::build_workspace_solve_request(app, OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID).unwrap();
     prepare_workspace_solve(app, &request)

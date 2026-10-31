@@ -19,6 +19,8 @@ pub enum FlowPlanNumericField {
         stream: StreamId,
         component: ComponentId,
     },
+    CouplingVariableScale(rf_solver::simultaneous::CouplingBinding),
+    CouplingResidualScale(rf_solver::simultaneous::CouplingBinding),
 }
 impl FlowPlanNumericField {
     pub fn quantity(&self) -> Option<QuantityKind> {
@@ -57,6 +59,22 @@ impl FlowPlanDraft {
     pub fn replace_candidate(&mut self, candidate: FlowPlanConfiguration) {
         self.numbers.retain(|field, _| match (&candidate, field) {
             (FlowPlanConfiguration::Acyclic, _) => false,
+            (
+                FlowPlanConfiguration::Simultaneous(o),
+                FlowPlanNumericField::CouplingVariableScale(b)
+                | FlowPlanNumericField::CouplingResidualScale(b),
+            ) => o.scales.as_ref().is_some_and(|s| s.contains_key(b)),
+            (
+                FlowPlanConfiguration::Simultaneous(_),
+                FlowPlanNumericField::IterationBudget
+                | FlowPlanNumericField::InitialComponent { .. }
+                | FlowPlanNumericField::ResidualScale { .. },
+            ) => false,
+            (
+                FlowPlanConfiguration::Partitioned(_),
+                FlowPlanNumericField::CouplingVariableScale(_)
+                | FlowPlanNumericField::CouplingResidualScale(_),
+            ) => false,
             (
                 FlowPlanConfiguration::Partitioned(o),
                 FlowPlanNumericField::InitialComponent { stream, component },
@@ -188,12 +206,46 @@ impl FlowPlanDraft {
                     .map(|v| v as f64)
                     .map_err(|_| RfError::invalid_input("iteration budget requires an integer"))?
             };
+            if let FlowPlanConfiguration::Simultaneous(options) = &mut candidate {
+                match field {
+                    FlowPlanNumericField::Temperature => options.boundary.temperature_k = value,
+                    FlowPlanNumericField::Pressure => options.boundary.pressure_pa = value,
+                    FlowPlanNumericField::CouplingVariableScale(binding)
+                    | FlowPlanNumericField::CouplingResidualScale(binding) => {
+                        let scale = options
+                            .scales
+                            .as_mut()
+                            .and_then(|s| s.get_mut(binding))
+                            .ok_or_else(|| {
+                                RfError::invalid_input("explicit coupling binding is unavailable")
+                            })?;
+                        match field {
+                            FlowPlanNumericField::CouplingVariableScale(_) => {
+                                scale.variable_mol_s = value
+                            }
+                            _ => scale.residual_mol_s = value,
+                        }
+                    }
+                    _ => {
+                        return Err(RfError::invalid_input(
+                            "recycle fields are unavailable for a simultaneous plan",
+                        ));
+                    }
+                }
+                continue;
+            }
             let FlowPlanConfiguration::Partitioned(options) = &mut candidate else {
                 return Err(RfError::invalid_input(
                     "numeric recycle fields are unavailable for an acyclic plan",
                 ));
             };
             match field {
+                FlowPlanNumericField::CouplingVariableScale(_)
+                | FlowPlanNumericField::CouplingResidualScale(_) => {
+                    return Err(RfError::invalid_input(
+                        "coupling scales are unavailable for a recycle plan",
+                    ));
+                }
                 FlowPlanNumericField::Temperature => options.boundary.temperature_k = value,
                 FlowPlanNumericField::Pressure => options.boundary.pressure_pa = value,
                 FlowPlanNumericField::IterationBudget => {

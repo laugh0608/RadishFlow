@@ -211,16 +211,23 @@ impl ReadyAppState {
             return false;
         };
         let path = pending.path.display().to_string();
-        let compatibility = pending.compatibility;
+        let compatibility = pending.compatibility.clone();
         let zh = self.locale == StudioShellLocale::ZhCn;
         let response = egui::Modal::new(egui::Id::new("project-format-upgrade")).show(ctx, |ui| {
             ui.set_width((ctx.screen_rect().width() - 40.0).clamp(220.0, 520.0));
-            let capability_only = matches!(compatibility, ProjectSaveCompatibility::RatingCapability | ProjectSaveCompatibility::RatingMatrixCapability | ProjectSaveCompatibility::RatingAdoptionCapability);
-            ui.heading(match (zh, capability_only) {
-                (true, true) => "确认校核任务兼容性", (false, true) => "Confirm rating compatibility",
-                (true, false) => "保存为新版工程", (false, false) => "Upgrade project format",
+            let capability_only = matches!(compatibility, ProjectSaveCompatibility::RatingCapability | ProjectSaveCompatibility::RatingMatrixCapability | ProjectSaveCompatibility::RatingAdoptionCapability | ProjectSaveCompatibility::FlowCapabilities { .. });
+            ui.heading(match (zh, capability_only, &compatibility) {
+                (true, _, ProjectSaveCompatibility::FlowCapabilities { .. }) => "确认流程能力兼容性",
+                (false, _, ProjectSaveCompatibility::FlowCapabilities { .. }) => "Confirm flow capability compatibility",
+                (true, true, _) => "确认校核任务兼容性", (false, true, _) => "Confirm rating compatibility",
+                (true, false, _) => "保存为新版工程", (false, false, _) => "Upgrade project format",
             });
             match compatibility {
+                ProjectSaveCompatibility::FlowCapabilities { required, .. } => {
+                    ui.label(if zh { "工程仍为 v4，将增加所需模型或计划能力。不支持这些能力的旧版本将整份只读打开。可另存为以保留原件。" }
+                    else { "The project remains v4 with additional required model or plan capabilities. Older versions without these capabilities open it read-only. Use Save As to keep the original." });
+                    for capability in required { ui.label(format!("{} / {}", capability.id, capability.version)); }
+                }
                 ProjectSaveCompatibility::RatingAdoptionCapability => {
                     ui.label(if zh { "工程仍为 v3，校核方法升级为 v3 以保存固定采纳证据；不支持采纳的旧版本将整份只读打开。可另存为以保留原件。" }
                     else { "The project remains v3 with rating method v3 to retain fixed adoption evidence. Older versions without adoption support will open the entire project read-only. Use Save As to keep the original." });

@@ -1,0 +1,41 @@
+{
+  "schema_version": 5,
+  "project": "../flowsheets/fixed-tp-cross-recycle-binary-hydrocarbon.rfproj.json",
+  "expected_project": {
+    "document_id": "example-qs2-fixed-tp-cross-recycle",
+    "file_sha256": "7c2e49244aaa7b7b6747a24bdfbe7fbab90772aeffc21ec42a2ac0b170649072"
+  },
+  "flow_resources": {
+    "cache_root": "./property-package-cache",
+    "auth_cache_index": "./auth-cache-index.json",
+    "package": {
+      "kind": "preferred"
+    }
+  },
+  "steps": [
+    {
+      "id": "solve",
+      "action": {
+        "kind": "run_flow",
+        "expected_revision": 0,
+        "expected_plan_revision": 0
+      }
+    }
+  ],
+  "queries": [
+    {
+      "id": "plan",
+      "query": {
+        "kind": "results",
+        "scope": "flow_plan"
+      }
+    },
+    {
+      "id": "result",
+      "query": {
+        "kind": "results",
+        "scope": "flow"
+      }
+    }
+  ]
+}

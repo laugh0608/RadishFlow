@@ -1,11 +1,13 @@
 //! Typed application results. Shared header access never turns a block execution
 //! into an acyclic step sequence.
+mod simultaneous;
 use crate::{
     DiagnosticSeverity, DiagnosticSummary, RunStatus, SolveSnapshot, SolveSnapshotId,
     StreamStateSnapshot,
 };
 use rf_solver::partitioned::PartitionedSolveResult;
 use rf_types::UnitId;
+pub use simultaneous::SimultaneousFlowSnapshot;
 use std::{
     collections::BTreeMap,
     ops::{Deref, DerefMut},
@@ -51,28 +53,7 @@ impl PartitionedFlowSnapshot {
             .values()
             .map(crate::run::stream_state_snapshot_from_model)
             .collect();
-        let final_units = result
-            .blocks
-            .iter()
-            .flat_map(|b| &b.final_units)
-            .map(|u| {
-                (
-                    u.unit_id.clone(),
-                    UnitResultSnapshot {
-                        consumed_streams: u
-                            .consumed_streams
-                            .iter()
-                            .map(crate::run::stream_state_snapshot_from_model)
-                            .collect(),
-                        produced_streams: u
-                            .produced_streams
-                            .iter()
-                            .map(crate::run::stream_state_snapshot_from_model)
-                            .collect(),
-                    },
-                )
-            })
-            .collect();
+        let final_units = final_unit_snapshots(result.blocks.iter().flat_map(|b| &b.final_units));
         let summary = DiagnosticSummary::new(
             revision,
             DiagnosticSeverity::Info,
@@ -112,6 +93,12 @@ impl DerefMut for PartitionedFlowSnapshot {
 pub enum FlowResultRecord {
     Acyclic(SolveSnapshot),
     Partitioned(PartitionedFlowSnapshot),
+    Simultaneous(SimultaneousFlowSnapshot),
+}
+impl From<SimultaneousFlowSnapshot> for FlowResultRecord {
+    fn from(v: SimultaneousFlowSnapshot) -> Self {
+        Self::Simultaneous(v)
+    }
 }
 impl From<SolveSnapshot> for FlowResultRecord {
     fn from(v: SolveSnapshot) -> Self {
@@ -129,6 +116,7 @@ impl Deref for FlowResultRecord {
         match self {
             Self::Acyclic(s) => &s.common,
             Self::Partitioned(s) => &s.common,
+            Self::Simultaneous(s) => &s.common,
         }
     }
 }
@@ -137,6 +125,7 @@ impl DerefMut for FlowResultRecord {
         match self {
             Self::Acyclic(s) => &mut s.common,
             Self::Partitioned(s) => &mut s.common,
+            Self::Simultaneous(s) => &mut s.common,
         }
     }
 }
@@ -150,6 +139,9 @@ impl FlowResultRecord {
             ) | (
                 Self::Partitioned(_),
                 crate::flow_plan::FlowPlanConfiguration::Partitioned(_)
+            ) | (
+                Self::Simultaneous(_),
+                crate::flow_plan::FlowPlanConfiguration::Simultaneous(_)
             )
         )
     }
@@ -167,12 +159,40 @@ impl FlowResultRecord {
                 consumed_streams: &u.consumed_streams,
                 produced_streams: &u.produced_streams,
             }),
+            Self::Simultaneous(s) => s.final_units.get(id).map(|u| UnitResultView {
+                consumed_streams: &u.consumed_streams,
+                produced_streams: &u.produced_streams,
+            }),
         }
     }
     pub fn acyclic(&self) -> Option<&SolveSnapshot> {
         match self {
             Self::Acyclic(s) => Some(s),
-            Self::Partitioned(_) => None,
+            Self::Partitioned(_) | Self::Simultaneous(_) => None,
         }
     }
+}
+
+fn final_unit_snapshots<'a>(
+    units: impl Iterator<Item = &'a rf_solver::partitioned::LocalUnitEvaluation>,
+) -> BTreeMap<UnitId, UnitResultSnapshot> {
+    units
+        .map(|u| {
+            (
+                u.unit_id.clone(),
+                UnitResultSnapshot {
+                    consumed_streams: u
+                        .consumed_streams
+                        .iter()
+                        .map(crate::run::stream_state_snapshot_from_model)
+                        .collect(),
+                    produced_streams: u
+                        .produced_streams
+                        .iter()
+                        .map(crate::run::stream_state_snapshot_from_model)
+                        .collect(),
+                },
+            )
+        })
+        .collect()
 }

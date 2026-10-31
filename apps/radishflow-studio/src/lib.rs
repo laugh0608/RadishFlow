@@ -6,6 +6,7 @@ mod confirmed_input_action;
 mod control_plane_client;
 mod control_plane_sync;
 pub mod flow_plan_actions;
+mod modular_result_projection;
 pub use confirmed_input_action::{StudioConfirmedInputAction, StudioInputAction};
 mod document_history_driver;
 mod document_lifecycle_driver;
@@ -109,7 +110,7 @@ pub use document_lifecycle_driver::{
     ProjectSaveCompatibility, StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand,
     StudioProjectOpen, StudioReadOnlyProject, dispatch_document_lifecycle, load_project_app_state,
     project_save_compatibility, project_save_requires_upgrade, project_save_version,
-    read_studio_project,
+    read_studio_project, read_studio_project_with_support,
 };
 pub use entitlement_control::{
     StudioEntitlementAction, StudioEntitlementActionOutcome, StudioEntitlementFailure,
@@ -460,3 +461,5 @@ pub use workspace_run_owner::{
 
 #[cfg(test)]
 mod qs1_test_support;
+#[cfg(test)]
+mod qs2_test_support;

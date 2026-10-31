@@ -196,7 +196,7 @@ G0 纳入 UI R0 的项目→设计基础→工况→设备→结果关系；Q1 �
 | --- | --- | --- |
 | QS0 问题与契约 | 随首个真实求解案例，复用 MC0 的必要模型描述 | 明确未知量、规格、物性、适用域、初值、独立基准与比较指标 |
 | QS1 分块 SM 与循环 | P3；[A/B 核心](topics/modeling/recycle-and-block-execution.md)已完成模型 / 写保护、分块与真实循环复核；[C01—C06](topics/modeling/recycle-project-and-consumers.md)已确认并接通 v4 保存、正式运行与 GUI / CLI | 撕裂及局部收敛满足残差和衡算，回路 / 规格失败可定位，不以循环结束冒充成功 |
-| [QS2 首个联立模块块](topics/modeling/simultaneous-modular-block.md) | P4，D01—D05 已确认并实现交叉回流装配、仿射响应、主元 LU 与独立验证；正式接入另审 | 与独立解析和支持的同模型参考一致，响应 / 条件 / 原 SI 残差分别核验，完整统计成本和鲁棒性 |
+| [QS2 首个联立模块块](topics/modeling/simultaneous-modular-block.md) | P4，D01—D05 核心已实现；[QS2-C / D06](topics/modeling/simultaneous-project-and-consumers.md)D06 已批准，存储配置 / 运行结果及 CLI v5 已实现 | 核心独立数值 / 故障与接入定向验证通过；GUI 画板 / 接线仍待推进 |
 | QS3 首个 EO 块 | P4，具备小型模型组的方程、结构、缩放、导数及初始化 | 独立基准和跨策略一致；欠 / 过规格、相关约束、超域与数值失败可解释 |
 | QS4 混合分区 | P4，组合已验证的块能力；黑箱按实际需求引入 | 跨块回路与边界残差正确，结果 / 失败身份统一，不支持组合明确拒绝 |
 

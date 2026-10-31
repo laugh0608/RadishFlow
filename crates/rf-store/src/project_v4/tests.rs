@@ -3,6 +3,7 @@ use crate::{FileOverwritePolicy, project_file_to_pretty_json};
 use rf_model::UnitNode;
 use serde_json::{Value, json};
 use std::fs;
+mod simultaneous;
 
 fn fixture() -> StoredProjectV4 {
     let mut file = crate::parse_project_file_json(include_str!(

@@ -133,6 +133,14 @@ impl rf_solver::partitioned::PartitionedSolverControl for WorkerControl {
         self.emit(WorkspaceSolveProgress::Partitioned(progress))
     }
 }
+impl rf_solver::simultaneous::ModularControl for WorkerControl {
+    fn checkpoint(
+        &mut self,
+        progress: rf_solver::simultaneous::ModularProgress,
+    ) -> ControlFlow<()> {
+        self.emit(WorkspaceSolveProgress::Simultaneous(progress))
+    }
+}
 impl WorkspaceSolveControl for WorkerControl {
     fn before_load(&mut self) -> ControlFlow<()> {
         self.emit(WorkspaceSolveProgress::Preparing)

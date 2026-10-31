@@ -27,6 +27,9 @@ pub(super) fn check_inputs_with_plan(
         rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(options) => {
             rf_solver::partitioned::assemble_partitioned_plan(flowsheet, options).map(|_| ())
         }
+        rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(options) => {
+            rf_solver::simultaneous::assemble(flowsheet, options).map(|_| ())
+        }
     } {
         Ok(_) => true,
         Err(error) => {
@@ -145,6 +148,7 @@ pub(super) fn check_inputs_with_plan(
         if matches!(
             plan,
             rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
         ) {
             // Cyclic inlet pressure comes from the frozen fixed boundary and evaluated
             // streams. Document templates cannot prove the recycle inlet pressure.

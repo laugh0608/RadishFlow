@@ -71,8 +71,15 @@ pub fn configuration(plan: &Plan, refs: &Bindings) -> Result<FlowPlanConfigurati
     result.validate_configuration().map_err(domain)?;
     Ok(result)
 }
-pub fn wire(plan: &FlowPlanConfiguration) -> Plan {
-    match plan {
+pub fn wire(plan: &FlowPlanConfiguration) -> Result<Plan, Failure> {
+    Ok(match plan {
+        FlowPlanConfiguration::Simultaneous(_) => {
+            return Err(Failure::new(
+                Stage::Project,
+                Code::UnsupportedCapability,
+                "CLI v4 does not support simultaneous modular plans",
+            ));
+        }
         FlowPlanConfiguration::Acyclic => Plan::Acyclic {},
         FlowPlanConfiguration::Partitioned(o) => Plan::Partitioned {
             acceptance_contract_version: 1,
@@ -105,7 +112,7 @@ pub fn wire(plan: &FlowPlanConfiguration) -> Plan {
                 })
                 .collect(),
         },
-    }
+    })
 }
 fn vector(v: &BTreeMap<rf_types::ComponentId, f64>) -> Vec<ComponentValue> {
     v.iter()
@@ -115,8 +122,10 @@ fn vector(v: &BTreeMap<rf_types::ComponentId, f64>) -> Vec<ComponentValue> {
         })
         .collect()
 }
-pub fn query(app: &rf_ui::AppState) -> Value {
+pub fn query(app: &rf_ui::AppState) -> Result<Value, Failure> {
     let w = &app.workspace;
     let ready = w.flow_plan.current().validate_for(w);
-    json!({"plan_revision":w.flow_plan.revision(),"configuration":wire(w.flow_plan.current()),"ready":ready.is_ok(),"not_ready":ready.err().map(|e|json!({"code":e.context().diagnostic_code(),"message":e.to_string()})),"simulation_dirty":w.flow_plan.is_dirty(),"methods":["radishflow.acyclic-sm/1","radishflow.partitioned-sm/1"],"in_memory_required_project_schema_version":crate::project_save_version(app)})
+    Ok(
+        json!({"plan_revision":w.flow_plan.revision(),"configuration":wire(w.flow_plan.current())?,"ready":ready.is_ok(),"not_ready":ready.err().map(|e|json!({"code":e.context().diagnostic_code(),"message":e.to_string()})),"simulation_dirty":w.flow_plan.is_dirty(),"methods":["radishflow.acyclic-sm/1","radishflow.partitioned-sm/1"],"in_memory_required_project_schema_version":crate::project_save_version(app)}),
+    )
 }

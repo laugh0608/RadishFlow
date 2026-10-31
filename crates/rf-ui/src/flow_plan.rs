@@ -1,23 +1,29 @@
 //! Project-owned steady-state configuration. Identity, history and drafts remain
 //! session local; a plan change is independent of the physical edit context.
 mod editor;
+mod simultaneous;
 use crate::{FlowRunQualification, RunStatus, SolvePendingReason, WorkspaceState};
 pub use editor::*;
 use rf_solver::partitioned::{RecycleSolveOptions, assemble_partitioned_plan};
 use rf_types::{RfError, RfResult, StreamId, UnitId};
-use std::{collections::BTreeSet, sync::Arc};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+};
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum FlowPlanConfiguration {
     #[default]
     Acyclic,
     Partitioned(RecycleSolveOptions),
+    Simultaneous(rf_solver::simultaneous::ModularOptions),
 }
 impl FlowPlanConfiguration {
     pub fn validate_configuration(&self) -> RfResult<()> {
         match self {
             Self::Acyclic => Ok(()),
             Self::Partitioned(o) => o.validate_configuration(),
+            Self::Simultaneous(o) => simultaneous::validate_configuration(o),
         }
     }
     pub fn validate_for(&self, workspace: &WorkspaceState) -> RfResult<()> {
@@ -28,11 +34,20 @@ impl FlowPlanConfiguration {
             Self::Partitioned(o) => {
                 assemble_partitioned_plan(&workspace.document.flowsheet, o).map(|_| ())
             }
+            Self::Simultaneous(o) => {
+                rf_solver::simultaneous::assemble(&workspace.document.flowsheet, o).map(|_| ())
+            }
         }
     }
     pub fn referenced_unit_ids(&self) -> BTreeSet<UnitId> {
         match self {
             Self::Acyclic => BTreeSet::new(),
+            Self::Simultaneous(o) => o
+                .scales
+                .iter()
+                .flat_map(|s| s.keys())
+                .flat_map(|b| [b.source.unit_id.clone(), b.sink.unit_id.clone()])
+                .collect(),
             Self::Partitioned(o) => o
                 .tears
                 .iter()
@@ -43,6 +58,12 @@ impl FlowPlanConfiguration {
     pub fn referenced_stream_ids(&self) -> BTreeSet<StreamId> {
         match self {
             Self::Acyclic => BTreeSet::new(),
+            Self::Simultaneous(o) => o
+                .scales
+                .iter()
+                .flat_map(|s| s.keys())
+                .map(|b| b.stream.clone())
+                .collect(),
             Self::Partitioned(o) => o.tears.iter().map(|t| t.stream_id.clone()).collect(),
         }
     }
@@ -91,6 +112,7 @@ impl FlowPlanEditContext {
 pub struct FlowPlanState {
     current: FlowPlanConfiguration,
     saved: FlowPlanConfiguration,
+    saved_capabilities: BTreeMap<String, u32>,
     generation: FlowPlanGeneration,
     draft_generation: FlowPlanGeneration,
     revision: u64,
@@ -108,6 +130,7 @@ impl FlowPlanState {
         Self {
             current: plan.clone(),
             saved: plan,
+            saved_capabilities: BTreeMap::new(),
             generation: FlowPlanGeneration::fresh(),
             draft_generation: FlowPlanGeneration::fresh(),
             revision: 0,
@@ -136,6 +159,13 @@ impl FlowPlanState {
     }
     pub fn saved(&self) -> &FlowPlanConfiguration {
         &self.saved
+    }
+    /// Loaded or successfully saved flow capabilities, never the current draft.
+    pub fn saved_capabilities(&self) -> &BTreeMap<String, u32> {
+        &self.saved_capabilities
+    }
+    pub fn record_saved_capabilities(&mut self, capabilities: BTreeMap<String, u32>) {
+        self.saved_capabilities = capabilities;
     }
     pub fn draft_generation(&self) -> &FlowPlanGeneration {
         &self.draft_generation

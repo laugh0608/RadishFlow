@@ -175,6 +175,8 @@ pub struct ProjectSnapshot {
     pub equipment_task_count: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub in_memory_required_project_schema_version: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub in_memory_required_capabilities: Option<Value>,
 }
 
 #[derive(Debug, Serialize)]

@@ -102,10 +102,10 @@ pub struct FractionTarget {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
-pub enum NewAction {
+pub enum NewAction<P = Plan> {
     ConfigureFlowPlan {
         expected_plan_revision: PlanRevision,
-        plan: Plan,
+        plan: P,
     },
     RunFlow {
         expected_revision: RevisionRef,
@@ -123,16 +123,21 @@ pub enum NewAction {
     ConnectExact {
         expected_revision: RevisionRef,
         source: Port,
-        sink: Port,
+        #[serde(
+            default,
+            deserialize_with = "super::super::v3::strict::optional",
+            skip_serializing_if = "Option::is_none"
+        )]
+        sink: Option<Port>,
         stream: IdentityRef,
     },
 }
 #[derive(Debug, Clone)]
-pub enum Action {
-    New(NewAction),
+pub enum Action<P = Plan> {
+    New(NewAction<P>),
     Legacy(old::Action),
 }
-impl Serialize for Action {
+impl<P: Serialize> Serialize for Action<P> {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
             Self::New(a) => a.serialize(s),
@@ -140,7 +145,7 @@ impl Serialize for Action {
         }
     }
 }
-impl<'de> Deserialize<'de> for Action {
+impl<'de, P: super::super::planned::PlanProtocol> Deserialize<'de> for Action<P> {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let value = Value::deserialize(d)?;
         let kind = value
@@ -153,6 +158,16 @@ impl<'de> Deserialize<'de> for Action {
         ) || (kind == "write"
             && value.pointer("/target/field").and_then(Value::as_str)
                 == Some("outlet_a_split_fraction"));
+        // v4 keeps its required sink vocabulary. v5 can bind an external product
+        // outlet through the existing exact domain action without inferred candidates.
+        if kind == "connect_exact"
+            && P::VERSION == 4
+            && value.get("sink").is_none_or(Value::is_null)
+        {
+            return Err(serde::de::Error::custom(
+                "CLI v4 connect_exact requires sink",
+            ));
+        }
         if new {
             serde_json::from_value(value)
                 .map(Self::New)
@@ -166,9 +181,10 @@ impl<'de> Deserialize<'de> for Action {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Step {
+#[serde(bound(deserialize = "P: super::super::planned::PlanProtocol"))]
+pub struct Step<P = Plan> {
     pub id: String,
-    pub action: Action,
+    pub action: Action<P>,
     #[serde(
         default,
         deserialize_with = "super::super::v3::strict::optional",
@@ -176,7 +192,7 @@ pub struct Step {
     )]
     pub confirmation: Option<old::Confirmation>,
 }
-impl super::super::engine::StepIdentity for Step {
+impl<P> super::super::engine::StepIdentity for Step<P> {
     fn id(&self) -> &str {
         &self.id
     }
@@ -236,12 +252,13 @@ pub struct QueryRequest {
 }
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct ExecuteRequest {
+#[serde(bound(deserialize = "P: super::super::planned::PlanProtocol"))]
+pub struct ExecuteRequest<P = Plan> {
     pub schema_version: u32,
     pub project: PathBuf,
     pub expected_project: old::ExpectedProject,
     #[serde(default, deserialize_with = "super::super::v3::strict::optional")]
     pub flow_resources: Option<old::FlowResources>,
-    pub steps: Vec<Step>,
+    pub steps: Vec<Step<P>>,
     pub queries: Vec<Query>,
 }

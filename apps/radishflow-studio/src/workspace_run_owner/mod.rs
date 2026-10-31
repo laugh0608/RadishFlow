@@ -81,7 +81,7 @@ pub struct WorkspaceRunState {
     pub progress: Option<WorkspaceRunProgress>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceRunSummary {
     pub run_id: FlowRunId,
     pub submitted_at: SystemTime,
@@ -91,6 +91,8 @@ pub struct WorkspaceRunSummary {
     pub disposition: FlowRunDisposition,
     pub cancellation: Option<WorkspaceRunCancelReason>,
     pub diagnostic_code: Option<String>,
+    /// Execution evidence only; this never grants Current result qualification.
+    pub simultaneous_diagnostic: Option<std::sync::Arc<rf_solver::simultaneous::ModularFailure>>,
 }
 
 struct ActiveRun {
@@ -259,6 +261,7 @@ impl WorkspaceRunOwner {
                     disposition,
                     cancellation: None,
                     diagnostic_code: error.context().diagnostic_code().map(str::to_owned),
+                    simultaneous_diagnostic: None,
                 });
                 return Err(error);
             }
@@ -474,6 +477,10 @@ impl WorkspaceRunOwner {
                 .completion_result()
                 .err()
                 .and_then(|error| error.context().diagnostic_code().map(str::to_owned)),
+            simultaneous_diagnostic: completion
+                .simultaneous_failure_evidence()
+                .cloned()
+                .map(std::sync::Arc::new),
         };
         self.record_summary(summary.clone());
         Some(summary)

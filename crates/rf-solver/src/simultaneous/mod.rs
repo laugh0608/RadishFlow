@@ -11,14 +11,15 @@ pub use assembly::assemble;
 use rf_flowsheet::MaterialConnection;
 use rf_model::{Flowsheet, MaterialStreamState};
 use rf_types::{ComponentId, DiagnosticPortTarget, RfError, RfResult, StreamId, UnitId};
-use rf_unitops::component_response::AffineComponentResponse;
+pub use rf_unitops::component_response::{AffineComponentCapability, AffineComponentResponse};
 use std::{collections::BTreeMap, ops::ControlFlow, time::Duration};
 
 pub const METHOD: &str = "rf-solver.fixed-tp-affine-modular-lu/1";
 pub const ACCEPTANCE_VERSION: u32 = 1;
+pub const RESPONSE_VERSION: u32 = rf_unitops::component_response::RESPONSE_VERSION;
 pub const MAX_UNKNOWNS: usize = 128;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CouplingBinding {
     pub stream: StreamId,
     pub source: DiagnosticPortTarget,

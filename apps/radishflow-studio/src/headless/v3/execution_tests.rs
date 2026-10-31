@@ -373,3 +373,6 @@ fn unsupported_record_deletion_is_an_execution_gate_not_a_parse_error() {
 
 #[path = "v4_tests.rs"]
 mod v4;
+
+#[path = "v5_tests.rs"]
+mod v5;

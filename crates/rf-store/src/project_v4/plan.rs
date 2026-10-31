@@ -1,4 +1,5 @@
 //! Versioned project configuration DTOs. They contain no solver workspace or UI identity.
+use super::{SIMULTANEOUS_METHOD, StoredCouplingScaling, StoredModularPlan};
 use rf_types::{ComponentId, RfError, RfResult, StreamId, UnitId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::BTreeSet;
@@ -10,6 +11,7 @@ pub enum StoredFlowPlan {
     #[default]
     Acyclic,
     Partitioned(StoredRecyclePlan),
+    Simultaneous(StoredModularPlan),
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -97,6 +99,18 @@ struct PlanWire {
         deserialize_with = "present"
     )]
     tears: Option<Vec<StoredTear>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present"
+    )]
+    response_contract_version: Option<u32>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present"
+    )]
+    scaling: Option<StoredCouplingScaling>,
 }
 fn present<'de, D: Deserializer<'de>, T: Deserialize<'de>>(d: D) -> Result<Option<T>, D::Error> {
     T::deserialize(d).map(Some)
@@ -107,12 +121,16 @@ impl StoredFlowPlan {
             id: match self {
                 Self::Acyclic => ACYCLIC_METHOD,
                 Self::Partitioned(_) => PARTITIONED_METHOD,
+                Self::Simultaneous(_) => SIMULTANEOUS_METHOD,
             }
             .into(),
             version: 1,
         }
     }
     pub fn validate(&self) -> RfResult<()> {
+        if let Self::Simultaneous(plan) = self {
+            return plan.validate();
+        }
         let Self::Partitioned(plan) = self else {
             return Ok(());
         };
@@ -175,12 +193,20 @@ impl Serialize for StoredFlowPlan {
             fixed_boundary: None,
             max_iteration_evaluations: None,
             tears: None,
+            response_contract_version: None,
+            scaling: None,
         };
         if let Self::Partitioned(plan) = self {
             wire.acceptance_contract_version = Some(1);
             wire.fixed_boundary = Some(plan.fixed_boundary.clone());
             wire.max_iteration_evaluations = Some(plan.max_iteration_evaluations);
             wire.tears = Some(plan.tears.clone());
+        }
+        if let Self::Simultaneous(plan) = self {
+            wire.acceptance_contract_version = Some(1);
+            wire.response_contract_version = Some(1);
+            wire.fixed_boundary = Some(plan.fixed_boundary.clone());
+            wire.scaling = Some(plan.canonical_scaling());
         }
         wire.serialize(s)
     }
@@ -198,15 +224,32 @@ impl<'de> Deserialize<'de> for StoredFlowPlan {
                 if w.acceptance_contract_version.is_none()
                     && w.fixed_boundary.is_none()
                     && w.max_iteration_evaluations.is_none()
-                    && w.tears.is_none() =>
+                    && w.tears.is_none()
+                    && w.response_contract_version.is_none()
+                    && w.scaling.is_none() =>
             {
                 Self::Acyclic
             }
-            (PARTITIONED_METHOD, 1) if w.acceptance_contract_version == Some(1) => {
+            (PARTITIONED_METHOD, 1)
+                if w.acceptance_contract_version == Some(1)
+                    && w.response_contract_version.is_none()
+                    && w.scaling.is_none() =>
+            {
                 Self::Partitioned(StoredRecyclePlan {
                     fixed_boundary: w.fixed_boundary.ok_or_else(missing)?,
                     max_iteration_evaluations: w.max_iteration_evaluations.ok_or_else(missing)?,
                     tears: w.tears.ok_or_else(missing)?,
+                })
+            }
+            (SIMULTANEOUS_METHOD, 1)
+                if w.acceptance_contract_version == Some(1)
+                    && w.response_contract_version == Some(1)
+                    && w.tears.is_none()
+                    && w.max_iteration_evaluations.is_none() =>
+            {
+                Self::Simultaneous(StoredModularPlan {
+                    fixed_boundary: w.fixed_boundary.ok_or_else(missing)?,
+                    scaling: w.scaling.ok_or_else(missing)?,
                 })
             }
             _ => {

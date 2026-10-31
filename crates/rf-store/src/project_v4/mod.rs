@@ -3,6 +3,7 @@
 mod document;
 mod file_io;
 mod plan;
+mod simultaneous;
 use crate::project::STORED_PROJECT_FILE_KIND;
 use crate::project_v3::{
     StoredEngineeringInputs,
@@ -14,12 +15,21 @@ pub use plan::*;
 use rf_types::{RfError, RfResult, units::DisplayUnitSet};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+pub use simultaneous::*;
 use std::collections::BTreeSet;
 
 pub const VERSION: u32 = 4;
 pub const FLOW_PLAN_CAPABILITY: &str = "radishflow.flow-plan";
 pub const SPLITTER_CAPABILITY: &str = "radishflow.unit.splitter";
 pub const PARTITIONED_CAPABILITY: &str = "radishflow.solver.partitioned-sm";
+pub const SIMULTANEOUS_CAPABILITY: &str = "radishflow.solver.fixed-tp-affine-modular-lu";
+
+/// A consumer's supported vocabulary is independent of the project envelope version.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FlowPlanSupport {
+    Sequential,
+    Simultaneous,
+}
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RequiredCapability {
@@ -98,6 +108,7 @@ struct SimulationProbe {
 struct PlanProbe {
     method: StoredMethod,
     acceptance_contract_version: Option<u32>,
+    response_contract_version: Option<u32>,
 }
 
 pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapability> {
@@ -114,6 +125,9 @@ pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapabilit
     if matches!(project.steady_state_plan, StoredFlowPlan::Partitioned(_)) {
         ids.push(PARTITIONED_CAPABILITY);
     }
+    if matches!(project.steady_state_plan, StoredFlowPlan::Simultaneous(_)) {
+        ids.push(SIMULTANEOUS_CAPABILITY);
+    }
     ids.sort();
     ids.into_iter()
         .map(|id| RequiredCapability {
@@ -123,6 +137,10 @@ pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapabilit
         .collect()
 }
 pub fn parse(contents: &str) -> RfResult<ProjectV4Read> {
+    parse_with_support(contents, FlowPlanSupport::Simultaneous)
+}
+
+pub fn parse_with_support(contents: &str, support: FlowPlanSupport) -> RfResult<ProjectV4Read> {
     crate::strict_json::validate(contents.as_bytes()).map_err(json_error)?;
     let wire: ReadWire = serde_json::from_str(contents).map_err(json_error)?;
     if wire.kind != STORED_PROJECT_FILE_KIND || wire.schema_version != VERSION {
@@ -147,8 +165,10 @@ pub fn parse(contents: &str) -> RfResult<ProjectV4Read> {
                     FLOW_PLAN_CAPABILITY,
                     SPLITTER_CAPABILITY,
                     PARTITIONED_CAPABILITY,
+                    SIMULTANEOUS_CAPABILITY,
                 ]
                 .contains(&c.id.as_str())
+                || (support == FlowPlanSupport::Sequential && c.id == SIMULTANEOUS_CAPABILITY)
         })
         .map(|c| format!("{} / {}", c.id, c.version))
         .collect();
@@ -157,12 +177,29 @@ pub fn parse(contents: &str) -> RfResult<ProjectV4Read> {
     }
     let probe: SimulationProbe =
         serde_json::from_value(wire.simulation.clone()).map_err(json_error)?;
-    if ![ACYCLIC_METHOD, PARTITIONED_METHOD].contains(&probe.steady_state_plan.method.id.as_str())
+    let modular = probe.steady_state_plan.method.id == SIMULTANEOUS_METHOD;
+    if modular
+        && (probe.steady_state_plan.method.version == 0
+            || probe.steady_state_plan.acceptance_contract_version == Some(0)
+            || probe.steady_state_plan.response_contract_version == Some(0))
+    {
+        return Err(RfError::invalid_input(
+            "simulation: contract versions must be positive",
+        ));
+    }
+    if ![ACYCLIC_METHOD, PARTITIONED_METHOD, SIMULTANEOUS_METHOD]
+        .contains(&probe.steady_state_plan.method.id.as_str())
         || probe.steady_state_plan.method.version != 1
-        || (probe.steady_state_plan.method.id == PARTITIONED_METHOD
+        || (modular && support == FlowPlanSupport::Sequential)
+        || ((probe.steady_state_plan.method.id == PARTITIONED_METHOD || modular)
             && probe
                 .steady_state_plan
                 .acceptance_contract_version
+                .is_some_and(|v| v != 1))
+        || (modular
+            && probe
+                .steady_state_plan
+                .response_contract_version
                 .is_some_and(|v| v != 1))
     {
         reasons.push("unsupported steady-state method or acceptance contract".into());

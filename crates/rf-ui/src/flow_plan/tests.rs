@@ -6,6 +6,7 @@ use crate::{
 };
 use rf_model::Flowsheet;
 use rf_solver::partitioned::FixedRecycleBoundary;
+mod simultaneous;
 fn app() -> AppState {
     AppState::new(FlowsheetDocument::new(
         Flowsheet::new("plan"),

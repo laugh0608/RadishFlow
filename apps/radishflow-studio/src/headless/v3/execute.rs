@@ -14,10 +14,20 @@ use std::path::Path;
 pub fn file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     let bytes = super::request_bytes(path)?;
     if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(super::invalid_request)?["schema_version"]
+        == 5
+    {
+        response.schema_version = 5;
+        return super::super::planned::execute_file::<super::super::v5::Plan>(
+            path, &bytes, response,
+        );
+    }
+    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(super::invalid_request)?["schema_version"]
         == 4
     {
         response.schema_version = 4;
-        return super::super::v4::execute_file(path, &bytes, response);
+        return super::super::v4::execute_file::<super::super::v4::protocol::Plan>(
+            path, &bytes, response,
+        );
     }
     let request: ExecuteRequest = serde_json::from_slice(&bytes).map_err(super::invalid_request)?;
     debug_assert_eq!(request.schema_version, 3);
@@ -130,7 +140,7 @@ pub(in crate::headless) fn step_action_review(
     file_hash: &str,
     prefix: &[Step],
     resources: Option<&FlowResources>,
-    review_v4: Option<&Value>,
+    review_v4: Option<(u32, &Value)>,
 ) -> Result<Value, Failure> {
     // The entire step is isolated, including the domain's confirmation state.
     let mut staged = app.clone();
@@ -186,8 +196,8 @@ pub(in crate::headless) fn step_action_review(
                 .expect("domain validated current candidate");
             preview["candidate"] = aliases.candidate(candidate);
         }
-        let digest = if let Some(review) = review_v4 {
-            super::confirmation::digest_v4(file_hash, review, resources, &preview)?
+        let digest = if let Some((version, review)) = review_v4 {
+            super::confirmation::digest_planned(version, file_hash, review, resources, &preview)?
         } else {
             super::confirmation::digest(file_hash, prefix, resources, &preview)?
         };

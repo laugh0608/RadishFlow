@@ -1,6 +1,6 @@
 //! Cross-version CLI checks exercise the public one-shot dispatcher and disk boundary.
 use super::*;
-fn request(f: &Fixture, project: &Value, steps: Value) -> Value {
+pub(super) fn request(f: &Fixture, project: &Value, steps: Value) -> Value {
     let path = f.write("project.json", project);
     json!({"schema_version":4,"project":"project.json","expected_project":{"document_id":project["document"]["metadata"]["documentId"],"file_sha256":rf_store::sha256_hex(&fs::read(path).unwrap())},"steps":steps,"queries":[]})
 }
@@ -15,7 +15,7 @@ fn recycle_project(f: &Fixture, alpha: f64) -> Value {
     .unwrap();
     serde_json::from_slice(&fs::read(f.0.join("built.json")).unwrap()).unwrap()
 }
-fn resources(f: &Fixture) -> Value {
+pub(super) fn resources(f: &Fixture) -> Value {
     let mut index = rf_store::StoredAuthCacheIndex::new(
         "https://example.invalid",
         "v4-test",

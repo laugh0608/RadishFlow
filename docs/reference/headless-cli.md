@@ -2,7 +2,7 @@
 
 更新时间：2026-10-31
 
-用途：说明 Studio 旧 v1 / v2、AF4c v3 与 QS1-C v4 命令、JSON 请求 / 响应和错误语义。
+用途：说明 Studio 旧 v1 / v2、AF4c v3、QS1-C v4 与 QS2-C v5 命令、JSON 请求 / 响应和错误语义。
 
 读者：使用本地脚本执行参数化工况的用户及适配器开发者。
 
@@ -345,3 +345,35 @@ target/debug/radishflow-studio --headless query examples/automation/query-recycl
 ```
 
 [运行请求模板](../../examples/automation/run-recycle-v4.request.template.json)给出完整期望与显式资源位置；先将 flow_resources 指向已有、未到期的 binary-hydrocarbon-lite-v1 缓存 / 索引，工程内容改变后重新 query 获取入口 SHA。CLI 不创建替代物性包。本机代表得到 48 次迭代 + 1 次复核、102 次局部调用；0.99 达预算失败和 1 无有限稳态的证据不发布为 Current。测试、实窗与未测平台边界见 [QS1-C](../topics/modeling/recycle-project-and-consumers.md)及 [W44](../devlogs/2026-10/2026-W44.md)。
+
+### QS2-C CLI v5（2026-10-31，已实现）
+
+[D06-06](../topics/modeling/simultaneous-project-and-consumers.md)已批准。query / execute 的请求与响应 `schema_version=5`，工程外层仍为 v4；v5 支持原 Acyclic / Partitioned 和新增固定温压仿射联立计划。旧 v4 在创建可编辑工作区前按固定能力范围将 QS2 工程保护为整份只读，执行在资源读取与步骤之前拒绝；v1—v3 原边界保持。
+
+配置请求沿 `configure_flow_plan` 的 `expected_plan_revision`，新 Plan 形状为：
+
+```json
+{
+  "method": "radishflow.fixed-tp-affine-modular-lu/1",
+  "acceptance_contract_version": 1,
+  "response_contract_version": 1,
+  "temperature_k": 300.0,
+  "pressure_pa": 650000.0,
+  "scaling": {"kind": "evaluated_fresh_total"}
+}
+```
+
+- 显式尺度使用 `scaling={kind:"explicit_couplings",values:[...]}`，每项含 `stream`、`source`、`sink`、`component_id`、`variable_mol_s` 与 `residual_mol_s`。前两类端口 / 流股引用沿 IdentityRef / Port，支持前序 receipt；必须完整覆盖所有联立块，重复 / 缺项 / 错绑定不自动补齐。形状合法但图未就绪可配置，Run 明确拒绝。
+- `run_flow` 同时检查物理与计划修订；`flow_plan` 查询输出规范配置、就绪诊断、耦合预览和内存所需能力。v5 `connect_exact` 可省略 `sink` 创建产品出口，显式 null 拒绝；旧 v4 仍要求 `sink`。
+- 成功结果为 `execution_kind="simultaneous_modular"`，含真实生产者 `streams`、`blocks`、`final_units`、`coupling` / `linear` 和 `costs`，不伪造 tears 或迭代次数。失败只有 `diagnostic_evidence`（含底层 `error_code` 和可选诊断 `code`），不提供正式 fields / streams；Stale / Missing 同样不提供值。未取得数值为 null；失败证据中的 NaN / ±Infinity 为 `{non_finite:"nan"|"positive_infinity"|"negative_infinity"}`，不折叠成 null。字段明细归 D06-04。
+- `origin.execution.plan` 包含冻结 method、capability、response / acceptance 版本、规范配置 SHA-256 及实际 `core_method`；包加载失败时 core_method 为 null，implementation 为 `not-invoked`。实际包来源只取本次已加载事实。
+- Project 响应的 `project_schema_version` / `file_sha256` 继续表示入口原文件；另列 `in_memory_required_project_schema_version` / `in_memory_required_capabilities`，不暗示内存已保存。影响确认前缀为 `headless-v5-confirm-v1:`，不接受 v3 / v4 摘要；普通配置 / Run 无额外确认。
+
+[四成员公开工程](../../examples/flowsheets/fixed-tp-cross-recycle-binary-hydrocarbon.rfproj.json)采用 α=0.6、β=0.25，内部模板刻意不是正确解。先运行[查询模板](../../examples/automation/query-cross-recycle-v5.request.json)，再填写[运行模板](../../examples/automation/run-cross-recycle-v5.request.template.json)的既有有效缓存路径；也可用[正式动作建图模板](../../examples/automation/build-cross-recycle-v5.request.template.json)从空工况创建同一模型、配置并 Run。文件改动后重新查询 SHA；CLI 不创建物性缓存、不保存工程。
+
+```sh
+target/debug/radishflow-studio --headless query examples/automation/query-cross-recycle-v5.request.json
+target/debug/radishflow-studio --headless execute examples/automation/run-cross-recycle-v5.request.template.json
+```
+
+本机真实子进程已验证两个运行模板、三块 / 八未知量、10 次局部调用 / 4 份响应 / 1 次分解 / 9 次三角求解、独立分数组分基准及失败 / Stale / 重开 Missing；整个临时目录（含工程、缓存、索引、sidecar）的字节和条目保持，未创建偏好文件。历史 `8c18f223` 存储库另编译验证只读 / 拒绝覆盖；GUI、Windows / Linux、COM 与远端 CI 未验证，证据归 [W44](../devlogs/2026-10/2026-W44.md)。

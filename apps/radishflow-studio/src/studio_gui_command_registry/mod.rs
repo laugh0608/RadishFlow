@@ -388,6 +388,8 @@ fn result_snapshot_command_entries(
 
     let mut seen_units = BTreeSet::new();
     let unit_commands = match snapshot {
+        // Dedicated modular navigation is enabled after its local GUI review.
+        rf_ui::FlowResultRecord::Simultaneous(_) => Vec::new(),
         rf_ui::FlowResultRecord::Acyclic(s) => s
             .steps
             .iter()
@@ -491,6 +493,7 @@ fn result_unit_command_entry(
             match snapshot {
                 rf_ui::FlowResultRecord::Acyclic(_) => "SolveSnapshot",
                 rf_ui::FlowResultRecord::Partitioned(_) => "PartitionedSolveResult",
+                rf_ui::FlowResultRecord::Simultaneous(_) => "ModularResult",
             },
             snapshot.id.as_str(),
             detail

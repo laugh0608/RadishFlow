@@ -287,3 +287,6 @@ fn v3_process_later_failure_retains_edits_and_calculation_failure_has_terminal_r
 
 #[path = "v4.rs"]
 mod v4;
+
+#[path = "v5.rs"]
+mod v5;

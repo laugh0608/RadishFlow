@@ -301,7 +301,7 @@ pub(super) fn solve_snapshot_model_from_ui(
         .collect::<Vec<_>>();
     let acyclic_steps = match snapshot {
         rf_ui::FlowResultRecord::Acyclic(s) => s.steps.as_slice(),
-        rf_ui::FlowResultRecord::Partitioned(_) => &[],
+        rf_ui::FlowResultRecord::Partitioned(_) | rf_ui::FlowResultRecord::Simultaneous(_) => &[],
     };
     let steps = acyclic_steps
         .iter()
@@ -370,7 +370,7 @@ pub(super) fn solve_snapshot_model_from_ui(
         result_review_summary_model_from_parts(status_label, diagnostics.len(), &streams, &steps);
 
     let partitioned = match snapshot {
-        rf_ui::FlowResultRecord::Acyclic(_) => None,
+        rf_ui::FlowResultRecord::Acyclic(_) | rf_ui::FlowResultRecord::Simultaneous(_) => None,
         rf_ui::FlowResultRecord::Partitioned(p) => {
             let mut unit_results = Vec::new();
             for (block_index, block) in p.result.blocks.iter().enumerate() {

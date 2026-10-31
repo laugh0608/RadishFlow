@@ -1,11 +1,29 @@
 use super::*;
 use rf_solver::partitioned::*;
 use rf_ui::result_query::FlowResultView;
-pub fn flow(app: &AppState, executions: &Executions) -> Value {
+pub fn flow(app: &AppState, executions: &Executions) -> Result<Value, Failure> {
+    // Reject before the common projection could expose new-strategy values.
+    if matches!(
+        app.workspace.flow_plan.current(),
+        rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
+    ) {
+        return Err(Failure::new(
+            Stage::Query,
+            Code::UnsupportedCapability,
+            "CLI v4 does not support simultaneous modular results",
+        ));
+    }
     let mut value = old::results::flow(app, executions);
     match app.workspace.flow_result() {
         FlowResultView::Current { snapshot, origin } => {
             match snapshot {
+                rf_ui::FlowResultRecord::Simultaneous(_) => {
+                    return Err(Failure::new(
+                        Stage::Query,
+                        Code::UnsupportedCapability,
+                        "CLI v4 does not support simultaneous modular results",
+                    ));
+                }
                 rf_ui::FlowResultRecord::Acyclic(_) => {
                     value["execution_kind"] = json!("acyclic_sm");
                 }
@@ -34,7 +52,7 @@ pub fn flow(app: &AppState, executions: &Executions) -> Value {
         }
         _ => {}
     }
-    value
+    Ok(value)
 }
 fn evidence(v: &mut Value, origin: &rf_ui::result_query::FlowResultOrigin) {
     if let Some(e) = origin.execution().and_then(|e| e.plan.as_ref()) {

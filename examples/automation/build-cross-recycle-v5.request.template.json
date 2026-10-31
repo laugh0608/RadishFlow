@@ -1,0 +1,631 @@
+{
+  "schema_version": 5,
+  "project": "../flowsheets/binary-hydrocarbon-basis.rfproj.json",
+  "expected_project": {
+    "document_id": "example-binary-hydrocarbon-basis",
+    "file_sha256": "cae2e522edab101532ac4ca02dbea87427a6b41dc1cf45afc9627c062bc4d0f3"
+  },
+  "flow_resources": {
+    "cache_root": "./property-package-cache",
+    "auth_cache_index": "./auth-cache-index.json",
+    "package": {
+      "kind": "preferred"
+    }
+  },
+  "steps": [
+    {
+      "id": "feed_a",
+      "action": {
+        "kind": "create_unit",
+        "unit_kind": "feed",
+        "expected_revision": 0
+      }
+    },
+    {
+      "id": "feed_b",
+      "action": {
+        "kind": "create_unit",
+        "unit_kind": "feed",
+        "expected_revision": {
+          "step": "feed_a",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "mixer_a",
+      "action": {
+        "kind": "create_unit",
+        "unit_kind": "mixer",
+        "expected_revision": {
+          "step": "feed_b",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "mixer_b",
+      "action": {
+        "kind": "create_unit",
+        "unit_kind": "mixer",
+        "expected_revision": {
+          "step": "mixer_a",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "splitter_a",
+      "action": {
+        "kind": "create_unit",
+        "unit_kind": "splitter",
+        "expected_revision": {
+          "step": "mixer_b",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "splitter_b",
+      "action": {
+        "kind": "create_unit",
+        "unit_kind": "splitter",
+        "expected_revision": {
+          "step": "splitter_a",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "fa",
+      "action": {
+        "kind": "connect_exact",
+        "stream": {
+          "id": "s-fa"
+        },
+        "source": {
+          "unit": {
+            "step": "feed_a",
+            "output": "unit"
+          },
+          "port": "outlet"
+        },
+        "sink": {
+          "unit": {
+            "step": "mixer_a",
+            "output": "unit"
+          },
+          "port": "inlet_a"
+        },
+        "expected_revision": {
+          "step": "splitter_b",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "fb",
+      "action": {
+        "kind": "connect_exact",
+        "stream": {
+          "id": "s-fb"
+        },
+        "source": {
+          "unit": {
+            "step": "feed_b",
+            "output": "unit"
+          },
+          "port": "outlet"
+        },
+        "sink": {
+          "unit": {
+            "step": "mixer_b",
+            "output": "unit"
+          },
+          "port": "inlet_a"
+        },
+        "expected_revision": {
+          "step": "fa",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "ma",
+      "action": {
+        "kind": "connect_exact",
+        "stream": {
+          "id": "s-ma"
+        },
+        "source": {
+          "unit": {
+            "step": "mixer_a",
+            "output": "unit"
+          },
+          "port": "outlet"
+        },
+        "sink": {
+          "unit": {
+            "step": "splitter_a",
+            "output": "unit"
+          },
+          "port": "inlet"
+        },
+        "expected_revision": {
+          "step": "fb",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "mb",
+      "action": {
+        "kind": "connect_exact",
+        "stream": {
+          "id": "s-mb"
+        },
+        "source": {
+          "unit": {
+            "step": "mixer_b",
+            "output": "unit"
+          },
+          "port": "outlet"
+        },
+        "sink": {
+          "unit": {
+            "step": "splitter_b",
+            "output": "unit"
+          },
+          "port": "inlet"
+        },
+        "expected_revision": {
+          "step": "ma",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "rab",
+      "action": {
+        "kind": "connect_exact",
+        "stream": {
+          "id": "s-rab"
+        },
+        "source": {
+          "unit": {
+            "step": "splitter_a",
+            "output": "unit"
+          },
+          "port": "outlet_a"
+        },
+        "sink": {
+          "unit": {
+            "step": "mixer_b",
+            "output": "unit"
+          },
+          "port": "inlet_b"
+        },
+        "expected_revision": {
+          "step": "mb",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "rba",
+      "action": {
+        "kind": "connect_exact",
+        "stream": {
+          "id": "s-rba"
+        },
+        "source": {
+          "unit": {
+            "step": "splitter_b",
+            "output": "unit"
+          },
+          "port": "outlet_a"
+        },
+        "sink": {
+          "unit": {
+            "step": "mixer_a",
+            "output": "unit"
+          },
+          "port": "inlet_b"
+        },
+        "expected_revision": {
+          "step": "rab",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "pa",
+      "action": {
+        "kind": "connect_exact",
+        "source": {
+          "unit": {
+            "step": "splitter_a",
+            "output": "unit"
+          },
+          "port": "outlet_b"
+        },
+        "expected_revision": {
+          "step": "rba",
+          "output": "document"
+        },
+        "stream": {
+          "id": "s-pa"
+        }
+      }
+    },
+    {
+      "id": "pb",
+      "action": {
+        "kind": "connect_exact",
+        "source": {
+          "unit": {
+            "step": "splitter_b",
+            "output": "unit"
+          },
+          "port": "outlet_b"
+        },
+        "expected_revision": {
+          "step": "pa",
+          "output": "document"
+        },
+        "stream": {
+          "id": "s-pb"
+        }
+      }
+    },
+    {
+      "id": "feed_a_t",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "feed_a",
+              "output": "unit"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_temperature"
+        },
+        "value": 300.0,
+        "expected_revision": {
+          "step": "pb",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "feed_b_t",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "feed_b",
+              "output": "unit"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_temperature"
+        },
+        "value": 300.0,
+        "expected_revision": {
+          "step": "feed_a_t",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "feed_a_p",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "feed_a",
+              "output": "unit"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_pressure"
+        },
+        "value": 650000.0,
+        "expected_revision": {
+          "step": "feed_b_t",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "feed_b_p",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "feed_b",
+              "output": "unit"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_pressure"
+        },
+        "value": 650000.0,
+        "expected_revision": {
+          "step": "feed_a_p",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "mixer_a_p",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "mixer_a",
+              "output": "unit"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_pressure"
+        },
+        "value": 650000.0,
+        "expected_revision": {
+          "step": "feed_b_p",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "mixer_b_p",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "mixer_b",
+              "output": "unit"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_pressure"
+        },
+        "value": 650000.0,
+        "expected_revision": {
+          "step": "mixer_a_p",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "fa_flow",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "stream": {
+              "step": "fa",
+              "output": "stream"
+            }
+          },
+          "section": "inputs",
+          "field": "molar_flow"
+        },
+        "value": 2.0,
+        "expected_revision": {
+          "step": "mixer_b_p",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "fa_methane",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "stream": {
+              "step": "fa",
+              "output": "stream"
+            }
+          },
+          "section": "inputs",
+          "field": {
+            "mole_fraction": "methane"
+          }
+        },
+        "value": 0.8,
+        "expected_revision": {
+          "step": "fa_flow",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "fa_ethane",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "stream": {
+              "step": "fa",
+              "output": "stream"
+            }
+          },
+          "section": "inputs",
+          "field": {
+            "mole_fraction": "ethane"
+          }
+        },
+        "value": 0.19999999999999996,
+        "expected_revision": {
+          "step": "fa_methane",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "fb_flow",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "stream": {
+              "step": "fb",
+              "output": "stream"
+            }
+          },
+          "section": "inputs",
+          "field": "molar_flow"
+        },
+        "value": 3.0,
+        "expected_revision": {
+          "step": "fa_ethane",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "fb_methane",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "stream": {
+              "step": "fb",
+              "output": "stream"
+            }
+          },
+          "section": "inputs",
+          "field": {
+            "mole_fraction": "methane"
+          }
+        },
+        "value": 0.2,
+        "expected_revision": {
+          "step": "fb_flow",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "fb_ethane",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "stream": {
+              "step": "fb",
+              "output": "stream"
+            }
+          },
+          "section": "inputs",
+          "field": {
+            "mole_fraction": "ethane"
+          }
+        },
+        "value": 0.8,
+        "expected_revision": {
+          "step": "fb_methane",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "splitter_a_fraction",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "splitter_a",
+              "output": "unit"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_a_split_fraction"
+        },
+        "value": 0.6,
+        "expected_revision": {
+          "step": "fb_ethane",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "splitter_b_fraction",
+      "action": {
+        "kind": "write",
+        "target": {
+          "object": {
+            "unit": {
+              "step": "splitter_b",
+              "output": "unit"
+            }
+          },
+          "section": "inputs",
+          "field": "outlet_a_split_fraction"
+        },
+        "value": 0.25,
+        "expected_revision": {
+          "step": "splitter_a_fraction",
+          "output": "document"
+        }
+      }
+    },
+    {
+      "id": "configure",
+      "action": {
+        "kind": "configure_flow_plan",
+        "expected_plan_revision": 0,
+        "plan": {
+          "method": "radishflow.fixed-tp-affine-modular-lu/1",
+          "acceptance_contract_version": 1,
+          "response_contract_version": 1,
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "scaling": {
+            "kind": "evaluated_fresh_total"
+          }
+        }
+      }
+    },
+    {
+      "id": "solve",
+      "action": {
+        "kind": "run_flow",
+        "expected_revision": {
+          "step": "splitter_b_fraction",
+          "output": "document"
+        },
+        "expected_plan_revision": {
+          "step": "configure",
+          "output": "plan"
+        }
+      }
+    }
+  ],
+  "queries": [
+    {
+      "id": "plan",
+      "query": {
+        "kind": "results",
+        "scope": "flow_plan"
+      }
+    },
+    {
+      "id": "result",
+      "query": {
+        "kind": "results",
+        "scope": "flow"
+      }
+    }
+  ]
+}

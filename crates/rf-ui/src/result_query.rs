@@ -40,6 +40,15 @@ pub struct ExecutedFlowPlan {
     pub method: &'static str,
     pub acceptance_contract_version: u32,
     pub configuration_sha256: String,
+    pub modular: Option<ModularExecutionEvidence>,
+}
+/// Requested contracts and actually invoked core method are separate facts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModularExecutionEvidence {
+    pub capability: &'static str,
+    pub capability_version: u32,
+    pub response_contract_version: u32,
+    pub core_method: Option<&'static str>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FlowExecutionEvidence {
@@ -110,8 +119,13 @@ impl FlowRunReceipt {
     }
 }
 #[derive(Debug, Clone, PartialEq)]
+pub(crate) enum FlowFailureEvidence {
+    Partitioned(std::sync::Arc<rf_solver::partitioned::PartitionedSolveFailure>),
+    Simultaneous(std::sync::Arc<rf_solver::simultaneous::ModularFailure>),
+}
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct FlowFailureRecord {
-    pub partitioned: Option<std::sync::Arc<rf_solver::partitioned::PartitionedSolveFailure>>,
+    pub evidence: Option<FlowFailureEvidence>,
     pub origin: FlowResultOrigin,
     pub diagnostic: DiagnosticSummary,
 }
@@ -229,7 +243,10 @@ impl WorkspaceState {
         &self,
     ) -> Option<&rf_solver::partitioned::PartitionedSolveFailure> {
         if matches!(self.flow_result(), FlowResultView::Failed { .. }) {
-            self.flow_failure.as_ref()?.partitioned.as_deref()
+            match self.flow_failure.as_ref()?.evidence.as_ref()? {
+                FlowFailureEvidence::Partitioned(f) => Some(f.as_ref()),
+                FlowFailureEvidence::Simultaneous(_) => None,
+            }
         } else {
             None
         }
@@ -239,7 +256,30 @@ impl WorkspaceState {
         failure: rf_solver::partitioned::PartitionedSolveFailure,
     ) {
         if let Some(record) = &mut self.flow_failure {
-            record.partitioned = Some(std::sync::Arc::new(failure));
+            record.evidence = Some(FlowFailureEvidence::Partitioned(std::sync::Arc::new(
+                failure,
+            )));
+        }
+    }
+    pub fn simultaneous_failure_evidence(
+        &self,
+    ) -> Option<&rf_solver::simultaneous::ModularFailure> {
+        if !matches!(self.flow_result(), FlowResultView::Failed { .. }) {
+            return None;
+        }
+        match self.flow_failure.as_ref()?.evidence.as_ref()? {
+            FlowFailureEvidence::Simultaneous(f) => Some(f.as_ref()),
+            FlowFailureEvidence::Partitioned(_) => None,
+        }
+    }
+    pub fn attach_simultaneous_failure(
+        &mut self,
+        failure: rf_solver::simultaneous::ModularFailure,
+    ) {
+        if let Some(record) = &mut self.flow_failure {
+            record.evidence = Some(FlowFailureEvidence::Simultaneous(std::sync::Arc::new(
+                failure,
+            )));
         }
     }
 }

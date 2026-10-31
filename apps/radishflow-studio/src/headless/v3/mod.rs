@@ -18,7 +18,9 @@ pub(super) mod references;
 pub(super) mod results;
 pub(super) mod runs;
 pub(super) mod strict;
-use crate::document_lifecycle_driver::{StudioProjectOpen, parse_studio_project};
+#[cfg(test)]
+use crate::document_lifecycle_driver::parse_studio_project;
+use crate::document_lifecycle_driver::{StudioProjectOpen, parse_studio_project_with_support};
 use protocol::*;
 use std::{collections::BTreeSet, io::Write, path::Path};
 
@@ -93,11 +95,11 @@ fn request_bytes(path: &Path) -> Result<Vec<u8>, Failure> {
         schema_version: u32,
     }
     let version: Version = serde_json::from_slice(&bytes).map_err(invalid_request)?;
-    if !matches!(version.schema_version, 3 | 4) {
+    if !matches!(version.schema_version, 3..=5) {
         return Err(Failure::new(
             Stage::Request,
             Code::UnsupportedVersion,
-            "query/execute require schema_version 3 or 4",
+            "query/execute require schema_version 3, 4 or 5",
         ));
     }
     Ok(bytes)
@@ -123,7 +125,7 @@ fn load_project(path: &Path) -> Result<(StudioProjectOpen, ProjectSnapshot), Fai
 }
 pub(super) fn load_project_version(
     path: &Path,
-    maximum: u32,
+    protocol_version: u32,
 ) -> Result<(StudioProjectOpen, ProjectSnapshot), Failure> {
     let bytes = std::fs::read(path)
         .map_err(|e| Failure::new(Stage::Project, Code::ProjectIo, e.to_string()))?;
@@ -132,15 +134,20 @@ pub(super) fn load_project_version(
         .map_err(|e| Failure::new(Stage::Project, Code::InvalidProject, e.to_string()))?;
     if rf_store::project_v3::probe_version(contents)
         .map_err(|e| Failure::new(Stage::Project, Code::InvalidProject, e.to_string()))?
-        > maximum
+        > protocol_version.min(4)
     {
         return Err(Failure::new(
             Stage::Project,
             Code::UnsupportedCapability,
-            "CLI v3 does not support project v4",
+            "project schema version is not supported by this CLI protocol",
         ));
     }
-    let opened = parse_studio_project(contents, path)
+    let support = if protocol_version <= 4 {
+        rf_store::project_v4::FlowPlanSupport::Sequential
+    } else {
+        rf_store::project_v4::FlowPlanSupport::Simultaneous
+    };
+    let opened = parse_studio_project_with_support(contents, path, support)
         .map_err(|e| Failure::new(Stage::Project, Code::InvalidProject, e.to_string()))?;
     let (document_id, flow_revision, project_schema_version, count, read_only) = match &opened {
         StudioProjectOpen::Editable(app) => (
@@ -172,16 +179,23 @@ pub(super) fn load_project_version(
             read_only_reason: read_only.then_some(Code::UnsupportedCapability),
             equipment_task_count: count,
             in_memory_required_project_schema_version: None,
+            in_memory_required_capabilities: None,
         },
     ))
 }
 fn query_file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     let bytes = request_bytes(path)?;
     if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(invalid_request)?["schema_version"]
+        == 5
+    {
+        response.schema_version = 5;
+        return super::planned::query_file::<super::v5::Plan>(path, &bytes, response);
+    }
+    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(invalid_request)?["schema_version"]
         == 4
     {
         response.schema_version = 4;
-        return super::v4::query_file(path, &bytes, response);
+        return super::v4::query_file::<super::v4::protocol::Plan>(path, &bytes, response);
     }
     let request: QueryRequest = serde_json::from_slice(&bytes).map_err(invalid_request)?;
     debug_assert_eq!(request.schema_version, 3);

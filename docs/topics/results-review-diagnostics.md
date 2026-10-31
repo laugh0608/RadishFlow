@@ -303,3 +303,7 @@ CLI v1 / v2 / v3、FFI 与工程 schema 保持现状；AF5b 不增加 CLI 保存
 ## QS1-C 块级结果与计划资格（2026-10-31，已实现）
 
 [QS1-C03](modeling/recycle-project-and-consumers.md#qs1-c03执行分派结果与资格)已接通独立块级载荷、实际算法 / 包来源和输入＋计划双资格。正式计划变化既撤销在途接收，也使已接受结果 Stale；改回旧值不复活结果，不改变 FlowEditContext 或 QS0 的输入身份。变量、GUI / CLI 和写前输出守卫共用资格，assumed / returned 保持真实差异，部分块仅作失败证据。FlowResultRecord 显式区分旧 steps 和分块；Current 设备详情使用真实最终 I/O，轻量输出带块、核验 / 调用证据及实际方法 / 配置指纹。正式请求均捕获计划期望，旧构造入口仍为 LegacyAcyclic；非 Current 仅提供状态与诊断，不复用旧数值。验证和未测平台见 QS1-C / W44。
+
+### QS2-C 联立结果增量（2026-10-31，共享链路 / CLI 已实现）
+
+[D06-04](modeling/simultaneous-project-and-consumers.md)复用同一资格和输出守卫，新增 typed 联立快照 / 互斥失败证据，保留真实生产者流股、局部 I/O、耦合映射 / 双尺度、响应、LU / 条件 / 后向误差及成本；不伪造 QS1 tears / iterations 或旧 steps。未计算指标保持缺失，部分块只作诊断；实际核心方法和已加载包事实与冻结请求区分。CLI v5 已投影上述证据，诊断区分 null 与 tagged 非有限数值；GUI 详情和文本导出等待画板。细则和验证归 QS2-C，物理验收范围不变。

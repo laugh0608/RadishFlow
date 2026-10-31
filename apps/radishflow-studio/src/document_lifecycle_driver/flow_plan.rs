@@ -54,16 +54,27 @@ impl StudioReadOnlyProject {
         }
     }
 }
-pub(super) fn parse_v4(contents: &str, path: &Path) -> RfResult<StudioProjectOpen> {
-    match project_v4::parse(contents)? {
+pub(super) fn parse_v4(
+    contents: &str,
+    path: &Path,
+    support: project_v4::FlowPlanSupport,
+) -> RfResult<StudioProjectOpen> {
+    match project_v4::parse_with_support(contents, support)? {
         ProjectV4Read::ReadOnly(p) => Ok(StudioProjectOpen::ReadOnly(Box::new(
             StudioReadOnlyProject::V4(p),
         ))),
         ProjectV4Read::Editable(p) => {
+            let capabilities = project_v4::required_capabilities(&p)
+                .into_iter()
+                .map(|c| (c.id, c.version))
+                .collect();
             let configuration = flow_plan_configuration(p.steady_state_plan)?;
             let mut app =
                 app_state_from_stored(p.document, p.display_units, 4, p.engineering, path)?;
             app.workspace.flow_plan = rf_ui::flow_plan::FlowPlanState::from_loaded(configuration);
+            app.workspace
+                .flow_plan
+                .record_saved_capabilities(capabilities);
             app.workspace.reserve_flow_plan_identities();
             Ok(StudioProjectOpen::Editable(Box::new(app)))
         }
@@ -91,19 +102,44 @@ pub(super) fn compatibility(
     let prepared =
         project_v4::prepare_write(path, &project(app), rf_store::FileOverwritePolicy::Allow)?;
     let source = app.workspace.project_presentation.source_file_version();
-    Ok(
-        (source != Some(4) || prepared.requires_upgrade()).then_some(
-            ProjectSaveCompatibility::Format {
-                version: 4,
-                includes_rating: app.workspace.engineering.inputs().has_rating(),
-            },
-        ),
-    )
+    if source != Some(4) {
+        return Ok(Some(ProjectSaveCompatibility::Format {
+            version: 4,
+            includes_rating: app.workspace.engineering.inputs().has_rating(),
+        }));
+    }
+    let new_capabilities = added_source_capabilities(app);
+    if !new_capabilities.is_empty() || prepared.requires_upgrade() {
+        // Capture the full required set as well as the source delta: a later
+        // change to the method cannot reuse an earlier capability review.
+        return Ok(Some(ProjectSaveCompatibility::FlowCapabilities {
+            required: required_capabilities(app),
+            added_from_source: new_capabilities,
+        }));
+    }
+    Ok(None)
+}
+
+pub(crate) fn required_capabilities(app: &AppState) -> Vec<project_v4::RequiredCapability> {
+    let ProjectV4Read::Editable(p) = project(app) else {
+        unreachable!("application input is editable")
+    };
+    project_v4::required_capabilities(&p)
+}
+
+pub(super) fn added_source_capabilities(app: &AppState) -> Vec<project_v4::RequiredCapability> {
+    required_capabilities(app)
+        .into_iter()
+        .filter(|c| app.workspace.flow_plan.saved_capabilities().get(&c.id) != Some(&c.version))
+        .collect()
 }
 pub(super) fn save(app: &AppState, path: &Path, upgrade_confirmed: bool) -> RfResult<()> {
     let prepared =
         project_v4::prepare_write(path, &project(app), rf_store::FileOverwritePolicy::Allow)?;
-    if app.workspace.project_presentation.source_file_version() != Some(4) && !upgrade_confirmed {
+    if (app.workspace.project_presentation.source_file_version() != Some(4)
+        || !added_source_capabilities(app).is_empty())
+        && !upgrade_confirmed
+    {
         return Err(RfError::invalid_input(
             "project v4 upgrade requires confirmation",
         ));

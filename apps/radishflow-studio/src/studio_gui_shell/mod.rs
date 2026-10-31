@@ -468,7 +468,10 @@ impl ReadyAppState {
                 ),
             };
         let read_only_project = if config.untitled_blank_project.is_none() {
-            match radishflow_studio::read_studio_project(&config.project_path)? {
+            match radishflow_studio::read_studio_project_with_support(
+                &config.project_path,
+                rf_store::project_v4::FlowPlanSupport::Sequential,
+            )? {
                 radishflow_studio::StudioProjectOpen::ReadOnly(project) => {
                     Some(project_read_only::ReadOnlyProjectView {
                         path: config.project_path.clone(),

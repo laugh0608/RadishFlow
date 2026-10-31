@@ -2,6 +2,7 @@ use super::*;
 use rf_solver::partitioned::{FixedRecycleBoundary, RecycleSolveOptions};
 use rf_ui::flow_plan::*;
 use std::fs;
+mod simultaneous;
 const LEGACY: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../crates/rf-store/tests/fixtures/project-v2-engineering.json"
@@ -32,13 +33,15 @@ fn select_partitioned(app: &mut AppState) {
 struct Directory(PathBuf);
 impl Directory {
     fn new() -> Self {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let p = std::env::temp_dir().join(format!(
-            "rf-plan-lifecycle-{}-{}",
+            "rf-plan-lifecycle-{}-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_nanos()
+                .as_nanos(),
+            NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
         ));
         fs::create_dir(&p).unwrap();
         Self(p)

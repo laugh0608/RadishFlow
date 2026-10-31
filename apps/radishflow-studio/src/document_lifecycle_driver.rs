@@ -1,4 +1,4 @@
-mod flow_plan;
+pub(crate) mod flow_plan;
 pub use flow_plan::StudioReadOnlyProject;
 use std::path::{Path, PathBuf};
 
@@ -44,21 +44,44 @@ pub enum StudioProjectOpen {
     ReadOnly(Box<StudioReadOnlyProject>),
 }
 pub fn read_studio_project(project_path: &Path) -> RfResult<StudioProjectOpen> {
+    read_studio_project_with_support(
+        project_path,
+        rf_store::project_v4::FlowPlanSupport::Simultaneous,
+    )
+}
+
+pub fn read_studio_project_with_support(
+    project_path: &Path,
+    support: rf_store::project_v4::FlowPlanSupport,
+) -> RfResult<StudioProjectOpen> {
     let contents = std::fs::read_to_string(project_path).map_err(|e| {
         RfError::invalid_input(format!("read project {}: {e}", project_path.display()))
     })?;
-    parse_studio_project(&contents, project_path)
+    parse_studio_project_with_support(&contents, project_path, support)
 }
 
 /// Assemble the exact bytes already read by a caller. In particular, headless
 /// snapshot validation must not reopen the file between hashing and parsing.
+#[cfg(test)]
 pub(crate) fn parse_studio_project(
     contents: &str,
     project_path: &Path,
 ) -> RfResult<StudioProjectOpen> {
+    parse_studio_project_with_support(
+        contents,
+        project_path,
+        rf_store::project_v4::FlowPlanSupport::Simultaneous,
+    )
+}
+
+pub(crate) fn parse_studio_project_with_support(
+    contents: &str,
+    project_path: &Path,
+    support: rf_store::project_v4::FlowPlanSupport,
+) -> RfResult<StudioProjectOpen> {
     let version = rf_store::project_v3::probe_version(contents)?;
     match version {
-        4 => return flow_plan::parse_v4(contents, project_path),
+        4 => return flow_plan::parse_v4(contents, project_path, support),
         1..=3 => {}
         _ => return Err(RfError::invalid_input("unsupported project schema version")),
     }
@@ -148,6 +171,7 @@ pub fn project_save_version(app: &AppState) -> u32 {
         || matches!(
             app.workspace.flow_plan.current(),
             rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
         )
         || app
             .workspace
@@ -179,14 +203,22 @@ pub fn project_save_requires_upgrade(app: &AppState) -> bool {
     source == Some(1)
         || (target >= 3 && source != Some(target))
         || app.workspace.engineering.rating_capability_is_new()
+        || (target == 4 && !flow_plan::added_source_capabilities(app).is_empty())
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProjectSaveCompatibility {
-    Format { version: u32, includes_rating: bool },
+    Format {
+        version: u32,
+        includes_rating: bool,
+    },
     RatingCapability,
     RatingMatrixCapability,
     RatingAdoptionCapability,
+    FlowCapabilities {
+        required: Vec<rf_store::project_v4::RequiredCapability>,
+        added_from_source: Vec<rf_store::project_v4::RequiredCapability>,
+    },
 }
 /// Compatibility of both the loaded baseline and the actual save target.
 /// Save As must not bypass consent when replacing an older-capability file.
@@ -304,6 +336,7 @@ pub fn dispatch_document_lifecycle(
     let engineering = app_state.workspace.engineering.capture_save();
     let project_file = stored_project_file_from_app_state(app_state);
     let simulation = app_state.workspace.flow_plan.current().clone();
+    let flow_capabilities = (version == 4).then(|| flow_plan::required_capabilities(app_state));
     if version == 4 {
         flow_plan::save(app_state, &path, upgrade_confirmed)?;
     } else if version == 3 {
@@ -350,6 +383,14 @@ pub fn dispatch_document_lifecycle(
         .project_presentation
         .record_saved(project_file.presentation.display_units, version);
     app_state.workspace.flow_plan.record_saved(simulation);
+    if let Some(capabilities) = flow_capabilities {
+        app_state.workspace.flow_plan.record_saved_capabilities(
+            capabilities
+                .into_iter()
+                .map(|c| (c.id, c.version))
+                .collect(),
+        );
+    }
     app_state.mark_saved(path.clone());
     app_state.log_feed.push(
         AppLogLevel::Info,

@@ -785,7 +785,7 @@ impl AppState {
 
     pub fn record_failure(&mut self, revision: u64, status: RunStatus, summary: DiagnosticSummary) {
         self.workspace.flow_failure = Some(crate::result_query::FlowFailureRecord {
-            partitioned: None,
+            evidence: None,
             origin: crate::result_query::FlowResultOrigin::local(&self.workspace),
             diagnostic: summary.clone(),
         });
