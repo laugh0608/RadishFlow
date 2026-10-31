@@ -36,7 +36,7 @@
 ### 当前优先级
 
 1. 按 [代码链路审计](../architecture/overview.md#工程基础链路审计2026-10-23) 和 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 推进。AF0 已完成；AF2a 内建目录 / 工厂、AF2b 单包上下文已接通。AF1 未定因，独立跟踪。
-2. QS0、[QS1-C](../topics/modeling/recycle-project-and-consumers.md)与 [QS2-A/B](../topics/modeling/simultaneous-modular-block.md)已完成；[QS2-C / D06](../topics/modeling/simultaneous-project-and-consumers.md)已接通存储配置、运行结果、CLI v5 与经画板认可的 GUI，1,988 项门禁及 macOS 代表实窗通过；未知能力只读与未验平台边界保持。
+2. QS0、QS1-C 与 [QS2-C](../topics/modeling/simultaneous-project-and-consumers.md)已完成本机接入与验证；下一阶段 [QS3 方案](../topics/modeling/equation-oriented-block.md)已形成，D01—D08 已批准，产品代码未实施。范围为多单元物料方程、结构诊断、单比例反算及正式消费者。
 3. C2-A 后续方法对比方案已认可，排期服从基础主线；原精度失败不变。C2-B / C3 暂不实施，不以共享基础为名接入新 PR 产品链或流程设备物理关联。
 4. 基础契约中提前审查 EO / 动态 / 瞬态的扩展边界，具体物性、单元、递归分块 / recycle 和高级算法按真实场景逐步填入；每项另做物理验证。
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。

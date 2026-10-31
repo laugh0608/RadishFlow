@@ -197,7 +197,7 @@ G0 纳入 UI R0 的项目→设计基础→工况→设备→结果关系；Q1 �
 | QS0 问题与契约 | 随首个真实求解案例，复用 MC0 的必要模型描述 | 明确未知量、规格、物性、适用域、初值、独立基准与比较指标 |
 | QS1 分块 SM 与循环 | P3；[A/B 核心](topics/modeling/recycle-and-block-execution.md)已完成模型 / 写保护、分块与真实循环复核；[C01—C06](topics/modeling/recycle-project-and-consumers.md)已确认并接通 v4 保存、正式运行与 GUI / CLI | 撕裂及局部收敛满足残差和衡算，回路 / 规格失败可定位，不以循环结束冒充成功 |
 | [QS2 首个联立模块块](topics/modeling/simultaneous-modular-block.md) | P4，D01—D05 核心已实现；[QS2-C / D06](topics/modeling/simultaneous-project-and-consumers.md)D06 已批准，存储配置 / 运行结果、CLI v5 及 GUI 已实现 | 核心独立数值 / 故障与接入定向验证通过；GUI 画板已认可、接线和 macOS 代表验证完成 |
-| QS3 首个 EO 块 | P4，具备小型模型组的方程、结构、缩放、导数及初始化 | 独立基准和跨策略一致；欠 / 过规格、相关约束、超域与数值失败可解释 |
+| [QS3 多单元 EO](topics/modeling/equation-oriented-block.md) | P4，正向物料方程与单比例反算；D01—D08 整体方案已批准，产品未实施 | 模型 / 结构、求解 / 独立复核、工程 / 运行、GUI / CLI 与采纳按完整批次验收 |
 | QS4 混合分区 | P4，组合已验证的块能力；黑箱按实际需求引入 | 跨块回路与边界残差正确，结果 / 失败身份统一，不支持组合明确拒绝 |
 
 QS2 与 QS3 不强制串行；首个 EO 块不等待全部设备支持 EO，也不要求所有问题先取得完整 SM 收敛解。MC1 / MC2 提供所需模型工厂和物性上下文，第三方加载只在实际案例需要时依赖 MC3；完整插件系统、动态和 SDK 不作为前置。DS 反算可先基于局部或 SM 路径实施。
