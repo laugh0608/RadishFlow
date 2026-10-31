@@ -76,7 +76,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run rust baseline
-        run: cargo run --locked --quiet -p xtask -- validate-workspace --skip-format
+        run: cargo run --locked --quiet --target-dir target/xtask -p xtask -- validate-workspace --skip-format
 
   rust-baseline-macos:
     needs: repo-hygiene
@@ -97,7 +97,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run rust baseline
-        run: cargo run --locked --quiet -p xtask -- validate-workspace --skip-format
+        run: cargo run --locked --quiet --target-dir target/xtask -p xtask -- validate-workspace --skip-format
 
   rust-baseline-windows:
     needs: repo-hygiene
@@ -119,7 +119,7 @@ jobs:
 
       - name: Run rust baseline
         shell: pwsh
-        run: cargo run --locked --quiet -p xtask -- validate-workspace --skip-format
+        run: cargo run --locked --quiet --target-dir target/xtask -p xtask -- validate-workspace --skip-format
 
   dotnet-adapter-baseline:
     needs: repo-hygiene

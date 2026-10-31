@@ -134,6 +134,7 @@
 ### 验证成本与唯一归属
 
 - 本地 `check-repo` 按治理、文本、格式、严格 Clippy、workspace 测试执行；Clippy 覆盖相同 workspace 的全部 targets，默认入口不再重复执行独立 `cargo check`。保留原默认 feature 与 doc-test 覆盖，不以 `--all-features` 代替不同配置。显式跳过 Clippy 时仍先执行 `cargo check`，但只能报告局部验证。
+- 正式脚本与 CI 的验证入口使用 `cargo run --locked --quiet --target-dir target/xtask -p xtask -- ...` 构建并启动检查工具；子命令仍在原 workspace target 中验证。直接调用 `check-repo` / `validate-workspace` 时也使用该独立目录，避免 Windows 锁定运行中的 `xtask.exe`，导致 workspace 集成测试重建该二进制时失败；不排除 `xtask` 或减少测试覆盖。
 - 入口报告各阶段通过 / 失败及耗时、调用总耗时；计时从 `xtask` 启动开始，不含最外层 Cargo 构建它的时间，也不把缓存下实测当作冷构建或 CI 承诺。中断不形成通过结论。
 - CI 中治理 / 文本 / 格式归 `Repo Hygiene`；各平台通过 `validate-workspace --skip-format` 运行自己的 Clippy 与测试。该命令是明确的组成部分，单独通过不代表完整仓库检查。
 - PR 选择与聚合由 `xtask` 维护。`dev` 按整个 merge-base 差异路由；稳定主线和手动 Release 仍完整验证。具体范围见 [ADR 0001](../adr/0001-branch-and-pr-governance.md)。不缓存验证结论、不增加自动重试或跨 revision 接续。

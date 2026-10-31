@@ -770,6 +770,44 @@ mod tests {
     }
 
     #[test]
+    fn bundled_example_packages_load_and_solve_at_current_time() {
+        let repository = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        for (package_id, project_file) in [
+            (
+                "binary-hydrocarbon-lite-v1",
+                "feed-heater-flash-binary-hydrocarbon.rfproj.json",
+            ),
+            (
+                "water-ethanol-lite-v1",
+                "feed-heater-flash-water-ethanol.rfproj.json",
+            ),
+        ] {
+            let package_root = repository
+                .join("examples/sample-components/property-packages")
+                .join(package_id);
+            let manifest =
+                rf_store::read_property_package_manifest(package_root.join("manifest.json"))
+                    .unwrap();
+            assert_eq!(manifest.source, StoredPropertyPackageSource::LocalBundled);
+            assert!(!manifest.lease_required);
+            assert_eq!(manifest.expires_at, None);
+            let mut engine = Engine::new();
+            engine
+                .load_property_package_files(
+                    package_root.join("manifest.json"),
+                    package_root.join("payload.rfpkg"),
+                )
+                .unwrap();
+            let project =
+                std::fs::read_to_string(repository.join("examples/flowsheets").join(project_file))
+                    .unwrap();
+            engine.load_flowsheet_json(&project).unwrap();
+            engine.solve_flowsheet(package_id).unwrap();
+            assert!(engine.flowsheet_snapshot_json().is_ok());
+        }
+    }
+
+    #[test]
     fn package_file_registration_rejects_expired_and_remote_without_replacing_package() {
         let root = unique_temp_path("ffi-package-eligibility");
         let (manifest_path, payload_path) =

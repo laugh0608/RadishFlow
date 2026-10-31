@@ -11,7 +11,8 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 Push-Location $repoRoot
 
 try {
-    $arguments = @("run", "--locked", "--quiet", "-p", "xtask", "--", "check-repo")
+    # Workspace integration tests rebuild xtask.exe; Windows locks the running executable.
+    $arguments = @("run", "--locked", "--quiet", "--target-dir", "target/xtask", "-p", "xtask", "--", "check-repo")
 
     if ($SkipClippy) {
         $arguments += "--skip-clippy"

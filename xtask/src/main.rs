@@ -110,11 +110,11 @@ fn usage() -> &'static str {
     "Usage:
   cargo run -p xtask -- check-text-files
   cargo run -p xtask -- check-private-resources
-  cargo run -p xtask -- validate-workspace [--skip-clippy] [--skip-format]
+  cargo run --target-dir target/xtask -p xtask -- validate-workspace [--skip-clippy] [--skip-format]
   cargo run -p xtask -- plan-pr-checks --base-ref <ref> --target-branch <branch>
   cargo run -p xtask -- check-pr-results
   cargo run -p xtask -- check-repository-governance [--base-ref <ref>]
-  cargo run -p xtask -- check-repo [--skip-clippy] [--skip-text-files] [--base-ref <ref>]"
+  cargo run --target-dir target/xtask -p xtask -- check-repo [--skip-clippy] [--skip-text-files] [--base-ref <ref>]"
 }
 
 fn resolve_repo_root() -> Result<PathBuf, io::Error> {

@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-10-26
+更新时间：2026-10-31
 
 ## 用途
 
@@ -122,6 +122,8 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 - 重要验证若出现明显的沙盒权限、受限 restore、project reference 解析或 native 装载差异，先按 Agent 协作规则告知用户，再申请最小范围真实环境复验。
 
 最近通过记录：
+
+- 2026-10-31：PR #17 预检补正 Windows 验证工具自覆盖与本地样例包到期问题，macOS 完整 `check-repo --base-ref origin/master` 1,811 项、严格 Clippy 及全部本机门禁通过，xtask 计时 23.59 秒；远端 Windows 复验以 PR 门禁为准，见 [W44](../devlogs/2026-10/2026-W44.md)。
 
 - 2026-10-26：AF5b 最终 `check-repo` 1,810 项与严格 Clippy 通过，本机缓存下 41.10 秒；macOS 代表实窗通过，见 [W44](../devlogs/2026-10/2026-W44.md)。
 

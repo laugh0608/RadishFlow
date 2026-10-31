@@ -2,6 +2,8 @@
 
 该目录存放用于软件演示、装载与互操作回归的样例组件和参数集。
 
+随仓库提供的两套 `manifest.json` 均为 `local-bundled` 包，不要求租约、没有到期时间，供 FFI、SampleHost 与 PME 回归直接装载；payload 的数值、版本和指纹保持原样。`download.json` 继续作为下载响应的数据结构样例，控制面授权与租约场景由各自的专用测试构造，不借用本地样例包模拟过期授权。
+
 `binary-hydrocarbon-lite-v1` 的 methane / ethane 名称及 `water-ethanol-lite-v1` 的 PME 记录不代表真实物性准确性已验证；`official` 仅表示仓库标准示例。关联式适用范围、能量近似和独立数据证据缺口见 [热力学模型](../../docs/thermo/mvp-model.md#样例身份与适用范围)。
 
 当前已提供首个本地物性包样例：
