@@ -57367,6 +57367,1964 @@
           "fontWeight": "normal"
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "T82FG",
+      "x": 22300,
+      "y": 954,
+      "name": "QS2-C01 / 配置与自动耦合 · 已认可",
+      "clip": true,
+      "width": 980,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 18,
+      "padding": 28,
+      "children": [
+        {
+          "type": "text",
+          "id": "y1unt5",
+          "name": "评审说明",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "QS2-C01 · 局部评审 / 配置与自动耦合",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "lxb2z",
+          "name": "标题",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "稳态运行计划",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 28,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "vwLMA",
+          "name": "运行入口",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "运行 F5     ·     Hold / 手动     ·     计划：已应用，尚未保存",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 16,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "LAZU5",
+          "name": "活动计划",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 18,
+          "children": [
+            {
+              "type": "text",
+              "id": "Brf1H",
+              "name": "方法选择",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "计算方法    固定温压仿射联立模块  ▾",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 18,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "N5eV3t",
+              "name": "固定边界",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "温度  [ 300 K ]       压力  [ 650000 Pa ]",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "gmEsu",
+              "name": "有限能力说明",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "仅支持固定温压 Mixer / Splitter 仿射物料响应；不代表通用非线性或热 / 相平衡求解。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "UCKoR",
+          "name": "自动耦合只读预览",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 18,
+          "children": [
+            {
+              "type": "text",
+              "id": "iqwEh",
+              "name": "自动块标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "自动耦合预览 · MA + SA + MB + SB · 8 个未知量",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 18,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "EMBMA",
+              "name": "源端",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "s-ma    MA.outlet → SA.inlet          s-mb    MB.outlet → SB.inlet",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "J7dnq",
+              "name": "绑定流股",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "s-rab   SA.outlet_a → MB.inlet_b      s-rba   SB.outlet_a → MA.inlet_b",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "vAO4L",
+              "name": "汇端",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "4 条内部连接 × methane / ethane；连接和组分由当前图自动发现。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "pLV3b",
+              "name": "定位动作",
+              "fill": "$r1-specified",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "定位连接    定位成员    查看完整身份 ▾",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "heGWO",
+              "name": "尺度选择",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "尺度规则    本次新鲜总量  ▾       [ 生成显式双尺度草稿… ]",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "V5O2Mz",
+              "name": "尺度说明",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "运行时求出并冻结默认尺度；显式表需覆盖全部连接与组分，修改后须应用。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "bke9k",
+          "name": "显式双尺度展开示例",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 8,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "KBABu",
+              "name": "双尺度标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "显式尺度草稿 · 8 / 8 项 · 每项两个独立的正有限尺度",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "frame",
+              "id": "N64UnX",
+              "name": "尺度行 连接 / 组分",
+              "width": "fill_container",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "j3Lrv",
+                  "name": "尺度列 0",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "连接 / 组分",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "esiNP",
+                  "name": "尺度列 1",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "变量尺度 mol/s",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "nCKoU",
+                  "name": "尺度列 2",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "残差尺度 mol/s",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "owk1U",
+              "name": "尺度行 s-ma / methane",
+              "width": "fill_container",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "QmPvf",
+                  "name": "尺度列 0",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "s-ma / methane",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "zYKpK",
+                  "name": "尺度列 1",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "[ 5 ]",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Uz1wk",
+                  "name": "尺度列 2",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "[ 5 ]",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "HFU9p",
+              "name": "尺度行 s-ma / ethane",
+              "width": "fill_container",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": 8,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "m3nhj",
+                  "name": "尺度列 0",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "s-ma / ethane",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Tp3MS",
+                  "name": "尺度列 1",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "[ 5 ]",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Bez6t",
+                  "name": "尺度列 2",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "[ 5 ]",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "id": "YfwUY",
+              "name": "其余绑定入口",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "其余 6 项按连接展开 ▾   每项显示源端口 / 汇端口 / ComponentId",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "D1rjt0",
+          "name": "计划动作",
+          "fill": "$r1-specified",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "[ 应用计划 ]      [ 恢复已保存 ]      撤销 / 重做（计划）",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 16,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "lxAuh",
+          "name": "边界说明",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "分流比例 α / β 只在 SA / SB 单元设置编辑；计划不复制物理参数。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "ezpCV",
+          "name": "建模入口",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "建模入口  + Splitter   →   选源端口   →   选汇端口   →   确认连接",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 16,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "lZuD5",
+          "name": "就绪状态",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "✓ 静态装配就绪 · 固定边界与尺度绑定通过；实际包与数值可解性在运行时确认。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 15,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "Y5sWd",
+          "name": "独立任务",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "物料衡算（独立任务）  ▸     保留原任务入口",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "J2vdob",
+          "name": "键盘说明",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Tab 按视觉顺序移动；Enter / Space 激活当前焦点；Esc 返回并保留草稿。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "J27Pg",
+      "x": 23380,
+      "y": 954,
+      "name": "QS2-C02 / Current 真实连接与成本 · 已认可",
+      "clip": true,
+      "width": 980,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 18,
+      "padding": 28,
+      "children": [
+        {
+          "type": "text",
+          "id": "B2dNb",
+          "name": "评审说明",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "QS2-C02 · Current 局部评审 / 舍入数值为静态排版示意",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "bD5Ai",
+          "name": "标题",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "✓ 当前流程结果",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 28,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "sqCOX",
+          "name": "计划身份",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "固定温压仿射联立模块 · 输入修订 12 · 计划修订 3",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 16,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "IRLdI",
+          "name": "执行摘要",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "3 个块通过 · 4 成员联立块 / 8 未知量 · 独立最终复核通过",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 16,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "O97tus",
+          "name": "最终生产者流股表",
+          "width": "fill_container",
+          "layout": "vertical",
+          "children": [
+            {
+              "type": "frame",
+              "id": "M715Z7",
+              "name": "流股行 流股",
+              "width": "fill_container",
+              "fill": "#F1F5F9",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "yen0D",
+                  "name": "单元格 流股 0",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "连接 / 组分",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "cXWJM",
+                  "name": "单元格 流股 1",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "消费假设 mol/s",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "qTN5P",
+                  "name": "单元格 流股 2",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "生产者值 mol/s",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nEss6",
+              "name": "流股行 s-fresh",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "K3YMY",
+                  "name": "单元格 s-fresh 0",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "s-ma / methane",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "ROU1i",
+                  "name": "单元格 s-fresh 1",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "2.058823529412",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "aqi3j",
+                  "name": "单元格 s-fresh 2",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "2.058823529412",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "XG1ac",
+              "name": "流股行 s-circulation",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "fSplJ",
+                  "name": "单元格 s-circulation 0",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "s-ma / ethane",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "kTzdi",
+                  "name": "单元格 s-circulation 1",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "1.176470588235",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "fGWy3",
+                  "name": "单元格 s-circulation 2",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "1.176470588235",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "JOsZW",
+              "name": "流股行 s-recycle",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "L9G2Df",
+                  "name": "单元格 s-recycle 0",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "s-rab / methane",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "DatVM",
+                  "name": "单元格 s-recycle 1",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "1.235294117647",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "kTiAX",
+                  "name": "单元格 s-recycle 2",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "1.235294117647",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "SnjGp",
+              "name": "流股行 s-product",
+              "width": "fill_container",
+              "fill": "#FFFFFF",
+              "stroke": "$r1-border",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": 12,
+              "padding": 12,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "wZIum",
+                  "name": "单元格 s-product 0",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "s-rab / ethane",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "zlJ3k",
+                  "name": "单元格 s-product 1",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "0.705882352941",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "XUYUn",
+                  "name": "单元格 s-product 2",
+                  "fill": "$r1-text",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "0.705882352941",
+                  "fontFamily": "Noto Sans SC",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "DDJs9",
+          "name": "块列表",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "▾ 联立块 3 · MA + SA + MB + SB    其余 4 项连接 ▾",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 16,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "ya9cI",
+          "name": "连接与双尺度详情",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 18,
+          "children": [
+            {
+              "type": "text",
+              "id": "DnPoR",
+              "name": "块标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "所选连接 · s-ma / methane",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 18,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "rWnSt",
+              "name": "撕裂绑定",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "MA.outlet → SA.inlet · 单元 ID / StreamId / ComponentId ▾",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "BZ29w",
+              "name": "真实消费",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "变量尺度 5 mol/s       残差尺度 5 mol/s · 本次新鲜总量冻结",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "m7PrxR",
+              "name": "生产者输出",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "连接残差 +4.44e-16 mol/s     缩放残差 +8.88e-17（无量纲）",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "gbIbH",
+              "name": "复核差异",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "两列仅显示舍入值；残差来自原始记录，不以显示值相减或强制归零。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "Wj7hH",
+              "name": "差异说明",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "流股表 / Inspector 采用生产者值；局部 I/O 保留各单元实际消费。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "oBJdQ",
+              "name": "轨迹入口",
+              "fill": "$r1-specified",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "实际局部输入 / 输出 ▾    响应域与系数（无量纲） ▾    锚点与零流来源 ▾",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "QRrVJ",
+          "name": "线性证据与真实成本",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 10,
+          "padding": 18,
+          "children": [
+            {
+              "type": "text",
+              "id": "mglq6",
+              "name": "线性标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "LU / 条件与后向误差 · 8 × 8",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "ZZBWg",
+              "name": "数值指标",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "rcond_indicator  0.1328125      backward_error  2.2e-17\n两项均无量纲；矩阵范数 / 主元阈值 / 实际换行序列 ▾",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "fIgPv",
+              "name": "真实成本",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "锚点 1 · 响应 4 · LU 分解 1 · 三角求解 9 · 最终复核 1",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "omszy",
+              "name": "调用明细",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "局部单元调用 10 · 实例构造 6     各单元 / thermo / flash 调用与耗时 ▾",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "NCseS",
+          "name": "来源",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "计算依据 ▾   fixed-tp-affine-modular-lu / 1 · 响应 / 验收契约 1\n实际加载包与指纹 ▾   规范计划摘要 ▾   未记录的构建身份不补填",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "K48RA5",
+          "name": "动作",
+          "fill": "$r1-specified",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "复制当前结果    导出文本    定位所选流股",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 15,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "BjuDM",
+          "name": "保护提示",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "仅验证固定 T/P 物料边界。计划或输入改变使结果过期，复制 / 写出前复核资格。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "p1WPE",
+      "x": 24460,
+      "y": 954,
+      "name": "QS2-C03 EN / Draft Stale · 400 px · 已认可",
+      "clip": true,
+      "width": 400,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 18,
+      "padding": 24,
+      "children": [
+        {
+          "type": "text",
+          "id": "G5HfG2",
+          "name": "评审说明",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "QS2-C03 · 400 px / English",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "y7zx9",
+          "name": "标题",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Plan draft",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 20,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "mDGX8",
+          "name": "状态",
+          "fill": "#92400E",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Unsaved draft · not applied",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 20,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "WF7re",
+          "name": "保留输入草稿",
+          "width": "fill_container",
+          "fill": "#FFFBEB",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "i9uXBT",
+              "name": "方法",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Fixed-T/P affine modular solve",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "MK6lH",
+              "name": "输入",
+              "fill": "#B91C1C",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Residual scale [ 1e- ] mol/s",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "vWdFs",
+              "name": "校验",
+              "fill": "#B91C1C",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Finish the exponent before applying.",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "qpbmr",
+              "name": "单位保持",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Text and input unit are preserved.",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "dV8gf",
+              "name": "禁用动作",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Apply plan · unavailable",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "i5JD8",
+              "name": "恢复动作",
+              "fill": "$r1-specified",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Discard draft    Restore saved",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "xyc6Q",
+          "name": "数值保护",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Run / F5 and current output are blocked until this draft is handled.",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 20,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "aP2Lp",
+          "name": "计划应用后结果过期",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "O5fMqE",
+              "name": "过期标题",
+              "fill": "#92400E",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "After Apply · Stale",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "Vd4EZ",
+              "name": "资格说明",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Applied plan: revision 4\nPrevious run: plan revision 3",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "ds0wQ",
+              "name": "无旧数值",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Current process values are hidden. Reverting settings does not restore old result validity.",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "FFwwa",
+              "name": "重新运行",
+              "fill": "$r1-specified",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Run committed plan · F5",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "NgsrF",
+          "name": "键盘",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Tab: move through fields\nEsc: return with draft preserved\nUndo / Redo: plan editor only",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 20,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "sYBj5",
+          "name": "隔离说明",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Plan edits keep unrelated material-balance and equipment tasks valid.",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 20,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "SIL5h",
+          "name": "Invalid binding",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Binding no longer exists\ns-rba / methane\nsplitter-2.outlet_a → mixer-1.inlet_b\nKeep typed text. Locate the connection to repair it; never bind by name.",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 20,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "WvWWQ",
+      "x": 24960,
+      "y": 954,
+      "name": "QS2-C03 ZH / 草稿与过期 · 400 px · 已认可",
+      "clip": true,
+      "width": 400,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 18,
+      "padding": 24,
+      "children": [
+        {
+          "type": "text",
+          "id": "SBznC",
+          "name": "评审说明",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "QS2-C03 · 400 px / 中文 · 20 px",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "cYRk8",
+          "name": "标题",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "运行计划草稿",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 20,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "cGRc1",
+          "name": "状态",
+          "fill": "#92400E",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "未应用 · 原文与单位保留",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 20,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "HHt9a",
+          "name": "保留输入草稿",
+          "width": "fill_container",
+          "fill": "#FFFBEB",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "f1G0c",
+              "name": "方法",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "固定温压仿射联立模块",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "RVsKo",
+              "name": "输入",
+              "fill": "#B91C1C",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "残差尺度 [ 1e- ] mol/s",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "PouY0",
+              "name": "校验",
+              "fill": "#B91C1C",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "请补全指数后再应用。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "P08uY",
+              "name": "单位保持",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Tab 离开不清除原文与输入单位。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "U8uNu",
+              "name": "禁用动作",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "应用计划 · 不可用",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "e8RCD",
+              "name": "恢复动作",
+              "fill": "$r1-specified",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "舍弃草稿    恢复已保存",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "KxRbm",
+          "name": "数值保护",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "先处理草稿，才可运行 F5 或输出当前结果。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 20,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "zNLrN",
+          "name": "计划应用后结果过期",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "UjOef",
+              "name": "过期标题",
+              "fill": "#92400E",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "应用后 · 结果已过期",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "sET6M",
+              "name": "资格说明",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "已应用计划：修订 4\n上次运行：计划修订 3",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "ulNip",
+              "name": "无旧数值",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "当前数值隐藏；把设置改回也不会恢复旧结果资格。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "Q25YuF",
+              "name": "重新运行",
+              "fill": "$r1-specified",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "运行已应用计划 · F5",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "XbNHd",
+          "name": "键盘",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Tab / Shift+Tab：按字段移动\nEnter / Space：激活焦点\nEsc：返回并保留草稿\nUndo / Redo：仅计划编辑器",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 20,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "k0h5l",
+          "name": "隔离说明",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "不影响独立物料任务与设备任务的输入资格。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 20,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "y3qHsG",
+          "name": "Invalid binding",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "绑定已失效\ns-rba / methane\nsplitter-2.outlet_a → mixer-1.inlet_b\n保留原文；定位连接后修复，不按名称代选新对象。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 20,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "d8LtJv",
+      "x": 25460,
+      "y": 954,
+      "name": "QS2-C04 / 失败与取消证据 · 已认可",
+      "clip": true,
+      "width": 980,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 18,
+      "padding": 24,
+      "children": [
+        {
+          "type": "text",
+          "id": "tzyUC",
+          "name": "评审说明",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "QS2-C04 · 运行终态对照 / 故障内容为静态示意",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "B64f5r",
+          "name": "标题",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "联立求解与故障定位",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 28,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "tQi2K",
+          "name": "取消请求",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "Yrk7h",
+              "name": "取消标题",
+              "fill": "#92400E",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "A · 正在取消 · 等待后台退出",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 21,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "dWRTk",
+              "name": "活动执行",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "联立块 3 · MA + SA + MB + SB · 条件估计 / RHS 5",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "McxOB",
+              "name": "名额保护",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "取消已请求；仍占用运行名额，不能启动新的 Flow 或物料任务。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "dUDCh",
+              "name": "动作",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "等待当前调用返回并退出    ·    本次已执行阶段与成本 ▾",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "yz0cE",
+              "name": "取消解释",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "后台退出后才释放名额。取消不生成 Failed；既有合格结果保持原资格，试值不发布。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "KUj7T",
+          "name": "数值失败",
+          "width": "fill_container",
+          "fill": "#FEF2F2",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "Ea610",
+              "name": "失败标题",
+              "fill": "#B91C1C",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "B · Failed · 条件估计未通过（近奇异）",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 21,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "eSuVV",
+              "name": "失败对象",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "联立块 3 · MA + SA + MB + SB · 8 未知量",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "mv47m",
+              "name": "调用证据",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "已完成锚点 / 响应 / LU；最终复核 0 次。完成块仅属诊断证据。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "xbl3R",
+              "name": "失败残差",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "rcond_indicator 1e-13（无量纲）\nbackward_error：未计算 · 最终连接残差：未计算",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "QUm08",
+              "name": "诊断入口",
+              "fill": "$r1-specified",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "定位联立成员    定位 SA / SB 参数    查看线性证据 ▾",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "FHUgv",
+              "name": "失败输出保护",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "当前流股数值 / 复制 / 导出不可用；没有把部分块提升为本次成功结果。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "X4UgX",
+          "name": "复核故障",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "C · 最终复核失败：保留本次真实消费 / 生产者、残差与已发生成本；不回退到候选解。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 15,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "XE63D",
+          "name": "身份说明",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "更换计划或工程后，迟到完成只结算为丢弃；不回填当前结果、日志或故障详情。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "r3EO6",
+          "name": "包加载失败",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "D · 物性包加载失败\n尚未进入联立核心：无已执行方法、LU 指标或核心成本；仅显示请求设置、加载原因与重试入口。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 15,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "X2HzK",
+          "name": "非有限诊断",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "诊断数值严格区分：未计算 / NaN / 正无穷 / 负无穷。不可用的指标不补 0；不可定位时说明原因。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 15,
+          "fontWeight": "normal"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "yWUFw",
+      "x": 26540,
+      "y": 954,
+      "name": "QS2-C05 / 同版本能力升级与只读 · 已认可",
+      "clip": true,
+      "width": 980,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 18,
+      "padding": 24,
+      "children": [
+        {
+          "type": "text",
+          "id": "StAZI",
+          "name": "评审说明",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "QS2-C05 · 保存 / 打开 · 两种状态对照",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 13,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "cyN2h",
+          "name": "标题",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "保存兼容性与只读检查",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 28,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "vZaKO",
+          "name": "升级确认",
+          "width": "fill_container",
+          "fill": "#F8FAFC",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "QgcF0",
+              "name": "升级标题",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "保存将新增联立模块能力",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 23,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "JDGKX",
+              "name": "升级影响",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "工程格式仍为 v4 · 新增 fixed-tp-affine-modular-lu / 1",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "nuVMJ",
+              "name": "旧版提示",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "旧 QS1-C 版本只能只读检查新工程，无法编辑、运行或覆盖。更早版本可能无法打开。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "DwGbA",
+              "name": "草稿提示",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "尚未应用的输入草稿不会被保存或清除。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "BK1a3",
+              "name": "升级动作",
+              "fill": "$r1-specified",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "[ 取消 · 默认焦点 ]    [ 另存为… ]    [ 确认能力升级并保存 ]",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "jRWFb",
+              "name": "失败保护",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "另存到新路径也比较来源能力并提示。取消 / 写入失败保留原文件、路径、草稿与保存状态；确认期间变化须重新确认。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Q02OP",
+          "name": "未知能力只读",
+          "width": "fill_container",
+          "fill": "#FFFBEB",
+          "stroke": "$r1-border",
+          "strokeWidth": 1,
+          "layout": "vertical",
+          "gap": 12,
+          "padding": 16,
+          "children": [
+            {
+              "type": "text",
+              "id": "t0BWjL",
+              "name": "只读标题",
+              "fill": "#92400E",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "只读检查 · 当前版本不支持此工程能力",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 21,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "DmqbW",
+              "name": "元信息",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "文件：cross-recycle.rfproj.json    ·    工程格式 v4",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "QDXdx",
+              "name": "未知方法",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "不支持能力：radishflow.solver.fixed-tp-affine-modular-lu / 1",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "m2fYL",
+              "name": "只读操作",
+              "fill": "$r1-text",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "仅显示标题、格式与不支持原因；编辑 / 运行 / 保存覆盖禁用，不创建部分可编辑工作区。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 16,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "bAczR",
+              "name": "保留内容",
+              "fill": "$r1-secondary",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "原文件字节完整保留；未知能力或方法版本不回退为其他求解方法。",
+              "fontFamily": "Noto Sans SC",
+              "fontSize": 14,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "P7d0X",
+          "name": "重开结果",
+          "fill": "$r1-text",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "重开已知工程：恢复正式计划、尺度与单位；结果 Missing，须显式运行。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 15,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
+          "id": "ngvCc",
+          "name": "键盘",
+          "fill": "$r1-secondary",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "Escape 取消；默认焦点在取消。确认期间快捷键不能绕过对话框。",
+          "fontFamily": "Noto Sans SC",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        }
+      ]
     }
   ],
   "themes": {
