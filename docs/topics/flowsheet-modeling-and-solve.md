@@ -24,16 +24,16 @@
 
 本专题是流程图建模与求解的一级轨道。具体单元和建模对象由二级功能专题承载：
 
-| 子专题 | 状态 | 入口 |
-| --- | --- | --- |
-| Feed / 进料源 | Active | `unitops/feed-source.md` |
-| Heater / Cooler 温压调节单元 | Active | `unitops/heater-cooler.md` |
-| Flash Drum 闪蒸罐 | Active | `unitops/flash-drum.md` |
-| Mixer 混合器 | Active | `unitops/mixer.md` |
-| Valve 阀门 | Active | `unitops/valve.md` |
-| Material Stream 物流股 | Active | `modeling/material-stream.md` |
-| 模型目录、发现与运行实例 | Draft / 方向已确认 | [模型装配专题](modeling/model-catalog-and-runtime.md) |
-| 多策略求解与问题装配 | Draft / 方向已确认 | [多策略专题](modeling/solver-strategies-and-assembly.md) |
+| 子专题 | 状态与验收来源 |
+| --- | --- |
+| Feed / 进料源 | [所属子专题](unitops/feed-source.md)；逐项状态在子专题或其附属切片文档维护 |
+| Heater / Cooler 温压调节单元 | [所属子专题](unitops/heater-cooler.md)；逐项状态在子专题或其附属切片文档维护 |
+| Flash Drum 闪蒸罐 | [所属子专题](unitops/flash-drum.md)；逐项状态在子专题或其附属切片文档维护 |
+| Mixer 混合器 | [所属子专题](unitops/mixer.md)；逐项状态在子专题或其附属切片文档维护 |
+| Valve 阀门 | [所属子专题](unitops/valve.md)；逐项状态在子专题或其附属切片文档维护 |
+| Material Stream 物流股 | [所属子专题](modeling/material-stream.md)；逐项状态在子专题或其附属切片文档维护 |
+| 模型目录、发现与运行实例 | [模型装配专题](modeling/model-catalog-and-runtime.md)；逐项状态在子专题或其附属切片文档维护 |
+| 多策略求解与问题装配 | [多策略专题](modeling/solver-strategies-and-assembly.md)；逐项状态在子专题或其附属切片文档维护 |
 
 后续涉及具体单元行为、参数、端口、结果或诊断时，应优先更新对应子专题；本文件只保留跨单元的建模 / 求解边界。
 

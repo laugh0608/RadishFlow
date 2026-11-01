@@ -1,6 +1,6 @@
 # Control Plane 后端服务专题
 
-更新时间：2026-09-14
+更新时间：2026-11-01
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../../status/current.md) 为准。
 
@@ -12,9 +12,10 @@
 
 ## 专题层级
 
-- 层级：二级功能
-- 父专题：`docs/topics/property-basis-and-components.md`、`docs/topics/project-lifecycle-storage.md`
-- 关联专题：`docs/architecture/auth-entitlement-architecture.md`
+- 层级：大专题（一级轨道）；上位为[模拟平台规划](../../architecture/simulation-platform.md)。
+- 协同专题：[物性基础](../property-basis-and-components.md)、[项目生命周期](../project-lifecycle-storage.md)；授权设计归[认证授权架构](../../architecture/auth-entitlement-architecture.md)。
+- 本文继续拥有后端服务设计与自身实施切片；下列子专题分别维护页面、账户与公共 API 的状态和验收。本次只明确规划归属，后端及子专题仍未进入近期实施，不变更现行技术与身份边界。
+- 子专题：[Web 管理台](control-plane-web-ui.md)，承接管理页面、数据消费与交互验收。
 - 子专题：[账户、登录与 Radish 联合身份](account-and-federated-login.md)，承接未来账户映射、准入、认证与业务授权衔接的评估；当前为未排期草案，不替换现行统一身份方案。
 - 子专题：[公共 API 与访问控制](public-api-and-access-control.md)，承接未来凭据、服务账号 / API key、资源权限、撤销与配额；规划方向已确认，协议与部署未冻结。本地工程接口仍由应用宿主提供，控制面不承担主求解循环。
 

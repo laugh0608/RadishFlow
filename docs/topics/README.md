@@ -1,165 +1,154 @@
 # 开发专题索引
 
-更新时间：2026-10-22
+更新时间：2026-11-01
 
 ## 用途
 
-用途：作为 RadishFlow “总进度 + 一级轨道专题 + 二级功能专题”开发节奏的入口。
-
-读者：需要判断下一步做什么、某个功能是否已进入范围、以及实现前应读哪些边界文档的开发者、用户、AI / Agent。
-
-不包含：完整历史流水、逐日提交记录、具体代码实现细节和一次性讨论。
-
-> [!IMPORTANT]
-> 自 2026-09-12 起恢复正常开发和迭代。下表按专题组织已有能力与后续工作；Active 专题按范围持续迭代，Draft / Backlog 按优先级纳入计划，具体切片以 `docs/status/current.md` 为准。
-
-2026-09-13 确立基础功能优先的近期顺序。[模拟平台长期规划](../architecture/simulation-platform.md) 统一维护组分、物性分析、画布、单元 / 反应、稳态 / 动态 / 瞬态、算法、报告和 API 的能力地图；未来能力进入实施时再建立对应专题，不把长期清单全部标为 Active。近期从 [Studio 基础功能切片](studio-main-workflow.md#基础功能完善切片) 推进。
-
-后续明确的递归分块、间歇 / 半间歇、变量树式 API、COM 自动化及操作录制 / 回放同样由长期规划承载。gPROMS 为方程建模重点参考；APC 暂按先进过程控制领域规划，尚未指定同名产品。
-
-2026-09-14 补充 [插件系统](../architecture/simulation-platform.md#插件系统)、[许可与授权分层](../architecture/auth-entitlement-architecture.md#软件许可产品授权与操作权限) 和下表公共 API 专题。方向已确认，运行时、具体许可政策与接口仍待实施切片决策，不改变基础功能优先级。
-
-2026-09-16 确认单位系统、规格分析与确定性辅助、设备设计与校核三条主线，单位专题进入 Active，U1、U2-I1—I4 与 U3 首批结果 / 输出已接通；A1 已进入共享检查基础，其余新专题为 Draft / 规划已确认。UI 旧主稿需重审功能分区，见 [UI 重设计计划](../architecture/studio-ui-topic-plan.md)。B3-5 无界面建模已接通；2026-10-11 完成[六类盘点与 A1 首批范围](modeling-assistance-and-specifications.md#a1-首批范围与实现)，A1-I1 / I2 已完成共享检查、问题闭环和 macOS 代表验收；A2-I1 动作与生命周期基础已实现并通过自动回归，I2 局部 UI 已认可并通过 Pencil 静态复核，I2 接线与 I3 自动 / macOS 代表验收完成，I5 限制保持。
-
-2026-10-11 [G0 + E0/S0 首批方案](equipment-design-and-rating.md#首批方案审定入口2026-10-11)已认可；单位兼容、[G0 数据基础](engineering-basis-and-cases.md)及 v3 基础存储已独立完成。B04 方法门禁已核销，Pencil 六图静态复核通过并获认可；2026-10-15 G1 / S1 数据 / 纯计算及正式事务与结果有效性已实现；完整设备保存、最小 Studio v3 生命周期与独立单工况设备 UI 已完成，设备页 Undo / Redo 已接通；2026-10-20 当前计算表 CSV / JSON 导出及自动 / macOS 代表验证已完成，[S2 / G2 方案](equipment/separator-sizing-and-rating.md#s2--g2-实施方案2026-10-20已确认)已确认，S2-A1—A3 已完成计算、事务 / 保存、单行 UI / 校核导出及代表验证；G2-B1—B3 有限矩阵已完成；C1 采纳 UI、固定证据 / 保存及输出已接通，流程关联未实现，I5 不变。目标反算归建模求解，压力 / 公用工程与候选权衡归设备专题，工程检查 / 交付归结果专题；各切片见路线图，均未改变已实现能力声明。
-
-2026-09-26 确认 [装置工程与数字孪生愿景](../architecture/simulation-platform.md#装置工程与数字孪生愿景)：同一工厂 / 装置工程关联多模型、工况与运行任务。目录 / 交付包归 [生命周期规划](project-lifecycle-storage.md#装置工程容器规划)，配置及场景归 [工程基础](engineering-basis-and-cases.md#装置配置与运行场景规划)，未来 DT0—DT4 依赖与退出依据归 [路线图](../radishflow-mvp-roadmap.md#装置工程与数字孪生的演进切片)。均为规划，现场接入与在线优化未实现，近期顺序保持。
+用途：连接整体规划、大专题（一级轨道）、子专题（二级功能）和任务 / 验收来源。
+读者：需要了解能力边界、近期范围与状态来源的项目所有者、开发者及 AI / Agent。
+不包含：任务状态副本、历史批次流水、完整设计正文或发布承诺。
 
 ## 组织原则
 
-- `docs/status/current.md` 只回答当前维护状态、优先级、临时门禁、验证基线和下一步。
-- 一级轨道专题回答一条开发主线的边界，例如 Studio 主路径、流程图建模、结果审阅、项目生命周期、CAPE-OPEN 适配层。
-- 二级功能专题回答一个具体功能、单元、服务或页面怎么设计、分阶段推进、验收和验证，例如换热器、闪蒸罐、后端服务、后端 Web UI。
-- `docs/devlogs/` 记录历史推进，不再承担“下一步怎么做”的职责。
-- `docs/architecture/`、`docs/reference/`、`docs/capeopen/`、`docs/thermo/` 仍保存长期架构、字段语义和边界。
-- 一个专题只有在范围、非目标、验收标准和最小验证都写清后，才进入代码实现。
+- 整体目标与能力地图见[模拟平台长期规划](../architecture/simulation-platform.md)，MVP 范围见[scope](../mvp/scope.md)，阶段、依赖与出口见[路线图](../radishflow-mvp-roadmap.md)。
+- 大专题定义能力边界、权威设计、依赖、子专题清单和目标版本完成条件；子专题定义具体功能或工作包的场景、设计、失败行为与分期交付。
+- 阶段与专题分别管理；AF、QS、U、N 等既有阶段 / 切片 / 要求编号保留，不因整理重新编号。每个子专题只有一个主要父专题，其余是协同关系。
+- 子专题内部可分切片；复杂切片的附属文档继续保留，不另建递归专题层级。小子专题可由大专题内的稳定章节承载，远期只登记范围与启动条件。
+- 日常先读[current](../status/current.md)，再读活跃子专题、任务状态来源与验收；全局阅读由整体规划进入本索引。设计正文仍在现有 topics、architecture、reference、capeopen、thermo 中维护。
+- 统一规则、最小内容与收口要求见[协作规则](../development/agent-collaboration.md#三级规划与进度组织)，写作入口见[专题模板](topic-template.md)。
 
 ## 一级轨道专题
 
-| 专题 | 当前状态 | 专题目标 | 入口 |
-| --- | --- | --- | --- |
-| Studio 主工作台与空白项目建模主路径 | Active | 把普通空白项目从物性配置、建模、运行、结果审阅和保存 / 重开收束成可复现主路径 | `studio-main-workflow.md` |
-| 项目物性基础与组分选择 | Active | 稳定内置 package、项目组分、保存 / 重开和运行请求之间的同一事实源 | `property-basis-and-components.md` |
-| 流程图建模与求解闭环 | Active | 维护受控单元、连接、readiness、Run Panel 和 solver 之间的边界 | `flowsheet-modeling-and-solve.md` |
-| 结果审阅、诊断与恢复 | Active | 结果与恢复保持同源；V1—V4 流向、着色、设备三维和回放为新增规划 | [结果与可视化](results-review-diagnostics.md) |
-| 运行、消息与诊断 | 部分实现 | AF3 后台 / 取消 / 生命周期及 AF4b 类型化回执已接通；完整 N0—N5 待续 | [运行与诊断](runtime-messages-and-diagnostics.md) |
-| 项目生命周期与存储 | Active | 明确打开、保存、另存为、最近项目、sidecar 和脏改确认的长期边界 | `project-lifecycle-storage.md` |
-| CAPE-OPEN PMC 适配层 | Active | 完善 `.NET 10` PMC 生命周期与调用可靠性，保持 COM 注册和 PME 验证基线 | `capeopen-pmc-adapter.md` |
-| 工程设计基础、工况与数据来源 | Draft | 共享基础 / 来源、单工况与设备事务已实现；G2-B1—B3 完成；C1 固定采纳、UI / 保存 / 证据输出及代表验证完成 | [工程基础](engineering-basis-and-cases.md) |
-| 单位系统与输入显示 | Active | U1、U2-I1—I4 与 U3 首批结果 / 输出已接通；I5 按确认节点补验 | [单位系统](units-and-quantity-system.md) |
-| 颜色与状态系统 | Active | V0 首批数值字段及设置 / 保存已接通；其他消费者和运行态验收待续 | [颜色与状态](color-and-state-system.md) |
-| 规格分析与建模辅助 | Draft | 分层规格 / 自由度检查、可解释规则与固定工作流、未来 Agent 入口 | [建模辅助](modeling-assistance-and-specifications.md) |
-| 设备设计与性能校核 | Draft | 独立分离器尺寸 / 校核、UI / 保存 / 导出已实现；G2-B1—B3 完成；C1 采纳 UI / 保存 / 证据输出及代表验证完成、流程关联后续 | [设备工程](equipment-design-and-rating.md) |
+本表列能力与来源，不另维护 Active、Draft 或“首批已实现”快照。专题文档的完成声明须限定版本 / 切片；详细任务状态按下方归属表读取。
 
-UI 跨专题设计入口为 [Studio UI 计划](../architecture/studio-ui-topic-plan.md)，承载 R0—R2 功能分区重评与 Pencil 设计验收，不以画稿完成冒充代码实现。
+| 大专题 / 正式入口 | 能力边界 | 子专题或执行入口 |
+| --- | --- | --- |
+| [Studio 主工作台](studio-main-workflow.md) | 空白项目建模、运行、审阅、保存重开的用户路径 | 本文内基础功能切片；[变量与对象浏览器](variable-and-object-browser.md) |
+| [物性基础与组分](property-basis-and-components.md) | package、组分与物性上下文 | 本文内切片；模型装配为协同 |
+| [流程图建模与求解](flowsheet-modeling-and-solve.md) | 建模、连接、运行资格与求解 | 单元、物流股、模型装配、多策略求解 |
+| [结果审阅与恢复](results-review-diagnostics.md) | 结果有效性、诊断恢复与可视化 | 本文内切片；与运行诊断及物流股协同 |
+| [运行、消息与诊断](runtime-messages-and-diagnostics.md) | N0—N5 的运行控制、消息与诊断边界 | 下列七项职责子专题 |
+| [项目生命周期与存储](project-lifecycle-storage.md) | 打开、保存、最近项目、脏改确认与工程容器 | 本文内切片；与控制面协同 |
+| [CAPE-OPEN PMC](capeopen-pmc-adapter.md) | .NET / COM PMC 生命周期、宿主与调用边界 | 本文及现有 PME 验收入口 |
+| [工程基础与工况](engineering-basis-and-cases.md) | 条件、来源、工况与工程证据 | 本文内 G0—G2 等切片；与设备工程协同 |
+| [单位系统](units-and-quantity-system.md) | 量目录、单位集、输入输出一致性 | 下列四项职责子专题与 UNIT / UA 追踪 |
+| [颜色与状态](color-and-state-system.md) | 语义、组合、消费者映射与迁移 | 下列四项职责子专题与 VIS / VA 追踪 |
+| [规格与建模辅助](modeling-assistance-and-specifications.md) | 规格检查、可解释辅助与固定工作流 | 本文内 A1 / A2 等切片 |
+| [设备设计与校核](equipment-design-and-rating.md) | 独立设备设计、校核与工程关联 | 分离器、换热器 |
+| [Control Plane 后端服务](platform/control-plane-service.md) | 身份消费、授权、租约与资产分发 | Web 管理台、账户、公共 API；尚未进入近期实施 |
+
+Control Plane 复用原文档作为大专题入口，原物性 / 生命周期关系明确为协同，其子专题范围与未排期边界不变。UI 跨专题设计仍由 [Studio UI 计划](../architecture/studio-ui-topic-plan.md)承载；设计验收不能替代功能验收。
 
 ## 二级功能专题
 
 ### Studio 与自动化
 
-| 专题 | 当前状态 | 父专题与范围 | 入口 |
-| --- | --- | --- | --- |
-| 统一变量与对象浏览器 | 部分实现 / AF4a、AF4b 已完成 | 工程发现与正式动作已接通；完整浏览工作区、路径协议、关注项和新版 CLI 待续 | [变量与对象浏览器](variable-and-object-browser.md) |
+| 子专题 | 主要父专题 | 协同关系 / 状态来源 |
+| --- | --- | --- |
+| [变量与对象浏览器](variable-and-object-browser.md) | Studio 主工作台 | 物性、生命周期、结果与统一 API；AF4 / AF5a / VB 范围及证据在该专题 |
 
 ### 运行、消息与诊断
 
-父专题为 [运行、消息与诊断](runtime-messages-and-diagnostics.md)，下列均为 Draft / 待实施。详细规则按职责归位，需求与验证状态只在 [追踪表](runtime-messages/requirements-traceability.md) 维护。
+主要父专题为[运行、消息与诊断](runtime-messages-and-diagnostics.md)；下表规定设计归属，MSG 要求、S 场景、D 决策和执行 / 验证状态唯一维护在[追踪表](runtime-messages/requirements-traceability.md)。父专题给出 N0—N5 顺序与依赖。
 
-| 二级专题 | 范围 | 入口 |
-| --- | --- | --- |
-| 消息模型与问题生命周期 | 分类、身份、重检 / 恢复、状态维度 | [消息模型](runtime-messages/message-model-and-lifecycle.md) |
-| 执行追踪与收敛诊断 | 真实步骤、循环、观察与采集 | [执行追踪](runtime-messages/execution-trace-and-convergence.md) |
-| 运行控制与条件监视 | 暂停、单步、取消、条件求值 | [运行控制](runtime-messages/run-control-and-watch-conditions.md) |
-| 诊断工作台与多处联动 | 双区、定位、草稿、焦点与可访问性 | [工作台](runtime-messages/diagnostic-workbench-and-navigation.md) |
-| 记录存储与跨端消费 | 证据、规则、偏好及协议兼容 | [记录与消费者](runtime-messages/records-storage-and-consumers.md) |
-| 开发者诊断与模型验证 | 算法 / 模块 / 物性证据、对照实验与诊断包 | [开发者诊断](runtime-messages/developer-diagnostics-and-model-validation.md) |
-| 场景与验收矩阵 | 可观察预期与分阶段验证 | [验收矩阵](runtime-messages/scenarios-and-acceptance.md) |
+| 子专题 | 范围 |
+| --- | --- |
+| [消息模型](runtime-messages/message-model-and-lifecycle.md) | 分类、身份、重检 / 恢复、状态维度 |
+| [执行追踪](runtime-messages/execution-trace-and-convergence.md) | 真实步骤、循环、观察与采集 |
+| [运行控制](runtime-messages/run-control-and-watch-conditions.md) | 暂停、单步、取消与条件求值 |
+| [诊断工作台](runtime-messages/diagnostic-workbench-and-navigation.md) | 双区、定位、草稿、焦点与可访问性 |
+| [记录与消费者](runtime-messages/records-storage-and-consumers.md) | 证据、规则、偏好及协议兼容 |
+| [开发者诊断](runtime-messages/developer-diagnostics-and-model-validation.md) | 算法 / 模块 / 物性证据与诊断包 |
+| [场景与验收](runtime-messages/scenarios-and-acceptance.md) | 可观察预期与分阶段标准；结果仍归追踪表 |
 
 ### 单位与颜色状态
 
-[单位总纲](units-and-quantity-system.md) 下按四项职责维护，U1、U2-I1—I4 与 U3 首批范围已接通，I5 按已确认条件延期补验，U4 未实现；[颜色总纲](color-and-state-system.md) 的 V0 已有局部实现，通用扩展和其余消费者仍待审定 / 迁移。逐项状态与证据分别由 [单位追踪](units/requirements-traceability.md) 和 [颜色追踪](color-state/requirements-traceability.md) 维护。
-
-| 一级专题 | 二级职责入口 |
-| --- | --- |
-| 单位 | [目录与转换](units/catalog-and-conversion.md)、[单位集与保存](units/unit-sets-and-persistence.md)、[输入草稿与交互](units/input-drafts-and-interactions.md)、[输出与跨端一致性](units/output-and-consumer-consistency.md) |
-| 颜色 / 状态 | [语义与组合](color-state/semantics-and-composition.md)、[控件 / 画布映射](color-state/control-and-canvas-mapping.md)、[主题与可访问性](color-state/theme-and-accessibility.md)、[迁移与验收](color-state/migration-and-acceptance.md) |
+| 主要父专题 | 子专题设计入口 | 唯一逐项状态与证据 |
+| --- | --- | --- |
+| [单位系统](units-and-quantity-system.md) | [目录](units/catalog-and-conversion.md)、[单位集](units/unit-sets-and-persistence.md)、[输入](units/input-drafts-and-interactions.md)、[输出](units/output-and-consumer-consistency.md) | [UNIT / UA / UD 追踪](units/requirements-traceability.md) |
+| [颜色与状态](color-and-state-system.md) | [语义](color-state/semantics-and-composition.md)、[控件映射](color-state/control-and-canvas-mapping.md)、[主题](color-state/theme-and-accessibility.md)、[迁移](color-state/migration-and-acceptance.md) | [VIS / VA / VD 追踪](color-state/requirements-traceability.md) |
 
 ### 单元模块
 
-| 专题 | 当前状态 | 父专题 | 入口 |
-| --- | --- | --- | --- |
-| Feed / 进料源 | Active | 流程图建模与求解闭环 | `unitops/feed-source.md` |
-| Heater / Cooler 温压调节单元 | Active | 流程图建模与求解闭环 | `unitops/heater-cooler.md` |
-| Flash Drum 闪蒸罐 | Active | 流程图建模与求解闭环 | `unitops/flash-drum.md` |
-| Mixer 混合器 | Active | 流程图建模与求解闭环 | `unitops/mixer.md` |
-| Valve 阀门 | Active | 流程图建模与求解闭环 | `unitops/valve.md` |
+| 子专题 | 主要父专题 | 状态与验收来源 |
+| --- | --- | --- |
+| [Feed](unitops/feed-source.md) | 流程图建模与求解 | 子专题的实现快照、切片与验收 |
+| [Heater / Cooler](unitops/heater-cooler.md) | 流程图建模与求解 | 同上 |
+| [Flash Drum](unitops/flash-drum.md) | 流程图建模与求解 | 同上 |
+| [Mixer](unitops/mixer.md) | 流程图建模与求解 | 同上 |
+| [Valve](unitops/valve.md) | 流程图建模与求解 | 同上 |
 
 ### 设备工程
 
-| 专题 | 当前状态 | 父专题 | 入口 |
-| --- | --- | --- | --- |
-| 气液分离器尺寸与能力校核 | Draft | 设备设计与性能校核 | [分离器](equipment/separator-sizing-and-rating.md) |
-| 换热器设计与性能校核 | Draft | 设备设计与性能校核 | [换热器](equipment/heat-exchanger-design-and-rating.md) |
+| 子专题 | 主要父专题 | 协同关系 / 状态来源 |
+| --- | --- | --- |
+| [分离器尺寸与校核](equipment/separator-sizing-and-rating.md) | 设备设计与性能校核 | 工程基础、物性、单位；S / C 交付范围、待验项与证据在该专题 |
+| [换热器设计与校核](equipment/heat-exchanger-design-and-rating.md) | 设备设计与性能校核 | 工程基础、物性、单位；范围、前置条件与验收在该专题 |
 
 ### 建模对象
 
-| 专题 | 当前状态 | 父专题 | 入口 |
-| --- | --- | --- | --- |
-| Material Stream 物流股 | Active | 流程图建模与求解闭环 / 结果审阅、诊断与恢复 | `modeling/material-stream.md` |
-| 模型目录、发现与运行实例 | AF2a / AF2b 已实施 | 流程图建模与求解闭环 / 项目物性基础；外部扩展待实施 | [模型装配](modeling/model-catalog-and-runtime.md) |
-| 多策略求解与问题装配 | QS0 有限物料任务已接通 | 装配 / 纯求值、直接后端、正式运行及跨端结果；QS1—QS4 按能力分期 | [多策略求解](modeling/solver-strategies-and-assembly.md) |
-| 分块序贯模块与回流求解 | QS1-A/B 核心已实现 | Splitter、SCC / 显式撕裂、循环 / 复核与故障验证；版本化保存及 GUI / CLI 已按 QS1-C 接通 | [QS1](modeling/recycle-and-block-execution.md) |
-| 回流工程与正式接入 | QS1-C 已实现 | 项目 v4、独立计划 / 双资格、显式闭环建模、已认可 GUI 与 CLI v4 | [QS1-C](modeling/recycle-project-and-consumers.md) |
-| 首个联立模块块 | QS2-A/B 核心已实现 | 交叉回流、耦合变量 / 残差、模块仿射响应、稠密后端与独立基准；正式接入归 QS2-C | [QS2](modeling/simultaneous-modular-block.md) |
-| 联立模块工程与正式接入 | D06 已批准，C-A / C-B / CLI / GUI 已实现 | v4 新方法 / 能力、冻结计划 / 双资格、worker / 真实结果与 CLI v5；GUI 画板已认可并接通，未验平台保持 | [QS2-C](modeling/simultaneous-project-and-consumers.md) |
-| 多单元联立方程与规格反算 | QS3-D01—D08 已实现并完成本机验证 | 端口方程 / 结构分析、正向 / 单比例反算、候选采纳、v4 新能力与 GUI / CLI v6 已接通 | [QS3](modeling/equation-oriented-block.md) |
+| 子专题 | 主要父专题 | 协同关系 / 状态来源 |
+| --- | --- | --- |
+| [Material Stream](modeling/material-stream.md) | 流程图建模与求解 | 结果审阅、物性基础；实现与验收在该专题 |
+| [模型目录与运行实例](modeling/model-catalog-and-runtime.md) | 流程图建模与求解 | 物性基础；AF2 / MC 范围与证据在该专题 |
+| [多策略求解与装配](modeling/solver-strategies-and-assembly.md) | 流程图建模与求解 | 模型目录、物性、结果；QS 依赖和范围由本篇统筹 |
+
+多策略求解内部的以下文档承载实施切片，不新增专题层级；其“父专题”指所属二级功能。切片逐项状态归各自文档，多策略总纲和路线图只引用有来源的摘要。
+
+| 既有切片 | 设计、执行状态与验收来源 |
+| --- | --- |
+| QS0 | [多策略求解内的有限物料切片](modeling/solver-strategies-and-assembly.md) |
+| QS1-A/B | [分块与回流核心](modeling/recycle-and-block-execution.md) |
+| QS1-C | [回流工程与正式消费者](modeling/recycle-project-and-consumers.md) |
+| QS2-A/B | [联立模块核心](modeling/simultaneous-modular-block.md) |
+| QS2-C | [联立模块工程与正式消费者](modeling/simultaneous-project-and-consumers.md) |
+| QS3 | [联立方程与规格反算](modeling/equation-oriented-block.md) |
 
 ### 平台与服务
 
-| 专题 | 当前状态 | 父专题 | 入口 |
-| --- | --- | --- | --- |
-| Control Plane 后端服务 | Backlog | 项目物性基础与组分选择 / 项目生命周期与存储 | `platform/control-plane-service.md` |
-| Control Plane Web UI 后端管理台 | Backlog | Control Plane 后端服务 | `platform/control-plane-web-ui.md` |
+| 子专题 | 主要父专题 | 协同关系 / 状态来源 |
+| --- | --- | --- |
+| [Web 管理台](platform/control-plane-web-ui.md) | Control Plane 后端服务 | UI、授权架构；范围、前置条件与验收在该专题 |
 
 ### 未来规划（未激活）
 
-| 专题 | 当前文档状态 | 父专题 | 入口 |
-| --- | --- | --- | --- |
-| 账户、登录与 Radish 联合身份 | Draft / 未排期 / 待架构决策 | Control Plane 后端服务 | [账户与联合登录](platform/account-and-federated-login.md) |
-| 公共 API 与访问控制 | Draft / 规划方向已确认 / 未排期 | Control Plane 后端服务（远端访问控制） | [公共 API 与访问控制](platform/public-api-and-access-control.md) |
+| 子专题 | 主要父专题 | 启动边界与状态来源 |
+| --- | --- | --- |
+| [账户与联合登录](platform/account-and-federated-login.md) | Control Plane 后端服务 | 未排期，架构决策及验收在该专题 |
+| [公共 API 与访问控制](platform/public-api-and-access-control.md) | Control Plane 后端服务 | 方向已确认但未排期，协议 / 部署决策及验收在该专题 |
 
-此处记录仍待范围与架构决策的规划；进入实施前先完成对应专题的前置决策。
+长期递归分块、动态 / 瞬态、间歇 / 半间歇、插件、COM 自动化、录制 / 回放和装置数字孪生继续由整体规划承载；不因索引整理提前激活。基础架构优先及当前停止线仍见 current。
 
 ## 专题状态定义
 
-| 状态 | 含义 |
+方案、执行、验证事实分别记录，统一语义见[协作规则](../development/agent-collaboration.md#三级规划与进度组织)。既有英文标记保留，不据此自动迁移完成状态：
+
+| 标记 | 解释与完成边界 |
 | --- | --- |
-| Draft | 已建文档，具体切片尚未进入实现；可注明方向已确认，须完成切片设计与验收定义 |
-| Active | 当前持续迭代的专题，具体切片由当前优先级确定 |
-| Blocked | 已确认阻塞，等待决策、外部环境或前置专题 |
-| Done | 约定范围内验收完成，后续扩展需更新范围与验收标准 |
-| Frozen | 阶段性冻结，只修 blocker，不扩范围 |
-| Backlog | 已记录但暂不推进 |
+| Draft | 尚有待收敛设计；可能已有独立切片完成，须分别列出方案与执行事实 |
+| Active | 持续迭代的能力主线，不表示其全部范围已实现 |
+| Blocked | 指定范围受阻，记录原因与解除条件 |
+| Done | 指定版本 / 切片满足验收，不代表未来扩展或全部平台完成 |
+| Frozen | 已明确冻结，按原停止线处理，不能自动恢复实施 |
+| Backlog | 已登记但未纳入近期执行；规划存在不代表已获实施授权 |
+
+## 状态来源与验收归属
+
+- 运行消息、单位、颜色的逐项任务 / 要求状态与证据归各自追踪表；子专题只拥有规则与验收场景，其他位置保留有链接的范围摘要。
+- 其余专题的任务或切片状态归对应专题中的实施表 / 章节；独立附属切片文档已有状态时，以该文档为准，主专题不复制完整清单。
+- 验收标准在对应正式专题 / 场景矩阵中维护，实际结果引用周志或验收记录；current 汇总活跃范围、阻塞与下一步，不另设任务表。
+- 跨专题任务指定一个状态维护位置，其他参与方引用；同一要求与其实施任务可以不同编号，但应相互关联，不能把“任务结束”直接当作“要求验收通过”。
+- 完成声明说明版本、切片、平台和未验证面。大专题按当前目标版本要求及跨专题主路径判断，不用文件数或任务勾选数计算完成率。
 
 ## 新增专题规则
 
-已有问题优先更新所属专题；新增专题按当前优先级组织，不以文档建立代替实现或验收。
+优先沿用已有专题，按[模板](topic-template.md)补齐归属、场景、范围、设计依据、输入输出、正常 / 失败 / 恢复行为、切片、任务、状态来源与验收。大专题可引用既有设计，子专题可用稳定章节承载；不为远期清单创建空文件。
 
-新增专题时优先复制 `topic-template.md`，并至少写清：
-
-- 专题层级、父专题和子专题关系。
-- 专题目标和用户路径。
-- 当前实现快照和已知缺口。
-- 本专题纳入和不纳入的范围。
-- 数据 / 状态 / 命令 / UI 边界。
-- 分阶段切片和退出标准。
-- 最小验证计划。
-
-不要把同一类内容同时写进多个专题。若一个改动跨专题，先在当前激活专题写主决策，再在相关专题补引用。
+新增、调整或完成范围时，核对本索引、路线图对应关系、唯一状态来源、current 和实际证据；产品、接口或授权范围变化仍按既有协作规则处理。历史状态按时点解释，不把旧批次重新标成本次验收。
 
 ## 总进度关系
 
-- 当前阶段总进度：`docs/status/current.md`
-- MVP 总边界：`docs/mvp/scope.md`
-- 第一阶段路线图：`docs/radishflow-mvp-roadmap.md`
-- 周志索引：`docs/devlogs/README.md`
+- 当前重点：[current](../status/current.md)。
+- 总体能力：[模拟平台](../architecture/simulation-platform.md)；首版范围：[MVP](../mvp/scope.md)。
+- 阶段与依赖：[路线图](../radishflow-mvp-roadmap.md)。
+- 历史证据：[周志索引](../devlogs/README.md)。

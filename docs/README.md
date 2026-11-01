@@ -26,7 +26,7 @@
 
 ## Development Topics
 
-Topics 文档回答“一个功能、能力包或开发目标怎么设计、分阶段推进、验收和验证”。项目正常开发和迭代；Topic 状态描述当前专题成熟度，具体切片与优先级以 `status/current.md` 为准，Draft / Backlog 进入实现前需明确范围和验收。
+Topics 按“整体规划 → 大专题（一级轨道）→ 子专题（二级功能）”组织；[专题索引](topics/README.md)登记归属、阶段与状态 / 验收来源，[协作规则](development/agent-collaboration.md#三级规划与进度组织)定义最小内容和分期完成口径。任务状态沿用既有追踪表或所属切片，current 汇总优先级和下一步；设计、执行、验证事实分别说明，不从 Draft / Active 等标记推导完成度。
 
 | 文档 | 说明 |
 | --- | --- |
