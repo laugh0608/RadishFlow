@@ -83,4 +83,4 @@ AF4b 已补 [类型化运行回执](variable-and-object-browser.md#af4b-2—4-�
 
 ## QS4 混合执行（2026-11-04）
 
-[QS4 首片](modeling/mixed-partition-execution.md)复用单 worker、Ready / 完成双资格和 join，新增块 ID、嵌套 EO、跨块边界 / 全局复核阶段及独立混合诊断。块成功仅诊断，整流程通过后才发布 Current；取消保留既有 Current 并撤销本次接收，退出前不释放名额。计划 ABA、错载荷、各外层安全点取消与既有 worker 生命周期通过正式回归；macOS 奇异 EO 块仅保留两个上游 Feed 的诊断，无当前快照，见 W45。真实在途取消 / join 的原生时机证据仍待补。
+[QS4 首片](modeling/mixed-partition-execution.md)复用单 worker、Ready / 完成双资格和 join，新增块 ID、嵌套 EO、跨块边界 / 全局复核阶段及独立混合诊断。块成功仅诊断，整流程通过后才发布 Current；取消保留既有 Current 并撤销本次接收，退出前不释放名额。计划 ABA、错载荷、各外层安全点取消与既有 worker 生命周期通过正式回归；macOS 奇异 EO 块仅保留两个上游 Feed 的诊断，无当前快照。共享 owner 的真实在途取消 / join 已由 macOS 回流代表路径补证（线程采样、取消历史与再次运行），见 W45；不替代各方法数值安全点的逐项原生验收。
