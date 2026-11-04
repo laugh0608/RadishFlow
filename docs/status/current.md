@@ -49,17 +49,17 @@
 
 ### 下一步
 
+- [ ] 先按[应用架构后续事项](../architecture/app-architecture.md#接下来事项)做大图帧成本 / snapshot 次数的有界只读诊断，依据证据提出修复范围；AF1 独立跟踪。
+- [ ] 审定 [C2-A 后续事项](../thermo/mvp-model.md#接下来事项)：先审纯物质 / 混合物压力连续性及新候选版本；来源、VLE / 气相缺口保持，B / C3 不开工。
 - [ ] 按 [QS3 保留项](../topics/modeling/equation-oriented-block.md#接下来事项)补方法特定原生交互与平台项；共享取消 / join 代表及数值直证已补。
 - [x] [QS4 首片 A—D](../topics/modeling/mixed-partition-execution.md)已按批准方案及认可画板完成；跨块回路、更多策略与逆向规格另审。
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)的设备数据 / 事务 / 保存 / UI / 输出及代表验证完成，流程关联未实现。
-- [x] AF0 代码审计、功能断点与依赖切片已整理，基础架构优先安排已同步；不代表后续切片实施完成。
 - [ ] 按 [AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23) 捕获异常现场，定因后确认修复并验收；未复现不等于收口。
 - [x] AF2a / b 装配、AF3 后台运行、AF4a / AF5a 查询与 AF4b 正式动作 / GUI 已完成。
 - [x] [AF4c 契约](../topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)四片完成，v3 覆盖及磁盘边界已验证，旧协议保持。
 - [x] AF5b 来源、导航、输出及代表验证完成。
 - [x] AF6、QS0 独立物料任务和 QS1—QS3 有限回流 / 联立模块 / 物料 EO 已接通；QS4 首片已接通，后续混合策略、热 / 相平衡 EO 与动态另审。
-- [ ] 审定 [C2-A 后续建议](../thermo/mvp-model.md#2026-11-04-技术审阅与后续建议)：先审纯物质 / 混合物压力连续性及新候选版本；第三轮来源审计、VLE / 气相缺口保持，B / C3 不开工。
 - [ ] 全局 R0 待评审；U / A / 设备局部稿通过不代表全局定稿。
 - [ ] [可视化 V1—V4](../radishflow-mvp-roadmap.md#颜色与流程可视化的配套切片)方向已确认、均未实现：二维流向 / 数据着色随结果基础，局部三维依赖设备几何，动态回放依赖真实时间结果；整厂三维另评估。
 

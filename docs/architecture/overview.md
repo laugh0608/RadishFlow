@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-10-31
+更新时间：2026-11-04
 
 ## 用途
 
@@ -16,7 +16,7 @@
 
 | 部分 | 已有实现 | 能力边界 |
 | --- | --- | --- |
-| Rust Core | 对象模型、简化物性 / TP Flash、图校验、顺序模块及有限回流 / 联立模块 / 物料 EO | QS1—QS3 限定固定温压 Feed / Mixer / Splitter；算法收敛不等于物理准确性验证 |
+| Rust Core | 对象模型、简化物性 / TP Flash、图校验、顺序模块及有限回流 / 联立模块 / 物料 EO、首个混合分区 DAG | QS1—QS3 限定固定温压 Feed / Mixer / Splitter；QS4 组合 Local 与正向物料 EO，边界见专题；算法收敛不等于物理准确性验证 |
 | Rust Studio | `eframe/egui` 桌面壳、草稿与命令、运行控制、结果审阅、项目生命周期 | 受控建模路径，尚非完整自由连线或通用流程编辑器 |
 | .NET 10 CAPE-OPEN Bridge | C ABI 调用、PMC、注册工具、contract / smoke 与 SampleHost | 自有 Unit Operation PMC；PME 兼容结论限于已记录的宿主和场景 |
 | 外部 Control Plane | 本仓库已有客户端 DTO、HTTP transport、缓存与租约编排 | 服务端未在本仓库落地；客户端测试不代表 OIDC、部署和真实授权闭环已完成 |
@@ -61,7 +61,7 @@ flowchart TD
 | `rf-flash` | TP Flash、Rachford-Rice、相分率与相组成 | 数值假设与验证边界见 [热力学模型](../thermo/mvp-model.md) |
 | `rf-unitops` | 七类内建单元 / 工厂、规格规则、组分衡算 / 响应 / 方程能力，以及独立设备计算 | 各模型分别声明支持的能力；Mixer、Valve 和焓模型仍有简化假设 |
 | `rf-flowsheet` | 端口、流股引用、一源一汇校验及文档侧有来源的入口压力上下文 | 终端产品流可没有 sink；不借用未运行模板伪造压力依据 |
-| `rf-solver` | 无回路 SM、QS0 独立物料任务、QS1 分块回流、QS2 仿射联立、QS3 物料 EO 与独立复核 | 无回路方法仍拒绝环路；新方法按各自能力执行，不自动换策略；通用非线性 / 混合分区未实现 |
+| `rf-solver` | 无回路 SM、QS0 独立物料任务、QS1 分块回流、QS2 仿射联立、QS3 物料 EO、QS4 Local＋正向 EO 的 DAG 与独立复核 | 各方法按自身能力执行，不自动换策略；跨块混合回路与通用非线性未实现 |
 | `rf-store` | 项目 v1—v4、sidecar、偏好、授权缓存、物性包与设备 / 正式流程计划编解码 | 已知能力可编辑，未知能力整份只读；工程版本与 CLI 版本独立，见 [存储专题](../topics/project-lifecycle-storage.md) |
 | `rf-ffi` | engine 句柄、JSON 输入输出、错误映射与字符串释放 | 对外只暴露窄 C ABI，不向内核引入 COM |
 | `rf-ui` | AppState、草稿、共享输入事务、工程查询、来源与结果 presentation | 只读消费求解结果，不另算热力学 |
@@ -78,7 +78,7 @@ AF4a 的 `rf-ui::project_query` 从单一工作区只读发现流程、设备、
 
 Studio 的 `modeling_specifications` 提供只读 A1 报告与会话身份；`modeling_recommendations` 持有同一检查会话，负责候选、预览、忽略和正式接受，GUI 共用该状态。接受经 `rf-ui` 输入 / 连接事务写回，检查与推荐不自动求解、不持久化，也不新增 CLI 协议。共享规则在 UI、预检与 solver 各自阶段消费，保留既有外部失败分类。
 
-多策略沿“同一工程 → 计算任务 → 能力 / 规格检查 → 问题装配 → 执行 → 有资格的结果”组织。QS0 为独立会话任务；QS1—QS3 已接工程 v4 和四种正式 `FlowPlanConfiguration`，共用运行拥有者、保存与结果守卫；CLI v4 / v5 / v6 分别扩展能力并冻结旧协议。具体边界见 [多策略专题](../topics/modeling/solver-strategies-and-assembly.md)，通用 EO、自动策略选择和 QS4 混合分区未实现。
+多策略沿“同一工程 → 计算任务 → 能力 / 规格检查 → 问题装配 → 执行 → 有资格的结果”组织。QS0 为独立会话任务；QS1—QS4 与无回路方法组成五种正式 `FlowPlanConfiguration`，经工程 v4 保存，共用运行拥有者和结果守卫；CLI v4 / v5 / v6 / v7 分别支持回流、仿射联立、物料 EO 与首个混合 DAG，旧协议能力保持。具体边界见 [多策略专题](../topics/modeling/solver-strategies-and-assembly.md)及 [QS4](../topics/modeling/mixed-partition-execution.md)；通用 EO、自动策略选择和跨块混合回路未实现。
 
 ## 模型发现与装配现状
 

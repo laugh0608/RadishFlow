@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-10-31
+更新时间：2026-11-04
 
 ## 目的
 
@@ -50,9 +50,11 @@
 
 ## 方法载荷与共同入口
 
-`FlowResultRecord` 包含 Acyclic(SolveSnapshot)、Partitioned(PartitionedFlowSnapshot)、Simultaneous(SimultaneousFlowSnapshot)、EquationOriented(EquationFlowSnapshot)。共同 `FlowSnapshotHeader` 保存来源、ID、输入 revision、sequence、状态、诊断和生产者流股；`unit_result()` 返回真实消费 / 产出。只有 Acyclic 提供 `StepSnapshot`，其他方法保留最终单元复核、块或方程证据，不能用空 steps 判断“没有单元结果”。
+`FlowResultRecord` 包含 Acyclic(SolveSnapshot)、Partitioned(PartitionedFlowSnapshot)、Simultaneous(SimultaneousFlowSnapshot)、EquationOriented(EquationFlowSnapshot)、Mixed(MixedFlowSnapshot)。共同 `FlowSnapshotHeader` 保存来源、ID、输入 revision、sequence、状态、诊断和生产者流股；`unit_result()` 返回真实消费 / 产出。只有 Acyclic 提供 `StepSnapshot`，其他方法保留最终单元复核、块或方程证据，不能用空 steps 判断“没有单元结果”。
 
 QS1 记录撕裂 / 迭代与最终复核；QS2 记录响应、耦合、LU / 条件 / 后向误差；QS3 记录变量 / 方程、规格 / 区间轨迹、条件系统与完整 Jacobian、原值 / 求得比例及实际 I/O。部分失败证据不能作为正式流股发布。方法边界分别见 [QS1-C](../topics/modeling/recycle-project-and-consumers.md)、[QS2-C](../topics/modeling/simultaneous-project-and-consumers.md)、[QS3](../topics/modeling/equation-oriented-block.md)。QS0 独立物料任务与设备结果不属于 FlowResultRecord。
+
+[QS4](../topics/modeling/mixed-partition-execution.md) 保留 Local / EO 分块、原身份的跨块边界、实际单元复核和全局衡算证据；全部通过后才形成 MixedFlowSnapshot。失败 / 取消中的已完成块只供诊断，不发布为本次运行的顶层 Current 或部分成功流股；符号布局也不证明实际边界下数值可解。
 
 ## `SolveSnapshot` 的稳定语义
 
