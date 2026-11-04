@@ -1128,3 +1128,6 @@ mod tests;
 
 #[cfg(test)]
 mod test_fixtures;
+
+#[cfg(test)]
+mod strategy_acceptance;

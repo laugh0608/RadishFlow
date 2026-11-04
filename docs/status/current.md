@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-11-01
+更新时间：2026-11-04
 
 ## 用途
 
@@ -42,18 +42,15 @@
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
 
 
-### 最近进展（截至 2026-10-31）
+### 最近进展（截至 2026-11-04）
 
-- [QS0](../topics/modeling/solver-strategies-and-assembly.md#稳态方程任务实施方案2026-10-31)已接通有限物料求解、独立任务及 GUI / CLI；验证证据见 W44。
-
-- [AF2a](../topics/modeling/model-catalog-and-runtime.md#af2a-内建目录与工厂)六类目录 / 工厂已接通，旧 kind、格式和诊断保持。
-
-- 设备采纳、单位与作者路径等既有进展见 [W43](../devlogs/2026-10/2026-W43.md)及专题；C2-A 原表待审、精度结论不变。
+- QS0—QS3 验收映射、共同案例及 macOS 失败 / 保存取消 / 恢复补验完成，正式 2,034 项通过；[W45](../devlogs/2026-11/2026-W45.md)保留数值直证、原生和平台缺口。
+- [QS4 首片方案](../topics/modeling/mixed-partition-execution.md)已形成，D01—D05 待确认，产品实施未开始。
 
 ### 下一步
 
-- [ ] 按 [QS3 接下来事项](../topics/modeling/equation-oriented-block.md#接下来事项)核对跨方法验收证据，补边界 / 原生交互与平台缺口。
-- [ ] 评估 [QS4 首个真实混合分区场景](../topics/modeling/solver-strategies-and-assembly.md#接下来事项)，先形成方案再确认实施；本条仅为建议。
+- [ ] 按 [QS3 保留项](../topics/modeling/equation-oriented-block.md#接下来事项)补数值直证、原生交互与平台缺口；本机核对和必要补验已完成。
+- [ ] 确认 [QS4-D01—D05](../topics/modeling/mixed-partition-execution.md#待所有者确认的影响)：Local＋正向 EO 的 DAG 组合及跨层影响，确认后实施。
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)的设备数据 / 事务 / 保存 / UI / 输出及代表验证完成，流程关联未实现。
 - [x] AF0 代码审计、功能断点与依赖切片已整理，基础架构优先安排已同步；不代表后续切片实施完成。
@@ -118,7 +115,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-10-31：QS3 含 GUI / CLI v6 通过本机 2,031 项及完整门禁、macOS 反算 / 采纳 / 保存重开 / rerun；历史读写器另验通过。上午 PR #17 的跨平台 CI 仅覆盖当时合入版本，不覆盖其后的 QS0—QS3 新增代码。证据与未验范围见 [W44](../devlogs/2026-10/2026-W44.md)。
+- 2026-11-04：跨策略补验后本机 2,034 项及完整门禁通过；macOS 失败 / 保存取消 / 恢复通过，见 [W45](../devlogs/2026-11/2026-W45.md)。QS3 采纳 / 保存重开与历史读写器证据见 W44；PR #17 的跨平台 CI 不覆盖其后 QS0—QS3 新增代码，未验平台保持。
 
 - 既有功能与实窗证据见 [W38](../devlogs/2026-09/2026-W38.md)，跨平台、native 与 `.NET` 历史基线见 [W37](../devlogs/2026-09/2026-W37.md)，更早记录见 [W36](../devlogs/2026-09/2026-W36.md)；历史证据不替代新增路径或发布验收。
 
@@ -145,7 +142,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 - 代码风格、命名和抽象判断：`docs/development/code-style.md`
 - 分支与 PR 治理：`docs/adr/0001-branch-and-pr-governance.md`
 - 单位 / 建模辅助 / 设备设计的详细规划见本文当前结论链接；分离器与换热器子专题从设备专题进入。UI 功能分区、旧稿状态和 R0—R2 见 UI 计划。
-- 最新周志：[W44](../devlogs/2026-10/2026-W44.md)；AF 已实现证据见 W43，设备基础 / UI 见 W42，U / A 见 W41。
+- 最新周志：[W45](../devlogs/2026-11/2026-W45.md)；QS 实现 / 历史验证见 W44，AF 见 W43，设备见 W42，U / A 见 W41。
 
 ## 更新规则
 
