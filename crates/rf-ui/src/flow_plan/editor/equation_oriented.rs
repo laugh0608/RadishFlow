@@ -41,6 +41,8 @@ pub(super) fn applies_to(field: &FlowPlanNumericField, plan: &FlowPlanConfigurat
             .scales
             .as_ref()
             .is_some_and(|s| s.equations.contains_key(b)),
+        (FlowPlanConfiguration::Mixed(o), MixedVariableScale { block, binding }) => o.blocks.iter().find(|b| &b.id == block).is_some_and(|b| matches!(&b.method, rf_solver::mixed::MixedBlockMethod::EquationOriented { scales: Some(s) } if s.variables.contains_key(binding))),
+        (FlowPlanConfiguration::Mixed(o), MixedResidualScale { block, binding }) => o.blocks.iter().find(|b| &b.id == block).is_some_and(|b| matches!(&b.method, rf_solver::mixed::MixedBlockMethod::EquationOriented { scales: Some(s) } if s.equations.contains_key(binding))),
         _ => false,
     }
 }

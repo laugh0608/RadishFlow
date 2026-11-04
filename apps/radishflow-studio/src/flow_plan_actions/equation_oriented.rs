@@ -126,7 +126,7 @@ fn port(p: StoredPortBinding, stream: StreamId) -> RfResult<PortBinding> {
         stream,
     })
 }
-fn stored_variable(b: &VariableBinding) -> StoredEquationVariableBinding {
+pub(super) fn stored_variable(b: &VariableBinding) -> StoredEquationVariableBinding {
     match b {
         VariableBinding::PortComponent { port, component } => {
             StoredEquationVariableBinding::PortComponent {
@@ -142,7 +142,7 @@ fn stored_variable(b: &VariableBinding) -> StoredEquationVariableBinding {
         },
     }
 }
-fn variable(b: StoredEquationVariableBinding) -> VariableBinding {
+pub(super) fn variable(b: StoredEquationVariableBinding) -> VariableBinding {
     match b {
         StoredEquationVariableBinding::PortComponent {
             unit_id,
@@ -165,7 +165,7 @@ fn variable(b: StoredEquationVariableBinding) -> VariableBinding {
         }
     }
 }
-fn stored_equation(b: &EquationBinding) -> StoredEquationBinding {
+pub(super) fn stored_equation(b: &EquationBinding) -> StoredEquationBinding {
     match b {
         EquationBinding::Unit {
             unit,
@@ -186,13 +186,27 @@ fn stored_equation(b: &EquationBinding) -> StoredEquationBinding {
             sink: stored_port(sink),
             component_id: component.clone(),
         },
+        EquationBinding::Boundary {
+            source_unit,
+            source_port,
+            sink,
+            component,
+        } => StoredEquationBinding::Boundary {
+            stream_id: sink.stream.clone(),
+            source: StoredPortBinding {
+                unit_id: source_unit.clone(),
+                port: source_port.clone(),
+            },
+            sink: stored_port(sink),
+            component_id: component.clone(),
+        },
         EquationBinding::ProductTotal { source } => StoredEquationBinding::ProductTotal {
             stream_id: source.stream.clone(),
             source: stored_port(source),
         },
     }
 }
-fn equation(b: StoredEquationBinding) -> RfResult<EquationBinding> {
+pub(super) fn equation(b: StoredEquationBinding) -> RfResult<EquationBinding> {
     Ok(match b {
         StoredEquationBinding::Unit {
             unit_id,
@@ -210,6 +224,17 @@ fn equation(b: StoredEquationBinding) -> RfResult<EquationBinding> {
             component_id,
         } => EquationBinding::Connection {
             source: port(source, stream_id.clone())?,
+            sink: port(sink, stream_id)?,
+            component: component_id,
+        },
+        StoredEquationBinding::Boundary {
+            stream_id,
+            source,
+            sink,
+            component_id,
+        } => EquationBinding::Boundary {
+            source_unit: source.unit_id,
+            source_port: source.port,
             sink: port(sink, stream_id)?,
             component: component_id,
         },

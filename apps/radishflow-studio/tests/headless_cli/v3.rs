@@ -293,3 +293,6 @@ mod v5;
 
 #[path = "v6.rs"]
 mod v6;
+
+#[path = "v7.rs"]
+mod v7;

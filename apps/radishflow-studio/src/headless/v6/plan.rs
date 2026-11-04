@@ -1,17 +1,20 @@
 use super::*;
-fn stored_port(p: &old::actions::Port, refs: &Bindings) -> Result<StoredPortBinding, Failure> {
+pub(in crate::headless) fn stored_port(
+    p: &old::actions::Port,
+    refs: &Bindings,
+) -> Result<StoredPortBinding, Failure> {
     Ok(StoredPortBinding {
         unit_id: refs.resolve(&p.unit, Output::Unit)?.into(),
         port: p.port.clone(),
     })
 }
-fn wire_port(p: &StoredPortBinding) -> old::actions::Port {
+pub(in crate::headless) fn wire_port(p: &StoredPortBinding) -> old::actions::Port {
     old::actions::Port {
         unit: IdentityRef::id(&p.unit_id),
         port: p.port.clone(),
     }
 }
-fn stored_variable(
+pub(in crate::headless) fn stored_variable(
     b: &Variable,
     refs: &Bindings,
 ) -> Result<StoredEquationVariableBinding, Failure> {
@@ -33,7 +36,10 @@ fn stored_variable(
         },
     })
 }
-fn stored_equation(b: &Equation, refs: &Bindings) -> Result<StoredEquationBinding, Failure> {
+pub(in crate::headless) fn stored_equation(
+    b: &Equation,
+    refs: &Bindings,
+) -> Result<StoredEquationBinding, Failure> {
     Ok(match b {
         Equation::Unit {
             unit,
@@ -61,7 +67,7 @@ fn stored_equation(b: &Equation, refs: &Bindings) -> Result<StoredEquationBindin
         },
     })
 }
-fn wire_variable(b: StoredEquationVariableBinding) -> Variable {
+pub(in crate::headless) fn wire_variable(b: StoredEquationVariableBinding) -> Variable {
     match b {
         StoredEquationVariableBinding::PortComponent {
             unit_id,
@@ -80,8 +86,8 @@ fn wire_variable(b: StoredEquationVariableBinding) -> Variable {
         },
     }
 }
-fn wire_equation(b: StoredEquationBinding) -> Equation {
-    match b {
+pub(in crate::headless) fn wire_equation(b: StoredEquationBinding) -> Result<Equation, Failure> {
+    Ok(match b {
         StoredEquationBinding::Unit {
             unit_id,
             role,
@@ -102,11 +108,16 @@ fn wire_equation(b: StoredEquationBinding) -> Equation {
             sink: wire_port(&sink),
             component_id: component_id.to_string(),
         },
+        StoredEquationBinding::Boundary { .. } => {
+            return Err(invalid(
+                "external boundary fields require CLI v7 Mixed configuration",
+            ));
+        }
         StoredEquationBinding::ProductTotal { stream_id, source } => Equation::ProductTotal {
             stream: IdentityRef::id(&stream_id),
             source: wire_port(&source),
         },
-    }
+    })
 }
 pub(super) fn configuration(
     plan: &Plan,
@@ -248,11 +259,13 @@ pub(super) fn wire(plan: &FlowPlanConfiguration) -> Result<Value, Failure> {
                 .collect(),
             equations: equations
                 .into_iter()
-                .map(|s| Scale {
-                    binding: wire_equation(s.binding),
-                    scale_si: s.scale_si,
+                .map(|s| {
+                    Ok(Scale {
+                        binding: wire_equation(s.binding)?,
+                        scale_si: s.scale_si,
+                    })
                 })
-                .collect(),
+                .collect::<Result<_, Failure>>()?,
         },
     };
     serde_json::to_value(EquationPlan::EquationOriented {

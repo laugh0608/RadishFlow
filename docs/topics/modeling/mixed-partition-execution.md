@@ -8,7 +8,7 @@
 
 父专题：[多策略求解与装配](solver-strategies-and-assembly.md)。本文是 QS4 实施切片的附属设计，不新增专题层级。
 
-**方案状态：草案 / 待确认；执行状态：产品实施待开始。** 所有者已批准先完成 QS0—QS3 验收核对与必要补验，再形成具体方案；这不等于批准下文架构、接口、工程能力或 CLI 变化。2026-11-04 核对、补验和当前代码对照证据见 [W45](../../devlogs/2026-11/2026-W45.md)。本轮只新增验收测试和文档，未实现混合执行器。
+**方案状态：QS4-D01—D05 已批准；执行状态：首片 QS4-A—D 已完成本机实现与阶段验证。** 2026-11-04 所有者批准连续实施，六张局部画板随后明确认可。前置验收 / 方案提交为 `787609e0`；Local＋正向 EO 的 DAG 组合、工程 v4、GUI / CLI v7 已接通，正式 2,051 项、独立历史读写器与 macOS 代表路径通过，证据见 [W45](../../devlogs/2026-11/2026-W45.md)。首片完成不关闭后续混合策略、平台或发布门禁。
 
 ## 用户价值与首批出口
 
@@ -50,7 +50,7 @@ H1 显式出口仍为 300 K / 650000 Pa。它用于检验现有无方程能力�
 | SB.b / pb | `(117/85,198/85)`，总量 `63/17` |
 | 两股最终产品合计 | `(11/5,14/5)`，总量 `5` |
 
-2026-11-04 的[边界测试](../../../crates/rf-solver/src/strategy_acceptance.rs)已确认：现有 QS2 可计算上述完整七单元流程且符合分数基准；整图 QS3 在 H1 返回 `UnsupportedModel`，没有局部计算调用。此测试只建立参考与能力边界，不是混合执行已经成功。
+2026-11-04 的[边界测试](../../../crates/rf-solver/src/strategy_acceptance.rs)已确认：现有 QS2 可计算上述完整七单元流程且符合分数基准；整图 QS3 在 H1 返回 `UnsupportedModel`，没有局部计算调用。此项建立实施前的参考边界；混合执行的独立分数及跨层验收见 W45。
 
 现有 QS1 不支持该四成员交叉 SCC，因此不为此例伪造 QS1 对照。QS2 作为同物理模型的整流程对照；独立分数解仍是验收依据，不能只让两个产品求解器互相证明正确。
 
@@ -66,9 +66,9 @@ H1 显式出口仍为 300 K / 650000 Pa。它用于检验现有无方程能力�
 
 ## D02：块输入、外部边界与所有权
 
-现有 `EquationOrientedSolver` 只接受整图，要求存在正 Feed、全部单元从 Feed 可达；现有 QS1 / QS2 虽有内部块执行，也没有对外接收其他策略块结果的通用入口。因此需要新增有明确外部边界的块装配 / 执行接口，不能把整图求解器依次跑一遍，或向工程中插入假 Feed。
+QS3 原 `EquationOrientedSolver` 整图入口只接受整图，要求存在正 Feed、全部单元从 Feed 可达；现有 QS1 / QS2 虽有内部块执行，也没有对外接收其他策略块结果的通用入口。本片新增有明确外部边界的块装配 / 执行接口，不能把整图求解器依次跑一遍，或向工程中插入假 Feed。
 
-建议边界对象包含：冻结工程中的成员与端口引用、已解析的完整组分目录、固定 T/P、不可变物性上下文、带实际生产者 / 本次执行身份的输入流股，以及块内选项。每个输入必须来自本次已验证上游输出或本次真实 Feed 求值；工程中故意错误的出口模板不得成为边界输入。接口名称与 Rust 签名在批准此职责后细化，不提前作为公共稳定 ABI。
+批准的边界职责包含：冻结工程中的成员与端口引用、已解析的完整组分目录、固定 T/P、不可变物性上下文、带实际生产者 / 本次执行身份的输入流股，以及块内选项。每个输入必须来自本次已验证上游输出或本次真实 Feed 求值；工程中故意错误的出口模板不得成为边界输入。接口名称与 Rust 签名在批准此职责后细化，不提前作为公共稳定 ABI。
 
 运行任务拥有边界流股、数学索引和可变工作区；`rf-model` 只保留工程对象。组合层持有本次不可变输入与边界输出，不读 GUI、磁盘或网络；包资源仍由现有组合根解析。Local 块复用真实目录工厂和局部求值，不复制 Heater 或 Feed 的物理实现。
 
@@ -90,11 +90,11 @@ EO 组以外部输入的实际组分流量建立固定边界方程，不要求�
 
 ## D04：正式计划、结果与持久化
 
-建议在既有模拟计划中增加独立 Mixed 变体，包含固定边界、版本化验收契约、完整块分配及 EO 块尺度。块与成员按稳定 ID 规范化；块顺序不改变计划含义或摘要。独立计划事务、历史、草稿、no-op、simulation_dirty、ID 保留及结果 Stale 复用现有机制。
+已在既有模拟计划中增加独立 Mixed 变体，包含固定边界、版本化验收契约、完整块分配及 EO 块尺度。块与成员按稳定 ID 规范化；块顺序不改变计划含义或摘要。独立计划事务、历史、草稿、no-op、simulation_dirty、ID 保留及结果 Stale 复用现有机制。
 
-建议新增独立混合结果 / 失败载荷：顶层生产者 streams 与全局验收；各块的类型化 Local / EO 证据、实际 I/O、跨块边界、方法与成本。结果查询和输出消费同一来源；不把 EO 证据扁平化为旧 SM steps，也不把所有领域结果合成巨型 DTO。子成本按真实调用累加且覆盖失败 / 取消；顶层总耗时独立计时，嵌套阶段耗时不盲目求和。
+已新增独立混合结果 / 失败载荷：顶层生产者 streams 与全局验收；各块的类型化 Local / EO 证据、实际 I/O、跨块边界、方法与成本。结果查询和输出消费同一来源；不把 EO 证据扁平化为旧 SM steps，也不把所有领域结果合成巨型 DTO。子成本按真实调用累加且覆盖失败 / 取消；顶层总耗时独立计时，嵌套阶段耗时不盲目求和。
 
-建议保留工程外层 v4，新增独立 method / capability / acceptance version 1；候选命名分别为 `radishflow.fixed-tp-mixed-material/1`、`radishflow.solver.fixed-tp-mixed-material:1`。它们尚未注册或获准。保存完整计划但不持久化结果、边界数值、迭代工作区；重开 Missing，显式运行重建执行计划。
+已保留工程外层 v4，新增独立 method / capability / acceptance version 1；方法与能力分别为 `radishflow.fixed-tp-mixed-material/1`、`radishflow.solver.fixed-tp-mixed-material:1`。命名已随 D04 批准落地。保存完整计划但不持久化结果、边界数值、迭代工作区；重开 Missing，显式运行重建执行计划。
 
 旧 v4 读者不认识新能力时整份只读；旧 CLI 在可编辑装载之前拒绝。继续覆盖同版本能力升级确认、Save As 取消 / 失败 / 目标变化、只读底层 writer 与原字节保护。旧方法不改词义、不自动换策略；切回旧方法不自动降版或删除已有工程内容。
 
@@ -102,11 +102,11 @@ EO 组以外部输入的实际组分流量建立固定边界方程，不要求�
 
 GUI 沿原运行页增加分区成员 / 方法配置、DAG 与能力错误定位、块及边界审阅。UI 展示领域 ID 对应的名称、实际方法和错误，不要求用户理解数值矩阵。局部画板先评审再接线，保留旧 `.pen`；不连带启动全局 R0。
 
-建议独立 CLI v7 增加混合计划、块查询、运行及结果投影；复用正式动作、引用、期望输入 / 计划身份和现有资源装载。继续仅操作请求内存、stdout 输出，工程 / 缓存 / sidecar / 偏好均不写盘。旧 v1—v6 保持原词汇、错误和能力边界；不增加 Save、后台取消协议或 COM。新版本只为新增严格词汇服务，不能把它等同工程格式 v7。
+独立 CLI v7 已增加混合计划、块查询、运行及结果投影；复用正式动作、引用、期望输入 / 计划身份和现有资源装载。继续仅操作请求内存、stdout 输出，工程 / 缓存 / sidecar / 偏好均不写盘。旧 v1—v6 保持原词汇、错误和能力边界；不增加 Save、后台取消协议或 COM。新版本只为新增严格词汇服务，不能把它等同工程格式 v7。
 
 ## 实施切片与验收
 
-以下均待确认后实施；批准整份范围后按顺序连续推进，内部验证不重复请求批准；实质性扩张再确认。
+以下已按整份范围获准连续实施；内部验证不重复请求批准，实质性扩张再确认。
 
 | 切片 | 交付 | 必须获得的证据 |
 | --- | --- | --- |
@@ -117,9 +117,18 @@ GUI 沿原运行页增加分区成员 / 方法配置、DAG 与能力错误定位
 
 本片只完成 QS4 的首个 DAG 组合范围。跨块回路、更多块内策略、逆向规格及不同热边界各自新增案例 / 切片；不能把本片成功升级为完整混合分区算法、工业物理或全平台 / 发布通过。
 
-## 待所有者确认的影响
+## 已落地接口与消费约定
 
-| 决策 | 建议确认范围 | 涉及变化 |
+- `rf-solver::mixed::{MixedOptions, MixedBlock, MixedBlockId}` 表达完整显式分区；`assemble` 验证成员、模型参数、尺度键与 DAG。`MixedPlan::equation_layout` 只返回原身份的符号布局，GUI / CLI 明确标注数值可解性尚未证明，不用模板流量伪装真实边界。
+- `equation_oriented::EquationBlockInput` 借用冻结工程、成员与本次实际输入；`assemble_block` / `EquationOrientedSolver::solve_block_controlled` 复用整图同源方程、数值算法及实际单元复核。`EquationBinding::Boundary` 记录原生产者、消费者、流股和组分；外部端口保留原名。本次执行资格由父工作区任务拥有，不在 `rf-model` 或每个数值流股内另建任务状态。
+- `MixedSolver` 保留 `MixedResult` / `MixedFailure`，结果按 Local / EO 类型分块。真实热物性 / flash 调用由外围计数；不把嵌套 EO 的计数再累加一遍。边界与全局复核通过后才发布顶层流股，失败 / 取消的已完成块只供诊断。
+- 正式配置按块 ID、成员及尺度绑定规范化；重排为 no-op，改变块 ID 仍是计划变更。工程 v4 保存 `blocks[].method.kind = local | equation_oriented`，EO 块自带 `equationContractVersion=1` 与完整尺度。未知正版本 / 方法只读；缺失、零版本、重复身份和无效尺度拒绝。新程序对原 v4 增加 Mixed 能力也要求升级确认。
+- CLI v7 使用 snake_case，`blocks[].members`、变量与边界引用沿用 `IdentityRef`；EO 块配置为 `equation_contract_version=1`。显式 `boundary` 方程绑定包含原 stream / source / sink / component。旧 v1—v6 不扩词汇；v3 保持不支持工程 v4，v4—v6 可查只读元数据，execute 在资源 / 步骤前拒绝新 Mixed 工程。
+- [公开 M1 工程](../../../examples/flowsheets/fixed-tp-mixed-material-binary-hydrocarbon.rfproj.json)、[查询](../../../examples/automation/query-mixed-material-v7.request.json)、[运行](../../../examples/automation/run-mixed-material-v7.request.template.json)和[建图运行](../../../examples/automation/build-mixed-material-v7.request.template.json)已提供；资源路径指向已有有效缓存。协议与磁盘边界见 [CLI 参考](../../reference/headless-cli-v7.md)。
+
+## 已确认的影响
+
+| 决策 | 已确认范围 | 涉及变化 |
 | --- | --- | --- |
 | QS4-D01 | M1，Local＋固定比例正向物料 EO，块间 DAG | 首批产品与算法边界；跨块环明确拒绝 |
 | QS4-D02 | 原领域身份的外部边界与 EO 块装配；保留旧整图入口 | solver 的装配 / 执行接口和运行所有权，不向 rf-model 加求解语义 |
@@ -127,4 +136,15 @@ GUI 沿原运行页增加分区成员 / 方法配置、DAG 与能力错误定位
 | QS4-D04 | 正式 Mixed 计划、工程外层 v4＋独立能力 / 方法 | UI / store 配置与兼容边界；同版本升级和旧读者保护 |
 | QS4-D05 | 经局部画板认可的 GUI 与独立 CLI v7 | 跨端新增词汇 / 投影；旧协议与磁盘不变 |
 
-不新增数值依赖或改 lockfile；Rust / COM 隔离、C2-B / C3 停止线保持。AF1、I5、Windows / Linux、PME 与发布前门禁不随本提案自动核销。下一步为确认 D01—D05 后实施 QS4-A；本轮到方案交付为止。
+不新增数值依赖或改 lockfile；Rust / COM 隔离、C2-B / C3 停止线保持。AF1、I5、Windows / Linux、PME 与发布前门禁不随本提案自动核销。D01—D05 已于 2026-11-04 批准；按 A→B→C→D 连续实施，局部画板认可后接 GUI。
+
+## 局部画板（2026-11-04，已认可）
+
+在既有主稿保留旧画板，新增以下六张 QS4 局部图；静态截图与裁切 / 尺寸检查通过，画板认可与运行态验收分别留痕，后者见 W45。
+
+- [配置与成员](../../architecture/designs/reviews/2026-11-04-qs4/x1zeaJ.png)
+- [Current 块与边界](../../architecture/designs/reviews/2026-11-04-qs4/l6BHpL.png)
+- [失败 / 取消](../../architecture/designs/reviews/2026-11-04-qs4/ijALb.png)
+- [中文 400 px](../../architecture/designs/reviews/2026-11-04-qs4/d4rksL.png)
+- [English 400 px](../../architecture/designs/reviews/2026-11-04-qs4/dGkuP.png)
+- [保存 / 只读](../../architecture/designs/reviews/2026-11-04-qs4/ZMCgJ.png)

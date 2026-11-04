@@ -9,6 +9,8 @@ pub mod equation_actions;
 pub mod equation_evidence;
 pub mod equation_result_projection;
 pub mod flow_plan_actions;
+pub mod mixed_evidence;
+pub mod mixed_result_projection;
 pub mod modular_evidence;
 mod modular_result_projection;
 mod result_evidence;
@@ -471,3 +473,5 @@ mod qs1_test_support;
 mod qs2_test_support;
 #[cfg(test)]
 mod qs3_test_support;
+#[cfg(test)]
+mod qs4_test_support;

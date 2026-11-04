@@ -684,6 +684,19 @@ impl ReadyAppState {
                                 } else {
                                     "Solver: Fixed-T/P material equations"
                                 }
+                            } else if matches!(
+                                self.platform_host
+                                    .modeling_inputs()
+                                    .workspace
+                                    .flow_plan
+                                    .current(),
+                                rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
+                            ) {
+                                if self.locale == StudioShellLocale::ZhCn {
+                                    "求解器: 固定温压混合分区"
+                                } else {
+                                    "Solver: Fixed-T/P mixed material"
+                                }
                             } else {
                                 self.locale.text(ShellText::SolverSequentialModular)
                             }

@@ -493,6 +493,7 @@ pub(crate) fn preflight_workspace_run(
     if matches!(
         app.workspace.flow_plan.current(),
         rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
+            | rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
     ) && let Err(error) = app
         .workspace
         .flow_plan
@@ -802,7 +803,7 @@ fn describe_simulation_mode(mode: SimulationMode) -> &'static str {
 mod tests;
 
 fn workspace_pending_flow_draft_block(app: &AppState) -> Option<StudioWorkspaceRunBlocked> {
-    (app.workspace.flow_plan.has_pending_modular_draft() || app.workspace.flow_plan.has_pending_equation_draft()).then(|| StudioWorkspaceRunBlocked {
+    (app.workspace.flow_plan.has_pending_modular_draft() || app.workspace.flow_plan.has_pending_equation_draft() || app.workspace.flow_plan.has_pending_mixed_draft()).then(|| StudioWorkspaceRunBlocked {
         reason: StudioWorkspaceRunBlockedReason::PendingFlowPlanDrafts,
         message: "Apply or discard the modular plan draft before running; only the applied plan can execute.".into(),
     })

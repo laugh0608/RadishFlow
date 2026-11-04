@@ -17,6 +17,7 @@ pub enum StoredFlowPlan {
     Partitioned(StoredRecyclePlan),
     Simultaneous(StoredModularPlan),
     EquationOriented(StoredEquationPlan),
+    Mixed(super::StoredMixedPlan),
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -128,6 +129,12 @@ struct PlanWire {
         deserialize_with = "present"
     )]
     specifications: Option<Vec<StoredEquationSpecification>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present"
+    )]
+    blocks: Option<Vec<super::StoredMixedBlock>>,
 }
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -176,12 +183,16 @@ impl StoredFlowPlan {
                 Self::Partitioned(_) => PARTITIONED_METHOD,
                 Self::Simultaneous(_) => SIMULTANEOUS_METHOD,
                 Self::EquationOriented(_) => EQUATION_ORIENTED_METHOD,
+                Self::Mixed(_) => super::MIXED_METHOD,
             }
             .into(),
             version: 1,
         }
     }
     pub fn validate(&self) -> RfResult<()> {
+        if let Self::Mixed(p) = self {
+            return p.validate();
+        }
         if let Self::Simultaneous(plan) = self {
             return plan.validate();
         }
@@ -254,6 +265,7 @@ impl Serialize for StoredFlowPlan {
             scaling: None,
             equation_contract_version: None,
             specifications: None,
+            blocks: None,
         };
         if let Self::Partitioned(plan) = self {
             wire.acceptance_contract_version = Some(1);
@@ -275,6 +287,11 @@ impl Serialize for StoredFlowPlan {
             wire.specifications = Some(plan.specifications);
             wire.scaling = Some(plan.scaling.into());
         }
+        if let Self::Mixed(plan) = self {
+            wire.acceptance_contract_version = Some(1);
+            wire.fixed_boundary = Some(plan.fixed_boundary.clone());
+            wire.blocks = Some(plan.canonicalized().blocks);
+        }
         wire.serialize(s)
     }
 }
@@ -293,7 +310,27 @@ impl<'de> Deserialize<'de> for StoredFlowPlan {
                 "simulation: EO fields require EO method",
             ));
         }
+        if w.method.id != super::MIXED_METHOD && w.blocks.is_some() {
+            return Err(serde::de::Error::custom("blocks require Mixed method"));
+        }
         let result = match (w.method.id.as_str(), w.method.version) {
+            (super::MIXED_METHOD, 1)
+                if w.acceptance_contract_version == Some(1)
+                    && w.equation_contract_version.is_none()
+                    && w.response_contract_version.is_none()
+                    && w.tears.is_none()
+                    && w.max_iteration_evaluations.is_none()
+                    && w.scaling.is_none()
+                    && w.specifications.is_none() =>
+            {
+                Self::Mixed(
+                    super::StoredMixedPlan {
+                        fixed_boundary: w.fixed_boundary.ok_or_else(missing)?,
+                        blocks: w.blocks.ok_or_else(missing)?,
+                    }
+                    .canonicalized(),
+                )
+            }
             (ACYCLIC_METHOD, 1)
                 if w.acceptance_contract_version.is_none()
                     && w.fixed_boundary.is_none()

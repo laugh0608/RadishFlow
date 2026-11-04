@@ -194,3 +194,9 @@ pub(super) fn spawn_worker(
 pub(super) fn infrastructure_error(code: &str, message: &str) -> RfError {
     RfError::invalid_input(message).with_diagnostic_code(format!("workspace.run.{code}"))
 }
+
+impl rf_solver::mixed::MixedControl for WorkerControl {
+    fn checkpoint(&mut self, p: rf_solver::mixed::MixedProgress) -> ControlFlow<()> {
+        self.emit(WorkspaceSolveProgress::Mixed(p))
+    }
+}

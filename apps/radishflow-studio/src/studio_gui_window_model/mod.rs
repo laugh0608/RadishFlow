@@ -1,3 +1,4 @@
+mod mixed;
 mod result_navigation;
 use std::collections::BTreeSet;
 
@@ -228,6 +229,7 @@ pub struct StudioGuiWindowEquationModel {
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowSolveSnapshotModel {
+    pub mixed: Option<mixed::StudioGuiWindowMixedModel>,
     pub equation_oriented: Option<StudioGuiWindowEquationModel>,
     pub simultaneous: Option<StudioGuiWindowSimultaneousModel>,
     pub partitioned: Option<StudioGuiWindowPartitionedModel>,
@@ -2504,12 +2506,14 @@ impl StudioGuiWindowSolveSnapshotModel {
             .map(|p| p.units.as_slice())
             .or_else(|| self.simultaneous.as_ref().map(|s| s.units.as_slice()))
             .or_else(|| self.equation_oriented.as_ref().map(|s| s.units.as_slice()))
+            .or_else(|| self.mixed.as_ref().map(|s| s.units.as_slice()))
     }
     pub fn block_count(&self) -> Option<usize> {
         self.partitioned
             .as_ref()
             .map(|p| p.result.blocks.len())
             .or_else(|| self.simultaneous.as_ref().map(|s| s.result.blocks.len()))
+            .or_else(|| self.mixed.as_ref().map(|s| s.result.blocks.len()))
     }
 }
 

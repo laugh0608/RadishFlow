@@ -39,6 +39,9 @@ impl ReadyAppState {
                         cost.flash_calls
                     ));
                 }
+                if let rf_ui::FlowResultRecord::Mixed(s) = snapshot {
+                    self.render_mixed_current(ui, &s.result);
+                }
                 if let rf_ui::FlowResultRecord::EquationOriented(s) = snapshot {
                     adopt = self.render_equation_current(ui, &s.result);
                 }
@@ -67,6 +70,22 @@ impl ReadyAppState {
             }
             FlowResultView::Failed { diagnostic, .. } => {
                 ui.label(format!("Failed · {}", diagnostic.primary_message));
+                if let Some(failure) = workspace.mixed_failure_evidence() {
+                    ui.strong(tr(
+                        zh,
+                        "仅失败诊断；没有发布部分结果。",
+                        "Failure diagnostics only; no partial results published.",
+                    ));
+                    ui.label(super::mixed_results::progress_text(&failure.progress, zh));
+                    for line in radishflow_studio::mixed_evidence::failure_lines(
+                        failure,
+                        workspace.project_presentation.display_units(),
+                    )
+                    .lines
+                    {
+                        ui.label(line);
+                    }
+                }
                 if let Some(failure) = workspace.equation_failure_evidence() {
                     ui.strong(tr(
                         zh,

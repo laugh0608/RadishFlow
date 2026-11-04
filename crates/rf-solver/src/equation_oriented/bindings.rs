@@ -29,6 +29,12 @@ impl EquationOptions {
                         ids.insert(source.unit.clone());
                         ids.insert(sink.unit.clone());
                     }
+                    EquationBinding::Boundary {
+                        source_unit, sink, ..
+                    } => {
+                        ids.insert(source_unit.clone());
+                        ids.insert(sink.unit.clone());
+                    }
                     EquationBinding::ProductTotal { source } => {
                         ids.insert(source.unit.clone());
                     }
@@ -57,6 +63,9 @@ impl EquationOptions {
                     EquationBinding::ProductTotal { source } => {
                         ids.insert(source.stream.clone());
                     }
+                    EquationBinding::Boundary { sink, .. } => {
+                        ids.insert(sink.stream.clone());
+                    }
                     EquationBinding::Unit { .. } => {}
                 }
             }
@@ -74,7 +83,7 @@ impl EquationOptions {
                 .any(|id| id.as_str().trim().is_empty());
         let mut invalid_component = false;
         if let Some(scales) = &self.scales {
-            invalid_component=scales.variables.keys().any(|v|matches!(v,VariableBinding::PortComponent {component,..} if component.as_str().trim().is_empty())) || scales.equations.keys().any(|e|matches!(e,EquationBinding::Unit {component,..}|EquationBinding::Connection {component,..} if component.as_str().trim().is_empty()));
+            invalid_component=scales.variables.keys().any(|v|matches!(v,VariableBinding::PortComponent {component,..} if component.as_str().trim().is_empty())) || scales.equations.keys().any(|e|matches!(e,EquationBinding::Unit {component,..}|EquationBinding::Connection {component,..}|EquationBinding::Boundary {component,..} if component.as_str().trim().is_empty()));
             if scales.equations.keys().any(|e|matches!(e,EquationBinding::Connection {source,sink,..} if source.stream!=sink.stream)) {
                 return Err(error(EquationFailureKind::InvalidBinding,"connection_identity","connection endpoints must refer to the same stream"));
             }

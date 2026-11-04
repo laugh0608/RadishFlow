@@ -13,6 +13,8 @@ use rf_ui::flow_plan::*;
 mod connection;
 mod equation_oriented;
 pub(super) mod equation_results;
+mod mixed;
+pub(super) mod mixed_results;
 mod results;
 mod simultaneous;
 use simultaneous::PlanMethod;
@@ -103,6 +105,7 @@ impl ReadyAppState {
                         PlanMethod::Partitioned,
                         PlanMethod::Simultaneous,
                         PlanMethod::EquationOriented,
+                        PlanMethod::Mixed,
                     ] {
                         ui.selectable_value(&mut method, choice, choice.label(zh));
                     }
@@ -221,16 +224,25 @@ impl ReadyAppState {
                 apply_requested |= self.render_equation_plan(ui, &mut draft, options);
             });
         }
+        if let FlowPlanConfiguration::Mixed(options) = &mut candidate {
+            ui.add_enabled_ui(editable, |ui| {
+                apply_requested |= self.render_mixed_plan(ui, &mut draft, options);
+            });
+        }
         draft.replace_candidate(candidate);
         let configuration = draft.configuration();
         let pending = draft.is_pending(&current);
         if pending
             && (matches!(
                 draft.candidate(),
-                FlowPlanConfiguration::Simultaneous(_) | FlowPlanConfiguration::EquationOriented(_)
+                FlowPlanConfiguration::Simultaneous(_)
+                    | FlowPlanConfiguration::EquationOriented(_)
+                    | FlowPlanConfiguration::Mixed(_)
             ) || matches!(
                 current,
-                FlowPlanConfiguration::Simultaneous(_) | FlowPlanConfiguration::EquationOriented(_)
+                FlowPlanConfiguration::Simultaneous(_)
+                    | FlowPlanConfiguration::EquationOriented(_)
+                    | FlowPlanConfiguration::Mixed(_)
             ))
         {
             ui.label(tr(zh, "先应用或放弃草稿，才可 Run / F5 或输出当前结果；保存仅写正式配置。", "Apply or discard the draft before Run / F5 or current output. Save writes only formal configuration."));

@@ -327,3 +327,5 @@ fn gui_explicit_connection_button_builds_the_return_edge_before_running() {
 mod simultaneous;
 
 mod equation_oriented;
+
+mod mixed;

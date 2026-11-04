@@ -34,6 +34,14 @@ pub fn equation(e: &EquationBinding) -> Value {
         } => {
             json!({"kind":"connection","source":port(source),"sink":port(sink),"component_id":component.as_str()})
         }
+        EquationBinding::Boundary {
+            source_unit,
+            source_port,
+            sink,
+            component,
+        } => {
+            json!({"kind":"boundary","source":{"unit_id":source_unit.as_str(),"port":source_port},"sink":port(sink),"component_id":component.as_str()})
+        }
         EquationBinding::ProductTotal { source } => {
             json!({"kind":"product_total","source":port(source)})
         }
@@ -49,8 +57,20 @@ fn definition_with(d: &EquationDefinition, n: Numbers) -> RfResult<Value> {
     let stored = crate::flow_plan_actions::stored_flow_plan(
         &rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(d.options.clone()),
     );
+    let configuration = if d
+        .equations
+        .iter()
+        .any(|e| matches!(e, EquationBinding::Boundary { .. }))
+    {
+        let rf_store::project_v4::StoredFlowPlan::EquationOriented(p) = stored else {
+            unreachable!("EO option conversion")
+        };
+        json!({"scope":"equation_block","fixed_boundary":p.fixed_boundary,"scaling":p.scaling})
+    } else {
+        serde_json::to_value(stored).map_err(|e| RfError::invalid_input(e.to_string()))?
+    };
     Ok(
-        json!({"variables":d.variables.iter().map(variable).collect::<Vec<_>>(),"equations":d.equations.iter().map(equation).collect::<Vec<_>>(),"variable_scales_si":n.vector(&d.variable_scales_si)?,"residual_scales_mol_s":n.vector(&d.residual_scales_mol_s)?,"structure":structure(&d.structure),"fresh_total_mol_s":n.value(d.fresh_total_mol_s)?,"fixed_split_fractions":d.fixed_split_fractions.iter().map(|(p,v)|Ok(json!({"binding":parameter(p),"value":n.value(*v)?}))).collect::<RfResult<Vec<_>>>()?,"configuration":stored}),
+        json!({"variables":d.variables.iter().map(variable).collect::<Vec<_>>(),"equations":d.equations.iter().map(equation).collect::<Vec<_>>(),"variable_scales_si":n.vector(&d.variable_scales_si)?,"residual_scales_mol_s":n.vector(&d.residual_scales_mol_s)?,"structure":structure(&d.structure),"fresh_total_mol_s":n.value(d.fresh_total_mol_s)?,"fixed_split_fractions":d.fixed_split_fractions.iter().map(|(p,v)|Ok(json!({"binding":parameter(p),"value":n.value(*v)?}))).collect::<RfResult<Vec<_>>>()?,"configuration":configuration}),
     )
 }
 pub fn definition(d: &EquationDefinition) -> RfResult<Value> {

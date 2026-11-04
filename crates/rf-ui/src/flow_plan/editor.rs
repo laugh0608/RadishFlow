@@ -1,4 +1,5 @@
 mod equation_oriented;
+mod mixed;
 use super::*;
 use crate::{InputUnitOrigin, NumericParseOutcome, parse_numeric_input};
 use rf_types::{
@@ -18,6 +19,14 @@ pub enum FlowPlanNumericField {
     ProductTarget(rf_solver::equation_oriented::PortBinding),
     EquationVariableScale(rf_solver::equation_oriented::VariableBinding),
     EquationResidualScale(rf_solver::equation_oriented::EquationBinding),
+    MixedVariableScale {
+        block: rf_solver::mixed::MixedBlockId,
+        binding: rf_solver::equation_oriented::VariableBinding,
+    },
+    MixedResidualScale {
+        block: rf_solver::mixed::MixedBlockId,
+        binding: rf_solver::equation_oriented::EquationBinding,
+    },
     InitialComponent {
         stream: StreamId,
         component: ComponentId,
@@ -184,6 +193,10 @@ impl FlowPlanDraft {
                     .map(|v| v as f64)
                     .map_err(|_| RfError::invalid_input("iteration budget requires an integer"))?
             };
+            if let FlowPlanConfiguration::Mixed(options) = &mut candidate {
+                mixed::apply(options, field, value)?;
+                continue;
+            }
             if let FlowPlanConfiguration::EquationOriented(options) = &mut candidate {
                 equation_oriented::apply(options, field, value)?;
                 continue;
@@ -222,7 +235,9 @@ impl FlowPlanDraft {
                 ));
             };
             match field {
-                FlowPlanNumericField::CouplingVariableScale(_)
+                FlowPlanNumericField::MixedVariableScale { .. }
+                | FlowPlanNumericField::MixedResidualScale { .. }
+                | FlowPlanNumericField::CouplingVariableScale(_)
                 | FlowPlanNumericField::CouplingResidualScale(_)
                 | FlowPlanNumericField::ReleasedLower(_)
                 | FlowPlanNumericField::ReleasedUpper(_)

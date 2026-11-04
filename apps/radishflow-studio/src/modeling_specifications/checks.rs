@@ -21,6 +21,9 @@ pub(super) fn check_inputs_with_plan(
         checks.problems.push(SpecificationProblem::EmptyFlowsheet);
     }
     let topology_valid = match match plan {
+        rf_ui::flow_plan::FlowPlanConfiguration::Mixed(o) => {
+            rf_solver::mixed::assemble(flowsheet, o).map(|_| ())
+        }
         rf_ui::flow_plan::FlowPlanConfiguration::Acyclic => {
             rf_solver::sequential_execution_order(flowsheet).map(|_| ())
         }
@@ -79,6 +82,7 @@ pub(super) fn check_inputs_with_plan(
             matches!(
                 plan,
                 rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
+                    | rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
             ),
         );
     }
@@ -165,6 +169,7 @@ pub(super) fn check_inputs_with_plan(
             rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(_)
                 | rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
                 | rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
         ) {
             // Cyclic inlet pressure comes from the frozen fixed boundary and evaluated
             // streams. Document templates cannot prove the recycle inlet pressure.

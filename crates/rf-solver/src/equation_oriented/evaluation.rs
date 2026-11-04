@@ -35,6 +35,10 @@ impl EquationProblem {
                     derivatives[*source] -= 1.0;
                     values[*sink] - values[*source]
                 }
+                AssembledEquation::Boundary { sink, value } => {
+                    derivatives[*sink] = 1.0;
+                    values[*sink] - value
+                }
                 AssembledEquation::ProductTotal { components, target } => {
                     for i in components {
                         derivatives[*i] += 1.0;
@@ -77,6 +81,7 @@ impl EquationProblem {
                         v
                     }
                     AssembledEquation::Connection { source, sink } => vec![*source, *sink],
+                    AssembledEquation::Boundary { sink, .. } => vec![*sink],
                     AssembledEquation::ProductTotal { components, .. } => components.clone(),
                 };
                 indices.sort_unstable();

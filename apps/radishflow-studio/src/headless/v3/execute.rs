@@ -14,6 +14,14 @@ use std::path::Path;
 pub fn file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     let bytes = super::request_bytes(path)?;
     if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(super::invalid_request)?["schema_version"]
+        == 7
+    {
+        response.schema_version = 7;
+        return super::super::planned::execute_file::<super::super::v7::Plan>(
+            path, &bytes, response,
+        );
+    }
+    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(super::invalid_request)?["schema_version"]
         == 6
     {
         response.schema_version = 6;

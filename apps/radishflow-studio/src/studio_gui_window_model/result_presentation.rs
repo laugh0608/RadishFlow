@@ -303,7 +303,8 @@ pub(super) fn solve_snapshot_model_from_ui(
         rf_ui::FlowResultRecord::Acyclic(s) => s.steps.as_slice(),
         rf_ui::FlowResultRecord::Partitioned(_)
         | rf_ui::FlowResultRecord::Simultaneous(_)
-        | rf_ui::FlowResultRecord::EquationOriented(_) => &[],
+        | rf_ui::FlowResultRecord::EquationOriented(_)
+        | rf_ui::FlowResultRecord::Mixed(_) => &[],
     };
     let steps = acyclic_steps
         .iter()
@@ -371,10 +372,19 @@ pub(super) fn solve_snapshot_model_from_ui(
     let mut review_summary =
         result_review_summary_model_from_parts(status_label, diagnostics.len(), &streams, &steps);
 
+    let mut mixed = None;
     let mut equation_oriented = None;
     let mut partitioned = None;
     let mut simultaneous = None;
     let block_data = match snapshot {
+        rf_ui::FlowResultRecord::Mixed(p) => Some((
+            p.result
+                .blocks
+                .iter()
+                .map(|b| b.members.iter().cloned().collect())
+                .collect::<Vec<_>>(),
+            &p.final_units,
+        )),
         rf_ui::FlowResultRecord::EquationOriented(p) => Some((
             vec![p.final_units.keys().cloned().collect()],
             &p.final_units,
@@ -487,6 +497,15 @@ pub(super) fn solve_snapshot_model_from_ui(
             .collect();
 
         match snapshot {
+            rf_ui::FlowResultRecord::Mixed(p) => {
+                let evidence = crate::mixed_evidence::result_lines(&p.result, units);
+                presentation.errors.extend(evidence.errors);
+                mixed = Some(super::mixed::StudioGuiWindowMixedModel {
+                    evidence_lines: evidence.lines,
+                    result: p.result.clone(),
+                    units: unit_results,
+                });
+            }
             rf_ui::FlowResultRecord::EquationOriented(p) => {
                 let evidence = crate::equation_evidence::result_lines(&p.result, units);
                 presentation.errors.extend(evidence.errors);
@@ -515,6 +534,7 @@ pub(super) fn solve_snapshot_model_from_ui(
         }
     }
     StudioGuiWindowSolveSnapshotModel {
+        mixed,
         equation_oriented,
         partitioned,
         simultaneous,

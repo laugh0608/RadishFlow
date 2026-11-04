@@ -95,11 +95,11 @@ fn request_bytes(path: &Path) -> Result<Vec<u8>, Failure> {
         schema_version: u32,
     }
     let version: Version = serde_json::from_slice(&bytes).map_err(invalid_request)?;
-    if !matches!(version.schema_version, 3..=6) {
+    if !matches!(version.schema_version, 3..=7) {
         return Err(Failure::new(
             Stage::Request,
             Code::UnsupportedVersion,
-            "query/execute require schema_version 3, 4, 5 or 6",
+            "query/execute require schema_version 3 through 7",
         ));
     }
     Ok(bytes)
@@ -146,8 +146,10 @@ pub(super) fn load_project_version(
         rf_store::project_v4::FlowPlanSupport::Sequential
     } else if protocol_version == 5 {
         rf_store::project_v4::FlowPlanSupport::Simultaneous
-    } else {
+    } else if protocol_version == 6 {
         rf_store::project_v4::FlowPlanSupport::EquationOriented
+    } else {
+        rf_store::project_v4::FlowPlanSupport::Mixed
     };
     let opened = parse_studio_project_with_support(contents, path, support)
         .map_err(|e| Failure::new(Stage::Project, Code::InvalidProject, e.to_string()))?;
@@ -187,6 +189,12 @@ pub(super) fn load_project_version(
 }
 fn query_file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     let bytes = request_bytes(path)?;
+    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(invalid_request)?["schema_version"]
+        == 7
+    {
+        response.schema_version = 7;
+        return super::planned::query_file::<super::v7::Plan>(path, &bytes, response);
+    }
     if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(invalid_request)?["schema_version"]
         == 6
     {

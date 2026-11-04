@@ -11,8 +11,40 @@ pub(super) fn assemble_controlled(
     options: &EquationOptions,
     control: &mut impl EquationControl,
 ) -> EoResult<EquationProblem> {
+    assemble_scoped(flow, options, None, control)
+}
+pub(super) fn assemble_scoped(
+    source: &Flowsheet,
+    options: &EquationOptions,
+    scope: Option<&EquationBlockInput<'_>>,
+    control: &mut impl EquationControl,
+) -> EoResult<EquationProblem> {
     checkpoint(control, EquationProgress::at(EquationStage::Assemble))?;
     options.validate_shape()?;
+    let mut selected = source.clone();
+    let dependencies = if scope.is_some() {
+        Some(
+            rf_flowsheet::dependencies::material_dependencies(source)
+                .map_err(|e| mapped(EquationFailureKind::InvalidBinding, e))?,
+        )
+    } else {
+        None
+    };
+    let external_inputs = if let Some(scope) = scope {
+        scope.validate(
+            source,
+            &dependencies
+                .as_ref()
+                .expect("scoped dependencies")
+                .connections,
+            options,
+        )?;
+        selected.units.retain(|id, _| scope.members.contains(id));
+        (*scope.inputs).clone()
+    } else {
+        BTreeMap::new()
+    };
+    let flow = &selected;
     let invalid = |code, message| error(EquationFailureKind::InvalidBinding, code, message);
     if flow.units.is_empty() || flow.components.is_empty() {
         return Err(invalid(
@@ -61,9 +93,22 @@ pub(super) fn assemble_controlled(
             "EO problem exceeds 128 variables",
         ));
     }
-    let dependencies = rf_flowsheet::dependencies::material_dependencies(flow)
-        .map_err(|e| mapped(EquationFailureKind::InvalidBinding, e))?;
-    let connections = dependencies.connections;
+    let dependencies = match dependencies {
+        Some(d) => d,
+        None => rf_flowsheet::dependencies::material_dependencies(source)
+            .map_err(|e| mapped(EquationFailureKind::InvalidBinding, e))?,
+    };
+    let connections: Vec<_> = dependencies
+        .connections
+        .iter()
+        .filter(|c| {
+            flow.units.contains_key(&c.source.unit_id)
+                || c.sink
+                    .as_ref()
+                    .is_some_and(|s| flow.units.contains_key(&s.unit_id))
+        })
+        .cloned()
+        .collect();
     let components: Vec<_> = flow.components.keys().cloned().collect();
     let mut feeds = BTreeMap::new();
     let mut feed_flows = BTreeMap::new();
@@ -82,6 +127,11 @@ pub(super) fn assemble_controlled(
         feed_flows.insert(unit.id.clone(), values);
         feeds.insert(unit.id.clone(), feed);
     }
+    for input in external_inputs.values() {
+        crate::fixed_tp_material::component_flows(&components, input, options.boundary)
+            .map_err(|e| mapped(EquationFailureKind::InvalidSpecification, e))?;
+        fresh_total += input.total_molar_flow_mol_s;
+    }
     if !fresh_total.is_finite() || fresh_total <= 0.0 {
         return Err(error(
             EquationFailureKind::InvalidSpecification,
@@ -90,10 +140,16 @@ pub(super) fn assemble_controlled(
         ));
     }
     let mut reached: BTreeSet<_> = feeds.keys().cloned().collect();
+    reached.extend(
+        connections
+            .iter()
+            .filter(|c| external_inputs.contains_key(&c.stream_id))
+            .filter_map(|c| c.sink.as_ref().map(|s| s.unit_id.clone())),
+    );
     let mut queue: VecDeque<_> = reached.iter().cloned().collect();
     while let Some(u) = queue.pop_front() {
         for v in &dependencies.successors[&u] {
-            if reached.insert(v.clone()) {
+            if flow.units.contains_key(v) && reached.insert(v.clone()) {
                 queue.push_back(v.clone());
             }
         }
@@ -217,31 +273,56 @@ pub(super) fn assemble_controlled(
         }
     }
     for connection in &connections {
-        if let Some(sink) = &connection.sink {
-            let source = find_port(
-                flow,
-                &capabilities,
-                &connection.source.unit_id,
-                &connection.source.port_name,
-            );
+        if let Some(sink) = &connection.sink
+            && flow.units.contains_key(&sink.unit_id)
+        {
             let sink = find_port(flow, &capabilities, &sink.unit_id, &sink.port_name);
             for component in &components {
-                let a = indices[&VariableBinding::PortComponent {
-                    port: source.clone(),
-                    component: component.clone(),
-                }];
                 let b = indices[&VariableBinding::PortComponent {
                     port: sink.clone(),
                     component: component.clone(),
                 }];
-                assembled.insert(
-                    EquationBinding::Connection {
-                        source: source.clone(),
-                        sink: sink.clone(),
+                let (binding, row) = if let Some(input) = external_inputs.get(&connection.stream_id)
+                {
+                    let values = crate::fixed_tp_material::component_flows(
+                        &components,
+                        input,
+                        options.boundary,
+                    )
+                    .map_err(|e| mapped(EquationFailureKind::InvalidSpecification, e))?;
+                    (
+                        EquationBinding::Boundary {
+                            source_unit: connection.source.unit_id.clone(),
+                            source_port: connection.source.port_name.clone(),
+                            sink: sink.clone(),
+                            component: component.clone(),
+                        },
+                        AssembledEquation::Boundary {
+                            sink: b,
+                            value: values[component],
+                        },
+                    )
+                } else {
+                    let source = find_port(
+                        flow,
+                        &capabilities,
+                        &connection.source.unit_id,
+                        &connection.source.port_name,
+                    );
+                    let a = indices[&VariableBinding::PortComponent {
+                        port: source.clone(),
                         component: component.clone(),
-                    },
-                    AssembledEquation::Connection { source: a, sink: b },
-                );
+                    }];
+                    (
+                        EquationBinding::Connection {
+                            source,
+                            sink: sink.clone(),
+                            component: component.clone(),
+                        },
+                        AssembledEquation::Connection { source: a, sink: b },
+                    )
+                };
+                assembled.insert(binding, row);
             }
         }
     }
@@ -308,6 +389,7 @@ pub(super) fn assemble_controlled(
         equations,
         rows,
         feeds,
+        external_inputs,
         variable_scales,
         residual_scales,
         fresh_total_mol_s: fresh_total,
@@ -360,7 +442,7 @@ fn find_port(
             .expect("canonical connection"),
     )
 }
-fn validate_parameters(
+pub(crate) fn validate_parameters(
     unit: &rf_model::UnitNode,
     capability: ComponentEquationCapability,
     options: &EquationOptions,

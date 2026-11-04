@@ -1,10 +1,14 @@
 //! QS3 bounded fixed-T/P material equations. No energy or phase-equilibrium closure.
 mod assembly;
+pub(crate) use assembly::validate_parameters as validate_equation_parameters;
 mod bindings;
+mod block;
 mod evaluation;
 mod execution;
 mod report;
 mod verification;
+pub(crate) use block::solve_block_with_factory;
+pub use block::{EquationBlockInput, assemble_block};
 pub use report::*;
 mod structure;
 #[cfg(test)]
@@ -58,6 +62,12 @@ pub enum EquationBinding {
     },
     Connection {
         source: PortBinding,
+        sink: PortBinding,
+        component: ComponentId,
+    },
+    Boundary {
+        source_unit: UnitId,
+        source_port: String,
         sink: PortBinding,
         component: ComponentId,
     },
@@ -229,6 +239,10 @@ enum AssembledEquation {
         source: usize,
         sink: usize,
     },
+    Boundary {
+        sink: usize,
+        value: f64,
+    },
     ProductTotal {
         components: Vec<usize>,
         target: f64,
@@ -249,6 +263,7 @@ pub struct EquationProblem {
     equations: Vec<EquationBinding>,
     rows: Vec<AssembledEquation>,
     feeds: BTreeMap<UnitId, MaterialStreamState>,
+    external_inputs: BTreeMap<StreamId, MaterialStreamState>,
     variable_scales: Vec<f64>,
     residual_scales: Vec<f64>,
     fresh_total_mol_s: f64,

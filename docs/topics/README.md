@@ -103,7 +103,7 @@ Control Plane 复用原文档作为大专题入口，原物性 / 生命周期关
 | QS2-A/B | [联立模块核心](modeling/simultaneous-modular-block.md) |
 | QS2-C | [联立模块工程与正式消费者](modeling/simultaneous-project-and-consumers.md) |
 | QS3 | [联立方程与规格反算](modeling/equation-oriented-block.md) |
-| QS4 | [首个混合分区执行方案](modeling/mixed-partition-execution.md)；草案待确认，产品实施未开始 |
+| QS4 | [首个混合分区执行方案](modeling/mixed-partition-execution.md)；首片 A—D 已批准并完成本机验证，后续组合另审 |
 
 ### 平台与服务
 

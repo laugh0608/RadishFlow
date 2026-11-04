@@ -198,7 +198,7 @@ G0 纳入 UI R0 的项目→设计基础→工况→设备→结果关系；Q1 �
 | QS1 分块 SM 与循环 | P3；[A/B 核心](topics/modeling/recycle-and-block-execution.md)已完成模型 / 写保护、分块与真实循环复核；[C01—C06](topics/modeling/recycle-project-and-consumers.md)已确认并接通 v4 保存、正式运行与 GUI / CLI | 撕裂及局部收敛满足残差和衡算，回路 / 规格失败可定位，不以循环结束冒充成功 |
 | [QS2 首个联立模块块](topics/modeling/simultaneous-modular-block.md) | P4，D01—D05 核心已实现；[QS2-C / D06](topics/modeling/simultaneous-project-and-consumers.md)D06 已批准，存储配置 / 运行结果、CLI v5 及 GUI 已实现 | 核心独立数值 / 故障与接入定向验证通过；GUI 画板已认可、接线和 macOS 代表验证完成 |
 | [QS3 多单元 EO](topics/modeling/equation-oriented-block.md) | P4，正向物料方程与单比例反算；D01—D08 核心及工程 / GUI / CLI v6 已实现 | 模型 / 结构、独立复核、采纳 / 资格及兼容验证通过；2,031 项正式基线与 macOS 代表实窗通过 |
-| [QS4 混合分区](topics/modeling/mixed-partition-execution.md) | P4，Local＋正向物料 EO 的首个 DAG 组合方案待确认，产品实施未开始 | 首片边界 / 全局复核及独立对照，跨块环拒绝；完整混合回路与黑箱另审 |
+| [QS4 混合分区](topics/modeling/mixed-partition-execution.md) | P4，首片 Local＋正向物料 EO 的 DAG、v4 与 GUI / CLI v7 已完成本机接入及验证 | 首片边界 / 全局复核及独立对照，跨块环拒绝；完整混合回路与黑箱另审 |
 
 QS2 与 QS3 不强制串行；首个 EO 块不等待全部设备支持 EO，也不要求所有问题先取得完整 SM 收敛解。MC1 / MC2 提供所需模型工厂和物性上下文，第三方加载只在实际案例需要时依赖 MC3；完整插件系统、动态和 SDK 不作为前置。DS 反算可先基于局部或 SM 路径实施。
 

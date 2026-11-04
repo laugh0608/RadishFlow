@@ -78,6 +78,12 @@ pub enum StoredEquationBinding {
         sink: StoredPortBinding,
         component_id: ComponentId,
     },
+    Boundary {
+        stream_id: StreamId,
+        source: StoredPortBinding,
+        sink: StoredPortBinding,
+        component_id: ComponentId,
+    },
     ProductTotal {
         stream_id: StreamId,
         source: StoredPortBinding,
@@ -171,6 +177,19 @@ impl StoredEquationBinding {
                     && port_valid(source)
                     && port_valid(sink)
             }
+            Self::Boundary {
+                stream_id,
+                source,
+                sink,
+                component_id,
+            } => {
+                nonblank(&[
+                    stream_id.as_str(),
+                    source.unit_id.as_str(),
+                    &source.port,
+                    component_id.as_str(),
+                ]) && port_valid(sink)
+            }
             Self::ProductTotal { stream_id, source } => {
                 nonblank(&[stream_id.as_str()]) && port_valid(source)
             }
@@ -223,33 +242,7 @@ impl StoredEquationPlan {
                 return Err(invalid());
             }
         }
-        if let StoredEquationScaling::ExplicitEquations {
-            variables,
-            equations,
-        } = &self.scaling
-        {
-            let mut seen = BTreeSet::new();
-            for v in variables {
-                if !v.binding.valid()
-                    || !v.scale_si.is_finite()
-                    || v.scale_si <= 0.0
-                    || !seen.insert(&v.binding)
-                {
-                    return Err(invalid());
-                }
-            }
-            let mut seen = BTreeSet::new();
-            for v in equations {
-                if !v.binding.valid()
-                    || !v.scale_si.is_finite()
-                    || v.scale_si <= 0.0
-                    || !seen.insert(&v.binding)
-                {
-                    return Err(invalid());
-                }
-            }
-        }
-        Ok(())
+        self.scaling.validate(false)
     }
     pub fn canonicalized(&self) -> Self {
         let mut plan = self.clone();
@@ -266,5 +259,40 @@ impl StoredEquationPlan {
             equations.sort_by(|a, b| a.binding.cmp(&b.binding));
         }
         plan
+    }
+}
+
+impl StoredEquationScaling {
+    pub(super) fn validate(&self, allow_boundaries: bool) -> RfResult<()> {
+        let invalid = || RfError::invalid_input("simulation: invalid equation scale or binding");
+        if let StoredEquationScaling::ExplicitEquations {
+            variables,
+            equations,
+        } = self
+        {
+            let mut seen = BTreeSet::new();
+            for v in variables {
+                if !v.binding.valid()
+                    || !v.scale_si.is_finite()
+                    || v.scale_si <= 0.0
+                    || !seen.insert(&v.binding)
+                {
+                    return Err(invalid());
+                }
+            }
+            let mut seen = BTreeSet::new();
+            for v in equations {
+                if !v.binding.valid()
+                    || (!allow_boundaries
+                        && matches!(v.binding, StoredEquationBinding::Boundary { .. }))
+                    || !v.scale_si.is_finite()
+                    || v.scale_si <= 0.0
+                    || !seen.insert(&v.binding)
+                {
+                    return Err(invalid());
+                }
+            }
+        }
+        Ok(())
     }
 }

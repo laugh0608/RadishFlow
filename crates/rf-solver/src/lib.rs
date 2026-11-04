@@ -5,6 +5,7 @@ mod dependency_graph;
 pub mod equation_oriented;
 mod fixed_tp_material;
 mod local_services;
+pub mod mixed;
 pub mod partitioned;
 pub mod simultaneous;
 pub use control::{ControlledSolveOutcome, SolveProgress, SolveStage, SolverControl};

@@ -1,8 +1,8 @@
 # 本地无界面运行接口
 
-更新时间：2026-10-31
+更新时间：2026-11-04
 
-用途：说明 Studio 旧 v1 / v2、AF4c v3、QS1-C v4、QS2-C v5 与 QS3 v6 命令、JSON 请求 / 响应和错误语义。
+用途：说明 Studio 旧 v1 / v2、AF4c v3、QS1-C v4、QS2-C v5、QS3 v6 与 QS4 v7 命令、JSON 请求 / 响应和错误语义。
 
 读者：使用本地脚本执行参数化工况的用户及适配器开发者。
 
@@ -400,3 +400,6 @@ target/debug/radishflow-studio --headless execute examples/automation/run-cross-
 target/debug/radishflow-studio --headless query examples/automation/query-material-eo-v6.request.json
 target/debug/radishflow-studio --headless execute examples/automation/adopt-material-eo-v6.request.template.json
 ```
+
+
+新增协议：[QS4 CLI v7 契约](headless-cli-v7.md)。

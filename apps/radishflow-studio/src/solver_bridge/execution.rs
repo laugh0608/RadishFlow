@@ -5,6 +5,9 @@ use rf_solver::equation_oriented::{
     EquationControl, EquationFailure, EquationFailureKind, EquationOrientedSolver,
     EquationProgress, EquationResult,
 };
+use rf_solver::mixed::{
+    MixedControl, MixedFailure, MixedFailureKind, MixedProgress, MixedResult, MixedSolver,
+};
 use rf_solver::partitioned::{
     PartitionedFailureKind, PartitionedProgress, PartitionedSequentialSolver,
     PartitionedSolveFailure, PartitionedSolveResult, PartitionedSolverControl,
@@ -26,10 +29,11 @@ pub enum WorkspaceSolveProgress {
     Partitioned(PartitionedProgress),
     Simultaneous(ModularProgress),
     EquationOriented(EquationProgress),
+    Mixed(MixedProgress),
 }
 
 pub(crate) trait WorkspaceSolveControl:
-    SolverControl + PartitionedSolverControl + ModularControl + EquationControl
+    SolverControl + PartitionedSolverControl + ModularControl + EquationControl + MixedControl
 {
     fn before_load(&mut self) -> ControlFlow<()>;
     fn ready(&mut self) -> RfResult<ControlFlow<()>>;
@@ -53,6 +57,11 @@ impl ModularControl for InlineControl {
 }
 impl EquationControl for InlineControl {
     fn checkpoint(&mut self, _: EquationProgress) -> ControlFlow<()> {
+        ControlFlow::Continue(())
+    }
+}
+impl MixedControl for InlineControl {
+    fn checkpoint(&mut self, _: MixedProgress) -> ControlFlow<()> {
         ControlFlow::Continue(())
     }
 }
@@ -108,6 +117,9 @@ enum SolveOutcome {
     PartitionedCancelled(Box<PartitionedSolveFailure>),
     PartitionedSucceeded(Box<PartitionedSolveResult>),
     PartitionedFailed(Box<PartitionedSolveFailure>),
+    MixedCancelled(Box<MixedFailure>),
+    MixedSucceeded(Box<MixedResult>),
+    MixedFailed(Box<MixedFailure>),
     EquationCancelled(Box<EquationFailure>),
     EquationSucceeded(Box<EquationResult>),
     EquationFailed(Box<EquationFailure>),
@@ -132,6 +144,9 @@ impl SolveOutcome {
     fn matches_plan(&self, plan: &FlowPlanConfiguration) -> bool {
         match self {
             Self::Succeeded(_) => matches!(plan, FlowPlanConfiguration::Acyclic),
+            Self::MixedSucceeded(_) | Self::MixedFailed(_) | Self::MixedCancelled(_) => {
+                matches!(plan, FlowPlanConfiguration::Mixed(_))
+            }
             Self::EquationSucceeded(_) | Self::EquationFailed(_) | Self::EquationCancelled(_) => {
                 matches!(plan, FlowPlanConfiguration::EquationOriented(_))
             }
@@ -150,6 +165,13 @@ impl SolveOutcome {
             | Self::Failed { .. }
             | Self::PreparationFailed { .. } => true,
         }
+    }
+    fn mixed_method(&self) -> Option<&'static str> {
+        matches!(
+            self,
+            Self::MixedSucceeded(_) | Self::MixedFailed(_) | Self::MixedCancelled(_)
+        )
+        .then_some(rf_solver::mixed::METHOD)
     }
     fn equation_invoked(&self) -> bool {
         matches!(
@@ -219,7 +241,7 @@ pub fn prepare_workspace_solve(
         .validate_configuration()?;
     if matches!(
         app_state.workspace.flow_plan.current(),
-        FlowPlanConfiguration::EquationOriented(_)
+        FlowPlanConfiguration::EquationOriented(_) | FlowPlanConfiguration::Mixed(_)
     ) {
         app_state
             .workspace
@@ -378,6 +400,15 @@ impl WorkspaceSolveJob {
             flash_solver: context.tp_flash(),
         };
         let outcome = match &self.plan {
+            FlowPlanConfiguration::Mixed(o) => {
+                match MixedSolver.solve_controlled(&services, &self.flowsheet, o, control) {
+                    Ok(r) => SolveOutcome::MixedSucceeded(Box::new(r)),
+                    Err(f) if f.kind == MixedFailureKind::Cancelled => {
+                        SolveOutcome::MixedCancelled(f)
+                    }
+                    Err(f) => SolveOutcome::MixedFailed(f),
+                }
+            }
             FlowPlanConfiguration::Acyclic => {
                 match SequentialModularSolver.solve_controlled(&services, &self.flowsheet, control)
                 {
@@ -487,11 +518,13 @@ impl CompletedWorkspaceSolve {
             SolveOutcome::Succeeded(_)
             | SolveOutcome::PartitionedSucceeded(_)
             | SolveOutcome::SimultaneousSucceeded(_)
-            | SolveOutcome::EquationSucceeded(_) => WorkspaceExecutionOutcome::Succeeded,
+            | SolveOutcome::EquationSucceeded(_)
+            | SolveOutcome::MixedSucceeded(_) => WorkspaceExecutionOutcome::Succeeded,
             SolveOutcome::Cancelled
             | SolveOutcome::PartitionedCancelled(_)
             | SolveOutcome::SimultaneousCancelled(_)
-            | SolveOutcome::EquationCancelled(_) => WorkspaceExecutionOutcome::Cancelled,
+            | SolveOutcome::EquationCancelled(_)
+            | SolveOutcome::MixedCancelled(_) => WorkspaceExecutionOutcome::Cancelled,
             SolveOutcome::InfrastructureFailed(_) => {
                 WorkspaceExecutionOutcome::InfrastructureFailed
             }
@@ -515,6 +548,12 @@ impl CompletedWorkspaceSolve {
             _ => None,
         }
     }
+    pub fn mixed_failure_evidence(&self) -> Option<&MixedFailure> {
+        match &self.outcome {
+            SolveOutcome::MixedFailed(f) | SolveOutcome::MixedCancelled(f) => Some(f),
+            _ => None,
+        }
+    }
     pub fn equation_failure_evidence(&self) -> Option<&EquationFailure> {
         match &self.outcome {
             SolveOutcome::EquationFailed(f) | SolveOutcome::EquationCancelled(f) => Some(f),
@@ -525,13 +564,16 @@ impl CompletedWorkspaceSolve {
         match &self.outcome {
             SolveOutcome::PartitionedSucceeded(_)
             | SolveOutcome::SimultaneousSucceeded(_)
-            | SolveOutcome::EquationSucceeded(_) => Ok(()),
+            | SolveOutcome::EquationSucceeded(_)
+            | SolveOutcome::MixedSucceeded(_) => Ok(()),
             SolveOutcome::SimultaneousFailed(failure) => Err(failure.error.clone()),
             SolveOutcome::EquationFailed(failure) => Err(failure.error.clone()),
+            SolveOutcome::MixedFailed(f) => Err(f.error.clone()),
             SolveOutcome::PartitionedFailed(failure) => Err(failure.error.clone()),
             SolveOutcome::PartitionedCancelled(_)
             | SolveOutcome::SimultaneousCancelled(_)
-            | SolveOutcome::EquationCancelled(_) => {
+            | SolveOutcome::EquationCancelled(_)
+            | SolveOutcome::MixedCancelled(_) => {
                 Err(RfError::invalid_input("workspace solve cancelled")
                     .with_diagnostic_code("workspace.run.cancelled"))
             }
@@ -547,6 +589,10 @@ impl CompletedWorkspaceSolve {
             SolveOutcome::PartitionedSucceeded(_) => Err(RfError::invalid_input(
                 "partitioned results require the typed flow result query",
             )),
+            SolveOutcome::MixedSucceeded(_) => Err(RfError::invalid_input(
+                "mixed results require typed flow result query",
+            )),
+            SolveOutcome::MixedFailed(f) | SolveOutcome::MixedCancelled(f) => Err(f.error.clone()),
             SolveOutcome::EquationSucceeded(_) => Err(RfError::invalid_input(
                 "equation results require the typed flow result query",
             )),
@@ -611,6 +657,10 @@ fn complete_with_publication(
     }
     let revision = completion.receipt.revision();
     let implementation = match &completion.plan {
+        FlowPlanConfiguration::Mixed(_) if completion.outcome.mixed_method().is_some() => {
+            concat!("rf-solver::MixedSolver@", env!("CARGO_PKG_VERSION"))
+        }
+        FlowPlanConfiguration::Mixed(_) => "not-invoked",
         FlowPlanConfiguration::Acyclic => concat!(
             "rf-solver::SequentialModularSolver@",
             env!("CARGO_PKG_VERSION")
@@ -643,6 +693,7 @@ fn complete_with_publication(
         .with_plan_evidence(rf_ui::result_query::ExecutedFlowPlan {
             method: match &completion.plan {
                 FlowPlanConfiguration::Acyclic => "radishflow.acyclic-sm/1",
+                FlowPlanConfiguration::Mixed(_) => rf_solver::mixed::METHOD,
                 FlowPlanConfiguration::Partitioned(_) => "radishflow.partitioned-sm/1",
                 FlowPlanConfiguration::Simultaneous(_) => "radishflow.fixed-tp-affine-modular-lu/1",
                 FlowPlanConfiguration::EquationOriented(_) => "radishflow.fixed-tp-material-eo/1",
@@ -664,6 +715,13 @@ fn complete_with_publication(
                 equation_contract_version: rf_solver::equation_oriented::EQUATION_CONTRACT_VERSION,
                 core_backend: completion.outcome.equation_backend(),
             }),
+            mixed: matches!(completion.plan, FlowPlanConfiguration::Mixed(_)).then(|| {
+                rf_ui::result_query::MixedExecutionEvidence {
+                    capability: rf_store::project_v4::MIXED_CAPABILITY,
+                    capability_version: 1,
+                    core_method: completion.outcome.mixed_method(),
+                }
+            }),
             modular: matches!(completion.plan, FlowPlanConfiguration::Simultaneous(_)).then(|| {
                 rf_ui::result_query::ModularExecutionEvidence {
                     capability: rf_store::project_v4::SIMULTANEOUS_CAPABILITY,
@@ -677,7 +735,27 @@ fn complete_with_publication(
         SolveOutcome::Cancelled
         | SolveOutcome::PartitionedCancelled(_)
         | SolveOutcome::SimultaneousCancelled(_)
-        | SolveOutcome::EquationCancelled(_) => {}
+        | SolveOutcome::EquationCancelled(_)
+        | SolveOutcome::MixedCancelled(_) => {}
+        SolveOutcome::MixedSucceeded(result) => {
+            let mut accepted = rf_ui::MixedFlowSnapshot::new(
+                completion.request.snapshot_id.as_str(),
+                revision,
+                completion.request.sequence,
+                (**result).clone(),
+            );
+            accepted.origin = Some(origin.clone());
+            app_state.store_snapshot(accepted);
+        }
+        SolveOutcome::MixedFailed(f) => {
+            record_solve_failure(
+                app_state,
+                revision,
+                f.error.to_string(),
+                SolveFailureContext::from_error(&f.error),
+            );
+            app_state.workspace.attach_mixed_failure((**f).clone());
+        }
         SolveOutcome::EquationSucceeded(result) => {
             let mut accepted = rf_ui::EquationFlowSnapshot::new(
                 completion.request.snapshot_id.as_str(),
@@ -858,3 +936,6 @@ mod plan_contract_tests;
 mod equation_tests;
 #[cfg(test)]
 mod simultaneous_tests;
+
+#[cfg(test)]
+mod mixed_tests;

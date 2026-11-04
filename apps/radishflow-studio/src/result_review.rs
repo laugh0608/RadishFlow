@@ -27,6 +27,7 @@ enum FlowResultPayload {
     Partitioned,
     Simultaneous,
     EquationOriented,
+    Mixed,
 }
 impl FlowResultPayload {
     fn of(snapshot: &FlowResultRecord) -> Self {
@@ -35,6 +36,7 @@ impl FlowResultPayload {
             FlowResultRecord::Partitioned(_) => Self::Partitioned,
             FlowResultRecord::Simultaneous(_) => Self::Simultaneous,
             FlowResultRecord::EquationOriented(_) => Self::EquationOriented,
+            FlowResultRecord::Mixed(_) => Self::Mixed,
         }
     }
 }
@@ -154,6 +156,19 @@ pub fn flow_origin_lines(origin: Option<&FlowResultOrigin>) -> Vec<(String, Stri
                 plan.configuration_sha256.clone(),
             ),
         ]);
+        if let Some(mixed) = &plan.mixed {
+            rows.extend([
+                ("solver_capability".into(), mixed.capability.into()),
+                (
+                    "solver_capability_version".into(),
+                    mixed.capability_version.to_string(),
+                ),
+                (
+                    "core_method".into(),
+                    mixed.core_method.unwrap_or("not invoked").into(),
+                ),
+            ]);
+        }
         if let Some(e) = &plan.equation_oriented {
             rows.extend([
                 ("solver_capability".into(), e.capability.into()),

@@ -66,7 +66,11 @@ impl Execution<'_> {
                 .filter(|port| port.direction == PortDirection::Inlet)
             {
                 let binding = binding_for(p, &unit.id, &port.name);
-                let input = assumptions[&binding].clone();
+                let input = p
+                    .external_inputs
+                    .get(&binding.stream)
+                    .unwrap_or(&assumptions[&binding])
+                    .clone();
                 material::component_flows(&p.components, &input, p.options.boundary)
                     .map_err(|e| mapped(EquationFailureKind::LocalVerification, e))?;
                 inputs.insert_material_stream(port.name.clone(), input.clone());
@@ -211,11 +215,21 @@ impl Execution<'_> {
             require_residual(residual, p.residual_scales[i])?;
         }
         self.at(EquationStage::GlobalVerification, None)?;
-        let fresh: Vec<_> = p.feeds.values().map(|f| streams[&f.id].clone()).collect();
+        let fresh: Vec<_> = p
+            .feeds
+            .values()
+            .map(|f| streams[&f.id].clone())
+            .chain(p.external_inputs.values().cloned())
+            .collect();
         let products: Vec<_> = p
             .connections
             .iter()
-            .filter(|c| c.sink.is_none())
+            .filter(|c| {
+                p.flowsheet.units.contains_key(&c.source.unit_id)
+                    && c.sink
+                        .as_ref()
+                        .is_none_or(|s| !p.flowsheet.units.contains_key(&s.unit_id))
+            })
             .map(|c| streams[&c.stream_id].clone())
             .collect();
         let fresh_components = totals(p, &fresh)?;
@@ -337,6 +351,9 @@ fn composition_anchor(
             .iter()
             .find(|c| c.stream_id == port.stream)
             .expect("bound connection");
+        if let Some(input) = p.external_inputs.get(&connection.stream_id) {
+            return Ok((input.overall_mole_fractions.clone(), port.clone()));
+        }
         binding_for(p, &connection.source.unit_id, &connection.source.port_name)
     } else if unit.kind == "splitter" {
         binding_for(p, &unit.id, "inlet")

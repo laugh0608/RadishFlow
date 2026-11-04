@@ -39,6 +39,19 @@ pub(super) fn solve(
         &BTreeMap<StreamId, MaterialStreamState>,
     ) -> rf_types::RfResult<Box<dyn UnitOperation>>,
 ) -> Result<EquationResult, Box<EquationFailure>> {
+    solve_scoped(services, flow, options, control, factory, None)
+}
+pub(super) fn solve_scoped(
+    services: &crate::SolverServices<'_>,
+    flow: &Flowsheet,
+    options: &EquationOptions,
+    control: &mut impl EquationControl,
+    factory: &mut impl FnMut(
+        &rf_model::UnitNode,
+        &BTreeMap<StreamId, MaterialStreamState>,
+    ) -> rf_types::RfResult<Box<dyn UnitOperation>>,
+    scope: Option<&EquationBlockInput<'_>>,
+) -> Result<EquationResult, Box<EquationFailure>> {
     let start = Instant::now();
     let thermo = CountedThermo {
         provider: services.thermo,
@@ -60,7 +73,7 @@ pub(super) fn solve(
     };
     let mut backend = None;
     let result: EoResult<BTreeMap<StreamId, MaterialStreamState>> = (|| {
-        let problem = assembly::assemble_controlled(flow, options, &mut run)?;
+        let problem = assembly::assemble_scoped(flow, options, scope, &mut run)?;
         run.evidence.definition = Some((&problem).into());
         problem.require_ready()?;
         backend = Some(if options.released.is_some() {

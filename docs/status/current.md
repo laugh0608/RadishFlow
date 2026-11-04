@@ -45,12 +45,12 @@
 ### 最近进展（截至 2026-11-04）
 
 - QS0—QS3 验收映射、共同案例及 macOS 失败 / 保存取消 / 恢复补验完成，正式 2,034 项通过；[W45](../devlogs/2026-11/2026-W45.md)保留数值直证、原生和平台缺口。
-- [QS4 首片方案](../topics/modeling/mixed-partition-execution.md)已形成，D01—D05 待确认，产品实施未开始。
+- [QS4 首片](../topics/modeling/mixed-partition-execution.md)已按 D01—D05 完成 A—D：Local＋正向 EO 的 DAG、v4 与 GUI / CLI v7；2,051 项、历史读写器与 macOS 代表路径通过。
 
 ### 下一步
 
 - [ ] 按 [QS3 保留项](../topics/modeling/equation-oriented-block.md#接下来事项)补数值直证、原生交互与平台缺口；本机核对和必要补验已完成。
-- [ ] 确认 [QS4-D01—D05](../topics/modeling/mixed-partition-execution.md#待所有者确认的影响)：Local＋正向 EO 的 DAG 组合及跨层影响，确认后实施。
+- [x] [QS4 首片 A—D](../topics/modeling/mixed-partition-execution.md)已按批准方案及认可画板完成；跨块回路、更多策略与逆向规格另审。
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)的设备数据 / 事务 / 保存 / UI / 输出及代表验证完成，流程关联未实现。
 - [x] AF0 代码审计、功能断点与依赖切片已整理，基础架构优先安排已同步；不代表后续切片实施完成。
@@ -58,7 +58,7 @@
 - [x] AF2a / b 装配、AF3 后台运行、AF4a / AF5a 查询与 AF4b 正式动作 / GUI 已完成。
 - [x] [AF4c 契约](../topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)四片完成，v3 覆盖及磁盘边界已验证，旧协议保持。
 - [x] AF5b 来源、导航、输出及代表验证完成。
-- [x] AF6、QS0 独立物料任务和 QS1—QS3 有限回流 / 联立模块 / 物料 EO 已接通；混合分区、热 / 相平衡 EO 与动态另行审定。
+- [x] AF6、QS0 独立物料任务和 QS1—QS3 有限回流 / 联立模块 / 物料 EO 已接通；QS4 首片已接通，后续混合策略、热 / 相平衡 EO 与动态另审。
 - [ ] [C2-A 方法对比](../thermo/mvp-model.md#c2-a-后续方法对比与排期)已认可、尚未实施；第三轮来源审计仍待审，混合物气相仍缺，B / C3 不开工。
 - [ ] 全局 R0 待评审；U / A / 设备局部稿通过不代表全局定稿。
 - [ ] [可视化 V1—V4](../radishflow-mvp-roadmap.md#颜色与流程可视化的配套切片)方向已确认、均未实现：二维流向 / 数据着色随结果基础，局部三维依赖设备几何，动态回放依赖真实时间结果；整厂三维另评估。
@@ -115,7 +115,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-04：跨策略补验后本机 2,034 项及完整门禁通过；macOS 失败 / 保存取消 / 恢复通过，见 [W45](../devlogs/2026-11/2026-W45.md)。QS3 采纳 / 保存重开与历史读写器证据见 W44；PR #17 的跨平台 CI 不覆盖其后 QS0—QS3 新增代码，未验平台保持。
+- 2026-11-04：QS4 后本机 2,051 项及完整门禁通过；历史读写器、macOS 混合运行 / 保存重开 / 失败通过，见 [W45](../devlogs/2026-11/2026-W45.md)。QS3 采纳 / 保存重开与历史读写器证据见 W44；PR #17 的跨平台 CI 不覆盖其后 QS0—QS3 新增代码，未验平台保持。
 
 - 既有功能与实窗证据见 [W38](../devlogs/2026-09/2026-W38.md)，跨平台、native 与 `.NET` 历史基线见 [W37](../devlogs/2026-09/2026-W37.md)，更早记录见 [W36](../devlogs/2026-09/2026-W36.md)；历史证据不替代新增路径或发布验收。
 

@@ -3,6 +3,7 @@ use rf_solver::partitioned::{FixedRecycleBoundary, RecycleSolveOptions};
 use rf_ui::flow_plan::*;
 use std::fs;
 mod equation_oriented;
+mod mixed;
 mod simultaneous;
 const LEGACY: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),

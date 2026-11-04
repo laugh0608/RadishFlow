@@ -4,6 +4,7 @@ mod document;
 mod equation_oriented;
 pub use equation_oriented::*;
 mod file_io;
+mod mixed;
 mod plan;
 mod simultaneous;
 use crate::project::STORED_PROJECT_FILE_KIND;
@@ -13,6 +14,7 @@ use crate::project_v3::{
 };
 use crate::{StoredDocumentMetadata, StoredProjectDocument};
 pub use file_io::*;
+pub use mixed::*;
 pub use plan::*;
 use rf_types::{RfError, RfResult, units::DisplayUnitSet};
 use serde::{Deserialize, Serialize};
@@ -24,6 +26,7 @@ pub const VERSION: u32 = 4;
 pub const FLOW_PLAN_CAPABILITY: &str = "radishflow.flow-plan";
 pub const SPLITTER_CAPABILITY: &str = "radishflow.unit.splitter";
 pub const PARTITIONED_CAPABILITY: &str = "radishflow.solver.partitioned-sm";
+pub const MIXED_CAPABILITY: &str = "radishflow.solver.fixed-tp-mixed-material";
 pub const EQUATION_ORIENTED_CAPABILITY: &str = "radishflow.solver.fixed-tp-material-eo";
 pub const SIMULTANEOUS_CAPABILITY: &str = "radishflow.solver.fixed-tp-affine-modular-lu";
 
@@ -33,6 +36,7 @@ pub enum FlowPlanSupport {
     Sequential,
     Simultaneous,
     EquationOriented,
+    Mixed,
 }
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -114,6 +118,7 @@ struct PlanProbe {
     acceptance_contract_version: Option<u32>,
     response_contract_version: Option<u32>,
     equation_contract_version: Option<u32>,
+    blocks: Option<Vec<Value>>,
 }
 
 pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapability> {
@@ -139,6 +144,9 @@ pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapabilit
     ) {
         ids.push(EQUATION_ORIENTED_CAPABILITY);
     }
+    if matches!(project.steady_state_plan, StoredFlowPlan::Mixed(_)) {
+        ids.push(MIXED_CAPABILITY);
+    }
     ids.sort();
     ids.into_iter()
         .map(|id| RequiredCapability {
@@ -148,7 +156,7 @@ pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapabilit
         .collect()
 }
 pub fn parse(contents: &str) -> RfResult<ProjectV4Read> {
-    parse_with_support(contents, FlowPlanSupport::EquationOriented)
+    parse_with_support(contents, FlowPlanSupport::Mixed)
 }
 
 pub fn parse_with_support(contents: &str, support: FlowPlanSupport) -> RfResult<ProjectV4Read> {
@@ -178,11 +186,15 @@ pub fn parse_with_support(contents: &str, support: FlowPlanSupport) -> RfResult<
                     PARTITIONED_CAPABILITY,
                     SIMULTANEOUS_CAPABILITY,
                     EQUATION_ORIENTED_CAPABILITY,
+                    MIXED_CAPABILITY,
                 ]
                 .contains(&c.id.as_str())
                 || (support == FlowPlanSupport::Sequential && c.id == SIMULTANEOUS_CAPABILITY)
-                || (support != FlowPlanSupport::EquationOriented
-                    && c.id == EQUATION_ORIENTED_CAPABILITY)
+                || (!matches!(
+                    support,
+                    FlowPlanSupport::EquationOriented | FlowPlanSupport::Mixed
+                ) && c.id == EQUATION_ORIENTED_CAPABILITY)
+                || (support != FlowPlanSupport::Mixed && c.id == MIXED_CAPABILITY)
         })
         .map(|c| format!("{} / {}", c.id, c.version))
         .collect();
@@ -193,7 +205,8 @@ pub fn parse_with_support(contents: &str, support: FlowPlanSupport) -> RfResult<
         serde_json::from_value(wire.simulation.clone()).map_err(json_error)?;
     let modular = probe.steady_state_plan.method.id == SIMULTANEOUS_METHOD;
     let eo = probe.steady_state_plan.method.id == EQUATION_ORIENTED_METHOD;
-    if (modular || eo)
+    let mixed = probe.steady_state_plan.method.id == MIXED_METHOD;
+    if (modular || eo || mixed)
         && (probe.steady_state_plan.method.version == 0
             || probe.steady_state_plan.acceptance_contract_version == Some(0)
             || probe.steady_state_plan.response_contract_version == Some(0)
@@ -208,17 +221,23 @@ pub fn parse_with_support(contents: &str, support: FlowPlanSupport) -> RfResult<
         PARTITIONED_METHOD,
         SIMULTANEOUS_METHOD,
         EQUATION_ORIENTED_METHOD,
+        MIXED_METHOD,
     ]
     .contains(&probe.steady_state_plan.method.id.as_str())
         || probe.steady_state_plan.method.version != 1
+        || (mixed && support != FlowPlanSupport::Mixed)
         || (modular && support == FlowPlanSupport::Sequential)
-        || (eo && support != FlowPlanSupport::EquationOriented)
+        || (eo
+            && !matches!(
+                support,
+                FlowPlanSupport::EquationOriented | FlowPlanSupport::Mixed
+            ))
         || (eo
             && probe
                 .steady_state_plan
                 .equation_contract_version
                 .is_some_and(|v| v != 1))
-        || ((probe.steady_state_plan.method.id == PARTITIONED_METHOD || modular || eo)
+        || ((probe.steady_state_plan.method.id == PARTITIONED_METHOD || modular || eo || mixed)
             && probe
                 .steady_state_plan
                 .acceptance_contract_version
@@ -230,6 +249,33 @@ pub fn parse_with_support(contents: &str, support: FlowPlanSupport) -> RfResult<
                 .is_some_and(|v| v != 1))
     {
         reasons.push("unsupported steady-state method or acceptance contract".into());
+    }
+    if mixed && let Some(blocks) = &probe.steady_state_plan.blocks {
+        for block in blocks {
+            match block.pointer("/method/kind").and_then(Value::as_str) {
+                Some("local") => {}
+                Some("equation_oriented") => {
+                    let version = block
+                        .pointer("/method/equationContractVersion")
+                        .and_then(Value::as_u64)
+                        .filter(|v| *v > 0 && *v <= u32::MAX as u64)
+                        .ok_or_else(|| {
+                            RfError::invalid_input(
+                                "simulation: block equation contract must be a positive u32",
+                            )
+                        })?;
+                    if version != 1 {
+                        reasons.push(format!("unsupported block equation contract {version}"));
+                    }
+                }
+                Some(kind) => reasons.push(format!("unsupported block method {kind}")),
+                None => {
+                    return Err(RfError::invalid_input(
+                        "simulation: block method kind required",
+                    ));
+                }
+            }
+        }
     }
     if !reasons.is_empty() {
         return readonly(contents, &wire.document, reasons);

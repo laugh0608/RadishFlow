@@ -1,6 +1,6 @@
 //! CLI v6 owns EO vocabulary; historical protocol capabilities stay fixed.
 pub(super) mod adoption;
-mod plan;
+pub(super) mod plan;
 mod results;
 use super::{
     planned::{PlanProtocol, domain, invalid, required_capabilities},

@@ -8,6 +8,7 @@ pub(super) enum PlanMethod {
     Partitioned,
     Simultaneous,
     EquationOriented,
+    Mixed,
 }
 impl PlanMethod {
     pub(super) fn of(plan: &FlowPlanConfiguration) -> Self {
@@ -16,10 +17,12 @@ impl PlanMethod {
             FlowPlanConfiguration::Partitioned(_) => Self::Partitioned,
             FlowPlanConfiguration::Simultaneous(_) => Self::Simultaneous,
             FlowPlanConfiguration::EquationOriented(_) => Self::EquationOriented,
+            FlowPlanConfiguration::Mixed(_) => Self::Mixed,
         }
     }
     pub(super) fn label(self, zh: bool) -> &'static str {
         match self {
+            Self::Mixed => tr(zh, "固定温压混合分区", "Fixed-T/P mixed material"),
             Self::EquationOriented => tr(
                 zh,
                 "固定温压物料方程 / 规格反算",
@@ -40,6 +43,10 @@ impl PlanMethod {
             pressure_pa: 650000.0,
         };
         match self {
+            Self::Mixed => FlowPlanConfiguration::Mixed(rf_solver::mixed::MixedOptions {
+                boundary,
+                blocks: vec![],
+            }),
             Self::EquationOriented => FlowPlanConfiguration::EquationOriented(
                 rf_solver::equation_oriented::EquationOptions::new(boundary),
             ),
@@ -61,7 +68,9 @@ impl PlanMethod {
 impl ReadyAppState {
     pub(in crate::studio_gui_shell) fn modular_plan_draft_pending(&self) -> bool {
         let plan = &self.platform_host.modeling_inputs().workspace.flow_plan;
-        plan.has_pending_modular_draft() || plan.has_pending_equation_draft()
+        plan.has_pending_modular_draft()
+            || plan.has_pending_equation_draft()
+            || plan.has_pending_mixed_draft()
     }
 
     pub(super) fn render_simultaneous_plan(

@@ -264,6 +264,11 @@ impl EquationControl for StopAt {
         }
     }
 }
+impl MixedControl for StopAt {
+    fn checkpoint(&mut self, _: MixedProgress) -> ControlFlow<()> {
+        ControlFlow::Continue(())
+    }
+}
 impl WorkspaceSolveControl for StopAt {
     fn before_load(&mut self) -> ControlFlow<()> {
         ControlFlow::Continue(())

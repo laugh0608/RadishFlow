@@ -44,10 +44,7 @@ pub enum StudioProjectOpen {
     ReadOnly(Box<StudioReadOnlyProject>),
 }
 pub fn read_studio_project(project_path: &Path) -> RfResult<StudioProjectOpen> {
-    read_studio_project_with_support(
-        project_path,
-        rf_store::project_v4::FlowPlanSupport::EquationOriented,
-    )
+    read_studio_project_with_support(project_path, rf_store::project_v4::FlowPlanSupport::Mixed)
 }
 
 pub fn read_studio_project_with_support(
@@ -70,7 +67,7 @@ pub(crate) fn parse_studio_project(
     parse_studio_project_with_support(
         contents,
         project_path,
-        rf_store::project_v4::FlowPlanSupport::EquationOriented,
+        rf_store::project_v4::FlowPlanSupport::Mixed,
     )
 }
 
@@ -173,6 +170,7 @@ pub fn project_save_version(app: &AppState) -> u32 {
             rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(_)
                 | rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
                 | rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
         )
         || app
             .workspace

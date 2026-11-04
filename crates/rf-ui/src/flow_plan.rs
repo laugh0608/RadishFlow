@@ -18,11 +18,13 @@ pub enum FlowPlanConfiguration {
     Partitioned(RecycleSolveOptions),
     Simultaneous(rf_solver::simultaneous::ModularOptions),
     EquationOriented(rf_solver::equation_oriented::EquationOptions),
+    Mixed(rf_solver::mixed::MixedOptions),
 }
 impl FlowPlanConfiguration {
     pub fn validate_configuration(&self) -> RfResult<()> {
         match self {
             Self::Acyclic => Ok(()),
+            Self::Mixed(o) => o.validate_shape(),
             Self::Partitioned(o) => o.validate_configuration(),
             Self::Simultaneous(o) => simultaneous::validate_configuration(o),
             Self::EquationOriented(o) => o.validate_shape().map_err(|e| e.error),
@@ -30,6 +32,9 @@ impl FlowPlanConfiguration {
     }
     pub fn validate_for(&self, workspace: &WorkspaceState) -> RfResult<()> {
         match self {
+            Self::Mixed(o) => {
+                rf_solver::mixed::assemble(&workspace.document.flowsheet, o).map(|_| ())
+            }
             Self::EquationOriented(o) => {
                 rf_solver::equation_oriented::assemble(&workspace.document.flowsheet, o)
                     .and_then(|p| p.require_ready())
@@ -50,6 +55,7 @@ impl FlowPlanConfiguration {
         match self {
             Self::Acyclic => BTreeSet::new(),
             Self::EquationOriented(o) => o.referenced_unit_ids(),
+            Self::Mixed(o) => o.referenced_unit_ids(),
             Self::Simultaneous(o) => o
                 .scales
                 .iter()
@@ -67,6 +73,7 @@ impl FlowPlanConfiguration {
         match self {
             Self::Acyclic => BTreeSet::new(),
             Self::EquationOriented(o) => o.referenced_stream_ids(),
+            Self::Mixed(o) => o.referenced_stream_ids(),
             Self::Simultaneous(o) => o
                 .scales
                 .iter()
@@ -135,7 +142,10 @@ impl Default for FlowPlanState {
     }
 }
 impl FlowPlanState {
-    pub fn from_loaded(plan: FlowPlanConfiguration) -> Self {
+    pub fn from_loaded(mut plan: FlowPlanConfiguration) -> Self {
+        if let FlowPlanConfiguration::Mixed(o) = &mut plan {
+            *o = o.canonicalized();
+        }
         Self {
             current: plan.clone(),
             saved: plan,
@@ -147,6 +157,13 @@ impl FlowPlanState {
             redo: Vec::new(),
             draft: None,
         }
+    }
+    pub fn has_pending_mixed_draft(&self) -> bool {
+        self.draft.as_ref().is_some_and(|d| {
+            d.is_pending(&self.current)
+                && (matches!(self.current, FlowPlanConfiguration::Mixed(_))
+                    || matches!(d.candidate(), FlowPlanConfiguration::Mixed(_)))
+        })
     }
     pub fn has_pending_equation_draft(&self) -> bool {
         self.draft.as_ref().is_some_and(|d| {
@@ -242,7 +259,7 @@ impl WorkspaceState {
             return Err(RfError::invalid_input("flow plan edit context changed")
                 .with_diagnostic_code("flow.plan.context_changed"));
         }
-        let (next, history) = match command {
+        let (mut next, history) = match command {
             FlowPlanCommand::Apply(plan) => (plan, PlanHistory::New),
             FlowPlanCommand::RestoreSaved => (self.flow_plan.saved.clone(), PlanHistory::New),
             FlowPlanCommand::Undo => match self.flow_plan.undo.last() {
@@ -254,6 +271,9 @@ impl WorkspaceState {
                 None => return Ok(false),
             },
         };
+        if let FlowPlanConfiguration::Mixed(o) = &mut next {
+            *o = o.canonicalized();
+        }
         next.validate_configuration()?;
         if next == self.flow_plan.current {
             return Ok(false);

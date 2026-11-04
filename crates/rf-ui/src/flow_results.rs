@@ -1,12 +1,14 @@
 //! Typed application results. Shared header access never turns a block execution
 //! into an acyclic step sequence.
 mod equation_oriented;
+mod mixed;
 mod simultaneous;
 use crate::{
     DiagnosticSeverity, DiagnosticSummary, RunStatus, SolveSnapshot, SolveSnapshotId,
     StreamStateSnapshot,
 };
 pub use equation_oriented::EquationFlowSnapshot;
+pub use mixed::MixedFlowSnapshot;
 use rf_solver::partitioned::PartitionedSolveResult;
 use rf_types::UnitId;
 pub use simultaneous::SimultaneousFlowSnapshot;
@@ -97,6 +99,12 @@ pub enum FlowResultRecord {
     Partitioned(PartitionedFlowSnapshot),
     Simultaneous(SimultaneousFlowSnapshot),
     EquationOriented(EquationFlowSnapshot),
+    Mixed(MixedFlowSnapshot),
+}
+impl From<MixedFlowSnapshot> for FlowResultRecord {
+    fn from(v: MixedFlowSnapshot) -> Self {
+        Self::Mixed(v)
+    }
 }
 impl From<EquationFlowSnapshot> for FlowResultRecord {
     fn from(v: EquationFlowSnapshot) -> Self {
@@ -126,6 +134,7 @@ impl Deref for FlowResultRecord {
             Self::Partitioned(s) => &s.common,
             Self::Simultaneous(s) => &s.common,
             Self::EquationOriented(s) => &s.common,
+            Self::Mixed(s) => &s.common,
         }
     }
 }
@@ -136,6 +145,7 @@ impl DerefMut for FlowResultRecord {
             Self::Partitioned(s) => &mut s.common,
             Self::Simultaneous(s) => &mut s.common,
             Self::EquationOriented(s) => &mut s.common,
+            Self::Mixed(s) => &mut s.common,
         }
     }
 }
@@ -144,6 +154,9 @@ impl FlowResultRecord {
         matches!(
             (self, plan),
             (
+                Self::Mixed(_),
+                crate::flow_plan::FlowPlanConfiguration::Mixed(_)
+            ) | (
                 Self::Acyclic(_),
                 crate::flow_plan::FlowPlanConfiguration::Acyclic
             ) | (
@@ -172,6 +185,10 @@ impl FlowResultRecord {
                 consumed_streams: &u.consumed_streams,
                 produced_streams: &u.produced_streams,
             }),
+            Self::Mixed(s) => s.final_units.get(id).map(|u| UnitResultView {
+                consumed_streams: &u.consumed_streams,
+                produced_streams: &u.produced_streams,
+            }),
             Self::EquationOriented(s) => s.final_units.get(id).map(|u| UnitResultView {
                 consumed_streams: &u.consumed_streams,
                 produced_streams: &u.produced_streams,
@@ -185,7 +202,10 @@ impl FlowResultRecord {
     pub fn acyclic(&self) -> Option<&SolveSnapshot> {
         match self {
             Self::Acyclic(s) => Some(s),
-            Self::Partitioned(_) | Self::Simultaneous(_) | Self::EquationOriented(_) => None,
+            Self::Partitioned(_)
+            | Self::Simultaneous(_)
+            | Self::EquationOriented(_)
+            | Self::Mixed(_) => None,
         }
     }
 }

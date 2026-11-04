@@ -384,3 +384,8 @@ GS-01—10 的存储 / 生命周期自动回归已落实：完整字段与三种
 ## QS3 方程计划存储（2026-10-31）
 
 [QS3-D05](modeling/equation-oriented-block.md#d05工程格式方法与旧读者)已在工程 v4 接通独立 EO 方法 / capability v1、释放比例 / 产品规格、区间预算与完整尺度绑定。shape 与 readiness 分开；未知能力 / 合法未知版本只读，缺失 capability 不绕过方法识别。来源 / 目标保存升级确认与原子写入复用既有路径，重开不含结果。历史 `f2ba51c1` reader / writer 与新程序旧 CLI v4 / v5 保护均已验证。
+
+
+## QS4 混合分区计划（2026-11-04）
+
+[QS4 首片](modeling/mixed-partition-execution.md)已在外层 v4 增加独立 Mixed capability / method v1、完整成员分配、块内方法与原身份的完整尺度。规范化重排为 no-op；失效身份保留并诊断。未知块方法 / 正契约版本只读，零版本 / 重复身份拒绝；原 v4 新增能力也要求保存升级确认。结果、实际边界与草稿不入文件，重开 Missing。独立历史 `787609e0` reader / writer 已验证只读、拒绝覆盖与原字节保护，自动及 macOS 保存重开证据见 W45。

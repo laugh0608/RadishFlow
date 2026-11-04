@@ -519,6 +519,16 @@ impl StudioRunOwner {
             .find(|s| &s.run_id == id)
             .and_then(|s| s.simultaneous_diagnostic.as_deref())
     }
+    pub fn mixed_diagnostic(
+        &self,
+        id: &rf_ui::FlowRunId,
+    ) -> Option<&rf_solver::mixed::MixedFailure> {
+        self.flow
+            .history()
+            .iter()
+            .find(|s| &s.run_id == id)
+            .and_then(|s| s.mixed_diagnostic.as_deref())
+    }
     pub fn equation_diagnostic(
         &self,
         id: &rf_ui::FlowRunId,

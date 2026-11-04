@@ -79,3 +79,8 @@ AF4b 已补 [类型化运行回执](variable-and-object-browser.md#af4b-2—4-�
 ## QS3 后台执行（2026-10-31）
 
 [QS3-D06](modeling/equation-oriented-block.md#d06后台运行资格与失败)已复用单 worker，增加方程装配 / 匹配、条件线性 / 区间评价、完整 Jacobian 与真实复核阶段。结构未就绪在正式预检 Blocked，worker 再验冻结输入和计划；取消撤销接收资格，join 后才释放名额。各核心阶段取消、Ready 后计划变化、迟到结果、错载荷、包准备失败无伪核心来源均有自动验证。
+
+
+## QS4 混合执行（2026-11-04）
+
+[QS4 首片](modeling/mixed-partition-execution.md)复用单 worker、Ready / 完成双资格和 join，新增块 ID、嵌套 EO、跨块边界 / 全局复核阶段及独立混合诊断。块成功仅诊断，整流程通过后才发布 Current；取消保留既有 Current 并撤销本次接收，退出前不释放名额。计划 ABA、错载荷、各外层安全点取消与既有 worker 生命周期通过正式回归；macOS 奇异 EO 块仅保留两个上游 Feed 的诊断，无当前快照，见 W45。真实在途取消 / join 的原生时机证据仍待补。
