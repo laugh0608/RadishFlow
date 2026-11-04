@@ -245,3 +245,33 @@ fn zero_composition_follows_nonselective_chain_and_acyclic_case_is_supported() {
     assert_eq!(r.streams.len(), 1);
     assert_eq!(r.costs.local_unit_calls, 1);
 }
+
+#[test]
+fn adjacent_fraction_endpoints_report_stagnation_without_relaxing_si_tolerance() {
+    // Binary-exact material equations isolate the floating-point bracket boundary.
+    // The endpoint products straddle a representable target by 2^-24 mol/s,
+    // above the unchanged 1e-10 mol/s acceptance threshold.
+    let flow = split_chain(2.0_f64.powi(30));
+    let before = flow.clone();
+    let mut o = inverse_options();
+    let r = o.released.as_mut().unwrap();
+    r.lower = 0.75;
+    r.upper = r.lower.next_up();
+    o.target.as_mut().unwrap().value_mol_s = 2.0_f64.powi(28) - 2.0_f64.powi(-24);
+    let failure = solve(&flow, &o).unwrap_err();
+    assert_eq!(failure.kind, EquationFailureKind::Stagnated);
+    assert_eq!(failure.costs.conditional_linear_evaluations, 2);
+    assert_eq!(failure.costs.interval_updates, 0);
+    assert_eq!(failure.costs.local_unit_calls, 0);
+    assert!(failure.evidence.candidate_values_si.is_none());
+    assert!(failure.evidence.full_jacobian.is_none());
+    let samples = &failure.evidence.conditional_evaluations;
+    assert!(samples.iter().all(|s| s.completed));
+    let defects: Vec<_> = samples
+        .iter()
+        .map(|s| s.target_residual_mol_s.unwrap())
+        .collect();
+    assert!(defects[0] > ABSOLUTE_TOLERANCE_MOL_S);
+    assert!(defects[1] < -ABSOLUTE_TOLERANCE_MOL_S);
+    assert_eq!(flow, before);
+}

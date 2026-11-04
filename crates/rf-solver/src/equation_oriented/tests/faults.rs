@@ -115,3 +115,118 @@ fn local_faults_cannot_turn_a_mathematical_candidate_into_success() {
     }
     assert_eq!(flow, original);
 }
+
+struct TerminalDrift {
+    inner: Box<dyn UnitOperation>,
+    delta: f64,
+}
+impl UnitOperation for TerminalDrift {
+    fn kind(&self) -> rf_unitops::BuiltinUnitKind {
+        self.inner.kind()
+    }
+    fn run(
+        &self,
+        services: &UnitOperationServices<'_>,
+        inputs: &UnitOperationInputs,
+    ) -> rf_types::RfResult<UnitOperationOutputs> {
+        let original = self.inner.run(services, inputs)?;
+        let mut output = UnitOperationOutputs::new();
+        output.insert_material_stream("outlet_a", original.stream("outlet_a").unwrap().clone());
+        let mut terminal = original.stream("outlet_b").unwrap().clone();
+        terminal.total_molar_flow_mol_s += self.delta;
+        output.insert_material_stream("outlet_b", terminal);
+        Ok(output)
+    }
+}
+#[test]
+fn global_absolute_scaled_component_and_scaled_total_checks_have_direct_fault_evidence() {
+    // Every actual local call and every individual assembled row passes first.
+    // The three independent failures exercise global acceptance only.
+    for (fresh, delta, total_only) in [
+        (8.0, 1.5e-10, false),
+        (0.125, 1e-11, false),
+        (0.125, 7e-12, true),
+    ] {
+        let flow = split_chain(fresh);
+        let before = flow.clone();
+        let e = execution::solve(
+            &crate::SolverServices {
+                thermo: &binary_hydrocarbon_provider(),
+                flash_solver: &PlaceholderTpFlashSolver,
+            },
+            &flow,
+            &options(),
+            &mut Uninterrupted,
+            &mut |u, streams| {
+                let inner = rf_unitops::catalog::instantiate_builtin(u, streams)?;
+                Ok(if u.kind == "splitter" {
+                    Box::new(TerminalDrift { inner, delta }) as Box<dyn UnitOperation>
+                } else {
+                    inner
+                })
+            },
+        )
+        .unwrap_err();
+        assert_eq!(
+            e.kind,
+            EquationFailureKind::GlobalVerification,
+            "fresh={fresh} delta={delta} error={:?}",
+            e.error
+        );
+        assert_eq!(e.progress.stage, EquationStage::GlobalVerification);
+        assert_eq!(e.costs.local_unit_calls, 4);
+        assert_eq!(e.evidence.final_units.len(), 4);
+        assert!(e.evidence.verified_values_si.is_some());
+        assert!(
+            e.evidence
+                .verified_residuals_mol_s
+                .as_ref()
+                .unwrap()
+                .iter()
+                .all(|r| r.abs() <= ABSOLUTE_TOLERANCE_MOL_S
+                    && (r / fresh).abs() <= SCALED_TOLERANCE)
+        );
+        let global = e.evidence.global_material.as_ref().unwrap();
+        if total_only {
+            assert_eq!(
+                e.error.context().diagnostic_code(),
+                Some("solver.equation_oriented.global_total")
+            );
+            assert!(
+                global
+                    .component_residuals_mol_s
+                    .values()
+                    .all(|r| r.abs() <= ABSOLUTE_TOLERANCE_MOL_S
+                        && (r / fresh).abs() <= SCALED_TOLERANCE)
+            );
+            assert!((global.total_residual_mol_s / fresh).abs() > SCALED_TOLERANCE);
+        } else if fresh > 1.0 {
+            assert!(
+                global
+                    .component_residuals_mol_s
+                    .values()
+                    .any(|r| r.abs() > ABSOLUTE_TOLERANCE_MOL_S)
+            );
+            assert!(
+                global
+                    .component_residuals_mol_s
+                    .values()
+                    .all(|r| (r / fresh).abs() <= SCALED_TOLERANCE)
+            );
+        } else {
+            assert!(
+                global
+                    .component_residuals_mol_s
+                    .values()
+                    .all(|r| r.abs() <= ABSOLUTE_TOLERANCE_MOL_S)
+            );
+            assert!(
+                global
+                    .component_residuals_mol_s
+                    .values()
+                    .any(|r| (r / fresh).abs() > SCALED_TOLERANCE)
+            );
+        }
+        assert_eq!(flow, before);
+    }
+}

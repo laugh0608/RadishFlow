@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "gas_constant_j_mol_k": 8.31446261815324,
+  "critical_constants_source": "Unchanged CoolProp 8.0.0 PR baseline parameters.json; dedicated correlation parameters below are separate quantities, not replacements for PR omega or critical volume.",
+  "correlation_parameters_source": {
+    "project": "ChEDL chemicals",
+    "version": "1.5.2",
+    "commit": "7fca9acf7708e2a646bc04d2b6f6996d0325e77d",
+    "url": "https://raw.githubusercontent.com/CalebBell/chemicals/7fca9acf7708e2a646bc04d2b6f6996d0325e77d/chemicals/Density/COSTALD%20Parameters.tsv",
+    "sha256": "32a43781673544c0e0d09d2f1dd58c4632b32f7f9128cd0335af4b0832f2168b",
+    "license": "MIT",
+    "qualification": "Published transcription, not visually verified against original 1979 parameter table; no parameters estimated or fitted here."
+  },
+  "components": [
+    {
+      "coolprop_name": "Propane",
+      "cas": "74-98-6",
+      "molar_mass_kg_mol": 0.04409562,
+      "critical_temperature_k": 369.89,
+      "critical_pressure_pa": 4251200.0,
+      "omega_srk": 0.1532,
+      "costald_characteristic_volume_m3_mol": 0.0002001,
+      "rackett_z_ra": 0.2766
+    },
+    {
+      "coolprop_name": "n-Butane",
+      "cas": "106-97-8",
+      "molar_mass_kg_mol": 0.0581222,
+      "critical_temperature_k": 425.125,
+      "critical_pressure_pa": 3796000.0,
+      "omega_srk": 0.2008,
+      "costald_characteristic_volume_m3_mol": 0.0002544,
+      "rackett_z_ra": 0.273
+    }
+  ]
+}

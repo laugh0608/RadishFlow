@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "frozen_before_comparison": "2026-11-04",
+  "scope": "Offline C2-A only; no C2-B/C3, product dependency, interface or format change",
+  "baseline_manifests": {
+    "c2a-pr76": "cfa4cece8569094645b4b4f7ef7f486b619a4d9fafd0b4c25acb1c2eeacd2015",
+    "c2a-evidence-review": "c52e618e5b327bf17a182b0b32a72cff08ced2dd0f7767b9fb3f4181879b5224",
+    "c2a-source-audit": "823851a1aa1c82f45d5ef71bf080f5c86136cb10de5c8c7ff8facc99ee511bdd"
+  },
+  "methods": [
+    "COSTALD-Tait-1982",
+    "modified-Rackett-Tait-hybrid"
+  ],
+  "saturated_volume": {
+    "COSTALD": "Hankinson-Thomson 1979; Vstar cubic-root mixing, Tcm=sum(x*sqrt(Tc*Vstar))^2/Vstar_mix, omega_SRK mole average; cross interaction explicitly zero",
+    "modified_Rackett": "ChEDL 1.5.2 Rackett_mixture mass-weighted mixing; Tcm and ZRA mole averages; pure limit is modified Rackett, no estimated ZRA"
+  },
+  "pressure_correction": "Both candidates use the same Thomson-Brobst-Hankinson 1982 Tait factor. Rackett+Tait is an explicit screening hybrid, not a separate validated pressure model. Tait pseudo properties use COSTALD mixing; pure Pc uses baseline critical Pc, binary Pcm=(0.291-0.080*omega_SRK)*R*Tcm/Vstar_mix. Generalized Riedel Psat uses these properties and coefficient 4.86601 (ChEDL 1.5.2).",
+  "saturation_observations": "Explicit saturated/bubble liquid observations compare saturated volume directly; measured pressure is retained but not used as an arbitrary TP correction anchor. All other TP inputs use full Tait factor.",
+  "domain": {
+    "temperature_k": [
+      280,
+      320
+    ],
+    "pressure_pa": [
+      200000,
+      1000000
+    ],
+    "reduced_temperature": [
+      0.25,
+      0.95
+    ],
+    "additional": "For compressed inputs P >= correlation Psat; otherwise unavailable, no pressure clamp, root substitution or saturated-volume fallback. Saturation rows use T selection only, as accepted baseline.",
+    "experimental_binary_x_propane": [
+      0.2,
+      0.8
+    ],
+    "engineering_liquid_x_propane": [
+      0,
+      1
+    ],
+    "composition_note": "Experimental selection remains the accepted 0.2–0.8 liquid range; engineering uses actual PR liquid compositions, including outside that selection, without asserting a continuous qualified domain."
+  },
+  "thresholds": {
+    "pressure_relative": 0.02,
+    "density_relative": 0.05,
+    "composition_absolute": 0.02,
+    "beta_absolute": 0.02,
+    "phase_flow_relative": 0.1,
+    "phase_flow_beta_window": [
+      0.1,
+      0.9
+    ],
+    "diameter_relative": 0.05,
+    "load_relative": 0.1,
+    "normalization_absolute": 1e-10,
+    "material_balance_relative": 1e-08,
+    "material_balance_absolute_mol_s": 1e-10
+  },
+  "engineering": "Exactly the accepted 276-row engineering input matrix; preserve gas flow/density and PR beta/x, recompute liquid rho and Q from PR phase molar flow and candidate molar volume. HEOS comparison remains model screening, not experiment. Missing candidate points remain recorded. Same 0.1/1/10 flow scales, two geometries and S1/S2 API.",
+  "failure_policy": "Keep all baseline cases/exclusions and phase anomalies by immutable reference. No fitting, new kij, volume translation, threshold relaxation, shrinking continuous domain, or qualification of VLE/gas density from liquid density improvement.",
+  "historical_repository_drift": {
+    "Cargo.lock": {
+      "historical_sha256": "2af0b0c404f2b96dd6be6d2309855ff71902a61b57a4448bc2d33861d13db6e4",
+      "current_sha256": "87259e82009ba6e989b34e43e0acd1631561d0e91e3604c929798c1a5f3d4078",
+      "reason": "Subsequent approved repository development changed Cargo.lock; original manifest and all original validation files/harness/S1/S2 modules remain unchanged. This is replay with the current locked harness, not byte-identical reconstruction of the 2026-10-22 build environment."
+    }
+  }
+}

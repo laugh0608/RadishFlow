@@ -1,0 +1,16 @@
+{
+  "python_version": "3.14.5 (main, May 10 2026, 19:20:57) [Clang 22.1.3 ]",
+  "implementation": "CPython",
+  "machine": "arm64",
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "dependencies": "Python standard library only; reuse frozen PR/HEOS JSON, no live CoolProp query",
+  "formula_specification": {
+    "project": "ChEDL chemicals 1.5.2",
+    "commit": "7fca9acf7708e2a646bc04d2b6f6996d0325e77d",
+    "path": "chemicals/volume.py",
+    "sha256": "bb81d1469d200f9e8cfb6799e5660dcf1047e99e381cd8e4f48933bc2b8d86b3"
+  },
+  "harness_source_sha256": "2ef5453c77705f8cf5271f11e85e25ca9433cea15e6e9d111bf3bc5e1c2329ef",
+  "harness_build": "CARGO_NET_OFFLINE=true cargo build --locked -p rf-unitops --example c2a_separator",
+  "replay_policy": "No installation/network required. Exact bytes checked twice on this environment; other platform libm/compiler results are not assumed byte-identical."
+}

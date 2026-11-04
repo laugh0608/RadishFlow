@@ -2,13 +2,45 @@ mod faults;
 mod numerical;
 use super::*;
 use crate::test_fixtures::cross_recycle;
+fn split_chain(fresh_total: f64) -> Flowsheet {
+    let mut flow = Flowsheet::new("fixed-T/P verification chain");
+    for id in ["methane", "ethane"] {
+        flow.insert_component(rf_model::Component::new(id, id))
+            .unwrap();
+    }
+    for id in ["fresh", "ab", "bc", "final", "pa", "pb", "pc"] {
+        flow.insert_stream(MaterialStreamState::from_tpzf(
+            id,
+            id,
+            300.0,
+            650000.0,
+            if id == "fresh" { fresh_total } else { 99.0 },
+            [("methane".into(), 0.5), ("ethane".into(), 0.5)].into(),
+        ))
+        .unwrap();
+    }
+    let mut feed = rf_unitops::build_feed_node("feed", "Feed", "fresh");
+    feed.parameters.outlet_temperature_k = Some(300.0);
+    feed.parameters.outlet_pressure_pa = Some(650000.0);
+    flow.insert_unit(feed).unwrap();
+    for (id, input, a, b) in [
+        ("sa", "fresh", "ab", "pa"),
+        ("sb", "ab", "bc", "pb"),
+        ("sc", "bc", "final", "pc"),
+    ] {
+        let mut unit = rf_unitops::build_splitter_node(id, id, input, a, b);
+        unit.parameters.outlet_a_split_fraction = Some(0.5);
+        flow.insert_unit(unit).unwrap();
+    }
+    flow
+}
 fn options() -> EquationOptions {
     EquationOptions::new(FixedBoundary {
         temperature_k: 300.0,
         pressure_pa: 650_000.0,
     })
 }
-fn inverse_options() -> EquationOptions {
+pub(super) fn inverse_options() -> EquationOptions {
     let mut o = options();
     o.released = Some(ReleasedSplitFraction {
         binding: ParameterBinding {

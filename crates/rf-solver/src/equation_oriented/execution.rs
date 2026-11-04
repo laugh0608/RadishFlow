@@ -3,6 +3,9 @@ use crate::dense_linear::{self, DenseCosts, DenseError, DenseFailureKind, DenseS
 use crate::local_services::{CountedFlash, CountedThermo};
 use rf_unitops::{UnitOperation, UnitOperationServices};
 use std::{cell::Cell, ops::ControlFlow, time::Instant};
+#[cfg(test)]
+#[path = "tests/conditional_faults.rs"]
+mod conditional_faults;
 
 pub(super) struct Execution<'a> {
     pub control: &'a mut dyn EquationControl,
