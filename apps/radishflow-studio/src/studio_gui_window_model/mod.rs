@@ -24,13 +24,13 @@ use crate::{
 use drop_preview::{build_drop_preview_overlay, changed_area_ids_for_preview};
 pub use studio_main::{
     StudioGuiWindowHomeCaseTileModel, StudioGuiWindowHomeCaseTileSource,
-    StudioGuiWindowHomeCaseTileStatus, StudioGuiWindowHomeModel, StudioGuiWindowModuleResultsModel,
-    StudioGuiWindowModuleResultsState, StudioGuiWindowModuleSettingsModel,
-    StudioGuiWindowModuleSettingsParameterSummaryModel, StudioGuiWindowModuleSettingsState,
-    StudioGuiWindowPropertyComponentModel, StudioGuiWindowPropertyMetricModel,
-    StudioGuiWindowPropertyPackageModel, StudioGuiWindowPropertyPageModel,
-    StudioGuiWindowStatusSummaryMetricModel, StudioGuiWindowStatusSummaryModel,
-    StudioGuiWindowThumbnailFlowModel,
+    StudioGuiWindowHomeCaseTileStatus, StudioGuiWindowHomeModel, StudioGuiWindowHomePreviewModel,
+    StudioGuiWindowModuleResultsModel, StudioGuiWindowModuleResultsState,
+    StudioGuiWindowModuleSettingsModel, StudioGuiWindowModuleSettingsParameterSummaryModel,
+    StudioGuiWindowModuleSettingsState, StudioGuiWindowPropertyComponentModel,
+    StudioGuiWindowPropertyMetricModel, StudioGuiWindowPropertyPackageModel,
+    StudioGuiWindowPropertyPageModel, StudioGuiWindowStatusSummaryMetricModel,
+    StudioGuiWindowStatusSummaryModel,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -15,9 +15,21 @@ pub enum StudioGuiWindowHomeCaseTileStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StudioGuiWindowThumbnailFlowModel {
-    pub nodes: Vec<String>,
-    pub edges: Vec<(usize, usize)>,
+pub enum StudioGuiWindowHomePreviewModel {
+    Unavailable,
+    Summary {
+        unit_count: usize,
+        stream_count: Option<usize>,
+    },
+    SmallFlow {
+        nodes: Vec<String>,
+        edges: Vec<(usize, usize)>,
+        stream_count: Option<usize>,
+    },
+}
+
+impl StudioGuiWindowHomePreviewModel {
+    pub const MAX_UNITS: usize = 6;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,7 +43,7 @@ pub struct StudioGuiWindowHomeCaseTileModel {
     pub component_summary: String,
     pub status: StudioGuiWindowHomeCaseTileStatus,
     pub status_label: &'static str,
-    pub thumbnail: StudioGuiWindowThumbnailFlowModel,
+    pub preview: StudioGuiWindowHomePreviewModel,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -795,11 +807,22 @@ fn example_case_tile_from_model(
         component_summary: "Methane, Ethane".to_string(),
         status,
         status_label: home_case_tile_status_label(status),
-        thumbnail: thumbnail_from_case_title(example.title),
+        preview: preview_from_case_title(example.title),
     }
 }
 
-fn thumbnail_from_case_title(title: &str) -> StudioGuiWindowThumbnailFlowModel {
+fn preview_from_case_title(title: &str) -> StudioGuiWindowHomePreviewModel {
+    let unit_count = title
+        .split("->")
+        .flat_map(|stage| stage.split('+'))
+        .filter(|node| !node.trim().is_empty())
+        .count();
+    if unit_count == 0 || unit_count > StudioGuiWindowHomePreviewModel::MAX_UNITS {
+        return StudioGuiWindowHomePreviewModel::Summary {
+            unit_count,
+            stream_count: None,
+        };
+    }
     let stages = title
         .split("->")
         .map(|stage| {
@@ -835,7 +858,11 @@ fn thumbnail_from_case_title(title: &str) -> StudioGuiWindowThumbnailFlowModel {
         }
     }
 
-    StudioGuiWindowThumbnailFlowModel { nodes, edges }
+    StudioGuiWindowHomePreviewModel::SmallFlow {
+        nodes,
+        edges,
+        stream_count: None,
+    }
 }
 
 fn home_case_tile_status_label(status: StudioGuiWindowHomeCaseTileStatus) -> &'static str {

@@ -191,7 +191,9 @@ fn recent_project_card_uses_the_same_v4_reader_as_open() {
     assert_eq!(card.title, "Fixed-T/P Binary Recycle");
     assert!(card.component_summary.contains("Methane"));
     assert!(card.package_summary.contains("Lite"));
-    assert_eq!(card.thumbnail.nodes.len(), 6);
+    assert!(matches!(&card.preview,
+        radishflow_studio::StudioGuiWindowHomePreviewModel::SmallFlow { nodes, .. }
+            if nodes.len() == 6));
 }
 
 fn output(

@@ -2097,12 +2097,10 @@ fn home_window_model_maps_recent_projects_to_case_tiles() {
     assert_eq!(current_tile.package_summary, "Binary Hydrocarbon Lite");
     assert_eq!(current_tile.component_summary, "Ethane, Methane");
     assert!(
-        current_tile
-            .thumbnail
-            .nodes
-            .iter()
-            .any(|node| node == "Heater"),
-        "expected current recent tile thumbnail to come from stored flowsheet topology"
+        matches!(&current_tile.preview,
+        radishflow_studio::StudioGuiWindowHomePreviewModel::SmallFlow { nodes, .. }
+            if nodes.iter().any(|node| node == "Heater")),
+        "expected stored flowsheet preview"
     );
 }
 

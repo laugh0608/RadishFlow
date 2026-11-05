@@ -1,7 +1,9 @@
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use super::*;
+
+mod preview;
+use preview::{current_workspace_preview, preview_from_flowsheet, render_home_preview};
 
 const HOME_START_WIDTH: f32 = 220.0;
 const HOME_ENVIRONMENT_WIDTH: f32 = 280.0;
@@ -358,7 +360,7 @@ impl ReadyAppState {
                     });
                 });
                 render_wrapped_small(ui, &tile.detail);
-                render_home_thumbnail(ui, &tile.thumbnail);
+                render_home_preview(ui, &tile.preview, self.locale);
                 let location = if tile.source
                     == radishflow_studio::StudioGuiWindowHomeCaseTileSource::Current
                     && window.runtime.workspace_document.project_path.is_none()
@@ -458,7 +460,7 @@ impl ReadyAppState {
                     example_case_detail(self.locale, &tile.source_id, &tile.detail),
                 );
                 ui.add_space(4.0);
-                render_home_thumbnail(ui, &tile.thumbnail);
+                render_home_preview(ui, &tile.preview, self.locale);
                 render_muted_small(ui, example_case_flow_summary(self.locale, &tile.source_id));
                 ui.horizontal_wrapped(|ui| {
                     ui.small(home_text(self.locale, HomeText::Components));
@@ -999,12 +1001,9 @@ fn recent_case_tile_from_path(
     let component_summary = document
         .map(|d| component_summary_from_flowsheet(&d.flowsheet))
         .unwrap_or_else(|| "Components unavailable".to_string());
-    let thumbnail = document
-        .map(|d| thumbnail_from_flowsheet(&d.flowsheet))
-        .unwrap_or_else(|| radishflow_studio::StudioGuiWindowThumbnailFlowModel {
-            nodes: Vec::new(),
-            edges: Vec::new(),
-        });
+    let preview = document
+        .map(|d| preview_from_flowsheet(&d.flowsheet))
+        .unwrap_or(radishflow_studio::StudioGuiWindowHomePreviewModel::Unavailable);
     let status = recent_case_tile_status(project_path, None);
     let path_text = project_path.display().to_string();
 
@@ -1018,7 +1017,7 @@ fn recent_case_tile_from_path(
         component_summary,
         status,
         status_label: home_case_tile_status_label(status),
-        thumbnail,
+        preview,
     }
 }
 
@@ -1056,7 +1055,7 @@ fn current_workspace_case_tile(
         status_label: home_case_tile_status_label(
             radishflow_studio::StudioGuiWindowHomeCaseTileStatus::Current,
         ),
-        thumbnail: current_workspace_thumbnail(document),
+        preview: current_workspace_preview(document),
     }
 }
 
@@ -1131,93 +1130,6 @@ fn summarize_visible_names(names: &[String]) -> String {
         summary.push_str(&format!(" +{remaining_count} more"));
     }
     summary
-}
-
-fn current_workspace_thumbnail(
-    document: &radishflow_studio::StudioGuiWorkspaceDocumentSnapshot,
-) -> radishflow_studio::StudioGuiWindowThumbnailFlowModel {
-    let nodes = if document.unit_count > 0 {
-        vec![format!("{} units", document.unit_count)]
-    } else {
-        Vec::new()
-    };
-    radishflow_studio::StudioGuiWindowThumbnailFlowModel {
-        nodes,
-        edges: Vec::new(),
-    }
-}
-
-fn thumbnail_from_flowsheet(
-    flowsheet: &rf_model::Flowsheet,
-) -> radishflow_studio::StudioGuiWindowThumbnailFlowModel {
-    let units = flowsheet.units.values().collect::<Vec<_>>();
-    let nodes = units
-        .iter()
-        .map(|unit| unit_label_for_thumbnail(unit))
-        .collect::<Vec<_>>();
-    let mut stream_sources: BTreeMap<String, usize> = BTreeMap::new();
-    let mut stream_sinks: BTreeMap<String, Vec<usize>> = BTreeMap::new();
-
-    for (unit_index, unit) in units.iter().enumerate() {
-        for port in &unit.ports {
-            if port.kind != rf_types::PortKind::Material {
-                continue;
-            }
-            let Some(stream_id) = port.stream_id.as_ref() else {
-                continue;
-            };
-            match port.direction {
-                rf_types::PortDirection::Outlet => {
-                    stream_sources.insert(stream_id.to_string(), unit_index);
-                }
-                rf_types::PortDirection::Inlet => {
-                    stream_sinks
-                        .entry(stream_id.to_string())
-                        .or_default()
-                        .push(unit_index);
-                }
-            }
-        }
-    }
-
-    let mut edges = Vec::new();
-    for (stream_id, source_index) in stream_sources {
-        let Some(sink_indices) = stream_sinks.get(&stream_id) else {
-            continue;
-        };
-        for sink_index in sink_indices {
-            let edge = (source_index, *sink_index);
-            if !edges.contains(&edge) {
-                edges.push(edge);
-            }
-        }
-    }
-
-    radishflow_studio::StudioGuiWindowThumbnailFlowModel { nodes, edges }
-}
-
-fn unit_label_for_thumbnail(unit: &rf_model::UnitNode) -> String {
-    non_empty_trimmed(&unit.name).unwrap_or_else(|| readable_unit_kind(&unit.kind))
-}
-
-fn readable_unit_kind(kind: &str) -> String {
-    let label = kind
-        .split('_')
-        .filter(|part| !part.is_empty())
-        .map(|part| {
-            let mut chars = part.chars();
-            match chars.next() {
-                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-                None => String::new(),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ");
-    if label.is_empty() {
-        "Unit".to_string()
-    } else {
-        label
-    }
 }
 
 fn recent_case_tile_status(
@@ -1383,89 +1295,6 @@ fn home_case_tile_status_color(
             egui::Color32::from_rgb(180, 70, 60)
         }
     }
-}
-
-fn render_home_thumbnail(
-    ui: &mut egui::Ui,
-    thumbnail: &radishflow_studio::StudioGuiWindowThumbnailFlowModel,
-) {
-    if thumbnail.nodes.is_empty() {
-        return;
-    }
-
-    let stages = home_thumbnail_stages(thumbnail);
-    egui::Frame::new()
-        .fill(egui::Color32::from_rgb(244, 247, 251))
-        .stroke(egui::Stroke::new(
-            1.0_f32,
-            egui::Color32::from_rgb(218, 226, 238),
-        ))
-        .corner_radius(6.0)
-        .inner_margin(egui::Margin::symmetric(8, 5))
-        .show(ui, |ui| {
-            ui.horizontal_wrapped(|ui| {
-                for (stage_index, stage) in stages.iter().enumerate() {
-                    if stage_index > 0 {
-                        ui.small("->");
-                    }
-                    for node in stage {
-                        render_status_chip(ui, node, egui::Color32::from_rgb(86, 118, 168));
-                    }
-                }
-            });
-        });
-}
-
-fn home_thumbnail_stages(
-    thumbnail: &radishflow_studio::StudioGuiWindowThumbnailFlowModel,
-) -> Vec<Vec<&str>> {
-    let node_count = thumbnail.nodes.len();
-    let mut incoming_counts = vec![0usize; node_count];
-    for (_, to) in &thumbnail.edges {
-        if *to < node_count {
-            incoming_counts[*to] += 1;
-        }
-    }
-
-    let mut consumed = vec![false; node_count];
-    let mut stages = Vec::new();
-    while consumed.iter().any(|consumed| !*consumed) {
-        let stage_indices = incoming_counts
-            .iter()
-            .enumerate()
-            .filter_map(|(index, incoming_count)| {
-                if !consumed[index] && *incoming_count == 0 {
-                    Some(index)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-        if stage_indices.is_empty() {
-            return thumbnail
-                .nodes
-                .iter()
-                .map(|node| vec![node.as_str()])
-                .collect();
-        }
-
-        for index in &stage_indices {
-            consumed[*index] = true;
-            for (from, to) in &thumbnail.edges {
-                if from == index && *to < node_count {
-                    incoming_counts[*to] = incoming_counts[*to].saturating_sub(1);
-                }
-            }
-        }
-        stages.push(
-            stage_indices
-                .into_iter()
-                .map(|index| thumbnail.nodes[index].as_str())
-                .collect(),
-        );
-    }
-
-    stages
 }
 
 fn home_text(locale: StudioShellLocale, key: HomeText) -> &'static str {

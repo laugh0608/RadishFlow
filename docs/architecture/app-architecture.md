@@ -75,7 +75,8 @@ AF6 的[代码链路与场景审查](../topics/modeling/solver-strategies-and-as
 Studio 首页、工作台分区、运行后结果视图和项目切换确认流程已落地。shell UI 边界按以下稳定入口治理：
 
 - Home 是默认首页，不读取 `SolveSnapshot` 或编辑流程图。新建空白项目先进入 `物性`；独立设备入口创建空流程并进入 `设备`，不要求物性包；小案例入口另展示只读建模清单，不自动生成流程或写入历史。
-- 最近项目、当前工作区和示例项目统一由 `StudioGuiWindowHomeCaseTileModel` 承载流程缩影、路径 / 来源、物性包 label、组分和状态。当前工作区 tile 只从 `workspace_document` 派生，不写入 recent projects；保存过的当前项目应直接返回当前 workspace，而不是通过 recent path 重新打开自身。Home tile 的 `package_summary` 只从当前 document / builtin package choice 映射为可读 label，例如 `二元烃 Lite`；稳定 package id 只留在项目文件、command id、运行请求和内部状态边界。
+- 首页三类工程卡片由 `StudioGuiWindowHomeCaseTileModel` 承载预览、路径 / 来源、物性包、组分和状态。当前卡片从 `workspace_document` 派生，不写 recent；已保存的当前项目也直接返回 workspace。`package_summary` 从 document / builtin choice 映射可读 label，如 `二元烃 Lite`；稳定 package id 留在项目文件、命令、运行请求和内部状态。
+- `StudioGuiWindowHomePreviewModel` 区分小图、计数与不可用。超过 6 个单元不投影节点 / 边，显示真实单元 / 物流数；当前 workspace 直接用快照计数。小图仅连通单向链画箭头，其余为无箭头概览。预览最多两行；名称省略且保留完整提示 / 辅助功能文本，宽度不足改计数。示例沿用标题投影，未知物流数不补造；读取 / 缓存策略保持。
 - 新建 / 打开 / 关闭消费 `ProjectSaveState`；确认绑定当前状态，过期重验，取消 / 失败保留现场，见 [生命周期](../topics/project-lifecycle-storage.md#u2-离开保护与保存状态)。Home 返回只切页；保存不提交草稿，有草稿不自动关闭。
 - 进入 case 后，第一层只保留 `文件 / 主页 / 物性 / 设备 / 流程图 / 运行 / 结果 / 工具 / 设置` 主入口、当前项目摘要和必要状态。普通空白项目选齐 package 和至少一个项目组分前，`流程图` 入口不可用；禁用原因必须来自 Property page DTO 的同一 readiness。
 - `物性 / 流程图 / 运行 / 结果` screen 下方分别消费 `window.property_context_toolbar`、`window.flowsheet_context_toolbar`、`window.run_context_toolbar` 和 `window.result_context_toolbar`。工具栏只展示当前 screen 的主路径命令和状态，不展开调试命令全集；`运行` 工具栏不重复 Monitor 状态 chip，`结果` 工具栏不把所有 stream / unit focus command 展开成长按钮。
@@ -839,16 +840,14 @@ App 不应直接操作底层求解细节，而应通过稳定的数据结构与�
 
 桌面 Shell 安装共享 `StudioRunOwner`，流程 / 设备 / QS0 共用一个 worker 配额；切换工程保留拥有者，最后窗口待回收才关闭。未安装后台会话的 Facade、headless / FFI 保持同步。大图优化与验证见 [W45](../devlogs/2026-11/2026-W45.md#2026-11-05大图呈现第二片局部读取)。
 
-Shell 草稿、检查器单位与焦点通过 `modeling_inputs()` 借用当前状态。窗口身份与布局共用 `StudioGuiWindowLayoutScope::from_app_host_state`，依次选择有效请求、前台、首个注册窗口；数量直接读宿主状态。单位命令后重读呈现态，确认检查点仍重验。无到期事件时 Shell 跳过 timer batch，仍安排重绘；公开空 batch 返回契约保持。主帧与前序命令后的画布快照各自实时读取，不引入跨帧缓存或改变结果所有权。
+Shell 通过 `modeling_inputs()` 借用草稿、单位与焦点。窗口作用域共用 `StudioGuiWindowLayoutScope::from_app_host_state`，按有效请求、前台、首个注册窗口选择。单位命令后重读，确认仍重验；无到期事件跳过 batch、保留重绘及公开空批次契约。主帧与命令后画布实时取快照，无跨帧缓存或结果所有权变化。
 
-实现时按用户行为追踪命令链，保留独立状态、平台隔离和共享契约，评估纯转发与重复投影。大文件按领域职责拆分，测试按行为组织；undo 与结果快照的大负载成本先测量。
-
-后续按 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 衔接 N 轨道。
+按用户行为追踪命令，保持状态、平台与共享契约边界，审查重复投影；大文件按职责拆分，测试按行为组织。undo 与结果快照成本先测量。
 
 ### 接下来事项
 
-1. 两片已实现；正式 2,064 项、有界性能对照及 macOS 原生代表交互通过，证据见 W45。
-2. 依据原生观察审定后续优化；首页大图预览过长另记 W45。缓存、结果所有权或进一步接口变更另确认。
+1. 两片的性能对照及 macOS 原生代表交互通过，见 W45。
+2. 首页预览限幅通过 2,069 项及 macOS 原生代表验证，见 [W45](../devlogs/2026-11/2026-W45.md#2026-11-05首页工程预览限幅)。缓存、所有权及接口变更另审。
 3. 保持输入 / 计划双资格及来源语义。[AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23)、方法特定与平台补验独立跟踪，本轮未修复或核销。
 
 ## 其他待细化事项

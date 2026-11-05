@@ -44,12 +44,12 @@
 
 ### 最近进展（截至 2026-11-05）
 
-- 大图两片已提交，正式 2,064 项、有界性能对照及 macOS 原生代表交互通过；证据见 [W45](../devlogs/2026-11/2026-W45.md)，AF1 未定因。
+- 大图两片已提交；首页预览限幅已完成，正式 2,069 项及 macOS 原生代表验证通过。大图性能与本轮证据见 [W45](../devlogs/2026-11/2026-W45.md)，AF1 未定因。
 - [QS4 首片](../topics/modeling/mixed-partition-execution.md)已按 D01—D05 完成 A—D：Local＋正向 EO 的 DAG、v4 与 GUI / CLI v7；2,051 项、历史读写器与 macOS 代表路径通过。
 
 ### 下一步
 
-- [x] 大图两片已补 macOS 原生代表观察；后续性能与首页预览范围按[应用架构](../architecture/app-architecture.md#接下来事项)另审，AF1 独立跟踪。
+- [x] 大图两片原生观察及首页预览限幅已完成；后续性能范围按[应用架构](../architecture/app-architecture.md#接下来事项)另审，AF1 独立跟踪。
 - [ ] 审定 [C2-A 后续事项](../thermo/mvp-model.md#接下来事项)：先审纯物质 / 混合物压力连续性及新候选版本；来源、VLE / 气相缺口保持，B / C3 不开工。
 - [ ] 按 [QS3 保留项](../topics/modeling/equation-oriented-block.md#接下来事项)补方法特定原生交互与平台项；共享取消 / join 代表及数值直证已补。
 - [x] [QS4 首片 A—D](../topics/modeling/mixed-partition-execution.md)已按批准方案及认可画板完成；跨块回路、更多策略与逆向规格另审。
@@ -115,7 +115,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-05：大图第二片正式 2,064 项通过，macOS 原生代表交互已补；C2-A 与共享取消 / join 证据见 [W45](../devlogs/2026-11/2026-W45.md)。AF1 及未验平台保持；PR #17 的 CI 不覆盖其后新增代码。
+- 2026-11-05：首页预览限幅正式 2,069 项及 macOS 原生代表验证通过；大图两片、C2-A 与共享取消 / join 证据见 [W45](../devlogs/2026-11/2026-W45.md)。AF1 及未验平台保持；PR #17 的 CI 不覆盖其后新增代码。
 
 - 既有功能与实窗证据见 [W38](../devlogs/2026-09/2026-W38.md)，跨平台、native 与 `.NET` 历史基线见 [W37](../devlogs/2026-09/2026-W37.md)，更早记录见 [W36](../devlogs/2026-09/2026-W36.md)；历史证据不替代新增路径或发布验收。
 

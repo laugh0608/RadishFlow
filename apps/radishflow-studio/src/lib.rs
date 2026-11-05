@@ -342,7 +342,7 @@ pub use studio_gui_window_model::{
     StudioGuiWindowFailureDiagnosticDetailModel, StudioGuiWindowFailureDiagnosticPortTargetModel,
     StudioGuiWindowFailureResultModel, StudioGuiWindowHeaderModel,
     StudioGuiWindowHomeCaseTileModel, StudioGuiWindowHomeCaseTileSource,
-    StudioGuiWindowHomeCaseTileStatus, StudioGuiWindowHomeModel,
+    StudioGuiWindowHomeCaseTileStatus, StudioGuiWindowHomeModel, StudioGuiWindowHomePreviewModel,
     StudioGuiWindowInspectorCompositionComponentActionModel,
     StudioGuiWindowInspectorCompositionSummaryModel, StudioGuiWindowInspectorConnectionActionModel,
     StudioGuiWindowInspectorPropertyNoticeModel, StudioGuiWindowInspectorTargetDetailModel,
@@ -363,8 +363,8 @@ pub use studio_gui_window_model::{
     StudioGuiWindowStaleSolveSnapshotModel, StudioGuiWindowStatusSummaryMetricModel,
     StudioGuiWindowStatusSummaryModel, StudioGuiWindowStreamResultModel,
     StudioGuiWindowStreamResultReferenceModel, StudioGuiWindowStreamSummaryRowModel,
-    StudioGuiWindowThumbnailFlowModel, StudioGuiWindowToolbarItemModel,
-    StudioGuiWindowToolbarSectionModel, StudioGuiWindowUnitExecutionResultModel,
+    StudioGuiWindowToolbarItemModel, StudioGuiWindowToolbarSectionModel,
+    StudioGuiWindowUnitExecutionResultModel,
 };
 pub use studio_inspector_draft_command::{
     StudioInspectorCompositionComponentAddCommand,

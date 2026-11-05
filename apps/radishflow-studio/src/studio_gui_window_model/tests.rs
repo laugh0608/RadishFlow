@@ -1264,16 +1264,17 @@ fn studio_gui_window_model_groups_snapshot_into_window_regions() {
         crate::StudioGuiWindowHomeCaseTileStatus::Ready
     );
     assert_eq!(mixer_tile.package_summary, "Binary Hydrocarbon Lite");
-    assert_eq!(
-        mixer_tile
-            .thumbnail
-            .nodes
-            .iter()
-            .map(String::as_str)
-            .collect::<Vec<_>>(),
-        vec!["Feed", "Feed", "Mixer", "Flash"]
-    );
-    assert_eq!(mixer_tile.thumbnail.edges, [(0, 2), (1, 2), (2, 3)]);
+    let crate::StudioGuiWindowHomePreviewModel::SmallFlow {
+        nodes,
+        edges,
+        stream_count,
+    } = &mixer_tile.preview
+    else {
+        panic!("expected small example preview");
+    };
+    assert_eq!(nodes, &["Feed", "Feed", "Mixer", "Flash"]);
+    assert_eq!(edges, &[(0, 2), (1, 2), (2, 3)]);
+    assert_eq!(*stream_count, None);
 
     assert_eq!(window.property_page.title, "Property");
     assert_eq!(
