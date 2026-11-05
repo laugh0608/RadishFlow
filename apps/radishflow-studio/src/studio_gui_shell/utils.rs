@@ -86,12 +86,17 @@ pub(super) fn drain_due_platform_timer_callbacks(
     platform_host: &mut StudioGuiPlatformHost,
     executor: &mut EguiPlatformTimerExecutor,
     now: SystemTime,
-) -> RfResult<StudioGuiPlatformExecutedNativeTimerCallbackBatch> {
+) -> RfResult<Option<StudioGuiPlatformExecutedNativeTimerCallbackBatch>> {
     let due_native_timer_ids = executor.drain_due_native_timer_ids(now);
-    platform_host.dispatch_native_timer_elapsed_by_native_ids_and_execute_platform_timers(
-        &due_native_timer_ids,
-        executor,
-    )
+    if due_native_timer_ids.is_empty() {
+        return Ok(None);
+    }
+    platform_host
+        .dispatch_native_timer_elapsed_by_native_ids_and_execute_platform_timers(
+            &due_native_timer_ids,
+            executor,
+        )
+        .map(Some)
 }
 
 pub(super) fn collect_shortcuts(input: &egui::InputState) -> Vec<StudioGuiShortcut> {

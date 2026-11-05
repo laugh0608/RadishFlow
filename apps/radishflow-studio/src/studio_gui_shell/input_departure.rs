@@ -293,11 +293,11 @@ impl ReadyAppState {
 
     pub(super) fn describe_affected_inputs(&self, keys: &[String]) -> Vec<String> {
         let zh = self.locale == StudioShellLocale::ZhCn;
-        let snapshot = self.platform_host.snapshot();
-        let flowsheet = &self.platform_host.document().flowsheet;
+        let workspace = &self.platform_host.modeling_inputs().workspace;
+        let flowsheet = &workspace.document.flowsheet;
         keys.iter()
             .filter_map(|key| {
-                let value = snapshot.runtime.workspace_document.input_edits.get(key)?;
+                let value = workspace.drafts.fields.get(key)?;
                 let (object, field) =
                     if let Some((id, field)) = rf_ui::stream_inspector_draft_key_parts(key) {
                         let object = flowsheet

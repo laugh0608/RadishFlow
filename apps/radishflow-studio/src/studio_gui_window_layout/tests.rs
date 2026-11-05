@@ -18,6 +18,61 @@ fn lease_expiring_config() -> StudioRuntimeConfig {
     }
 }
 
+#[test]
+fn lightweight_scope_preserves_requested_foreground_registered_and_retired_window_selection() {
+    let mut driver = StudioGuiDriver::new(&lease_expiring_config()).unwrap();
+    let empty = StudioGuiWindowLayoutScope::from_app_host_state(driver.state(), None);
+    assert_eq!(empty.kind, StudioGuiWindowLayoutScopeKind::EmptyWorkspace);
+    assert_eq!(empty.window_id, None);
+    assert_eq!(empty.layout_key, "studio.window.empty");
+
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .unwrap();
+    driver
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .unwrap();
+    let mut state = driver.state().clone();
+    let first = state.registered_windows[0];
+    let second = state.registered_windows[1];
+    state.foreground_window_id = Some(second);
+    for (requested, expected) in [
+        (None, second),
+        (Some(first), first),
+        (Some(u64::MAX), second),
+    ] {
+        let scope = StudioGuiWindowLayoutScope::from_app_host_state(&state, requested);
+        assert_eq!(scope.window_id, Some(expected));
+        assert_eq!(
+            scope.window_role,
+            Some(state.window(expected).unwrap().role)
+        );
+        assert_eq!(
+            scope.layout_slot,
+            Some(state.window(expected).unwrap().layout_slot)
+        );
+    }
+    state.foreground_window_id = None;
+    assert_eq!(
+        StudioGuiWindowLayoutScope::from_app_host_state(&state, None).window_id,
+        Some(first)
+    );
+
+    driver
+        .dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id: first })
+        .unwrap();
+    let remaining = StudioGuiWindowLayoutScope::from_app_host_state(driver.state(), Some(first));
+    assert_eq!(remaining.window_id, Some(second));
+    assert_eq!(remaining.layout_key, "studio.window.owner.slot-1");
+    driver
+        .dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id: second })
+        .unwrap();
+    assert_eq!(
+        StudioGuiWindowLayoutScope::from_app_host_state(driver.state(), Some(second)),
+        empty
+    );
+}
+
 fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)

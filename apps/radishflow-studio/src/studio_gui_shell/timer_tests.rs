@@ -21,6 +21,24 @@ fn synced_skip_config() -> StudioRuntimeConfig {
 }
 
 #[test]
+fn empty_shell_timer_drain_keeps_public_empty_batch_contract() {
+    let mut host = StudioGuiPlatformHost::new(&synced_skip_config()).unwrap();
+    let mut executor = EguiPlatformTimerExecutor::default();
+    let before = host.snapshot();
+    assert!(
+        drain_due_platform_timer_callbacks(&mut host, &mut executor, SystemTime::now())
+            .unwrap()
+            .is_none()
+    );
+    let batch = host
+        .dispatch_native_timer_elapsed_by_native_ids_and_execute_platform_timers(&[], &mut executor)
+        .unwrap();
+    assert!(batch.callbacks.is_empty());
+    assert_eq!(batch.snapshot, before);
+    assert_eq!(executor.next_due_at(), None);
+}
+
+#[test]
 fn shell_runtime_config_skips_startup_entitlement_preflight() {
     let config = studio_shell_runtime_config(None);
 
@@ -340,8 +358,17 @@ fn drain_due_platform_timer_callbacks_dispatches_due_binding_and_rearms() {
     let due_at = platform_host
         .next_native_timer_due_at()
         .expect("expected current native timer due time");
+    let before_due = due_at.checked_sub(Duration::from_nanos(1)).unwrap();
+    assert!(
+        drain_due_platform_timer_callbacks(&mut platform_host, &mut executor, before_due)
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(executor.next_due_at(), Some(due_at));
+    assert_eq!(platform_host.next_native_timer_due_at(), Some(due_at));
     let callbacks = drain_due_platform_timer_callbacks(&mut platform_host, &mut executor, due_at)
-        .expect("expected due timer callbacks");
+        .expect("expected due timer callbacks")
+        .expect("expected nonempty timer batch");
 
     assert_eq!(callbacks.callbacks.len(), 1);
     assert_eq!(

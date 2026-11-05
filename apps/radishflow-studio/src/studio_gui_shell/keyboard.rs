@@ -188,9 +188,9 @@ impl ReadyAppState {
             && ctx.memory(|m| m.focused().is_none())
             && self
                 .platform_host
-                .snapshot()
-                .window_model()
-                .canvas
+                .modeling_inputs()
+                .workspace
+                .canvas_interaction
                 .focused_suggestion_id
                 .is_some()
         {

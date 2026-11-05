@@ -1261,7 +1261,7 @@ impl ReadyAppState {
             &mut self.platform_timer_executor,
             now,
         ) {
-            Ok(callback_batch) => {
+            Ok(Some(callback_batch)) => {
                 for callback in callback_batch.callbacks {
                     match callback {
                         StudioGuiPlatformExecutedNativeTimerCallbackOutcome::Dispatched(_) => {}
@@ -1270,6 +1270,7 @@ impl ReadyAppState {
                     }
                 }
             }
+            Ok(None) => {}
             Err(error) => {
                 self.platform_host.record_activity_line(format!(
                     "timer dispatch failed [{}]: {}",
@@ -1291,16 +1292,15 @@ impl ReadyAppState {
     }
 
     pub(super) fn current_window_id(&self) -> Option<StudioWindowHostId> {
-        self.platform_host
-            .snapshot()
-            .window_model()
-            .layout_state
-            .scope
-            .window_id
+        radishflow_studio::StudioGuiWindowLayoutScope::from_app_host_state(
+            self.platform_host.state(),
+            None,
+        )
+        .window_id
     }
 
     pub(super) fn logical_window_count(&self) -> usize {
-        self.platform_host.snapshot().app_host_state.windows.len()
+        self.platform_host.state().windows.len()
     }
 
     pub(super) fn update_area_focus_from_rect(

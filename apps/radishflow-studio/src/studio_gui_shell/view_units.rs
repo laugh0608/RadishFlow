@@ -12,15 +12,16 @@ pub(super) struct ViewUnitSettingsDraft {
 
 impl ReadyAppState {
     pub(super) fn open_view_unit_settings(&mut self, view: DisplayUnitViewId) {
-        let document = self.platform_host.snapshot().runtime.workspace_document;
+        let workspace = &self.platform_host.modeling_inputs().workspace;
+        let draft = ViewUnitSettingsDraft {
+            document: workspace.document.metadata.document_id.as_str().to_string(),
+            view,
+            units: workspace.project_presentation.view_units(view),
+            notice: None,
+        };
         self.unit_settings.draft = None;
         self.command_palette.close();
-        self.unit_settings.view_draft = Some(ViewUnitSettingsDraft {
-            document: document.document_id,
-            view,
-            units: document.presentation.view_units(view),
-            notice: None,
-        });
+        self.unit_settings.view_draft = Some(draft);
     }
 
     pub(super) fn close_inspector_view(&mut self, view: DisplayUnitViewId) -> RfResult<()> {
@@ -82,12 +83,11 @@ impl ReadyAppState {
                 }
             }
         });
-        let presentation = self
+        let presentation = &self
             .platform_host
-            .snapshot()
-            .runtime
-            .workspace_document
-            .presentation;
+            .modeling_inputs()
+            .workspace
+            .project_presentation;
         ui.small(if presentation.view_units(view).is_empty() {
             if zh {
                 "显示跟随项目；临时输入单位另行保留。"
@@ -106,10 +106,9 @@ impl ReadyAppState {
         let Some(mut draft) = self.unit_settings.view_draft.clone() else {
             return false;
         };
-        let snapshot = self.platform_host.snapshot();
-        if draft.document != snapshot.runtime.workspace_document.document_id
+        if draft.document != self.platform_host.document().metadata.document_id.as_str()
             || self.current_window_id() != Some(draft.view.0)
-            || snapshot.app_host_state.window(draft.view.0).is_none()
+            || self.platform_host.state().window(draft.view.0).is_none()
             || self.unit_settings.closed_inspectors.contains(&draft.view)
         {
             self.unit_settings.view_draft = None;
@@ -176,10 +175,10 @@ impl ReadyAppState {
                         ui.small(format!(
                             "{} {}",
                             if zh { "项目" } else { "Project" },
-                            snapshot
-                                .runtime
-                                .workspace_document
-                                .presentation
+                            self.platform_host
+                                .modeling_inputs()
+                                .workspace
+                                .project_presentation
                                 .display_units()
                                 .unit_for(quantity)
                                 .definition()
@@ -230,7 +229,11 @@ impl ReadyAppState {
                             "Undo presentation"
                         },
                         ProjectPresentationCommand::Undo,
-                        snapshot.runtime.workspace_document.presentation.can_undo(),
+                        self.platform_host
+                            .modeling_inputs()
+                            .workspace
+                            .project_presentation
+                            .can_undo(),
                     ),
                     (
                         if zh {
@@ -239,7 +242,11 @@ impl ReadyAppState {
                             "Redo presentation"
                         },
                         ProjectPresentationCommand::Redo,
-                        snapshot.runtime.workspace_document.presentation.can_redo(),
+                        self.platform_host
+                            .modeling_inputs()
+                            .workspace
+                            .project_presentation
+                            .can_redo(),
                     ),
                 ] {
                     if ui.add_enabled(enabled, egui::Button::new(label)).clicked() {
@@ -247,10 +254,9 @@ impl ReadyAppState {
                             Ok(()) => {
                                 draft.units = self
                                     .platform_host
-                                    .snapshot()
-                                    .runtime
-                                    .workspace_document
-                                    .presentation
+                                    .modeling_inputs()
+                                    .workspace
+                                    .project_presentation
                                     .view_units(draft.view)
                             }
                             Err(error) => draft.notice = Some(error.to_string()),
@@ -258,10 +264,11 @@ impl ReadyAppState {
                     }
                 }
                 if draft.units
-                    != snapshot
-                        .runtime
-                        .workspace_document
-                        .presentation
+                    != self
+                        .platform_host
+                        .modeling_inputs()
+                        .workspace
+                        .project_presentation
                         .view_units(draft.view)
                 {
                     super::state_presentation::light_state_surface(ui, |ui| {
@@ -277,7 +284,11 @@ impl ReadyAppState {
                 }
                 render_project_save_state(
                     ui,
-                    &snapshot.runtime.workspace_document.save_state,
+                    &self
+                        .platform_host
+                        .modeling_inputs()
+                        .workspace
+                        .project_save_state(),
                     self.locale,
                 );
                 if let Some(detail) = &draft.notice {

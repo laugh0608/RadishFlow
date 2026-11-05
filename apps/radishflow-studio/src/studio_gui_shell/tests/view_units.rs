@@ -16,6 +16,114 @@ fn override_temperature(unit: U) -> ViewDisplayUnits {
     units.set_unit(Q::AbsoluteTemperature, Some(unit)).unwrap();
     units
 }
+
+fn view_settings_output(
+    app: &mut ReadyAppState,
+    ctx: &egui::Context,
+    events: Vec<egui::Event>,
+) -> egui::FullOutput {
+    ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280., 860.),
+            )),
+            focused: true,
+            events,
+            ..Default::default()
+        },
+        |ctx| {
+            assert!(app.render_view_unit_settings(ctx));
+        },
+    )
+}
+
+fn view_settings_text(output: &egui::FullOutput) -> Vec<(String, egui::Rect)> {
+    fn collect(shape: &egui::epaint::Shape, text: &mut Vec<(String, egui::Rect)>) {
+        match shape {
+            egui::epaint::Shape::Vec(shapes) => {
+                for shape in shapes {
+                    collect(shape, text);
+                }
+            }
+            egui::epaint::Shape::Text(shape) => text.push((
+                shape.galley.job.text.clone(),
+                shape.galley.rect.translate(shape.pos.to_vec2()),
+            )),
+            _ => {}
+        }
+    }
+    let mut text = Vec::new();
+    for shape in &output.shapes {
+        collect(&shape.shape, &mut text);
+    }
+    text
+}
+
+#[test]
+fn view_settings_undo_and_redo_refresh_notice_in_the_clicked_frame_without_changing_input_drafts() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.locale = StudioShellLocale::ZhCn;
+    let view = DisplayUnitViewId(app.current_window_id().unwrap());
+    app.apply_presentation_command(P::ApplyView {
+        view,
+        units: override_temperature(U::Celsius),
+    })
+    .unwrap();
+    let id = stream_temperature(&app, "stream-feed");
+    let mut field = app
+        .platform_host
+        .numeric_field_presentation(&id, Some(view))
+        .unwrap();
+    app.edit_numeric_field(
+        &mut field,
+        rf_ui::NumericEditEvent::ReplaceText("1e-".into()),
+    );
+    let before = app.platform_host.modeling_inputs().workspace.drafts.clone();
+    app.open_view_unit_settings(view);
+    let ctx = egui::Context::default();
+    ctx.style_mut(|style| style.animation_time = 0.0);
+    fonts::configure_studio_fonts(&ctx);
+    for (button, expected) in [("撤销呈现变更", None), ("重做呈现变更", Some(U::Celsius))]
+    {
+        let _ = view_settings_output(&mut app, &ctx, vec![]);
+        let output = view_settings_output(&mut app, &ctx, vec![]);
+        let pos = view_settings_text(&output)
+            .iter()
+            .find(|(text, _)| text == button)
+            .expect("history button")
+            .1
+            .center();
+        let pointer = |pressed| egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        };
+        let _ = view_settings_output(
+            &mut app,
+            &ctx,
+            vec![egui::Event::PointerMoved(pos), pointer(true)],
+        );
+        let clicked = view_settings_output(&mut app, &ctx, vec![pointer(false)]);
+        assert_eq!(
+            app.platform_host
+                .modeling_inputs()
+                .workspace
+                .project_presentation
+                .view_units(view)
+                .unit_for(Q::AbsoluteTemperature),
+            expected
+        );
+        assert!(
+            !view_settings_text(&clicked)
+                .iter()
+                .any(|(text, _)| text.contains("本视图选择尚未应用")),
+            "notice must use the post-command presentation"
+        );
+        assert_eq!(app.platform_host.modeling_inputs().workspace.drafts, before);
+    }
+}
 fn apply_for_window(
     app: &mut ReadyAppState,
     window: u64,
