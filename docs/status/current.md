@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-11-04
+更新时间：2026-11-05
 
 ## 用途
 
@@ -42,14 +42,14 @@
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
 
 
-### 最近进展（截至 2026-11-04）
+### 最近进展（截至 2026-11-05）
 
-- QS3 数值补验与共享 worker 的 macOS 在途取消 / join 代表通过；AF1 未定因，大图快照成本线索及原生 / 平台边界见 [W45](../devlogs/2026-11/2026-W45.md)。
+- QS3 数值补验与 macOS 共享取消 / join 代表通过；大图诊断确认重复投影与排序扫描成本，修复范围待确认，见 [W45](../devlogs/2026-11/2026-W45.md)。AF1 未定因。
 - [QS4 首片](../topics/modeling/mixed-partition-execution.md)已按 D01—D05 完成 A—D：Local＋正向 EO 的 DAG、v4 与 GUI / CLI v7；2,051 项、历史读写器与 macOS 代表路径通过。
 
 ### 下一步
 
-- [ ] 先按[应用架构后续事项](../architecture/app-architecture.md#接下来事项)做大图帧成本 / snapshot 次数的有界只读诊断，依据证据提出修复范围；AF1 独立跟踪。
+- [ ] 按[应用架构后续事项](../architecture/app-architecture.md#接下来事项)审定大图呈现修复：先处理排序扫描与单次快照重复投影，再收敛局部读取；有界诊断已完成，AF1 独立跟踪。
 - [ ] 审定 [C2-A 后续事项](../thermo/mvp-model.md#接下来事项)：先审纯物质 / 混合物压力连续性及新候选版本；来源、VLE / 气相缺口保持，B / C3 不开工。
 - [ ] 按 [QS3 保留项](../topics/modeling/equation-oriented-block.md#接下来事项)补方法特定原生交互与平台项；共享取消 / join 代表及数值直证已补。
 - [x] [QS4 首片 A—D](../topics/modeling/mixed-partition-execution.md)已按批准方案及认可画板完成；跨块回路、更多策略与逆向规格另审。
