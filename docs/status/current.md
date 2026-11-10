@@ -49,7 +49,7 @@
 ### 下一步
 
 - [x] 大图两片原生观察及首页预览限幅已完成；后续性能范围按[应用架构](../architecture/app-architecture.md#接下来事项)另审，AF1 独立跟踪。
-- [ ] 按 [C2-A 后续事项](../thermo/mvp-model.md#接下来事项)核实留出密度来源、相态和复用权限，冻结矩阵后比较。二元压缩液仍缺可纳入的逐点资料。
+- [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
 - [ ] 按 [QS3 保留项](../topics/modeling/equation-oriented-block.md#接下来事项)补方法特定原生交互与平台项；共享取消 / join 代表及数值直证已补。
 - [x] [QS4 首片 A—D](../topics/modeling/mixed-partition-execution.md)已按批准方案及认可画板完成；跨块回路、更多策略与逆向规格另审。
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
