@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-10-26
+更新时间：2026-11-05
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -13,6 +13,8 @@
 单位设计与状态见 [单位总纲](../topics/units-and-quantity-system.md)；辅助、设备及 UI 重评按 [平台规划](simulation-platform.md#单位辅助与设备工程的协作) 推进。
 
 长期边界见 [模拟平台规划](simulation-platform.md)：`SimulationMode::Active / Hold` 表示运行触发策略，工程模型、运行任务与数值状态分离。COM / 脚本及录制共用描述和应用命令；`CommandHistory` 只负责文档 Undo / Redo，运行、保存、导出与动态检查点另有契约。CLI 已支持参数化运行与有序建模，见 [Studio B3-5](../topics/studio-main-workflow.md#b3-5无界面创建连接与步骤身份引用)。
+
+AF6 的[代码链路与场景审查](../topics/modeling/solver-strategies-and-assembly.md#af6-扩展边界复核2026-10-31)已完成审查：工程与索引在提交时捕获，数值上下文装载后固定，经 Ready 重验才执行；数学试算工作区归单次执行，UI / store 只消费正式输入与有资格的结果。现有单元步骤、快照序号和墙钟不承载积分时间。QS0 有限物料任务已接入独立后端、会话计划、守卫结果与 GUI / CLI，不占用完整流程快照。QS1—QS4 则通过工程 v4 保存正式流程计划，采用输入＋计划双资格及独立结果载荷；两类任务不能混为同一结果。
 
 ## 冻结决策
 
@@ -73,7 +75,8 @@
 Studio 首页、工作台分区、运行后结果视图和项目切换确认流程已落地。shell UI 边界按以下稳定入口治理：
 
 - Home 是默认首页，不读取 `SolveSnapshot` 或编辑流程图。新建空白项目先进入 `物性`；独立设备入口创建空流程并进入 `设备`，不要求物性包；小案例入口另展示只读建模清单，不自动生成流程或写入历史。
-- 最近项目、当前工作区和示例项目统一由 `StudioGuiWindowHomeCaseTileModel` 承载流程缩影、路径 / 来源、物性包 label、组分和状态。当前工作区 tile 只从 `workspace_document` 派生，不写入 recent projects；保存过的当前项目应直接返回当前 workspace，而不是通过 recent path 重新打开自身。Home tile 的 `package_summary` 只从当前 document / builtin package choice 映射为可读 label，例如 `二元烃 Lite`；稳定 package id 只留在项目文件、command id、运行请求和内部状态边界。
+- `StudioGuiWindowHomeCaseTileModel` 承载预览、路径 / 来源、物性包、组分及状态。独立当前卡片取 `workspace_document`，不写 recent；命中当前路径的 recent 卡片沿用磁盘缓存并更新状态，点击直接返回 workspace。`package_summary` 映射可读 label，稳定 package id 保留在内部契约。
+- `StudioGuiWindowHomePreviewModel` 区分小图、计数与不可用。真实工程超过 6 单元不投影节点 / 边；独立当前卡片取快照计数。小图仅连通单向链画箭头，其余无箭头。预览最多两行，名称省略并保留完整提示 / 辅助功能文本，窄区改计数。示例沿用标题投影，未知物流数不补造；读取 / 缓存策略保持。
 - 新建 / 打开 / 关闭消费 `ProjectSaveState`；确认绑定当前状态，过期重验，取消 / 失败保留现场，见 [生命周期](../topics/project-lifecycle-storage.md#u2-离开保护与保存状态)。Home 返回只切页；保存不提交草稿，有草稿不自动关闭。
 - 进入 case 后，第一层只保留 `文件 / 主页 / 物性 / 设备 / 流程图 / 运行 / 结果 / 工具 / 设置` 主入口、当前项目摘要和必要状态。普通空白项目选齐 package 和至少一个项目组分前，`流程图` 入口不可用；禁用原因必须来自 Property page DTO 的同一 readiness。
 - `物性 / 流程图 / 运行 / 结果` screen 下方分别消费 `window.property_context_toolbar`、`window.flowsheet_context_toolbar`、`window.run_context_toolbar` 和 `window.result_context_toolbar`。工具栏只展示当前 screen 的主路径命令和状态，不展开调试命令全集；`运行` 工具栏不重复 Monitor 状态 chip，`结果` 工具栏不把所有 stream / unit focus command 展开成长按钮。
@@ -491,18 +494,13 @@ shell 只消费 DTO，不建立第二套项目、物性、结果或诊断状态�
 
 草稿保留原值、当前输入、变更事实和校验状态，供显式提交前验证及面板批量应用复用。数值解析、精度、组合输入和事务边界以 [单位编辑专题](../topics/units/input-drafts-and-interactions.md) 为准。
 
-## 求解快照草案
+## 求解快照结构
 
-独立结果快照当前建议至少分为三层：
+当前公共入口为 `FlowResultRecord`：Acyclic、Partitioned、Simultaneous、EquationOriented 分别保留原顺序步骤、分块回流、仿射联立及物料 EO 证据。下列无回路载荷通过 common 持有来源、快照 ID、输入 revision、sequence、状态、诊断和流股：
 
 ```rust
 pub struct SolveSnapshot {
-    pub id: SolveSnapshotId,
-    pub document_revision: u64,
-    pub sequence: u64,
-    pub status: RunStatus,
-    pub summary: DiagnosticSummary,
-    pub diagnostics: Vec<DiagnosticSnapshot>,
+    pub common: FlowSnapshotHeader,
     pub steps: Vec<StepSnapshot>,
 }
 
@@ -516,12 +514,12 @@ pub struct StepSnapshot {
 }
 ```
 
-这里最重要的不是字段名字，而是结构关系：
+结构关系：
 
-- 快照关联文档修订号
+- 快照关联冻结输入与正式计划，Current 由会话 / generation / 运行接收资格共同判定
 - 快照通过 `sequence` 区分同一修订号上的多次运行
 - `summary` 与 `SolveSessionState.latest_diagnostic` 共享同一摘要语义
-- 步骤序列保持稳定顺序
+- 仅 Acyclic 的步骤序列表示顺序执行；其他载荷通过真实最终单元 I/O 和方法证据消费，不伪造步骤
 - 步骤内部记录单元执行结果，以及结构化输入流股 `consumed_streams` 和输出流股 `streams`
 - `StepSnapshot` 的输入/输出流股应由 solver step 直接物化，UI / workspace consumer 只读消费这份 DTO，不再按 stream id 回填或临时拼装第二套 step 结果
 - 诊断信息与数值结果并列保存
@@ -697,7 +695,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 
 ## 当前已落地的求解桥接
 
-截至 2026-04-02，`apps/radishflow-studio` 已经实现最小应用层求解桥接，并通过单元测试与仓库级验证覆盖。
+`apps/radishflow-studio` 自 2026-04-02 的最小桥接逐步接通后台拥有者和多策略正式计划；当前范围及验证见所属专题。
 
 当前入口按职责分为 `StudioAppFacade` 运行 / 模式控制、`workspace_control` 与 `RunPanelIntent` 命令适配、`WorkspaceSolveService` 请求 / 物性装配及 `solve_workspace_*` 执行。GUI 后台拥有者和兼容同步调用的边界见下文；启动装配由 `run_studio_bootstrap` 承担。
 
@@ -705,25 +703,16 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 
 - 以 `AppState.workspace.document` 作为当前求解输入
 - `StudioAppFacade` 承接运行；流程入口装配 auth cache，独立设备通过 `execute_equipment_run_action` 只消费工程工作区，不构造虚拟流程缓存。`run_actions` 区分受理、拒绝、启动失败、执行终态和接收，运行身份不序列化
-- `StudioAppCommand` 当前已显式区分 `RunWorkspace`、`ResumeWorkspace` 和 `SetWorkspaceSimulationMode` 三类应用命令，便于后续 UI 直接绑定运行控制动作
-- `workspace_control` 模块当前已把这三类应用命令进一步收口为更接近运行栏/状态栏的 `WorkspaceControlAction`
-- 由 `WorkspaceRunCommand` 承接“触发类型 + package 选择”这一层更接近 UI 的运行请求
-- `WorkspaceRunCommand` 当前已改为在 Automatic 且命中 `HoldMode` / `NoPendingRequest` 时先返回 skip，再决定是否需要 package 解析，避免多包场景下因无意义的 preferred 解析而提前失败
+- `StudioAppCommand` 区分 `RunWorkspace`、`ResumeWorkspace` 和 `SetWorkspaceSimulationMode`，`workspace_control` 将其适配为 `WorkspaceControlAction`
+- `WorkspaceRunCommand` 承接触发类型与 package 选择；Automatic 命中 `HoldMode` / `NoPendingRequest` 时先 skip，再决定是否解析 package，避免无运行意图时多包解析失败
 - 默认包选择当前采取保守策略：无 entitlement 时仅在本地缓存中唯一包可选时自动选中；有 entitlement 时仅在“本地缓存 ∩ entitlement manifests”唯一时自动选中，多包场景必须显式指定 package
-- 由 `WorkspaceSolveService` 负责生成默认 `snapshot_id` / `sequence`
-- `WorkspaceSolveService` 明确区分 `Manual` / `Automatic` 触发，并把 `SimulationMode` 与 `pending_reason` 的运行门控收口在应用层
-- `ResumeWorkspace` 当前会先复用同一层 package / readiness preflight；如果建模输入未就绪则保持 `Hold` / pending 状态并返回 modeling notice，只有 preflight 通过后才切到 `Active` 并按 Automatic 语义发起运行
-- 通过 `rf-property-package` 的内存或缓存 provider 按需装载指定包，调用 `prepare_local_context` 冻结本地服务；缓存准备失败仍不改变旧运行状态
-- 把 `SolveSessionState` 推进到 `Checking -> Runnable -> Solving`，借用上下文物性 / TP Flash 服务供 `SequentialModularSolver` 使用；包不可用沿用旧 workspace 诊断，内部日志保留具体原因
-- 成功时调用 `AppState::store_solver_snapshot(...)`，把求解结果映射为 UI 层 `SolveSnapshot`
-- 失败时调用 `record_failure(...)` 并追加 `AppLogFeed` 错误日志
-- Automatic 命中 `HoldMode` / `NoPendingRequest` 的 skip 当前也会写入 `AppLogFeed`
-- `main.rs` 当前已通过 `run_studio_bootstrap(...)` + `StudioBootstrapTrigger` 把这条链路接到一个明确的桌面进程触发点，并输出最小运行摘要
-- `StudioWorkspaceRunDispatch` 当前已补充 `simulation_mode`、`pending_reason`、`latest_snapshot_summary`、`log_entry_count` 与 `latest_log_entry`，让入口层先消费结构化运行摘要，而不是直接翻读完整 `AppState`
-- `StudioWorkspaceModeDispatch` 当前已作为独立结果派发对象承接模式切换结果，避免 UI 侧把“切换模式”和“发起运行”混成同一种返回值
-- `WorkspaceControlState` 当前已作为运行栏/状态栏摘要对象，统一提供 mode、status、pending、最新快照摘要和当前可触发动作集合
-- `run_studio_bootstrap(...)` 通过 `run_panel_driver` 直接消费 `RunPanelWidgetModel + WorkspaceControlState`，作为桌面入口样例
-- `rf-ui` 已把运行栏收口为 `RunPanelState`、`RunPanelIntent`、`RunPanelCommandModel`、`RunPanelViewModel`、`RunPanelPresentation` 和 `RunPanelWidgetModel`；Studio 侧只派发 widget 事件，不重复判断按钮和 intent。
+- `WorkspaceSolveService` 生成默认 `snapshot_id` / `sequence`；应用层以 `Manual / Automatic`、`SimulationMode` 和 `pending_reason` 门控运行
+- `ResumeWorkspace` 先做 package / readiness preflight；未就绪保持 `Hold` / pending 并返回 modeling notice，通过后才切到 `Active` 按 Automatic 运行
+- `rf-property-package` 的 provider 装载指定包，`prepare_local_context` 冻结服务；执行按捕获计划分派相应 solver，包错误保留结构化诊断。后台准备失败与同步兼容的处理差异见 [AF3 契约](../topics/runtime-messages/run-control-and-watch-conditions.md#af3b-已实现契约2026-10-24)
+- 完成先经输入 / 计划资格及载荷检查，再把成功结果映射为对应 `FlowResultRecord` 并 `store_snapshot`；失败沿既有诊断 / 日志路径处理，迟到结果不得发布。`SolveSnapshot` 仅指无回路载荷，详见[结果参考](../reference/solve-snapshot-results.md)
+- Automatic 的上述 skip 也写入 `AppLogFeed`；运行回执 `StudioWorkspaceRunDispatch` 提供模式、pending、最新快照和日志摘要，`StudioWorkspaceModeDispatch` 独立承接模式切换
+- `main.rs` 经 `run_studio_bootstrap` / `StudioBootstrapTrigger` 进入应用；`run_panel_driver` 消费 `RunPanelWidgetModel + WorkspaceControlState`，后者提供 mode、status、pending、快照摘要与可用动作
+- `rf-ui` 拥有运行栏的 state、intent、command / view / presentation / widget 模型；Studio 只派发 widget 事件，不重复判断按钮和 intent。
 
 当前已落地与仍待细化的边界：
 
@@ -731,7 +720,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - Studio app-host GUI 动作入口统一为 `StudioAppHostController::dispatch_ui_command(command_id)`。run panel command registry 首批稳定命令为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；菜单、快捷键、命令面板、palette 和 runtime 小型 action button 都应复用这条派发链。
 - Canvas 编辑复用 command surface；移动只写 sidecar，连接 / 删除进入工程历史。删除、历史和修复的显式放弃经 `StudioConfirmedInputAction` / `InputEditCheckpoint` 重验，事务成功才发布，对象删除保留范围外草稿，见 [离开保护](../topics/units/input-drafts-and-interactions.md#i4-统一离开确认与失败保护)。公开变量写入门禁不变。
 - 结果审阅、错误定位和诊断目标都必须复用 `StudioGuiWindowDiagnosticTargetActionModel`、`inspector.focus_stream:*`、`inspector.focus_unit:*` 或既有 focus action。`selected_stream / comparison_stream / selected_unit` 只是 shell-local selector state，不缓存第二份结果；comparison 复位不代表结果语义变化。
-- `StudioGuiCommandRegistry` 从最新 `SolveSnapshot` 派生 `Results` command section；result stream / unit navigation 只暴露为正式 focus command。顶部 `结果` 工具栏只扫读结果入口和状态，不承担所有对象定位按钮。
+- `StudioGuiCommandRegistry` 从 Current `FlowResultRecord` 派生 `Results` command section；result stream / unit navigation 只暴露为正式 focus command。顶部 `结果` 工具栏只扫读结果入口和状态，不承担所有对象定位按钮。
 - shell 输出重验当前快照，落盘复用 staged write；运行 / 恢复反馈按正式 dispatch 和 applied target 同步面板与画布，见 [结果与恢复专题](../topics/results-review-diagnostics.md)。
 - Module Settings、Module Results、case-level `review_summary` 和 `stale_solve_snapshot` 的边界见本文上方 `Studio Shell UI 规范化边界` 与 `docs/reference/solve-snapshot-results.md`。它们都服务当前 revision 的结果审阅和轻量导出，不成为第二套结果缓存或报表模型。
 - 失败详情只消费 `latest_diagnostic`，显示 primary code、revision、severity、count 与相关 target；GUI 不从 message 文本反解析或私造端口级 command。Run Panel recovery action 必须区分聚焦与修复，用户主动选中流股后的恢复动作走对应 `canvas.*selected_stream*` 命令，不复用 failure-only recovery command。
@@ -740,7 +729,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - 数值焦点消费会话历史，其他文本沿用控件历史，非文本走工程历史；菜单 / IME 优先，确认状态阻断工程快捷键，见 [U2](../topics/units/input-drafts-and-interactions.md)。按键使用事件自身修饰键；`Primary` 与物理 `Ctrl` 分开，绑定及标签同源，平台键位和历史证据见 [B1-4](../topics/flowsheet-modeling-and-solve.md#b1-4平台快捷键展示与文档重做)。
 - Studio 源码按领域职责组织浅层模块；新增实现并入同域目录，避免继续扩大入口文件。
 
-AF4c 的 headless v3 在 GUI 初始化前消费同一动作与查询，保持磁盘只读；协议与重放确认见 [CLI 参考](../reference/headless-cli.md)。
+headless v3—v7 在 GUI 初始化前消费共享动作与查询；v4 / v5 / v6 / v7 分别支持分块回流 / 仿射联立 / 物料 EO / 首个混合 DAG，旧协议能力固定。v4—v6 对新增 Mixed 工程只读查询、执行前拒绝；v3 仍不支持工程 v4。请求只改内存，协议与重放确认见 [CLI 参考](../reference/headless-cli.md)。
 
 ## 结果快照模型
 
@@ -757,7 +746,7 @@ AF4c 的 headless v3 在 GUI 初始化前消费同一动作与查询，保持磁
 其中：
 
 - `FlowsheetDocument` 表示“用户当前编辑的真相源”
-- `SolveSnapshot` 表示“某个文档版本的一次求解结果”
+- `FlowResultRecord` 表示某次冻结输入与计划的求解结果；`SolveSnapshot` 是其中的无回路载荷
 - `WorkspaceState.snapshot_history` 表示“当前工作区保留的不可变结果窗口”
 - `SolveSessionState.latest_snapshot` 只是指向当前结果入口的引用
 
@@ -773,14 +762,12 @@ AF5b 从领域查询投影当前结果与冻结来源，动作 / 输出使用时
 
 ## 按步操作与后续扩展
 
-既然目标是吸收 Aspen、HYSYS、PRO/II 的长处，就不应只停在“得到最终结果”。
-
-当前建议从一开始就保留以下扩展点：
+后续扩展沿正式命令与真实执行证据推进：
 
 - 每次提交形成显式命令
 - 每次求解形成独立快照
-- 快照内部保留步骤序列
-- 步骤内保留单元执行和流股状态结果
+- 无回路快照保留步骤序列；其他策略保留各自真实块 / 方程证据
+- 单元结果保留实际消费与产出流股，不用伪步骤承载迭代或时间
 
 这样后续可以自然扩展：
 
@@ -851,11 +838,16 @@ App 不应直接操作底层求解细节，而应通过稳定的数据结构与�
 
 ## 维护性与执行边界
 
-桌面 Shell 安装共享 `StudioRunOwner`，沿原 host / driver 转发提交、轮询和精确取消；流程 / 设备共用一个 worker 配额。切换工程保留拥有者，最后窗口待回收才关闭。未安装后台会话的 Facade、headless / FFI 保持同步；复杂流程时延与快照内存未测量。
+桌面流程 / 设备 / QS0 共用 `StudioRunOwner` 单 worker；切工程保留拥有者，最后窗口待回收才关闭；未安装后台会话的调用者保持同步。
 
-实现时按用户行为追踪命令链，保留独立状态、平台隔离和共享契约，评估纯转发与重复投影。大文件按领域职责拆分，测试按行为组织；undo 与结果快照的大负载成本先测量。
+画布展示排序用反向邻接及按 ID 排序的就绪集合；回路及其阻塞下游仍按 ID 追加，不承担求解拓扑校验。`StudioGuiHost::snapshot` 内只构造一份 canvas state，供注册表与 widget 共用；独立注册表查询仍实时构造。
 
-后续按 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 衔接 N 轨道。
+Shell 用 `modeling_inputs()` 借用草稿、单位与焦点；窗口选择共用 `StudioGuiWindowLayoutScope::from_app_host_state`。单位命令后重读、确认重验；无到期事件跳过 batch，保留重绘及公开空批次契约。主帧与命令后画布实时取快照，无跨帧缓存或结果所有权变化。
+
+### 接下来事项
+
+1. 大图两片及首页限幅已验证，见 [W45](../devlogs/2026-11/2026-W45.md#2026-11-05日终提交回顾与文档核对)。后续若有性能问题，先量测投影、结果 clone / drop、undo 与首页文件读取，再确认切片；本轮不授权缓存或所有权改造。
+2. 保持输入 / 计划双资格。[AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23)、方法特定及平台补验独立跟踪，原生代表通过不核销残项。
 
 ## 其他待细化事项
 

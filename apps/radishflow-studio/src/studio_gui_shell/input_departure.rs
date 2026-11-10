@@ -5,6 +5,8 @@ use rf_ui::{InputDiscardScope, InputEditCheckpoint};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct ProjectDepartureCheckpoint {
     inputs: InputEditCheckpoint,
+    plan: rf_ui::flow_plan::FlowPlanEditContext,
+    plan_draft: rf_ui::flow_plan::FlowPlanGeneration,
     presentation: rf_ui::ProjectPresentationState,
     engineering: rf_ui::engineering::EngineeringCheckpoint,
     equipment_editor: rf_ui::engineering::EngineeringCheckpoint,
@@ -31,6 +33,16 @@ impl ReadyAppState {
     pub(super) fn project_departure_checkpoint(&self) -> ProjectDepartureCheckpoint {
         let document = self.platform_host.snapshot().runtime.workspace_document;
         ProjectDepartureCheckpoint {
+            plan: rf_ui::flow_plan::FlowPlanEditContext::capture(
+                &self.platform_host.modeling_inputs().workspace,
+            ),
+            plan_draft: self
+                .platform_host
+                .modeling_inputs()
+                .workspace
+                .flow_plan
+                .draft_generation()
+                .clone(),
             inputs: InputEditCheckpoint::capture(
                 document.document_id,
                 document.revision,
@@ -281,11 +293,11 @@ impl ReadyAppState {
 
     pub(super) fn describe_affected_inputs(&self, keys: &[String]) -> Vec<String> {
         let zh = self.locale == StudioShellLocale::ZhCn;
-        let snapshot = self.platform_host.snapshot();
-        let flowsheet = &self.platform_host.document().flowsheet;
+        let workspace = &self.platform_host.modeling_inputs().workspace;
+        let flowsheet = &workspace.document.flowsheet;
         keys.iter()
             .filter_map(|key| {
-                let value = snapshot.runtime.workspace_document.input_edits.get(key)?;
+                let value = workspace.drafts.fields.get(key)?;
                 let (object, field) =
                     if let Some((id, field)) = rf_ui::stream_inspector_draft_key_parts(key) {
                         let object = flowsheet
@@ -320,6 +332,13 @@ impl ReadyAppState {
                             .get(&id)
                             .map_or_else(|| id.as_str().to_string(), |unit| unit.name.clone());
                         let field = match field {
+                            rf_ui::UnitInspectorDraftField::OutletASplitFraction => {
+                                if zh {
+                                    "出口 A 分流比"
+                                } else {
+                                    "Outlet A split fraction"
+                                }
+                            }
                             rf_ui::UnitInspectorDraftField::Name => {
                                 if zh {
                                     "名称"

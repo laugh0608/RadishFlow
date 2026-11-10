@@ -18,6 +18,8 @@
 
 ## 子专题关系
 
+[Control Plane](platform/control-plane-service.md)为独立大专题，本专题与其协同；下文对后端及管理台的引用表达职责依赖，不构成双重父专题。
+
 - 当前内置 package 与项目组分选择留在本专题。
 - 远端授权、派生资产清单、下载票据和离线租约属于 `platform/control-plane-service.md`。
 - 后端管理台页面属于 `platform/control-plane-web-ui.md`。

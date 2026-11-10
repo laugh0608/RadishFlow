@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-10-26
+更新时间：2026-11-04
 
 ## 用途
 
@@ -16,7 +16,7 @@
 
 | 部分 | 已有实现 | 能力边界 |
 | --- | --- | --- |
-| Rust Core | 对象模型、简化物性、TP Flash、受控单元、图校验和顺序模块求解 | 二元 MVP 与无回路小流程；算法收敛不等于物理准确性验证 |
+| Rust Core | 对象模型、简化物性 / TP Flash、图校验、顺序模块及有限回流 / 联立模块 / 物料 EO、首个混合分区 DAG | QS1—QS3 限定固定温压 Feed / Mixer / Splitter；QS4 组合 Local 与正向物料 EO，边界见专题；算法收敛不等于物理准确性验证 |
 | Rust Studio | `eframe/egui` 桌面壳、草稿与命令、运行控制、结果审阅、项目生命周期 | 受控建模路径，尚非完整自由连线或通用流程编辑器 |
 | .NET 10 CAPE-OPEN Bridge | C ABI 调用、PMC、注册工具、contract / smoke 与 SampleHost | 自有 Unit Operation PMC；PME 兼容结论限于已记录的宿主和场景 |
 | 外部 Control Plane | 本仓库已有客户端 DTO、HTTP transport、缓存与租约编排 | 服务端未在本仓库落地；客户端测试不代表 OIDC、部署和真实授权闭环已完成 |
@@ -59,10 +59,10 @@ flowchart TD
 | `rf-thermo` | Antoine、理想 K 值、常热容相焓、泡露点估算、物性 provider | 只接收已解析数值数据，不依赖 store |
 | `rf-property-package` | 包发现、资源资格、stored 转换、冻结数据、本地服务装配和来源描述 | Studio / FFI 共享；不拥有应用选包 / 授权与结果发布 |
 | `rf-flash` | TP Flash、Rachford-Rice、相分率与相组成 | 数值假设与验证边界见 [热力学模型](../thermo/mvp-model.md) |
-| `rf-unitops` | canonical ports、六类单元及规格规则、独立分离器尺寸 / 校核与候选纯映射 | Mixer、Valve 和焓模型使用 MVP 简化假设 |
+| `rf-unitops` | 七类内建单元 / 工厂、规格规则、组分衡算 / 响应 / 方程能力，以及独立设备计算 | 各模型分别声明支持的能力；Mixer、Valve 和焓模型仍有简化假设 |
 | `rf-flowsheet` | 端口、流股引用、一源一汇校验及文档侧有来源的入口压力上下文 | 终端产品流可没有 sink；不借用未运行模板伪造压力依据 |
-| `rf-solver` | 无回路顺序模块执行、步骤快照、诊断 | 环路报错，不代表已有 recycle 收敛器 |
-| `rf-store` | 项目、sidecar、偏好、授权缓存、物性包及完整 v3 设备编解码 / IO | Studio 支持已知 v3，未知设备能力整份只读；旧 CLI 保持 v1/v2，见 [存储专题](../topics/project-lifecycle-storage.md) |
+| `rf-solver` | 无回路 SM、QS0 独立物料任务、QS1 分块回流、QS2 仿射联立、QS3 物料 EO、QS4 Local＋正向 EO 的 DAG 与独立复核 | 各方法按自身能力执行，不自动换策略；跨块混合回路与通用非线性未实现 |
+| `rf-store` | 项目 v1—v4、sidecar、偏好、授权缓存、物性包与设备 / 正式流程计划编解码 | 已知能力可编辑，未知能力整份只读；工程版本与 CLI 版本独立，见 [存储专题](../topics/project-lifecycle-storage.md) |
 | `rf-ffi` | engine 句柄、JSON 输入输出、错误映射与字符串释放 | 对外只暴露窄 C ABI，不向内核引入 COM |
 | `rf-ui` | AppState、草稿、共享输入事务、工程查询、来源与结果 presentation | 只读消费求解结果，不另算热力学 |
 | `rf-canvas` | 当前只有占位函数 | 尚未成为实际独立画布实现 |
@@ -78,13 +78,13 @@ AF4a 的 `rf-ui::project_query` 从单一工作区只读发现流程、设备、
 
 Studio 的 `modeling_specifications` 提供只读 A1 报告与会话身份；`modeling_recommendations` 持有同一检查会话，负责候选、预览、忽略和正式接受，GUI 共用该状态。接受经 `rf-ui` 输入 / 连接事务写回，检查与推荐不自动求解、不持久化，也不新增 CLI 协议。共享规则在 UI、预检与 solver 各自阶段消费，保留既有外部失败分类。
 
-后续多策略目标采用“同一工程 → 计算任务 → 能力 / 规格检查 → 问题装配 → 分块执行 → 统一结果”。当前 `FlowsheetSolver` 和 `UnitOperation::run` 不代表已有通用方程装配器；SM、联立模块、EO 的能力与运行边界见 [多策略专题](../topics/modeling/solver-strategies-and-assembly.md)，具体 crate 和接口尚未冻结。
+多策略沿“同一工程 → 计算任务 → 能力 / 规格检查 → 问题装配 → 执行 → 有资格的结果”组织。QS0 为独立会话任务；QS1—QS4 与无回路方法组成五种正式 `FlowPlanConfiguration`，经工程 v4 保存，共用运行拥有者和结果守卫；CLI v4 / v5 / v6 / v7 分别支持回流、仿射联立、物料 EO 与首个混合 DAG，旧协议能力保持。具体边界见 [多策略专题](../topics/modeling/solver-strategies-and-assembly.md)及 [QS4](../topics/modeling/mixed-partition-execution.md)；通用 EO、自动策略选择和跨块混合回路未实现。
 
 ## 模型发现与装配现状
 
 | 方向 | 当前实现 | 限制 |
 | --- | --- | --- |
-| 内建单元 | `rf-unitops::catalog` 静态描述与工厂统一六类模型、规格和服务需求；solver 委托构造 | 六类固定模型，不扫描插件或加载第三方库 |
+| 内建单元 | `rf-unitops::catalog` 静态描述与工厂统一原六类及 Splitter、规格和服务需求；solver 委托构造 | 七类内建模型，不扫描插件或加载第三方库 |
 | 物性包 | `rf-property-package` 发现 manifest、按需装载指定包并冻结本地上下文 | 现有简化物性 / TP Flash 共用工厂；数据包不是通用可执行插件 |
 | 物性绑定 | 流程保存一个 package ID，单次求解注入一套服务 | 尚无完整工段 / 单元多物性绑定 |
 | 对外 CAPE-OPEN | 外部 PME 发现和调用自有 Unit Operation PMC | 与 RadishFlow 加载外部 PMC 的宿主方向不同，后者未实现 |
@@ -105,7 +105,7 @@ AF2b 已将 [CachedPropertyPackageProvider](../../crates/rf-property-package/src
 
 - `FlowsheetDocument` 是项目语义真相源，字段草稿通过正式 `DocumentCommand` 提交。
 - `CommandHistory` 当前保存 before / after flowsheet 快照用于 undo / redo；相同有效输入不新增历史或修订。
-- `SolveSnapshot` 与文档分离，按 revision 判断是否过期；UI 和导出不重新计算相态与焓值。
+- `FlowResultRecord` 区分无回路、分块、联立模块与 EO 载荷；按输入＋计划、会话与运行接收资格判断 Current，不能仅比较 revision。UI 和导出不重算相态 / 焓值，结果不写入工程。
 - 项目使用 `*.rfproj.json`，布局使用 `<project>.rfstudio-layout.json`；授权缓存与 token 不进入项目文件。
 - Studio 已内嵌 Inter / SourceHanSansSC 字体，不依赖固定的系统 CJK 字体名称。
 
@@ -141,7 +141,7 @@ Studio 已形成多层 host / driver / runtime / snapshot / window model，以�
 
 ## 工程基础链路审计（2026-10-23）
 
-2026-10-24 后续：AF2a 已将六类构造移至 `rf-unitops::catalog`，UI 创建与 solver 共用描述，保留原 kind / 参数 / 诊断；AF2b 另已迁出物性资源职责并接通共享上下文；AF3a—c 已接任务身份、后台流程 / 设备与 GUI 生命周期；AF4a / AF5a 已补工程发现与结果来源，AF4b 已接正式动作和 GUI 消费。2026-10-26 AF4c 已补 CLI v3，AF5b 已补 GUI 来源、定位和输出；后续按 AF6 复核扩展边界。下表保留 10 月 23 日审计基线，不作为当前缺口清单；各项状态与验收从 [AF 路线图](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)进入对应专题。
+2026-10-24 后续：AF2a 已将六类构造移至 `rf-unitops::catalog`，UI 创建与 solver 共用描述，保留原 kind / 参数 / 诊断；AF2b 另已迁出物性资源职责并接通共享上下文；AF3a—c 已接任务身份、后台流程 / 设备与 GUI 生命周期；AF4a / AF5a 已补工程发现与结果来源，AF4b 已接正式动作和 GUI 消费。2026-10-26 AF4c 已补 CLI v3，AF5b 已补 GUI 来源、定位和输出；2026-10-31 [AF6 审查材料](../topics/modeling/solver-strategies-and-assembly.md#af6-扩展边界复核2026-10-31)已定位实际冻结 / 发布边界，并列出有限 EO 与积存时间模型的缺项；首个有限组分衡算核心随后获准并已实现，入口见[QS0 首片](../topics/modeling/solver-strategies-and-assembly.md#qs0-首片实施2026-10-31)，有限物料后端、正式任务与 GUI / CLI 后续亦已按批准范围接通。下表保留 10 月 23 日审计基线，不作为当前缺口清单；各项状态与验收从 [AF 路线图](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)进入对应专题。
 
 基于 `9fd5650d` 的代码静态核对；本轮只修改文档，没有运行桌面窗口、性能测量或重新验收产品功能。下表的“已有”指代码中可定位的能力，自动测试位置是既有证据入口，不表示本轮重跑。原生保存症状来自 [W43 已有复现](../devlogs/2026-10/2026-W43.md#2026-10-22-原生保存定向复现与-c2-待审方案)。实施顺序和退出标准只在 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 维护。
 

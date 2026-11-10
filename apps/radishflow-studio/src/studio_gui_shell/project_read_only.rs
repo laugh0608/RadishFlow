@@ -4,7 +4,7 @@ use super::*;
 /// the editable host. The existing workspace is retained until the view closes.
 pub(super) struct ReadOnlyProjectView {
     pub(super) path: PathBuf,
-    pub(super) project: Box<rf_store::project_v3::ReadOnlyProjectV3>,
+    pub(super) project: Box<radishflow_studio::StudioReadOnlyProject>,
 }
 impl ReadyAppState {
     pub(super) fn render_read_only_project(&mut self, ctx: &egui::Context) -> bool {
@@ -25,18 +25,43 @@ impl ReadyAppState {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading(if zh { "工程只读检查" } else { "Read-only project inspection" });
-            ui.label(view.path.display().to_string());
-            ui.label(format!("{} · {}", view.project.document().metadata.title, view.project.document().metadata.document_id));
-            ui.label(if zh {
-                format!("含 {} 个设备任务；方法或旧任务结构不受支持。整份工程禁止编辑、计算及保存，原始数据保持不变。", view.project.task_count())
+            ui.heading(if zh {
+                "工程只读检查"
             } else {
-                format!("{} equipment tasks; unsupported method or legacy task payload. Editing, calculation and saving are disabled for the entire project. Original data is preserved.", view.project.task_count())
+                "Read-only project inspection"
             });
-            if ui.button(if zh { "关闭检查，返回工作区" } else { "Close inspection and return to workspace" }).clicked() { close = true; }
+            ui.label(view.path.display().to_string());
+            ui.label(format!(
+                "{} · {}",
+                view.project.metadata().title,
+                view.project.metadata().document_id
+            ));
+            ui.label(format!(
+                "v{} · {}",
+                view.project.schema_version(),
+                view.project.reason_summary()
+            ));
+            ui.label(if zh {
+                "整份工程禁止编辑、计算及保存；原始内容完整保留。"
+            } else {
+                "Editing, calculation and saving are disabled. Original content is preserved."
+            });
+            if ui
+                .button(if zh {
+                    "关闭检查，返回工作区"
+                } else {
+                    "Close inspection and return to workspace"
+                })
+                .clicked()
+            {
+                close = true;
+            }
             ui.separator();
             egui::ScrollArea::both().show(ui, |ui| {
-                ui.add(egui::Label::new(egui::RichText::new(view.project.original_json()).monospace()).selectable(true));
+                ui.add(
+                    egui::Label::new(egui::RichText::new(view.project.original_json()).monospace())
+                        .selectable(true),
+                );
             });
         });
         if close {

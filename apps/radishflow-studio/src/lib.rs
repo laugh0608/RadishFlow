@@ -5,6 +5,16 @@ mod builtin_property_package_data;
 mod confirmed_input_action;
 mod control_plane_client;
 mod control_plane_sync;
+pub mod equation_actions;
+pub mod equation_evidence;
+pub mod equation_result_projection;
+pub mod flow_plan_actions;
+pub mod mixed_evidence;
+pub mod mixed_result_projection;
+pub mod modular_evidence;
+mod modular_result_projection;
+mod result_evidence;
+mod result_evidence_text;
 pub use confirmed_input_action::{StudioConfirmedInputAction, StudioInputAction};
 mod document_history_driver;
 mod document_lifecycle_driver;
@@ -19,6 +29,7 @@ pub mod flow_actions;
 pub mod headless;
 mod inspector_draft_driver;
 mod inspector_target_driver;
+pub mod material_balance_actions;
 pub mod modeling_actions;
 pub mod modeling_recommendations;
 pub mod modeling_specifications;
@@ -105,9 +116,9 @@ pub use document_history_driver::{
 pub use document_lifecycle_driver::{
     DocumentLifecycleOutcome, FILE_SAVE_AS_COMMAND_ID, FILE_SAVE_COMMAND_ID,
     ProjectSaveCompatibility, StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand,
-    StudioProjectOpen, dispatch_document_lifecycle, load_project_app_state,
+    StudioProjectOpen, StudioReadOnlyProject, dispatch_document_lifecycle, load_project_app_state,
     project_save_compatibility, project_save_requires_upgrade, project_save_version,
-    read_studio_project,
+    read_studio_project, read_studio_project_with_support,
 };
 pub use entitlement_control::{
     StudioEntitlementAction, StudioEntitlementActionOutcome, StudioEntitlementFailure,
@@ -319,7 +330,7 @@ pub use studio_gui_window_layout::{
     StudioGuiWindowTitlebarModel,
 };
 pub use studio_gui_window_model::{
-    StudioGuiQuantityPresentationError, StudioGuiWindowCanvasAreaModel,
+    ResultExecutionLocation, StudioGuiQuantityPresentationError, StudioGuiWindowCanvasAreaModel,
     StudioGuiWindowCommandActionModel, StudioGuiWindowCommandAreaModel,
     StudioGuiWindowCommandListItemModel, StudioGuiWindowCommandListSectionModel,
     StudioGuiWindowCommandPaletteItemModel, StudioGuiWindowCompositionResultModel,
@@ -331,7 +342,7 @@ pub use studio_gui_window_model::{
     StudioGuiWindowFailureDiagnosticDetailModel, StudioGuiWindowFailureDiagnosticPortTargetModel,
     StudioGuiWindowFailureResultModel, StudioGuiWindowHeaderModel,
     StudioGuiWindowHomeCaseTileModel, StudioGuiWindowHomeCaseTileSource,
-    StudioGuiWindowHomeCaseTileStatus, StudioGuiWindowHomeModel,
+    StudioGuiWindowHomeCaseTileStatus, StudioGuiWindowHomeModel, StudioGuiWindowHomePreviewModel,
     StudioGuiWindowInspectorCompositionComponentActionModel,
     StudioGuiWindowInspectorCompositionSummaryModel, StudioGuiWindowInspectorConnectionActionModel,
     StudioGuiWindowInspectorPropertyNoticeModel, StudioGuiWindowInspectorTargetDetailModel,
@@ -352,8 +363,8 @@ pub use studio_gui_window_model::{
     StudioGuiWindowStaleSolveSnapshotModel, StudioGuiWindowStatusSummaryMetricModel,
     StudioGuiWindowStatusSummaryModel, StudioGuiWindowStreamResultModel,
     StudioGuiWindowStreamResultReferenceModel, StudioGuiWindowStreamSummaryRowModel,
-    StudioGuiWindowThumbnailFlowModel, StudioGuiWindowToolbarItemModel,
-    StudioGuiWindowToolbarSectionModel, StudioGuiWindowUnitExecutionResultModel,
+    StudioGuiWindowToolbarItemModel, StudioGuiWindowToolbarSectionModel,
+    StudioGuiWindowUnitExecutionResultModel,
 };
 pub use studio_inspector_draft_command::{
     StudioInspectorCompositionComponentAddCommand,
@@ -455,3 +466,12 @@ pub use workspace_run_owner::{
     WorkspaceRunOwner, WorkspaceRunPhase, WorkspaceRunProgress, WorkspaceRunState,
     WorkspaceRunSubmission, WorkspaceRunSummary,
 };
+
+#[cfg(test)]
+mod qs1_test_support;
+#[cfg(test)]
+mod qs2_test_support;
+#[cfg(test)]
+mod qs3_test_support;
+#[cfg(test)]
+mod qs4_test_support;

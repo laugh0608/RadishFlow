@@ -1,5 +1,6 @@
 //! Application-local formal flow edits. No IO, runtime submission or editor selection.
 //! Legacy adapters retain their contracts; this entry additionally binds the input session.
+mod exact;
 use crate::modeling_actions::{
     MaterialConnectionTarget, MaterialPortTarget, ModelingActionError, connect_material_target,
 };
@@ -92,6 +93,7 @@ pub enum FlowAction {
     },
     CreateUnit(BuiltinUnitKind),
     Connect(MaterialConnectionTarget),
+    ConnectExact(MaterialConnectionTarget),
     Disconnect(MaterialPortTarget),
     /// The existing GUI stream operation stays one history transaction, even
     /// when both endpoints (or malformed duplicate bindings) are disconnected.
@@ -105,7 +107,7 @@ impl FlowAction {
         match self {
             Self::Write { .. } => FlowActionKind::Write,
             Self::CreateUnit(_) => FlowActionKind::CreateUnit,
-            Self::Connect(_) => FlowActionKind::Connect,
+            Self::Connect(_) | Self::ConnectExact(_) => FlowActionKind::Connect,
             Self::Disconnect(_) | Self::DisconnectStream { .. } => FlowActionKind::Disconnect,
         }
     }
@@ -281,6 +283,11 @@ fn stage_flow_edit(
                 Some(receipt.command),
             )
         }
+        FlowAction::ConnectExact(target) => {
+            let command =
+                exact::connect(&mut next, target, changed_at).map_err(FlowActionError::Rejected)?;
+            (FlowActionEffect::Connected(target.clone()), Some(command))
+        }
         FlowAction::Connect(target) => {
             let command = connect_material_target(&mut next, target, changed_at)
                 .map_err(FlowActionError::Connection)?;
@@ -343,3 +350,6 @@ fn stage_flow_edit(
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod qs1_tests;

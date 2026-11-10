@@ -467,6 +467,107 @@ impl BootstrapSession {
         action: crate::StudioBackgroundRunAction,
     ) -> RfResult<crate::StudioBackgroundRunReply> {
         use crate::StudioBackgroundRunAction;
+        match action {
+            StudioBackgroundRunAction::AdoptEquationCandidate { access, preview } => {
+                let busy = self
+                    .facade
+                    .background
+                    .as_ref()
+                    .is_some_and(|b| !b.owner.borrow().is_idle());
+                let receipt = crate::equation_actions::adopt_equation_candidate(
+                    &mut self.app_state,
+                    access,
+                    busy,
+                    &preview,
+                    SystemTime::now(),
+                )?;
+                return Ok(crate::StudioBackgroundRunReply {
+                    changed: receipt.invalidates_flow_results(),
+                    ..Default::default()
+                });
+            }
+            StudioBackgroundRunAction::ConfigureFlowPlan {
+                expected,
+                access,
+                command,
+            } => {
+                let discard_draft = matches!(
+                    command,
+                    rf_ui::flow_plan::FlowPlanCommand::Apply(_)
+                        | rf_ui::flow_plan::FlowPlanCommand::RestoreSaved
+                );
+                let had_draft = self.app_state.workspace.flow_plan.draft().is_some();
+                let receipt = crate::flow_plan_actions::execute_flow_plan_action(
+                    &mut self.app_state,
+                    access,
+                    &expected,
+                    command,
+                )?;
+                if receipt.changed || discard_draft {
+                    self.app_state.workspace.flow_plan.discard_draft();
+                }
+                return Ok(crate::StudioBackgroundRunReply {
+                    changed: receipt.changed || (discard_draft && had_draft),
+                    ..Default::default()
+                });
+            }
+            StudioBackgroundRunAction::FlowPlanDraft { access, draft } => {
+                if access != crate::flow_actions::FlowEditAccess::Editable {
+                    return Err(RfError::invalid_input("project is read-only"));
+                }
+                if let Some(draft) = draft {
+                    if !draft.context().is_current(&self.app_state.workspace) {
+                        return Err(RfError::invalid_input("plan draft context changed"));
+                    }
+                    self.app_state.workspace.flow_plan.set_draft(draft);
+                } else {
+                    self.app_state.workspace.flow_plan.discard_draft();
+                }
+                return Ok(crate::StudioBackgroundRunReply {
+                    changed: true,
+                    ..Default::default()
+                });
+            }
+            StudioBackgroundRunAction::EditFlow { access, request } => {
+                let receipt = crate::flow_actions::execute_flow_action(
+                    &mut self.app_state,
+                    access,
+                    &request,
+                    SystemTime::now(),
+                )
+                .map_err(|e| RfError::invalid_input(e.to_string()))?;
+                return Ok(crate::StudioBackgroundRunReply {
+                    changed: receipt.invalidates_flow_results(),
+                    ..Default::default()
+                });
+            }
+            StudioBackgroundRunAction::ConfigureMaterial {
+                expected,
+                access,
+                plan,
+            } => {
+                let changed = self
+                    .facade
+                    .configure_material_balance(&mut self.app_state, access, &expected, *plan)
+                    .map_err(|e| e.diagnostic())?;
+                return Ok(crate::StudioBackgroundRunReply {
+                    changed,
+                    ..Default::default()
+                });
+            }
+            StudioBackgroundRunAction::RunMaterial { expected, access } => {
+                let submission = self
+                    .facade
+                    .execute_material_balance(&mut self.app_state, access, &expected)
+                    .map_err(|e| e.diagnostic())?;
+                return Ok(crate::StudioBackgroundRunReply {
+                    changed: true,
+                    submission: Some(submission),
+                    ..Default::default()
+                });
+            }
+            _ => {}
+        }
         if let StudioBackgroundRunAction::Install(owner) = action {
             if let Some(existing) = &self.facade.background
                 && !std::rc::Rc::ptr_eq(&existing.owner, &owner)
@@ -545,7 +646,13 @@ impl BootstrapSession {
                 owner.resume_submissions();
                 false
             }
-            StudioBackgroundRunAction::Install(_) => unreachable!(),
+            StudioBackgroundRunAction::AdoptEquationCandidate { .. }
+            | StudioBackgroundRunAction::ConfigureFlowPlan { .. }
+            | StudioBackgroundRunAction::FlowPlanDraft { .. }
+            | StudioBackgroundRunAction::EditFlow { .. }
+            | StudioBackgroundRunAction::Install(_)
+            | StudioBackgroundRunAction::ConfigureMaterial { .. }
+            | StudioBackgroundRunAction::RunMaterial { .. } => unreachable!(),
         };
         reply.changed = changed;
         Ok(reply)

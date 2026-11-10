@@ -505,9 +505,8 @@ impl ReadyAppState {
     }
 
     pub(super) fn render_modeling_draft_access(&mut self, ui: &mut egui::Ui) {
-        let snapshot = self.platform_host.snapshot();
         let keys = rf_ui::InputDiscardScope::All
-            .pending_keys(&snapshot.runtime.workspace_document.input_edits);
+            .pending_keys(&self.platform_host.modeling_inputs().workspace.drafts.fields);
         let labels = self.describe_affected_inputs(&keys);
         ui.menu_button(
             format!("{} · {}", tr(self.locale, "草稿", "Drafts"), keys.len()),

@@ -42,6 +42,42 @@ pub struct BuiltinModelDefinition {
 }
 
 impl BuiltinModelDefinition {
+    pub const fn component_equation_capability(
+        &self,
+    ) -> Option<crate::component_equations::ComponentEquationCapability> {
+        use crate::component_equations::ComponentEquationCapability::*;
+        match self.spec.kind {
+            BuiltinUnitKind::Feed => Some(Feed),
+            BuiltinUnitKind::Mixer => Some(Mixer),
+            BuiltinUnitKind::Splitter => Some(Splitter),
+            _ => None,
+        }
+    }
+
+    /// Only the fixed-T/P component-flow mapping, not thermal or phase derivatives.
+    pub const fn component_response_capability(
+        &self,
+    ) -> Option<crate::component_response::AffineComponentCapability> {
+        use crate::component_response::AffineComponentCapability::*;
+        match self.spec.kind {
+            BuiltinUnitKind::Mixer => Some(TwoInletMixing),
+            BuiltinUnitKind::Splitter => Some(NonselectiveSplitting),
+            _ => None,
+        }
+    }
+
+    /// A material-only capability, independent of the local run service contract.
+    pub const fn component_balance_capability(
+        &self,
+    ) -> Option<crate::component_balance::ComponentBalanceCapability> {
+        use crate::component_balance::ComponentBalanceCapability::*;
+        match self.spec.kind {
+            BuiltinUnitKind::Feed => Some(FixedFeedBoundary),
+            BuiltinUnitKind::Mixer => Some(TwoInletMixing),
+            _ => None,
+        }
+    }
+
     const fn new(
         spec: &'static UnitOperationSpec,
         thermo: ServiceRequirement,
@@ -59,13 +95,14 @@ impl BuiltinModelDefinition {
 
 use ServiceRequirement::{Optional, Required};
 
-static BUILTIN_MODELS: [BuiltinModelDefinition; 6] = [
+static BUILTIN_MODELS: [BuiltinModelDefinition; 7] = [
     BuiltinModelDefinition::new(&FEED_SPEC, Optional, Optional, create_feed),
     BuiltinModelDefinition::new(&MIXER_SPEC, Required, Optional, create_mixer),
     BuiltinModelDefinition::new(&HEATER_SPEC, Required, Optional, create_heater),
     BuiltinModelDefinition::new(&COOLER_SPEC, Required, Optional, create_cooler),
     BuiltinModelDefinition::new(&VALVE_SPEC, Required, Optional, create_valve),
     BuiltinModelDefinition::new(&FLASH_DRUM_SPEC, Required, Required, create_flash_drum),
+    BuiltinModelDefinition::new(&crate::SPLITTER_SPEC, Optional, Optional, create_splitter),
 ];
 
 pub fn builtin_models() -> &'static [BuiltinModelDefinition] {
@@ -80,6 +117,7 @@ pub fn builtin_model(kind: BuiltinUnitKind) -> &'static BuiltinModelDefinition {
         BuiltinUnitKind::Cooler => &BUILTIN_MODELS[3],
         BuiltinUnitKind::Valve => &BUILTIN_MODELS[4],
         BuiltinUnitKind::FlashDrum => &BUILTIN_MODELS[5],
+        BuiltinUnitKind::Splitter => &BUILTIN_MODELS[6],
     }
 }
 
@@ -181,6 +219,19 @@ fn heater_cooler_outlet_template(
     Ok(outlet)
 }
 
+/// Resolve the same effective Feed boundary used by local execution, without
+/// loading services or evaluating thermal properties.
+pub fn effective_feed_boundary(
+    unit: &UnitNode,
+    streams: &BTreeMap<StreamId, MaterialStreamState>,
+) -> RfResult<MaterialStreamState> {
+    if crate::validate_unit_node(unit)?.kind != BuiltinUnitKind::Feed {
+        return Err(RfError::invalid_input(
+            "feed boundary requires a canonical Feed",
+        ));
+    }
+    feed_outlet_template(unit, streams)
+}
 fn feed_outlet_template(
     unit: &UnitNode,
     streams: &BTreeMap<StreamId, MaterialStreamState>,
@@ -254,3 +305,19 @@ fn unit_context(unit: &UnitNode) -> String {
 
 #[cfg(test)]
 mod tests;
+
+fn create_splitter(
+    unit: &UnitNode,
+    streams: &BTreeMap<StreamId, MaterialStreamState>,
+) -> RfResult<Box<dyn UnitOperation>> {
+    let fraction = unit.parameters.outlet_a_split_fraction.ok_or_else(|| {
+        RfError::invalid_input("splitter requires outlet_a_split_fraction")
+            .with_diagnostic_code("unitops.splitter.missing_fraction")
+            .with_related_unit_id(unit.id.clone())
+    })?;
+    Ok(Box::new(crate::Splitter::new(
+        stream_target_for_port(unit, crate::SPLITTER_OUTLET_A_PORT, streams)?,
+        stream_target_for_port(unit, crate::SPLITTER_OUTLET_B_PORT, streams)?,
+        fraction,
+    )))
+}

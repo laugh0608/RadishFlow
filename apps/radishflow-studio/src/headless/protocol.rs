@@ -55,12 +55,17 @@ pub enum Field {
     Name,
     OutletTemperature,
     OutletPressure,
+    #[serde(skip_deserializing)]
+    OutletASplitFraction,
     Temperature,
     Pressure,
     MolarFlow,
     MoleFraction(String),
     PhaseFraction(String),
-    PhaseMoleFraction { phase: String, component: String },
+    PhaseMoleFraction {
+        phase: String,
+        component: String,
+    },
     PhaseMolarEnthalpy(String),
 }
 
@@ -87,6 +92,7 @@ impl Target {
                 Field::Name => browser::VariableField::Name,
                 Field::OutletTemperature => browser::VariableField::OutletTemperature,
                 Field::OutletPressure => browser::VariableField::OutletPressure,
+                Field::OutletASplitFraction => browser::VariableField::OutletASplitFraction,
                 Field::Temperature => browser::VariableField::Temperature,
                 Field::Pressure => browser::VariableField::Pressure,
                 Field::MolarFlow => browser::VariableField::MolarFlow,
@@ -121,6 +127,7 @@ impl From<browser::VariableId> for Target {
                 browser::VariableField::Name => Field::Name,
                 browser::VariableField::OutletTemperature => Field::OutletTemperature,
                 browser::VariableField::OutletPressure => Field::OutletPressure,
+                browser::VariableField::OutletASplitFraction => Field::OutletASplitFraction,
                 browser::VariableField::Temperature => Field::Temperature,
                 browser::VariableField::Pressure => Field::Pressure,
                 browser::VariableField::MolarFlow => Field::MolarFlow,

@@ -44,6 +44,7 @@ pub enum ObjectRef {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Scope {
+    MaterialBalance,
     Project,
     Flow,
     Object(ObjectRef),
@@ -171,7 +172,11 @@ pub struct ProjectSnapshot {
     pub read_only: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub read_only_reason: Option<Code>,
-    pub equipment_task_count: usize,
+    pub equipment_task_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub in_memory_required_project_schema_version: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub in_memory_required_capabilities: Option<Value>,
 }
 
 #[derive(Debug, Serialize)]

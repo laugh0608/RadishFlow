@@ -19,7 +19,10 @@ fn fixture(
     BTreeMap<StreamId, MaterialStreamState>,
     UnitOperationInputs,
 ) {
-    let unit = match kind {
+    let mut unit = match kind {
+        BuiltinUnitKind::Splitter => {
+            crate::build_splitter_node("unit-1", "Splitter", "inlet", "liquid", "vapor")
+        }
         BuiltinUnitKind::Feed => build_feed_node("unit-1", "Feed", "outlet"),
         BuiltinUnitKind::Mixer => build_mixer_node("unit-1", "Mixer", "inlet", "inlet-b", "outlet"),
         BuiltinUnitKind::Heater => build_heater_node("unit-1", "Heater", "inlet", "outlet"),
@@ -29,6 +32,9 @@ fn fixture(
             build_flash_drum_node("unit-1", "Flash", "inlet", "liquid", "vapor")
         }
     };
+    if kind == BuiltinUnitKind::Splitter {
+        unit.parameters.outlet_a_split_fraction = Some(0.6);
+    }
     let streams = ["inlet", "inlet-b", "outlet", "liquid", "vapor"]
         .into_iter()
         .map(|id| {
@@ -62,14 +68,23 @@ fn fixture(
 }
 
 #[test]
-fn catalog_covers_the_persistent_kinds_and_existing_specifications() {
+fn catalog_covers_core_models_and_canonical_specifications() {
     let names = builtin_models()
         .iter()
         .map(|model| model.spec.kind.as_str())
         .collect::<BTreeSet<_>>();
     assert_eq!(
         names,
-        ["feed", "mixer", "heater", "cooler", "valve", "flash_drum"].into()
+        [
+            "feed",
+            "mixer",
+            "heater",
+            "cooler",
+            "valve",
+            "flash_drum",
+            "splitter"
+        ]
+        .into()
     );
     assert_eq!(builtin_models().len(), names.len());
     for model in builtin_models() {
@@ -144,7 +159,10 @@ fn supplied_optional_flash_failures_are_not_silently_ignored() {
         thermo: Some(&provider),
         flash_solver: Some(&FailingFlash),
     };
-    for model in builtin_models() {
+    for model in builtin_models()
+        .iter()
+        .filter(|m| m.spec.kind != BuiltinUnitKind::Splitter)
+    {
         let (unit, streams, inputs) = fixture(model.spec.kind);
         let error = instantiate_builtin(&unit, &streams)
             .unwrap()
@@ -189,7 +207,10 @@ fn construction_preserves_template_defaults_and_explicit_parameter_overrides() {
         thermo: Some(&provider),
         flash_solver: Some(&flash),
     };
-    for model in builtin_models() {
+    for model in builtin_models()
+        .iter()
+        .filter(|m| m.spec.kind != BuiltinUnitKind::Splitter)
+    {
         let (mut unit, streams, inputs) = fixture(model.spec.kind);
         let original_streams = streams.clone();
         for explicit in [false, true] {
@@ -201,6 +222,7 @@ fn construction_preserves_template_defaults_and_explicit_parameter_overrides() {
                         .contains(&crate::specifications::UnitParameter::OutletTemperature)
                         .then_some(310.0),
                     outlet_pressure_pa: Some(90_000.0),
+                    outlet_a_split_fraction: None,
                 };
             }
             let outputs = instantiate_builtin(&unit, &streams)

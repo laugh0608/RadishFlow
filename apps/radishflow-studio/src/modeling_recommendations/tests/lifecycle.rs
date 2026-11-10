@@ -265,7 +265,8 @@ fn successful_commit_with_failed_recheck_returns_success_and_cannot_be_replayed(
     let mut session = ModelingRecommendationSession::new(&app.workspace.document);
     let preview = normalization(&mut session, &app);
     let receipt = session
-        .accept_with_recheck(&mut app, &preview, UNIX_EPOCH, |checks, document| {
+        .accept_with_recheck(&mut app, &preview, UNIX_EPOCH, |checks, workspace| {
+            let document = &workspace.document;
             let ticket = checks.begin(document);
             checks.finish(&ticket, Err(ModelingCheckFailure::Panicked), document);
         })

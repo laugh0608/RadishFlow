@@ -9,8 +9,15 @@ mod entitlement_panel_presenter;
 mod entitlement_panel_text;
 mod entitlement_panel_view;
 mod entitlement_panel_widget;
+pub mod flow_plan;
+mod flow_results;
+pub use flow_results::{
+    EquationFlowSnapshot, FlowResultRecord, FlowSnapshotHeader, MixedFlowSnapshot,
+    PartitionedFlowSnapshot, SimultaneousFlowSnapshot, UnitResultView,
+};
 mod flow_run;
 mod ids;
+pub mod material_balance;
 pub mod project_query;
 mod quantity_presentation;
 pub mod result_query;
@@ -106,6 +113,6 @@ pub use state::{DisplayUnitViewId, ViewDisplayUnits};
 pub use state::{InputDiscardScope, InputEditCheckpoint};
 
 pub use flow_run::{
-    FlowRunDiscardReason, FlowRunDisposition, FlowRunId, FlowRunQualification, FlowRunReceipt,
-    FrozenFlowRun,
+    FlowExecutionQualification, FlowRunDiscardReason, FlowRunDisposition, FlowRunId,
+    FlowRunQualification, FlowRunReceipt, FrozenFlowRun,
 };

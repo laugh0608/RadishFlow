@@ -449,7 +449,9 @@ fn run_panel_primary_action_executes_workspace_run_end_to_end() {
         .workspace
         .snapshot_history
         .back()
-        .expect("expected stored snapshot");
+        .expect("expected stored snapshot")
+        .acyclic()
+        .expect("acyclic test result");
     let feed = find_snapshot_stream(snapshot, "stream-feed");
     assert_step_consumes_snapshot_stream(snapshot, "heater-1", feed);
     let heated = find_snapshot_stream(snapshot, "stream-heated");
@@ -524,7 +526,9 @@ fn run_panel_primary_action_preserves_pressure_near_boundary_windows_end_to_end(
             .workspace
             .snapshot_history
             .back()
-            .expect("expected stored snapshot");
+            .expect("expected stored snapshot")
+            .acyclic()
+            .expect("acyclic test result");
         let heated = find_snapshot_stream(snapshot, "stream-heated");
         assert_near_boundary_window_matches_case(heated, &case);
 
@@ -580,7 +584,9 @@ fn run_panel_primary_action_preserves_temperature_near_boundary_windows_end_to_e
             .workspace
             .snapshot_history
             .back()
-            .expect("expected stored snapshot");
+            .expect("expected stored snapshot")
+            .acyclic()
+            .expect("acyclic test result");
         let heated = find_snapshot_stream(snapshot, "stream-heated");
         assert_near_boundary_window_matches_case(heated, &case);
 
@@ -639,7 +645,9 @@ fn run_panel_primary_action_preserves_synthetic_single_phase_pressure_near_bound
             .workspace
             .snapshot_history
             .back()
-            .expect("expected stored snapshot");
+            .expect("expected stored snapshot")
+            .acyclic()
+            .expect("acyclic test result");
         let heated = find_snapshot_stream(snapshot, "stream-heated");
         assert_near_boundary_window_matches_case(heated, &case);
 
@@ -699,7 +707,9 @@ fn run_panel_primary_action_preserves_synthetic_single_phase_temperature_near_bo
             .workspace
             .snapshot_history
             .back()
-            .expect("expected stored snapshot");
+            .expect("expected stored snapshot")
+            .acyclic()
+            .expect("acyclic test result");
         let heated = find_snapshot_stream(snapshot, "stream-heated");
         assert_near_boundary_window_matches_case(heated, &case);
 

@@ -45,6 +45,15 @@ pub(super) fn unit_property_fields(
         )
         .into_iter()
         .collect(),
+        "splitter" => unit_number_property_field(
+            flowsheet,
+            unit,
+            drafts,
+            rf_ui::UnitInspectorDraftField::OutletASplitFraction,
+            "Outlet A split fraction (1)",
+        )
+        .into_iter()
+        .collect(),
         "mixer" => unit_number_property_field(
             flowsheet,
             unit,
@@ -89,7 +98,8 @@ fn unit_number_property_field(
     field: rf_ui::UnitInspectorDraftField,
     label: &str,
 ) -> Option<StudioGuiInspectorTargetFieldSnapshot> {
-    let original = rf_ui::unit_inspector_parameter_value(flowsheet, &unit.id, &field)?;
+    let original_value = rf_ui::unit_inspector_parameter_value(flowsheet, &unit.id, &field);
+    let original = original_value.unwrap_or(0.0);
     let key = rf_ui::unit_inspector_draft_key(&unit.id, &field);
     let mut property_field = inspector_number_field(drafts, key.clone(), label, original);
     if unit_parameter_display_value_needs_explicit_commit(flowsheet, unit, drafts, &field, original)
@@ -98,6 +108,12 @@ fn unit_number_property_field(
         property_field.validation = StudioGuiInspectorTargetFieldValidationSnapshot::Valid;
         property_field.commit_command_id = Some(crate::inspector_draft_commit_command_id(&key));
         property_field.discard_command_id = None;
+    }
+    if original_value.is_none() && !drafts.fields.contains_key(&key) {
+        property_field.original_value.clear();
+        property_field.current_value.clear();
+        property_field.is_dirty = false;
+        property_field.commit_command_id = None;
     }
     let constraint = unit_parameter_constraint_text(flowsheet, unit, &field);
     property_field.constraint_text = Some(match property_field.constraint_text.take() {
@@ -138,6 +154,9 @@ fn unit_parameter_constraint_text(
     field: &rf_ui::UnitInspectorDraftField,
 ) -> String {
     match field {
+        rf_ui::UnitInspectorDraftField::OutletASplitFraction => {
+            "Explicit dimensionless outlet A fraction in [0, 1]; outlet B uses 1 − alpha.".into()
+        }
         rf_ui::UnitInspectorDraftField::Name => "Name cannot be blank.".to_string(),
         rf_ui::UnitInspectorDraftField::OutletTemperatureK => {
             if unit.kind == "feed" {

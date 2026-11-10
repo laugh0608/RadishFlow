@@ -13,7 +13,7 @@ use crate::{
     WorkspaceRunPackageSelection, WorkspaceSolveDispatch, WorkspaceSolveService,
     WorkspaceSolveSkipReason, WorkspaceSolveTrigger, resolve_workspace_run_package_id,
     solver_bridge::WORKSPACE_RUN_DIAGNOSTIC_LOCAL_CACHE_UNAVAILABLE,
-    studio_modeling_run_blocked_detail_en, studio_modeling_run_blocker,
+    studio_modeling_run_blocked_detail_en,
     workspace_run_command::{
         WORKSPACE_RUN_DIAGNOSTIC_CACHED_PACKAGE_MISSING,
         WORKSPACE_RUN_DIAGNOSTIC_ENTITLEMENT_MISMATCH,
@@ -133,6 +133,8 @@ pub enum StudioWorkspaceRunBlockedReason {
     ModelingInputsNotReady,
     MissingProjectComponents,
     PendingInspectorDrafts,
+    PendingFlowPlanDrafts,
+    FlowPlanNotReady,
     UnnormalizedStreamComposition,
 }
 
@@ -391,7 +393,9 @@ impl StudioAppFacade {
         context: &StudioAppAuthCacheContext<'_>,
         selection: &WorkspaceRunPackageSelection,
     ) -> RfResult<StudioWorkspaceRunDispatch> {
-        if let Some(blocked) = workspace_pending_inspector_draft_block(app_state) {
+        if let Some(blocked) = workspace_pending_flow_draft_block(app_state)
+            .or_else(|| workspace_pending_inspector_draft_block(app_state))
+        {
             let outcome = StudioWorkspaceRunOutcome::Blocked(blocked);
             record_workspace_run_outcome(app_state, &outcome);
             return Ok(map_workspace_run_dispatch(app_state, None, outcome));
@@ -475,7 +479,9 @@ pub(crate) fn preflight_workspace_run(
     index: &StoredAuthCacheIndex,
     command: &WorkspaceRunCommand,
 ) -> WorkspaceRunPreflight {
-    if let Some(blocked) = workspace_pending_inspector_draft_block(app) {
+    if let Some(blocked) = workspace_pending_flow_draft_block(app)
+        .or_else(|| workspace_pending_inspector_draft_block(app))
+    {
         return WorkspaceRunPreflight::Blocked {
             package_id: None,
             blocked,
@@ -483,6 +489,24 @@ pub(crate) fn preflight_workspace_run(
     }
     if let Some(reason) = WorkspaceSolveService::new().skip_reason(app, command.trigger) {
         return WorkspaceRunPreflight::Skipped(reason);
+    }
+    if matches!(
+        app.workspace.flow_plan.current(),
+        rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
+            | rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
+    ) && let Err(error) = app
+        .workspace
+        .flow_plan
+        .current()
+        .validate_for(&app.workspace)
+    {
+        return WorkspaceRunPreflight::Blocked {
+            package_id: None,
+            blocked: StudioWorkspaceRunBlocked {
+                reason: StudioWorkspaceRunBlockedReason::FlowPlanNotReady,
+                message: error.to_string(),
+            },
+        };
     }
     let package_id = match resolve_workspace_run_package_id(app, index, &command.package) {
         Ok(id) => id,
@@ -569,7 +593,7 @@ fn map_workspace_solve_dispatch(dispatch: WorkspaceSolveDispatch) -> StudioWorks
     }
 }
 
-fn workspace_pending_inspector_draft_block(
+pub(crate) fn workspace_pending_inspector_draft_block(
     app_state: &AppState,
 ) -> Option<StudioWorkspaceRunBlocked> {
     let invalid_draft_count = app_state
@@ -610,12 +634,11 @@ fn workspace_pending_inspector_draft_block(
 }
 
 fn workspace_modeling_readiness_block(app_state: &AppState) -> Option<StudioWorkspaceRunBlocked> {
-    studio_modeling_run_blocker(&app_state.workspace.document).map(|blocker| {
-        StudioWorkspaceRunBlocked {
+    crate::studio_modeling_readiness::studio_workspace_modeling_run_blocker(&app_state.workspace)
+        .map(|blocker| StudioWorkspaceRunBlocked {
             reason: modeling_readiness_blocked_reason(&blocker.task),
             message: studio_modeling_run_blocked_detail_en(&blocker.task),
-        }
-    })
+        })
 }
 
 fn modeling_readiness_blocked_reason(
@@ -778,3 +801,10 @@ fn describe_simulation_mode(mode: SimulationMode) -> &'static str {
 
 #[cfg(test)]
 mod tests;
+
+fn workspace_pending_flow_draft_block(app: &AppState) -> Option<StudioWorkspaceRunBlocked> {
+    (app.workspace.flow_plan.has_pending_modular_draft() || app.workspace.flow_plan.has_pending_equation_draft() || app.workspace.flow_plan.has_pending_mixed_draft()).then(|| StudioWorkspaceRunBlocked {
+        reason: StudioWorkspaceRunBlockedReason::PendingFlowPlanDrafts,
+        message: "Apply or discard the modular plan draft before running; only the applied plan can execute.".into(),
+    })
+}

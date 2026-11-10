@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use rf_model::{Flowsheet, MaterialStreamState, UnitPort};
 use rf_types::{PortDirection, PortKind, StreamId, UnitId};
@@ -31,10 +31,23 @@ struct MaterialStreamEndpoints {
 }
 
 pub fn generate_local_canvas_suggestions(app_state: &AppState) -> Vec<CanvasSuggestion> {
-    generate_local_canvas_suggestions_for_flowsheet(&app_state.workspace.document.flowsheet)
+    generate_local_canvas_suggestions_for_flowsheet(
+        &app_state.workspace.document.flowsheet,
+        app_state.workspace.reserved_stream_identities(),
+    )
 }
-
-fn generate_local_canvas_suggestions_for_flowsheet(flowsheet: &Flowsheet) -> Vec<CanvasSuggestion> {
+struct StreamIdentityAllocation<'a> {
+    flowsheet: &'a Flowsheet,
+    reserved: &'a BTreeSet<StreamId>,
+}
+fn generate_local_canvas_suggestions_for_flowsheet(
+    flowsheet: &Flowsheet,
+    reserved: &BTreeSet<StreamId>,
+) -> Vec<CanvasSuggestion> {
+    let allocation = StreamIdentityAllocation {
+        flowsheet,
+        reserved,
+    };
     let endpoints = material_stream_endpoints(flowsheet);
     let connectable_source_only_streams = connectable_source_only_streams(flowsheet, &endpoints);
     let mut suggestions = Vec::new();
@@ -42,7 +55,7 @@ fn generate_local_canvas_suggestions_for_flowsheet(flowsheet: &Flowsheet) -> Vec
     for unit in flowsheet.units.values() {
         if unit.kind == FEED_KIND {
             suggestions.extend(build_missing_feed_outlet_suggestions(
-                flowsheet,
+                &allocation,
                 unit.id.clone(),
                 &unit.name,
                 &unit.ports,
@@ -51,7 +64,7 @@ fn generate_local_canvas_suggestions_for_flowsheet(flowsheet: &Flowsheet) -> Vec
 
         if is_single_inlet_outlet_unit_kind(&unit.kind) {
             suggestions.extend(build_single_inlet_outlet_unit_suggestions(
-                flowsheet,
+                &allocation,
                 &endpoints,
                 &connectable_source_only_streams,
                 unit.id.clone(),
@@ -63,7 +76,7 @@ fn generate_local_canvas_suggestions_for_flowsheet(flowsheet: &Flowsheet) -> Vec
 
         if unit.kind == MIXER_KIND {
             suggestions.extend(build_mixer_suggestions(
-                flowsheet,
+                &allocation,
                 &endpoints,
                 &connectable_source_only_streams,
                 unit.id.clone(),
@@ -124,7 +137,7 @@ fn generate_local_canvas_suggestions_for_flowsheet(flowsheet: &Flowsheet) -> Vec
 
         if inlet.is_some_and(|port| port.stream_id.is_some()) {
             suggestions.extend(build_missing_flash_drum_outlet_suggestions(
-                flowsheet,
+                &allocation,
                 unit.id.clone(),
                 &unit.name,
                 &unit.ports,
@@ -136,11 +149,12 @@ fn generate_local_canvas_suggestions_for_flowsheet(flowsheet: &Flowsheet) -> Vec
 }
 
 fn build_missing_feed_outlet_suggestions(
-    flowsheet: &Flowsheet,
+    allocation: &StreamIdentityAllocation<'_>,
     unit_id: UnitId,
     unit_name: &str,
     ports: &[UnitPort],
 ) -> Vec<CanvasSuggestion> {
+    let flowsheet = allocation.flowsheet;
     let Some(port) = ports
         .iter()
         .find(|candidate| candidate.name == FEED_OUTLET_PORT)
@@ -151,7 +165,7 @@ fn build_missing_feed_outlet_suggestions(
         return Vec::new();
     }
 
-    let stream_id = unique_stream_id(flowsheet, &unit_id, FEED_OUTLET_PORT);
+    let stream_id = unique_stream_id(allocation, &unit_id, FEED_OUTLET_PORT);
     let stream_name = format!("{unit_name} Outlet");
     vec![
         CanvasSuggestion::new(
@@ -184,7 +198,7 @@ fn build_missing_feed_outlet_suggestions(
 }
 
 fn build_single_inlet_outlet_unit_suggestions(
-    flowsheet: &Flowsheet,
+    allocation: &StreamIdentityAllocation<'_>,
     endpoints: &BTreeMap<StreamId, MaterialStreamEndpoints>,
     connectable_source_only_streams: &[StreamId],
     unit_id: UnitId,
@@ -244,7 +258,7 @@ fn build_single_inlet_outlet_unit_suggestions(
         .iter()
         .find(|candidate| candidate.name == SINGLE_OUTLET_PORT);
     if inlet_is_bound && let Some(outlet) = outlet.filter(|port| port.stream_id.is_none()) {
-        let stream_id = unique_stream_id(flowsheet, &unit_id, SINGLE_OUTLET_PORT);
+        let stream_id = unique_stream_id(allocation, &unit_id, SINGLE_OUTLET_PORT);
         let stream_name = format!("{} Outlet", unit_name);
         suggestions.push(
             CanvasSuggestion::new(
@@ -290,7 +304,7 @@ fn is_single_inlet_outlet_unit_kind(unit_kind: &str) -> bool {
 }
 
 fn build_mixer_suggestions(
-    flowsheet: &Flowsheet,
+    allocation: &StreamIdentityAllocation<'_>,
     endpoints: &BTreeMap<StreamId, MaterialStreamEndpoints>,
     connectable_source_only_streams: &[StreamId],
     unit_id: UnitId,
@@ -363,7 +377,7 @@ fn build_mixer_suggestions(
         .iter()
         .find(|candidate| candidate.name == MIXER_OUTLET_PORT);
     if all_inlets_are_bound && let Some(outlet) = outlet.filter(|port| port.stream_id.is_none()) {
-        let stream_id = unique_stream_id(flowsheet, &unit_id, MIXER_OUTLET_PORT);
+        let stream_id = unique_stream_id(allocation, &unit_id, MIXER_OUTLET_PORT);
         let stream_name = format!("{unit_name} Outlet");
         suggestions.push(
             CanvasSuggestion::new(
@@ -429,7 +443,7 @@ fn is_terminal_flash_drum_outlet(
 }
 
 fn build_missing_flash_drum_outlet_suggestions(
-    flowsheet: &Flowsheet,
+    allocation: &StreamIdentityAllocation<'_>,
     unit_id: UnitId,
     unit_name: &str,
     ports: &[UnitPort],
@@ -446,7 +460,7 @@ fn build_missing_flash_drum_outlet_suggestions(
             continue;
         }
 
-        let stream_id = unique_stream_id(flowsheet, &unit_id, port_name);
+        let stream_id = unique_stream_id(allocation, &unit_id, port_name);
         let stream_name = format!("{unit_name} {display_name}");
         suggestions.push(
             CanvasSuggestion::new(
@@ -561,9 +575,16 @@ fn material_stream_endpoints(flowsheet: &Flowsheet) -> BTreeMap<StreamId, Materi
     endpoints
 }
 
-fn unique_stream_id(flowsheet: &Flowsheet, unit_id: &UnitId, port_name: &str) -> StreamId {
+fn unique_stream_id(
+    allocation: &StreamIdentityAllocation<'_>,
+    unit_id: &UnitId,
+    port_name: &str,
+) -> StreamId {
+    let flowsheet = allocation.flowsheet;
     let base = format!("stream-{}-{}", unit_id.as_str(), port_name);
-    if !flowsheet.streams.contains_key(&StreamId::new(base.clone())) {
+    if !flowsheet.streams.contains_key(&StreamId::new(base.clone()))
+        && !allocation.reserved.contains(&StreamId::new(base.clone()))
+    {
         return StreamId::new(base);
     }
 
@@ -571,7 +592,8 @@ fn unique_stream_id(flowsheet: &Flowsheet, unit_id: &UnitId, port_name: &str) ->
     loop {
         let candidate = format!("{}-{}", base, next_suffix);
         let stream_id = StreamId::new(candidate);
-        if !flowsheet.streams.contains_key(&stream_id) {
+        if !flowsheet.streams.contains_key(&stream_id) && !allocation.reserved.contains(&stream_id)
+        {
             return stream_id;
         }
         next_suffix += 1;
@@ -647,7 +669,10 @@ mod tests {
 
     #[test]
     fn local_rules_generate_flash_drum_inlet_suggestion_before_outlet_suggestions() {
-        let suggestions = generate_local_canvas_suggestions_for_flowsheet(&sample_flowsheet());
+        let suggestions = generate_local_canvas_suggestions_for_flowsheet(
+            &sample_flowsheet(),
+            &Default::default(),
+        );
 
         assert_eq!(suggestions.len(), 1);
         assert_eq!(
@@ -670,7 +695,8 @@ mod tests {
             .expect("expected flash inlet")
             .stream_id = Some(StreamId::new("stream-feed"));
 
-        let suggestions = generate_local_canvas_suggestions_for_flowsheet(&flowsheet);
+        let suggestions =
+            generate_local_canvas_suggestions_for_flowsheet(&flowsheet, &Default::default());
 
         assert_eq!(suggestions.len(), 2);
         assert_eq!(
@@ -701,7 +727,8 @@ mod tests {
             ))
             .expect("expected feed unit");
 
-        let suggestions = generate_local_canvas_suggestions_for_flowsheet(&flowsheet);
+        let suggestions =
+            generate_local_canvas_suggestions_for_flowsheet(&flowsheet, &Default::default());
 
         assert_eq!(suggestions.len(), 1);
         assert_eq!(
@@ -766,7 +793,8 @@ mod tests {
             ))
             .expect("expected heater unit");
 
-        let suggestions = generate_local_canvas_suggestions_for_flowsheet(&flowsheet);
+        let suggestions =
+            generate_local_canvas_suggestions_for_flowsheet(&flowsheet, &Default::default());
 
         assert_eq!(suggestions.len(), 1);
         assert_eq!(
@@ -817,7 +845,8 @@ mod tests {
             ))
             .expect("expected heater unit");
 
-        let suggestions = generate_local_canvas_suggestions_for_flowsheet(&flowsheet);
+        let suggestions =
+            generate_local_canvas_suggestions_for_flowsheet(&flowsheet, &Default::default());
 
         assert_eq!(suggestions.len(), 1);
         assert_eq!(
@@ -900,7 +929,8 @@ mod tests {
             ))
             .expect("expected mixer unit");
 
-        let suggestions = generate_local_canvas_suggestions_for_flowsheet(&flowsheet);
+        let suggestions =
+            generate_local_canvas_suggestions_for_flowsheet(&flowsheet, &Default::default());
 
         assert_eq!(suggestions.len(), 2);
         assert_eq!(
@@ -976,7 +1006,8 @@ mod tests {
             ))
             .expect("expected mixer unit");
 
-        let suggestions = generate_local_canvas_suggestions_for_flowsheet(&flowsheet);
+        let suggestions =
+            generate_local_canvas_suggestions_for_flowsheet(&flowsheet, &Default::default());
 
         assert_eq!(suggestions.len(), 1);
         assert_eq!(
@@ -1040,7 +1071,8 @@ mod tests {
             ))
             .expect("expected mixer unit");
 
-        let suggestions = generate_local_canvas_suggestions_for_flowsheet(&flowsheet);
+        let suggestions =
+            generate_local_canvas_suggestions_for_flowsheet(&flowsheet, &Default::default());
 
         assert!(suggestions.is_empty());
     }

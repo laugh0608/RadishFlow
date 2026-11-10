@@ -36,6 +36,43 @@ fn commit_pressure(app: &mut ReadyAppState) {
 }
 
 #[test]
+fn draft_labels_read_current_text_units_and_object_names_without_consuming_edits() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    app.locale = StudioShellLocale::ZhCn;
+    assert!(app.describe_affected_inputs(&[]).is_empty());
+    let mut feed = input(&mut app, "stream-feed", "1e-");
+    input(&mut app, "stream-vapor", "-2");
+    let keys = vec![
+        "stream:stream-feed:pressure_pa".into(),
+        "stream:stream-vapor:pressure_pa".into(),
+    ];
+    let first = app.describe_affected_inputs(&keys);
+    assert!(first[0].ends_with("压力：1e- bar"));
+    assert!(first[1].ends_with("压力：-2 bar"));
+    app.edit_numeric_field(&mut feed, NumericEditEvent::ReplaceText("2e-".into()));
+    app.dispatch_ui_command("inspector.focus_stream:stream-feed");
+    let name_key = "stream:stream-feed:name";
+    app.dispatch_inspector_field_draft_update(
+        radishflow_studio::inspector_draft_update_command_id(name_key),
+        "Renamed feed",
+    );
+    app.dispatch_inspector_field_draft_commit(
+        radishflow_studio::inspector_draft_commit_command_id(name_key),
+    );
+    let before = app.platform_host.modeling_inputs().workspace.drafts.clone();
+    let labels = app.describe_affected_inputs(&keys);
+    assert_eq!(labels[0], "Renamed feed · 压力：2e- bar");
+    assert_eq!(labels[1], first[1]);
+    assert_eq!(app.platform_host.modeling_inputs().workspace.drafts, before);
+    assert_eq!(
+        rf_ui::InputDiscardScope::All
+            .pending_keys(&before.fields)
+            .len(),
+        2
+    );
+}
+
+#[test]
 fn input_departure_history_cancel_confirm_and_three_histories_remain_separate() {
     let mut app = ready_app_state(&synced_workspace_config());
     commit_pressure(&mut app);

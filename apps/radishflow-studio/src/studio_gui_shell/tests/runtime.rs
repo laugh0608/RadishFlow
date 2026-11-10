@@ -271,7 +271,7 @@ fn render_full_runtime_panel_texts(
     })
 }
 
-fn collect_shape_texts(shape: &egui::epaint::Shape, texts: &mut Vec<String>) {
+pub(super) fn collect_shape_texts(shape: &egui::epaint::Shape, texts: &mut Vec<String>) {
     match shape {
         egui::epaint::Shape::Text(text) => texts.push(text.galley.job.text.clone()),
         egui::epaint::Shape::Vec(shapes) => {
@@ -493,9 +493,9 @@ fn assert_rendered_unit_summary_surface(
     assert!(
         texts
             .iter()
-            .any(|text| text.contains(&format!("#{}", unit.step_index))),
+            .any(|text| text.contains(&unit.location.to_string())),
         "expected {surface} to render unit step index `#{}`, rendered texts: {:?}",
-        unit.step_index,
+        unit.location,
         texts
     );
     assert!(

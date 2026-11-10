@@ -1,3 +1,4 @@
+pub mod dependencies;
 pub mod pressure_context;
 
 // Shared built-in input contracts used by flowsheet consumers.

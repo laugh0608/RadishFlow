@@ -1,0 +1,235 @@
+//! Typed application results. Shared header access never turns a block execution
+//! into an acyclic step sequence.
+mod equation_oriented;
+mod mixed;
+mod simultaneous;
+use crate::{
+    DiagnosticSeverity, DiagnosticSummary, RunStatus, SolveSnapshot, SolveSnapshotId,
+    StreamStateSnapshot,
+};
+pub use equation_oriented::EquationFlowSnapshot;
+pub use mixed::MixedFlowSnapshot;
+use rf_solver::partitioned::PartitionedSolveResult;
+use rf_types::UnitId;
+pub use simultaneous::SimultaneousFlowSnapshot;
+use std::{
+    collections::BTreeMap,
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct FlowSnapshotHeader {
+    pub origin: Option<crate::result_query::FlowResultOrigin>,
+    pub id: SolveSnapshotId,
+    pub document_revision: u64,
+    pub sequence: u64,
+    pub status: RunStatus,
+    pub summary: DiagnosticSummary,
+    pub diagnostics: Vec<crate::DiagnosticSnapshot>,
+    pub streams: Vec<StreamStateSnapshot>,
+}
+#[derive(Debug, Clone, PartialEq)]
+pub struct UnitResultSnapshot {
+    pub consumed_streams: Vec<StreamStateSnapshot>,
+    pub produced_streams: Vec<StreamStateSnapshot>,
+}
+#[derive(Debug, Clone, Copy)]
+pub struct UnitResultView<'a> {
+    pub consumed_streams: &'a [StreamStateSnapshot],
+    pub produced_streams: &'a [StreamStateSnapshot],
+}
+#[derive(Debug, Clone, PartialEq)]
+pub struct PartitionedFlowSnapshot {
+    pub common: FlowSnapshotHeader,
+    pub result: Arc<PartitionedSolveResult>,
+    pub final_units: BTreeMap<UnitId, UnitResultSnapshot>,
+}
+impl PartitionedFlowSnapshot {
+    pub fn new(
+        id: impl Into<SolveSnapshotId>,
+        revision: u64,
+        sequence: u64,
+        result: PartitionedSolveResult,
+    ) -> Self {
+        let streams = result
+            .streams
+            .values()
+            .map(crate::run::stream_state_snapshot_from_model)
+            .collect();
+        let final_units = final_unit_snapshots(result.blocks.iter().flat_map(|b| &b.final_units));
+        let summary = DiagnosticSummary::new(
+            revision,
+            DiagnosticSeverity::Info,
+            format!(
+                "{} dependency blocks completed with verified recycle closure",
+                result.blocks.len()
+            ),
+        );
+        Self {
+            common: FlowSnapshotHeader {
+                origin: None,
+                id: id.into(),
+                document_revision: revision,
+                sequence,
+                status: RunStatus::Converged,
+                summary,
+                diagnostics: Vec::new(),
+                streams,
+            },
+            result: Arc::new(result),
+            final_units,
+        }
+    }
+}
+impl Deref for PartitionedFlowSnapshot {
+    type Target = FlowSnapshotHeader;
+    fn deref(&self) -> &Self::Target {
+        &self.common
+    }
+}
+impl DerefMut for PartitionedFlowSnapshot {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.common
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum FlowResultRecord {
+    Acyclic(SolveSnapshot),
+    Partitioned(PartitionedFlowSnapshot),
+    Simultaneous(SimultaneousFlowSnapshot),
+    EquationOriented(EquationFlowSnapshot),
+    Mixed(MixedFlowSnapshot),
+}
+impl From<MixedFlowSnapshot> for FlowResultRecord {
+    fn from(v: MixedFlowSnapshot) -> Self {
+        Self::Mixed(v)
+    }
+}
+impl From<EquationFlowSnapshot> for FlowResultRecord {
+    fn from(v: EquationFlowSnapshot) -> Self {
+        Self::EquationOriented(v)
+    }
+}
+impl From<SimultaneousFlowSnapshot> for FlowResultRecord {
+    fn from(v: SimultaneousFlowSnapshot) -> Self {
+        Self::Simultaneous(v)
+    }
+}
+impl From<SolveSnapshot> for FlowResultRecord {
+    fn from(v: SolveSnapshot) -> Self {
+        Self::Acyclic(v)
+    }
+}
+impl From<PartitionedFlowSnapshot> for FlowResultRecord {
+    fn from(v: PartitionedFlowSnapshot) -> Self {
+        Self::Partitioned(v)
+    }
+}
+impl Deref for FlowResultRecord {
+    type Target = FlowSnapshotHeader;
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Acyclic(s) => &s.common,
+            Self::Partitioned(s) => &s.common,
+            Self::Simultaneous(s) => &s.common,
+            Self::EquationOriented(s) => &s.common,
+            Self::Mixed(s) => &s.common,
+        }
+    }
+}
+impl DerefMut for FlowResultRecord {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            Self::Acyclic(s) => &mut s.common,
+            Self::Partitioned(s) => &mut s.common,
+            Self::Simultaneous(s) => &mut s.common,
+            Self::EquationOriented(s) => &mut s.common,
+            Self::Mixed(s) => &mut s.common,
+        }
+    }
+}
+impl FlowResultRecord {
+    pub fn matches_plan(&self, plan: &crate::flow_plan::FlowPlanConfiguration) -> bool {
+        matches!(
+            (self, plan),
+            (
+                Self::Mixed(_),
+                crate::flow_plan::FlowPlanConfiguration::Mixed(_)
+            ) | (
+                Self::Acyclic(_),
+                crate::flow_plan::FlowPlanConfiguration::Acyclic
+            ) | (
+                Self::Partitioned(_),
+                crate::flow_plan::FlowPlanConfiguration::Partitioned(_)
+            ) | (
+                Self::Simultaneous(_),
+                crate::flow_plan::FlowPlanConfiguration::Simultaneous(_)
+            ) | (
+                Self::EquationOriented(_),
+                crate::flow_plan::FlowPlanConfiguration::EquationOriented(_)
+            )
+        )
+    }
+    pub fn unit_result(&self, id: &UnitId) -> Option<UnitResultView<'_>> {
+        match self {
+            Self::Acyclic(s) => s
+                .steps
+                .iter()
+                .find(|u| &u.unit_id == id)
+                .map(|u| UnitResultView {
+                    consumed_streams: &u.consumed_streams,
+                    produced_streams: &u.streams,
+                }),
+            Self::Partitioned(s) => s.final_units.get(id).map(|u| UnitResultView {
+                consumed_streams: &u.consumed_streams,
+                produced_streams: &u.produced_streams,
+            }),
+            Self::Mixed(s) => s.final_units.get(id).map(|u| UnitResultView {
+                consumed_streams: &u.consumed_streams,
+                produced_streams: &u.produced_streams,
+            }),
+            Self::EquationOriented(s) => s.final_units.get(id).map(|u| UnitResultView {
+                consumed_streams: &u.consumed_streams,
+                produced_streams: &u.produced_streams,
+            }),
+            Self::Simultaneous(s) => s.final_units.get(id).map(|u| UnitResultView {
+                consumed_streams: &u.consumed_streams,
+                produced_streams: &u.produced_streams,
+            }),
+        }
+    }
+    pub fn acyclic(&self) -> Option<&SolveSnapshot> {
+        match self {
+            Self::Acyclic(s) => Some(s),
+            Self::Partitioned(_)
+            | Self::Simultaneous(_)
+            | Self::EquationOriented(_)
+            | Self::Mixed(_) => None,
+        }
+    }
+}
+
+fn final_unit_snapshots<'a>(
+    units: impl Iterator<Item = &'a rf_solver::partitioned::LocalUnitEvaluation>,
+) -> BTreeMap<UnitId, UnitResultSnapshot> {
+    units
+        .map(|u| {
+            (
+                u.unit_id.clone(),
+                UnitResultSnapshot {
+                    consumed_streams: u
+                        .consumed_streams
+                        .iter()
+                        .map(crate::run::stream_state_snapshot_from_model)
+                        .collect(),
+                    produced_streams: u
+                        .produced_streams
+                        .iter()
+                        .map(crate::run::stream_state_snapshot_from_model)
+                        .collect(),
+                },
+            )
+        })
+        .collect()
+}

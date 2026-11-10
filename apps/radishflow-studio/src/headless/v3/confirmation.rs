@@ -378,3 +378,18 @@ impl Aliases {
         value
     }
 }
+
+pub fn digest_planned(
+    version: u32,
+    file_sha256: &str,
+    review: &Value,
+    resources: Option<&FlowResources>,
+    preview: &Value,
+) -> Result<String, Failure> {
+    let namespace = format!("headless-v{version}-confirm-v1");
+    let mut material = json!({"namespace":namespace,"file_sha256":file_sha256,"review":review,"flow_resources":resources,"preview":preview});
+    normalize_numbers(&mut material);
+    let mut bytes = Vec::new();
+    canonical(&material, &mut bytes).map_err(super::invalid_request)?;
+    Ok(format!("{namespace}:{}", rf_store::sha256_hex(&bytes)))
+}

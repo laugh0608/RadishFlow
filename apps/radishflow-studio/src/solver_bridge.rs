@@ -1,6 +1,8 @@
 pub(crate) mod execution;
 #[cfg(test)]
 mod execution_tests;
+#[cfg(test)]
+mod partitioned_tests;
 pub use execution::{
     CompletedWorkspaceSolve, PreparedWorkspaceSolve, WorkspaceExecutionOutcome,
     WorkspaceSolveProgress, complete_workspace_solve, prepare_workspace_solve,
@@ -24,7 +26,13 @@ pub(crate) const WORKSPACE_RUN_DIAGNOSTIC_PROPERTY_PACKAGE_MISSING: &str =
     "workspace.run.property_package_missing";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FlowPlanExpectation {
+    LegacyAcyclic,
+    Selected(Box<rf_ui::flow_plan::FlowPlanEditContext>),
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioSolveRequest {
+    pub expected_plan: FlowPlanExpectation,
     pub package_id: String,
     pub snapshot_id: String,
     pub sequence: u64,
@@ -37,12 +45,19 @@ impl StudioSolveRequest {
         sequence: u64,
     ) -> Self {
         Self {
+            expected_plan: FlowPlanExpectation::LegacyAcyclic,
             package_id: package_id.into(),
             snapshot_id: snapshot_id.into(),
             sequence,
         }
     }
 
+    pub fn with_selected_plan(mut self, workspace: &rf_ui::WorkspaceState) -> Self {
+        self.expected_plan = FlowPlanExpectation::Selected(Box::new(
+            rf_ui::flow_plan::FlowPlanEditContext::capture(workspace),
+        ));
+        self
+    }
     pub fn validate(&self) -> RfResult<()> {
         if self.package_id.trim().is_empty() {
             return Err(RfError::invalid_input(
@@ -89,7 +104,7 @@ where
     let mut completion = prepare_workspace_solve(app_state, request)?
         .execute_with_property_package(package_provider);
     complete_workspace_solve(app_state, &mut completion);
-    completion.result().map(|_| ())
+    completion.completion_result()
 }
 
 fn workspace_property_package_load_error(error: PackageLoadError) -> RfError {
@@ -119,7 +134,7 @@ pub fn solve_workspace_from_auth_cache(
     let mut completion = prepare_workspace_solve(app_state, request)?
         .execute_from_auth_cache(cache_root, auth_cache_index);
     complete_workspace_solve(app_state, &mut completion);
-    completion.result().map(|_| ())
+    completion.completion_result()
 }
 
 fn record_solve_failure(

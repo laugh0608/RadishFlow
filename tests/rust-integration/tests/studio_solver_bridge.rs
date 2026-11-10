@@ -392,7 +392,9 @@ fn studio_solver_bridge_maps_project_snapshot_into_app_state_end_to_end() {
         .workspace
         .snapshot_history
         .back()
-        .expect("expected stored snapshot");
+        .expect("expected stored snapshot")
+        .acyclic()
+        .expect("acyclic test result");
     assert_eq!(snapshot.id.as_str(), "snapshot-success-1");
     assert_eq!(snapshot.status, RunStatus::Converged);
     assert_eq!(
@@ -480,7 +482,9 @@ fn studio_solver_bridge_preserves_intermediate_stream_windows_across_steps_end_t
         .workspace
         .snapshot_history
         .back()
-        .expect("expected stored snapshot");
+        .expect("expected stored snapshot")
+        .acyclic()
+        .expect("acyclic test result");
 
     let feed_a = find_snapshot_stream(snapshot, "stream-feed-a");
     let feed_b = find_snapshot_stream(snapshot, "stream-feed-b");
@@ -555,7 +559,9 @@ fn studio_solver_bridge_preserves_pressure_near_boundary_windows_across_flash_in
             .workspace
             .snapshot_history
             .back()
-            .expect("expected stored snapshot");
+            .expect("expected stored snapshot")
+            .acyclic()
+            .expect("acyclic test result");
         let heated = find_snapshot_stream(snapshot, "stream-heated");
         assert_near_boundary_window_matches_case(heated, &case);
 
@@ -601,7 +607,9 @@ fn studio_solver_bridge_preserves_temperature_near_boundary_windows_across_flash
             .workspace
             .snapshot_history
             .back()
-            .expect("expected stored snapshot");
+            .expect("expected stored snapshot")
+            .acyclic()
+            .expect("acyclic test result");
         let heated = find_snapshot_stream(snapshot, "stream-heated");
         assert_near_boundary_window_matches_case(heated, &case);
 
@@ -646,7 +654,9 @@ fn studio_solver_bridge_preserves_synthetic_single_phase_pressure_near_boundary_
             .workspace
             .snapshot_history
             .back()
-            .expect("expected stored snapshot");
+            .expect("expected stored snapshot")
+            .acyclic()
+            .expect("acyclic test result");
         let heated = find_snapshot_stream(snapshot, "stream-heated");
         assert_near_boundary_window_matches_case(heated, &case);
 
@@ -691,7 +701,9 @@ fn studio_solver_bridge_preserves_synthetic_single_phase_temperature_near_bounda
             .workspace
             .snapshot_history
             .back()
-            .expect("expected stored snapshot");
+            .expect("expected stored snapshot")
+            .acyclic()
+            .expect("acyclic test result");
         let heated = find_snapshot_stream(snapshot, "stream-heated");
         assert_near_boundary_window_matches_case(heated, &case);
 

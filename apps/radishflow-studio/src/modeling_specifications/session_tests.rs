@@ -221,3 +221,35 @@ fn repeated_refresh_and_localized_presentation_do_not_recheck_or_mutate_document
     assert_eq!(session, original_session);
     assert_eq!(document, original_document);
 }
+
+#[test]
+fn formal_report_and_pending_check_follow_plan_generation_without_physical_edit() {
+    use rf_ui::flow_plan::*;
+    let mut app = crate::qs1_test_support::recycle_case(0.6);
+    let mut checks = ModelingCheckSession::new(&app.workspace.document);
+    checks.refresh_workspace(&app.workspace);
+    assert!(checks.current_report().unwrap().plan_generation.is_some());
+    assert!(
+        !checks
+            .current_report()
+            .unwrap()
+            .problems
+            .iter()
+            .any(|p| matches!(p, SpecificationProblem::Topology(_)))
+    );
+    let ticket = checks.begin_workspace(&app.workspace);
+    let report = check_workspace_modeling_specifications(&app.workspace, checks.identity().session);
+    let revision = app.workspace.document.revision;
+    crate::qs1_test_support::select(&mut app, FlowPlanConfiguration::Acyclic);
+    assert_eq!(app.workspace.document.revision, revision);
+    assert!(!checks.finish_workspace(&ticket, Ok(report), &app.workspace));
+    checks.refresh_workspace(&app.workspace);
+    assert!(
+        checks
+            .current_report()
+            .unwrap()
+            .problems
+            .iter()
+            .any(|p| matches!(p, SpecificationProblem::Topology(_)))
+    );
+}

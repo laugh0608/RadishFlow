@@ -271,6 +271,9 @@ fn gui_command_registry_includes_canvas_commands_when_suggestions_exist() {
             canvas_command_id(StudioGuiCanvasActionId::BeginPlaceUnit(
                 StudioGuiCanvasPlaceUnitKind::FlashDrum,
             )),
+            canvas_command_id(StudioGuiCanvasActionId::BeginPlaceUnit(
+                StudioGuiCanvasPlaceUnitKind::Splitter
+            )),
             canvas_command_id(StudioGuiCanvasActionId::AcceptFocused),
             canvas_command_id(StudioGuiCanvasActionId::RejectFocused),
             canvas_command_id(StudioGuiCanvasActionId::FocusNext),
@@ -370,6 +373,17 @@ fn gui_command_registry_exposes_place_unit_palette_for_target_window() {
                     "Canvas".to_string(),
                     "Place Unit".to_string(),
                     "Flash Drum".to_string()
+                ],
+                true,
+                Some(5)
+            ),
+            (
+                "canvas.begin_place_unit.splitter",
+                "Place Splitter",
+                vec![
+                    "Canvas".to_string(),
+                    "Place Unit".to_string(),
+                    "Splitter".to_string()
                 ],
                 true,
                 Some(5)
@@ -507,7 +521,7 @@ fn gui_command_registry_includes_canvas_object_navigation_commands() {
         })
         .collect::<Vec<_>>();
 
-    assert_eq!(commands.len(), 8);
+    assert_eq!(commands.len(), 9);
     let object_commands = commands
         .iter()
         .filter(|command| command.0.starts_with("inspector.focus_"))
@@ -634,7 +648,7 @@ fn gui_command_registry_includes_latest_solve_snapshot_result_commands() {
         &StudioAppHostUiCommandModel::default(),
         &crate::StudioGuiCanvasState::default(),
         Some(12),
-        Some(&snapshot),
+        Some(&snapshot.clone().into()),
     );
 
     let result_section = registry

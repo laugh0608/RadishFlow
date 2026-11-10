@@ -24,16 +24,16 @@
 
 本专题是流程图建模与求解的一级轨道。具体单元和建模对象由二级功能专题承载：
 
-| 子专题 | 状态 | 入口 |
-| --- | --- | --- |
-| Feed / 进料源 | Active | `unitops/feed-source.md` |
-| Heater / Cooler 温压调节单元 | Active | `unitops/heater-cooler.md` |
-| Flash Drum 闪蒸罐 | Active | `unitops/flash-drum.md` |
-| Mixer 混合器 | Active | `unitops/mixer.md` |
-| Valve 阀门 | Active | `unitops/valve.md` |
-| Material Stream 物流股 | Active | `modeling/material-stream.md` |
-| 模型目录、发现与运行实例 | Draft / 方向已确认 | [模型装配专题](modeling/model-catalog-and-runtime.md) |
-| 多策略求解与问题装配 | Draft / 方向已确认 | [多策略专题](modeling/solver-strategies-and-assembly.md) |
+| 子专题 | 状态与验收来源 |
+| --- | --- |
+| Feed / 进料源 | [所属子专题](unitops/feed-source.md)；逐项状态在子专题或其附属切片文档维护 |
+| Heater / Cooler 温压调节单元 | [所属子专题](unitops/heater-cooler.md)；逐项状态在子专题或其附属切片文档维护 |
+| Flash Drum 闪蒸罐 | [所属子专题](unitops/flash-drum.md)；逐项状态在子专题或其附属切片文档维护 |
+| Mixer 混合器 | [所属子专题](unitops/mixer.md)；逐项状态在子专题或其附属切片文档维护 |
+| Valve 阀门 | [所属子专题](unitops/valve.md)；逐项状态在子专题或其附属切片文档维护 |
+| Material Stream 物流股 | [所属子专题](modeling/material-stream.md)；逐项状态在子专题或其附属切片文档维护 |
+| 模型目录、发现与运行实例 | [模型装配专题](modeling/model-catalog-and-runtime.md)；逐项状态在子专题或其附属切片文档维护 |
+| 多策略求解与问题装配 | [多策略专题](modeling/solver-strategies-and-assembly.md)；逐项状态在子专题或其附属切片文档维护 |
 
 后续涉及具体单元行为、参数、端口、结果或诊断时，应优先更新对应子专题；本文件只保留跨单元的建模 / 求解边界。
 
@@ -65,6 +65,8 @@
 | DS0 | 选定首个真实目标 / 可调变量、模型和独立基准 | 规格可释放、单位与边界清楚；与直接计算和检查任务区分 |
 | DS1 | 有界单目标反算、诊断、候选采纳 | 已知解和边界工况一致；不可达 / 内层失败 / 多根选择可解释；试算不污染文档 |
 | DS2 | 随设备和模型扩展多变量或约束优化 | 明确可行 / 局部最优 / 搜索失败语义；有独立基准及必要的敏感性检验 |
+
+2026-10-31 已形成 [QS3 限定反算实现](modeling/equation-oriented-block.md)：固定温压 Mixer / Splitter 网络中释放一个分流比例、指定一个产品总摩尔流量，以条件线性消元和区间求根得到候选，再经显式正式事务采纳。D01—D08 核心、正式采纳及 GUI / CLI v6 已实现并完成本机验证；不代表多变量设计规格、优化或热 / 相平衡能力。
 
 DS0 / DS1 在 P3 随模型能力进入，不等待完整 EO 或通用优化。验证覆盖已知反算、单位等价、边界 / 超域、无依赖目标、相关规格、内层失败、多根、源修订变化、采纳 / 撤销与保存重开。工况和来源复用 [工程基础](engineering-basis-and-cases.md)，结果诊断和输出复用结果专题；不在界面新增私有求解器。
 

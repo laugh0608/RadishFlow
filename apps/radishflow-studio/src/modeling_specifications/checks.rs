@@ -9,11 +9,36 @@ use rf_ui::BuiltinUnitKind;
 use super::*;
 
 pub(super) fn check_inputs(flowsheet: &Flowsheet) -> InputChecks {
+    check_inputs_with_plan(flowsheet, &rf_ui::flow_plan::FlowPlanConfiguration::Acyclic)
+}
+
+pub(super) fn check_inputs_with_plan(
+    flowsheet: &Flowsheet,
+    plan: &rf_ui::flow_plan::FlowPlanConfiguration,
+) -> InputChecks {
     let mut checks = InputChecks::default();
     if flowsheet.units.is_empty() {
         checks.problems.push(SpecificationProblem::EmptyFlowsheet);
     }
-    let topology_valid = match rf_solver::sequential_execution_order(flowsheet) {
+    let topology_valid = match match plan {
+        rf_ui::flow_plan::FlowPlanConfiguration::Mixed(o) => {
+            rf_solver::mixed::assemble(flowsheet, o).map(|_| ())
+        }
+        rf_ui::flow_plan::FlowPlanConfiguration::Acyclic => {
+            rf_solver::sequential_execution_order(flowsheet).map(|_| ())
+        }
+        rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(options) => {
+            rf_solver::partitioned::assemble_partitioned_plan(flowsheet, options).map(|_| ())
+        }
+        rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(options) => {
+            rf_solver::equation_oriented::assemble(flowsheet, options)
+                .and_then(|p| p.require_ready())
+                .map_err(|e| e.error)
+        }
+        rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(options) => {
+            rf_solver::simultaneous::assemble(flowsheet, options).map(|_| ())
+        }
+    } {
         Ok(_) => true,
         Err(error) => {
             // Empty workspaces keep the existing "place first unit" readiness.
@@ -51,7 +76,15 @@ pub(super) fn check_inputs(flowsheet: &Flowsheet) -> InputChecks {
     );
 
     if topology_valid {
-        check_feed_inputs(flowsheet, &mut checks);
+        check_feed_inputs(
+            flowsheet,
+            &mut checks,
+            matches!(
+                plan,
+                rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
+                    | rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
+            ),
+        );
     }
     checks.coverage(
         SpecificationCheckScope::FeedInputs,
@@ -72,7 +105,9 @@ pub(super) fn check_inputs(flowsheet: &Flowsheet) -> InputChecks {
     for unit in flowsheet.units.values() {
         if let Some(kind) = BuiltinUnitKind::parse(&unit.kind) {
             for &parameter in input_specification(kind).required_explicit_parameters {
-                if parameter.value(&unit.parameters).is_none() {
+                if !released_parameter(plan, &unit.id, parameter)
+                    && parameter.value(&unit.parameters).is_none()
+                {
                     checks
                         .problems
                         .push(SpecificationProblem::MissingParameter {
@@ -93,7 +128,8 @@ pub(super) fn check_inputs(flowsheet: &Flowsheet) -> InputChecks {
         };
         let spec = input_specification(kind);
         for &parameter in spec.parameters {
-            if let Some(value) = parameter.value(&unit.parameters)
+            if !released_parameter(plan, &unit.id, parameter)
+                && let Some(value) = parameter.value(&unit.parameters)
                 && check_parameter_value(kind, parameter, value, None).is_err()
             {
                 checks
@@ -128,6 +164,23 @@ pub(super) fn check_inputs(flowsheet: &Flowsheet) -> InputChecks {
             );
             continue;
         };
+        if matches!(
+            plan,
+            rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
+        ) {
+            // Cyclic inlet pressure comes from the frozen fixed boundary and evaluated
+            // streams. Document templates cannot prove the recycle inlet pressure.
+            checks.coverage(
+                scope,
+                SpecificationCoverage::AwaitingExecution(document_pressure_context(
+                    flowsheet, unit, kind,
+                )),
+            );
+            continue;
+        }
         let context = document_pressure_context(flowsheet, unit, kind);
         let Some(limit) = context.limit() else {
             let missing_inputs = context.gaps.iter().any(|gap| {
@@ -173,7 +226,7 @@ pub(super) fn check_inputs(flowsheet: &Flowsheet) -> InputChecks {
     checks
 }
 
-fn check_feed_inputs(flowsheet: &Flowsheet, checks: &mut InputChecks) {
+fn check_feed_inputs(flowsheet: &Flowsheet, checks: &mut InputChecks, allow_zero_flow: bool) {
     let mut missing_compositions = Vec::new();
     for unit in flowsheet
         .units
@@ -200,7 +253,10 @@ fn check_feed_inputs(flowsheet: &Flowsheet, checks: &mut InputChecks) {
                 field,
                 input,
             });
-            if input.source == FeedInputSource::StreamInput && !is_positive_finite(input.value) {
+            if input.source == FeedInputSource::StreamInput
+                && !is_positive_finite(input.value)
+                && !(allow_zero_flow && field == FeedInputField::MolarFlow && input.value == 0.0)
+            {
                 checks
                     .problems
                     .push(SpecificationProblem::InvalidFeedInput {
@@ -257,4 +313,12 @@ fn check_compositions(flowsheet: &Flowsheet, checks: &mut InputChecks) {
             }
         }
     }
+}
+
+fn released_parameter(
+    plan: &rf_ui::flow_plan::FlowPlanConfiguration,
+    unit: &rf_types::UnitId,
+    parameter: UnitParameter,
+) -> bool {
+    matches!(plan, rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(o) if parameter == UnitParameter::OutletASplitFraction && o.released.as_ref().is_some_and(|r| &r.binding.unit == unit))
 }

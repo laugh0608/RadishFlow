@@ -41,38 +41,6 @@ pub(super) fn build_stack_group_layouts(
     groups
 }
 
-pub(super) fn layout_scope_from_state(
-    state: &StudioAppHostState,
-    requested_window_id: Option<StudioWindowHostId>,
-) -> StudioGuiWindowLayoutScope {
-    let window_id = requested_window_id
-        .filter(|window_id| state.window(*window_id).is_some())
-        .or(state.foreground_window_id)
-        .or_else(|| state.registered_windows.first().copied());
-
-    match window_id {
-        Some(window_id) => {
-            let window = state.window(window_id);
-            let window_role = window.map(|window| window.role);
-            let layout_slot = window.map(|window| window.layout_slot);
-            StudioGuiWindowLayoutScope {
-                kind: StudioGuiWindowLayoutScopeKind::Window,
-                window_id: Some(window_id),
-                window_role,
-                layout_slot,
-                layout_key: layout_key_for_window(window_role, layout_slot),
-            }
-        }
-        None => StudioGuiWindowLayoutScope {
-            kind: StudioGuiWindowLayoutScopeKind::EmptyWorkspace,
-            window_id: None,
-            window_role: None,
-            layout_slot: None,
-            layout_key: "studio.window.empty".to_string(),
-        },
-    }
-}
-
 pub(super) fn layout_key_for_window(
     window_role: Option<StudioWindowHostRole>,
     layout_slot: Option<u16>,

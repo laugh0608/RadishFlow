@@ -152,6 +152,26 @@ fn focus_context_reports_canvas_when_canvas_was_last_interacted_area() {
 }
 
 #[test]
+fn focus_context_reads_live_suggestion_and_keeps_view_settings_modal_priority() {
+    let (config, path) = flash_drum_local_rules_config();
+    let mut app = ready_app_state(&config);
+    app.last_area_focus = Some(StudioGuiWindowAreaId::Canvas);
+    let ctx = egui::Context::default();
+    assert_eq!(
+        app.focus_context(&ctx),
+        StudioGuiFocusContext::CanvasSuggestionFocused
+    );
+    app.open_view_unit_settings(rf_ui::DisplayUnitViewId(app.current_window_id().unwrap()));
+    assert_eq!(app.focus_context(&ctx), StudioGuiFocusContext::ModalDialog);
+    app.unit_settings.view_draft = None;
+    assert_eq!(
+        app.focus_context(&ctx),
+        StudioGuiFocusContext::CanvasSuggestionFocused
+    );
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
 fn focus_context_keeps_global_when_non_canvas_area_was_last_interacted() {
     let mut app = ready_app_state(&lease_expiring_config());
     app.last_area_focus = Some(StudioGuiWindowAreaId::Runtime);

@@ -1,3 +1,5 @@
+#[path = "v3/material.rs"]
+mod material;
 use super::*;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -282,3 +284,15 @@ fn v3_process_later_failure_retains_edits_and_calculation_failure_has_terminal_r
     assert_eq!(r["steps"][1]["terminal"], "failed");
     assert_eq!(r["steps"][1]["result"]["status"], "failed");
 }
+
+#[path = "v4.rs"]
+mod v4;
+
+#[path = "v5.rs"]
+mod v5;
+
+#[path = "v6.rs"]
+mod v6;
+
+#[path = "v7.rs"]
+mod v7;

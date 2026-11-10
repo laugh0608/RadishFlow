@@ -1,0 +1,27 @@
+{
+  "schema_version": 4,
+  "project": "../flowsheets/fixed-tp-recycle-binary-hydrocarbon.rfproj.json",
+  "queries": [
+    {
+      "id": "plan",
+      "query": {
+        "kind": "results",
+        "scope": "flow_plan"
+      }
+    },
+    {
+      "id": "actions",
+      "query": {
+        "kind": "actions",
+        "scope": "flow_plan"
+      }
+    },
+    {
+      "id": "flow",
+      "query": {
+        "kind": "results",
+        "scope": "flow"
+      }
+    }
+  ]
+}

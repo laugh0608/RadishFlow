@@ -1,0 +1,20 @@
+{
+  "schema_version": 5,
+  "project": "../flowsheets/fixed-tp-cross-recycle-binary-hydrocarbon.rfproj.json",
+  "queries": [
+    {
+      "id": "plan",
+      "query": {
+        "kind": "results",
+        "scope": "flow_plan"
+      }
+    },
+    {
+      "id": "result",
+      "query": {
+        "kind": "results",
+        "scope": "flow"
+      }
+    }
+  ]
+}

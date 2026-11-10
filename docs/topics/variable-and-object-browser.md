@@ -1,6 +1,6 @@
 # 统一变量与对象浏览器
 
-更新时间：2026-10-26
+更新时间：2026-10-31
 
 ## 用途与状态
 
@@ -273,15 +273,15 @@ AF4b-4 消费接线：设备 GUI 的 `dispatch_with_receipt` 将正式创建 / �
 GUI 调用入口根据当前只读视图拒绝编辑与运行事件，不能仅依靠按钮禁用；后台取消和未启动状态提供本地化说明。流程旧 Run dispatch 增加可选正式回执，旧 Started / CLI 输出保持；独立执行的 RunId 本来不同，对照测试比较终态、接收与诊断而不抹平运行身份。正式仓库检查与 macOS 实窗的最终证据归 W43。
 
 
-## 接下来事项（2026-10-26 日终建议）
+## 接下来事项（2026-10-31）
 
-AF4a / AF5a、AF4b、AF4c 与 AF5b 已完成已确认批次：共享查询、正式动作、CLI v3 及界面来源 / 定位 / 输出已有代表证据。今天在此收尾，下一次从以下事项恢复；本建议不自动启动新实现。
+AF4a / AF5a、AF4b、AF4c 与 AF5b 已完成已确认批次。[AF6 审查](modeling/solver-strategies-and-assembly.md#af6-扩展边界复核2026-10-31)已完成；所有者随后批准的[有限组分衡算核心](modeling/solver-strategies-and-assembly.md#qs0-首片实施2026-10-31)已接通装配、残差 / Jacobian 与拒绝证据。后续批准的有限物料后端、独立任务与 GUI / CLI 已接通；动态未实现。
 
-1. **先做 AF6 扩展边界复核。** 以现有顺序流程链路为基线，再选一个小型 EO 场景和一个积存动态场景，核对工程事实、任务输入、数学工作区、初始化和结果归属。产出代码证据、可复用边界、真实缺口及后续最小切片；细化内容归[多策略专题的接下来事项](modeling/solver-strategies-and-assembly.md#接下来事项af6-扩展边界复核)。先审查与提出方案，不提前增加空接口、策略 UI 或新算法。
-2. **按审查结论决定后续实现。** 若需要改变模型能力、运行接口、结果结构或存储契约，先说明兼容影响并审定；可以复用的 AF2—AF5 契约保持。EO / 动态 / 瞬态的算法与物理验证分别归 QS / P5 / P6，不以 AF6 通过代替实现验收。
-3. **保留并行问题与证据缺口。** AF1 继续按[生命周期事项](project-lifecycle-storage.md#af1-接下来事项2026-10-23)捕获现场并定因；单次选择器成功不代表修复。I5、Windows / Linux 和完整原生组合按原节点补验。C2-A 方法对比服从基础主线，C2-B / C3、COM、录制和发布不随本建议开工。
+1. **QS1-C 正式接入已实现。** [QS1-A/B 核心](modeling/recycle-and-block-execution.md)已按 D01—D05 实现 Splitter、分块 / 显式撕裂、循环复核与故障验证；[QS1-C01—C06 方案](modeling/recycle-project-and-consumers.md)已确认并实现项目 v4、独立计划 / 双资格、显式连接及已认可 GUI / CLI v4；验证与后续边界见该专题。
+2. **按消费者与物理能力分期扩展。** [QS2](modeling/simultaneous-modular-block.md)已按确认的 D01—D05 实现交叉回流装配、模块响应 / 后端与核心验证；[QS2-C / D06](modeling/simultaneous-project-and-consumers.md)D06 已批准，已完成保存、冻结 / 双资格、真实结果、CLI v5 与经画板认可的 GUI 接线。[QS3](modeling/equation-oriented-block.md)多单元物料方程 / 单比例反算、显式采纳、GUI / CLI v6 已按 D01—D08 完成本机接入及验证。[QS4 首片](modeling/mixed-partition-execution.md)已接通 Local＋正向 EO 的 DAG、v4 与 GUI / CLI v7；更多混合策略、热 / 相平衡 EO、动态仍另审；复用结果资格，不用步骤或快照序号代替迭代 / 时间。
+3. **保留既有问题与验证边界。** AF1 继续按[生命周期事项](project-lifecycle-storage.md#af1-接下来事项2026-10-23)捕获现场并定因。PR #17 的三平台 Rust、Windows .NET / 打包已通过，不能替代原生 GUI / PME、I5 或完整交互组合补验。C2-A 专项服从基础主线，C2-B / C3、COM、录制和发布保持原边界。
 
-今日提交与验证记录见 [W44](../devlogs/2026-10/2026-W44.md#2026-10-26-日终提交回顾与文档核对)；当前正式基线与优先级以[当前状态](../status/current.md)为准。
+本轮记录见 [W44](../devlogs/2026-10/2026-W44.md)；当前正式基线与优先级以[当前状态](../status/current.md)为准。
 
 ## AF4c 新版 CLI 契约（2026-10-26，已确认）
 

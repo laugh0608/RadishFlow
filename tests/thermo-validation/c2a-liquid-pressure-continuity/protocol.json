@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "frozen_before_comparison": "2026-11-05",
+  "scope": "Offline C2-A only; no C2-B/C3, product dependency, interface or format change",
+  "baseline_manifests": {
+    "c2a-pr76": "cfa4cece8569094645b4b4f7ef7f486b619a4d9fafd0b4c25acb1c2eeacd2015",
+    "c2a-evidence-review": "c52e618e5b327bf17a182b0b32a72cff08ced2dd0f7767b9fb3f4181879b5224",
+    "c2a-source-audit": "823851a1aa1c82f45d5ef71bf080f5c86136cb10de5c8c7ff8facc99ee511bdd",
+    "c2a-liquid-density-methods": "47ce175676fc3e0845f4f88bc7ffe4a6892b900a3404e5fadc1c528c90d9071a"
+  },
+  "methods": [
+    "COSTALD-Tait-uniform-Pcm-v1",
+    "modified-Rackett-Tait-uniform-Pcm-v1"
+  ],
+  "saturated_volume": {
+    "COSTALD": "Hankinson-Thomson 1979; Vstar cubic-root mixing, Tcm=sum(x*sqrt(Tc*Vstar))^2/Vstar_mix, omega_SRK mole average; cross interaction explicitly zero",
+    "modified_Rackett": "ChEDL 1.5.2 Rackett_mixture mass-weighted mixing; Tcm and ZRA mole averages; pure limit is modified Rackett, no estimated ZRA"
+  },
+  "pressure_correction": "Both candidates use Thomson-Brobst-Hankinson Tait with COSTALD Tcm/Vstar/omega mixing and Pcm=(0.291-0.080*omega_SRK)*R*Tcm/Vstar for ALL compositions, including pure and zero-padded states. No component-count branch or normalization. Generalized Riedel coefficient 4.86601. The generalized endpoint Pcm is a correlation parameter, not a replacement for the physical Pc stored in parameters.json or used in modified Rackett saturated volumes.",
+  "saturation_observations": "Explicit saturated/bubble liquid observations compare saturated volume directly; measured pressure is retained but not used as an arbitrary TP correction anchor. All other TP inputs use full Tait factor.",
+  "domain": {
+    "temperature_k": [
+      280,
+      320
+    ],
+    "pressure_pa": [
+      200000,
+      1000000
+    ],
+    "reduced_temperature": [
+      0.25,
+      0.95
+    ],
+    "additional": "For compressed inputs P >= correlation Psat; otherwise unavailable, no pressure clamp, root substitution or saturated-volume fallback. Saturation rows use T selection only, as accepted baseline.",
+    "experimental_binary_x_propane": [
+      0.2,
+      0.8
+    ],
+    "engineering_liquid_x_propane": [
+      0,
+      1
+    ],
+    "composition_note": "Experimental selection remains the accepted 0.2–0.8 liquid range; engineering uses actual PR liquid compositions, including outside that selection, without asserting a continuous qualified domain."
+  },
+  "thresholds": {
+    "pressure_relative": 0.02,
+    "density_relative": 0.05,
+    "composition_absolute": 0.02,
+    "beta_absolute": 0.02,
+    "phase_flow_relative": 0.1,
+    "phase_flow_beta_window": [
+      0.1,
+      0.9
+    ],
+    "diameter_relative": 0.05,
+    "load_relative": 0.1,
+    "normalization_absolute": 1e-10,
+    "material_balance_relative": 1e-08,
+    "material_balance_absolute_mol_s": 1e-10
+  },
+  "engineering": "Exactly the accepted 276-row engineering input matrix; preserve gas flow/density and PR beta/x, recompute liquid rho and Q from PR phase molar flow and candidate molar volume. HEOS comparison remains model screening, not experiment. Missing candidate points remain recorded. Same 0.1/1/10 flow scales, two geometries and S1/S2 API.",
+  "failure_policy": "Keep all baseline cases/exclusions and phase anomalies by immutable reference. No fitting, new kij, volume translation, threshold relaxation, shrinking continuous domain, or qualification of VLE/gas density from liquid density improvement.",
+  "historical_repository_drift": {
+    "Cargo.lock": {
+      "historical_sha256": "2af0b0c404f2b96dd6be6d2309855ff71902a61b57a4448bc2d33861d13db6e4",
+      "current_sha256": "87259e82009ba6e989b34e43e0acd1631561d0e91e3604c929798c1a5f3d4078",
+      "reason": "Subsequent approved repository development changed Cargo.lock; original manifest and all original validation files/harness/S1/S2 modules remain unchanged. This is replay with the current locked harness, not byte-identical reconstruction of the 2026-10-22 build environment."
+    }
+  },
+  "candidate_id": "c2a-liquid-pressure-continuity-v1",
+  "previous_method_names": {
+    "COSTALD-Tait-uniform-Pcm-v1": "COSTALD-Tait-1982",
+    "modified-Rackett-Tait-uniform-Pcm-v1": "modified-Rackett-Tait-hybrid"
+  },
+  "change_from_previous": "Only pressure pseudo-critical Pc/Pcm selection changes. Dedicated parameters and saturated volumes remain identical; old pressure branch, reports, failures and all four manifests are immutable. This is a separately named offline candidate, not a correction of old results.",
+  "boundary_validation": {
+    "temperature_k": [
+      280,
+      300,
+      320
+    ],
+    "x_propane": [
+      0,
+      1e-12,
+      1e-09,
+      1e-06,
+      0.2,
+      0.5,
+      0.8,
+      0.999999,
+      0.999999999,
+      0.999999999999,
+      1
+    ],
+    "pressure_probe": "1 MPa and P=Ps times (1-1e-8, 1, 1+1e-8). Preserve original TP bounds: boundary probes outside them are recorded unavailable; algebraic Tait(P=Ps)=1 tested separately.",
+    "endpoint_test_relative_tolerance": 1e-09,
+    "endpoint_trace_fraction": 1e-12,
+    "tolerance_role": "Floating-point continuity regression only, not an experimental accuracy threshold or qualified continuous domain."
+  }
+}

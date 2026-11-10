@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-10-26
+更新时间：2026-10-31
 
 > 本文用于运行与验证当前 MVP 用户路径。内置样例与历史 `official` 称谓表示仓库演示 / 回归案例，运行成功不构成工程精度验证；解释结果前请阅读 [模型与样例边界](../thermo/mvp-model.md)。
 
@@ -10,21 +10,16 @@
 
 ## 当前能做什么
 
-截至 2026-10-26，源码支持以下路径；历史 staging 不包含后续能力，平台验证见专题：
+当前源码支持以下路径；历史 staging 不包含后续能力：
 
 - 启动后默认进入中文 Home Dashboard，可从 `开始 / 最近项目 / 示例项目 / 环境 / 消息` 分区判断从哪里开始
 - 新建未命名空白项目后先进入独立 `物性` 页，并从受控内置列表显式选择 `二元烃 Lite` 与 `methane / ethane`，再进入最短建模路径；项目文件仍保存稳定 id `binary-hydrocarbon-lite-v1`
 - 打开已有 `*.rfproj.json` 项目；原生项目选择器已接入 Windows / macOS，Linux 尚未接入
-- 通过首页 `新建项目`、`打开项目`、`打开示例项目` 或进入工作台后的 `文件` 菜单切换项目；本次会话已有当前工作区时，Home 左侧开始区会显示 `返回工作区`
 - 通过首页 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例` 从空白项目进入对应作者路径，并在左侧 `模块` 面板查看任务清单
-- 最近项目、当前工作区与示例卡片展示流程缩影和项目摘要；单击选择、双击打开，未保存项目不进入最近项目
-- 顶部导航提供 `文件 / 主页 / 物性 / 设备 / 流程图 / 运行 / 结果 / 工具 / 设置`，具体入口见下文
 - 运行仓库内或便携 staging 内的 official hydrocarbon 正向示例 flowsheet
-- `物性` 页维护包与组分；`流程图` 提供模块分类、项目树、Canvas、检查器和运行信息；各 screen 的上下文工具栏只显示当前可用动作
-- 在当前 `SolveSnapshot` 内切换 stream-centric / unit-centric / comparison 三类结果审阅面
-- 右侧检查器显示所选对象参数、端口和诊断；模块结果显示当前修订的流股、步骤与诊断，过期时隐藏旧数值
-- 复制当前 `SolveSnapshot` 文本，或导出当前快照为轻量 `.txt`；导出文本包含快照 ID、文档 revision、捕获的项目显示单位与 `Streams / Review / Units / Steps / Diagnostics`
-- 通过 `检查`、`诊断目标`、结果选择项和命令入口在流股、单元、步骤和当前检查器之间定位同一份结果
+- 在当前有资格的流程结果内切换 stream-centric / unit-centric / comparison 三类结果审阅面
+- 右侧检查器显示所选对象参数、端口和诊断；模块结果显示当前有资格的流股、执行位置与诊断，过期时隐藏旧数值
+- 复制当前流程结果文本，或导出当前快照为轻量 `.txt`；导出文本包含快照 ID、文档 revision、捕获的项目显示单位与 `Streams / Review / Units / Steps / Diagnostics`
 - 在流股检查器中编辑流股基础字段与组成草稿，并显式提交、归一化或丢弃
 - 在单元检查器 / Module Settings 中编辑首批关键单元参数：`Feed` 的 source temperature / pressure、`Heater / Cooler` 的 outlet temperature / outlet pressure、`Mixer / Valve` 的 outlet pressure 和 `Flash Drum` 的 flash temperature / flash pressure
 - 为首批温度、压力和摩尔流量字段选择本次输入单位，应用后按项目或检查器显示单位回显；输入错误、来源及输入法组合状态提供中英文说明，结果表 / 浏览器 / 文本导出使用项目显示单位，底层数据与 CLI 协议保持 SI
@@ -36,8 +31,6 @@
 - 保存当前项目，或通过顶部 `文件` 菜单中的 `另存为...` / 未命名项目首次 `保存` 到新路径
 - 关闭窗口或在 macOS 使用 `Cmd+Q` 退出时，若当前工作区有未保存变更，会进入与窗口关闭按钮相同的保存 / 舍弃 / 取消确认路径
 - 保存并恢复 Canvas placement / viewport sidecar：`<project>.rfstudio-layout.json`；当前可拖动单元位置、平移 viewport，并用 `Fit to content` 重新居中
-- Studio shell 使用随应用打包的 `InterVariable` 与 `SourceHanSansSC` 字体资源显示中文 UI，不依赖操作系统中某个固定 CJK 字体名称
-- 默认隐藏低频命令大全；需要完整命令列表时可从顶部 `工具` 或命令面板入口展开
 
 当前最短可求解建模路径已经覆盖：
 
@@ -216,7 +209,7 @@ Current 尺寸任务点击 `采纳为设计几何`，选择新建或已有目标
 
 单位菜单可用 Enter / Space 打开，上下键或 Tab / Shift+Tab 移动，Home / End 到首尾，Enter / Space 确认，Escape 只关闭菜单并保留候选。菜单关闭后，数值字段再次 Escape 才取消编辑。输入法正在组合时会显示原因及当前输入单位，单位切换、应用和输入撤销 / 重做暂不可用；“取消编辑”仍可用。macOS 已有原生抽样，读屏、完整系统缩放和跨平台矩阵仍待验证。
 
-其他量和结果 / 浏览器 / 文本输出尚未接入 U3，以各自 SI 标签为准。完整规则见 [单位输入](../topics/units/input-drafts-and-interactions.md) 与 [单位保存](../topics/units/unit-sets-and-persistence.md)。
+首批结果 / 浏览器 / 文本输出已使用项目显示单位；未覆盖的量以各自标签为准，CLI 保持 SI。完整规则见 [单位输入](../topics/units/input-drafts-and-interactions.md) 与 [单位保存](../topics/units/unit-sets-and-persistence.md)。
 
 ## 修改、撤销和保存
 
@@ -228,15 +221,21 @@ Current 尺寸任务点击 `采纳为设计几何`，选择新建或已有目标
 
 macOS 工程撤销 / 重做使用 `⌘Z / ⇧⌘Z`，保留 `⌘Y`；Windows / Linux 使用 `Ctrl+Z / Ctrl+Y`。文本焦点优先消费输入历史，显示单位使用设置中的呈现历史，工程历史可从 `工具` 命令面板执行。有未提交输入时，工程 Undo / Redo 和会修改模型的修复会先列出待放弃输入；删除只列出被删对象的草稿，其他对象编辑保留并重验。取消、过期确认或事务失败不会放弃输入。
 
-实际物理输入变化、工程 Undo / Redo 后需重跑；纯显示单位切换或已指定值的等价输入不使当前结果过期。`文件 → 保存 / 另存为` 保存已提交值和已应用项目显示设置，不自动应用或清除草稿；macOS 快捷键为 `⌘S`。保存摘要分别列出工程内容、显示设置和未提交输入。新工程保存为 v2，来源 v1 的工程须明确同意升级，取消不改原件。
+实际物理输入变化、工程 Undo / Redo 后需重跑；纯显示单位切换或已指定值的等价输入不使当前结果过期。`文件 → 保存 / 另存为` 保存已提交值和已应用项目显示设置，不自动应用或清除草稿；macOS 快捷键为 `⌘S`。保存摘要分别列出工程内容、显示设置和未提交输入。无设备 / 新计划能力的普通新工程保存为 v2；设备能力使用 v3，Splitter 或非默认流程计划使用 v4。首次能力升级须确认，即使外层同为 v4 也可能需要；取消不改原件。
 
-首次保存同步布局 sidecar；若提示“项目已保存，布局保存失败”，工程数据已保存，可重试保存布局。重开保留工程和已保存布局，三类 Undo / Redo 历史均不跨会话保留。有草稿时“保存并关闭”仍保持窗口，须返回应用 / 取消编辑，或明确舍弃后关闭。
+首次保存同步布局 sidecar；若提示“项目已保存，布局保存失败”，工程数据已保存，可重试保存布局。重开保留工程和已保存布局，各类 Undo / Redo 历史均不跨会话保留。有草稿时“保存并关闭”仍保持窗口，须返回应用 / 取消编辑，或明确舍弃后关闭。
+
+## 固定温压回流与物料方程
+
+在 `运行` 页检查计划并按 F5：QS1 为撕裂分块 SM，QS2 为仿射联立，QS3 为物料 EO 正向 / 单比例反算；热 / 相平衡不在这些方程范围。计划独立 Apply / Undo / Redo，保存为 v4，重开后须重算。QS0“物料衡算（独立任务）”不替换流程结果。
+
+[EO 示例](../../examples/flowsheets/fixed-tp-material-eo-binary-hydrocarbon.rfproj.json)目标 1.5 mol/s，求得比例约 0.526315789474。只有显式采纳才改原输入；随后 Stale、反算计划保留且不自动运行。正向重算须移除释放量和目标、应用后再 F5。更多示例与边界见 [QS3](../topics/modeling/equation-oriented-block.md)。
 
 ## 变量浏览与无界面运行
 
 在 `工具 → 变量浏览器` 按对象搜索输入、结果和动作说明，并定位检查器编辑。浏览器只读，不展示未提交草稿；缺结果明确标识，旧结果保留来源但隐藏数值，重跑后恢复当前结果。
 
-旧 `--headless inspect` / `run` 保持 v1 / v2 流程协议；新版 `--headless query` / `execute` 使用 v3，支持查询、正式编辑、检查、流程 / 设备计算及采纳。仅显式 `run_flow` 需要流程缓存，其他操作不需要。所有命令使用 SI，只改内存；新版不隐式运行或保存，影响确认按摘要重放。请求与退出码见 [CLI 参考](../reference/headless-cli.md)。
+旧 `--headless inspect` / `run` 保持 v1 / v2 流程协议；`--headless query` / `execute` 支持 v3—v6；v3 覆盖既有编辑 / 设备及 QS0，v4 / v5 / v6 分别增加回流 / 仿射联立 / 物料 EO。旧协议能力固定，不能通过共享 parser 越过兼容边界。仅显式 `run_flow` 需要流程缓存，其他操作不需要。所有命令使用 SI，只改内存；新版不隐式运行或保存，影响确认按摘要重放。请求与退出码见 [CLI 参考](../reference/headless-cli.md)。
 
 ## 单元参数与连接诊断
 

@@ -1,0 +1,41 @@
+{
+  "schema_version": 7,
+  "project": "../flowsheets/fixed-tp-mixed-material-binary-hydrocarbon.rfproj.json",
+  "expected_project": {
+    "document_id": "example-qs4-fixed-tp-mixed-material",
+    "file_sha256": "58fd8a2de97274eb6646b5bc22a4d2ac3839a410cc648371d8e93e8539537b43"
+  },
+  "flow_resources": {
+    "cache_root": "./property-package-cache",
+    "auth_cache_index": "./auth-cache-index.json",
+    "package": {
+      "kind": "preferred"
+    }
+  },
+  "steps": [
+    {
+      "id": "solve",
+      "action": {
+        "kind": "run_flow",
+        "expected_revision": 0,
+        "expected_plan_revision": 0
+      }
+    }
+  ],
+  "queries": [
+    {
+      "id": "plan",
+      "query": {
+        "kind": "results",
+        "scope": "flow_plan"
+      }
+    },
+    {
+      "id": "result",
+      "query": {
+        "kind": "results",
+        "scope": "flow"
+      }
+    }
+  ]
+}

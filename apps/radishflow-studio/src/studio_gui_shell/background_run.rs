@@ -189,6 +189,13 @@ impl ReadyAppState {
         let zh = self.locale == StudioShellLocale::ZhCn;
         let cancelling = activity.phase == WorkspaceRunPhase::CancelRequested;
         let kind = match activity.id {
+            StudioRunId::Material(_) => {
+                if zh {
+                    "物料衡算"
+                } else {
+                    "Material balance"
+                }
+            }
             StudioRunId::Flow(_) => {
                 if zh {
                     "流程"
@@ -239,14 +246,24 @@ impl ReadyAppState {
                 }
             });
             if let Some(owner) = &self.background_runs
-                && let Some(progress) = owner.borrow().flow_progress()
-                && let radishflow_studio::WorkspaceSolveProgress::Solving(progress) = progress.progress {
-                if let Some(unit) = progress.current_unit {
-                    ui.label(if zh { format!("当前单元：{unit}") } else { format!("Current unit: {unit}") });
-                }
-                if let Some(total) = progress.total_units {
-                    ui.label(if zh { format!("已完成 {} / {total} 个单元", progress.completed_units) }
-                        else { format!("{} / {total} units completed", progress.completed_units) });
+                && let Some(progress) = owner.borrow().flow_progress() {
+                match progress.progress {
+                    radishflow_studio::WorkspaceSolveProgress::Solving(progress) => {
+                        if let Some(unit) = progress.current_unit { ui.label(if zh { format!("当前单元：{unit}") } else { format!("Current unit: {unit}") }); }
+                        if let Some(total) = progress.total_units { ui.label(if zh { format!("已完成 {} / {total} 个单元",progress.completed_units) } else { format!("{} / {total} units completed",progress.completed_units) }); }
+                    }
+                    radishflow_studio::WorkspaceSolveProgress::Partitioned(progress) => {
+                        if let Some(block) = progress.block { ui.label(format!("{} {}",if zh {"依赖块"} else {"Block"},block+1)); }
+                        if let Some(unit) = progress.unit { ui.label(format!("{}: {unit}",if zh {"当前单元"} else {"Current unit"})); }
+                        if let Some(evaluation) = progress.evaluation { ui.label(format!("{} #{evaluation}",match progress.phase {Some(rf_solver::partitioned::EvaluationPhase::Verification)=>if zh {"独立复核"} else {"Independent verification"},_=>if zh {"迭代求值"} else {"Iteration evaluation"}})); }
+                        if let Some(sample) = progress.residual { ui.label(format!("{}: {:.3e} mol/s · scaled {:.3e}",if zh {"最近完成残差"} else {"Last completed residual"},sample.max_absolute_mol_s,sample.max_scaled)); }
+                    }
+                    radishflow_studio::WorkspaceSolveProgress::Mixed(progress)=>{ui.label(flow_plan::mixed_results::progress_text(&progress,zh));}
+                    radishflow_studio::WorkspaceSolveProgress::EquationOriented(progress)=>{ui.label(flow_plan::equation_results::progress_text(&progress,zh));}
+                    radishflow_studio::WorkspaceSolveProgress::Simultaneous(progress) => {
+                        ui.label(flow_plan::modular_results::progress_text(&progress, zh));
+                    }
+                    _ => {}
                 }
             }
             if let Ok(elapsed) = activity.submitted_at.elapsed() {
@@ -277,13 +294,13 @@ impl ReadyAppState {
         !matches!(
             command,
             "run_panel.run_manual" | "run_panel.resume_workspace"
-        ) || !self.background_busy()
+        ) || (!self.background_busy() && !self.modular_plan_draft_pending())
     }
     pub(super) fn run_panel_background_enabled(&self, action: rf_ui::RunPanelActionId) -> bool {
         !matches!(
             action,
             rf_ui::RunPanelActionId::RunManual | rf_ui::RunPanelActionId::Resume
-        ) || !self.background_busy()
+        ) || (!self.background_busy() && !self.modular_plan_draft_pending())
     }
     pub(super) fn background_command_label<'a>(&self, command: &str, fallback: &'a str) -> &'a str {
         let fallback = self.recommendation_command_label(command, fallback);
@@ -511,6 +528,91 @@ impl ReadyAppState {
                     format!("用时 {:.2} 秒", duration.as_secs_f64())
                 } else {
                     format!("Elapsed {:.2} s", duration.as_secs_f64())
+                });
+            }
+            if let StudioRunId::Flow(id) = &summary.activity.id
+                && let Some(failure) = owner.mixed_diagnostic(id)
+            {
+                ui.push_id(("mixed", summary.activity.number), |ui| {
+                    ui.collapsing(
+                        if zh {
+                            "本次混合分区诊断（非当前结果）"
+                        } else {
+                            "Mixed execution diagnostics (not current results)"
+                        },
+                        |ui| {
+                            ui.label(flow_plan::mixed_results::progress_text(
+                                &failure.progress,
+                                zh,
+                            ));
+                            for line in radishflow_studio::mixed_evidence::failure_lines(
+                                failure,
+                                self.platform_host
+                                    .modeling_inputs()
+                                    .workspace
+                                    .project_presentation
+                                    .display_units(),
+                            )
+                            .lines
+                            {
+                                ui.label(line);
+                            }
+                        },
+                    );
+                });
+            }
+            if let StudioRunId::Flow(id) = &summary.activity.id
+                && let Some(failure) = owner.equation_diagnostic(id)
+            {
+                ui.push_id(("eo", summary.activity.number), |ui| {
+                    ui.collapsing(
+                        if zh {
+                            "本次 EO 执行诊断（非当前结果）"
+                        } else {
+                            "EO execution diagnostics (not current results)"
+                        },
+                        |ui| {
+                            for line in radishflow_studio::equation_evidence::failure_lines(
+                                failure,
+                                self.platform_host
+                                    .modeling_inputs()
+                                    .workspace
+                                    .project_presentation
+                                    .display_units(),
+                            )
+                            .lines
+                            {
+                                ui.label(line);
+                            }
+                        },
+                    );
+                });
+            }
+            if let StudioRunId::Flow(id) = &summary.activity.id
+                && let Some(failure) = owner.flow_diagnostic(id)
+            {
+                ui.push_id(summary.activity.number, |ui| {
+                    ui.collapsing(
+                        if zh {
+                            "本次执行诊断（非当前结果）"
+                        } else {
+                            "Execution diagnostics (not current results)"
+                        },
+                        |ui| {
+                            for line in radishflow_studio::modular_evidence::failure_lines(
+                                failure,
+                                self.platform_host
+                                    .modeling_inputs()
+                                    .workspace
+                                    .project_presentation
+                                    .display_units(),
+                            )
+                            .lines
+                            {
+                                ui.label(line);
+                            }
+                        },
+                    );
                 });
             }
             if let Some(code) = &summary.diagnostic_code {

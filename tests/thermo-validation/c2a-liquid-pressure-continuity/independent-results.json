@@ -1,0 +1,10 @@
+{
+  "density_values_checked": 138,
+  "unavailable_retained": 2,
+  "maximum_density_relative_difference_60_digit_decimal": 1.4123332286235663e-15,
+  "engineering_rows_checked": 552,
+  "independent_numeric_checks": 1656,
+  "maximum_engineering_relative_difference": 4.440892098500626e-16,
+  "engineering_control_and_verdict_rows_checked": 552,
+  "policy": "Independent arithmetic of uniform-Pcm-v1; no physical qualification or C2-B/C3 approval."
+}

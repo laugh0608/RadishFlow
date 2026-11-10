@@ -26,8 +26,16 @@ fn variable_browser_observes_committed_edits_staleness_reopen_and_inspector_navi
     let snapshot = app.platform_host.snapshot();
     let browser = VariableBrowser::new(
         app.platform_host.document(),
-        snapshot.runtime.latest_solve_snapshot.as_ref(),
-        snapshot.runtime.stale_solve_snapshot.as_ref(),
+        snapshot
+            .runtime
+            .latest_solve_snapshot
+            .as_ref()
+            .and_then(|s| s.acyclic()),
+        snapshot
+            .runtime
+            .stale_solve_snapshot
+            .as_ref()
+            .and_then(|s| s.acyclic()),
     );
     let unit = ObjectId::Unit(UnitId::new("cooler-1"));
     let input = browser
@@ -63,8 +71,16 @@ fn variable_browser_observes_committed_edits_staleness_reopen_and_inspector_navi
     let snapshot = app.platform_host.snapshot();
     let browser = VariableBrowser::new(
         app.platform_host.document(),
-        snapshot.runtime.latest_solve_snapshot.as_ref(),
-        snapshot.runtime.stale_solve_snapshot.as_ref(),
+        snapshot
+            .runtime
+            .latest_solve_snapshot
+            .as_ref()
+            .and_then(|s| s.acyclic()),
+        snapshot
+            .runtime
+            .stale_solve_snapshot
+            .as_ref()
+            .and_then(|s| s.acyclic()),
     );
     assert_eq!(
         browser.read(&input.id).unwrap().value,
@@ -75,8 +91,16 @@ fn variable_browser_observes_committed_edits_staleness_reopen_and_inspector_navi
     let snapshot = app.platform_host.snapshot();
     let browser = VariableBrowser::new(
         app.platform_host.document(),
-        snapshot.runtime.latest_solve_snapshot.as_ref(),
-        snapshot.runtime.stale_solve_snapshot.as_ref(),
+        snapshot
+            .runtime
+            .latest_solve_snapshot
+            .as_ref()
+            .and_then(|s| s.acyclic()),
+        snapshot
+            .runtime
+            .stale_solve_snapshot
+            .as_ref()
+            .and_then(|s| s.acyclic()),
     );
     assert_eq!(
         browser.read(&input.id).unwrap().value,
@@ -97,8 +121,16 @@ fn variable_browser_observes_committed_edits_staleness_reopen_and_inspector_navi
     let snapshot = app.platform_host.snapshot();
     let browser = VariableBrowser::new(
         app.platform_host.document(),
-        snapshot.runtime.latest_solve_snapshot.as_ref(),
-        snapshot.runtime.stale_solve_snapshot.as_ref(),
+        snapshot
+            .runtime
+            .latest_solve_snapshot
+            .as_ref()
+            .and_then(|s| s.acyclic()),
+        snapshot
+            .runtime
+            .stale_solve_snapshot
+            .as_ref()
+            .and_then(|s| s.acyclic()),
     );
     assert_eq!(
         browser.read(&output.id).unwrap().value,

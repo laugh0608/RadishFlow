@@ -1,6 +1,6 @@
 # Open-Source References
 
-更新时间：2026-09-13
+更新时间：2026-11-01
 
 ## 文档目的
 
@@ -55,7 +55,7 @@
 2. 数值切片再按具体模型选择 thermo / flash / unitops / solver 参考，同时建立独立验证来源。
 3. 长期稳态、动态、瞬态及多求解方式的领域边界见 [模拟平台规划](simulation-platform.md)；不因参考项目庞大而提前引入无消费者的框架或整套实现。
 
-下列项目条目中的 `M3/M4` 价值判断保留为原 MVP 选型背景，不作为现行优先级。许可证描述也不代替引入具体版本前的重新核验；本轮只调整规划，不引入第三方依赖或数据。
+下列项目条目中的 `M3/M4` 价值判断保留为原 MVP 选型背景，不作为现行优先级。许可证描述也不代替引入具体版本前的重新核验；收录参考项目不代表批准引入第三方依赖或数据，也不改变现有排期。
 
 ## 可直接借鉴代码的参考项目
 
@@ -149,6 +149,32 @@
   - 只吸收架构和行为经验
   - 不直接复制实现代码
   - 不把其大而全的范围提前压入当前 MVP
+
+### `Flowstead`
+
+- 项目：[`HazemMancy/Flowstead`](https://github.com/HazemMancy/Flowstead)
+- 许可证：`GPL-3.0-or-later`，见上游 [LICENSE](https://github.com/HazemMancy/Flowstead/blob/main/LICENSE) 与 [NOTICE](https://github.com/HazemMancy/Flowstead/blob/main/NOTICE.md)；其 DWSIM 引擎及第三方组件另有相应许可。
+- 参考定位：工程工作台、交互、诊断与交付体验的专项参考；不是 RadishFlow 的核心架构模板或已批准依赖。
+- 审阅范围：2026-11-01 对上游 `main` 文档和代表源码做静态抽查，未构建或运行 Android 应用。以下为当时观察，不构成其完整能力或工程精度验收。
+- 技术路线：Kotlin / Jetpack Compose 前端、`.NET 10` 引擎层与 DWSIM 10.2.12；支持手机内嵌引擎及自托管服务。稳态流程与热物性主要复用 DWSIM，另有自建工程与动态模型，见 [项目说明](https://github.com/HazemMancy/Flowstead/blob/main/README.md)。
+
+值得借鉴的点：
+
+| 方向 | 参考内容与来源 | 对 RadishFlow 的价值 |
+| --- | --- | --- |
+| 画布可读性 | [端口朝向、正交连线、回流绕行与命中区域](https://github.com/HazemMancy/Flowstead/blob/main/android/app/src/main/kotlin/app/flowstead/ui/flowsheet/CanvasGeometry.kt) | 完善流程图表达与交互；二维符号的立体视觉不代表真实设备几何或三维模拟 |
+| 对象状态与结果资格 | [缺项及依赖等待传播](https://github.com/HazemMancy/Flowstead/blob/main/android/core/src/main/kotlin/app/flowstead/core/model/Readiness.kt)、[结果过期与缺值表达](https://github.com/HazemMancy/Flowstead/blob/main/android/core/src/main/kotlin/app/flowstead/core/model/Results.kt) | 让诊断定位到对象；布局变化与求解输入变化分开。部分流程求解需按我们的任务与结果契约另行设计 |
+| 设备工程检查 | [求解后设备检查](https://github.com/HazemMancy/Flowstead/blob/main/engine/src/Flowstead.Engine.Worker/UnitChecks.cs)：泵入口汽相、压机入口液相、压力方向、换热温度交叉等 | 分别表达数值收敛、工程适用性与指定校核结果；检查必须依赖已验证的物性及单元模型 |
+| 工程交付 | [设备数据表](https://github.com/HazemMancy/Flowstead/blob/main/android/core/src/main/kotlin/app/flowstead/core/export/DataSheets.kt)、[热量与物料衡算表](https://github.com/HazemMancy/Flowstead/blob/main/android/core/src/main/kotlin/app/flowstead/core/export/HeatMaterialBalance.kt)，以及 PFD、PDF / Excel 输出的组织方式 | 作为结果审阅和计算记录的产品样板；沿用我们的单位、来源、结果资格与显式采纳边界 |
+| 验证组织 | [基准说明](https://github.com/HazemMancy/Flowstead/blob/main/benchmarks/README.md)区分自生成回归值与独立参考；[重算测试](https://github.com/HazemMancy/Flowstead/blob/main/engine/tests/Flowstead.Engine.Tests/RecalculationTests.cs)比较增量与全量求解 | 学习算例组织和对照方法，不把上游自生成预期值直接当作物理准确性基准 |
+| 动态场景 | [自建动态模型](https://github.com/HazemMancy/Flowstead/blob/main/engine/src/Flowstead.Engine.Worker/DynamicsSim.cs)以分离器积存、阀门、PIC / LIC、扰动与趋势组成闭环，调用 DWSIM 闪蒸和物性 | 可供未来首个动态场景选题；其显式积分和有限设备覆盖不替代我们的动态模型与数值方法验收 |
+
+许可与采用边界：
+
+- 按本文 GPL 参考规则，只吸收行为、分层、交互和测试组织思路；不复制源码，不做逐段翻译或改写式移植。图标、素材和数据也不得因源码公开而默认复制，使用前须核对具体来源与许可；确需引入时另行评估兼容性。
+- 公式、关联式和工程准则回到有来源的论文、标准或教材后自行实现并验证。[分离器计算](https://github.com/HazemMancy/Flowstead/blob/main/android/core/src/main/kotlin/app/flowstead/core/model/SeparatorSizing.kt)中的 K 值、持液时间等默认值不直接成为我们的工程准则，继续遵守[设备工程](../topics/equipment-design-and-rating.md)的数据来源、适用域与采纳契约。
+- 上游 `engine-provisional` 只证明回归可重复；抽查的[两相闪蒸案例](https://github.com/HazemMancy/Flowstead/blob/main/benchmarks/03-two-phase-flash/expected.json)尚无独立 `reference`。算例、截图和功能清单均不能替代独立物理验证。
+- 本次仅收录参考，不修改代码、依赖、验证基线或现有排期；不据此启动移动端、DWSIM 引擎接入、完整动态或安全泄放功能。Rust Core 与 `.NET` CAPE-OPEN / COM 的既有边界保持。
 
 ### `IDAES`
 
@@ -245,6 +271,7 @@
 - [CoolProp GitHub 仓库](https://github.com/CoolProp/CoolProp)
 - [ThermoPack GitHub 仓库](https://github.com/thermotools/thermopack)
 - [DWSIM GitHub 仓库](https://github.com/DanWBR/dwsim)
+- [Flowstead GitHub 仓库](https://github.com/HazemMancy/Flowstead)
 - [IDAES GitHub 仓库](https://github.com/IDAES/idaes-pse)
 - [Cantera GitHub 仓库](https://github.com/Cantera/cantera)
 

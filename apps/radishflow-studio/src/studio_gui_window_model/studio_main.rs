@@ -15,9 +15,21 @@ pub enum StudioGuiWindowHomeCaseTileStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StudioGuiWindowThumbnailFlowModel {
-    pub nodes: Vec<String>,
-    pub edges: Vec<(usize, usize)>,
+pub enum StudioGuiWindowHomePreviewModel {
+    Unavailable,
+    Summary {
+        unit_count: usize,
+        stream_count: Option<usize>,
+    },
+    SmallFlow {
+        nodes: Vec<String>,
+        edges: Vec<(usize, usize)>,
+        stream_count: Option<usize>,
+    },
+}
+
+impl StudioGuiWindowHomePreviewModel {
+    pub const MAX_UNITS: usize = 6;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,7 +43,7 @@ pub struct StudioGuiWindowHomeCaseTileModel {
     pub component_summary: String,
     pub status: StudioGuiWindowHomeCaseTileStatus,
     pub status_label: &'static str,
-    pub thumbnail: StudioGuiWindowThumbnailFlowModel,
+    pub preview: StudioGuiWindowHomePreviewModel,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -448,8 +460,13 @@ impl StudioGuiWindowModuleResultsModel {
             state: StudioGuiWindowModuleResultsState::Current,
             state_label: module_results_state_label(StudioGuiWindowModuleResultsState::Current),
             detail: format!(
-                "Snapshot {} step #{} for {}.",
-                snapshot.snapshot_id, selected_unit_result.step_index, selected_unit.target_id
+                "Snapshot {} {} for {}.",
+                snapshot.snapshot_id,
+                match selected_unit_result.location {
+                    super::ResultExecutionLocation::Step(i) => format!("step #{i}"),
+                    other => other.to_string(),
+                },
+                selected_unit.target_id
             ),
             selected_unit: Some(selected_unit),
             snapshot_id: Some(snapshot.snapshot_id.clone()),
@@ -490,10 +507,25 @@ impl StudioGuiWindowStatusSummaryModel {
                     .map(|_| "Stale".to_string())
             })
             .unwrap_or_else(|| "N/A".to_string());
+        let equation_count = runtime
+            .latest_solve_snapshot
+            .as_ref()
+            .and_then(|s| s.equation_oriented.as_ref())
+            .and_then(|e| e.result.evidence.definition.as_ref())
+            .map(|d| d.equations.len());
+        let partitioned = runtime
+            .latest_solve_snapshot
+            .as_ref()
+            .and_then(|s| s.block_count());
         let step_value = runtime
             .latest_solve_snapshot
             .as_ref()
-            .map(|snapshot| snapshot.step_count.to_string())
+            .map(|snapshot| {
+                equation_count
+                    .or_else(|| snapshot.block_count())
+                    .unwrap_or(snapshot.step_count)
+                    .to_string()
+            })
             .unwrap_or_else(|| "N/A".to_string());
         let (unit_value, unit_status_label) =
             if let Some(snapshot) = runtime.latest_solve_snapshot.as_ref() {
@@ -552,11 +584,24 @@ impl StudioGuiWindowStatusSummaryModel {
                         .to_string(),
                 },
                 StudioGuiWindowStatusSummaryMetricModel {
-                    label: "Steps",
+                    label: if equation_count.is_some() {"Equations"} else if partitioned.is_some() {
+                        "Blocks"
+                    } else {
+                        "Steps"
+                    },
                     value: step_value,
-                    status_label: "Sequential steps".to_string(),
-                    detail: "Sequential modular solve steps; no fabricated iteration count."
-                        .to_string(),
+                    status_label: if equation_count.is_some() {"Material equations"} else if partitioned.is_some() {
+                        "Dependency blocks"
+                    } else {
+                        "Sequential steps"
+                    }
+                    .to_string(),
+                    detail: if equation_count.is_some() {"Verified material equations; conditional evaluations are reported separately."} else if partitioned.is_some() {
+                        "Completed dependency blocks; recycle evaluations are reported separately."
+                    } else {
+                        "Sequential modular solve steps; no fabricated iteration count."
+                    }
+                    .to_string(),
                 },
                 StudioGuiWindowStatusSummaryMetricModel {
                     label: "Units",
@@ -762,11 +807,22 @@ fn example_case_tile_from_model(
         component_summary: "Methane, Ethane".to_string(),
         status,
         status_label: home_case_tile_status_label(status),
-        thumbnail: thumbnail_from_case_title(example.title),
+        preview: preview_from_case_title(example.title),
     }
 }
 
-fn thumbnail_from_case_title(title: &str) -> StudioGuiWindowThumbnailFlowModel {
+fn preview_from_case_title(title: &str) -> StudioGuiWindowHomePreviewModel {
+    let unit_count = title
+        .split("->")
+        .flat_map(|stage| stage.split('+'))
+        .filter(|node| !node.trim().is_empty())
+        .count();
+    if unit_count == 0 || unit_count > StudioGuiWindowHomePreviewModel::MAX_UNITS {
+        return StudioGuiWindowHomePreviewModel::Summary {
+            unit_count,
+            stream_count: None,
+        };
+    }
     let stages = title
         .split("->")
         .map(|stage| {
@@ -802,7 +858,11 @@ fn thumbnail_from_case_title(title: &str) -> StudioGuiWindowThumbnailFlowModel {
         }
     }
 
-    StudioGuiWindowThumbnailFlowModel { nodes, edges }
+    StudioGuiWindowHomePreviewModel::SmallFlow {
+        nodes,
+        edges,
+        stream_count: None,
+    }
 }
 
 fn home_case_tile_status_label(status: StudioGuiWindowHomeCaseTileStatus) -> &'static str {

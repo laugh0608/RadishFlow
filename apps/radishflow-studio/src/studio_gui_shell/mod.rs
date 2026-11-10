@@ -35,11 +35,13 @@ mod canvas_navigation;
 mod chrome;
 mod equipment;
 mod failure_recovery;
+mod flow_plan;
 mod fonts;
 mod home_dashboard;
 mod input_departure;
 mod keyboard;
 mod locale;
+mod material_balance;
 mod modeling_problems;
 mod modeling_readiness;
 mod modeling_recommendations;
@@ -155,6 +157,8 @@ struct ReadyAppState {
     result_inspector: ResultInspectorState,
     screen: StudioShellScreen,
     equipment: equipment::EquipmentPageState,
+    material: material_balance::MaterialPanelState,
+    flow_plan: flow_plan::FlowPlanPanelState,
     left_sidebar_tab: StudioShellLeftSidebarTab,
     right_sidebar_tab: StudioShellRightSidebarTab,
     bottom_drawer_tab: StudioShellBottomDrawerTab,
@@ -464,7 +468,10 @@ impl ReadyAppState {
                 ),
             };
         let read_only_project = if config.untitled_blank_project.is_none() {
-            match radishflow_studio::read_studio_project(&config.project_path)? {
+            match radishflow_studio::read_studio_project_with_support(
+                &config.project_path,
+                rf_store::project_v4::FlowPlanSupport::Mixed,
+            )? {
                 radishflow_studio::StudioProjectOpen::ReadOnly(project) => {
                     Some(project_read_only::ReadOnlyProjectView {
                         path: config.project_path.clone(),
@@ -490,6 +497,8 @@ impl ReadyAppState {
             background_runs: None,
             pending_run_exit: None,
             background_run_details_open: false,
+            material: material_balance::MaterialPanelState::default(),
+            flow_plan: flow_plan::FlowPlanPanelState::default(),
             platform_host,
             platform_timer_executor: EguiPlatformTimerExecutor::default(),
             command_palette: CommandPaletteState::default(),

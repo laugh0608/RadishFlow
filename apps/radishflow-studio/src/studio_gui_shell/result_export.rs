@@ -167,6 +167,16 @@ impl ReadyAppState {
         &mut self,
         requested: &radishflow_studio::StudioGuiWindowSolveSnapshotModel,
     ) -> Option<radishflow_studio::StudioGuiWindowSolveSnapshotModel> {
+        if self.modular_plan_draft_pending() {
+            self.result_output_notice(
+                ProjectOpenNoticeLevel::Warning,
+                "Current results unavailable",
+                "当前结果不可输出",
+                "Apply or discard the modular plan draft before output.",
+                "请先应用或放弃联立计划草稿再输出。",
+            );
+            return None;
+        }
         if !requested
             .result_guard
             .as_ref()
@@ -207,22 +217,25 @@ impl ReadyAppState {
     ) {
         let snapshot = window.runtime.latest_solve_snapshot.as_ref();
         ui.horizontal_wrapped(|ui| {
-            ui.add_enabled_ui(snapshot.is_some(), |ui| {
-                if ui
-                    .small_button(self.locale.text(ShellText::CopySnapshot))
-                    .clicked()
-                    && let Some(snapshot) = snapshot
-                {
-                    self.copy_solve_snapshot_to_clipboard(ui.ctx(), snapshot);
-                }
-                if ui
-                    .small_button(self.locale.text(ShellText::ExportSnapshot))
-                    .clicked()
-                    && let Some(snapshot) = snapshot
-                {
-                    self.export_solve_snapshot_from_picker(snapshot);
-                }
-            });
+            ui.add_enabled_ui(
+                snapshot.is_some() && !self.modular_plan_draft_pending(),
+                |ui| {
+                    if ui
+                        .small_button(self.locale.text(ShellText::CopySnapshot))
+                        .clicked()
+                        && let Some(snapshot) = snapshot
+                    {
+                        self.copy_solve_snapshot_to_clipboard(ui.ctx(), snapshot);
+                    }
+                    if ui
+                        .small_button(self.locale.text(ShellText::ExportSnapshot))
+                        .clicked()
+                        && let Some(snapshot) = snapshot
+                    {
+                        self.export_solve_snapshot_from_picker(snapshot);
+                    }
+                },
+            );
             if snapshot.is_none() {
                 ui.small(result_output_text(
                     self.locale,

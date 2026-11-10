@@ -1,0 +1,20 @@
+{
+  "schema_version": 6,
+  "project": "../flowsheets/fixed-tp-material-eo-binary-hydrocarbon.rfproj.json",
+  "queries": [
+    {
+      "id": "plan",
+      "query": {
+        "kind": "results",
+        "scope": "flow_plan"
+      }
+    },
+    {
+      "id": "result",
+      "query": {
+        "kind": "results",
+        "scope": "flow"
+      }
+    }
+  ]
+}

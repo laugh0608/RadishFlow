@@ -1,0 +1,41 @@
+{
+  "schema_version": 4,
+  "project": "../flowsheets/fixed-tp-recycle-binary-hydrocarbon.rfproj.json",
+  "expected_project": {
+    "document_id": "example-qs1-fixed-tp-recycle",
+    "file_sha256": "e2380a6c191453a1482e78e84ad0076080270741c9e12270f615cc5186eec809"
+  },
+  "flow_resources": {
+    "cache_root": "./property-package-cache",
+    "auth_cache_index": "./auth-cache-index.json",
+    "package": {
+      "kind": "preferred"
+    }
+  },
+  "steps": [
+    {
+      "id": "solve",
+      "action": {
+        "kind": "run_flow",
+        "expected_revision": 0,
+        "expected_plan_revision": 0
+      }
+    }
+  ],
+  "queries": [
+    {
+      "id": "plan",
+      "query": {
+        "kind": "results",
+        "scope": "flow_plan"
+      }
+    },
+    {
+      "id": "result",
+      "query": {
+        "kind": "results",
+        "scope": "flow"
+      }
+    }
+  ]
+}

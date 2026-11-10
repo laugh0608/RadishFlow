@@ -1,3 +1,5 @@
+pub(crate) mod flow_plan;
+pub use flow_plan::StudioReadOnlyProject;
 use std::path::{Path, PathBuf};
 
 use rf_store::{StoredDocumentMetadata, StoredProjectFile, read_project_file, write_project_file};
@@ -39,22 +41,48 @@ pub struct DocumentLifecycleOutcome {
 #[derive(Debug)]
 pub enum StudioProjectOpen {
     Editable(Box<AppState>),
-    ReadOnly(Box<rf_store::project_v3::ReadOnlyProjectV3>),
+    ReadOnly(Box<StudioReadOnlyProject>),
 }
 pub fn read_studio_project(project_path: &Path) -> RfResult<StudioProjectOpen> {
+    read_studio_project_with_support(project_path, rf_store::project_v4::FlowPlanSupport::Mixed)
+}
+
+pub fn read_studio_project_with_support(
+    project_path: &Path,
+    support: rf_store::project_v4::FlowPlanSupport,
+) -> RfResult<StudioProjectOpen> {
     let contents = std::fs::read_to_string(project_path).map_err(|e| {
         RfError::invalid_input(format!("read project {}: {e}", project_path.display()))
     })?;
-    parse_studio_project(&contents, project_path)
+    parse_studio_project_with_support(&contents, project_path, support)
 }
 
 /// Assemble the exact bytes already read by a caller. In particular, headless
 /// snapshot validation must not reopen the file between hashing and parsing.
+#[cfg(test)]
 pub(crate) fn parse_studio_project(
     contents: &str,
     project_path: &Path,
 ) -> RfResult<StudioProjectOpen> {
-    if rf_store::project_v3::probe_version(contents)? != 3 {
+    parse_studio_project_with_support(
+        contents,
+        project_path,
+        rf_store::project_v4::FlowPlanSupport::Mixed,
+    )
+}
+
+pub(crate) fn parse_studio_project_with_support(
+    contents: &str,
+    project_path: &Path,
+    support: rf_store::project_v4::FlowPlanSupport,
+) -> RfResult<StudioProjectOpen> {
+    let version = rf_store::project_v3::probe_version(contents)?;
+    match version {
+        4 => return flow_plan::parse_v4(contents, project_path, support),
+        1..=3 => {}
+        _ => return Err(RfError::invalid_input("unsupported project schema version")),
+    }
+    if version != 3 {
         let project = rf_store::parse_project_file_json(contents)?;
         return Ok(StudioProjectOpen::Editable(Box::new(
             app_state_from_stored(
@@ -67,9 +95,9 @@ pub(crate) fn parse_studio_project(
         )));
     }
     match rf_store::project_v3::parse(contents)? {
-        rf_store::project_v3::ProjectV3Read::ReadOnly(project) => {
-            Ok(StudioProjectOpen::ReadOnly(Box::new(project)))
-        }
+        rf_store::project_v3::ProjectV3Read::ReadOnly(project) => Ok(StudioProjectOpen::ReadOnly(
+            Box::new(StudioReadOnlyProject::V3(project)),
+        )),
         rf_store::project_v3::ProjectV3Read::Editable(project) => Ok(StudioProjectOpen::Editable(
             Box::new(app_state_from_stored(
                 project.document,
@@ -136,6 +164,25 @@ fn app_state_from_stored(
 /// Existing v3 stays v3. Engineering data or the eight added non-SI choices
 /// require v3; otherwise new/legacy projects retain the existing v2 writer.
 pub fn project_save_version(app: &AppState) -> u32 {
+    if app.workspace.project_presentation.source_file_version() == Some(4)
+        || matches!(
+            app.workspace.flow_plan.current(),
+            rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
+        )
+        || app
+            .workspace
+            .document
+            .flowsheet
+            .units
+            .values()
+            .any(|u| u.kind == "splitter")
+    {
+        return 4;
+    }
+
     if app.workspace.project_presentation.source_file_version() == Some(3)
         || !app.workspace.engineering.inputs().is_empty()
         || (rf_store::StoredProjectPresentation {
@@ -153,16 +200,24 @@ pub fn project_save_requires_upgrade(app: &AppState) -> bool {
     let target = project_save_version(app);
     let source = app.workspace.project_presentation.source_file_version();
     source == Some(1)
-        || (target == 3 && source != Some(3))
+        || (target >= 3 && source != Some(target))
         || app.workspace.engineering.rating_capability_is_new()
+        || (target == 4 && !flow_plan::added_source_capabilities(app).is_empty())
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProjectSaveCompatibility {
-    Format { version: u32, includes_rating: bool },
+    Format {
+        version: u32,
+        includes_rating: bool,
+    },
     RatingCapability,
     RatingMatrixCapability,
     RatingAdoptionCapability,
+    FlowCapabilities {
+        required: Vec<rf_store::project_v4::RequiredCapability>,
+        added_from_source: Vec<rf_store::project_v4::RequiredCapability>,
+    },
 }
 /// Compatibility of both the loaded baseline and the actual save target.
 /// Save As must not bypass consent when replacing an older-capability file.
@@ -171,6 +226,9 @@ pub fn project_save_compatibility(
     path: &Path,
 ) -> RfResult<Option<ProjectSaveCompatibility>> {
     let version = project_save_version(app);
+    if version == 4 {
+        return flow_plan::compatibility(app, path);
+    }
     let source = app.workspace.project_presentation.source_file_version();
     // Preserve the legacy save/overwrite contract; its writer independently
     // protects v3 targets from being stripped by an older in-memory project.
@@ -276,7 +334,11 @@ pub fn dispatch_document_lifecycle(
     let version = project_save_version(app_state);
     let engineering = app_state.workspace.engineering.capture_save();
     let project_file = stored_project_file_from_app_state(app_state);
-    if version == 3 {
+    let simulation = app_state.workspace.flow_plan.current().clone();
+    let flow_capabilities = (version == 4).then(|| flow_plan::required_capabilities(app_state));
+    if version == 4 {
+        flow_plan::save(app_state, &path, upgrade_confirmed)?;
+    } else if version == 3 {
         let inputs = engineering.inputs();
         let project =
             rf_store::project_v3::ProjectV3Read::Editable(rf_store::project_v3::StoredProjectV3 {
@@ -319,6 +381,15 @@ pub fn dispatch_document_lifecycle(
         .workspace
         .project_presentation
         .record_saved(project_file.presentation.display_units, version);
+    app_state.workspace.flow_plan.record_saved(simulation);
+    if let Some(capabilities) = flow_capabilities {
+        app_state.workspace.flow_plan.record_saved_capabilities(
+            capabilities
+                .into_iter()
+                .map(|c| (c.id, c.version))
+                .collect(),
+        );
+    }
     app_state.mark_saved(path.clone());
     app_state.log_feed.push(
         AppLogLevel::Info,
@@ -452,7 +523,10 @@ mod tests {
         service
             .run_with_property_package(&mut reopened, &provider, package)
             .unwrap();
-        let result = rf_ui::latest_snapshot(&reopened.workspace).unwrap();
+        let result = rf_ui::latest_snapshot(&reopened.workspace)
+            .unwrap()
+            .acyclic()
+            .unwrap();
         assert_eq!(result.document_revision, saved.document.revision);
         let heater = result
             .steps

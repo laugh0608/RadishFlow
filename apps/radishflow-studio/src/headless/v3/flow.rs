@@ -116,6 +116,15 @@ pub fn execute(
         ),
         _ => return Ok(None),
     };
+    apply(app, refs, expected, action).map(Some)
+}
+
+pub fn apply(
+    app: &mut AppState,
+    refs: &Bindings,
+    expected: &RevisionRef,
+    action: FlowAction,
+) -> Result<FlowReply, Failure> {
     let doc = &app.workspace.document;
     refs.revision(
         expected,
@@ -175,8 +184,8 @@ pub fn execute(
             json!({"kind":"stream_disconnected","stream":{"id":stream.as_str()},"direction":direction.map(|d|match d {rf_types::PortDirection::Inlet=>Direction::Inlet,rf_types::PortDirection::Outlet=>Direction::Outlet})})
         }
     };
-    Ok(Some(FlowReply {
+    Ok(FlowReply {
         receipt: json!({"outcome":match receipt.outcome {FlowEditOutcome::Committed=>"committed",FlowEditOutcome::Unchanged=>"unchanged"},"before_revision":receipt.before.revision(),"after_revision":revision,"effect":effect}),
         outputs,
-    }))
+    })
 }

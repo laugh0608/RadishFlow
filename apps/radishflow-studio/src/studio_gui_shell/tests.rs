@@ -1,3 +1,4 @@
+mod material_balance;
 use super::*;
 use radishflow_studio::{
     StudioRuntimeEntitlementPreflight, StudioRuntimeEntitlementSeed, StudioRuntimeTrigger,
@@ -838,3 +839,5 @@ fn assert_command_surface_window_equal(
     }
     assert_eq!(&actual, expected);
 }
+
+mod flow_plan;

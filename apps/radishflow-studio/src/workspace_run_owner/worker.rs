@@ -24,7 +24,7 @@ use crate::{
 pub(super) type PackageLoader =
     Box<dyn FnOnce(&str) -> Result<LocalThermoContext, WorkspacePackageLoadError> + Send>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceRunProgress {
     pub run_id: FlowRunId,
     pub sequence: u64,
@@ -125,6 +125,30 @@ impl SolverControl for WorkerControl {
     }
 }
 
+impl rf_solver::partitioned::PartitionedSolverControl for WorkerControl {
+    fn checkpoint(
+        &mut self,
+        progress: rf_solver::partitioned::PartitionedProgress,
+    ) -> ControlFlow<()> {
+        self.emit(WorkspaceSolveProgress::Partitioned(progress))
+    }
+}
+impl rf_solver::simultaneous::ModularControl for WorkerControl {
+    fn checkpoint(
+        &mut self,
+        progress: rf_solver::simultaneous::ModularProgress,
+    ) -> ControlFlow<()> {
+        self.emit(WorkspaceSolveProgress::Simultaneous(progress))
+    }
+}
+impl rf_solver::equation_oriented::EquationControl for WorkerControl {
+    fn checkpoint(
+        &mut self,
+        progress: rf_solver::equation_oriented::EquationProgress,
+    ) -> ControlFlow<()> {
+        self.emit(WorkspaceSolveProgress::EquationOriented(progress))
+    }
+}
 impl WorkspaceSolveControl for WorkerControl {
     fn before_load(&mut self) -> ControlFlow<()> {
         self.emit(WorkspaceSolveProgress::Preparing)
@@ -169,4 +193,10 @@ pub(super) fn spawn_worker(
 
 pub(super) fn infrastructure_error(code: &str, message: &str) -> RfError {
     RfError::invalid_input(message).with_diagnostic_code(format!("workspace.run.{code}"))
+}
+
+impl rf_solver::mixed::MixedControl for WorkerControl {
+    fn checkpoint(&mut self, p: rf_solver::mixed::MixedProgress) -> ControlFlow<()> {
+        self.emit(WorkspaceSolveProgress::Mixed(p))
+    }
 }

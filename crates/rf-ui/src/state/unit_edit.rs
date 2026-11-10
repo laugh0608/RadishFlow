@@ -8,6 +8,22 @@ pub struct UnitCreateResult {
 }
 
 impl AppState {
+    pub fn validate_explicit_material_connection(
+        &self,
+        connection: &CanvasSuggestedMaterialConnection,
+    ) -> RfResult<()> {
+        let flow = &self.workspace.document.flowsheet;
+        for id in
+            std::iter::once(&connection.source_unit_id).chain(connection.sink_unit_id.as_ref())
+        {
+            let unit = flow
+                .units
+                .get(id)
+                .ok_or_else(|| RfError::missing_entity("unit", id))?;
+            rf_unitops::validate_unit_node(unit)?;
+        }
+        apply_material_connection_acceptance(flow, connection).map(|_| ())
+    }
     /// Read-only preparation for a local recommendation. Incomplete unrelated ports
     /// remain allowed, but the proposed edge must preserve the current acyclic model.
     pub fn validate_acyclic_material_connection(
@@ -76,6 +92,13 @@ impl AppState {
         connection: &CanvasSuggestedMaterialConnection,
         changed_at: DateTimeUtc,
     ) -> RfResult<(DocumentCommand, u64)> {
+        if let CanvasSuggestedStreamBinding::Create { stream } = &connection.stream
+            && self.workspace.stream_identity_reserved(&stream.id)
+        {
+            return Err(RfError::invalid_input(
+                "stream identity is reserved; prepare a fresh connection",
+            ));
+        }
         let (command, flowsheet) =
             apply_material_connection_acceptance(&self.workspace.document.flowsheet, connection)?;
         let revision = self.commit_document_change(command.clone(), flowsheet, changed_at);
@@ -114,5 +137,20 @@ impl AppState {
             DraftValue::Numeric(session) if session.variable().object == crate::variable_browser::ObjectId::Unit(unit_id.clone())));
         self.workspace.prune_focus_against_document();
         Ok(revision)
+    }
+}
+
+impl WorkspaceState {
+    pub fn reserve_flow_plan_identities(&mut self) {
+        self.allocated_unit_ids
+            .extend(self.flow_plan.current().referenced_unit_ids());
+        self.allocated_stream_ids
+            .extend(self.flow_plan.current().referenced_stream_ids());
+    }
+    pub fn reserved_stream_identities(&self) -> &BTreeSet<StreamId> {
+        &self.allocated_stream_ids
+    }
+    pub fn stream_identity_reserved(&self, id: &StreamId) -> bool {
+        self.allocated_stream_ids.contains(id)
     }
 }

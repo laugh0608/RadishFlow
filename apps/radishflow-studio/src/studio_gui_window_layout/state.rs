@@ -46,7 +46,10 @@ impl StudioGuiWindowLayoutState {
         };
 
         Self {
-            scope: layout_scope_from_state(&snapshot.app_host_state, window_id),
+            scope: StudioGuiWindowLayoutScope::from_app_host_state(
+                &snapshot.app_host_state,
+                window_id,
+            ),
             stack_groups: default_stack_group_states(&panels),
             panels,
             region_weights: default_region_weights(),
@@ -619,6 +622,39 @@ impl StudioGuiWindowDropTargetQuery {
 }
 
 impl StudioGuiWindowLayoutScope {
+    /// Resolves the same window scope used by layout without projecting canvas or results.
+    pub fn from_app_host_state(
+        state: &StudioAppHostState,
+        requested_window_id: Option<StudioWindowHostId>,
+    ) -> Self {
+        let window_id = requested_window_id
+            .filter(|window_id| state.window(*window_id).is_some())
+            .or(state.foreground_window_id)
+            .or_else(|| state.registered_windows.first().copied());
+
+        match window_id {
+            Some(window_id) => {
+                let window = state.window(window_id);
+                let window_role = window.map(|window| window.role);
+                let layout_slot = window.map(|window| window.layout_slot);
+                Self {
+                    kind: StudioGuiWindowLayoutScopeKind::Window,
+                    window_id: Some(window_id),
+                    window_role,
+                    layout_slot,
+                    layout_key: layout_key_for_window(window_role, layout_slot),
+                }
+            }
+            None => Self {
+                kind: StudioGuiWindowLayoutScopeKind::EmptyWorkspace,
+                window_id: None,
+                window_role: None,
+                layout_slot: None,
+                layout_key: "studio.window.empty".to_string(),
+            },
+        }
+    }
+
     pub fn legacy_layout_key(&self) -> Option<String> {
         match (self.window_id, self.window_role) {
             (Some(window_id), Some(window_role)) => {

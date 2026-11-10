@@ -13,13 +13,24 @@ pub const COMPOSITION_SUM_TOLERANCE: f64 = 1e-9;
 pub enum UnitParameter {
     OutletTemperature,
     OutletPressure,
+    OutletASplitFraction,
 }
 
 impl UnitParameter {
+    pub const fn quantity_kind(self) -> rf_types::units::QuantityKind {
+        use rf_types::units::QuantityKind;
+        match self {
+            Self::OutletTemperature => QuantityKind::AbsoluteTemperature,
+            Self::OutletPressure => QuantityKind::AbsolutePressure,
+            Self::OutletASplitFraction => QuantityKind::DimensionlessRatio,
+        }
+    }
+
     pub const fn key(self) -> &'static str {
         match self {
             Self::OutletTemperature => "outlet_temperature_k",
             Self::OutletPressure => "outlet_pressure_pa",
+            Self::OutletASplitFraction => "outlet_a_split_fraction",
         }
     }
 
@@ -27,6 +38,7 @@ impl UnitParameter {
         match self {
             Self::OutletTemperature => parameters.outlet_temperature_k,
             Self::OutletPressure => parameters.outlet_pressure_pa,
+            Self::OutletASplitFraction => parameters.outlet_a_split_fraction,
         }
     }
 }
@@ -70,6 +82,11 @@ pub const fn input_specification(kind: BuiltinUnitKind) -> BuiltinInputSpecifica
     let temperature_pressure = &[OutletTemperature, OutletPressure];
     let pressure = &[OutletPressure];
     match kind {
+        BuiltinUnitKind::Splitter => BuiltinInputSpecification {
+            parameters: &[OutletASplitFraction],
+            required_explicit_parameters: &[OutletASplitFraction],
+            outlet_pressure_rule: Unrestricted,
+        },
         BuiltinUnitKind::Feed => BuiltinInputSpecification {
             parameters: temperature_pressure,
             required_explicit_parameters: &[],
@@ -107,6 +124,7 @@ pub enum ParameterViolation {
     Unsupported,
     NotPositiveFinite,
     AboveInletPressure,
+    NotUnitInterval,
 }
 
 /// A missing limit means the inlet relationship has not been checked. Callers must
@@ -120,6 +138,13 @@ pub fn check_parameter_value(
     let spec = input_specification(kind);
     if !spec.parameters.contains(&parameter) {
         return Err(ParameterViolation::Unsupported);
+    }
+    if parameter == UnitParameter::OutletASplitFraction {
+        return if value.is_finite() && (0.0..=1.0).contains(&value) {
+            Ok(())
+        } else {
+            Err(ParameterViolation::NotUnitInterval)
+        };
     }
     if !is_positive_finite(value) {
         return Err(ParameterViolation::NotPositiveFinite);

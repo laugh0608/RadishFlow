@@ -38,6 +38,7 @@ pub(super) fn parse_canvas_unit_kind(unit_kind: &str) -> Option<BuiltinUnitKind>
     match normalized.as_str() {
         "feed" => Some(BuiltinUnitKind::Feed),
         "mixer" => Some(BuiltinUnitKind::Mixer),
+        "splitter" => Some(BuiltinUnitKind::Splitter),
         "heater" => Some(BuiltinUnitKind::Heater),
         "cooler" => Some(BuiltinUnitKind::Cooler),
         "valve" => Some(BuiltinUnitKind::Valve),
@@ -83,6 +84,7 @@ pub(super) fn canvas_unit_id_prefix(kind: BuiltinUnitKind) -> &'static str {
         BuiltinUnitKind::Cooler => "cooler",
         BuiltinUnitKind::Valve => "valve",
         BuiltinUnitKind::FlashDrum => "flash",
+        BuiltinUnitKind::Splitter => "splitter",
     }
 }
 
@@ -94,6 +96,7 @@ pub(super) fn canvas_unit_label(kind: BuiltinUnitKind) -> &'static str {
         BuiltinUnitKind::Cooler => "Cooler",
         BuiltinUnitKind::Valve => "Valve",
         BuiltinUnitKind::FlashDrum => "Flash Drum",
+        BuiltinUnitKind::Splitter => "Splitter",
     }
 }
 
@@ -308,13 +311,14 @@ pub(super) fn validate_connection_endpoint(
 pub(super) fn apply_run_panel_recovery_mutation(
     flowsheet: &Flowsheet,
     mutation: &RunPanelRecoveryMutation,
+    reserved: &BTreeSet<StreamId>,
 ) -> RfResult<(DocumentCommand, Flowsheet)> {
     match mutation {
         RunPanelRecoveryMutation::DeleteStream { stream_id } => {
             apply_delete_stream_mutation(flowsheet, stream_id)
         }
         RunPanelRecoveryMutation::CreateAndBindOutletStream { unit_id, port_name } => {
-            apply_create_and_bind_outlet_stream_mutation(flowsheet, unit_id, port_name)
+            apply_create_and_bind_outlet_stream_mutation(flowsheet, unit_id, port_name, reserved)
         }
         RunPanelRecoveryMutation::DisconnectPortAndDeleteStream {
             unit_id,
@@ -499,9 +503,11 @@ pub(super) fn apply_create_and_bind_outlet_stream_mutation(
     flowsheet: &Flowsheet,
     unit_id: &UnitId,
     port_name: &str,
+    reserved: &BTreeSet<StreamId>,
 ) -> RfResult<(DocumentCommand, Flowsheet)> {
     let mut next_flowsheet = flowsheet.clone();
-    let stream_id = next_available_placeholder_stream_id(&next_flowsheet, unit_id, port_name);
+    let stream_id =
+        next_available_placeholder_stream_id(&next_flowsheet, unit_id, port_name, reserved);
     let stream_name = format!("{} {} Stream", unit_id.as_str(), port_name);
     next_flowsheet.insert_stream(MaterialStreamState::new(stream_id.clone(), stream_name))?;
     bind_material_stream_port(&mut next_flowsheet, unit_id, port_name, &stream_id)?;
@@ -799,6 +805,7 @@ pub(super) fn next_available_placeholder_stream_id(
     flowsheet: &Flowsheet,
     unit_id: &UnitId,
     port_name: &str,
+    reserved: &BTreeSet<StreamId>,
 ) -> StreamId {
     let base = format!("stream-{}-{}", unit_id.as_str(), port_name);
     let mut candidate = base.clone();
@@ -806,6 +813,7 @@ pub(super) fn next_available_placeholder_stream_id(
     while flowsheet
         .streams
         .contains_key(&StreamId::new(candidate.as_str()))
+        || reserved.contains(&StreamId::new(candidate.as_str()))
     {
         candidate = format!("{base}-{suffix}");
         suffix += 1;

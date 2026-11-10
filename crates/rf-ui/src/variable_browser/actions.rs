@@ -88,6 +88,9 @@ impl VariableBrowser<'_> {
                         UnitInspectorDraftField::OutletTemperatureK => {
                             Some(VariableField::OutletTemperature)
                         }
+                        UnitInspectorDraftField::OutletASplitFraction => {
+                            Some(VariableField::OutletASplitFraction)
+                        }
                         UnitInspectorDraftField::OutletPressurePa => {
                             Some(VariableField::OutletPressure)
                         }

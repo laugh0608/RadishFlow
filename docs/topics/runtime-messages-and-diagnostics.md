@@ -58,6 +58,8 @@
 
 AF4b 已补 [类型化运行回执](variable-and-object-browser.md#af4b-2—4-批次契约2026-10-24)：流程 / 设备共用受理、重复、Busy、Closing、跳过 / 拒绝、启动失败及终态投影；同步完成与后台受理分开，取消返回精确目标的请求 / 重复 / 已结束 / 未知状态。GUI / runtime 保留这些事实，结果当前资格仍独立查询，不因此扩展暂停或单步。
 
+2026-10-31 [QS2-C / D06-03](modeling/simultaneous-project-and-consumers.md)已按批准范围复用 QS1-C 的冻结图 / 配置、输入＋计划双资格及既有 Ready / 单 worker / join，增加 Modular 控制、阶段与终态证据；计划改变撤销旧 Flow 接收但不误取消 QS0。进度不伪造迭代，取消不创建 Failed，未退出不释放名额。共享 worker 接线与定向取消 / 迟到接收验证已完成，GUI 呈现待画板；不扩大暂停或后台 CLI 能力。
+
 ## 实施与验收入口
 
 切片启动先完成追踪表中适用的 D 决策、范围和独立预期，实施后回填代码 / 测试位置与证据。新增方向均未获得运行态验收；原有能力作为复用基础。文档组织完成不等于 N0 UI 评审通过，实施优先级以当前状态和 AF 依赖为准。
@@ -72,3 +74,13 @@ AF4b 已补 [类型化运行回执](variable-and-object-browser.md#af4b-2—4-�
 - [COMSOL 求解日志设置](https://doc.comsol.com/6.3/doc/com.comsol.help.comsol/comsol_ref_solver.36.159.html)：日志详细度、嵌套求解信息与采样开销。
 - [用户提供的 Aspen 案例](https://bbs.imbhj.com/t/topic/364)：警告时停止后查详细日志；数值阈值位于 Fortran 模型逻辑，不能据此认定任意阈值都是停止点菜单的原生功能。此案例只作场景依据，不采用无物理依据的数值截断作为通用修复。
 - [NN/g 错误消息指南](https://www.nngroup.com/articles/error-message-guidelines/) 与 [W3C 状态消息说明](https://www.w3.org/WAI/WCAG21/Understanding/status-messages)：具体、可行动、不无故夺取焦点；Rust 桌面端通过原生可访问性映射，不照搬网页属性。
+
+
+## QS3 后台执行（2026-10-31）
+
+[QS3-D06](modeling/equation-oriented-block.md#d06后台运行资格与失败)已复用单 worker，增加方程装配 / 匹配、条件线性 / 区间评价、完整 Jacobian 与真实复核阶段。结构未就绪在正式预检 Blocked，worker 再验冻结输入和计划；取消撤销接收资格，join 后才释放名额。各核心阶段取消、Ready 后计划变化、迟到结果、错载荷、包准备失败无伪核心来源均有自动验证。
+
+
+## QS4 混合执行（2026-11-04）
+
+[QS4 首片](modeling/mixed-partition-execution.md)复用单 worker、Ready / 完成双资格和 join，新增块 ID、嵌套 EO、跨块边界 / 全局复核阶段及独立混合诊断。块成功仅诊断，整流程通过后才发布 Current；取消保留既有 Current 并撤销本次接收，退出前不释放名额。计划 ABA、错载荷、各外层安全点取消与既有 worker 生命周期通过正式回归；macOS 奇异 EO 块仅保留两个上游 Feed 的诊断，无当前快照。共享 owner 的真实在途取消 / join 已由 macOS 回流代表路径补证（线程采样、取消历史与再次运行），见 W45；不替代各方法数值安全点的逐项原生验收。

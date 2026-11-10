@@ -747,7 +747,7 @@ impl StudioAppHost {
         self.project_save_state().has_unsaved_changes()
     }
 
-    pub fn latest_solve_snapshot(&self) -> Option<rf_ui::SolveSnapshot> {
+    pub fn latest_solve_snapshot(&self) -> Option<rf_ui::FlowResultRecord> {
         rf_ui::latest_snapshot(
             &self
                 .window_host_manager
@@ -760,7 +760,7 @@ impl StudioAppHost {
         .cloned()
     }
 
-    pub fn stale_solve_snapshot(&self) -> Option<rf_ui::SolveSnapshot> {
+    pub fn stale_solve_snapshot(&self) -> Option<rf_ui::FlowResultRecord> {
         rf_ui::stale_snapshot(
             &self
                 .window_host_manager
@@ -1093,11 +1093,11 @@ impl StudioAppHostController {
         self.app_host.document_has_unsaved_changes()
     }
 
-    pub fn latest_solve_snapshot(&self) -> Option<rf_ui::SolveSnapshot> {
+    pub fn latest_solve_snapshot(&self) -> Option<rf_ui::FlowResultRecord> {
         self.app_host.latest_solve_snapshot()
     }
 
-    pub fn stale_solve_snapshot(&self) -> Option<rf_ui::SolveSnapshot> {
+    pub fn stale_solve_snapshot(&self) -> Option<rf_ui::FlowResultRecord> {
         self.app_host.stale_solve_snapshot()
     }
 

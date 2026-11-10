@@ -59,6 +59,7 @@ pub fn flow_diagnostic(v: &rf_ui::DiagnosticSummary) -> Value {
 fn flow_reason(v: FlowResultUnavailable) -> &'static str {
     match v {
         FlowResultUnavailable::NoResult => "no_result",
+        FlowResultUnavailable::PlanChanged => "plan_changed",
         FlowResultUnavailable::InputChanged => "input_changed",
         FlowResultUnavailable::DifferentSession => "different_session",
         FlowResultUnavailable::UnqualifiedSnapshot => "unqualified_snapshot",

@@ -11,6 +11,8 @@ mod package_cache;
 mod project;
 mod project_presentation;
 pub mod project_v3;
+pub mod project_v4;
+pub mod strict_json;
 pub use json::{read_property_package_manifest_detailed, read_property_package_payload_detailed};
 pub use project_presentation::StoredProjectPresentation;
 mod staged_file;
@@ -285,6 +287,7 @@ mod tests {
         heater.parameters = UnitOperationParameters {
             outlet_temperature_k: Some(360.0),
             outlet_pressure_pa: None,
+            outlet_a_split_fraction: None,
         };
         let project = StoredProjectFile::new(
             flowsheet,
@@ -765,3 +768,6 @@ mod tests {
         fs::remove_dir_all(&root).expect("expected temp dir cleanup");
     }
 }
+
+#[cfg(test)]
+mod project_capabilities;

@@ -311,7 +311,10 @@ impl ReadyAppState {
     }
 
     pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
-        match radishflow_studio::read_studio_project(&project_path) {
+        match radishflow_studio::read_studio_project_with_support(
+            &project_path,
+            rf_store::project_v4::FlowPlanSupport::Mixed,
+        ) {
             Ok(radishflow_studio::StudioProjectOpen::ReadOnly(project)) => {
                 self.background_action(radishflow_studio::StudioBackgroundRunAction::Detach);
                 self.read_only_project = Some(project_read_only::ReadOnlyProjectView {
@@ -688,6 +691,15 @@ impl ReadyAppState {
     }
 
     pub(super) fn dispatch_confirmed_ui_command(&mut self, command_id: String) {
+        if matches!(
+            command_id.as_str(),
+            "run_panel.run_manual" | "run_panel.resume_workspace" | "run_panel.set_active"
+        ) && self.modular_plan_draft_pending()
+        {
+            self.screen = StudioShellScreen::Run;
+            self.platform_host.record_activity_line("请先应用或放弃联立计划草稿 / Apply or discard the modular plan draft before running.");
+            return;
+        }
         if self.intercept_recommendation_command(&command_id) {
             return;
         }
@@ -1249,7 +1261,7 @@ impl ReadyAppState {
             &mut self.platform_timer_executor,
             now,
         ) {
-            Ok(callback_batch) => {
+            Ok(Some(callback_batch)) => {
                 for callback in callback_batch.callbacks {
                     match callback {
                         StudioGuiPlatformExecutedNativeTimerCallbackOutcome::Dispatched(_) => {}
@@ -1258,6 +1270,7 @@ impl ReadyAppState {
                     }
                 }
             }
+            Ok(None) => {}
             Err(error) => {
                 self.platform_host.record_activity_line(format!(
                     "timer dispatch failed [{}]: {}",
@@ -1279,16 +1292,15 @@ impl ReadyAppState {
     }
 
     pub(super) fn current_window_id(&self) -> Option<StudioWindowHostId> {
-        self.platform_host
-            .snapshot()
-            .window_model()
-            .layout_state
-            .scope
-            .window_id
+        radishflow_studio::StudioGuiWindowLayoutScope::from_app_host_state(
+            self.platform_host.state(),
+            None,
+        )
+        .window_id
     }
 
     pub(super) fn logical_window_count(&self) -> usize {
-        self.platform_host.snapshot().app_host_state.windows.len()
+        self.platform_host.state().windows.len()
     }
 
     pub(super) fn update_area_focus_from_rect(

@@ -257,6 +257,7 @@ pub struct RfErrorContext {
     diagnostic_code: Option<String>,
     related_unit_ids: Vec<UnitId>,
     related_stream_ids: Vec<StreamId>,
+    related_component_ids: Vec<ComponentId>,
     related_port_targets: Vec<DiagnosticPortTarget>,
     file_recovery: Option<FileRecoveryContext>,
 }
@@ -287,12 +288,24 @@ impl RfErrorContext {
         &self.related_stream_ids
     }
 
+    pub fn related_component_ids(&self) -> &[ComponentId] {
+        &self.related_component_ids
+    }
+
     pub fn related_port_targets(&self) -> &[DiagnosticPortTarget] {
         &self.related_port_targets
     }
 }
 
 impl RfError {
+    pub fn with_related_component_id(mut self, id: impl Into<ComponentId>) -> Self {
+        let id = id.into();
+        if !self.context.related_component_ids.contains(&id) {
+            self.context.related_component_ids.push(id);
+        }
+        self
+    }
+
     pub fn with_file_recovery(mut self, recovery: FileRecoveryContext) -> Self {
         self.context.file_recovery = Some(recovery);
         self

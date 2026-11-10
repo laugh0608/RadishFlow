@@ -93,7 +93,7 @@ impl ReadyAppState {
                         self.focus_result_table_unit(&snapshot.snapshot_id, unit.unit_id.clone());
                     }
                     ui.label(self.locale.runtime_label(unit.status_label).as_ref());
-                    ui.label(format!("#{}", unit.step_index));
+                    ui.label(unit.location.to_string());
                     render_wrapped_small(ui, result_table_stream_ids(&unit.consumed_stream_ids));
                     render_wrapped_small(ui, result_table_stream_ids(&unit.produced_stream_ids));
                     ui.end_row();

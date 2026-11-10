@@ -1,0 +1,46 @@
+{
+  "schema_version": 3,
+  "project": "../flowsheets/feed-mixer-material-balance.rfproj.json",
+  "expected_project": {
+    "document_id": "example-feed-mixer-material-balance",
+    "file_sha256": "9fc49788ccbc12f10ff64018831e334fb7367e8fe050e576d48cd75e19002715"
+  },
+  "steps": [
+    {
+      "id": "material",
+      "action": {
+        "kind": "run_material_balance",
+        "expected_revision": 0,
+        "mixer": {
+          "id": "mixer-1"
+        },
+        "settings": {
+          "algorithm": "lower_triangular_substitution",
+          "scales_mol_s": {
+            "inlet_a": 2.0,
+            "inlet_b": 3.0,
+            "outlet": 5.0
+          },
+          "absolute_tolerance_mol_s": 1e-10,
+          "scaled_tolerance": 1e-10
+        }
+      }
+    }
+  ],
+  "queries": [
+    {
+      "id": "material_result",
+      "query": {
+        "kind": "results",
+        "scope": "material_balance"
+      }
+    },
+    {
+      "id": "flow_result",
+      "query": {
+        "kind": "results",
+        "scope": "flow"
+      }
+    }
+  ]
+}
