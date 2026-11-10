@@ -358,7 +358,8 @@ fn drain_due_platform_timer_callbacks_dispatches_due_binding_and_rearms() {
     let due_at = platform_host
         .next_native_timer_due_at()
         .expect("expected current native timer due time");
-    let before_due = due_at.checked_sub(Duration::from_nanos(1)).unwrap();
+    // Windows SystemTime truncates durations smaller than 100 ns.
+    let before_due = due_at.checked_sub(Duration::from_millis(1)).unwrap();
     assert!(
         drain_due_platform_timer_callbacks(&mut platform_host, &mut executor, before_due)
             .unwrap()
