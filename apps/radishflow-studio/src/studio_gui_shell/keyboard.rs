@@ -80,6 +80,12 @@ impl ReadyAppState {
             return;
         }
 
+        if self.variable_browser.owns_shortcuts(ctx) {
+            // The browser owns navigation keys; it never forwards Delete/Enter to
+            // the canvas or starts a calculation while reviewing a read-only row.
+            return;
+        }
+
         if self.screen == StudioShellScreen::Equipment {
             use rf_ui::engineering::editor::EquipmentEditorCommand;
             if focus_context != StudioGuiFocusContext::TextInput {
@@ -160,7 +166,7 @@ impl ReadyAppState {
             || self.unit_settings.is_open()
             || self.pending_format_upgrade.is_some()
             || self.pending_run_exit.is_some()
-            || self.variable_browser.open
+            || self.browser_navigation_pending()
             || self.pending_input_action.is_some()
             || self.pending_unit_deletion.is_some()
             || self.pending_result_export.is_some()

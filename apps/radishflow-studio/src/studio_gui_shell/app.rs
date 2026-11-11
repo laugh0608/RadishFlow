@@ -470,6 +470,7 @@ impl ReadyAppState {
     }
 
     pub(super) fn update(&mut self, ctx: &egui::Context) {
+        self.reconcile_browser_session();
         self.poll_background_runs(ctx);
         if self.render_background_exit(ctx) {
             return;
@@ -509,7 +510,7 @@ impl ReadyAppState {
             self.dispatch_shortcuts(ctx);
         }
         let mut hovered_drop_target = false;
-        if self.screen == StudioShellScreen::Home {
+        if self.screen == StudioShellScreen::Home && !self.browser_expanded() {
             self.render_home_dashboard(ctx, &window);
             self.render_variable_browser(ctx);
             self.render_command_palette(ctx, &window.commands);
@@ -526,6 +527,17 @@ impl ReadyAppState {
             &mut hovered_drop_target,
         );
         self.render_background_activity(ctx);
+        if self.browser_expanded() {
+            self.render_bottom_status_bar(ctx, &window);
+            self.render_variable_browser(ctx);
+            self.render_command_palette(ctx, &window.commands);
+            self.render_pending_close_window_dialog(ctx);
+            self.render_unit_deletion_dialog(ctx);
+            self.render_input_action_dialog(ctx);
+            self.render_export_dialogs(ctx);
+            self.render_browser_navigation_dialog(ctx);
+            return;
+        }
         if self.background_run_details_open
             && matches!(
                 self.screen,
@@ -565,6 +577,7 @@ impl ReadyAppState {
         self.render_unit_deletion_dialog(ctx);
         self.render_input_action_dialog(ctx);
         self.render_export_dialogs(ctx);
+        self.render_browser_navigation_dialog(ctx);
         self.finish_drop_preview_cycle(
             ctx,
             window.layout_state.scope.window_id,
@@ -657,6 +670,10 @@ impl ReadyAppState {
 
     pub(super) fn dispatch_ui_command(&mut self, command_id: impl Into<String>) {
         let command_id = command_id.into();
+        if command_id == "view.variable_browser" {
+            self.open_variable_browser();
+            return;
+        }
         if self.dispatch_background_cancel_command(&command_id) {
             return;
         }

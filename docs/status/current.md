@@ -45,7 +45,7 @@
 ### 最近进展（截至 2026-11-11）
 
 - PR #18 已合入 `master` 并回灌 `dev`（`4772fbba`）。AF3-V10 已补 macOS 在途切换、最后窗口退出、脏改取消关闭及另存面板交错代表证据；退出等待返回编辑仍待原生补证，AF1 未定因。见 [W46](../devlogs/2026-11/2026-W46.md)。
-- [VB0 首片只读工作区方案](../architecture/designs/studio-variable-browser-brief.md)已获所有者认可；9 张局部画板及 PNG 已获认可，VB1 首片获准实施。
+- [VB1 首片](../topics/variable-and-object-browser.md)已接通只读浏览与字段定位；路径、持久关注、跨平台及读屏保留。
 
 ### 下一步
 
@@ -114,6 +114,8 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 - 重要验证若出现明显的沙盒权限、受限 restore、project reference 解析或 native 装载差异，先按 Agent 协作规则告知用户，再申请最小范围真实环境复验。
 
 最近通过记录：
+
+- 2026-11-11：VB1 macOS 实窗与 2,082 项 Rust 测试通过，见 [W46](../devlogs/2026-11/2026-W46.md)。
 
 - 2026-11-10：PR #18 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 

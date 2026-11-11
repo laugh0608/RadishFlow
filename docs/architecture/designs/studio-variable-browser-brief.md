@@ -6,7 +6,7 @@
 读者：项目所有者、Studio / `rf-ui` 开发与验证协作者。
 不包含：公开路径协议、关注项存储格式、表格编辑或新增物理模型。
 
-状态：**首片方案已认可，局部画板 v1 已认可，VB1 首片获准实施；产品未实现，未宣称 VB0 / VB1 完成。** 2026-11-11 项目所有者认可本稿首片方案，随后认可 9 张局部画板，并要求先提交画板和相关文档，再按本稿首片范围实施 VB1。唯一切片状态仍在[浏览器专题](../../topics/variable-and-object-browser.md)；本文件是其局部设计附件，不新建子专题。
+状态：**首片方案与局部画板 v1 已认可；VB1 首片已接通，完整 VB0 / VB1 仍未完成。** 2026-11-11 项目所有者认可本稿首片方案，随后认可 9 张局部画板，并要求先提交画板和相关文档，再按本稿首片范围实施 VB1。首片实现与验证证据见专题及 W46。唯一切片状态仍在[浏览器专题](../../topics/variable-and-object-browser.md)；本文件是其局部设计附件，不新建子专题。
 
 ## 目标与首片选择
 
@@ -35,7 +35,7 @@
 
 ## 局部布局提案（VB-D01）
 
-入口沿用“工具 → 变量浏览器”和现有命令入口，不增加顶层产品区。保留原模态入口直至新路径验收完成；替换切换时避免两个独立选择状态。
+入口沿用“工具 → 变量浏览器”和现有命令入口，不增加顶层产品区。本片以新工作区替换原模态入口，共用一个选择状态。
 
 ### A：展开工作区，适合检索与表格审阅
 
@@ -106,7 +106,7 @@
 | 对象与数值发现 | [`project_query`](../../../crates/rf-ui/src/project_query/mod.rs)、[`fields`](../../../crates/rf-ui/src/project_query/fields.rs)、[`variable_browser`](../../../crates/rf-ui/src/variable_browser/mod.rs) | Studio 分类 / 表格投影；不反射整个 Rust 对象、不新建工程数据仓库 |
 | 结果与来源 | [`result_query`](../../../crates/rf-ui/src/result_query.rs)、设备 `query_case_result`、既有[结果审阅](../../../apps/radishflow-studio/src/studio_gui_shell/result_review.rs) | 浏览器显式消费结果状态；当前 `ValueState` 不含 Failed，不能用 Missing 文案覆盖真实失败，也不必扩成一个跨领域巨大枚举 |
 | 显示单位 | `VariableDescriptor::display_value` 与统一单位目录；设备 `EngineeringQuantityRead::canonical_unit` | 工程量显示适配、转换失败与只读复制资格；SI 输入值不改写 |
-| 导航 | 现有 [`variable_browser.rs`](../../../apps/radishflow-studio/src/studio_gui_shell/variable_browser.rs) 的对象定位、[`canvas_navigation`](../../../apps/radishflow-studio/src/studio_gui_shell/canvas_navigation.rs)、设备导航 | 为已支持输入增加有限、类型化字段目标；流股结果到既有结果视图；反向入口从受支持字段打开同一选择。不靠显示文案拼命令 |
+| 导航 | 现有 [`variable_browser`](../../../apps/radishflow-studio/src/studio_gui_shell/variable_browser/mod.rs) 的对象定位、[`canvas_navigation`](../../../apps/radishflow-studio/src/studio_gui_shell/canvas_navigation.rs)、设备导航 | 为已支持输入增加有限、类型化字段目标；流股结果到既有结果视图；反向入口从受支持字段打开同一选择。不靠显示文案拼命令 |
 | 输入与草稿 | 原 Inspector / 单位会话、`AppState::write_variable`、AF4b 正式动作 | 首片无新写入口；定位复用现有保护，保留事务、Undo / Redo 与资格失效语义 |
 | 浏览状态与刷新 | 当前 `VariableBrowserState` 与活动工作区 | 单一选择身份、视图模式、过滤和可见范围；不保存求解快照副本 |
 
@@ -170,3 +170,10 @@
 3. 失效值不显示旧数值、草稿由原编辑器保护、设备结果走专用入口的可见表达已认可。
 
 2026-11-11 所有者明确认可本批画板并授权推进 VB1 首片实现。完整 VB0 / VB1、公开路径与关注项存储的剩余出口保持；实现只覆盖本文的已确认首片。
+
+
+## 实现对应
+
+首片由 [`variable_browser`](../../../apps/radishflow-studio/src/studio_gui_shell/variable_browser/mod.rs)维护会话状态，查询投影、呈现与导航按职责分模块；复用原查询、结果资格和编辑入口。展开区使用固定列，窄区使用可变行高与可见范围查询。实际右侧区沿用工作台可调宽度，并非强制固定为 400 px。
+
+本机自动与实窗证据、规模观察及未验面见 [W46](../../devlogs/2026-11/2026-W46.md#2026-11-11vb1-只读工作区首片实现与验证)；该记录不关闭公开路径、持久关注或表格编辑。

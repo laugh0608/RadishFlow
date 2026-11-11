@@ -41,7 +41,7 @@ fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
     )
 }
 
-fn synced_workspace_config() -> StudioRuntimeConfig {
+pub(super) fn synced_workspace_config() -> StudioRuntimeConfig {
     StudioRuntimeConfig {
         entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
         entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
@@ -135,7 +135,12 @@ fn stored_unit_port_stream_id<'a>(
         .map(|stream_id| stream_id.as_str())
 }
 
-fn commit_unit_parameter(app: &mut ReadyAppState, unit_id: &str, draft_key: &str, raw_value: &str) {
+pub(super) fn commit_unit_parameter(
+    app: &mut ReadyAppState,
+    unit_id: &str,
+    draft_key: &str,
+    raw_value: &str,
+) {
     app.dispatch_ui_command(format!("inspector.focus_unit:{unit_id}"));
     app.dispatch_inspector_field_draft_update(
         radishflow_studio::inspector_draft_update_command_id(draft_key),
@@ -609,7 +614,7 @@ fn save_project_with_upgrade_consent(app: &mut ReadyAppState) {
     }
 }
 
-fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
+pub(super) fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
     ReadyAppState::from_config(config, test_preferences_path("default"))
         .expect("expected app state")
 }

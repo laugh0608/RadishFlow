@@ -395,8 +395,7 @@ impl ReadyAppState {
         }
 
         if ui.button("变量浏览器 / Variable Browser").clicked() {
-            self.command_palette.close();
-            self.variable_browser.open = true;
+            self.open_variable_browser();
             ui.close_menu();
         }
 
@@ -1245,6 +1244,7 @@ impl ReadyAppState {
     }
 
     fn render_right_workbench(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        let old_tab = self.right_sidebar_tab;
         ui.horizontal_wrapped(|ui| {
             ui.selectable_value(
                 &mut self.right_sidebar_tab,
@@ -1261,8 +1261,27 @@ impl ReadyAppState {
                 StudioShellRightSidebarTab::ModuleResults,
                 self.locale.runtime_label("Module Results").as_ref(),
             );
+            ui.selectable_value(
+                &mut self.right_sidebar_tab,
+                StudioShellRightSidebarTab::Variables,
+                if self.locale == StudioShellLocale::ZhCn {
+                    "变量浏览器"
+                } else {
+                    "Variables"
+                },
+            );
         });
         ui.separator();
+        if self.right_sidebar_tab == StudioShellRightSidebarTab::Variables {
+            self.variable_browser.open = true;
+            self.variable_browser.mode = variable_browser::BrowserMode::Side;
+            self.render_variable_browser_content(ui);
+            return;
+        }
+        if old_tab == StudioShellRightSidebarTab::Variables {
+            self.variable_browser.open = false;
+        }
+        self.render_browser_return(ui);
         egui::ScrollArea::vertical()
             .id_salt(format!(
                 "scroll:{}:right-workbench",
@@ -1294,6 +1313,7 @@ impl ReadyAppState {
                     StudioShellRightSidebarTab::ModuleResults => {
                         self.render_runtime_module_results_tab(ui, window)
                     }
+                    StudioShellRightSidebarTab::Variables => unreachable!("browser rendered above"),
                 }
             });
     }
@@ -1789,6 +1809,7 @@ impl ReadyAppState {
         window: &StudioGuiWindowModel,
     ) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            self.render_browser_return(ui);
             self.render_property_workspace_page(ui, window);
         });
     }

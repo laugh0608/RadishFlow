@@ -545,6 +545,7 @@ impl ReadyAppState {
         field: &radishflow_studio::StudioGuiWindowInspectorTargetFieldModel,
         view: Option<rf_ui::DisplayUnitViewId>,
     ) {
+        self.render_browser_field_link(ui, field);
         if let Some(numeric) = &field.numeric {
             match numeric {
                 Ok(numeric) => {
@@ -590,6 +591,7 @@ impl ReadyAppState {
                     .id_salt(format!("inspector-property-field:{}", field.key)),
             );
             self.apply_specification_key_focus(&response, &field.key);
+            self.apply_browser_key_focus(&response, &field.key);
             if response.changed() {
                 self.dispatch_inspector_field_draft_update(
                     field.draft_update_command_id.clone(),

@@ -89,6 +89,7 @@ impl ReadyAppState {
         query: &str,
     ) -> Vec<radishflow_studio::StudioGuiWindowCommandPaletteItemModel> {
         let mut items = commands.palette_items(query);
+        self.append_browser_palette_item(&mut items, query);
         self.append_background_palette_items(&mut items, query);
         if self.screen != StudioShellScreen::Equipment {
             return items;

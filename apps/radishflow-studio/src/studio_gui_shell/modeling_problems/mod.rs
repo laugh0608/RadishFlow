@@ -6,6 +6,13 @@ use rf_ui::variable_browser::{ObjectId, VariableField, VariableId};
 mod presentation;
 use presentation::*;
 
+pub(super) fn variable_for_draft_key(
+    key: &str,
+    document: &rf_ui::DocumentId,
+) -> Option<VariableId> {
+    draft_target(key).and_then(|target| target.variable(document))
+}
+
 pub(super) struct ModelingProblemsState {
     pub recommendations: ModelingRecommendationSession,
     pub recommendation_ui: super::modeling_recommendations::RecommendationUiState,

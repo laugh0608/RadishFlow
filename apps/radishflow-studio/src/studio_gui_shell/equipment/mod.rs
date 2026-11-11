@@ -27,9 +27,12 @@ mod widgets;
 pub(super) use calculation_table::CalculationTableFormat;
 use export::EquipmentExportTarget;
 use fields::EquipmentInputField;
-pub(super) use labels::target_label;
 use labels::*;
+pub(super) use labels::{
+    field_label, geometry_field_label, rating_field_label, status_label, target_label,
+};
 use widgets::*;
+pub(super) use widgets::{source_kind, source_review};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub(super) enum EquipmentSection {
@@ -238,6 +241,7 @@ impl ReadyAppState {
                 });
         }
         egui::CentralPanel::default().show(ctx, |ui| {
+            self.render_browser_return(ui);
             ui.heading(tr(
                 locale,
                 "设备设计 · 独立工程任务",

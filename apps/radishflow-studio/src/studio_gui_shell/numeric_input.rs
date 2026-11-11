@@ -237,7 +237,8 @@ impl ReadyAppState {
         let input_frame = output.response.rect + input_margin;
         ui.add_space(6.0);
         let response = output.response;
-        let located = self.apply_specification_field_focus(&response, &field.variable);
+        let located = self.apply_specification_field_focus(&response, &field.variable)
+            | self.apply_browser_field_focus(&response, &field.variable);
         if response.has_focus() {
             ui.data_mut(|data| data.insert_temp(egui::Id::new("numeric-keyboard-owner"), id));
             ui.memory_mut(|memory| {

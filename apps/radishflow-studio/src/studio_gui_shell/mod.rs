@@ -289,6 +289,7 @@ enum StudioShellRightSidebarTab {
     Inspector,
     ModuleSettings,
     ModuleResults,
+    Variables,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
