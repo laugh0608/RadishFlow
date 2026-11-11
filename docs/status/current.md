@@ -45,7 +45,7 @@
 ### 最近进展（截至 2026-11-11）
 
 - PR #18 已合入 `master` 并回灌 `dev`（`4772fbba`）。AF3-V10 已补 macOS 在途切换、最后窗口退出、脏改取消关闭及另存面板交错代表证据；退出等待返回编辑仍待原生补证，AF1 未定因。见 [W46](../devlogs/2026-11/2026-W46.md)。
-- [VB0 首片只读工作区方案](../architecture/designs/studio-variable-browser-brief.md)已获所有者认可；下一步完成局部画板供评审，暂不进入代码实现。
+- [VB0 首片只读工作区方案](../architecture/designs/studio-variable-browser-brief.md)已获所有者认可；9 张局部画板及 PNG 已获认可，VB1 首片获准实施。
 
 ### 下一步
 
