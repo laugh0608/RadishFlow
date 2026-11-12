@@ -22,7 +22,7 @@
 
 - 本地项目文件、sidecar、最近项目和脏改确认留在本专题。
 - 变量浏览器的对象创建标识随 v4 工程文件原子保存。显式初始化、旧版保护与失败恢复见 [VB-D02 存储契约](variable-browser/identity-storage.md)。
-- [VB-D03 关注清单](variable-browser/watch-list.md)拟随工程保存。脏状态、另存继承与覆盖保护待评审。
+- [VB-D03 关注清单](variable-browser/watch-list.md)已认可随 v4 工程保存及另存继承，局部画板已认可。
 - 控制面授权、派生资产缓存、离线租约和服务端审计属于 `platform/control-plane-service.md`。
 - 发布包、安装器和自动更新若进入范围，应新增独立专题。
 

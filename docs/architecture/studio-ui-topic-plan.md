@@ -51,6 +51,8 @@
 
 2026-11-11 [VB0 首片评审稿](designs/studio-variable-browser-brief.md)补充只读发现、结果资格与定位的覆盖和文字布局。首片方案已获所有者认可；9 张局部画板及 PNG 已获认可，VB1 首片已接通并完成本机代表验证，细节与保留项见浏览器专题；不表示全局 R0 或完整 VB0 / VB1 已完成。
 
+2026-11-12 VB-D03 工程归属、v4 保存、另存和失效项规则已获认可。[关注清单局部画板](designs/studio-variable-browser-brief.md#vb-d03-关注清单局部画板)覆盖展开、400 px 侧区、保存确认和失败状态。六张 PNG 已获认可，首片获准实施。
+
 ## 首批必须评审的代表路径
 
 首批单位事件与草稿路径以 [U2 事件表](../topics/units/input-drafts-and-interactions.md#u2-事件表) 为准，已接受触发策略已合入 UE 表，剩余接口按 UD 清单审定。2026-09-17 补充：首批单位字段同时评审 [V0 状态语义](../topics/color-state/semantics-and-composition.md)，不等待后续三维。V1—V4 的画板按 [可视化切片](../topics/results-review-diagnostics.md#流程可视化与回放规划尚未实现) 进入，V0 首批数值角色已接通，完整迁移和产品验收待续；动画 / 三维尚未实现或完成画板验收。

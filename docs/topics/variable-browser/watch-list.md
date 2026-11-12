@@ -4,11 +4,11 @@
 
 ## 用途与状态
 
-供项目所有者及 Studio、`rf-ui`、`rf-store` 维护者评审关注项的归属、保存和恢复。状态为待评审。首片覆盖 VB-D02 已支持的流程单元与流股标量。跨端访问归 VB3，触发条件和运行控制归 N4。 [稳定引用契约](stable-references.md) · [运行监视](../runtime-messages/run-control-and-watch-conditions.md)
+供项目所有者及 Studio、`rf-ui`、`rf-store` 维护者核对关注项的归属、保存和恢复。2026-11-12 所有者认可工程级归属、v4 保存、另存继承及失效项保留规则。[局部交互画板](../../architecture/designs/studio-variable-browser-brief.md#vb-d03-关注清单局部画板)已认可。首片覆盖 VB-D02 已支持的流程单元与流股标量。跨端访问归 VB3，触发条件和运行控制归 N4。 [稳定引用契约](stable-references.md) · [运行监视](../runtime-messages/run-control-and-watch-conditions.md)
 
 ## 归属与保存位置
 
-建议将**关注清单作为工程级审阅配置**，由当前工程的可编辑工作区持有。工程交付者可指定应检查的输入和结果，接收者打开文件即可看到同一清单。建议存入 `.rfproj.json`，使清单和它引用的对象身份随一次 staged write 写入，并自然随工程移动、复制和另存。文件分叉后各自维护清单。
+**关注清单属于工程级审阅配置**，由当前工程的可编辑工作区持有。工程交付者可指定应检查的输入和结果，接收者打开文件即可看到同一清单。清单和它引用的对象身份在同一次 staged write 中写入 `.rfproj.json`，随工程移动、复制和另存。文件分叉后各自维护清单。
 
 | 内容 | 归属与行为 |
 | --- | --- |
@@ -20,7 +20,7 @@
 
 ## v4 存储与兼容
 
-提议在外层 v4 增加 `variableWatchList` 字段及必需能力 `radishflow.variable-watch-list` v1。以下仅展示新增字段。能力与字段成对出现，且依赖同一文件的 `radishflow.object-identity` v1。
+外层采用 v4，清单字段为 `variableWatchList`，必需能力为 `radishflow.variable-watch-list` v1。能力与字段成对出现，依赖同一文件的 `radishflow.object-identity` v1。下例只列出新增字段。
 
 ```json
 {
@@ -66,4 +66,4 @@
 | 副本与写保护 | 同 ID 另存与操作系统复制，原件和副本独立修改。注入目标变更、写失败和已存在清单的覆盖确认。冻结 `809748b5` 验证整份只读、原字节保留及拒绝覆盖。 |
 | 失效与恢复 | 重命名、删除、撤销、重开后 ID 重用、字段缺失、跨工程与未知引用版本。验证无效行不丢失，四种结果资格和定位独立。 |
 
-请评审三个决定。清单是否作为共享工程内容随副本继承，首次保存是否以 v4 必需能力保护，以及失效项是否保留到用户明确移除。通过后再确定局部布局与实现授权。
+局部布局、操作反馈与键盘路径见[画板评审](../../architecture/designs/studio-variable-browser-brief.md#vb-d03-关注清单局部画板)。六张画板已认可，首片获准实施。

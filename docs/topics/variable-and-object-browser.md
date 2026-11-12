@@ -136,7 +136,7 @@ AF4a 的工作区查询通过会话与输入身份检查快照归属，revision 
 | [生命周期](project-lifecycle-storage.md) | 明确引用持久化及复制 / 导入身份；关注、列宽、展开状态与物理输入分别保存和迁移 |
 | [公共 API](platform/public-api-and-access-control.md) | 枚举、搜索、读取、订阅与动作遵循同一资源授权；COM、脚本、插件按真实消费者接入 |
 
-[VB-D03 评审稿](variable-browser/watch-list.md)建议关注清单随工程保存，浏览布局归视图状态。重开、另存、失效项与兼容规则待评审。
+[VB-D03](variable-browser/watch-list.md)已认可关注清单随工程保存，浏览布局归视图状态，局部画板已认可。
 
 ## 范围与非目标
 
@@ -163,7 +163,7 @@ VB2 的单值完成不代表批量事务完成；VB3 按消费者逐项记录覆
 | --- | --- | --- |
 | VB-D01 | 首批节点 / 变量 / 动作覆盖矩阵，类别顺序与停靠 / 窄窗口布局 | VB0 对应局部 R0 / R1 |
 | VB-D02 | [存储与迁移](variable-browser/identity-storage.md)及 Studio 首批标量路径已接通 | 外部协议随 VB3 再审 |
-| VB-D03 | [关注项归属、存储与恢复](variable-browser/watch-list.md)待评审 | VB1 持久化实现前 |
+| VB-D03 | [关注项归属、存储与恢复](variable-browser/watch-list.md)已认可，首片获准实施 | 按 VB-A04 验收 |
 | VB-D04 | 编辑会话与 U2 路由、批量事务接口、关联约束及执行失败语义 | VB2 各编辑增量前 |
 | VB-D05 | 多上下文请求、分页 / 订阅一致性、限制及权限映射 | VB3 对应消费者前 |
 
