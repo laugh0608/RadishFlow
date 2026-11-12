@@ -4,9 +4,13 @@
 mod actions;
 mod stable_reference;
 mod variables;
+mod watch_list;
 pub use actions::*;
 pub use stable_reference::{StableVariableReference, VariableReferenceError};
 pub use variables::*;
+pub use watch_list::{
+    VariableWatchCommand, VariableWatchDirection, VariableWatchList, VariableWatchOutcome,
+};
 
 use crate::{DocumentId, FlowsheetDocument, SolveSnapshot};
 use rf_types::{StreamId, UnitId};

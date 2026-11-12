@@ -1067,7 +1067,8 @@ fn app_command(report: &super::StudioBootstrapReport) -> &crate::StudioAppComman
         | StudioBootstrapDispatch::NumericEdit { .. }
         | StudioBootstrapDispatch::ObjectDeletion { .. }
         | StudioBootstrapDispatch::ProjectPresentation { .. }
-        | StudioBootstrapDispatch::DocumentLifecycle(_) => {
+        | StudioBootstrapDispatch::DocumentLifecycle(_)
+        | StudioBootstrapDispatch::VariableWatch(_) => {
             panic!("expected app command dispatch")
         }
         StudioBootstrapDispatch::InspectorTarget(_) => {
@@ -1133,7 +1134,8 @@ fn session_event(
         | StudioBootstrapDispatch::NumericEdit { .. }
         | StudioBootstrapDispatch::ObjectDeletion { .. }
         | StudioBootstrapDispatch::ProjectPresentation { .. }
-        | StudioBootstrapDispatch::DocumentLifecycle(_) => {
+        | StudioBootstrapDispatch::DocumentLifecycle(_)
+        | StudioBootstrapDispatch::VariableWatch(_) => {
             panic!("expected entitlement session event dispatch")
         }
         StudioBootstrapDispatch::InspectorTarget(_) => {

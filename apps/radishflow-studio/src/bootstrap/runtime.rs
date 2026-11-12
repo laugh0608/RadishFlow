@@ -299,6 +299,14 @@ fn dispatch_bootstrap_trigger(
             let outcome = dispatch_document_lifecycle(session.app_state, command.clone())?;
             Ok(StudioBootstrapDispatch::DocumentLifecycle(outcome))
         }
+        StudioBootstrapTrigger::VariableWatch(command) => {
+            Ok(StudioBootstrapDispatch::VariableWatch(
+                session
+                    .app_state
+                    .workspace
+                    .edit_variable_watch_list(command)?,
+            ))
+        }
         StudioBootstrapTrigger::InspectorTarget(target) => {
             let outcome = focus_inspector_target(session.app_state, target.clone());
             if outcome.applied_target.is_none() {

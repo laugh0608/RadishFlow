@@ -1,5 +1,7 @@
 pub(crate) mod flow_plan;
 mod object_identities;
+#[cfg(test)]
+mod watch_list_tests;
 pub use flow_plan::StudioReadOnlyProject;
 pub use object_identities::{
     PreparedObjectIdentityInitialization, prepare_object_identity_initialization,
@@ -232,6 +234,8 @@ pub enum ProjectSaveCompatibility {
         required: Vec<rf_store::project_v4::RequiredCapability>,
         added_from_source: Vec<rf_store::project_v4::RequiredCapability>,
         replaces_target_object_identities: bool,
+        replaces_target_variable_watch_list: bool,
+        watch_list_entries: Option<usize>,
     },
 }
 /// Compatibility of both the loaded baseline and the actual save target.
@@ -421,6 +425,7 @@ fn publish_project_save(
         .record_saved(display_units, version);
     let plan = &mut app_state.workspace.flow_plan;
     plan.record_saved(plan.current().clone());
+    app_state.workspace.variable_watch_list.record_saved();
     if let Some(capabilities) = flow_capabilities {
         app_state.workspace.flow_plan.record_saved_capabilities(
             capabilities

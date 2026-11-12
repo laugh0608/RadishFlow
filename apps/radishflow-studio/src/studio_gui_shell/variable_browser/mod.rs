@@ -8,6 +8,7 @@ mod navigation;
 mod projection;
 mod references;
 mod render;
+mod watch_list;
 
 use projection::*;
 
@@ -23,6 +24,7 @@ enum DirectoryView {
     #[default]
     Project,
     Variables,
+    WatchList,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -55,6 +57,7 @@ pub(super) struct VariableBrowserState {
     directory: DirectoryView,
     query: String,
     reference_input: Option<String>,
+    watch: watch_list::WatchViewState,
     section: SectionFilter,
     scope: Option<ProjectObjectRef>,
     selected: Option<BrowserSelection>,
@@ -75,6 +78,8 @@ enum BrowserIntent {
     CopyReference(BrowserSelection),
     OpenReference(String),
     InitializeReferences,
+    EditWatch(rf_ui::variable_browser::VariableWatchCommand),
+    ShowWatched(String),
     Close,
     Flowsheet,
     Dock,
@@ -141,6 +146,10 @@ impl ReadyAppState {
             Some(BrowserIntent::OpenReference(text)) => self.open_stable_reference(&text),
             Some(BrowserIntent::InitializeReferences) => {
                 self.request_object_identity_initialization()
+            }
+            Some(BrowserIntent::EditWatch(command)) => self.edit_browser_watch_list(command),
+            Some(BrowserIntent::ShowWatched(reference)) => {
+                self.variable_browser.show_watched(reference)
             }
             Some(BrowserIntent::Close) => self.close_variable_browser(),
             Some(BrowserIntent::Flowsheet) => {

@@ -456,6 +456,7 @@ impl AppLogFeed {
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceState {
     pub flow_plan: crate::flow_plan::FlowPlanState,
+    pub variable_watch_list: crate::variable_browser::VariableWatchList,
     pub(crate) material_balance: crate::material_balance::MaterialBalanceState,
     pub(crate) flow_failure: Option<crate::result_query::FlowFailureRecord>,
     pub(crate) flow_run_acceptance: crate::flow_run::FlowRunAcceptance,
@@ -487,6 +488,7 @@ impl WorkspaceState {
 
         Self {
             flow_plan: crate::flow_plan::FlowPlanState::default(),
+            variable_watch_list: crate::variable_browser::VariableWatchList::default(),
             material_balance: crate::material_balance::MaterialBalanceState::default(),
             flow_run_acceptance: crate::flow_run::FlowRunAcceptance::new(),
             engineering: crate::engineering::EngineeringSession::new(

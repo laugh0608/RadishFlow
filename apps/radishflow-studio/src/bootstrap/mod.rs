@@ -60,6 +60,7 @@ pub enum StudioBootstrapTrigger {
     WidgetAction(rf_ui::RunPanelActionId),
     WidgetRecoveryAction,
     DocumentLifecycle(crate::StudioDocumentLifecycleCommand),
+    VariableWatch(rf_ui::variable_browser::VariableWatchCommand),
     ProjectPresentation(rf_ui::ProjectPresentationCommand),
     NumericEdit(rf_ui::NumericEditCommand),
     Equipment(rf_ui::engineering::editor::EquipmentEditorCommand),
@@ -150,6 +151,7 @@ pub enum StudioBootstrapDispatch {
     AppCommand(StudioAppCommandOutcome),
     RunPanelRecovery(RunPanelRecoveryOutcome),
     DocumentLifecycle(crate::DocumentLifecycleOutcome),
+    VariableWatch(rf_ui::variable_browser::VariableWatchOutcome),
     ProjectPresentation {
         changed: bool,
     },

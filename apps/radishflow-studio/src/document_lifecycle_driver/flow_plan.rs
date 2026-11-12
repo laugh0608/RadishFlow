@@ -75,6 +75,8 @@ pub(super) fn parse_v4(
             if let Some(identities) = p.object_identities {
                 app.workspace.install_saved_object_identities(identities);
             }
+            app.workspace.variable_watch_list =
+                rf_ui::variable_browser::VariableWatchList::from_saved(p.variable_watch_list);
             app.workspace.flow_plan = rf_ui::flow_plan::FlowPlanState::from_loaded(configuration);
             app.workspace
                 .flow_plan
@@ -98,6 +100,11 @@ pub(super) fn project(app: &AppState) -> ProjectV4Read {
             }),
         steady_state_plan: stored_flow_plan(app.workspace.flow_plan.current()),
         object_identities: app.workspace.current_object_identities(),
+        variable_watch_list: app
+            .workspace
+            .variable_watch_list
+            .entries_for_save()
+            .map(<[String]>::to_vec),
     }))
 }
 pub(super) fn compatibility(
@@ -116,9 +123,16 @@ pub(super) fn compatibility(
     let new_capabilities = added_source_capabilities(app);
     let replaces_target_object_identities = app.workspace.document_path.as_deref() != Some(path)
         && prepared.replaces_target_object_identities();
+    let replaces_target_variable_watch_list = app.workspace.document_path.as_deref() != Some(path)
+        && prepared.replaces_target_variable_watch_list();
+    let introduces_watch_list = new_capabilities
+        .iter()
+        .any(|cap| cap.id == project_v4::VARIABLE_WATCH_LIST_CAPABILITY)
+        || (prepared.target_fingerprint().is_some() && !prepared.target_has_variable_watch_list());
     if !new_capabilities.is_empty()
         || prepared.requires_upgrade()
         || replaces_target_object_identities
+        || replaces_target_variable_watch_list
     {
         // Capture the full required set as well as the source delta: a later
         // change to the method cannot reuse an earlier capability review.
@@ -126,6 +140,15 @@ pub(super) fn compatibility(
             required: required_capabilities(app),
             added_from_source: new_capabilities,
             replaces_target_object_identities,
+            replaces_target_variable_watch_list,
+            watch_list_entries: if introduces_watch_list {
+                app.workspace
+                    .variable_watch_list
+                    .entries_for_save()
+                    .map(<[String]>::len)
+            } else {
+                None
+            },
         }));
     }
     Ok(None)
@@ -148,7 +171,9 @@ pub(super) fn save(app: &AppState, path: &Path, upgrade_confirmed: bool) -> RfRe
     let prepared =
         project_v4::prepare_write(path, &project(app), rf_store::FileOverwritePolicy::Allow)?;
     if (app.workspace.project_presentation.source_file_version() != Some(4)
-        || !added_source_capabilities(app).is_empty())
+        || !added_source_capabilities(app).is_empty()
+        || (app.workspace.document_path.as_deref() != Some(path)
+            && prepared.replaces_target_variable_watch_list()))
         && !upgrade_confirmed
     {
         return Err(RfError::invalid_input(

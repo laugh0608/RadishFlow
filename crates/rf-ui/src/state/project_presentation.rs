@@ -80,6 +80,7 @@ pub struct ProjectSaveState {
     pub simulation_dirty: bool,
     pub presentation_dirty: bool,
     pub engineering_dirty: bool,
+    pub watch_list_dirty: bool,
     pub pending_input_count: usize,
 }
 
@@ -89,6 +90,7 @@ impl ProjectSaveState {
             || self.presentation_dirty
             || self.engineering_dirty
             || self.simulation_dirty
+            || self.watch_list_dirty
     }
 
     pub fn needs_close_confirmation(self) -> bool {
@@ -232,6 +234,7 @@ impl super::WorkspaceState {
             document_dirty: self.last_saved_revision != Some(self.document.revision),
             presentation_dirty: self.project_presentation.is_dirty(),
             engineering_dirty: self.engineering.is_dirty(),
+            watch_list_dirty: self.variable_watch_list.is_dirty(),
             pending_input_count: self.drafts.pending_count()
                 + self.equipment_editor.pending_count()
                 + self.flow_plan.pending_count(),

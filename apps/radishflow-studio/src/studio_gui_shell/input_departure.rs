@@ -10,6 +10,7 @@ pub(super) struct ProjectDepartureCheckpoint {
     presentation: rf_ui::ProjectPresentationState,
     engineering: rf_ui::engineering::EngineeringCheckpoint,
     equipment_editor: rf_ui::engineering::EngineeringCheckpoint,
+    watch_list: rf_ui::variable_browser::VariableWatchList,
     saved_revision: Option<u64>,
     project_path: Option<String>,
 }
@@ -57,6 +58,12 @@ impl ReadyAppState {
                 .equipment_editor
                 .checkpoint(),
             saved_revision: document.last_saved_revision,
+            watch_list: self
+                .platform_host
+                .modeling_inputs()
+                .workspace
+                .variable_watch_list
+                .clone(),
             project_path: document.project_path,
         }
     }

@@ -3,7 +3,7 @@ use rf_ui::{
     WorkspaceState, project_query::ProjectObjectId, variable_browser::VariableReferenceError,
 };
 
-fn selected_variable(selection: &BrowserSelection) -> Option<VariableId> {
+pub(super) fn selected_variable(selection: &BrowserSelection) -> Option<VariableId> {
     let ProjectObjectId::Flow(object) = &selection.object.object else {
         return None;
     };
@@ -16,6 +16,19 @@ fn selected_variable(selection: &BrowserSelection) -> Option<VariableId> {
         section: *section,
         field: field.clone(),
     })
+}
+
+pub(super) fn variable_selection(variable: VariableId) -> BrowserSelection {
+    BrowserSelection {
+        object: ProjectObjectRef {
+            document: variable.document,
+            object: ProjectObjectId::Flow(variable.object),
+        },
+        field: Some(ProjectField::Flow {
+            section: variable.section,
+            field: variable.field,
+        }),
+    }
 }
 
 impl ReadyAppState {

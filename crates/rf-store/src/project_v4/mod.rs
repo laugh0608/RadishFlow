@@ -32,6 +32,7 @@ pub const MIXED_CAPABILITY: &str = "radishflow.solver.fixed-tp-mixed-material";
 pub const EQUATION_ORIENTED_CAPABILITY: &str = "radishflow.solver.fixed-tp-material-eo";
 pub const SIMULTANEOUS_CAPABILITY: &str = "radishflow.solver.fixed-tp-affine-modular-lu";
 pub const OBJECT_IDENTITY_CAPABILITY: &str = "radishflow.object-identity";
+pub const VARIABLE_WATCH_LIST_CAPABILITY: &str = "radishflow.variable-watch-list";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ObjectIdentitySupport {
@@ -60,6 +61,7 @@ pub struct StoredProjectV4 {
     pub engineering: Option<StoredEngineeringInputs>,
     pub steady_state_plan: StoredFlowPlan,
     pub object_identities: Option<FlowObjectIdentities>,
+    pub variable_watch_list: Option<Vec<String>>,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProjectV4Read {
@@ -112,6 +114,8 @@ struct WriteWire<'a> {
     engineering: Option<shared::EngineeringSection>,
     #[serde(skip_serializing_if = "Option::is_none")]
     object_identities: Option<ObjectIdentitiesWire>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    variable_watch_list: Option<&'a [String]>,
 }
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -137,6 +141,9 @@ pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapabilit
     let mut ids = vec![FLOW_PLAN_CAPABILITY];
     if project.object_identities.is_some() {
         ids.push(OBJECT_IDENTITY_CAPABILITY);
+    }
+    if project.variable_watch_list.is_some() {
+        ids.push(VARIABLE_WATCH_LIST_CAPABILITY);
     }
     if project
         .document
@@ -211,10 +218,14 @@ pub fn parse_for_consumer(
                     EQUATION_ORIENTED_CAPABILITY,
                     MIXED_CAPABILITY,
                     OBJECT_IDENTITY_CAPABILITY,
+                    VARIABLE_WATCH_LIST_CAPABILITY,
                 ]
                 .contains(&c.id.as_str())
                 || (identity_support == ObjectIdentitySupport::Unavailable
-                    && c.id == OBJECT_IDENTITY_CAPABILITY)
+                    && matches!(
+                        c.id.as_str(),
+                        OBJECT_IDENTITY_CAPABILITY | VARIABLE_WATCH_LIST_CAPABILITY
+                    ))
                 || (support == FlowPlanSupport::Sequential && c.id == SIMULTANEOUS_CAPABILITY)
                 || (!matches!(
                     support,
@@ -330,6 +341,7 @@ pub fn parse_for_consumer(
             "simulation",
             "engineering",
             "objectIdentities",
+            "variableWatchList",
         ],
         "project",
     )?;
@@ -343,6 +355,10 @@ pub fn parse_for_consumer(
         })
         .transpose()?;
     let simulation: Simulation = serde_json::from_value(wire.simulation).map_err(json_error)?;
+    let variable_watch_list = root
+        .get("variableWatchList")
+        .map(|value| serde_json::from_value::<Vec<String>>(value.clone()).map_err(json_error))
+        .transpose()?;
     let project = StoredProjectV4 {
         document,
         display_units: serde_json::from_value::<PresentationWire>(wire.presentation)
@@ -351,7 +367,9 @@ pub fn parse_for_consumer(
         engineering,
         steady_state_plan: simulation.steady_state_plan,
         object_identities,
+        variable_watch_list,
     };
+    validate_watch_list(&project)?;
     let actual: BTreeSet<_> = wire.required_capabilities.into_iter().collect();
     if actual != required_capabilities(&project).into_iter().collect() {
         return Err(RfError::invalid_input(
@@ -384,6 +402,7 @@ pub fn to_pretty_json(project: &ProjectV4Read) -> RfResult<String> {
         ));
     };
     document::validate(&p.document)?;
+    validate_watch_list(p)?;
     let wire = WriteWire {
         kind: STORED_PROJECT_FILE_KIND,
         schema_version: VERSION,
@@ -399,8 +418,30 @@ pub fn to_pretty_json(project: &ProjectV4Read) -> RfResult<String> {
             .as_ref()
             .map(|identities| ObjectIdentitiesWire::encode(identities, &p.document.flowsheet))
             .transpose()?,
+        variable_watch_list: p.variable_watch_list.as_deref(),
     };
     serde_json::to_string_pretty(&wire).map_err(json_error)
+}
+
+fn validate_watch_list(project: &StoredProjectV4) -> RfResult<()> {
+    let Some(entries) = &project.variable_watch_list else {
+        return Ok(());
+    };
+    if project.object_identities.is_none() {
+        return Err(RfError::invalid_input(
+            "variableWatchList requires objectIdentities",
+        ));
+    }
+    let mut seen = BTreeSet::new();
+    if entries
+        .iter()
+        .any(|entry| entry.trim().is_empty() || !seen.insert(entry))
+    {
+        return Err(RfError::invalid_input(
+            "variableWatchList contains a blank or duplicate reference",
+        ));
+    }
+    Ok(())
 }
 fn json_error(e: serde_json::Error) -> RfError {
     RfError::invalid_input(format!("project v4 JSON: {e}"))

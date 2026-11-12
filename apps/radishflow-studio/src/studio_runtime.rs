@@ -898,6 +898,7 @@ mod tests {
             | StudioRuntimeDispatch::NumericEdit { .. }
             | StudioRuntimeDispatch::ObjectDeletion { .. }
             | StudioRuntimeDispatch::ProjectPresentation { .. }
+            | StudioRuntimeDispatch::VariableWatch(_)
             | StudioRuntimeDispatch::DocumentLifecycle(_) => {
                 panic!("expected entitlement session event dispatch")
             }

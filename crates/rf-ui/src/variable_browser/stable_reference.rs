@@ -39,6 +39,23 @@ pub enum VariableReferenceError {
 }
 
 impl StableVariableReference {
+    pub(super) fn for_current_variable(
+        workspace: &WorkspaceState,
+        variable: VariableId,
+    ) -> Result<Self, VariableReferenceError> {
+        check_target(workspace, &variable)?;
+        let creation = workspace
+            .object_creation_id(&variable.object)
+            .ok_or(VariableReferenceError::ObjectMissing)?
+            .clone();
+        check_field(workspace, &variable)?;
+        Ok(Self { variable, creation })
+    }
+
+    pub fn variable(&self) -> &VariableId {
+        &self.variable
+    }
+
     pub fn for_saved_variable(
         workspace: &WorkspaceState,
         variable: VariableId,

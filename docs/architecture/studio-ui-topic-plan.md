@@ -51,7 +51,7 @@
 
 2026-11-11 [VB0 首片评审稿](designs/studio-variable-browser-brief.md)补充只读发现、结果资格与定位的覆盖和文字布局。首片方案已获所有者认可；9 张局部画板及 PNG 已获认可，VB1 首片已接通并完成本机代表验证，细节与保留项见浏览器专题；不表示全局 R0 或完整 VB0 / VB1 已完成。
 
-2026-11-12 VB-D03 工程归属、v4 保存、另存和失效项规则已获认可。[关注清单局部画板](designs/studio-variable-browser-brief.md#vb-d03-关注清单局部画板)覆盖展开、400 px 侧区、保存确认和失败状态。六张 PNG 已获认可，首片获准实施。
+2026-11-12 VB-D03 按已认可的[关注清单局部画板](designs/studio-variable-browser-brief.md#vb-d03-关注清单局部画板)接通 Studio 首片，包含展开工作区、400 px 侧区、首次保存确认及失效项操作。Pencil 主稿待配额恢复后补。
 
 ## 首批必须评审的代表路径
 

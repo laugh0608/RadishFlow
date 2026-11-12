@@ -218,17 +218,28 @@ impl ReadyAppState {
             ui.set_width((ctx.screen_rect().width() - 40.0).clamp(220.0, 520.0));
             let capability_only = matches!(compatibility, ProjectSaveCompatibility::RatingCapability | ProjectSaveCompatibility::RatingMatrixCapability | ProjectSaveCompatibility::RatingAdoptionCapability | ProjectSaveCompatibility::FlowCapabilities { .. });
             ui.heading(match (zh, capability_only, &compatibility) {
+                (true, _, ProjectSaveCompatibility::FlowCapabilities { watch_list_entries: Some(_), .. }) => "首次保存关注清单",
+                (false, _, ProjectSaveCompatibility::FlowCapabilities { watch_list_entries: Some(_), .. }) => "Save watch list for the first time",
+                (true, _, ProjectSaveCompatibility::FlowCapabilities { replaces_target_variable_watch_list: true, .. }) => "确认替换目标关注清单",
+                (false, _, ProjectSaveCompatibility::FlowCapabilities { replaces_target_variable_watch_list: true, .. }) => "Confirm replacement of destination watch list",
                 (true, _, ProjectSaveCompatibility::FlowCapabilities { .. }) => "确认流程能力兼容性",
                 (false, _, ProjectSaveCompatibility::FlowCapabilities { .. }) => "Confirm flow capability compatibility",
                 (true, true, _) => "确认校核任务兼容性", (false, true, _) => "Confirm rating compatibility",
                 (true, false, _) => "保存为新版工程", (false, false, _) => "Upgrade project format",
             });
             match compatibility {
-                ProjectSaveCompatibility::FlowCapabilities { required, replaces_target_object_identities, .. } => {
+                ProjectSaveCompatibility::FlowCapabilities { required, replaces_target_object_identities, replaces_target_variable_watch_list, watch_list_entries, .. } => {
+                    if let Some(count) = watch_list_entries {
+                        ui.label(if zh { format!("工程仍为 v4。此次会写入 {count} 项关注引用及其顺序。") } else { format!("The project remains v4. This saves {count} watched references in list order.") });
+                        ui.label(tr(self.locale, "不支持关注清单能力的旧版 Studio 将整份只读打开。可另存新副本以保留原件。", "Older Studio versions without watch list support open this project read-only. Use Save As to keep the original."));
+                    }
+                    if replaces_target_variable_watch_list {
+                        ui.strong(tr(self.locale, "目标工程已有的关注清单将被当前清单替换。", "The current watch list will replace the destination project's watch list."));
+                    }
                     if replaces_target_object_identities {
                         ui.strong(tr(self.locale, "覆盖后，目标工程的旧变量引用可能失效。", "Overwriting can invalidate old variable references in the destination project."));
                         ui.label(tr(self.locale, "将写入下列必需能力。", "The following required capabilities will be written."));
-                    } else {
+                    } else if watch_list_entries.is_none() && !replaces_target_variable_watch_list {
                         ui.label(if zh { "工程仍为 v4，将增加所需模型或计划能力。不支持这些能力的旧版本将整份只读打开。可另存为以保留原件。" }
                         else { "The project remains v4 with additional required model or plan capabilities. Older versions without these capabilities open it read-only. Use Save As to keep the original." });
                     }

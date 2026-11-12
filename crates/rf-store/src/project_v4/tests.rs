@@ -24,6 +24,7 @@ fn fixture() -> StoredProjectV4 {
         engineering: None,
         steady_state_plan: StoredFlowPlan::Acyclic,
         object_identities: None,
+        variable_watch_list: None,
     }
 }
 fn recycle() -> StoredFlowPlan {
@@ -289,6 +290,7 @@ fn v4_roundtrip_preserves_all_v3_rating_adoption_and_display_inputs() {
             engineering: old.engineering,
             steady_state_plan: recycle(),
             object_identities: None,
+            variable_watch_list: None,
         }));
         let json = to_pretty_json(&project).unwrap();
         assert_eq!(parse(&json).unwrap(), project);
@@ -298,6 +300,68 @@ fn v4_roundtrip_preserves_all_v3_rating_adoption_and_display_inputs() {
 mod equation_oriented;
 
 mod mixed;
+
+#[test]
+fn watch_list_roundtrips_opaque_references_and_protects_saved_targets() {
+    let mut project = fixture();
+    project.document.flowsheet.units.clear();
+    project.document.flowsheet.streams.clear();
+    project.object_identities = Some(FlowObjectIdentities::default());
+    let entries = vec![
+        "rfvar:2/unknown syntax".to_owned(),
+        " unresolved text ".to_owned(),
+    ];
+    project.variable_watch_list = Some(entries.clone());
+    let original = json_project(project.clone());
+    assert_eq!(
+        parse(&original).unwrap(),
+        ProjectV4Read::Editable(Box::new(project.clone()))
+    );
+
+    let mut invalid: Value = serde_json::from_str(&original).unwrap();
+    for bad in [
+        Value::Null,
+        json!([2]),
+        json!([" "]),
+        json!(["same", "same"]),
+    ] {
+        invalid["variableWatchList"] = bad;
+        assert!(parse(&invalid.to_string()).is_err());
+    }
+    let mut invalid: Value = serde_json::from_str(&original).unwrap();
+    invalid.as_object_mut().unwrap().remove("variableWatchList");
+    assert!(parse(&invalid.to_string()).is_err());
+    invalid["variableWatchList"] = json!(entries);
+    invalid["requiredCapabilities"]
+        .as_array_mut()
+        .unwrap()
+        .pop();
+    assert!(parse(&invalid.to_string()).is_err());
+    let mut missing_identity = project.clone();
+    missing_identity.object_identities = None;
+    assert!(to_pretty_json(&ProjectV4Read::Editable(Box::new(missing_identity))).is_err());
+
+    let dir = Directory::new();
+    let target = dir.0.join("watched.json");
+    fs::write(&target, &original).unwrap();
+    project.variable_watch_list = None;
+    assert!(
+        prepare_write(
+            &target,
+            &ProjectV4Read::Editable(Box::new(project.clone())),
+            FileOverwritePolicy::Allow
+        )
+        .is_err()
+    );
+    assert_eq!(fs::read_to_string(&target).unwrap(), original);
+    project.variable_watch_list = Some(vec![]);
+    let current = ProjectV4Read::Editable(Box::new(project));
+    let prepared = prepare_write(&target, &current, FileOverwritePolicy::Allow).unwrap();
+    assert!(prepared.replaces_target_variable_watch_list());
+    assert!(!prepared.requires_upgrade());
+    write_prepared(&prepared, false).unwrap();
+    assert_eq!(read(target).unwrap(), current);
+}
 
 #[test]
 fn object_identities_roundtrip_and_protect_other_consumers_and_writers() {

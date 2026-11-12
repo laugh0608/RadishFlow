@@ -45,6 +45,141 @@ fn frame(
 }
 
 #[test]
+fn browser_watch_list_renders_and_rechecks_save_review_and_location() {
+    use rf_ui::variable_browser::{VariableWatchCommand, VariableWatchDirection};
+    let mut app = app();
+    app.locale = StudioShellLocale::En;
+    app.dispatch_ui_command("run_panel.run_manual");
+    app.open_variable_browser();
+    synchronize(&mut app);
+    let target = std::env::temp_dir().join(format!(
+        "radishflow-watch-browser-{}-{}.rfproj.json",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    app.request_object_identity_initialization();
+    app.prepare_identity_destination(target.clone());
+    app.confirm_identity_initialization();
+    let original = std::fs::read(&target).unwrap();
+    let input = flow_selection(
+        &app,
+        ObjectId::Unit("heater-1".into()),
+        VariableSection::Inputs,
+        VariableField::OutletTemperature,
+    );
+    let result = flow_selection(
+        &app,
+        ObjectId::Stream("stream-heated".into()),
+        VariableSection::Results,
+        VariableField::Temperature,
+    );
+    let add_input = VariableWatchCommand::Add(references::selected_variable(&input).unwrap());
+    let add_result = VariableWatchCommand::Add(references::selected_variable(&result).unwrap());
+    app.edit_browser_watch_list(add_input.clone());
+    assert_eq!(app.variable_browser.directory, DirectoryView::Project);
+    assert!(
+        app.platform_host
+            .modeling_inputs()
+            .workspace
+            .project_save_state()
+            .watch_list_dirty
+    );
+    assert_eq!(
+        app.platform_host
+            .modeling_inputs()
+            .workspace
+            .flow_result()
+            .status(),
+        rf_ui::result_query::ResultStatus::Current
+    );
+    app.edit_browser_watch_list(add_input);
+    assert_eq!(app.variable_browser.directory, DirectoryView::WatchList);
+    let input_text = app.variable_browser.watch.selected.clone().unwrap();
+    app.save_project();
+    assert!(app.pending_format_upgrade.is_some());
+    app.edit_browser_watch_list(add_result);
+    app.confirm_format_upgrade();
+    assert_eq!(std::fs::read(&target).unwrap(), original);
+    assert!(
+        app.platform_host
+            .modeling_inputs()
+            .workspace
+            .project_save_state()
+            .watch_list_dirty
+    );
+    app.edit_browser_watch_list(VariableWatchCommand::Move {
+        reference: input_text.clone(),
+        direction: VariableWatchDirection::Down,
+    });
+    assert_eq!(
+        app.variable_browser.watch.selected.as_deref(),
+        Some(input_text.as_str())
+    );
+    app.save_project();
+    app.confirm_format_upgrade();
+    assert!(
+        !app.platform_host
+            .modeling_inputs()
+            .workspace
+            .project_save_state()
+            .watch_list_dirty
+    );
+
+    let ctx = egui::Context::default();
+    let wide = frame(&mut app, &ctx, 1180.0, vec![]);
+    let labels = text_rects(&wide)
+        .into_iter()
+        .map(|(text, _)| text)
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(labels.contains("Locate input field") && labels.contains("Remove from watch list"));
+    let narrow = frame(&mut app, &ctx, 400.0, vec![]);
+    let labels = text_rects(&narrow)
+        .into_iter()
+        .map(|(text, _)| text)
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(labels.contains("Watch list") && labels.contains("Outlet temperature"));
+
+    let result_text = app
+        .platform_host
+        .modeling_inputs()
+        .workspace
+        .variable_watch_list
+        .entries()[0]
+        .clone();
+    app.open_project(target.clone(), "project");
+    app.reconcile_browser_session();
+    app.open_variable_browser();
+    synchronize(&mut app);
+    assert!(app.variable_browser.watch.selected.is_none());
+    app.variable_browser.show_watched(result_text.clone());
+    app.request_browser_navigation(BrowserNavigation::StableReference(
+        result_text.parse().unwrap(),
+    ));
+    assert_eq!(app.variable_browser.directory, DirectoryView::Project);
+    assert_eq!(app.variable_browser.selected, Some(result));
+    app.variable_browser.show_watched(result_text.clone());
+    app.edit_browser_watch_list(VariableWatchCommand::Remove(result_text));
+    assert_eq!(
+        app.variable_browser.watch.selected.as_deref(),
+        Some(input_text.as_str())
+    );
+    assert!(
+        app.platform_host
+            .modeling_inputs()
+            .workspace
+            .project_save_state()
+            .watch_list_dirty
+    );
+    std::fs::remove_file(&target).unwrap();
+    let _ = std::fs::remove_file(format!("{}.rfstudio-layout.json", target.display()));
+}
+
+#[test]
 fn browser_stable_reference_enables_saves_reopens_and_locates_without_mutation() {
     let mut app = app();
     app.locale = StudioShellLocale::En;

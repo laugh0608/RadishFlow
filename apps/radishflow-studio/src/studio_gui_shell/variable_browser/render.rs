@@ -69,7 +69,29 @@ pub(super) fn browser(
             DirectoryView::Variables,
             tr(locale, "变量树", "Variable tree"),
         );
+        ui.selectable_value(
+            &mut state.directory,
+            DirectoryView::WatchList,
+            format!(
+                "{} · {}",
+                tr(locale, "关注清单", "Watch list"),
+                workspace.variable_watch_list.entries().len()
+            ),
+        );
     });
+    if state.directory == DirectoryView::WatchList {
+        watch_list::render(ui, state, workspace, locale, &mut intent);
+        if consume_browser_escape(ui, state) {
+            if state.reference_input.is_some() {
+                state.reference_input = None;
+            } else if state.watch.detail_page {
+                state.watch.back_to_list();
+            } else {
+                intent = Some(BrowserIntent::Close);
+            }
+        }
+        return intent;
+    }
     let search = ui.add(
         egui::TextEdit::singleline(&mut state.query)
             .desired_width(f32::INFINITY)
@@ -178,12 +200,7 @@ pub(super) fn browser(
             .show(ui, |ui| directory(ui, state, locale));
         rows(ui, state, workspace, locale, false, ui.available_height());
     }
-    if state.owns_shortcuts(ui.ctx())
-        && !ui
-            .ctx()
-            .memory(|m| m.any_popup_open() || m.top_modal_layer().is_some())
-        && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
-    {
+    if consume_browser_escape(ui, state) {
         if state.reference_input.is_some() {
             state.reference_input = None;
         } else if state.detail_page {
@@ -193,6 +210,14 @@ pub(super) fn browser(
         }
     }
     intent
+}
+
+fn consume_browser_escape(ui: &egui::Ui, state: &VariableBrowserState) -> bool {
+    state.owns_shortcuts(ui.ctx())
+        && !ui
+            .ctx()
+            .memory(|m| m.any_popup_open() || m.top_modal_layer().is_some())
+        && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
 }
 
 fn category(kind: ProjectObjectKind) -> usize {
@@ -516,15 +541,24 @@ fn rows(
 }
 
 fn table_cells(ui: &mut egui::Ui, texts: [&str; 5], heading: bool) {
+    browser_columns(ui, texts, [0.25, 0.10, 0.23, 0.20, 0.22], heading);
+}
+
+pub(super) fn browser_columns<const N: usize>(
+    ui: &mut egui::Ui,
+    texts: [&str; N],
+    fractions: [f32; N],
+    heading: bool,
+) {
     let height = ui.text_style_height(&egui::TextStyle::Body) * 1.5;
     let (rect, _) = ui.allocate_exact_size(
         egui::vec2(ui.available_width(), height),
         egui::Sense::hover(),
     );
     let spacing = ui.spacing().item_spacing.x;
-    let usable = (rect.width() - 4.0 * spacing).max(0.0);
+    let usable = (rect.width() - N.saturating_sub(1) as f32 * spacing).max(0.0);
     let mut x = rect.left();
-    for (text, fraction) in texts.into_iter().zip([0.25, 0.10, 0.23, 0.20, 0.22]) {
+    for (text, fraction) in texts.into_iter().zip(fractions) {
         let cell = egui::Rect::from_min_size(
             egui::pos2(x, rect.top()),
             egui::vec2(usable * fraction, height),
@@ -597,6 +631,7 @@ fn detail(
     ui.add(egui::Label::new(object_identity(&object.reference.object)).wrap());
     if let Some(field) = &selected.field {
         ui.strong(field_label(field, locale));
+        watch_list::render_add(ui, workspace, selected, locale, intent);
         references::render_copy_reference(ui, workspace, selected, locale, intent);
         match read_selection(workspace, selected, locale) {
             Ok(read) => {

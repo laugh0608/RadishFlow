@@ -76,16 +76,8 @@ impl ReadyAppState {
                         return false;
                     }
                 };
-                let selection = BrowserSelection {
-                    object: ProjectObjectRef {
-                        document: variable.document,
-                        object: ProjectObjectId::Flow(variable.object),
-                    },
-                    field: Some(ProjectField::Flow {
-                        section: variable.section,
-                        field: variable.field,
-                    }),
-                };
+                let section = variable.section;
+                let selection = references::variable_selection(variable);
                 self.variable_browser.selected = Some(selection.clone());
                 self.variable_browser.query.clear();
                 self.variable_browser.scope = None;
@@ -93,7 +85,10 @@ impl ReadyAppState {
                 self.variable_browser.detail_page = true;
                 self.variable_browser.notice = None;
                 self.variable_browser.reference_input = None;
-                if variable.section == VariableSection::Results {
+                if section == VariableSection::Results {
+                    if self.variable_browser.directory == DirectoryView::WatchList {
+                        self.variable_browser.directory = DirectoryView::Project;
+                    }
                     self.open_variable_browser();
                     return true;
                 }

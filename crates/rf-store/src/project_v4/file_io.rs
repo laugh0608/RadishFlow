@@ -14,6 +14,8 @@ pub struct PreparedProjectV4Write {
     requires_upgrade: bool,
     target_has_object_identities: bool,
     replaces_target_object_identities: bool,
+    replaces_target_variable_watch_list: bool,
+    target_has_variable_watch_list: bool,
 }
 impl PreparedProjectV4Write {
     pub fn path(&self) -> &Path {
@@ -30,6 +32,12 @@ impl PreparedProjectV4Write {
     }
     pub fn replaces_target_object_identities(&self) -> bool {
         self.replaces_target_object_identities
+    }
+    pub fn replaces_target_variable_watch_list(&self) -> bool {
+        self.replaces_target_variable_watch_list
+    }
+    pub fn target_has_variable_watch_list(&self) -> bool {
+        self.target_has_variable_watch_list
     }
 }
 pub fn read(path: impl AsRef<Path>) -> RfResult<ProjectV4Read> {
@@ -50,6 +58,8 @@ pub fn prepare_write(
     }
     let mut target_has_object_identities = false;
     let mut replaces_target_object_identities = false;
+    let mut replaces_target_variable_watch_list = false;
+    let mut target_has_variable_watch_list = false;
     let requires_upgrade = if let Some(bytes) = &existing {
         let text = std::str::from_utf8(bytes)
             .map_err(|e| RfError::invalid_input(format!("project target UTF-8: {e}")))?;
@@ -73,6 +83,17 @@ pub fn prepare_write(
                         return Err(RfError::invalid_input(
                             "existing project has object identities; overwriting without identities is prohibited",
                         ));
+                    }
+                    if let Some(old_watch_list) = &existing.variable_watch_list {
+                        target_has_variable_watch_list = true;
+                        let Some(new_watch_list) = &new.variable_watch_list else {
+                            return Err(RfError::invalid_input(
+                                "existing project has a variable watch list; overwriting without it is prohibited",
+                            ));
+                        };
+                        replaces_target_variable_watch_list = old_watch_list != new_watch_list
+                            || existing.document.metadata.document_id
+                                != new.document.metadata.document_id;
                     }
                     if let (Some(old), Some(next)) =
                         (&existing.object_identities, &new.object_identities)
@@ -116,6 +137,8 @@ pub fn prepare_write(
         requires_upgrade,
         target_has_object_identities,
         replaces_target_object_identities,
+        replaces_target_variable_watch_list,
+        target_has_variable_watch_list,
     })
 }
 pub fn write_prepared(prepared: &PreparedProjectV4Write, upgrade_confirmed: bool) -> RfResult<()> {
