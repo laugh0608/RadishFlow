@@ -916,14 +916,16 @@ fn automatic_workspace_run_executes_after_document_revision_advances_end_to_end(
         .get_mut(&"heater-1".into())
         .expect("expected heater unit")
         .name = "Heater Updated".to_string();
-    app_state.commit_document_change(
-        DocumentCommand::RenameUnit {
-            unit_id: "heater-1".into(),
-            new_name: "Heater Updated".to_string(),
-        },
-        next_flowsheet,
-        timestamp(30),
-    );
+    app_state
+        .commit_document_change(
+            DocumentCommand::RenameUnit {
+                unit_id: "heater-1".into(),
+                new_name: "Heater Updated".to_string(),
+            },
+            next_flowsheet,
+            timestamp(30),
+        )
+        .unwrap();
     assert_eq!(app_state.workspace.document.revision, 1);
     assert_eq!(app_state.workspace.run_panel.run_status, RunStatus::Dirty);
     assert_eq!(

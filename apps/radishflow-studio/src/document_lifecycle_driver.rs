@@ -1,7 +1,12 @@
 pub(crate) mod flow_plan;
+mod object_identities;
 pub use flow_plan::StudioReadOnlyProject;
+pub use object_identities::{
+    PreparedObjectIdentityInitialization, prepare_object_identity_initialization,
+};
 use std::path::{Path, PathBuf};
 
+use rf_store::project_v4::ObjectIdentitySupport;
 use rf_store::{StoredDocumentMetadata, StoredProjectFile, read_project_file, write_project_file};
 use rf_types::{RfError, RfResult};
 use rf_ui::{AppLogLevel, AppState, DocumentMetadata, FlowsheetDocument};
@@ -19,6 +24,7 @@ pub enum StudioDocumentLifecycleCommand {
     SaveUpgraded {
         path: PathBuf,
     },
+    InitializeObjectIdentities(Box<PreparedObjectIdentityInitialization>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -54,7 +60,12 @@ pub fn read_studio_project_with_support(
     let contents = std::fs::read_to_string(project_path).map_err(|e| {
         RfError::invalid_input(format!("read project {}: {e}", project_path.display()))
     })?;
-    parse_studio_project_with_support(&contents, project_path, support)
+    parse_studio_project_with_support(
+        &contents,
+        project_path,
+        support,
+        ObjectIdentitySupport::Supported,
+    )
 }
 
 /// Assemble the exact bytes already read by a caller. In particular, headless
@@ -68,6 +79,7 @@ pub(crate) fn parse_studio_project(
         contents,
         project_path,
         rf_store::project_v4::FlowPlanSupport::Mixed,
+        ObjectIdentitySupport::Supported,
     )
 }
 
@@ -75,10 +87,11 @@ pub(crate) fn parse_studio_project_with_support(
     contents: &str,
     project_path: &Path,
     support: rf_store::project_v4::FlowPlanSupport,
+    identity_support: ObjectIdentitySupport,
 ) -> RfResult<StudioProjectOpen> {
     let version = rf_store::project_v3::probe_version(contents)?;
     match version {
-        4 => return flow_plan::parse_v4(contents, project_path, support),
+        4 => return flow_plan::parse_v4(contents, project_path, support, identity_support),
         1..=3 => {}
         _ => return Err(RfError::invalid_input("unsupported project schema version")),
     }
@@ -164,7 +177,8 @@ fn app_state_from_stored(
 /// Existing v3 stays v3. Engineering data or the eight added non-SI choices
 /// require v3; otherwise new/legacy projects retain the existing v2 writer.
 pub fn project_save_version(app: &AppState) -> u32 {
-    if app.workspace.project_presentation.source_file_version() == Some(4)
+    if app.workspace.object_identities_enabled()
+        || app.workspace.project_presentation.source_file_version() == Some(4)
         || matches!(
             app.workspace.flow_plan.current(),
             rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(_)
@@ -217,6 +231,7 @@ pub enum ProjectSaveCompatibility {
     FlowCapabilities {
         required: Vec<rf_store::project_v4::RequiredCapability>,
         added_from_source: Vec<rf_store::project_v4::RequiredCapability>,
+        replaces_target_object_identities: bool,
     },
 }
 /// Compatibility of both the loaded baseline and the actual save target.
@@ -302,6 +317,12 @@ pub fn dispatch_document_lifecycle(
     app_state: &mut AppState,
     command: StudioDocumentLifecycleCommand,
 ) -> RfResult<DocumentLifecycleOutcome> {
+    let command = match command {
+        StudioDocumentLifecycleCommand::InitializeObjectIdentities(prepared) => {
+            return prepared.commit(app_state);
+        }
+        command => command,
+    };
     let upgrade_confirmed = matches!(command, StudioDocumentLifecycleCommand::SaveUpgraded { .. });
     let (action, path) = match command {
         StudioDocumentLifecycleCommand::Save => {
@@ -324,6 +345,7 @@ pub fn dispatch_document_lifecycle(
                 };
             (action, path)
         }
+        StudioDocumentLifecycleCommand::InitializeObjectIdentities(_) => unreachable!(),
     };
 
     if project_save_compatibility(app_state, &path)?.is_some() && !upgrade_confirmed {
@@ -334,7 +356,6 @@ pub fn dispatch_document_lifecycle(
     let version = project_save_version(app_state);
     let engineering = app_state.workspace.engineering.capture_save();
     let project_file = stored_project_file_from_app_state(app_state);
-    let simulation = app_state.workspace.flow_plan.current().clone();
     let flow_capabilities = (version == 4).then(|| flow_plan::required_capabilities(app_state));
     if version == 4 {
         flow_plan::save(app_state, &path, upgrade_confirmed)?;
@@ -372,16 +393,34 @@ pub fn dispatch_document_lifecycle(
         }
         write_project_file(&path, &project_file)?;
     }
-    app_state
+    Ok(publish_project_save(
+        app_state,
+        action,
+        path,
+        version,
+        flow_capabilities,
+    ))
+}
+
+fn publish_project_save(
+    app_state: &mut AppState,
+    action: StudioDocumentLifecycleAction,
+    path: PathBuf,
+    version: u32,
+    flow_capabilities: Option<Vec<rf_store::project_v4::RequiredCapability>>,
+) -> DocumentLifecycleOutcome {
+    app_state.workspace.engineering.record_current_saved();
+    let display_units = app_state
         .workspace
-        .engineering
-        .record_saved(engineering)
-        .map_err(|e| RfError::invalid_input(e.to_string()))?;
+        .project_presentation
+        .display_units()
+        .clone();
     app_state
         .workspace
         .project_presentation
-        .record_saved(project_file.presentation.display_units, version);
-    app_state.workspace.flow_plan.record_saved(simulation);
+        .record_saved(display_units, version);
+    let plan = &mut app_state.workspace.flow_plan;
+    plan.record_saved(plan.current().clone());
     if let Some(capabilities) = flow_capabilities {
         app_state.workspace.flow_plan.record_saved_capabilities(
             capabilities
@@ -401,7 +440,7 @@ pub fn dispatch_document_lifecycle(
     );
     app_state.refresh_run_panel_state();
 
-    Ok(DocumentLifecycleOutcome {
+    DocumentLifecycleOutcome {
         action,
         path,
         revision: app_state.workspace.document.revision,
@@ -411,7 +450,7 @@ pub fn dispatch_document_lifecycle(
             .project_save_state()
             .has_unsaved_changes(),
         save_state: app_state.workspace.project_save_state(),
-    })
+    }
 }
 
 fn stored_project_file_from_app_state(app_state: &AppState) -> StoredProjectFile {
@@ -558,15 +597,17 @@ mod tests {
             .get_mut(&StreamId::new("stream-feed"))
             .expect("expected feed stream")
             .temperature_k = 333.5;
-        app_state.commit_document_change(
-            rf_ui::DocumentCommand::SetStreamSpecification {
-                stream_id: StreamId::new("stream-feed"),
-                field: "temperature_k".to_string(),
-                value: rf_ui::CommandValue::Number(333.5),
-            },
-            next_flowsheet,
-            SystemTime::now(),
-        );
+        app_state
+            .commit_document_change(
+                rf_ui::DocumentCommand::SetStreamSpecification {
+                    stream_id: StreamId::new("stream-feed"),
+                    field: "temperature_k".to_string(),
+                    value: rf_ui::CommandValue::Number(333.5),
+                },
+                next_flowsheet,
+                SystemTime::now(),
+            )
+            .unwrap();
 
         let outcome = dispatch_document_lifecycle(
             &mut app_state,
@@ -637,15 +678,17 @@ mod tests {
             .get_mut(&StreamId::new("stream-feed"))
             .expect("expected feed stream")
             .pressure_pa = 123_456.0;
-        let dirty_revision = app_state.commit_document_change(
-            rf_ui::DocumentCommand::SetStreamSpecification {
-                stream_id: StreamId::new("stream-feed"),
-                field: "pressure_pa".to_string(),
-                value: rf_ui::CommandValue::Number(123_456.0),
-            },
-            next_flowsheet,
-            SystemTime::now(),
-        );
+        let dirty_revision = app_state
+            .commit_document_change(
+                rf_ui::DocumentCommand::SetStreamSpecification {
+                    stream_id: StreamId::new("stream-feed"),
+                    field: "pressure_pa".to_string(),
+                    value: rf_ui::CommandValue::Number(123_456.0),
+                },
+                next_flowsheet,
+                SystemTime::now(),
+            )
+            .unwrap();
 
         let error = dispatch_document_lifecycle(
             &mut app_state,

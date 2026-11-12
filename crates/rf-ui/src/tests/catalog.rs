@@ -30,6 +30,7 @@ fn catalog_models_create_with_canonical_identity_and_survive_history_and_storage
                     display_units: rf_types::units::DisplayUnitSet::si(),
                     engineering: None,
                     steady_state_plan: rf_store::project_v4::StoredFlowPlan::Acyclic,
+                    object_identities: None,
                 },
             ));
             let json = rf_store::project_v4::to_pretty_json(&project).unwrap();

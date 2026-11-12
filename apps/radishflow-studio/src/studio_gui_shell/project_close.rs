@@ -27,6 +27,7 @@ impl ReadyAppState {
             .is_some()
             || self.unit_settings.is_open()
             || self.pending_format_upgrade.is_some()
+            || self.pending_identity_initialization.is_some()
         {
             return false;
         }
@@ -62,7 +63,10 @@ impl ReadyAppState {
     }
 
     pub(super) fn render_pending_close_window_dialog(&mut self, ctx: &egui::Context) {
-        if self.render_format_upgrade(ctx) || self.render_unit_settings(ctx) {
+        if self.render_identity_initialization(ctx)
+            || self.render_format_upgrade(ctx)
+            || self.render_unit_settings(ctx)
+        {
             return;
         }
         if self

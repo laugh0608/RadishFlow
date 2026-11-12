@@ -280,7 +280,8 @@ fn changed_field_or_source_conflicts_and_stale_events_cannot_overwrite_new_sessi
         },
         next,
         UNIX_EPOCH,
-    );
+    )
+    .unwrap();
     assert_eq!(
         app.commit_numeric_edit(&variable, generation, UNIX_EPOCH),
         Err(NumericEditError::FieldConflict)

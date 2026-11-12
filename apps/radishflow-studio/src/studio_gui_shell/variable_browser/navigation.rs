@@ -66,10 +66,46 @@ impl ReadyAppState {
         if !self.variable_browser.belongs_to(workspace) || self.read_only_project.is_some() {
             return false;
         }
+        let target = match target {
+            BrowserNavigation::StableReference(reference) => {
+                let variable = match reference.resolve(workspace) {
+                    Ok(variable) => variable,
+                    Err(error) => {
+                        self.variable_browser.notice =
+                            Some(references::error_label(error, self.locale).into());
+                        return false;
+                    }
+                };
+                let selection = BrowserSelection {
+                    object: ProjectObjectRef {
+                        document: variable.document,
+                        object: ProjectObjectId::Flow(variable.object),
+                    },
+                    field: Some(ProjectField::Flow {
+                        section: variable.section,
+                        field: variable.field,
+                    }),
+                };
+                self.variable_browser.selected = Some(selection.clone());
+                self.variable_browser.query.clear();
+                self.variable_browser.scope = None;
+                self.variable_browser.section = SectionFilter::All;
+                self.variable_browser.detail_page = true;
+                self.variable_browser.notice = None;
+                self.variable_browser.reference_input = None;
+                if variable.section == VariableSection::Results {
+                    self.open_variable_browser();
+                    return true;
+                }
+                BrowserNavigation::Selection(selection)
+            }
+            target => target,
+        };
         let reference = match &target {
             BrowserNavigation::Selection(s) => Some(&s.object),
             BrowserNavigation::EquipmentResult(r) | BrowserNavigation::FlowResults(r) => Some(r),
             BrowserNavigation::Property => None,
+            BrowserNavigation::StableReference(_) => unreachable!("resolved above"),
         };
         if let Some(reference) = reference {
             let query = ProjectQuery::new(workspace);
@@ -85,6 +121,7 @@ impl ReadyAppState {
             }
         }
         match target {
+            BrowserNavigation::StableReference(_) => unreachable!("resolved above"),
             BrowserNavigation::Property => self.screen = StudioShellScreen::Property,
             BrowserNavigation::FlowResults(reference) => self.open_browser_flow_result(&reference),
             BrowserNavigation::EquipmentResult(reference) => {

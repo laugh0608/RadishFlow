@@ -48,6 +48,7 @@ mod modeling_recommendations;
 mod numeric_input;
 mod panels;
 mod project_close;
+mod project_identity_save;
 mod project_layout_save;
 mod project_picker;
 mod project_read_only;
@@ -147,6 +148,7 @@ struct ReadyAppState {
     pending_input_action: Option<input_departure::PendingInputAction>,
     pending_result_export: Option<result_export::PendingResultExport>,
     pending_format_upgrade: Option<project_save::PendingFormatUpgrade>,
+    pending_identity_initialization: Option<project_identity_save::PendingIdentityInitialization>,
     read_only_project: Option<project_read_only::ReadOnlyProjectView>,
     unit_settings: unit_settings::UnitSettingsState,
     home_workspace_return_available: bool,
@@ -507,6 +509,7 @@ impl ReadyAppState {
             pending_input_action: None,
             pending_result_export: None,
             pending_format_upgrade: None,
+            pending_identity_initialization: None,
             read_only_project,
             unit_settings: unit_settings::UnitSettingsState::load(&preferences_path),
             project_open: ProjectOpenState::from_path_and_recent(

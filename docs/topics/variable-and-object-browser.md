@@ -9,7 +9,7 @@
 不包含：最终 UI 画板、冻结的路径语法 / DTO / ABI、COM 激活方式、完整脚本运行时或新的项目格式。
 
 - 层级：二级功能。父专题为 [Studio 主工作流](studio-main-workflow.md)，跨端边界见 [统一对外 API](../architecture/simulation-platform.md#对象变量与动作树)。
-- 状态：部分实现。AF4a 工程发现、AF5a 结果查询和 AF4b 正式动作已完成；AF4c 新版 CLI 已完成；VB1 只读工作区首片已接通，路径协议和持久关注项仍待后续切片。
+- 状态：部分实现。AF4a / AF5a 查询、AF4b 动作及 AF4c CLI 已完成。VB1 已接通只读浏览和首批流程稳定引用，持久关注待后续切片。
 - 定位：一个变量工作区提供工程视图与变量树视图，共用稳定身份、领域描述、查询和正式命令。覆盖所有公开工程变量与动作，逐步纳入非画布对象。
 - 顺序：U2-I1—I4 与 U3 首批已接通，I5 按确认节点补验；VB0 纳入 R0 / R1 及 G0 关系设计，VB1 衔接 U3，VB2 依赖 U2 编辑闭环，VB3 按 P2 与领域能力扩展。依赖和排期入口见 [路线图](../radishflow-mvp-roadmap.md#变量与对象浏览器的配套切片)。
 - VB0 首片方案与 9 张局部画板已于 2026-11-11 获认可，见[设计附件](../architecture/designs/studio-variable-browser-brief.md)；VB1 首片实现与保留项见下文。
@@ -42,7 +42,7 @@
 
 实现入口：[查询](../../crates/rf-ui/src/variable_browser/mod.rs)、[变量描述](../../crates/rf-ui/src/variable_browser/variables.rs)、[写入](../../crates/rf-ui/src/variable_commands.rs)、[Studio 浏览窗口](../../apps/radishflow-studio/src/studio_gui_shell/variable_browser/mod.rs)。已有范围与历史验收继续由 [B3 切片](studio-main-workflow.md#b3-1变量与动作描述只读浏览) 维护，本文只承接后续增量。
 
-尚缺完整领域目录、稳定路径编解码、表格编辑、持久关注列表、多上下文与通用多维读取。应用内发现已覆盖六类单元、流股、设备 / 工况、基础和来源；完整组分 / 物性浏览及公开路径仍随所属领域逐项接入，不以空节点宣称全覆盖。
+尚缺完整领域目录、表格编辑、持久关注、多上下文与通用多维读取。应用内发现已覆盖流程、设备 / 工况、基础和来源。稳定引用首批覆盖流程标量，其他字段与外部协议按切片接入。
 
 ## 用户路径与交互
 
@@ -84,7 +84,7 @@ VB-D02 解析规则已认可。稳定引用按当前工程匹配文档 ID、类�
 | 另存或文件副本 | 保留原对象创建标识的副本可解析继承对象。两份文件各自分叉后，只读当前打开副本的值及结果资格。同 ID 的独立新建对象因创建标识不同而拒绝。 |
 | 其他工程 | 文档 ID 不匹配即拒绝。名称、裸对象 ID 和文件名均不能用于回退匹配。 |
 
-旧工程显式初始化，存储细节待评审。首片拟覆盖流程标量，复用既有查询和定位。见 [引用契约](variable-browser/stable-references.md) 与 [存储评审稿](variable-browser/identity-storage.md)。
+旧工程显式初始化。已接通流程标量，复用既有查询和定位。见 [引用契约](variable-browser/stable-references.md) 与 [存储契约](variable-browser/identity-storage.md)。
 
 ### 变量定义与取值上下文
 
@@ -162,12 +162,12 @@ VB2 的单值完成不代表批量事务完成；VB3 按消费者逐项记录覆
 | 编号 | 决策 | 最迟完成时机 |
 | --- | --- | --- |
 | VB-D01 | 首批节点 / 变量 / 动作覆盖矩阵，类别顺序与停靠 / 窄窗口布局 | VB0 对应局部 R0 / R1 |
-| VB-D02 | 解析与持久身份已认可，[存储与迁移](variable-browser/identity-storage.md)待评审 | VB1 路径实现前，外部协议随 VB3 再审 |
+| VB-D02 | [存储与迁移](variable-browser/identity-storage.md)及 Studio 首批标量路径已接通 | 外部协议随 VB3 再审 |
 | VB-D03 | 关注项与布局偏好的保存位置、版本、失效引用及迁移 | VB1 持久化实现前 |
 | VB-D04 | 编辑会话与 U2 路由、批量事务接口、关联约束及执行失败语义 | VB2 各编辑增量前 |
 | VB-D05 | 多上下文请求、分页 / 订阅一致性、限制及权限映射 | VB3 对应消费者前 |
 
-以上均待审定，当前不以示例路径或候选布局替代接口决策。
+其余决策按各增量审定。
 
 ## 验收与验证计划
 

@@ -228,14 +228,16 @@ fn document_mutation_and_undo_revision_reject_frozen_results() {
     let outcome = input.execute(&mut Continue);
     let mut next = original.clone();
     next.units.get_mut(&"mix".into()).unwrap().name = "Renamed".into();
-    app.workspace.commit_document_change(
-        DocumentCommand::RenameUnit {
-            unit_id: "mix".into(),
-            new_name: "Renamed".into(),
-        },
-        next,
-        std::time::UNIX_EPOCH,
-    );
+    app.workspace
+        .commit_document_change(
+            DocumentCommand::RenameUnit {
+                unit_id: "mix".into(),
+                new_name: "Renamed".into(),
+            },
+            next,
+            std::time::UNIX_EPOCH,
+        )
+        .unwrap();
     app.undo_document_command(std::time::UNIX_EPOCH)
         .unwrap()
         .unwrap();

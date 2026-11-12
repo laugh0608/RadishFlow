@@ -23,6 +23,7 @@ fn fixture() -> StoredProjectV4 {
         display_units: file.presentation.display_units,
         engineering: None,
         steady_state_plan: StoredFlowPlan::Acyclic,
+        object_identities: None,
     }
 }
 fn recycle() -> StoredFlowPlan {
@@ -287,6 +288,7 @@ fn v4_roundtrip_preserves_all_v3_rating_adoption_and_display_inputs() {
             display_units: old.display_units,
             engineering: old.engineering,
             steady_state_plan: recycle(),
+            object_identities: None,
         }));
         let json = to_pretty_json(&project).unwrap();
         assert_eq!(parse(&json).unwrap(), project);
@@ -296,3 +298,89 @@ fn v4_roundtrip_preserves_all_v3_rating_adoption_and_display_inputs() {
 mod equation_oriented;
 
 mod mixed;
+
+#[test]
+fn object_identities_roundtrip_and_protect_other_consumers_and_writers() {
+    let mut project = fixture();
+    project.object_identities = Some(FlowObjectIdentities {
+        units: [(
+            "unit".into(),
+            "b91c614d-4a7a-4d0e-82ba-09c82da255ba".parse().unwrap(),
+        )]
+        .into(),
+        streams: [(
+            "stream".into(),
+            "3a66ed8a-4f0b-4b12-90c7-8fb945d24602".parse().unwrap(),
+        )]
+        .into(),
+    });
+    let text = json_project(project.clone());
+    assert_eq!(
+        parse(&text).unwrap(),
+        ProjectV4Read::Editable(Box::new(project))
+    );
+    let ProjectV4Read::ReadOnly(old) = parse_for_consumer(
+        &text,
+        FlowPlanSupport::Mixed,
+        ObjectIdentitySupport::Unavailable,
+    )
+    .unwrap() else {
+        panic!("old consumer must see a read-only project")
+    };
+    assert_eq!(old.original_json(), text);
+    assert!(to_pretty_json(&ProjectV4Read::ReadOnly(old)).is_err());
+
+    let directory = Directory::new();
+    let path = directory.0.join("object-identities.rfproj.json");
+    fs::write(&path, &text).unwrap();
+    let without_ids = ProjectV4Read::Editable(Box::new(fixture()));
+    assert!(prepare_write(&path, &without_ids, FileOverwritePolicy::Allow).is_err());
+    let legacy = crate::parse_project_file_json(include_str!(
+        "../../tests/fixtures/project-v2-engineering.json"
+    ))
+    .unwrap();
+    assert!(crate::write_project_file(&path, &legacy).is_err());
+    assert_eq!(fs::read_to_string(&path).unwrap(), text);
+    fs::remove_file(path).unwrap();
+
+    let base: Value = serde_json::from_str(&text).unwrap();
+    for edit in [
+        "null",
+        "missing",
+        "undeclared",
+        "orphan",
+        "duplicate",
+        "bad-uuid",
+        "unknown-field",
+    ] {
+        let mut bad = base.clone();
+        match edit {
+            "null" => bad["objectIdentities"] = Value::Null,
+            "missing" => {
+                bad.as_object_mut().unwrap().remove("objectIdentities");
+            }
+            "undeclared" => {
+                bad["requiredCapabilities"].as_array_mut().unwrap().pop();
+            }
+            "orphan" => bad["objectIdentities"]["units"][0]["objectId"] = json!("other"),
+            "duplicate" => {
+                bad["objectIdentities"]["streams"][0]["creationId"] =
+                    base["objectIdentities"]["units"][0]["creationId"].clone()
+            }
+            "bad-uuid" => {
+                bad["objectIdentities"]["units"][0]["creationId"] =
+                    json!("B91C614D-4A7A-4D0E-82BA-09C82DA255BA")
+            }
+            "unknown-field" => bad["objectIdentities"]["units"][0]["extra"] = json!(true),
+            _ => unreachable!(),
+        }
+        assert!(parse(&bad.to_string()).is_err(), "accepted {edit}");
+    }
+    let mut future = base;
+    future["requiredCapabilities"][1]["version"] = json!(2);
+    future["objectIdentities"] = json!({"opaque": true});
+    assert!(matches!(
+        parse(&future.to_string()).unwrap(),
+        ProjectV4Read::ReadOnly(_)
+    ));
+}

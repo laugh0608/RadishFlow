@@ -11,6 +11,14 @@ pub(super) enum StudioShellLocale {
     ZhCn,
 }
 
+pub(super) fn tr<'a>(locale: StudioShellLocale, zh: &'a str, en: &'a str) -> &'a str {
+    if locale == StudioShellLocale::ZhCn {
+        zh
+    } else {
+        en
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ShellText {
     NewLogicalWindow,

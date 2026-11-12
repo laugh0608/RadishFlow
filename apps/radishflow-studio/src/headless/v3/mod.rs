@@ -151,8 +151,13 @@ pub(super) fn load_project_version(
     } else {
         rf_store::project_v4::FlowPlanSupport::Mixed
     };
-    let opened = parse_studio_project_with_support(contents, path, support)
-        .map_err(|e| Failure::new(Stage::Project, Code::InvalidProject, e.to_string()))?;
+    let opened = parse_studio_project_with_support(
+        contents,
+        path,
+        support,
+        rf_store::project_v4::ObjectIdentitySupport::Unavailable,
+    )
+    .map_err(|e| Failure::new(Stage::Project, Code::InvalidProject, e.to_string()))?;
     let (document_id, flow_revision, project_schema_version, count, read_only) = match &opened {
         StudioProjectOpen::Editable(app) => (
             app.workspace.document.metadata.document_id.to_string(),

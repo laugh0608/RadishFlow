@@ -2,8 +2,10 @@
 //! Views borrow authoritative inputs and results; drafts are deliberately excluded.
 
 mod actions;
+mod stable_reference;
 mod variables;
 pub use actions::*;
+pub use stable_reference::{StableVariableReference, VariableReferenceError};
 pub use variables::*;
 
 use crate::{DocumentId, FlowsheetDocument, SolveSnapshot};

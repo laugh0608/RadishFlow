@@ -169,6 +169,7 @@ impl ReadyAppState {
                 self.modeling_problems
                     .replace_document(self.platform_host.document());
                 self.pending_format_upgrade = None;
+                self.pending_identity_initialization = None;
                 self.unit_settings.draft = None;
                 self.unit_settings.view_draft = None;
                 self.unit_settings.closed_inspectors.clear();
@@ -323,6 +324,7 @@ impl ReadyAppState {
                 });
                 self.command_palette.close();
                 self.pending_format_upgrade = None;
+                self.pending_identity_initialization = None;
                 self.project_open.pending_confirmation = None;
                 self.project_open.departure_checkpoint = None;
                 return;
@@ -352,6 +354,7 @@ impl ReadyAppState {
                 self.modeling_problems
                     .replace_document(self.platform_host.document());
                 self.pending_format_upgrade = None;
+                self.pending_identity_initialization = None;
                 self.unit_settings.draft = None;
                 self.unit_settings.view_draft = None;
                 self.unit_settings.closed_inspectors.clear();
@@ -506,6 +509,7 @@ impl ReadyAppState {
             && !palette_keyboard_consumed
             && !self.unit_settings.is_open()
             && self.pending_format_upgrade.is_none()
+            && self.pending_identity_initialization.is_none()
         {
             self.dispatch_shortcuts(ctx);
         }

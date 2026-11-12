@@ -1,10 +1,12 @@
 //! Session-local browsing and navigation; values always come from the active workspace.
+use super::locale::tr;
 use super::*;
 use rf_ui::project_query::{ProjectField, ProjectObjectRef};
-use rf_ui::variable_browser::{ObjectId, VariableId};
+use rf_ui::variable_browser::{ObjectId, StableVariableReference, VariableId};
 
 mod navigation;
 mod projection;
+mod references;
 mod render;
 
 use projection::*;
@@ -40,6 +42,7 @@ pub(super) struct BrowserSelection {
 #[derive(Debug, Clone)]
 enum BrowserNavigation {
     Selection(BrowserSelection),
+    StableReference(StableVariableReference),
     EquipmentResult(ProjectObjectRef),
     FlowResults(ProjectObjectRef),
     Property,
@@ -51,6 +54,7 @@ pub(super) struct VariableBrowserState {
     pub mode: BrowserMode,
     directory: DirectoryView,
     query: String,
+    reference_input: Option<String>,
     section: SectionFilter,
     scope: Option<ProjectObjectRef>,
     selected: Option<BrowserSelection>,
@@ -68,10 +72,19 @@ pub(super) struct VariableBrowserState {
 enum BrowserIntent {
     Navigate(BrowserNavigation),
     Copy(BrowserSelection),
+    CopyReference(BrowserSelection),
+    OpenReference(String),
+    InitializeReferences,
     Close,
     Flowsheet,
     Dock,
     Expand,
+}
+
+impl VariableBrowserState {
+    pub(super) fn set_notice(&mut self, notice: String) {
+        self.notice = Some(notice);
+    }
 }
 
 impl ReadyAppState {
@@ -119,6 +132,15 @@ impl ReadyAppState {
                     Ok(value) => ui.ctx().copy_text(value),
                     Err(reason) => self.variable_browser.notice = Some(reason),
                 }
+            }
+            Some(BrowserIntent::CopyReference(target)) => match self.copy_stable_reference(&target)
+            {
+                Ok(reference) => ui.ctx().copy_text(reference),
+                Err(reason) => self.variable_browser.notice = Some(reason),
+            },
+            Some(BrowserIntent::OpenReference(text)) => self.open_stable_reference(&text),
+            Some(BrowserIntent::InitializeReferences) => {
+                self.request_object_identity_initialization()
             }
             Some(BrowserIntent::Close) => self.close_variable_browser(),
             Some(BrowserIntent::Flowsheet) => {
@@ -224,14 +246,6 @@ impl VariableBrowserState {
         self.cache.refresh(workspace, locale);
         self.cache
             .filter(&self.query, self.section, self.scope.as_ref());
-    }
-}
-
-fn tr<'a>(locale: StudioShellLocale, zh: &'a str, en: &'a str) -> &'a str {
-    if locale == StudioShellLocale::ZhCn {
-        zh
-    } else {
-        en
     }
 }
 

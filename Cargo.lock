@@ -2950,6 +2950,7 @@ dependencies = [
 name = "rf-ui"
 version = "0.1.0"
 dependencies = [
+ "getrandom 0.3.4",
  "rf-flash",
  "rf-flowsheet",
  "rf-model",

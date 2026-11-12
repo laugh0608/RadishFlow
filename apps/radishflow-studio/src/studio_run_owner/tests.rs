@@ -304,7 +304,8 @@ fn automatic_latest_input_eligible_once_but_clear_results_and_detach_do_not_rest
         },
         flow,
         SystemTime::now(),
-    );
+    )
+    .unwrap();
     assert!(owner.should_attempt_automatic(&app));
     let (root, index) = cache();
     owner

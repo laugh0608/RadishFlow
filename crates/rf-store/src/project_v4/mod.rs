@@ -5,6 +5,7 @@ mod equation_oriented;
 pub use equation_oriented::*;
 mod file_io;
 mod mixed;
+mod object_identities;
 mod plan;
 mod simultaneous;
 use crate::project::STORED_PROJECT_FILE_KIND;
@@ -15,8 +16,9 @@ use crate::project_v3::{
 use crate::{StoredDocumentMetadata, StoredProjectDocument};
 pub use file_io::*;
 pub use mixed::*;
+use object_identities::ObjectIdentitiesWire;
 pub use plan::*;
-use rf_types::{RfError, RfResult, units::DisplayUnitSet};
+use rf_types::{FlowObjectIdentities, RfError, RfResult, units::DisplayUnitSet};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 pub use simultaneous::*;
@@ -29,6 +31,13 @@ pub const PARTITIONED_CAPABILITY: &str = "radishflow.solver.partitioned-sm";
 pub const MIXED_CAPABILITY: &str = "radishflow.solver.fixed-tp-mixed-material";
 pub const EQUATION_ORIENTED_CAPABILITY: &str = "radishflow.solver.fixed-tp-material-eo";
 pub const SIMULTANEOUS_CAPABILITY: &str = "radishflow.solver.fixed-tp-affine-modular-lu";
+pub const OBJECT_IDENTITY_CAPABILITY: &str = "radishflow.object-identity";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ObjectIdentitySupport {
+    Supported,
+    Unavailable,
+}
 
 /// A consumer's supported vocabulary is independent of the project envelope version.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,6 +59,7 @@ pub struct StoredProjectV4 {
     pub display_units: DisplayUnitSet,
     pub engineering: Option<StoredEngineeringInputs>,
     pub steady_state_plan: StoredFlowPlan,
+    pub object_identities: Option<FlowObjectIdentities>,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProjectV4Read {
@@ -100,6 +110,8 @@ struct WriteWire<'a> {
     simulation: Simulation,
     #[serde(skip_serializing_if = "Option::is_none")]
     engineering: Option<shared::EngineeringSection>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    object_identities: Option<ObjectIdentitiesWire>,
 }
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -123,6 +135,9 @@ struct PlanProbe {
 
 pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapability> {
     let mut ids = vec![FLOW_PLAN_CAPABILITY];
+    if project.object_identities.is_some() {
+        ids.push(OBJECT_IDENTITY_CAPABILITY);
+    }
     if project
         .document
         .flowsheet
@@ -160,6 +175,14 @@ pub fn parse(contents: &str) -> RfResult<ProjectV4Read> {
 }
 
 pub fn parse_with_support(contents: &str, support: FlowPlanSupport) -> RfResult<ProjectV4Read> {
+    parse_for_consumer(contents, support, ObjectIdentitySupport::Supported)
+}
+
+pub fn parse_for_consumer(
+    contents: &str,
+    support: FlowPlanSupport,
+    identity_support: ObjectIdentitySupport,
+) -> RfResult<ProjectV4Read> {
     crate::strict_json::validate(contents.as_bytes()).map_err(json_error)?;
     let wire: ReadWire = serde_json::from_str(contents).map_err(json_error)?;
     if wire.kind != STORED_PROJECT_FILE_KIND || wire.schema_version != VERSION {
@@ -187,8 +210,11 @@ pub fn parse_with_support(contents: &str, support: FlowPlanSupport) -> RfResult<
                     SIMULTANEOUS_CAPABILITY,
                     EQUATION_ORIENTED_CAPABILITY,
                     MIXED_CAPABILITY,
+                    OBJECT_IDENTITY_CAPABILITY,
                 ]
                 .contains(&c.id.as_str())
+                || (identity_support == ObjectIdentitySupport::Unavailable
+                    && c.id == OBJECT_IDENTITY_CAPABILITY)
                 || (support == FlowPlanSupport::Sequential && c.id == SIMULTANEOUS_CAPABILITY)
                 || (!matches!(
                     support,
@@ -303,10 +329,19 @@ pub fn parse_with_support(contents: &str, support: FlowPlanSupport) -> RfResult<
             "presentation",
             "simulation",
             "engineering",
+            "objectIdentities",
         ],
         "project",
     )?;
     let document = document::decode(&wire.document)?;
+    let object_identities = root
+        .get("objectIdentities")
+        .map(|value| {
+            serde_json::from_value::<ObjectIdentitiesWire>(value.clone())
+                .map_err(json_error)?
+                .decode(&document.flowsheet)
+        })
+        .transpose()?;
     let simulation: Simulation = serde_json::from_value(wire.simulation).map_err(json_error)?;
     let project = StoredProjectV4 {
         document,
@@ -315,6 +350,7 @@ pub fn parse_with_support(contents: &str, support: FlowPlanSupport) -> RfResult<
             .into_display_units()?,
         engineering,
         steady_state_plan: simulation.steady_state_plan,
+        object_identities,
     };
     let actual: BTreeSet<_> = wire.required_capabilities.into_iter().collect();
     if actual != required_capabilities(&project).into_iter().collect() {
@@ -358,6 +394,11 @@ pub fn to_pretty_json(project: &ProjectV4Read) -> RfResult<String> {
             steady_state_plan: p.steady_state_plan.clone(),
         },
         engineering: shared::encode(p.engineering.as_ref())?,
+        object_identities: p
+            .object_identities
+            .as_ref()
+            .map(|identities| ObjectIdentitiesWire::encode(identities, &p.document.flowsheet))
+            .transpose()?,
     };
     serde_json::to_string_pretty(&wire).map_err(json_error)
 }

@@ -57,6 +57,7 @@ pub(super) fn browser(
         "只读已提交值；模板与结果分开。",
         "Committed values only; templates are separate from results.",
     ));
+    references::render_reference_controls(ui, state, workspace, locale, &mut intent);
     ui.horizontal_wrapped(|ui| {
         ui.selectable_value(
             &mut state.directory,
@@ -178,10 +179,14 @@ pub(super) fn browser(
         rows(ui, state, workspace, locale, false, ui.available_height());
     }
     if state.owns_shortcuts(ui.ctx())
-        && !ui.ctx().memory(|m| m.any_popup_open())
+        && !ui
+            .ctx()
+            .memory(|m| m.any_popup_open() || m.top_modal_layer().is_some())
         && ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
     {
-        if state.detail_page {
+        if state.reference_input.is_some() {
+            state.reference_input = None;
+        } else if state.detail_page {
             state.detail_page = false;
         } else {
             intent = Some(BrowserIntent::Close);
@@ -592,6 +597,7 @@ fn detail(
     ui.add(egui::Label::new(object_identity(&object.reference.object)).wrap());
     if let Some(field) = &selected.field {
         ui.strong(field_label(field, locale));
+        references::render_copy_reference(ui, workspace, selected, locale, intent);
         match read_selection(workspace, selected, locale) {
             Ok(read) => {
                 ui.add(egui::Label::new(egui::RichText::new(&read.value).heading()).wrap());

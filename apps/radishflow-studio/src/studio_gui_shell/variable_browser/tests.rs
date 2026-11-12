@@ -45,6 +45,101 @@ fn frame(
 }
 
 #[test]
+fn browser_stable_reference_enables_saves_reopens_and_locates_without_mutation() {
+    let mut app = app();
+    app.locale = StudioShellLocale::En;
+    app.dispatch_ui_command("run_panel.run_manual");
+    assert_eq!(
+        app.platform_host
+            .modeling_inputs()
+            .workspace
+            .flow_result()
+            .status(),
+        rf_ui::result_query::ResultStatus::Current
+    );
+    app.open_variable_browser();
+    synchronize(&mut app);
+    let target = std::env::temp_dir().join(format!(
+        "radishflow-reference-browser-{}-{}.rfproj.json",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let input = flow_selection(
+        &app,
+        ObjectId::Unit("heater-1".into()),
+        VariableSection::Inputs,
+        VariableField::OutletTemperature,
+    );
+    let result = flow_selection(
+        &app,
+        ObjectId::Stream("stream-heated".into()),
+        VariableSection::Results,
+        VariableField::Temperature,
+    );
+    assert!(app.copy_stable_reference(&input).is_err());
+    app.request_object_identity_initialization();
+    app.prepare_identity_destination(target.clone());
+    assert!(!target.exists());
+    app.confirm_identity_initialization();
+    assert_eq!(
+        app.platform_host
+            .modeling_inputs()
+            .workspace
+            .flow_result()
+            .status(),
+        rf_ui::result_query::ResultStatus::Current
+    );
+    assert_eq!(
+        app.platform_host
+            .modeling_inputs()
+            .workspace
+            .document_path
+            .as_ref(),
+        Some(&target)
+    );
+    let input_ref = app.copy_stable_reference(&input).unwrap();
+    let result_ref = app.copy_stable_reference(&result).unwrap();
+    assert!(input_ref.ends_with("/inputs/outlet_temperature"));
+    assert!(result_ref.ends_with("/results/temperature"));
+    let original_bytes = std::fs::read(&target).unwrap();
+
+    app.open_project(target.clone(), "project");
+    app.reconcile_browser_session();
+    app.open_variable_browser();
+    synchronize(&mut app);
+    app.open_stable_reference(&result_ref);
+    assert_eq!(app.variable_browser.selected, Some(result.clone()));
+    assert!(app.browser_expanded());
+    assert!(app.browser_copy_value(&result).is_err());
+    assert_eq!(app.copy_stable_reference(&result).unwrap(), result_ref);
+
+    app.dispatch_ui_command("inspector.focus_unit:heater-1");
+    app.dispatch_inspector_field_draft_update(
+        radishflow_studio::inspector_draft_update_command_id("unit:heater-1:outlet_temperature_k"),
+        "1e-",
+    );
+    let before = app.platform_host.modeling_inputs().workspace.clone();
+    app.open_stable_reference(&input_ref);
+    assert_eq!(app.variable_browser.selected, Some(result));
+    let navigation = app.variable_browser.pending_navigation.take().unwrap();
+    assert!(app.navigate_browser(navigation));
+    assert_eq!(app.variable_browser.selected, Some(input));
+    assert_eq!(
+        app.variable_browser.pending_focus.as_ref().unwrap().field,
+        VariableField::OutletTemperature
+    );
+    let after = &app.platform_host.modeling_inputs().workspace;
+    assert_eq!(after.drafts, before.drafts);
+    assert_eq!(after.document, before.document);
+    assert_eq!(std::fs::read(&target).unwrap(), original_bytes);
+    std::fs::remove_file(&target).unwrap();
+    let _ = std::fs::remove_file(format!("{}.rfstudio-layout.json", target.display()));
+}
+
+#[test]
 fn browser_copy_rechecks_current_stale_missing_and_session_without_mutation() {
     let mut app = app();
     app.locale = StudioShellLocale::En;

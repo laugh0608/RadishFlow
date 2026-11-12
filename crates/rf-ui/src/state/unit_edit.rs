@@ -77,7 +77,7 @@ impl AppState {
             kind,
             &self.workspace.allocated_unit_ids,
         )?;
-        let revision = self.commit_document_change(command.clone(), flowsheet, changed_at);
+        let revision = self.commit_document_change(command.clone(), flowsheet, changed_at)?;
         Ok(UnitCreateResult {
             unit_id,
             command,
@@ -101,7 +101,7 @@ impl AppState {
         }
         let (command, flowsheet) =
             apply_material_connection_acceptance(&self.workspace.document.flowsheet, connection)?;
-        let revision = self.commit_document_change(command.clone(), flowsheet, changed_at);
+        let revision = self.commit_document_change(command.clone(), flowsheet, changed_at)?;
         Ok((command, revision))
     }
 
@@ -118,7 +118,7 @@ impl AppState {
         if next == self.workspace.document.flowsheet {
             return Ok(None);
         }
-        self.commit_document_change(command.clone(), next, changed_at);
+        self.commit_document_change(command.clone(), next, changed_at)?;
         Ok(Some(command))
     }
 
@@ -132,7 +132,7 @@ impl AppState {
             },
             flowsheet,
             changed_at,
-        );
+        )?;
         self.workspace.drafts.fields.retain(|_, draft| !matches!(draft,
             DraftValue::Numeric(session) if session.variable().object == crate::variable_browser::ObjectId::Unit(unit_id.clone())));
         self.workspace.prune_focus_against_document();

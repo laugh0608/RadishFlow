@@ -108,6 +108,7 @@ fn v4_save_as_checks_source_capabilities_and_keeps_all_baselines_on_failure() {
     let ProjectSaveCompatibility::FlowCapabilities {
         required,
         added_from_source,
+        ..
     } = compatibility
     else {
         panic!("same outer version must be a capability review")

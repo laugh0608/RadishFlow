@@ -58,8 +58,9 @@ pub(super) fn parse_v4(
     contents: &str,
     path: &Path,
     support: project_v4::FlowPlanSupport,
+    identity_support: ObjectIdentitySupport,
 ) -> RfResult<StudioProjectOpen> {
-    match project_v4::parse_with_support(contents, support)? {
+    match project_v4::parse_for_consumer(contents, support, identity_support)? {
         ProjectV4Read::ReadOnly(p) => Ok(StudioProjectOpen::ReadOnly(Box::new(
             StudioReadOnlyProject::V4(p),
         ))),
@@ -71,6 +72,9 @@ pub(super) fn parse_v4(
             let configuration = flow_plan_configuration(p.steady_state_plan)?;
             let mut app =
                 app_state_from_stored(p.document, p.display_units, 4, p.engineering, path)?;
+            if let Some(identities) = p.object_identities {
+                app.workspace.install_saved_object_identities(identities);
+            }
             app.workspace.flow_plan = rf_ui::flow_plan::FlowPlanState::from_loaded(configuration);
             app.workspace
                 .flow_plan
@@ -93,6 +97,7 @@ pub(super) fn project(app: &AppState) -> ProjectV4Read {
                 tasks: saved.inputs().tasks.clone(),
             }),
         steady_state_plan: stored_flow_plan(app.workspace.flow_plan.current()),
+        object_identities: app.workspace.current_object_identities(),
     }))
 }
 pub(super) fn compatibility(
@@ -109,12 +114,18 @@ pub(super) fn compatibility(
         }));
     }
     let new_capabilities = added_source_capabilities(app);
-    if !new_capabilities.is_empty() || prepared.requires_upgrade() {
+    let replaces_target_object_identities = app.workspace.document_path.as_deref() != Some(path)
+        && prepared.replaces_target_object_identities();
+    if !new_capabilities.is_empty()
+        || prepared.requires_upgrade()
+        || replaces_target_object_identities
+    {
         // Capture the full required set as well as the source delta: a later
         // change to the method cannot reuse an earlier capability review.
         return Ok(Some(ProjectSaveCompatibility::FlowCapabilities {
             required: required_capabilities(app),
             added_from_source: new_capabilities,
+            replaces_target_object_identities,
         }));
     }
     Ok(None)

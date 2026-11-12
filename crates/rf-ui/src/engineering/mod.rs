@@ -229,4 +229,9 @@ impl EngineeringSession {
         self.stored_block_present = snapshot.block_present;
         Ok(())
     }
+
+    pub fn record_current_saved(&mut self) {
+        self.baseline = self.current.clone();
+        self.stored_block_present |= !self.current.is_empty();
+    }
 }

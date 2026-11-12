@@ -111,7 +111,8 @@ fn rename(app: &mut AppState) {
         },
         flow,
         now(),
-    );
+    )
+    .unwrap();
 }
 
 #[test]

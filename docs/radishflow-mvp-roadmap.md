@@ -123,7 +123,7 @@ AF4b [正式动作契约](topics/variable-and-object-browser.md#af4b-正式动�
 
 U3 首批已在现有只读浏览器接入项目显示单位，完整 VB1 仍未实现；A1 / A2 与设备模型也不以完整浏览器为前置门禁。VB0 可先准备局部设计，具体接口、路径语法和存储按专题待决策审定，不由本次规划改变 CLI SI 契约、项目 schema 或依赖。
 
-2026-11-11 已形成 [VB0 首片只读工作区评审稿](architecture/designs/studio-variable-browser-brief.md)，建议先贯通发现、资格 / 来源与定位，再分期交付路径、关注与编辑；首片方案已获所有者认可，9 张局部画板已认可，VB1 首片获准实施，不改变完整 VB1 出口。
+2026-11-11 按认可的 [VB0 首片方案与画板](architecture/designs/studio-variable-browser-brief.md)接通发现、资格 / 来源与定位。2026-11-12 [VB-D02](topics/variable-browser/stable-references.md)接通流程标量稳定引用、显式初始化与 v4 保存。持久关注与跨端路径按 VB-D03、VB3 推进。
 
 ### 运行、消息与诊断的配套切片
 

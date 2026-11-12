@@ -76,14 +76,16 @@ fn document_change_invalidates_canvas_pending_edit() {
         ))
         .expect("expected unit insert");
 
-    app_state.commit_document_change(
-        DocumentCommand::CreateUnit {
-            unit_id: UnitId::new("flash-1"),
-            kind: "flash_drum".to_string(),
-        },
-        next_flowsheet,
-        timestamp(20),
-    );
+    app_state
+        .commit_document_change(
+            DocumentCommand::CreateUnit {
+                unit_id: UnitId::new("flash-1"),
+                kind: "flash_drum".to_string(),
+            },
+            next_flowsheet,
+            timestamp(20),
+        )
+        .unwrap();
 
     assert_eq!(app_state.workspace.canvas_interaction.pending_edit, None);
 }
@@ -241,14 +243,16 @@ fn committing_canvas_place_unit_intent_allocates_next_available_unit_id() {
             Vec::new(),
         ))
         .expect("expected existing unit insert");
-    app_state.commit_document_change(
-        DocumentCommand::CreateUnit {
-            unit_id: UnitId::new("flash-1"),
-            kind: "flash_drum".to_string(),
-        },
-        flowsheet,
-        timestamp(25),
-    );
+    app_state
+        .commit_document_change(
+            DocumentCommand::CreateUnit {
+                unit_id: UnitId::new("flash-1"),
+                kind: "flash_drum".to_string(),
+            },
+            flowsheet,
+            timestamp(25),
+        )
+        .unwrap();
     app_state.begin_canvas_place_unit("flash_drum");
 
     let result = app_state
@@ -858,14 +862,16 @@ fn document_change_invalidates_canvas_suggestions_but_only_records_document_comm
     )]);
 
     let next_flowsheet = Flowsheet::new("demo-updated");
-    app_state.commit_document_change(
-        DocumentCommand::MoveUnit {
-            unit_id: UnitId::new("flash-1"),
-            position: CanvasPoint::new(40.0, 20.0),
-        },
-        next_flowsheet,
-        timestamp(20),
-    );
+    app_state
+        .commit_document_change(
+            DocumentCommand::MoveUnit {
+                unit_id: UnitId::new("flash-1"),
+                position: CanvasPoint::new(40.0, 20.0),
+            },
+            next_flowsheet,
+            timestamp(20),
+        )
+        .unwrap();
 
     assert_eq!(app_state.workspace.command_history.len(), 1);
     assert_eq!(

@@ -3,6 +3,7 @@ mod input_commands;
 mod input_discard;
 pub use input_discard::{InputDiscardScope, InputEditCheckpoint};
 mod numeric_edit;
+mod object_identities;
 mod stream_inspector;
 pub use numeric_edit::*;
 use stream_inspector::apply_stream_specification_value;
@@ -461,6 +462,7 @@ pub struct WorkspaceState {
     // Retain identities across deletion and history branching for this document session.
     allocated_unit_ids: BTreeSet<UnitId>,
     allocated_stream_ids: BTreeSet<StreamId>,
+    object_identities: Option<object_identities::WorkspaceObjectIdentities>,
     pub document: FlowsheetDocument,
     pub document_path: Option<PathBuf>,
     pub project_presentation: ProjectPresentationState,
@@ -493,6 +495,7 @@ impl WorkspaceState {
             equipment_editor: crate::engineering::editor::EquipmentEditorState::default(),
             allocated_unit_ids: document.flowsheet.units.keys().cloned().collect(),
             allocated_stream_ids: document.flowsheet.streams.keys().cloned().collect(),
+            object_identities: None,
             document,
             document_path: None,
             project_presentation: ProjectPresentationState::default(),
@@ -514,7 +517,8 @@ impl WorkspaceState {
         command: DocumentCommand,
         next_flowsheet: Flowsheet,
         changed_at: DateTimeUtc,
-    ) -> u64 {
+    ) -> RfResult<u64> {
+        self.allocate_created_object_identities(&next_flowsheet)?;
         let before = self.document.flowsheet.clone();
         let after = next_flowsheet.clone();
         self.allocated_unit_ids.extend(before.units.keys().cloned());
@@ -535,7 +539,7 @@ impl WorkspaceState {
             .fields
             .retain(|_, draft| matches!(draft, DraftValue::Numeric(_)));
         self.refresh_numeric_edits();
-        revision
+        Ok(revision)
     }
 
     fn commit_inspector_document_change(
@@ -594,6 +598,11 @@ impl WorkspaceState {
     }
 
     pub fn mark_saved(&mut self, path: impl Into<PathBuf>) {
+        let captured = self.current_object_identities();
+        if let Some(identities) = &mut self.object_identities {
+            identities.saved =
+                captured.expect("enabled object identities have a current projection");
+        }
         self.document_path = Some(path.into());
         self.last_saved_revision = Some(self.document.revision);
     }
@@ -656,12 +665,12 @@ impl AppState {
         command: DocumentCommand,
         next_flowsheet: Flowsheet,
         changed_at: DateTimeUtc,
-    ) -> u64 {
-        let revision = self
-            .workspace
-            .commit_document_change(command, next_flowsheet, changed_at);
+    ) -> RfResult<u64> {
+        let revision =
+            self.workspace
+                .commit_document_change(command, next_flowsheet, changed_at)?;
         self.refresh_run_panel_state();
-        revision
+        Ok(revision)
     }
 
     pub fn undo_document_command(
@@ -838,7 +847,7 @@ impl AppState {
             DocumentCommand::SetPropertyPackage { package_id },
             next_flowsheet,
             changed_at,
-        );
+        )?;
         Ok(Some(revision))
     }
 
@@ -867,7 +876,7 @@ impl AppState {
             },
             next_flowsheet,
             changed_at,
-        );
+        )?;
         Ok(Some(revision))
     }
 
@@ -908,7 +917,7 @@ impl AppState {
             },
             next_flowsheet,
             changed_at,
-        );
+        )?;
         Ok(Some(revision))
     }
 
@@ -1089,7 +1098,7 @@ impl AppState {
             return Ok(None);
         }
 
-        let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at);
+        let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at)?;
         self.focus_inspector_target(InspectorTarget::Stream(stream_id.clone()));
 
         Ok(Some(StreamConnectionEditResult {
@@ -1126,7 +1135,7 @@ impl AppState {
             return Ok(None);
         };
 
-        let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at);
+        let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at)?;
         self.focus_inspector_target(InspectorTarget::Stream(stream_id.clone()));
 
         Ok(Some(StreamConnectionEditResult {
@@ -1161,7 +1170,7 @@ impl AppState {
             return Ok(None);
         };
 
-        let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at);
+        let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at)?;
         self.focus_inspector_target(InspectorTarget::Stream(stream_id.clone()));
 
         Ok(Some(StreamReconnectEditResult {
@@ -1197,7 +1206,7 @@ impl AppState {
                 &self.workspace.document.flowsheet,
                 stream_id,
             )?;
-        let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at);
+        let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at)?;
         self.workspace.selection.selected_streams.remove(stream_id);
         if self.workspace.drafts.active_target == Some(InspectorTarget::Stream(stream_id.clone())) {
             self.workspace.drafts.active_target = None;
@@ -1229,8 +1238,11 @@ impl AppState {
                 mutation,
                 &self.workspace.allocated_stream_ids,
             )
+            && let Err(error) =
+                self.commit_document_change(command, next_flowsheet, SystemTime::now())
         {
-            self.commit_document_change(command, next_flowsheet, SystemTime::now());
+            self.push_log(AppLogLevel::Error, error.to_string());
+            return None;
         }
         self.workspace.selection.selected_units.clear();
         self.workspace.selection.selected_streams.clear();

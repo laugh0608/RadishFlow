@@ -1,3 +1,4 @@
+use super::locale::tr;
 use super::*;
 use radishflow_studio::{ProjectSaveCompatibility, StudioDocumentLifecycleCommand};
 
@@ -223,9 +224,14 @@ impl ReadyAppState {
                 (true, false, _) => "保存为新版工程", (false, false, _) => "Upgrade project format",
             });
             match compatibility {
-                ProjectSaveCompatibility::FlowCapabilities { required, .. } => {
-                    ui.label(if zh { "工程仍为 v4，将增加所需模型或计划能力。不支持这些能力的旧版本将整份只读打开。可另存为以保留原件。" }
-                    else { "The project remains v4 with additional required model or plan capabilities. Older versions without these capabilities open it read-only. Use Save As to keep the original." });
+                ProjectSaveCompatibility::FlowCapabilities { required, replaces_target_object_identities, .. } => {
+                    if replaces_target_object_identities {
+                        ui.strong(tr(self.locale, "覆盖后，目标工程的旧变量引用可能失效。", "Overwriting can invalidate old variable references in the destination project."));
+                        ui.label(tr(self.locale, "将写入下列必需能力。", "The following required capabilities will be written."));
+                    } else {
+                        ui.label(if zh { "工程仍为 v4，将增加所需模型或计划能力。不支持这些能力的旧版本将整份只读打开。可另存为以保留原件。" }
+                        else { "The project remains v4 with additional required model or plan capabilities. Older versions without these capabilities open it read-only. Use Save As to keep the original." });
+                    }
                     for capability in required { ui.label(format!("{} / {}", capability.id, capability.version)); }
                 }
                 ProjectSaveCompatibility::RatingAdoptionCapability => {

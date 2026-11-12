@@ -12,6 +12,8 @@ pub struct PreparedProjectV4Write {
     contents: String,
     target_fingerprint: Option<String>,
     requires_upgrade: bool,
+    target_has_object_identities: bool,
+    replaces_target_object_identities: bool,
 }
 impl PreparedProjectV4Write {
     pub fn path(&self) -> &Path {
@@ -22,6 +24,12 @@ impl PreparedProjectV4Write {
     }
     pub fn requires_upgrade(&self) -> bool {
         self.requires_upgrade
+    }
+    pub fn target_has_object_identities(&self) -> bool {
+        self.target_has_object_identities
+    }
+    pub fn replaces_target_object_identities(&self) -> bool {
+        self.replaces_target_object_identities
     }
 }
 pub fn read(path: impl AsRef<Path>) -> RfResult<ProjectV4Read> {
@@ -40,6 +48,8 @@ pub fn prepare_write(
     if existing.is_some() && overwrite == FileOverwritePolicy::Forbid {
         return Err(RfError::invalid_input("project target already exists"));
     }
+    let mut target_has_object_identities = false;
+    let mut replaces_target_object_identities = false;
     let requires_upgrade = if let Some(bytes) = &existing {
         let text = std::str::from_utf8(bytes)
             .map_err(|e| RfError::invalid_input(format!("project target UTF-8: {e}")))?;
@@ -58,6 +68,26 @@ pub fn prepare_write(
                     let ProjectV4Read::Editable(new) = project else {
                         unreachable!("validated editable write");
                     };
+                    target_has_object_identities = existing.object_identities.is_some();
+                    if target_has_object_identities && new.object_identities.is_none() {
+                        return Err(RfError::invalid_input(
+                            "existing project has object identities; overwriting without identities is prohibited",
+                        ));
+                    }
+                    if let (Some(old), Some(next)) =
+                        (&existing.object_identities, &new.object_identities)
+                    {
+                        replaces_target_object_identities = existing.document.metadata.document_id
+                            != new.document.metadata.document_id
+                            || old
+                                .units
+                                .iter()
+                                .any(|(id, creation)| next.units.get(id) != Some(creation))
+                            || old
+                                .streams
+                                .iter()
+                                .any(|(id, creation)| next.streams.get(id) != Some(creation));
+                    }
                     let old: BTreeSet<_> = required_capabilities(&existing).into_iter().collect();
                     required_capabilities(new).iter().any(|c| !old.contains(c))
                         || new
@@ -84,6 +114,8 @@ pub fn prepare_write(
         contents,
         target_fingerprint: existing.as_ref().map(|b| sha256_hex(b)),
         requires_upgrade,
+        target_has_object_identities,
+        replaces_target_object_identities,
     })
 }
 pub fn write_prepared(prepared: &PreparedProjectV4Write, upgrade_confirmed: bool) -> RfResult<()> {

@@ -48,7 +48,8 @@ fn rename(app: &mut AppState, name: &str) {
         },
         flowsheet,
         UNIX_EPOCH,
-    );
+    )
+    .unwrap();
 }
 
 fn rejected(app: &mut AppState, completed: &mut CompletedWorkspaceSolve, reason: Reason) {
