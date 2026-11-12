@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-11-05
+更新时间：2026-11-12
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -80,7 +80,8 @@ Studio 首页、工作台分区、运行后结果视图和项目切换确认流�
 - 新建 / 打开 / 关闭消费 `ProjectSaveState`；确认绑定当前状态，过期重验，取消 / 失败保留现场，见 [生命周期](../topics/project-lifecycle-storage.md#u2-离开保护与保存状态)。Home 返回只切页；保存不提交草稿，有草稿不自动关闭。
 - 进入 case 后，第一层只保留 `文件 / 主页 / 物性 / 设备 / 流程图 / 运行 / 结果 / 工具 / 设置` 主入口、当前项目摘要和必要状态。普通空白项目选齐 package 和至少一个项目组分前，`流程图` 入口不可用；禁用原因必须来自 Property page DTO 的同一 readiness。
 - `物性 / 流程图 / 运行 / 结果` screen 下方分别消费 `window.property_context_toolbar`、`window.flowsheet_context_toolbar`、`window.run_context_toolbar` 和 `window.result_context_toolbar`。工具栏只展示当前 screen 的主路径命令和状态，不展开调试命令全集；`运行` 工具栏不重复 Monitor 状态 chip，`结果` 工具栏不把所有 stream / unit focus command 展开成长按钮。
-- 工作台分区固定为左侧 `模块 / 项目`、中央 Canvas、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` 和状态汇总。`模块` 消费 Canvas place-unit palette 并按 `流股源 / 调节单元 / 汇合与分离` 分类；分类和选项 detail 可进入 hover / DTO，不作为首屏常驻说明。`项目` 负责项目输入、示例入口、对象树和审阅状态；项目级输入编辑主入口仍是独立 `物性` screen。左侧 `项目输入` 和独立 `物性` 页同样展示可读 package label，不从运行结果反推第二套物性包状态。
+- 工作台左侧为 `模块 / 项目`，中央为 Canvas，右侧为 `检查器 / 模块设置 / 模块结果 / 变量浏览器`，底部为消息、运行审阅、诊断和结果表。`模块` 消费 Canvas palette，按 `流股源 / 调节单元 / 汇合与分离` 分类。`项目` 提供项目输入摘要、示例和对象树，项目级输入在独立 `物性` 页编辑；两处使用同源物性包标签。
+- 变量浏览器的展开与侧区共用工作区选择、查询及定位。壳层持有视图状态，工程持有有序关注引用；显示值由当前工程及结果资格派生。 [变量浏览器](../topics/variable-and-object-browser.md)
 - `模块设置` 只消费 `StudioGuiWindowModuleSettingsModel`，从 active unit Inspector detail 派生参数摘要、字段、端口、连接动作和诊断动作；参数摘要不得混入 latest-result。`模块结果` 只消费 `StudioGuiWindowModuleResultsModel`，从 current-revision latest `SolveSnapshot` 派生 selected unit result、consumed / produced stream、related steps、diagnostics 和 diagnostic actions。
 - 运行派发后，shell 成功时切至右侧 `模块结果` / 底部 `结果表`，失败时切至 `检查器` / `消息`；此反馈不切换顶部 screen。结果面只读消费当前 revision 的最新 `SolveSnapshot`；stale snapshot 只显示过期提示，不继续驱动 Result Inspector、结果表、Results commands、复制 / 导出或 `review_summary`。
 - 底部 `结果表` 的 stream / unit 行必须派发正式 `inspector.focus_stream:*` / `inspector.focus_unit:*`，分别定位到右侧 `检查器` / `模块结果`，底部仍停留在 `结果表`。底部状态汇总只消费 `StudioGuiWindowStatusSummaryModel`，snapshot 一致性等低高度信息可以放在标题行，不另建 shell 私有摘要。

@@ -1,6 +1,6 @@
 # 本地无界面运行接口
 
-更新时间：2026-11-04
+更新时间：2026-11-12
 
 用途：说明 Studio 旧 v1 / v2、AF4c v3、QS1-C v4、QS2-C v5、QS3 v6 与 QS4 v7 命令、JSON 请求 / 响应和错误语义。
 
@@ -10,13 +10,15 @@
 
 ## 版本与兼容边界
 
-2026-10-26 已确认 [AF4c 新版 CLI 契约](../topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)，AF4c-1—4 已完成。新版 query / execute 的查询、正式输入 / 确认、同步运行和采纳已接通，并通过真实进程与正式仓库基线。以下旧协议契约继续有效；新版参考见文末。
+[AF4c](../topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)的 `query` / `execute` 已通过真实进程验证。本文先列旧协议，v3–v7 见后文。
 
-B3-5 已通过 v2 请求接通受控创建 / 连接和步骤身份引用，v1 请求与响应字段保持兼容。2026-09-16 确认的 [单位系统](../topics/units-and-quantity-system.md) 和 [建模辅助](../topics/modeling-assistance-and-specifications.md) 后续复用本接口的身份、修订、命令与诊断；本文 v1 的 SI 数值、路径与错误契约不变。U1 已让响应的 unit 标签从公共目录派生，v1 / v2 仍只读写 SI，不接收额外单位字段。未来带单位请求须显式版本化或定义兼容扩展，不受 GUI 显示偏好影响。
+B3-5 在 v2 增加受控创建 / 连接和步骤引用，保留 v1 的字段、路径与错误契约。v1 / v2 按 SI 读写，`unit` 标签来自共享目录；输入不接收单位字段。带单位请求须另定协议。 [单位系统](../topics/units-and-quantity-system.md) · [建模辅助](../topics/modeling-assistance-and-specifications.md)
 
-U2-I1 已让本接口通过共享存储层读取项目文件 v1 / v2；工程集呈现配置不改变 CLI 的 SI 数值与标签，非法呈现配置会使装载失败，不能丢弃配置后继续运行。项目外层版本与 CLI 请求版本独立，文件兼容规则见 [单位存储接口](../topics/units/unit-sets-and-persistence.md#u2-存储接口)。读取与运行仍不改写原工程，尚未提供 U3 的输出单位选择。
+U2-I1 通过共享存储读取工程 v1 / v2。非法呈现配置使装载失败；合法配置不影响 CLI 的 SI 数值与标签。工程外层版本与请求版本独立。 [单位存储接口](../topics/units/unit-sets-and-persistence.md#u2-存储接口)
 
-Studio GUI 已支持已知设备项目 v3，旧 CLI 的 `inspect`、v1 `run` 与 v2 workflow 仍在任何建模 / 求解前拒绝所有外层 v3 文件，包括工程区缺省或为空的文件。设备计算、保存及 CSV / JSON 导出不属于旧 CLI 协议；不能删除工程区后伪装为旧版继续运行。详见 [v3 生命周期](../topics/project-lifecycle-storage.md#完整设备保存与最小-studio-生命周期2026-10-15)。
+旧 `inspect`、v1 `run` 与 v2 workflow 在建模 / 求解前拒绝外层 v3 及以上文件，工程区缺省或为空也拒绝。 [v3 生命周期](../topics/project-lifecycle-storage.md#完整设备保存与最小-studio-生命周期2026-10-15)
+
+含 `radishflow.object-identity` 或 `radishflow.variable-watch-list` 的 v4 工程，v3 `query` / `execute` 拒绝装载。v4–v7 `query` 只返回安全元数据；`execute` 核对工程 ID 与指纹后返回 `read_only_project`，早于资源读取和步骤执行。 [VB-D02](../topics/variable-browser/identity-storage.md) · [VB-D03](../topics/variable-browser/watch-list.md)
 
 ## 旧协议命令
 

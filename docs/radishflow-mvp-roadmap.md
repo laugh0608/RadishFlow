@@ -1,6 +1,6 @@
 # RadishFlow 开发路线图
 
-更新时间：2026-11-11
+更新时间：2026-11-12
 
 ## 用途
 
@@ -70,7 +70,7 @@ P2 的自动化按可交付切片展开：先做变量 / 动作描述和只读�
 
 2026-10-24 已形成 [AF3 任务提案](topics/runtime-messages/run-control-and-watch-conditions.md#af3-任务身份取消与完成接收方案)与[验收边界](topics/runtime-messages/scenarios-and-acceptance.md#af3-专项验收边界)，按身份 / 接收 → 后台流程 / 取消 → 设备 / 生命周期接线推进。方案已确认，AF3a—c 已接通；正式与实窗证据及保留项以专项验收为准。AF1 继续独立跟踪，不代表已修复。
 
-2026-10-24 已实现 [AF4a 工程发现](topics/variable-and-object-browser.md#af4a-工程发现与上下文契约2026-10-24)＋[AF5a 结果查询](topics/results-review-diagnostics.md#af5a-结果资格与来源查询2026-10-24)。顺序为共享发现 → 结果资格 / 来源 → 正式动作 → 新版本 CLI → 界面 / 诊断 / 输出；AF4b / AF4c 已实现；[AF5b 具体方案](topics/results-review-diagnostics.md#af5b-来源详情诊断定位与输出2026-10-26)已完成来源投影、导航与输出、局部 UI 及代表验证，2026-10-31 AF6 审查及有限物料任务已完成，QS1-A/B 核心已完成，QS1-C 正式保存与消费者已按确认范围接通，见[接下来事项](topics/variable-and-object-browser.md#接下来事项2026-10-31)。首批不改工程格式或旧 CLI / FFI，不接 COM、录制及 C3。
+2026-10-24 已实现 [AF4a 工程发现](topics/variable-and-object-browser.md#af4a-工程发现与上下文契约2026-10-24)＋[AF5a 结果查询](topics/results-review-diagnostics.md#af5a-结果资格与来源查询2026-10-24)。顺序为共享发现 → 结果资格 / 来源 → 正式动作 → 新版本 CLI → 界面 / 诊断 / 输出；AF4b / AF4c 已实现；[AF5b](topics/results-review-diagnostics.md#af5b-来源详情诊断定位与输出2026-10-26)已完成来源、导航、输出及代表验证。2026-10-31 AF6 审查及有限物料任务已完成，QS1 核心、正式保存与消费者按 [QS1-C](topics/modeling/recycle-project-and-consumers.md) 接通。后续求解切片归[多策略专题](topics/modeling/solver-strategies-and-assembly.md)。
 
 AF4b [正式动作契约](topics/variable-and-object-browser.md#af4b-正式动作契约与实施切片2026-10-24)已确认，按流程动作 → 设备输入 / 检查 → 计算控制回执 → 消费者接线分片；AF4b-1—4 已完成；设备输入 / 检查、计算控制回执与 GUI 消费已接通，正式基线及 macOS 代表实窗通过，证据见 [W43](devlogs/2026-10/2026-W43.md)。
 
@@ -112,7 +112,7 @@ AF4b [正式动作契约](topics/variable-and-object-browser.md#af4b-正式动�
 
 ### 变量与对象浏览器的配套切片
 
-2026-09-28 确认 [统一变量与对象浏览器](topics/variable-and-object-browser.md)：工程分类与变量树共用描述、身份、查询及正式命令。B3-1—B3-5 为已有基础；VB 编号管理新增能力，详细范围、待决策与验收由专题拥有，均未进入代码实现。
+2026-09-28 确认 [统一变量与对象浏览器](topics/variable-and-object-browser.md)。工程分类与变量树共用描述、身份、查询及正式命令。B3-1—B3-5 为基础，VB 编号管理后续增量；范围、待决策与验收由专题维护。
 
 | 切片 | 进入时机 | 核心退出依据 |
 | --- | --- | --- |
@@ -121,9 +121,9 @@ AF4b [正式动作契约](topics/variable-and-object-browser.md#af4b-正式动�
 | VB2 受控编辑 | 对应 VB1 呈现与 U2 编辑 / 保存闭环就绪 | 先单值，再组合 / 跨对象批量事务；草稿保护、单位转换、拒绝原子性、撤销与结果旧化一致 |
 | VB3 跨端与领域扩展 | P2 按消费者推进，领域数据按 G / N 及模型能力提供 | 先 CLI 路径适配；COM / 录制、多工况 / 任务及多维读取逐项验收，不捆绑一次交付 |
 
-U3 首批已在现有只读浏览器接入项目显示单位，完整 VB1 仍未实现；A1 / A2 与设备模型也不以完整浏览器为前置门禁。VB0 可先准备局部设计，具体接口、路径语法和存储按专题待决策审定，不由本次规划改变 CLI SI 契约、项目 schema 或依赖。
+U3 首批已接入项目显示单位。A1 / A2 与设备模型可按各自切片推进，完整 VB1 的覆盖与原生验证见浏览器专题。
 
-2026-11-11 按认可的 [VB0 首片方案与画板](architecture/designs/studio-variable-browser-brief.md)接通发现、资格 / 来源与定位。2026-11-12 [VB-D02](topics/variable-browser/stable-references.md)接通流程标量稳定引用、显式初始化与 v4 保存，[VB-D03](topics/variable-browser/watch-list.md)接通工程关注清单。跨端路径归 VB3。
+2026-11-11 按认可的 [VB0 首片方案与画板](architecture/designs/studio-variable-browser-brief.md)接通发现、资格 / 来源与定位。2026-11-12 [VB-D02](topics/variable-browser/stable-references.md)接通流程标量稳定引用、显式初始化与 v4 保存，[VB-D03](topics/variable-browser/watch-list.md)接通工程关注清单。[VB-D04](topics/variable-browser/single-value-editing.md)单值首片方案已认可，局部画板待评审。跨端路径归 VB3。
 
 ### 运行、消息与诊断的配套切片
 

@@ -190,7 +190,7 @@ VB2 的单值完成不代表批量事务完成；VB3 按消费者逐项记录覆
 
 - 2026-09-28：专题方向与分阶段建议获项目所有者确认，完成文档化及开发规划衔接；具体接口、画板、代码与新增运行态验收未完成。
 - 2026-10-07：U3 首批接通现有只读浏览器的项目单位显示，来源 / 有效性与规范元数据保持；macOS 代表路径通过，完整 VB1 和跨平台运行态验收仍待推进。
-- 2026-10-24：AF4a / AF5a 与 AF4b 完成，下一步先细化 AF4c 新版 CLI，见文末接下来事项；完整浏览器布局、路径与关注项仍需 VB-D 对应决策。
+- 2026-10-24：AF4a / AF5a 与 AF4b 完成，随后接通下文的 AF4c 新版 CLI。
 
 
 ## VB1 只读工作区首片（2026-11-11）
@@ -200,7 +200,7 @@ VB2 的单值完成不代表批量事务完成；VB3 按消费者逐项记录覆
 - 复制重验会话 / 资格；未知版本保持原 JSON 只读页，不投影旧工作区。
 - 定位复用原编辑器；草稿可取消导航或保留后定位。浏览不提交、丢弃、运行或保存；切换会话清理状态，重名不作身份回退。
 - 缓存身份 / 搜索元数据 / 换行高度，按输入、结果身份、单位与语言失效；只查询可见 / 所选值，不重复逐帧枚举。
-- 覆盖 VB-A01、A03 首片及 A02 / A04 的内部身份 / 无副作用子集；路径、持久关注、完整 A08、VB2 / VB3、OS 倍率、读屏和 Windows / Linux 原生仍保留。
+- VB-A01 / A03 覆盖首片。VB-D02 / D03 随后补齐首批标量的稳定引用与工程关注，分别补 VB-A02 / A04。系统缩放、读屏和 Windows / Linux 原生按阶段补验。
 
 ## AF4a 工程发现与上下文契约（2026-10-24）
 
@@ -281,15 +281,11 @@ AF4b-4 消费接线：设备 GUI 的 `dispatch_with_receipt` 将正式创建 / �
 GUI 调用入口根据当前只读视图拒绝编辑与运行事件，不能仅依靠按钮禁用；后台取消和未启动状态提供本地化说明。流程旧 Run dispatch 增加可选正式回执，旧 Started / CLI 输出保持；独立执行的 RunId 本来不同，对照测试比较终态、接收与诊断而不抹平运行身份。正式仓库检查与 macOS 实窗的最终证据归 W43。
 
 
-## 接下来事项（2026-10-31）
+## 接下来事项
 
-AF4a / AF5a、AF4b、AF4c 与 AF5b 已完成已确认批次。[AF6 审查](modeling/solver-strategies-and-assembly.md#af6-扩展边界复核2026-10-31)已完成；所有者随后批准的[有限组分衡算核心](modeling/solver-strategies-and-assembly.md#qs0-首片实施2026-10-31)已接通装配、残差 / Jacobian 与拒绝证据。后续批准的有限物料后端、独立任务与 GUI / CLI 已接通；动态未实现。
-
-1. **QS1-C 正式接入已实现。** [QS1-A/B 核心](modeling/recycle-and-block-execution.md)已按 D01—D05 实现 Splitter、分块 / 显式撕裂、循环复核与故障验证；[QS1-C01—C06 方案](modeling/recycle-project-and-consumers.md)已确认并实现项目 v4、独立计划 / 双资格、显式连接及已认可 GUI / CLI v4；验证与后续边界见该专题。
-2. **按消费者与物理能力分期扩展。** [QS2](modeling/simultaneous-modular-block.md)已按确认的 D01—D05 实现交叉回流装配、模块响应 / 后端与核心验证；[QS2-C / D06](modeling/simultaneous-project-and-consumers.md)D06 已批准，已完成保存、冻结 / 双资格、真实结果、CLI v5 与经画板认可的 GUI 接线。[QS3](modeling/equation-oriented-block.md)多单元物料方程 / 单比例反算、显式采纳、GUI / CLI v6 已按 D01—D08 完成本机接入及验证。[QS4 首片](modeling/mixed-partition-execution.md)已接通 Local＋正向 EO 的 DAG、v4 与 GUI / CLI v7；更多混合策略、热 / 相平衡 EO、动态仍另审；复用结果资格，不用步骤或快照序号代替迭代 / 时间。
-3. **保留既有问题与验证边界。** AF1 继续按[生命周期事项](project-lifecycle-storage.md#af1-接下来事项2026-10-23)捕获现场并定因。PR #17 的三平台 Rust、Windows .NET / 打包已通过，不能替代原生 GUI / PME、I5 或完整交互组合补验。C2-A 专项服从基础主线，C2-B / C3、COM、录制和发布保持原边界。
-
-本轮记录见 [W44](../devlogs/2026-10/2026-W44.md)；当前正式基线与优先级以[当前状态](../status/current.md)为准。
+1. **先评审 VB-D04 局部画板。** 按已认可的单值首片设计展开与 400 px 详情，画出编辑、单位选择、草稿保留、提交失败和键盘返回。画板获认可后复用 Inspector 的 U2 会话接线，按 VB-A05 验证。 [VB-D04](variable-browser/single-value-editing.md)
+2. **补 VB-D03 Pencil 主稿。** 配额恢复后按六张已认可 PNG 接入并静态复核。跨平台实窗、系统缩放与读屏按既定阶段补验。 [画板记录](../architecture/designs/studio-variable-browser-brief.md#vb-d03-关注清单局部画板)
+3. **按增量审定后续范围。** VB2 组合 / 跨对象批量另审，VB3 先明确实际 CLI 路径消费者。工程生命周期 AF1 独立跟踪。 [当前状态](../status/current.md)
 
 ## AF4c 新版 CLI 契约（2026-10-26，已确认）
 
