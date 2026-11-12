@@ -53,6 +53,8 @@
 
 2026-11-12 VB-D03 按已认可的[关注清单局部画板](designs/studio-variable-browser-brief.md#vb-d03-关注清单局部画板)接通 Studio 首片，包含展开工作区、400 px 侧区、首次保存确认及失效项操作。Pencil 主稿待配额恢复后补。
 
+[VB-D04 单值编辑首片](../topics/variable-browser/single-value-editing.md)的优先级、字段和验收已获认可。先细化变量详情局部画板，后续编辑复用 Inspector 的 U2 数值会话。
+
 ## 首批必须评审的代表路径
 
 首批单位事件与草稿路径以 [U2 事件表](../topics/units/input-drafts-and-interactions.md#u2-事件表) 为准，已接受触发策略已合入 UE 表，剩余接口按 UD 清单审定。2026-09-17 补充：首批单位字段同时评审 [V0 状态语义](../topics/color-state/semantics-and-composition.md)，不等待后续三维。V1—V4 的画板按 [可视化切片](../topics/results-review-diagnostics.md#流程可视化与回放规划尚未实现) 进入，V0 首批数值角色已接通，完整迁移和产品验收待续；动画 / 三维尚未实现或完成画板验收。
