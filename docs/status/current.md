@@ -45,7 +45,7 @@
 ### 最近进展（截至 2026-11-12）
 
 - PR #18 已合入 `master` 并回灌 `dev`（`4772fbba`）。AF3-V10 已补 macOS 在途切换、最后窗口退出、脏改取消关闭及另存面板交错代表证据；退出等待返回编辑仍待原生补证，AF1 未定因。见 [W46](../devlogs/2026-11/2026-W46.md)。
-- VB1 已接通 [流程稳定引用](../topics/variable-browser/stable-references.md)，持久关注待续。
+- VB-D02 已推送 `dev`。[VB-D03 关注项](../topics/variable-browser/watch-list.md)待评审。
 
 ### 下一步
 
