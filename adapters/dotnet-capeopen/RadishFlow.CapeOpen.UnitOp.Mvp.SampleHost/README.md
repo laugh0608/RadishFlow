@@ -28,7 +28,7 @@
 
 默认行为：
 
-- 默认读取 `examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json`
+- 默认读取 `examples/flowsheets/capeopen-feed-heater-binary-hydrocarbon.rfproj.json`
 - 默认读取 `examples/sample-components/property-packages/binary-hydrocarbon-lite-v1`
 - 默认从 `target/debug` 查找 `rf_ffi.dll`
 
@@ -46,3 +46,5 @@ dotnet run --project .\adapters\dotnet-capeopen\RadishFlow.CapeOpen.UnitOp.Mvp.S
 - `--payload <path>`
 - `--native-lib-dir <dir>`
 - `--help`
+
+本轮正向样例为严格单入口、单出口。共享测试物料提供可记录调用、可注入失败的受控单相响应，不证明真实 PME 物性或 COM marshalling；旧双出口闪蒸工程预期拒绝。

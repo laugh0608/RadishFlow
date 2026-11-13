@@ -1,6 +1,6 @@
 # CAPE-OPEN Boundary
 
-更新时间：2026-09-29
+更新时间：2026-11-13
 
 > 本文定义接口边界并保留历史验证说明。具体迭代与验证安排见 [当前状态](../status/current.md)。native 句柄生命周期契约见 [适配层专题](../topics/capeopen-pmc-adapter.md#native-engine-生命周期)。
 
@@ -39,6 +39,28 @@ CAPE-OPEN 定义组件互操作契约，不要求模拟器内部照搬 COM 对�
 Windows COM 的组件发现依赖已注册的类别与类标识，之后才是激活和接口协商，不以扫描 DLL 代替。未来宿主侧还须定义 Material Object、组分 / 相态与基准映射、Simulation Context、线程 / 引用释放和持久化职责。按 [模型装配专题 MC3](../topics/modeling/model-catalog-and-runtime.md#分阶段切片) 选定真实场景后，再建立宿主侧实施范围；当前不增加注册或加载行为。
 
 架构职责合理、接口兼容、工程数值可信分别建立证据：源码分层不能证明标准符合性，COM 激活不能证明完整互操作，宿主计算成功不能证明物性准确或能量守恒。对外符合性说明应列明接口、版本、支持 / 不支持范围与测试场景，不使用“全面兼容任意 PME”的概括。数值证据归 [热力学模型](../thermo/mvp-model.md#验证证据与缺口)。
+
+## PMC 单入口、单出口物料契约
+
+2026-11-13 所有者确认：固定 `Feed / Product` 端口只封装恰好一个物料入口、一个物料出口的内部工程，允许多个内部单元。配置校验拒绝多入口、多出口、无出口、重复来源 / 去向、缺失引用和孤立流股，并报告实际边界 ID。原气液双出口闪蒸样例不再自动合并；本轮不扩展动态端口。
+
+- `Validate()` 检查工程形状、连接、物料接口、组分身份及宿主相目录，不要求上游已经算出物料状态。`Calculate()` 每次重新读取 Feed，在本次 JSON 副本中覆盖入口并清除旧相态；读失败不消费保存进料，不改宿主 Feed 或保存的工程参数。
+- 宿主与工程组分按无歧义的一一映射匹配，包含零含量组分；物性包与工程使用相同的精确 ComponentId 集合。显式别名表目前覆盖 water / ethanol / methane / ethane 及其 CAS；不推断分子式或去标点后的名称。身份元数据冲突、重复、缺失和额外组分均拒绝。
+- 温度、压力为正有限数，总摩尔流量有限且非负。组成长度必须一致、各项非负且有限，`|Σz−1| ≤ 1e−10`；只修正此容差内完整组成的舍入偏差。
+- 在调用前按接口选择 Thermo 1.1 或 1.0。若支持 1.1，就要求其必要伴随接口齐全；已选路径读取或计算失败，不转向另一协议、另一 basis 或默认状态重试。
+- 唯一内部出口的组成、总流量和 TP 通过校验后才写 Product。Thermo 1.1 从 `ICapeThermoPhases.GetPhaseList` 读取候选相，先 `ClearAllProps` 再以 `CAPE_UNKNOWNPHASESTATUS` 提交候选相，随后写规格、`CheckEquilibriumSpec` 和闪蒸；1.0 当前接口没有该方法，重写完整规格后必须完成 `CalcEquilibrium("TP")` 及回读。任一必要调用失败均使本次计算失败，不补相态或伪造平衡标志。
+- 发布成功要求整体 TP / 总流量与请求一致（相对容差 `1e−8`），组成绝对偏差不超过 `1e−10`，存在相及其组成 / 相分率有效、各相加权组成闭合；1.1 存在相还须报告 `CAPE_ATEQUILIBRIUM`。这些是接口后置条件，不是物性精度证明。
+- Feed→Heater 已验证零流量保持零，仍需有效组成、TP 和平衡调用；内部模型若拒绝该工况，传播模型错误。COM 写入不原子：中途失败可能留下部分更新，报告明确说明未回滚，不发布成功结果。
+- `Streams / Steps` 保留 native 求解证据；`DeliveredProduct` 保存宿主平衡后核对的状态，Product 物料视图使用它；成功报告注明 `native-rf-ffi` 与 `host-equilibrium/Thermo1.x` 来源。两套物性结果不混成一份相态或焓值。
+- 配置或连接改变会使结果失效；本次失败清空当前结果并发布失败报告；恢复后必须重新计算。保留原始 HRESULT / CAPE-OPEN 错误类别及调用上下文。组件 GUID、标准接口签名、端口名称、Rust ABI 和项目 schema 不变。
+
+验收矩阵、当前状态与证据统一归 [PMC 专题](../topics/capeopen-pmc-adapter.md#物料边界与成功语义治理)。[Unit Operation 勘误](https://www.colan.org/wp-content/uploads/2016/06/Errata_UO1.0_1.0.0015.pdf)要求出口平衡及零流量有效组成；[Thermo 勘误](https://www.colan.org/wp-content/uploads/2016/06/Errata_1.1_2.0.0009.pdf)区分平衡与额外物性求值，本轮不宣称校验了所有焓等性质。
+
+## COM、COBIA 与 COMBIA
+
+COBIA（CAPE-OPEN Binary Interop Architecture）是跨平台中间件方向，COMBIA 是 COBIA 与 COM 的互操作桥。官方要求支持既有 COM 组件；桥接限 Windows，不能由此把 COM PMC 直接变成跨平台组件。官方 2025-06-04 的 COBIA 1.2.1.2 公告包含 Linux / Windows 修复；这不表示 CAPE-OPEN 已弃用 COM，也不代表每个 PME 支持 COBIA。见 [官方项目说明](https://www.colan.org/experiences-projects/cape-open-binary-interop-architecture-cobia/)与[发布公告](https://www.colan.org/news/cobia-1-2-1-2-released/)。
+
+当前继续维护 `.NET 10` COM 适配层。未来若增加 COBIA，先核实目标 PME、平台、语言绑定和部署契约，再立独立切片；Rust Core 仍不接收 COM 类型，本轮不切换运行时或增加依赖。
 
 ## 黑箱组件与多策略求解
 
@@ -189,7 +211,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 当前已补入最小 `ICapeUnitReport` 接口、主类实现与 IDL/TLB 描述，`ProduceReport(ref string)` 复用既有 `GetCalculationReportText()`，用于加固 PME activation 阶段可能读取 report 的调用面
 - 当前新的未完成项已从“补齐剩余 typelib 兼容细节”进一步收口为“重新完成 `DWSIM + COFE` 人工复验，并按真实调用点分类记录失败”
 
-真实 `DWSIM / COFE` 复验进一步改变了 M5 兼容性判断：
+以下为 2026-04 的历史 `DWSIM / COFE` 复验结论，不覆盖 2026-11-13 收紧后的物料契约；新单出口样例仍须复验：
 
 - 先前的 hard crash、`0x80131165`、COFE material object release warning 与 DWSIM vtable/parameter-spec 卡点均已推进到明确修正点，并由用户侧 trace 复验确认。
 - `DWSIM / COFE` 当前均已能发现、实例化、放置当前 PMC，并连接 `Feed / Product` material streams。

@@ -32,6 +32,8 @@ public static class UnitOperationHostPortMaterialReader
         var currentStreams = unitOperation.LastCalculationResult?.Streams
             .ToDictionary(static stream => stream.Id, StringComparer.Ordinal)
             ?? new Dictionary<string, UnitOperationCalculationStream>(StringComparer.Ordinal);
+        if (unitOperation.LastCalculationResult?.DeliveredProduct is { } delivered)
+            currentStreams[delivered.Id] = delivered;
         var portEntries = UnitOperationPortCatalog.OrderedDefinitions
             .Select(definition => CreatePortEntry(unitOperation, definition, bindings, snapshotState, currentStreams))
             .ToArray();
@@ -222,13 +224,13 @@ internal sealed record UnitOperationConfiguredBoundaryMaterialBindings(
         {
             return new UnitOperationConfiguredBoundaryMaterialBindings([], []);
         }
-        catch (InvalidDataException)
+        catch (Exception error) when (error is InvalidDataException or KeyNotFoundException or InvalidOperationException)
         {
             return new UnitOperationConfiguredBoundaryMaterialBindings([], []);
         }
     }
 
-    private static UnitOperationConfiguredBoundaryMaterialBindings Parse(string flowsheetJson)
+    internal static UnitOperationConfiguredBoundaryMaterialBindings Parse(string flowsheetJson)
     {
         using var document = JsonDocument.Parse(flowsheetJson);
         var root = RequireObject(document.RootElement, "$");
@@ -243,6 +245,8 @@ internal sealed record UnitOperationConfiguredBoundaryMaterialBindings(
         var boundaryInputs = new List<string>();
         var boundaryOutputs = new List<string>();
         var downstreamMaterialInputs = new HashSet<string>(StringComparer.Ordinal);
+        var materialSources = new HashSet<string>(StringComparer.Ordinal);
+        var streams = flowsheet.GetProperty("streams");
 
         var unitMaterialPorts = new List<UnitMaterialPortSet>();
         foreach (var unitProperty in units.EnumerateObject())
@@ -267,25 +271,38 @@ internal sealed record UnitOperationConfiguredBoundaryMaterialBindings(
                 var streamId = ReadOptionalString(port, "stream_id");
                 if (string.IsNullOrWhiteSpace(streamId))
                 {
-                    continue;
+                    throw new InvalidDataException("Every material port must reference a stream.");
                 }
+                if (!streams.TryGetProperty(streamId, out _))
+                    throw new InvalidDataException($"Material port references missing stream `{streamId}`.");
 
                 var direction = ReadOptionalString(port, "direction");
                 if (string.Equals(direction, "inlet", StringComparison.OrdinalIgnoreCase))
                 {
                     inletStreamIds.Add(streamId);
-                    downstreamMaterialInputs.Add(streamId);
+                    if (!downstreamMaterialInputs.Add(streamId))
+                        throw new InvalidDataException($"Stream `{streamId}` has more than one material sink.");
                     continue;
                 }
 
                 if (string.Equals(direction, "outlet", StringComparison.OrdinalIgnoreCase))
                 {
+                    if (!materialSources.Add(streamId))
+                        throw new InvalidDataException($"Stream `{streamId}` has more than one material source.");
                     outletStreamIds.Add(streamId);
                 }
+                else throw new InvalidDataException($"Unsupported material port direction `{direction}`.");
             }
+            if (inletStreamIds.Count == 0 && ReadOptionalString(unit, "kind") != "feed")
+                throw new InvalidDataException("Only Feed units can define the material input boundary.");
 
             unitMaterialPorts.Add(new UnitMaterialPortSet(inletStreamIds, outletStreamIds));
         }
+
+        if (downstreamMaterialInputs.Any(id => !materialSources.Contains(id)))
+            throw new InvalidDataException("Every material inlet must have an internal source.");
+        if (streams.EnumerateObject().Any(stream => !materialSources.Contains(stream.Name)))
+            throw new InvalidDataException("Unconnected streams are not supported by the PMC boundary.");
 
         foreach (var unitPorts in unitMaterialPorts)
         {

@@ -29,7 +29,7 @@
 | [结果审阅与恢复](results-review-diagnostics.md) | 结果有效性、诊断恢复与可视化 | 本文内切片；与运行诊断及物流股协同 |
 | [运行、消息与诊断](runtime-messages-and-diagnostics.md) | N0—N5 的运行控制、消息与诊断边界 | 下列七项职责子专题 |
 | [项目生命周期与存储](project-lifecycle-storage.md) | 打开、保存、最近项目、脏改确认与工程容器 | 本文内切片；与控制面协同 |
-| [CAPE-OPEN PMC](capeopen-pmc-adapter.md) | .NET / COM PMC 生命周期、宿主与调用边界 | 本文及现有 PME 验收入口 |
+| [CAPE-OPEN PMC](capeopen-pmc-adapter.md) | .NET / COM PMC 生命周期、单进单出物料与调用边界 | [物料治理](capeopen-pmc-adapter.md#物料边界与成功语义治理)及 PME 验收入口 |
 | [工程基础与工况](engineering-basis-and-cases.md) | 条件、来源、工况与工程证据 | 本文内 G0—G2 等切片；与设备工程协同 |
 | [单位系统](units-and-quantity-system.md) | 量目录、单位集、输入输出一致性 | 下列四项职责子专题与 UNIT / UA 追踪 |
 | [颜色与状态](color-and-state-system.md) | 语义、组合、消费者映射与迁移 | 下列四项职责子专题与 VIS / VA 追踪 |

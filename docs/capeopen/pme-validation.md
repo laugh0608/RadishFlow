@@ -1,6 +1,6 @@
 # CAPE-OPEN PME 人工验证说明
 
-更新时间：2026-04-26
+更新时间：2026-11-13
 
 ## 文档目的
 
@@ -25,6 +25,25 @@
 - 自动化启动、控制或脚本化外部 PME
 - 加载第三方 CAPE-OPEN Unit Operation 或 Thermo/Property Package
 - 将 PME / COM 对象语义倒灌到 Rust core 或 `rf-ffi`
+
+## 单入口单出口复验矩阵
+
+2026-11-13 起当前 PMC 仅接受单入口、单出口。状态由 [PMC 专题](../topics/capeopen-pmc-adapter.md#物料边界与成功语义治理)维护。以下是待执行的真实宿主矩阵，不能引用 2026-04 双出口样例通过记录代替。
+
+- 正向工程：[water / ethanol Feed→Heater](../../examples/flowsheets/capeopen-feed-heater-water-ethanol.rfproj.json)；宿主与内部工程 / 包组分集合一致，Feed 与 Product 是不同物料对象。内部多单元允许，Product 唯一对应 `stream-heated`。
+- 本机 contract / smoke / SampleHost 默认使用 [binary hydrocarbon Feed→Heater](../../examples/flowsheets/capeopen-feed-heater-binary-hydrocarbon.rfproj.json)，测试对象只提供受控单相响应，不是外部物性包或热力学验证。
+- 反向工程：[原 water / ethanol 闪蒸](../../examples/flowsheets/feed-heater-flash-water-ethanol.rfproj.json)和[原 binary hydrocarbon 闪蒸](../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json)均有气液双出口，预期 `Validate()` 无效；不得重新打开隐式合并来获得通过。
+
+在 Windows 与真实 PME 操作前先告知所有者。记录源码 revision、系统 / PME 版本和位数、接口版本、所选包与组分次序、注册产物及步骤结果。分别在 DWSIM / COFE 执行：
+
+1. 发现、放置、连接与 Validate；上游尚未计算不应被误判为工程配置错误。
+2. 计算并改变宿主 Feed TP / 总流量 / 组成后重算；核对实际入口、唯一产品及各组分摩尔流量，保存工程配置不被覆盖。
+3. 组分合法重排应通过；缺失、多余（含零量）或歧义映射应失败；双出口配置必须拒绝。
+4. 在宿主可控制的失败场景中验证：Feed 读取失败、Product 闪蒸失败不能得到成功报告或默认相态。失败可能部分更新 Product，明确记录且不宣称回滚；无法注入的场景保留为未验证。
+5. 核对交付 Product 的 TP / 流量 / 组成、存在相与组成 / 相分率；记录它来自宿主平衡，内部结果保留独立来源。零流量须有效组成及平衡，不以增大流量规避。
+6. 成功→失败→修正→重算，断开重连，关闭 case / 退出；确认旧结果不可当前消费、引用释放和宿主窗口行为。
+
+Windows 完整 contract 默认 `--test all`；macOS 可用 `--test managed` 执行明确排除注册 / PME COM probe 的托管子集，`--test material-boundary` 是本轮四组定向契约。构建时 `-p:EnableComHosting=false` 只适合非 Windows 托管验证，不生成或证明可部署 COM host。`--no-restore` 依赖本地已有依赖缓存。
 
 ## 目标 PME 选择口径
 
@@ -306,7 +325,9 @@ Decision:
 Follow-up:
 ```
 
-## 当前判断
+## 2026-04 历史判断
+
+以下历史记录不覆盖本轮单出口与严格失败语义。
 
 截至 2026-04-27，`SampleHost` 的 PME-like 薄宿主入口、`Registration` execute 门控、脚本化安装/反安装运行手册，以及真实 `DWSIM / COFE` 人工复验已经把 discovery、activation、placement、端口连接与最小 calculate 主路径推进到阶段性闭环。
 

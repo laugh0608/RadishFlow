@@ -94,8 +94,8 @@ internal sealed class ContractTestContext : IDisposable
 
     public void ConnectRequiredPorts()
     {
-        UnitOperation.Ports.GetByName(UnitOperationPortCatalog.Feed.Name).Connect(new ContractConnectedObject("Contract Feed"));
-        UnitOperation.Ports.GetByName(UnitOperationPortCatalog.Product.Name).Connect(new ContractConnectedObject("Contract Product"));
+        UnitOperation.Ports.GetByName(UnitOperationPortCatalog.Feed.Name).Connect(ContractThermoMaterial.FromSampleProject("Contract Feed", FlowsheetJsonText));
+        UnitOperation.Ports.GetByName(UnitOperationPortCatalog.Product.Name).Connect(ContractThermoMaterial.FromSampleProject("Contract Product", FlowsheetJsonText));
     }
 
     public void DisconnectProductPort()

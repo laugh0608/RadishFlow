@@ -62,13 +62,14 @@ internal static class SampleHostExecutable
 
     private static PmeLikeUnitOperationInput CreateInput(SampleHostOptions options)
     {
+        var json = File.ReadAllText(options.ProjectPath);
         return new PmeLikeUnitOperationInput(
-            flowsheetJson: File.ReadAllText(options.ProjectPath),
+            flowsheetJson: json,
             packageId: options.PackageId,
             manifestPath: options.ManifestPath,
             payloadPath: options.PayloadPath,
-            feedMaterialObject: new PmeLikeMaterialObject("PME Feed Material"),
-            productMaterialObject: new PmeLikeMaterialObject("PME Product Material"));
+            feedMaterialObject: ContractThermoMaterial.FromSampleProject("PME Feed Material", json),
+            productMaterialObject: ContractThermoMaterial.FromSampleProject("PME Product Material", json));
     }
 
     private static void PrintViews(string label, UnitOperationHostViewSnapshot views)
@@ -264,7 +265,7 @@ internal sealed class SampleHostOptions
         A PME-like thin external host sample that consumes UnitOp.Mvp formal view/planner/round APIs.
 
         Options:
-          --project <path>        Project json path. Default: examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json
+          --project <path>        Project json path. Default: examples/flowsheets/capeopen-feed-heater-binary-hydrocarbon.rfproj.json
           --package <id>          Package id to solve with. Default: binary-hydrocarbon-lite-v1
           --manifest <path>       Optional property package manifest path
           --payload <path>        Optional property package payload path
@@ -332,7 +333,7 @@ internal sealed class SampleHostOptions
                     repoRoot,
                     "examples",
                     "flowsheets",
-                    "feed-heater-flash-binary-hydrocarbon.rfproj.json"),
+                    "capeopen-feed-heater-binary-hydrocarbon.rfproj.json"),
             packageId: values.TryGetValue("--package", out var packageId)
                 ? packageId
                 : "binary-hydrocarbon-lite-v1",

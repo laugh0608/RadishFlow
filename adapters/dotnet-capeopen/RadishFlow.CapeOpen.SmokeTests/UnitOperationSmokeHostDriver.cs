@@ -128,15 +128,15 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
             new UnitOperationHostActionExecutionInputSet(
                 portObjects: new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
                 {
-                    [portName] = new SmokeConnectedObject(componentName),
+                    [portName] = ContractThermoMaterial.FromSampleProject(componentName, _projectJson),
                 }));
     }
 
     public void ConnectRequiredPorts()
     {
         ThrowIfDisposed();
-        FeedPort.Connect(new SmokeConnectedObject("Smoke Feed"));
-        ProductPort.Connect(new SmokeConnectedObject("Smoke Product"));
+        FeedPort.Connect(ContractThermoMaterial.FromSampleProject("Smoke Feed", _projectJson));
+        ProductPort.Connect(ContractThermoMaterial.FromSampleProject("Smoke Product", _projectJson));
     }
 
     public UnitOperationSmokeValidationResult Validate()
@@ -278,8 +278,8 @@ internal sealed class UnitOperationSmokeHostDriver : IDisposable
             parameterValues: values,
             portObjects: new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
             {
-                [UnitOperationPortCatalog.Feed.Name] = new SmokeConnectedObject("Feed Smoke"),
-                [UnitOperationPortCatalog.Product.Name] = new SmokeConnectedObject("Product Smoke"),
+                [UnitOperationPortCatalog.Feed.Name] = ContractThermoMaterial.FromSampleProject("Feed Smoke", _projectJson),
+                [UnitOperationPortCatalog.Product.Name] = ContractThermoMaterial.FromSampleProject("Product Smoke", _projectJson),
             });
     }
 

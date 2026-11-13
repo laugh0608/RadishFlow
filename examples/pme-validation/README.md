@@ -16,3 +16,5 @@
 - Windows Registry 导出文件或本地执行日志
 
 本机 register / unregister 备份与 execution log 继续放在本地 `artifacts/registration-validation/`，不提交到 Git。
+
+2026-11-13 物料契约已收紧为单入口、单出口。现存 2026-04 记录是历史证据；新单出口样例与失败恢复矩阵尚待真实 PME 复验，步骤见 [runbook](../../docs/capeopen/pme-validation.md#单入口单出口复验矩阵)。

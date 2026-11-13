@@ -236,16 +236,3 @@ internal sealed record PmeLikeUnitOperationRoundResult(
     UnitOperationHostActionExecutionRequestPlan RequestPlan,
     IReadOnlyList<UnitOperationHostObjectMutationCommand> SupplementalMutationCommands,
     UnitOperationHostRoundOutcome Outcome);
-
-internal sealed class PmeLikeMaterialObject : ICapeIdentification
-{
-    public PmeLikeMaterialObject(string componentName)
-    {
-        ComponentName = componentName;
-        ComponentDescription = "PME-like host placeholder material object.";
-    }
-
-    public string ComponentName { get; set; }
-
-    public string ComponentDescription { get; set; }
-}

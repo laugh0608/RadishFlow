@@ -9,6 +9,10 @@ public sealed record UnitOperationCalculationResult(
     IReadOnlyList<UnitOperationCalculationStream> Streams,
     IReadOnlyList<UnitOperationCalculationStep> Steps)
 {
+    // Streams/Steps retain native execution evidence; delivered material is host-verified.
+    public UnitOperationCalculationStream? DeliveredProduct { get; init; }
+    public string? DeliveredProductThermoVersion { get; init; }
+
     internal static UnitOperationCalculationResult Parse(string snapshotJson)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(snapshotJson);

@@ -1,6 +1,6 @@
 # CAPE-OPEN PMC 适配层
 
-更新时间：2026-09-29
+更新时间：2026-11-13
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -24,7 +24,7 @@
 
 - `rf-ffi` JSON/error 和 native 装载路径已有回归基线。
 - `.NET 10` Unit Operation PMC 骨架已形成。
-- DWSIM / COFE discovery、activation、placement、端口连接和最小 `Validate / Calculate` 主路径已阶段性验证。
+- DWSIM / COFE discovery、activation、placement、端口连接和最小 `Validate / Calculate` 主路径有历史验证；不覆盖下述收紧后的物料契约。
 - 注册脚本默认 dry-run，并要求显式 `--execute` + `--confirm` 才执行。
 - `docs/capeopen/pme-validation.md` 保存 PME 人工验证 runbook。
 
@@ -34,6 +34,25 @@
 - 不推进完整 Thermodynamics PMC。
 - Windows `.NET` / PME 验证需在真实 Windows 或 GitHub Windows runner 完成。
 - 当前不做正式发布、安装器或自动 COM 注册。
+
+## 物料边界与成功语义治理
+
+- 方案：2026-11-13 已确认，严格单入口、单出口，取消隐式合并和失败兜底。
+- 执行：实现及本机定向验证完成，**待 Windows / 真实 PME 验收**；这不是完整标准符合性或工业物理精度声明。
+- 范围：`.NET UnitOp.Mvp` 物料访问及 Interop 标准相目录消费声明、组分映射、输入副本、出口回读、成功 / 失败及失效语义；ContractTests、SmokeTests、SampleHost 和样例随之更新。Rust Core、COM GUID / 接口、项目 schema、依赖不变。
+- 稳定契约见 [物料边界](../capeopen/boundary.md#pmc-单入口单出口物料契约)，操作步骤见 [本轮 PME 矩阵](../capeopen/pme-validation.md#单入口单出口复验矩阵)。
+
+| 验收面 | 通过标准 | 当前证据 / 缺口 |
+| --- | --- | --- |
+| 配置形状 | 单进单出；多进、多出、无出口、缺引用在运行前拒绝 | 本机契约覆盖，旧闪蒸样例为反向用例 |
+| 组分与输入 | 重排保持各组分摩尔流量；缺失 / 额外（含零量）/ 歧义 / 猜测身份拒绝；读取错误无默认输入兜底 | 本机完整映射、数值、读取异常与输入副本测试 |
+| 出口发布 | 写入、闪蒸、回读、相态或组分闭合失败均不成功；候选无效时尚未修改 Product | 本机故障注入及来源断言；COM 真实对象待验 |
+| 零流量 | 有效组成与 TP，保持零流量仍执行平衡；模型限制明确报错 | 发布器及 native Feed→Heater 零流量已验；真实宿主待补 |
+| 协议 | 1.0 / 1.1 分别成功、失败传播；双接口对象不因错误跨版本重试 | 托管替身已验，真实 marshalling 待 Windows |
+| 生命周期 | 成功→失败→恢复、改输入重算、断连重连、终止；旧结果不能作为当前值 | 本机 contract 与 UnitOp smoke 已验；真实 COM 引用释放待验 |
+| 目标 PME | DWSIM / COFE 单出口正向、双出口拒绝及关闭释放 | 未执行，历史双出口通过记录不沿用 |
+
+验证明细见 [W46](../devlogs/2026-11/2026-W46.md#2026-11-13cape-open-物料边界治理)。下一步在告知所有者后补 Windows `.NET` 完整基线和 DWSIM / COFE 真实矩阵；进入该环境前不宣布本切片验收完成。
 
 ## 宿主侧加载的规划关系
 
@@ -117,12 +136,12 @@ Adapter smoke 新增释放后调用、调用期间 Dispose、同一 engine 串�
 
 ## 验证计划
 
-- macOS / Linux：可做脚本语法和 Rust 仓库级验证。
+- macOS / Linux：可做脚本语法、Rust 验证及关闭 COM hosting 的托管 contract / native smoke；不能替代 Windows COM 验证。
 - Windows：执行 `.NET` build、contract tests、smoke tests 和必要 PME 人工验证。
 - 仓库级：涉及适配层关键变更时优先执行 `pwsh ./scripts/check-repo.ps1` 或 Windows CI 基线。
 
 ## 状态记录
 
 - 当前状态：Active
-- 最近更新：2026-09-12，native 生命周期保护通过 macOS Adapter smoke 与 Windows ARM64 构建、35 项 contract、Adapter smoke；运行环境和验证边界见 [周志](../devlogs/2026-09/2026-W37.md#2026-09-12-第一轮可靠性修复)。
-- 下一步：按选定功能切片维护上述回归；后续涉及宿主行为或发布时执行对应 PME 复验。
+- 历史更新：2026-09-12，native 生命周期保护通过 macOS Adapter smoke 与 Windows ARM64 构建、35 项 contract、Adapter smoke；运行环境和验证边界见 [周志](../devlogs/2026-09/2026-W37.md#2026-09-12-第一轮可靠性修复)。
+- 当前切片及下一步：见上文[物料边界与成功语义治理](#物料边界与成功语义治理)，本机通过、Windows / PME 待验。

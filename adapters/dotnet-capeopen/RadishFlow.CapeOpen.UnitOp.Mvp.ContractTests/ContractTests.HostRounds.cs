@@ -788,7 +788,7 @@ internal static partial class ContractTests
             UnitOperationHostPortMaterialState.None,
             isConnected: true,
             connectedTargetName: "Contract Product",
-            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedBoundStreamIds: ["stream-heated"],
             expectedMaterialStreamIds: []);
 
         context.UnitOperation.Calculate();
@@ -813,8 +813,8 @@ internal static partial class ContractTests
             UnitOperationHostPortMaterialState.Available,
             isConnected: true,
             connectedTargetName: "Contract Product",
-            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
-            expectedMaterialStreamIds: ["stream-liquid", "stream-vapor"]);
+            expectedBoundStreamIds: ["stream-heated"],
+            expectedMaterialStreamIds: ["stream-heated"]);
         ContractAssert.True(
             availableProduct.MaterialEntries.All(static entry => entry.TotalMolarFlowMolS >= 0.0d && entry.PressurePa > 0.0d),
             "Available product material entries should expose non-negative flow and positive pressure.");
@@ -837,7 +837,7 @@ internal static partial class ContractTests
             UnitOperationHostPortMaterialState.Stale,
             isConnected: false,
             connectedTargetName: null,
-            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedBoundStreamIds: ["stream-heated"],
             expectedMaterialStreamIds: []);
 
         context.UnitOperation.Terminate();
@@ -869,23 +869,23 @@ internal static partial class ContractTests
         ContractAssert.True(availableSnapshot.IsCurrentConfigurationExecution, "Successful calculate should expose a current execution snapshot.");
         ContractAssert.Equal("converged", availableSnapshot.CalculationStatus, "Execution snapshot should preserve calculation status.");
         ContractAssert.NotNull(availableSnapshot.Summary, "Available execution snapshot should expose summary.");
-        ContractAssert.Equal(4, availableSnapshot.DiagnosticCount, "Execution snapshot should preserve diagnostic count.");
-        ContractAssert.Equal(3, availableSnapshot.StepCount, "Execution snapshot should preserve three solve steps for the sample flowsheet.");
+        ContractAssert.Equal(3, availableSnapshot.DiagnosticCount, "Execution snapshot should preserve diagnostic count.");
+        ContractAssert.Equal(2, availableSnapshot.StepCount, "Execution snapshot should preserve two solve steps for the sample flowsheet.");
         ContractAssert.SequenceEqual(
-            ["feed-1", "heater-1", "flash-1"],
+            ["feed-1", "heater-1"],
             availableSnapshot.StepEntries.Select(static step => step.UnitId),
             "Execution snapshot should preserve stable step unit order.");
         ContractAssert.SequenceEqual(
-            ["stream-feed", "stream-heated", "stream-liquid", "stream-vapor"],
+            ["stream-feed", "stream-heated"],
             availableSnapshot.Summary!.RelatedStreamIds,
             "Execution snapshot summary should preserve related stream ids.");
-        var flashStep = availableSnapshot.GetStep(2);
-        ContractAssert.Equal(2, flashStep.Index, "Execution snapshot should preserve zero-based native step index.");
-        ContractAssert.Equal("flash-1", flashStep.UnitId, "Execution snapshot should preserve flash step unit id.");
-        ContractAssert.Equal("flash_drum", flashStep.UnitKind, "Execution snapshot should preserve flash step unit kind.");
-        ContractAssert.SequenceEqual(["stream-heated"], flashStep.ConsumedStreamIds, "Execution snapshot should preserve flash-step consumed streams.");
-        ContractAssert.SequenceEqual(["stream-liquid", "stream-vapor"], flashStep.ProducedStreamIds, "Execution snapshot should preserve flash-step produced streams.");
-        ContractAssert.Contains(flashStep.Summary, "flash-1", "Execution snapshot should preserve step summary text.");
+        var heaterStep = availableSnapshot.GetStep(1);
+        ContractAssert.Equal(1, heaterStep.Index, "Execution snapshot should preserve zero-based native step index.");
+        ContractAssert.Equal("heater-1", heaterStep.UnitId, "Execution snapshot should preserve heater step unit id.");
+        ContractAssert.Equal("heater", heaterStep.UnitKind, "Execution snapshot should preserve heater step unit kind.");
+        ContractAssert.SequenceEqual(["stream-feed"], heaterStep.ConsumedStreamIds, "Execution snapshot should preserve heater-step consumed streams.");
+        ContractAssert.SequenceEqual(["stream-heated"], heaterStep.ProducedStreamIds, "Execution snapshot should preserve heater-step produced streams.");
+        ContractAssert.Contains(heaterStep.Summary, "heater-1", "Execution snapshot should preserve step summary text.");
 
         context.DisconnectProductPort();
 
@@ -1226,7 +1226,7 @@ internal static partial class ContractTests
         ContractAssert.Equal("converged", context.UnitOperation.GetCalculationReportDetailValue(UnitOperationCalculationReportDetailCatalog.Status), "Success report should expose converged status.");
         ContractAssert.True(context.UnitOperation.GetCalculationReportLineCount() > context.UnitOperation.GetCalculationReportDetailKeyCount(), "Success report should expose supplemental lines beyond stable details.");
         ContractAssert.NotNull(context.UnitOperation.LastCalculationResult, "Successful Calculate() should preserve the last success result.");
-        ContractAssert.Equal(3, context.UnitOperation.LastCalculationResult!.Steps.Count, "Successful Calculate() should materialize native solve steps into the calculation result contract.");
+        ContractAssert.Equal(2, context.UnitOperation.LastCalculationResult!.Steps.Count, "Successful Calculate() should materialize native solve steps into the calculation result contract.");
     }
 
     public static void ConnectedFeedMaterial_OverlaysBoundaryInputBeforeNativeSolve(ContractTestContext context)

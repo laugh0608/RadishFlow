@@ -7,6 +7,9 @@ public static class UnitOperationCalculationReportDetailCatalog
     public const string DiagnosticCount = "diagnosticCount";
     public const string RelatedUnitIds = "relatedUnitIds";
     public const string RelatedStreamIds = "relatedStreamIds";
+    public const string DeliveredProductSource = "deliveredProductSource";
+    public const string DeliveredProductStream = "deliveredProductStream";
+    public const string ExecutionSource = "executionSource";
     public const string Error = "error";
     public const string Operation = "operation";
     public const string RequestedOperation = "requestedOperation";
@@ -19,6 +22,9 @@ public static class UnitOperationCalculationReportDetailCatalog
         Status,
         HighestSeverity,
         DiagnosticCount,
+        DeliveredProductSource,
+        DeliveredProductStream,
+        ExecutionSource,
         RelatedUnitIds,
         RelatedStreamIds,
     ];

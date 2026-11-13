@@ -11,4 +11,7 @@
     <ProjectReference Include="..\RadishFlow.CapeOpen.Interop\RadishFlow.CapeOpen.Interop.csproj" />
     <ProjectReference Include="..\RadishFlow.CapeOpen.UnitOp.Mvp\RadishFlow.CapeOpen.UnitOp.Mvp.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../TestSupport/ContractThermoMaterial.cs" Link="TestSupport/ContractThermoMaterial.cs" />
+  </ItemGroup>
 </Project>

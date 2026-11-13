@@ -612,11 +612,15 @@ public sealed partial class RadishFlowCapeOpenUnitOperation : ICapeIdentificatio
 
             PrepareForCalculation();
             var inputs = BuildCalculationInputs();
-            var effectiveInputs = ApplyConnectedFeedMaterial(inputs);
-            var snapshotJson = ExecuteNativeSolve(effectiveInputs);
+            var boundary = MaterialBoundaryConfiguration.Read(inputs.FlowsheetJson);
+            var feedAccess = CapeOpenMaterialAccess.Select(GetPortPlaceholder(UnitOperationPortCatalog.Feed).ConnectedObjectReference, "Feed", false);
+            var productAccess = CapeOpenMaterialAccess.Select(GetPortPlaceholder(UnitOperationPortCatalog.Product).ConnectedObjectReference, "Product", true);
+            var feed = CapeOpenFeedMaterialReader.Read(feedAccess, boundary);
+            var effectiveInputs = inputs with { FlowsheetJson = FlowsheetBoundaryFeedMaterialOverlay.Apply(inputs.FlowsheetJson, boundary, feed) };
+            var snapshotJson = ExecuteNativeSolve(effectiveInputs, boundary);
             var result = MaterializeCalculationResult(snapshotJson);
-            PublishProductMaterial(result);
-            RecordCalculationSuccess(result);
+            var delivered = CapeOpenMaterialObjectPublisher.Publish(productAccess, boundary, result);
+            RecordCalculationSuccess(result with { DeliveredProduct = delivered, DeliveredProductThermoVersion = productAccess.Version });
             UnitOperationComTrace.Write(nameof(Calculate), "success");
         }
         catch (CapeOpenException error)
@@ -637,6 +641,14 @@ public sealed partial class RadishFlowCapeOpenUnitOperation : ICapeIdentificatio
             RememberCapeOpenError(capeOpenError);
             RecordCalculationFailure(capeOpenError);
             throw capeOpenError;
+        }
+        catch (Exception error)
+        {
+            var mapped = new CapeUnknownException($"Calculate failed: {error.Message}",
+                MaterialBoundaryValues.Context(nameof(Calculate), $"{error.GetType().Name}; HRESULT=0x{error.HResult:X8}"));
+            RememberCapeOpenError(mapped);
+            RecordCalculationFailure(mapped);
+            throw mapped;
         }
         finally
         {
@@ -664,7 +676,26 @@ public sealed partial class RadishFlowCapeOpenUnitOperation : ICapeIdentificatio
             EvaluateParameterCompanionValidation() ??
             EvaluateParameterValueValidation() ??
             EvaluateRequiredPortValidation() ??
+            EvaluateMaterialBoundaryValidation() ??
             ValidationResult.Valid("The MVP CAPE-OPEN unit operation skeleton is configured.");
+    }
+
+    private ValidationResult? EvaluateMaterialBoundaryValidation()
+    {
+        try
+        {
+            var boundary = MaterialBoundaryConfiguration.Read(GetRequiredParameterValue(UnitOperationParameterCatalog.FlowsheetJson));
+            var feed = CapeOpenMaterialAccess.Select(GetPortPlaceholder(UnitOperationPortCatalog.Feed).ConnectedObjectReference, "Feed", false);
+            var product = CapeOpenMaterialAccess.Select(GetPortPlaceholder(UnitOperationPortCatalog.Product).ConnectedObjectReference, "Product", true);
+            if (ReferenceEquals(GetPortPlaceholder(UnitOperationPortCatalog.Feed).ConnectedObjectReference,
+                GetPortPlaceholder(UnitOperationPortCatalog.Product).ConnectedObjectReference))
+                return ValidationResult.Invalid("Feed and Product must be distinct material objects.");
+            MaterialCompoundMapping.Match(feed.Compounds(), boundary.Compounds, "Feed.ValidateCompounds");
+            MaterialCompoundMapping.Match(product.Compounds(), boundary.Compounds, "Product.ValidateCompounds");
+            product.CheckPublicationCapabilities();
+            return null;
+        }
+        catch (CapeOpenException error) { return ValidationResult.Invalid(error.Description); }
     }
 
     private void PrepareForCalculation()
@@ -786,26 +817,7 @@ public sealed partial class RadishFlowCapeOpenUnitOperation : ICapeIdentificatio
             GetOptionalParameterValue(UnitOperationParameterCatalog.PropertyPackagePayloadPath));
     }
 
-    private CalculationInputs ApplyConnectedFeedMaterial(CalculationInputs inputs)
-    {
-        var bindings = UnitOperationConfiguredBoundaryMaterialBindings.TryParse(FlowsheetParameter);
-        var feedMaterial = CapeOpenFeedMaterialReader.TryRead(
-            GetPortPlaceholder(UnitOperationPortCatalog.Feed).ConnectedObjectReference);
-        if (feedMaterial is null)
-        {
-            return inputs;
-        }
-
-        var effectiveFlowsheetJson = FlowsheetBoundaryFeedMaterialOverlay.ApplyOrOriginal(
-            inputs.FlowsheetJson,
-            bindings,
-            feedMaterial);
-        return string.Equals(effectiveFlowsheetJson, inputs.FlowsheetJson, StringComparison.Ordinal)
-            ? inputs
-            : inputs with { FlowsheetJson = effectiveFlowsheetJson };
-    }
-
-    private static string ExecuteNativeSolve(CalculationInputs inputs)
+    private static string ExecuteNativeSolve(CalculationInputs inputs, MaterialBoundaryConfiguration boundary)
     {
         using var engine = new RadishFlowNativeEngine();
         engine.LoadFlowsheetJson(inputs.FlowsheetJson);
@@ -815,6 +827,7 @@ public sealed partial class RadishFlowCapeOpenUnitOperation : ICapeIdentificatio
             engine.LoadPropertyPackageFiles(inputs.ManifestPath, inputs.PayloadPath);
         }
 
+        boundary.ValidatePackage(engine.GetPropertyPackageListJson(), inputs.PackageId);
         engine.SolveFlowsheet(inputs.PackageId);
         return engine.GetFlowsheetSnapshotJson();
     }
@@ -838,26 +851,6 @@ public sealed partial class RadishFlowCapeOpenUnitOperation : ICapeIdentificatio
     private UnitOperationCalculationResult MaterializeCalculationResult(string snapshotJson)
     {
         return ParseCalculationResult(snapshotJson);
-    }
-
-    private void PublishProductMaterial(UnitOperationCalculationResult result)
-    {
-        var bindings = UnitOperationConfiguredBoundaryMaterialBindings.TryParse(FlowsheetParameter);
-        var outputStreamIds = bindings.GetBoundStreamIds(UnitOperationPortBoundaryMaterialRole.BoundaryOutputs);
-        if (outputStreamIds.Count == 0)
-        {
-            UnitOperationComTrace.Write(nameof(PublishProductMaterial), "skip", "No configured boundary output streams.");
-            return;
-        }
-
-        var streamsById = result.Streams.ToDictionary(static stream => stream.Id, StringComparer.Ordinal);
-        var outputStreams = outputStreamIds
-            .Where(streamsById.ContainsKey)
-            .Select(streamId => streamsById[streamId])
-            .ToArray();
-        CapeOpenMaterialObjectPublisher.PublishProductMaterial(
-            GetPortPlaceholder(UnitOperationPortCatalog.Product).ConnectedObjectReference,
-            outputStreams);
     }
 
     private bool ApplyValidationOutcome(ValidationResult result, ref string message)
@@ -1004,6 +997,7 @@ public sealed partial class RadishFlowCapeOpenUnitOperation : ICapeIdentificatio
     {
         _lastCalculationResult = null;
         _lastCalculationFailure = UnitOperationCalculationFailure.FromException(error);
+        _materialResultsStale = false;
         ValStatus = CapeValidationStatus.Invalid;
     }
 

@@ -210,7 +210,7 @@ internal static class UnitOperationSmokeBoundarySuite
             UnitOperationHostPortMaterialState.None,
             expectedConnected: true,
             expectedConnectedTargetName: "Smoke Product",
-            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedBoundStreamIds: ["stream-heated"],
             expectedMaterialStreamIds: [],
             "missing package port/material snapshot");
         UnitOperationSmokeExecutionAssertions.AssertState(
@@ -317,7 +317,7 @@ internal static class UnitOperationSmokeBoundarySuite
             UnitOperationHostPortMaterialState.None,
             expectedConnected: true,
             expectedConnectedTargetName: "Smoke Product",
-            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedBoundStreamIds: ["stream-heated"],
             expectedMaterialStreamIds: [],
             "ready port/material snapshot");
         UnitOperationSmokeExecutionAssertions.AssertState(
@@ -394,8 +394,8 @@ internal static class UnitOperationSmokeBoundarySuite
             UnitOperationHostPortMaterialState.Available,
             expectedConnected: true,
             expectedConnectedTargetName: "Smoke Product",
-            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
-            expectedMaterialStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedBoundStreamIds: ["stream-heated"],
+            expectedMaterialStreamIds: ["stream-heated"],
             "available port/material snapshot");
         var availableExecution = driver.ReadExecution();
         UnitOperationSmokeExecutionAssertions.AssertState(
@@ -405,21 +405,20 @@ internal static class UnitOperationSmokeBoundarySuite
             "available execution snapshot");
         UnitOperationSmokeReportAssertions.EnsureCondition(
             string.Equals(availableExecution.CalculationStatus, "converged", StringComparison.Ordinal) &&
-            availableExecution.DiagnosticCount == 4 &&
-            availableExecution.StepCount == 3 &&
+            availableExecution.DiagnosticCount == 3 &&
+            availableExecution.StepCount == 2 &&
             availableExecution.Summary is not null &&
-            availableExecution.Summary.RelatedStreamIds.SequenceEqual(["stream-feed", "stream-heated", "stream-liquid", "stream-vapor"]),
+            availableExecution.Summary.RelatedStreamIds.SequenceEqual(["stream-feed", "stream-heated"]),
             "available execution snapshot should expose converged summary, diagnostics and related streams.");
         UnitOperationSmokeExecutionAssertions.AssertStepOrder(
             availableExecution,
             "available execution snapshot",
             "feed-1",
-            "heater-1",
-            "flash-1");
+            "heater-1");
         UnitOperationSmokeReportAssertions.EnsureCondition(
-            availableExecution.GetStep(2).ProducedStreamIds.SequenceEqual(["stream-liquid", "stream-vapor"]) &&
-            availableExecution.GetStep(2).Summary.Contains("flash-1", StringComparison.Ordinal),
-            "available execution snapshot should expose produced stream ids and summary for the flash step.");
+            availableExecution.GetStep(1).ProducedStreamIds.SequenceEqual(["stream-heated"]) &&
+            availableExecution.GetStep(1).Summary.Contains("heater-1", StringComparison.Ordinal),
+            "available execution snapshot should expose produced stream ids and summary for the heater step.");
         var availableSession = driver.ReadSession();
         UnitOperationSmokeHostSessionAssertions.AssertSummary(
             availableSession,
@@ -477,7 +476,7 @@ internal static class UnitOperationSmokeBoundarySuite
             UnitOperationHostPortMaterialState.Stale,
             expectedConnected: true,
             expectedConnectedTargetName: "Smoke Product",
-            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedBoundStreamIds: ["stream-heated"],
             expectedMaterialStreamIds: [],
             "disconnected feed port/material snapshot");
         UnitOperationSmokeExecutionAssertions.AssertState(
@@ -554,7 +553,7 @@ internal static class UnitOperationSmokeBoundarySuite
             UnitOperationHostPortMaterialState.Stale,
             expectedConnected: true,
             expectedConnectedTargetName: "Smoke Product",
-            expectedBoundStreamIds: ["stream-liquid", "stream-vapor"],
+            expectedBoundStreamIds: ["stream-heated"],
             expectedMaterialStreamIds: [],
             "companion mismatch port/material snapshot");
         UnitOperationSmokeExecutionAssertions.AssertState(
@@ -599,11 +598,11 @@ internal static class UnitOperationSmokeBoundarySuite
         var recoveredPortMaterial = driver.ReadPortMaterial();
         UnitOperationSmokePortMaterialAssertions.AssertSnapshotState(
             recoveredPortMaterial,
-            UnitOperationHostPortMaterialState.Stale,
+            UnitOperationHostPortMaterialState.None,
             "recovered port/material snapshot");
         UnitOperationSmokeExecutionAssertions.AssertState(
             driver.ReadExecution(),
-            UnitOperationHostExecutionState.Stale,
+            UnitOperationHostExecutionState.None,
             expectedCurrent: false,
             "recovered execution snapshot");
         var recoveredSuccessAttempt = driver.Calculate();
