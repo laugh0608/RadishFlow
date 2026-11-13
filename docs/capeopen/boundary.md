@@ -60,7 +60,33 @@ Windows COM 的组件发现依赖已注册的类别与类标识，之后才是�
 
 COBIA（CAPE-OPEN Binary Interop Architecture）是跨平台中间件方向，COMBIA 是 COBIA 与 COM 的互操作桥。官方要求支持既有 COM 组件；桥接限 Windows，不能由此把 COM PMC 直接变成跨平台组件。官方 2025-06-04 的 COBIA 1.2.1.2 公告包含 Linux / Windows 修复；这不表示 CAPE-OPEN 已弃用 COM，也不代表每个 PME 支持 COBIA。见 [官方项目说明](https://www.colan.org/experiences-projects/cape-open-binary-interop-architecture-cobia/)与[发布公告](https://www.colan.org/news/cobia-1-2-1-2-released/)。
 
-当前继续维护 `.NET 10` COM 适配层。未来若增加 COBIA，先核实目标 PME、平台、语言绑定和部署契约，再立独立切片；Rust Core 仍不接收 COM 类型，本轮不切换运行时或增加依赖。
+当前继续维护 `.NET 10` COM 适配层。2026-11-13 已完成只读可行性评估，所有者确认先归档结论与分阶段计划，**暂不接入 COBIA、不安装 SDK**。实施状态统一见 [COBIA 分阶段接入计划](../topics/capeopen-pmc-adapter.md#cobia-分阶段接入计划)，开发与目标平台证据口径见 [平台分工](pme-validation.md#开发平台与验收平台)。
+
+### 平台与工具链评估（2026-11-13）
+
+以下为官方公开资料与 Rust 绑定源码的静态评估，未安装或运行 COBIA。设计目标、可获取产物、成功构建与真实互操作分别建立证据；未找到公开证据不等于确定不支持。
+
+| 平台 | 本次可确认的证据 | 接入判断 |
+| --- | --- | --- |
+| Windows | 有公开 Runtime / SDK 和 COMBIA，最早落地的平台；具体包的 CPU 架构与宿主位数仍需核验 | 优先建立 Windows x64 互操作基线 |
+| Linux x64 | 官方称 Linux 已有可工作的实现，2025 年发布修复包含 Linux；本次公开下载页未列 Linux 包，未实测架构 | 技术可行性较高，获取、构建与部署条件待落实 |
+| Linux ARM64 | 未找到明确的官方发布产物与测试矩阵 | 不从 Linux 支持推导 ARM64 已支持 |
+| macOS Intel / Apple Silicon | 官方列为平台方向；2024 年报告仍列目录、WindowID 和 Framework 分发待办；未找到当前公开 macOS 包或 ARM64 验收证据 | 先做独立可行性验证，暂不承诺产品支持 |
+| Windows ARM64 | 未找到 COBIA 原生 ARM64 的明确发布与验收证据 | 原生 ARM64 与 x64 仿真分别记录，不能代替 Windows x64 PME 验收 |
+
+依据：[2024 年平台与语言绑定报告，第 22—23 页](https://www.colan.org/wp-content/uploads/2024/12/Full-Deployment-COBIA-is-production-ready.pdf)、[2025 年发布说明](https://www.colan.org/news/cobia-1-2-1-2-released/)、[官方下载页](https://colan.repositoryhosting.com/trac/colan_cobia/downloads)。本次下载页列稳定版 `1.2.1.2` 和候选版 `1.2.2.1`；候选版不作为已验收生产基线。后续实施前重新核实版本、架构和上游支持范围。
+
+[AmsterCHEM Rust 绑定](https://www.amsterchem.com/cobiarust.html)已有物性包和单元操作示例，可作为独立 Rust 适配层的候选。其 [构建脚本](https://github.com/jvbaten/rust_cobia/blob/main/cobia/build.rs)依赖 COBIA SDK、Clang / bindgen，并编译和运行生成器；存在非 Windows 分支不证明 macOS ARM64 可用，也不证明交叉编译开箱即用。2024 年官方报告仍将 .NET 绑定列为待研究方向，本次未找到足以确认其成熟交付的较新依据，暂不依赖该路线。
+
+Rust 绑定项目采用 MIT 许可；COBIA Runtime 可免费使用和再分发，官方说明 COBIA 源码访问面向 CO-LaN 成员。绑定许可不能推导 Runtime 源码公开或任意移植 / 分发条件；获取与分发约束须在技术验证前落实。见 [绑定仓库](https://github.com/jvbaten/rust_cobia)与[官方项目说明](https://www.colan.org/experiences-projects/cape-open-binary-interop-architecture-cobia/)。
+
+### 后续适配方向
+
+- 保留当前 `Windows COM PME → .NET COM 适配层 → rf-ffi → Rust Core` 链路。未来候选为 `COBIA PME → 独立 COBIA 适配层 → 共享执行契约 / Rust Core`；Windows COMBIA 桥接另验，达到目标 PME 等价能力前不替换现有 COM 层。
+- COBIA 接口指针、对象生命周期、注册、线程 / 回调与错误转换留在外部适配层；Rust Core 继续使用领域数据和服务，不接收 COM 或 COBIA 运行时类型。
+- 共享单入口单出口、完整组分映射、输入副本和成功 / 失败契约；宿主对象读取、出口发布及协议错误转换分别适配。新增适配不复制另一套求解编排；当前 `rf-ffi` 仍走顺序模块入口，正式扩展前先明确与 Studio 共用的执行范围及版本化边界。
+- 首片优先对外提供自有 Unit Operation PMC。RadishFlow 加载第三方 PMC 属于独立宿主能力，仍按 MC3 立项，不由 COBIA 接入自动获得。
+- 宿主、组件及其 native 依赖都须有目标系统 / CPU 架构实现。COBIA 不把 Windows COM DLL 直接变成 macOS / Linux 组件，也不代替商业 PME 厂商的平台支持与许可证条件。
 
 ## 黑箱组件与多策略求解
 

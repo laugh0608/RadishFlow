@@ -26,6 +26,22 @@
 - 加载第三方 CAPE-OPEN Unit Operation 或 Thermo/Property Package
 - 将 PME / COM 对象语义倒灌到 Rust core 或 `rf-ffi`
 
+## 开发平台与验收平台
+
+2026-11-13 所有者确认：**Mac 为主开发平台，Windows x64 承担真实 PME 验收**。这规定后续证据口径，不追溯扩大已有 Windows ARM64 构建、contract 或 smoke 的证明范围。
+
+| 环境 | 工作范围 | 证据边界 |
+| --- | --- | --- |
+| macOS / Apple Silicon | Rust Core、Studio、数值与项目读写验证；关闭 COM hosting 后的托管 contract / native smoke | 不证明 COM 注册、marshalling、商业 PME 或 COBIA 原生互操作可用 |
+| Windows ARM 虚拟机 | 对确实可运行的构建、COM 与宿主链路做补充测试 | 区分原生 ARM64 与 x86 / x64 仿真；不替代 Windows x64 真实 PME 验收 |
+| Windows x64 | 在目标 PME 厂商支持的系统、版本和部署环境中验收；可使用远程机器或运行于 x64 硬件的虚拟机 | 覆盖实际注册、发现、连接、计算、保存恢复及释放；普通 Windows runner 的构建 / contract 不自动覆盖这些行为 |
+
+Windows 11 ARM 支持 x86 / x64 用户态仿真，但不仿真内核驱动；安装器、许可组件和宿主支持须按具体产品核实，不能把“Windows 11 64 位”视为 ARM 支持承诺。见 [微软仿真说明](https://learn.microsoft.com/en-us/windows/arm/apps-on-arm-x86-emulation)。当前普通 x64 PME 链路按 x64 配套 `.NET` runtime、COM host、Rust DLL 及第三方依赖，不混入普通 ARM64 native DLL；ARM64EC 不在当前方案内。
+
+记录除系统 / PME 版本与位数外，还须包含宿主硬件架构、来宾系统架构、PME 进程架构、native 产物架构及是否仿真。若阶段内只有 Mac 和 Windows ARM 虚拟机，核心开发继续推进，无法执行的目标 PME 保留待验；不以仿真成功或切换中间件免除 x64 验收。
+
+当前 COBIA 仅有[分阶段计划](../topics/capeopen-pmc-adapter.md#cobia-分阶段接入计划)，暂不接入或安装 SDK。Windows / 真实 PME 操作、安装和注册仍遵守执行前告知及既有门控，本节不启动环境操作。
+
 ## 单入口单出口复验矩阵
 
 2026-11-13 起当前 PMC 仅接受单入口、单出口。状态由 [PMC 专题](../topics/capeopen-pmc-adapter.md#物料边界与成功语义治理)维护。以下是待执行的真实宿主矩阵，不能引用 2026-04 双出口样例通过记录代替。
@@ -34,7 +50,7 @@
 - 本机 contract / smoke / SampleHost 默认使用 [binary hydrocarbon Feed→Heater](../../examples/flowsheets/capeopen-feed-heater-binary-hydrocarbon.rfproj.json)，测试对象只提供受控单相响应，不是外部物性包或热力学验证。
 - 反向工程：[原 water / ethanol 闪蒸](../../examples/flowsheets/feed-heater-flash-water-ethanol.rfproj.json)和[原 binary hydrocarbon 闪蒸](../../examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json)均有气液双出口，预期 `Validate()` 无效；不得重新打开隐式合并来获得通过。
 
-在 Windows 与真实 PME 操作前先告知所有者。记录源码 revision、系统 / PME 版本和位数、接口版本、所选包与组分次序、注册产物及步骤结果。分别在 DWSIM / COFE 执行：
+在 Windows 与真实 PME 操作前先告知所有者。记录源码 revision、系统 / PME 版本和位数、上述平台架构信息、接口版本、所选包与组分次序、注册产物及步骤结果。在 Windows x64 上分别使用 DWSIM / COFE 执行：
 
 1. 发现、放置、连接与 Validate；上游尚未计算不应被误判为工程配置错误。
 2. 计算并改变宿主 Feed TP / 总流量 / 组成后重算；核对实际入口、唯一产品及各组分摩尔流量，保存工程配置不被覆盖。

@@ -44,7 +44,7 @@
 
 ### 最近进展（截至 2026-11-13）
 
-- [PMC 物料治理](../topics/capeopen-pmc-adapter.md#物料边界与成功语义治理)本机验证通过，Windows / PME 待验。
+- [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
 - PR #18 已合入 `master` 并回灌 `dev`（`4772fbba`）。AF3-V10 已补 macOS 在途切换、最后窗口退出、脏改取消关闭及另存面板交错代表证据；退出等待返回编辑仍待原生补证，AF1 未定因。见 [W46](../devlogs/2026-11/2026-W46.md)。
 - VB1 首片、VB-D02 稳定引用及 VB-D03 工程关注已接通，见[浏览器专题](../topics/variable-and-object-browser.md)。
 
