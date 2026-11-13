@@ -50,7 +50,7 @@
 
 ### 下一步
 
-- [ ] 按[浏览器接下来事项](../topics/variable-and-object-browser.md#接下来事项)评审 VB-D04 局部画板，配额恢复后补 VB-D03 主稿。
+- [ ] [实施已认可 VB-D04 首片](../topics/variable-and-object-browser.md#接下来事项)；工具恢复后补 VB-D03 / D04 主稿。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
 - [ ] 按 [QS3 保留项](../topics/modeling/equation-oriented-block.md#接下来事项)补方法特定原生交互与平台项；共享取消 / join 代表及数值直证已补。
 - [x] [QS4 首片 A—D](../topics/modeling/mixed-partition-execution.md)已按批准方案及认可画板完成；跨块回路、更多策略与逆向规格另审。
