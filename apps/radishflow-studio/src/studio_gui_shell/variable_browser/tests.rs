@@ -4,10 +4,10 @@ use rf_ui::project_query::{ProjectObjectId, ProjectQuery};
 use rf_ui::variable_browser::{VariableField, VariableSection};
 use std::time::{Instant, UNIX_EPOCH};
 
-fn app() -> ReadyAppState {
+pub(super) fn app() -> ReadyAppState {
     super::super::tests::ready_app_state(&super::super::tests::synced_workspace_config())
 }
-fn flow_selection(
+pub(super) fn flow_selection(
     app: &ReadyAppState,
     object: ObjectId,
     section: VariableSection,
@@ -19,11 +19,11 @@ fn flow_selection(
         field: Some(ProjectField::Flow { section, field }),
     }
 }
-fn synchronize(app: &mut ReadyAppState) {
+pub(super) fn synchronize(app: &mut ReadyAppState) {
     app.variable_browser
         .synchronize(&app.platform_host.modeling_inputs().workspace, app.locale);
 }
-fn frame(
+pub(super) fn frame(
     app: &mut ReadyAppState,
     ctx: &egui::Context,
     width: f32,
@@ -805,7 +805,7 @@ fn browser_rows_expose_keyboard_and_accessibility_identity() {
     panic!("result row was not reachable using Tab");
 }
 
-fn text_rects(output: &egui::FullOutput) -> Vec<(String, egui::Rect)> {
+pub(super) fn text_rects(output: &egui::FullOutput) -> Vec<(String, egui::Rect)> {
     fn collect(shape: &egui::Shape, rows: &mut Vec<(String, egui::Rect)>) {
         match shape {
             egui::Shape::Vec(shapes) => {

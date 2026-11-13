@@ -778,6 +778,42 @@ fn assert_command_surface_window_equal(
     expected: &radishflow_studio::StudioGuiWindowModel,
 ) {
     let mut actual = command_surface_window(app);
+    // Numeric controls also carry a session guard. Validate each fixture's own
+    // authority before comparing its user-visible presentation across routes.
+    let normalize_numeric =
+        |actual: &mut [radishflow_studio::StudioGuiWindowInspectorTargetFieldModel],
+         expected: &[radishflow_studio::StudioGuiWindowInspectorTargetFieldModel]| {
+            assert_eq!(actual.len(), expected.len());
+            for (actual, expected) in actual.iter_mut().zip(expected) {
+                if let (Some(Ok(actual)), Some(Ok(expected))) =
+                    (&mut actual.numeric, &expected.numeric)
+                {
+                    assert!(
+                        actual.workspace.same_session(
+                            &app.platform_host
+                                .modeling_inputs()
+                                .workspace
+                                .flow_run_qualification()
+                        )
+                    );
+                    assert_eq!(
+                        actual.workspace.revision(),
+                        app.platform_host.document().revision
+                    );
+                    actual.workspace = expected.workspace.clone();
+                }
+            }
+        };
+    normalize_numeric(
+        &mut actual.module_settings.parameter_fields,
+        &expected.module_settings.parameter_fields,
+    );
+    if let (Some(actual), Some(expected)) = (
+        &mut actual.runtime.active_inspector_detail,
+        &expected.runtime.active_inspector_detail,
+    ) {
+        normalize_numeric(&mut actual.property_fields, &expected.property_fields);
+    }
     for (actual, expected) in [
         (
             &mut actual.runtime.result_review,

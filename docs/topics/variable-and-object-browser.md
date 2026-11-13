@@ -283,8 +283,8 @@ GUI 调用入口根据当前只读视图拒绝编辑与运行事件，不能仅�
 
 ## 接下来事项
 
-1. **实施已认可的 VB-D04 首片。** [六张预览](../architecture/designs/studio-variable-browser-brief.md#vb-d04-单值编辑局部画板)已覆盖展开与 400 px 详情、单位选择、草稿保留、提交失败和键盘返回。六图已获认可，复用 Inspector 的 U2 会话接线，按 VB-A05 验证。 [VB-D04](variable-browser/single-value-editing.md)
-2. **补 VB-D03 Pencil 主稿。** 配额恢复后按六张已认可 PNG 接入并静态复核。跨平台实窗、系统缩放与读屏按既定阶段补验。 [画板记录](../architecture/designs/studio-variable-browser-brief.md#vb-d03-关注清单局部画板)
+1. **VB-D04 首片已接通。** 已复用 Inspector 的 U2 会话，五个批准字段通过 VB-A05 定向、正式基线及 macOS 代表实窗；精确 400 px 原生待补。后续扩大字段、组合与批量另审。唯一实现状态与证据见 [VB-D04](variable-browser/single-value-editing.md#实现与验收状态2026-11-13)。
+2. **补 VB-D03 / D04 主稿。** pen.dev 用量恢复后按各自六张已认可 PNG 接入并静态复核。跨平台实窗、系统缩放与读屏按既定阶段补验。 [画板记录](../architecture/designs/studio-variable-browser-brief.md#vb-d03-关注清单局部画板)
 3. **按增量审定后续范围。** VB2 组合 / 跨对象批量另审，VB3 先明确实际 CLI 路径消费者。工程生命周期 AF1 独立跟踪。 [当前状态](../status/current.md)
 
 ## AF4c 新版 CLI 契约（2026-10-26，已确认）

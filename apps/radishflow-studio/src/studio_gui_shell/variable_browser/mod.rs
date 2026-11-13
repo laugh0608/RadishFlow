@@ -4,6 +4,7 @@ use super::*;
 use rf_ui::project_query::{ProjectField, ProjectObjectRef};
 use rf_ui::variable_browser::{ObjectId, StableVariableReference, VariableId};
 
+mod editing;
 mod navigation;
 mod projection;
 mod references;
@@ -127,7 +128,7 @@ impl ReadyAppState {
         let mut state = std::mem::take(&mut self.variable_browser);
         state.synchronize(workspace, self.locale);
         state.area_rect = Some(ui.max_rect());
-        let intent = render::browser(ui, &mut state, workspace, self.locale);
+        let intent = render::browser(ui, &mut state, self, self.locale);
         self.variable_browser = state;
         match intent {
             Some(BrowserIntent::Navigate(target)) => self.request_browser_navigation(target),

@@ -45,7 +45,7 @@ Control Plane 复用原文档作为大专题入口，原物性 / 生命周期关
 
 | 子专题 | 主要父专题 | 协同关系 / 状态来源 |
 | --- | --- | --- |
-| [变量与对象浏览器](variable-and-object-browser.md) | Studio 主工作台 | AF4 / AF5a / VB 范围及证据在该专题。VB1 已接通只读浏览、流程稳定引用和工程关注清单 |
+| [变量与对象浏览器](variable-and-object-browser.md) | Studio 主工作台 | AF4 / AF5a / VB 范围及证据在该专题。VB1 已接通浏览、稳定引用与工程关注；VB-D04 已接通受控单值编辑首片 |
 
 ### 运行、消息与诊断
 

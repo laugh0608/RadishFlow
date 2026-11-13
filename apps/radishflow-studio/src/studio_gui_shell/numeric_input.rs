@@ -14,8 +14,26 @@ struct TypingGroup {
     direction: Option<bool>,
 }
 
+#[derive(Clone, Copy, Default)]
+pub(super) enum NumericEditSurface {
+    #[default]
+    Inspector,
+    Browser {
+        focus: bool,
+    },
+}
+
 impl ReadyAppState {
     fn refresh_numeric_field(&self, field: &mut NumericFieldPresentation) {
+        if !self.numeric_workspace_matches(field) {
+            field.issue = Some(NumericFieldIssue::Rejected(
+                rf_ui::NumericEditError::MissingSession,
+            ));
+            field.can_apply = false;
+            field.can_undo = false;
+            field.can_redo = false;
+            return;
+        }
         match self
             .platform_host
             .numeric_field_presentation(&field.variable, field.view)
@@ -35,6 +53,10 @@ impl ReadyAppState {
         field: &mut NumericFieldPresentation,
         command: NumericEditCommand,
     ) -> bool {
+        if !self.numeric_workspace_matches(field) {
+            self.refresh_numeric_field(field);
+            return false;
+        }
         let Some(window_id) = self.current_window_id() else {
             return false;
         };
@@ -47,6 +69,16 @@ impl ReadyAppState {
             self.platform_host.record_activity_line(error.to_string());
         }
         result.is_ok()
+    }
+
+    fn numeric_workspace_matches(&self, field: &NumericFieldPresentation) -> bool {
+        field.workspace.same_session(
+            &self
+                .platform_host
+                .modeling_inputs()
+                .workspace
+                .flow_run_qualification(),
+        )
     }
 
     fn begin_numeric_field(&mut self, field: &mut NumericFieldPresentation) -> bool {
@@ -100,7 +132,24 @@ impl ReadyAppState {
         label: &str,
         original: &NumericFieldPresentation,
     ) {
+        self.render_numeric_editor(ui, key, label, original, NumericEditSurface::Inspector);
+    }
+
+    pub(super) fn render_numeric_editor(
+        &mut self,
+        ui: &mut egui::Ui,
+        key: &str,
+        label: &str,
+        original: &NumericFieldPresentation,
+        surface: NumericEditSurface,
+    ) {
         let id = ui.make_persistent_id(("numeric-input", &original.variable.document, key));
+        if matches!(surface, NumericEditSurface::Browser { focus: true }) {
+            // The Enter activating Edit belongs to that button, not the newly
+            // mounted TextEdit (which otherwise immediately loses focus).
+            ui.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Enter));
+            ui.memory_mut(|memory| memory.request_focus(id));
+        }
         ui.scope(|ui| {
             // First migration is explicitly light, independent of the OS / surrounding theme.
             ui.set_style({
@@ -112,7 +161,7 @@ impl ReadyAppState {
                 .fill(StudioStateTokens::SURFACE)
                 .inner_margin(8.0)
                 .show(ui, |ui| {
-                    self.render_numeric_field_contents(ui, id, label, original);
+                    self.render_numeric_field_contents(ui, id, label, original, surface);
                 });
         });
     }
@@ -123,6 +172,7 @@ impl ReadyAppState {
         id: egui::Id,
         label: &str,
         original: &NumericFieldPresentation,
+        surface: NumericEditSurface,
     ) {
         let mut field = original.clone();
         self.refresh_numeric_field(&mut field);
@@ -237,8 +287,13 @@ impl ReadyAppState {
         let input_frame = output.response.rect + input_margin;
         ui.add_space(6.0);
         let response = output.response;
-        let located = self.apply_specification_field_focus(&response, &field.variable)
-            | self.apply_browser_field_focus(&response, &field.variable);
+        let located = match surface {
+            NumericEditSurface::Inspector => {
+                self.apply_specification_field_focus(&response, &field.variable)
+                    | self.apply_browser_field_focus(&response, &field.variable)
+            }
+            NumericEditSurface::Browser { focus } => focus,
+        };
         if response.has_focus() {
             ui.data_mut(|data| data.insert_temp(egui::Id::new("numeric-keyboard-owner"), id));
             ui.memory_mut(|memory| {
@@ -423,6 +478,9 @@ impl ReadyAppState {
         });
         if let Some(unit) = selected_unit {
             self.edit_numeric_field(&mut field, NumericEditEvent::SelectInputUnit(unit));
+            if matches!(surface, NumericEditSurface::Browser { .. }) {
+                response.request_focus();
+            }
             group = TypingGroup::default();
         }
         ui.colored_label(
@@ -510,13 +568,14 @@ impl ReadyAppState {
                     self.cancel_numeric_field(&mut field);
                     self.begin_numeric_field(&mut field);
                 }
-                if ui
-                    .button(if zh {
-                        "保留候选并重验"
-                    } else {
-                        "Revalidate my candidate"
-                    })
-                    .clicked()
+                if matches!(surface, NumericEditSurface::Inspector)
+                    && ui
+                        .button(if zh {
+                            "保留候选并重验"
+                        } else {
+                            "Revalidate my candidate"
+                        })
+                        .clicked()
                 {
                     self.edit_numeric_field(&mut field, NumericEditEvent::Rebase);
                 }

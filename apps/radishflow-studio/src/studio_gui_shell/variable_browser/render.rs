@@ -7,9 +7,10 @@ use rf_ui::variable_browser::{ActionExecution, VariableSection};
 pub(super) fn browser(
     ui: &mut egui::Ui,
     state: &mut VariableBrowserState,
-    workspace: &rf_ui::WorkspaceState,
+    app: &mut ReadyAppState,
     locale: StudioShellLocale,
 ) -> Option<BrowserIntent> {
+    let workspace = &app.platform_host.modeling_inputs().workspace;
     let mut intent = None;
     ui.horizontal_wrapped(|ui| {
         ui.heading(tr(locale, "变量浏览器", "Variable browser"));
@@ -54,8 +55,8 @@ pub(super) fn browser(
     });
     ui.small(tr(
         locale,
-        "只读已提交值；模板与结果分开。",
-        "Committed values only; templates are separate from results.",
+        "列表显示已提交值；在详情中编辑支持的输入。",
+        "Lists show committed values; edit supported inputs in details.",
     ));
     references::render_reference_controls(ui, state, workspace, locale, &mut intent);
     ui.horizontal_wrapped(|ui| {
@@ -170,7 +171,7 @@ pub(super) fn browser(
                     rows(
                         ui,
                         state,
-                        workspace,
+                        &app.platform_host.modeling_inputs().workspace,
                         locale,
                         true,
                         (ui.available_height() * 0.45).max(100.0),
@@ -179,7 +180,7 @@ pub(super) fn browser(
                     egui::ScrollArea::vertical()
                         .id_salt("browser-expanded-detail")
                         .auto_shrink([false, false])
-                        .show(ui, |ui| detail(ui, state, workspace, locale, &mut intent));
+                        .show(ui, |ui| detail(ui, state, app, locale, &mut intent));
                 },
             );
         });
@@ -193,12 +194,19 @@ pub(super) fn browser(
         egui::ScrollArea::vertical()
             .id_salt("browser-narrow-detail")
             .auto_shrink([false, false])
-            .show(ui, |ui| detail(ui, state, workspace, locale, &mut intent));
+            .show(ui, |ui| detail(ui, state, app, locale, &mut intent));
     } else {
         egui::CollapsingHeader::new(tr(locale, "对象目录", "Object directory"))
             .id_salt("browser-narrow-directory")
             .show(ui, |ui| directory(ui, state, locale));
-        rows(ui, state, workspace, locale, false, ui.available_height());
+        rows(
+            ui,
+            state,
+            &app.platform_host.modeling_inputs().workspace,
+            locale,
+            false,
+            ui.available_height(),
+        );
     }
     if consume_browser_escape(ui, state) {
         if state.reference_input.is_some() {
@@ -440,6 +448,14 @@ fn rows(
                     Some(Err(reason)) => ("—", reason.as_str()),
                     None => ("", tr(locale, "只读记录", "Read-only record")),
                 };
+                let pending = references::selected_variable(&entry.target)
+                    .and_then(|variable| workspace.numeric_edit(&variable).ok())
+                    .is_some_and(rf_ui::NumericEditSession::is_pending);
+                let status = if pending {
+                    format!("{status} · {}", tr(locale, "有草稿", "Draft pending"))
+                } else {
+                    status.to_owned()
+                };
                 let selected = state.selected.as_ref() == Some(&entry.target);
                 let response = ui
                     .push_id(("browser-row", format!("{:?}", entry.target)), |ui| {
@@ -484,7 +500,7 @@ fn rows(
                                     entry.section.label(locale),
                                     entry.label.as_str(),
                                     value,
-                                    status,
+                                    &status,
                                 ],
                                 false,
                             );
@@ -602,7 +618,7 @@ fn short_identity(id: &ProjectObjectId) -> String {
 fn detail(
     ui: &mut egui::Ui,
     state: &VariableBrowserState,
-    workspace: &rf_ui::WorkspaceState,
+    app: &mut ReadyAppState,
     locale: StudioShellLocale,
     intent: &mut Option<BrowserIntent>,
 ) {
@@ -614,6 +630,7 @@ fn detail(
         ));
         return;
     };
+    let workspace = &app.platform_host.modeling_inputs().workspace;
     let query = ProjectQuery::new(workspace);
     let object = match query.object(&selected.object) {
         Ok(object) => object,
@@ -631,6 +648,9 @@ fn detail(
     ui.add(egui::Label::new(object_identity(&object.reference.object)).wrap());
     if let Some(field) = &selected.field {
         ui.strong(field_label(field, locale));
+        editing::render(ui, state, app, selected);
+        // The shared editor may dispatch; read metadata from the updated workspace.
+        let workspace = &app.platform_host.modeling_inputs().workspace;
         watch_list::render_add(ui, workspace, selected, locale, intent);
         references::render_copy_reference(ui, workspace, selected, locale, intent);
         match read_selection(workspace, selected, locale) {
@@ -675,6 +695,9 @@ fn detail(
             }
         }
     }
+    // Editing dispatches into the shared workspace. Reborrow after that boundary.
+    let workspace = &app.platform_host.modeling_inputs().workspace;
+    let query = ProjectQuery::new(workspace);
     let label = if matches!(
         &selected.field,
         Some(ProjectField::Flow {

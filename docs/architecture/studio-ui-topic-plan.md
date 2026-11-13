@@ -53,7 +53,7 @@
 
 2026-11-12 VB-D03 按已认可的[关注清单局部画板](designs/studio-variable-browser-brief.md#vb-d03-关注清单局部画板)接通 Studio 首片，包含展开工作区、400 px 侧区、首次保存确认及失效项操作。Pencil 主稿待配额恢复后补。
 
-[VB-D04 单值编辑首片](../topics/variable-browser/single-value-editing.md)的优先级、字段和验收已获认可。2026-11-13 六张[局部画板](designs/studio-variable-browser-brief.md#vb-d04-单值编辑局部画板)已获认可；接下来复用 Inspector 的 U2 数值会话接线。pen.dev MCP 当前用量受限，D04 先保留独立源稿与 PNG。
+[VB-D04 单值编辑首片](../topics/variable-browser/single-value-editing.md)的优先级、字段和验收已获认可。2026-11-13 六张[局部画板](designs/studio-variable-browser-brief.md#vb-d04-单值编辑局部画板)已获认可；已复用 Inspector 的 U2 数值会话接线，通过正式检查及 macOS 代表验证。pen.dev MCP 当前用量受限，D04 先保留独立源稿与 PNG。
 
 ## 首批必须评审的代表路径
 

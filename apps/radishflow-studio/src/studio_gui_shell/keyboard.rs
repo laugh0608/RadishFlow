@@ -81,8 +81,36 @@ impl ReadyAppState {
         }
 
         if self.variable_browser.owns_shortcuts(ctx) {
-            // The browser owns navigation keys; it never forwards Delete/Enter to
-            // the canvas or starts a calculation while reviewing a read-only row.
+            // Keep navigation local, but retain the shared save/history routes.
+            // Text focus and open unit menus retain their own input history.
+            // egui's wants_keyboard_input also includes focused buttons; those
+            // must not suppress engineering history in the browser.
+            let focus_context = if numeric_input::owns_keyboard(ctx)
+                || ctx
+                    .memory(|memory| memory.focused())
+                    .and_then(|id| egui::TextEdit::load_state(ctx, id))
+                    .is_some()
+            {
+                StudioGuiFocusContext::TextInput
+            } else {
+                StudioGuiFocusContext::Global
+            };
+            if !ctx.memory(|memory| memory.any_popup_open()) {
+                for shortcut in ctx.input(collect_shortcuts) {
+                    if let radishflow_studio::StudioGuiShortcutRoute::DispatchCommandId {
+                        command_id,
+                    } = radishflow_studio::route_shortcut(
+                        &self.platform_host.snapshot().command_registry,
+                        &shortcut,
+                        focus_context,
+                    ) && (command_id == radishflow_studio::FILE_SAVE_COMMAND_ID
+                        || radishflow_studio::document_history_command_from_id(&command_id)
+                            .is_some())
+                    {
+                        self.dispatch_ui_command(command_id);
+                    }
+                }
+            }
             return;
         }
 

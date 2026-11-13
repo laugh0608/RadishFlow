@@ -3,6 +3,9 @@ use super::*;
 /// Orthogonal facts for numeric controls; no widget colors or status-label parsing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NumericFieldPresentation {
+    /// Runtime workspace identity: reopening the same document must retire old controls.
+    /// Compare sessions only; unrelated input revisions do not retire a U2 draft.
+    pub workspace: crate::FlowRunQualification,
     pub variable: VariableId,
     pub view: Option<DisplayUnitViewId>,
     pub quantity: QuantityKind,
@@ -93,6 +96,7 @@ impl WorkspaceState {
                 error => NumericFieldIssue::Rejected(error.clone()),
             });
         Ok(NumericFieldPresentation {
+            workspace: self.flow_run_qualification(),
             variable: id.clone(),
             view,
             quantity,
