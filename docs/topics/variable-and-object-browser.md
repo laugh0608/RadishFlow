@@ -285,7 +285,7 @@ GUI 调用入口根据当前只读视图拒绝编辑与运行事件，不能仅�
 
 1. **VB-D04 首片已接通。** 已复用 Inspector 的 U2 会话，五个批准字段通过 VB-A05 定向、正式基线及 macOS 代表实窗；2026-11-14 已补精确 400 px macOS 原生键盘。后续扩大字段、组合与批量另审。唯一实现状态与证据见 [VB-D04](variable-browser/single-value-editing.md#实现与验收状态2026-11-13)。
 2. **按新工具安排维护设计稿。** 2026-11-14 起暂停 pen.dev / Pencil；D03 / D04 独立源稿与认可 PNG 保留，主稿补入暂停。跨平台实窗、系统缩放与读屏按既定阶段补验。 [画板记录](../architecture/designs/studio-variable-browser-brief.md#vb-d03-关注清单局部画板)
-3. **按增量审定后续范围。** VB2 组合 / 跨对象批量另审，VB3 先明确实际 CLI 路径消费者。工程生命周期 AF1 独立跟踪。 [当前状态](../status/current.md)
+3. **按增量审定后续范围。** VB2 组合 / 跨对象批量另审；其中 400 px 侧区的 [批量草稿核对局部试点](../architecture/designs/reviews/2026-11-14-vb2-penpot/README.md) 已完成设计工具验证，交互方案待所有者评审。VB3 先明确实际 CLI 路径消费者。工程生命周期 AF1 独立跟踪。 [当前状态](../status/current.md)
 
 ## AF4c 新版 CLI 契约（2026-10-26，已确认）
 

@@ -115,7 +115,7 @@ R0 与后续基础规划衔接；B3-5、纯单位转换和规则逻辑不等待�
 
 - 旧 `docs/architecture/designs/studio-client-main.pen`、既有认可 PNG 和 brief 作为历史设计证据保留；不把未补入的 D03 / D04 画板标成已迁入主稿。
 - 后续局部设计沿用仓库内可编辑源稿（如已有 HTML / CSS 或 SVG）及渲染 PNG，源稿、字体 / 尺寸、版本和评审说明同批保存。未采用新设计工具前，不再把 `.pen` 作为唯一允许格式。
-- 免费替代候选为 [Penpot](https://penpot.app/pricing)（可编辑 UI 设计与原型，[开放 MCP](https://penpot.app/ai/mcp-server)）及 [Quant-UX](https://www.quant-ux.com/pricing/)（交互原型 / 用户测试）；截至本次核对均有免费方案。候选尚未安装、接入或迁移，选型不构成部署或上传授权。
+- 免费替代候选为 [Penpot](https://penpot.app/pricing)（可编辑 UI 设计与原型，[开放 MCP](https://penpot.app/ai/mcp-server)）及 [Quant-UX](https://www.quant-ux.com/pricing/)（交互原型 / 用户测试）。Penpot 已用本机自部署实例与 MCP 完成 [VB2 批量草稿核对局部试点](designs/reviews/2026-11-14-vb2-penpot/README.md)，源稿与预览随批归档，方案待评审。Quant-UX 仍为候选。
 - 暂停调用 pen.dev / Pencil；不通过文本工具读取 / 改写旧 `.pen`。若以后恢复访问或迁移，单独确认工具与格式兼容，再通过受支持接口核对旧稿。
 - 保留未受影响画板或明确历史标识；新分区画板应标注评审状态及目标能力，不把既有“定稿”标签沿用到新内容。
 - 在同一设计包中先评审完整任务关系；确需拆分时按域使用稳定前缀，并在 brief 维护导航和共享组件来源，避免多份 Workbench 壳相互漂移。
