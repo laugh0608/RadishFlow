@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-11-12
+更新时间：2026-11-14
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -841,6 +841,8 @@ App 不应直接操作底层求解细节，而应通过稳定的数据结构与�
 
 桌面流程 / 设备 / QS0 共用 `StudioRunOwner` 单 worker；切工程保留拥有者，最后窗口待回收才关闭；未安装后台会话的调用者保持同步。
 
+左右非拖动侧栏按当前布局宽度渲染。 [VB-D04 补验](../topics/variable-browser/single-value-editing.md#400-px-原生补验2026-11-14)
+
 画布展示排序用反向邻接及按 ID 排序的就绪集合；回路及其阻塞下游仍按 ID 追加，不承担求解拓扑校验。`StudioGuiHost::snapshot` 内只构造一份 canvas state，供注册表与 widget 共用；独立注册表查询仍实时构造。
 
 Shell 用 `modeling_inputs()` 借用草稿、单位与焦点；窗口选择共用 `StudioGuiWindowLayoutScope::from_app_host_state`。单位命令后重读、确认重验；无到期事件跳过 batch，保留重绘及公开空批次契约。主帧与命令后画布实时取快照，无跨帧缓存或结果所有权变化。
@@ -855,6 +857,6 @@ Shell 用 `modeling_inputs()` 借用草稿、单位与焦点；窗口选择共�
 优先级归 AF 与当前状态；以下契约在对应实施切片细化：
 
 - 保存失败恢复、跨平台文件选择与偏好范围见 [项目生命周期专题](../topics/project-lifecycle-storage.md)。
-- Inspector 多字段 / 数值提交沿正式输入事务；设备 `EquipmentAction` 与 GUI 草稿 Apply 共用提交和影响确认，程序写入拒绝相关草稿。
+- Inspector 与关注清单进料批量共用 U2 草稿和正式输入事务。设备 `EquipmentAction` 与 GUI 草稿 Apply 共用提交和影响确认，程序写入拒绝相关草稿。
 - `AppLogFeed` 脚本导出和真实授权刷新 UI 仍待细化。
 - 画布视图与 suggestion 的目标契约见 [Canvas 交互边界](canvas-interaction-contract.md)，当前不扩展复杂 Dock、多文档或运行时插件化 UI。

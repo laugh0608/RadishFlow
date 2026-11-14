@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-11-04
+更新时间：2026-11-14
 
 ## 用途
 
@@ -70,7 +70,7 @@ flowchart TD
 | `tests/rust-integration` | 示例流程与 Studio / solver 的跨层回归 | 结果传递一致性与独立数值准确性是不同验证目标 |
 | `xtask` | 仓库治理、文本门禁和 Rust 基线检查 | `.sh` / `.ps1` 是平台包装入口 |
 
-典型计算调用方向为 `Studio 或 rf-ffi -> rf-solver -> rf-unitops -> rf-flash / rf-thermo`；`rf-flowsheet` 提供连接校验，`rf-model / rf-types` 提供领域数据。该描述是职责路径，不是完整 Cargo 依赖图。
+典型计算调用方向为 `Studio／CLI／rf-ffi -> rf-solver -> rf-unitops -> rf-flash / rf-thermo`。`rf-flowsheet` 提供连接校验，`rf-model / rf-types` 提供领域数据。
 
 Studio 后台与 CLI 经应用桥接调用 `rf-solver::execution::execute_flow`。`rf-ffi` 在旧工程校验和选包后调用同一入口。输入冻结、物性加载、任务调度及结果接收的归属见[共享稳态执行契约](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)。
 

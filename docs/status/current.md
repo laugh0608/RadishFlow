@@ -51,7 +51,7 @@
 
 ### 下一步
 
-- [x] [变量浏览器](../topics/variable-and-object-browser.md#接下来事项)已接通单值编辑、400 px macOS 补验及进料流量批量事务。
+- [ ] VB2 进料批量首片已验；建议先评审 [VB3 CLI 只读稳定引用](../topics/variable-and-object-browser.md#接下来事项)。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
 - [ ] QS3／QS4 macOS 代表取消拒收与重跑通过；窄区键盘、其他安全点与平台项见 [QS3 保留项](../topics/modeling/equation-oriented-block.md#接下来事项)。
 - [x] [QS4 首片 A—D](../topics/modeling/mixed-partition-execution.md)已按批准方案及认可画板完成；跨块回路、更多策略与逆向规格另审。
@@ -115,7 +115,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-14：2,118 项 Rust；VB-D04／VB2 400 px 实窗、33 项托管契约与两类烟测见 [W46](../devlogs/2026-11/2026-W46.md)。
+- 2026-11-14：2,118 项 Rust；400 px 实窗及 .NET 互操作证据见 [W46](../devlogs/2026-11/2026-W46.md)。
 
 - 2026-11-10：PR #18 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 

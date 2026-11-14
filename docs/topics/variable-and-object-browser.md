@@ -9,7 +9,7 @@
 不包含：最终 UI 画板、冻结的路径语法 / DTO / ABI、COM 激活方式、完整脚本运行时或新的项目格式。
 
 - 层级：二级功能。父专题为 [Studio 主工作流](studio-main-workflow.md)，跨端边界见 [统一对外 API](../architecture/simulation-platform.md#对象变量与动作树)。
-- 状态：部分实现。AF4a / AF5a 查询、AF4b 动作及 AF4c CLI 已完成。VB1 已接通只读浏览、首批流程稳定引用与工程关注清单。
+- 状态：部分实现。AF4a / AF5a 查询、AF4b 动作及 AF4c CLI 已完成。VB1 已接通只读浏览、首批流程稳定引用与工程关注清单；VB2 已接通单值与进料总摩尔流量批量首片。
 - 定位：一个变量工作区提供工程视图与变量树视图，共用稳定身份、领域描述、查询和正式命令。覆盖所有公开工程变量与动作，逐步纳入非画布对象。
 - 顺序：U2-I1—I4 与 U3 首批已接通，I5 按确认节点补验；VB0 纳入 R0 / R1 及 G0 关系设计，VB1 衔接 U3，VB2 依赖 U2 编辑闭环，VB3 按 P2 与领域能力扩展。依赖和排期入口见 [路线图](../radishflow-mvp-roadmap.md#变量与对象浏览器的配套切片)。
 - VB0 首片方案与 9 张局部画板已于 2026-11-11 获认可，见[设计附件](../architecture/designs/studio-variable-browser-brief.md)；VB1 首片实现与保留项见下文。
@@ -37,6 +37,7 @@
 | `VariableId` | 文档、对象、Inputs / Results 分区及类型化字段共同标识；显示名称不参与身份，尚非冻结的公共路径协议 |
 | `VariableDescriptor` | 数值 / 文本、量类型、规范单位、约束、来源、有效性与写入入口；组成 / 相字段目前通过具体字段身份表达，尚非通用多维集合 |
 | `AppState::write_variable` | SI 单变量写入，修订检查、草稿保护及共享输入事务；结果只读；不包含公开跨对象批量事务 |
+| Studio 关注清单批量 | 复用 U2 数值会话，检查并原子应用两条或更多进料流股的总摩尔流量。见 [VB2 首片](../architecture/designs/reviews/2026-11-14-vb2-penpot/README.md#首片实现提案) |
 | Studio 只读工作区 | 共用状态的展开 / 侧区、工程分类 / 变量树、筛选与详情；覆盖现有流程、设备 / 工况 / 几何、基础及来源；项目单位、结果资格、有限字段双向定位与正式页面入口 |
 | AF4b 正式动作 | 流程写入 / 创建 / 连接 / 断开、设备输入 / 检查和计算回执；GUI 共用事务与领域守卫，旧 B3 / CLI 同步适配保持 |
 
@@ -164,7 +165,7 @@ VB2 的单值完成不代表批量事务完成；VB3 按消费者逐项记录覆
 | VB-D01 | 首批节点 / 变量 / 动作覆盖矩阵，类别顺序与停靠 / 窄窗口布局 | VB0 对应局部 R0 / R1 |
 | VB-D02 | [存储与迁移](variable-browser/identity-storage.md)及 Studio 首批标量路径已接通 | 外部协议随 VB3 再审 |
 | VB-D03 | [关注项归属、存储与恢复](variable-browser/watch-list.md)首片已接通 | VB-A04 流程标量 |
-| VB-D04 | [受控单值编辑首片](variable-browser/single-value-editing.md)已认可；组合与批量另审 | VB2 各编辑增量前 |
+| VB-D04 | [受控单值编辑首片](variable-browser/single-value-editing.md)已接通，进料批量首片独立交付 | VB2 各编辑增量前 |
 | VB-D05 | 多上下文请求、分页 / 订阅一致性、限制及权限映射 | VB3 对应消费者前 |
 
 其余决策按各增量审定。
@@ -283,9 +284,9 @@ GUI 调用入口根据当前只读视图拒绝编辑与运行事件，不能仅�
 
 ## 接下来事项
 
-1. **VB-D04 首片已接通。** 已复用 Inspector 的 U2 会话，五个批准字段通过 VB-A05 定向、正式基线及 macOS 代表实窗；2026-11-14 已补精确 400 px macOS 原生键盘。后续扩大字段、组合与批量另审。唯一实现状态与证据见 [VB-D04](variable-browser/single-value-editing.md#实现与验收状态2026-11-13)。
-2. **按新工具安排维护设计稿。** 2026-11-14 起暂停 pen.dev / Pencil；D03 / D04 独立源稿与认可 PNG 保留，主稿补入暂停。跨平台实窗、系统缩放与读屏按既定阶段补验。 [画板记录](../architecture/designs/studio-variable-browser-brief.md#vb-d03-关注清单局部画板)
-3. **VB2 跨对象批量首片已接通。** 关注清单中可对两条或更多进料流股的总摩尔流量先检查、再一次应用。字段范围、事务和 VB-A06 验收见 [首片评审包](../architecture/designs/reviews/2026-11-14-vb2-penpot/README.md#首片实现提案)。组合约束另审，VB3 先明确实际 CLI 路径消费者。AF1 独立跟踪。 [当前状态](../status/current.md)
+1. **建议先评审 VB3 的 CLI 只读路径。** 找到一个需要复核 Studio 工程标量的实际调用方，选定带已保存对象身份的 v4 工程和一个 `rfvar:1` 引用。按 VB-A07 对照同一文件重开后的正式输入和 Missing 结果，覆盖跨工程、对象重建、未知引用版本及不支持字段的结构化拒绝。先明确版本能力、旧请求的拒绝顺序及结果状态，再确认是否实施。首片提案限只读查询，保留 SI、磁盘只读及写入契约。 [稳定引用](variable-browser/stable-references.md) · [CLI 参考](../reference/headless-cli.md)
+2. **继续记录 VB2 验收残项。** 单值首片已有精确 400 px macOS 键盘证据，进料总摩尔流量批量首片已有 VB-A06 定向与 macOS 代表证据。组合约束和更多字段按实际工程另审，系统缩放、读屏与跨平台实窗按既定节点补验。 [VB-D04](variable-browser/single-value-editing.md#实现与验收状态2026-11-13) · [VB2 验收](../architecture/designs/reviews/2026-11-14-vb2-penpot/README.md#首片验收)
+3. **按现有流程维护设计归档。** D03 / D04 保留已认可源稿与 PNG，主稿补入暂停。新交互按 UI 计划评审。 [UI 计划](../architecture/studio-ui-topic-plan.md#设计工具与文档规则)
 
 ## AF4c 新版 CLI 契约（2026-10-26，已确认）
 

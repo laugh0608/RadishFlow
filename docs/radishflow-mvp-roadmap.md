@@ -125,7 +125,7 @@ AF4b [正式动作契约](topics/variable-and-object-browser.md#af4b-正式动�
 
 U3 首批已接入项目显示单位。A1 / A2 与设备模型可按各自切片推进，完整 VB1 的覆盖与原生验证见浏览器专题。
 
-2026-11-11 按认可的 [VB0 首片方案与画板](architecture/designs/studio-variable-browser-brief.md)接通发现、资格 / 来源与定位。2026-11-12 [VB-D02](topics/variable-browser/stable-references.md)接通流程标量稳定引用、显式初始化与 v4 保存，[VB-D03](topics/variable-browser/watch-list.md)接通工程关注清单。[VB-D04](topics/variable-browser/single-value-editing.md)单值首片已按认可画板接通，并完成本机验证；完整 VB2 与平台残项保持。跨端路径归 VB3。
+2026-11-11 按认可的 [VB0 首片方案与画板](architecture/designs/studio-variable-browser-brief.md)接通发现、资格 / 来源与定位。2026-11-12 [VB-D02](topics/variable-browser/stable-references.md)接通流程标量稳定引用、显式初始化与 v4 保存，[VB-D03](topics/variable-browser/watch-list.md)接通工程关注清单。[VB-D04](topics/variable-browser/single-value-editing.md)单值首片已接通。2026-11-14 完成 400 px 原生键盘补验，交付[关注清单进料流量批量首片](architecture/designs/reviews/2026-11-14-vb2-penpot/README.md)。完整 VB2 与平台残项保持。VB3 先评审实际 CLI 只读消费者，见[专题接下来事项](topics/variable-and-object-browser.md#接下来事项)。
 
 ### 运行、消息与诊断的配套切片
 

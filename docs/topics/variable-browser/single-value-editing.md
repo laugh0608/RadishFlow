@@ -11,7 +11,7 @@
 | 后续顺序 | 进入条件 |
 | --- | --- |
 | 本片：单值编辑 | 优先贯通单元参数与进料流股规格两条已有写入路径，按 VB-A05 验收。影响本片的身份、草稿或结果阻断先处理。 |
-| VB2 后续：扩大字段、组合与跨对象批量 | 依据代表工程的实际需求扩覆盖。组分、互斥规格或批量分别审查最终集合约束、原子拒绝和一次撤销。 |
+| VB2 跨对象批量首片与后续 | [关注清单进料总摩尔流量](../../architecture/designs/reviews/2026-11-14-vb2-penpot/README.md#首片实现提案)已接通。扩字段、组分及互斥规格按实际工程另审最终集合约束、原子拒绝和一次撤销。 |
 | VB3：首个 CLI 路径消费者 | 有明确外部调用场景时独立审定文档定位、读取上下文、版本兼容和能力保护。COM、录制及其他领域覆盖随各自消费者推进。 |
 
 2026-11-13 已完成[六张局部画板](../../architecture/designs/studio-variable-browser-brief.md#vb-d04-单值编辑局部画板)，覆盖展开、400 px 侧区、失焦保留、提交失败及键盘路径，所有者认可后先提交画板与文档（`5ab66dd4`），再完成 U2 接线与 VB-A05 本机代表验证。2026-11-14 起暂停 pen.dev / Pencil，VB-D03 / D04 主稿补入暂停，保留独立源稿与认可 PNG。
@@ -57,7 +57,7 @@
 - [接线与适用条件](../../../apps/radishflow-studio/src/studio_gui_shell/variable_browser/editing.rs)按当前单元类型、端口连接与字段判断；[共享控件](../../../apps/radishflow-studio/src/studio_gui_shell/numeric_input.rs)复用 Inspector 的解析、单位、文本历史和正式命令。`NumericFieldPresentation` 携带工作区资格，防止同文档重开后会话代次重置让旧控件重新生效；同会话内仍按 U2 重验正式输入。
 - [事务与范围测试](../../../apps/radishflow-studio/src/studio_gui_shell/variable_browser/editing/tests.rs)、[键盘与布局](../../../apps/radishflow-studio/src/studio_gui_shell/variable_browser/editing/tests/keyboard.rs)、[生命周期](../../../apps/radishflow-studio/src/studio_gui_shell/variable_browser/editing/tests/lifecycle.rs)共新增 11 项，覆盖五字段、双入口等价、失败 / 无变化、400 px 双语双字号、IME、保存草稿、只读、旧控件、v4 关注顺序与迟到运行拒收。
 - 正式仓库检查通过 2,104 项 Rust 测试。macOS 实窗验证展开温度 `76.85 °C → 350 K`、窄侧区流量 `36 kmol/h → 10 mol/s`、`1e-` 经 Tab / 返回后保留、压力失败恢复、单位菜单 Escape、工程撤销 / 重做、显式运行及保存重开。2026-11-13 原生侧区为默认约 360 px；2026-11-14 修正侧栏宽度缓存后，补齐精确 400 px 原生验证，双语双字号继续由 egui 布局测试覆盖。
-- 命令与运行证据见 [W46](../../devlogs/2026-11/2026-W46.md#2026-11-13vb-d04-首片接线与-vb-a05-验证)。Windows / Linux 原生、系统缩放、读屏、完整 I5 及后续组合 / 批量 / CLI 范围按原计划推进；设计工具按 [UI 计划](../../architecture/studio-ui-topic-plan.md#设计工具与文档规则)执行。
+- 命令与运行证据见 [W46](../../devlogs/2026-11/2026-W46.md#2026-11-13vb-d04-首片接线与-vb-a05-验证)。Windows / Linux 原生、系统缩放、读屏和完整 I5 按既定节点补验；组合与跨端后续范围见[浏览器专题](../variable-and-object-browser.md#接下来事项)。设计工具按 [UI 计划](../../architecture/studio-ui-topic-plan.md#设计工具与文档规则)执行。
 
 ### 400 px 原生补验（2026-11-14）
 
