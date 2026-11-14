@@ -11,6 +11,7 @@ use rf_ui::{
 pub(super) struct WatchViewState {
     pub(super) selected: Option<String>,
     pub(super) detail_page: bool,
+    pub(super) batch: batch::FeedMolarFlowBatchView,
     notice: Option<String>,
     focus: Option<WatchFocus>,
     reveal_selection: bool,
@@ -252,6 +253,7 @@ pub(super) fn render(
 ) {
     let entries = workspace.variable_watch_list.entries();
     let watch = &mut state.watch;
+    watch.batch.retain_watched(workspace);
     let wide = state.mode == BrowserMode::Expanded
         && ui.available_width()
             >= 850.0 * (ui.text_style_height(&egui::TextStyle::Body) / 18.0).max(1.0);
@@ -340,6 +342,22 @@ fn render_list(
         );
         return;
     }
+    let eligible_count = entries
+        .iter()
+        .filter(|reference| batch::eligible(workspace, reference))
+        .take(2)
+        .count();
+    let show_batch = eligible_count >= 2 || !state.batch.selected.is_empty();
+    if show_batch
+        && ui
+            .add_enabled(
+                state.batch.variables(workspace).len() >= 2,
+                egui::Button::new(tr(locale, "编辑所选流量", "Edit selected flows")),
+            )
+            .clicked()
+    {
+        state.batch.open = true;
+    }
     if wide {
         render::browser_columns(
             ui,
@@ -356,7 +374,8 @@ fn render_list(
         );
     }
     let line = ui.text_style_height(&egui::TextStyle::Body);
-    let height = line * if wide { 2.8 } else { 4.4 } + 8.0;
+    let height =
+        line * if wide { 2.8 } else { 4.4 } + 8.0 + if show_batch { line + 8.0 } else { 0.0 };
     let mut list = egui::ScrollArea::vertical()
         .id_salt(if wide {
             "watch-expanded-list"
@@ -460,6 +479,17 @@ fn render_list(
                         object.wrap.break_anywhere = true;
                         child.add(egui::Label::new(object).wrap());
                         child.add(egui::Label::new(format!("{value} · {status}")).truncate());
+                    }
+                    if show_batch && batch::eligible(workspace, reference) {
+                        let mut in_batch = state.batch.selected.contains(reference);
+                        let label = if locale == StudioShellLocale::ZhCn {
+                            format!("选取 {} 的流量", row.object)
+                        } else {
+                            format!("Select {} flow", row.object)
+                        };
+                        if child.checkbox(&mut in_batch, label).changed() {
+                            state.batch.select(reference, in_batch);
+                        }
                     }
                     response.on_hover_text(format!("{text}\n{}", row.identity))
                 })

@@ -896,6 +896,7 @@ mod tests {
             }
             StudioRuntimeDispatch::Equipment(_)
             | StudioRuntimeDispatch::NumericEdit { .. }
+            | StudioRuntimeDispatch::FeedMolarFlowBatchApplied(_)
             | StudioRuntimeDispatch::ObjectDeletion { .. }
             | StudioRuntimeDispatch::ProjectPresentation { .. }
             | StudioRuntimeDispatch::VariableWatch(_)

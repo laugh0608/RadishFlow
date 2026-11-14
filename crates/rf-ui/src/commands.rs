@@ -92,6 +92,9 @@ pub enum DocumentCommand {
         stream_id: StreamId,
         values: Vec<StreamSpecificationValue>,
     },
+    SetFeedMolarFlows {
+        values: Vec<(StreamId, f64)>,
+    },
     RemoveStreamCompositionComponent {
         stream_id: StreamId,
         component_id: ComponentId,

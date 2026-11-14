@@ -4,6 +4,7 @@ use super::*;
 use rf_ui::project_query::{ProjectField, ProjectObjectRef};
 use rf_ui::variable_browser::{ObjectId, StableVariableReference, VariableId};
 
+mod batch;
 mod editing;
 mod navigation;
 mod projection;

@@ -21,6 +21,9 @@ pub(super) enum NumericEditSurface {
     Browser {
         focus: bool,
     },
+    BrowserBatch {
+        focus: bool,
+    },
 }
 
 impl ReadyAppState {
@@ -144,7 +147,11 @@ impl ReadyAppState {
         surface: NumericEditSurface,
     ) {
         let id = ui.make_persistent_id(("numeric-input", &original.variable.document, key));
-        if matches!(surface, NumericEditSurface::Browser { focus: true }) {
+        if matches!(
+            surface,
+            NumericEditSurface::Browser { focus: true }
+                | NumericEditSurface::BrowserBatch { focus: true }
+        ) {
             // The Enter activating Edit belongs to that button, not the newly
             // mounted TextEdit (which otherwise immediately loses focus).
             ui.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Enter));
@@ -176,6 +183,7 @@ impl ReadyAppState {
     ) {
         let mut field = original.clone();
         self.refresh_numeric_field(&mut field);
+        let batch = matches!(surface, NumericEditSurface::BrowserBatch { .. });
         let zh = matches!(self.locale, StudioShellLocale::ZhCn);
         let group_id = id.with("typing");
         let mut group =
@@ -224,7 +232,7 @@ impl ReadyAppState {
                 let escape = !popup_open
                     && !ime_guard
                     && input.consume_key(egui::Modifiers::NONE, egui::Key::Escape);
-                if ime_guard {
+                if ime_guard || batch {
                     input.consume_key(egui::Modifiers::NONE, egui::Key::Enter);
                 }
                 (undo, redo, escape)
@@ -241,7 +249,9 @@ impl ReadyAppState {
                 group = TypingGroup::default();
             }
             if escape {
-                self.cancel_numeric_field(&mut field);
+                if !batch {
+                    self.cancel_numeric_field(&mut field);
+                }
                 ui.memory_mut(|memory| memory.surrender_focus(id));
                 group = TypingGroup::default();
             }
@@ -292,8 +302,13 @@ impl ReadyAppState {
                 self.apply_specification_field_focus(&response, &field.variable)
                     | self.apply_browser_field_focus(&response, &field.variable)
             }
-            NumericEditSurface::Browser { focus } => focus,
+            NumericEditSurface::Browser { focus } | NumericEditSurface::BrowserBatch { focus } => {
+                focus
+            }
         };
+        if batch && located {
+            response.scroll_to_me(Some(egui::Align::Center));
+        }
         if response.has_focus() {
             ui.data_mut(|data| data.insert_temp(egui::Id::new("numeric-keyboard-owner"), id));
             ui.memory_mut(|memory| {
@@ -470,7 +485,9 @@ impl ReadyAppState {
                         input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)
                     })
                 {
-                    self.cancel_numeric_field(&mut field);
+                    if !batch {
+                        self.cancel_numeric_field(&mut field);
+                    }
                     response.request_focus();
                     group = TypingGroup::default();
                 }
@@ -478,7 +495,7 @@ impl ReadyAppState {
         });
         if let Some(unit) = selected_unit {
             self.edit_numeric_field(&mut field, NumericEditEvent::SelectInputUnit(unit));
-            if matches!(surface, NumericEditSurface::Browser { .. }) {
+            if !matches!(surface, NumericEditSurface::Inspector) {
                 response.request_focus();
             }
             group = TypingGroup::default();
@@ -503,18 +520,20 @@ impl ReadyAppState {
             ),
         );
         let enter = !located
+            && !batch
             && !ime_guard
             && response.lost_focus()
             && ui.input(|input| {
                 input.key_pressed(egui::Key::Enter) && input.modifiers == egui::Modifiers::NONE
             });
         ui.horizontal_wrapped(|ui| {
-            let apply = ui
-                .add_enabled(
-                    !ime_guard && field.can_apply,
-                    egui::Button::new(if zh { "应用" } else { "Apply" }),
-                )
-                .clicked();
+            let apply = !batch
+                && ui
+                    .add_enabled(
+                        !ime_guard && field.can_apply,
+                        egui::Button::new(if zh { "应用" } else { "Apply" }),
+                    )
+                    .clicked();
             if !ime_guard && field.can_apply && (enter || apply) {
                 let command = NumericEditCommand::Commit {
                     variable: field.variable.clone(),

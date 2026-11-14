@@ -1065,6 +1065,7 @@ fn app_command(report: &super::StudioBootstrapReport) -> &crate::StudioAppComman
         }
         StudioBootstrapDispatch::Equipment(_)
         | StudioBootstrapDispatch::NumericEdit { .. }
+        | StudioBootstrapDispatch::FeedMolarFlowBatchApplied(_)
         | StudioBootstrapDispatch::ObjectDeletion { .. }
         | StudioBootstrapDispatch::ProjectPresentation { .. }
         | StudioBootstrapDispatch::DocumentLifecycle(_)
@@ -1132,6 +1133,7 @@ fn session_event(
         }
         StudioBootstrapDispatch::Equipment(_)
         | StudioBootstrapDispatch::NumericEdit { .. }
+        | StudioBootstrapDispatch::FeedMolarFlowBatchApplied(_)
         | StudioBootstrapDispatch::ObjectDeletion { .. }
         | StudioBootstrapDispatch::ProjectPresentation { .. }
         | StudioBootstrapDispatch::DocumentLifecycle(_)

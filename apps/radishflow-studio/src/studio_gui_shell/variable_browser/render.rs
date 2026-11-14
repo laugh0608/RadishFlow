@@ -81,10 +81,16 @@ pub(super) fn browser(
         );
     });
     if state.directory == DirectoryView::WatchList {
-        watch_list::render(ui, state, workspace, locale, &mut intent);
+        if state.watch.batch.open {
+            batch::render(ui, &mut state.watch.batch, app);
+        } else {
+            watch_list::render(ui, state, workspace, locale, &mut intent);
+        }
         if consume_browser_escape(ui, state) {
             if state.reference_input.is_some() {
                 state.reference_input = None;
+            } else if state.watch.batch.open {
+                state.watch.batch.close();
             } else if state.watch.detail_page {
                 state.watch.back_to_list();
             } else {

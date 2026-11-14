@@ -122,6 +122,18 @@ impl WorkspaceState {
     }
 
     fn validate_numeric_edit(&self, session: &NumericEditSession) -> Result<(), NumericEditError> {
+        let value = self.validated_numeric_candidate(session)?;
+        let command = input_command(&session.variable, VariableValue::Number(value))
+            .map_err(|_| NumericEditError::UnsupportedField)?;
+        self.prepare_input_document_command(&command)
+            .map_err(NumericEditError::Rejected)?;
+        Ok(())
+    }
+
+    pub(super) fn validated_numeric_candidate(
+        &self,
+        session: &NumericEditSession,
+    ) -> Result<f64, NumericEditError> {
         let (_, baseline) = self.numeric_field(&session.variable)?;
         if baseline != session.baseline {
             return Err(NumericEditError::FieldConflict);
@@ -129,12 +141,7 @@ impl WorkspaceState {
         if session.composition_original.is_some() {
             return Err(NumericEditError::Incomplete);
         }
-        let value = session.parsed_si()?;
-        let command = input_command(&session.variable, VariableValue::Number(value))
-            .map_err(|_| NumericEditError::UnsupportedField)?;
-        self.prepare_input_document_command(&command)
-            .map_err(NumericEditError::Rejected)?;
-        Ok(())
+        session.parsed_si()
     }
 
     pub(in crate::state) fn refresh_numeric_edits(&mut self) {

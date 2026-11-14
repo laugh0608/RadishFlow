@@ -101,8 +101,9 @@ pub use state::{
 mod tests;
 
 pub use state::{
-    InputUnitOrigin, NumericEditError, NumericEditEvent, NumericEditReceipt, NumericEditSession,
-    NumericParseError, NumericParseOutcome, NumericPrecisionSource, parse_numeric_input,
+    CheckedFeedMolarFlowBatch, FeedMolarFlowBatchError, FeedMolarFlowBatchReceipt, InputUnitOrigin,
+    NumericEditError, NumericEditEvent, NumericEditReceipt, NumericEditSession, NumericParseError,
+    NumericParseOutcome, NumericPrecisionSource, parse_numeric_input,
 };
 
 pub use state::{

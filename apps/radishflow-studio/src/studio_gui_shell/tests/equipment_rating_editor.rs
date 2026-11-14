@@ -154,7 +154,12 @@ fn rating_check_calculate_labels_and_geometry_confirmation_follow_application_st
     fs::remove_dir_all(project.parent().unwrap()).unwrap();
 }
 
-pub(super) fn fits(shape: &egui::epaint::Shape, clip: egui::Rect, values: &[String], case: &str) {
+pub(in crate::studio_gui_shell) fn fits(
+    shape: &egui::epaint::Shape,
+    clip: egui::Rect,
+    values: &[String],
+    case: &str,
+) {
     match shape {
         egui::epaint::Shape::Text(t) => {
             let rect = t.galley.rect.translate(t.pos.to_vec2());

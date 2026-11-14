@@ -1,3 +1,4 @@
+mod feed_molar_flow_batch;
 mod inspector;
 mod parse;
 mod presentation;
@@ -167,3 +168,4 @@ pub enum NumericEditEvent {
 
 #[cfg(test)]
 mod tests;
+pub use feed_molar_flow_batch::*;

@@ -14,16 +14,25 @@ impl WorkspaceState {
         changed_at: DateTimeUtc,
     ) -> RfResult<InputCommandCommit> {
         let next = self.prepare_input_document_command(&command)?;
+        Ok(self.commit_prepared_input(command, next, changed_at))
+    }
+
+    pub(super) fn commit_prepared_input(
+        &mut self,
+        command: DocumentCommand,
+        next: Flowsheet,
+        changed_at: DateTimeUtc,
+    ) -> InputCommandCommit {
         if next == self.document.flowsheet {
-            return Ok(InputCommandCommit {
+            return InputCommandCommit {
                 revision: self.document.revision,
                 changed: false,
-            });
+            };
         }
-        Ok(InputCommandCommit {
+        InputCommandCommit {
             revision: self.commit_inspector_document_change(command, next, changed_at),
             changed: true,
-        })
+        }
     }
     pub(crate) fn prepare_input_document_command(
         &self,

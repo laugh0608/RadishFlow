@@ -94,6 +94,64 @@ fn execution_freezes_formal_inputs_and_selected_package_without_borrowing_live_s
 }
 
 #[test]
+fn batch_commit_rejects_successful_result_from_pre_batch_inputs() {
+    use rf_ui::NumericEditEvent;
+    use rf_ui::variable_browser::{
+        ObjectId, VariableField, VariableId, VariableSection, VariableWatchCommand,
+    };
+
+    let project = rf_store::parse_project_file_json(include_str!(
+        "../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .unwrap();
+    let mut app = AppState::new(FlowsheetDocument::new(
+        project.document.flowsheet,
+        DocumentMetadata::new("batch-document", "Batch document", UNIX_EPOCH),
+    ));
+    let workspace = &mut app.workspace;
+    workspace.install_saved_object_identities(workspace.prepare_object_identities().unwrap());
+    let variables = ["stream-feed-a", "stream-feed-b"].map(|stream| VariableId {
+        document: "batch-document".into(),
+        object: ObjectId::Stream(stream.into()),
+        section: VariableSection::Inputs,
+        field: VariableField::MolarFlow,
+    });
+    let mut original = execute(prepare(&mut app, false));
+    assert_eq!(
+        complete_workspace_solve(&mut app, &mut original),
+        FlowRunDisposition::Applied
+    );
+    let mut unreceived_success = execute(prepare(&mut app, false));
+    assert!(unreceived_success.result().is_ok());
+    for (variable, value) in variables.iter().zip(["36 kmol/h", "5"]) {
+        app.workspace
+            .edit_variable_watch_list(&VariableWatchCommand::Add(variable.clone()))
+            .unwrap();
+        let generation = app.begin_numeric_edit(variable.clone(), None).unwrap();
+        app.edit_numeric(
+            variable,
+            generation,
+            NumericEditEvent::ReplaceText(value.into()),
+        )
+        .unwrap();
+    }
+    let checked = app
+        .workspace
+        .check_feed_molar_flow_batch(&variables)
+        .unwrap();
+    let receipt = app
+        .apply_feed_molar_flow_batch(&checked, UNIX_EPOCH)
+        .unwrap();
+    assert_eq!(receipt.revision, 1);
+    assert_eq!(receipt.changed_count, 2);
+    assert_eq!(
+        app.workspace.flow_result().status(),
+        rf_ui::result_query::ResultStatus::Stale
+    );
+    rejected(&mut app, &mut unreceived_success, Reason::InputChanged);
+}
+
+#[test]
 fn reopen_and_explicit_independent_owner_reject_same_document_and_revision() {
     for fork in [false, true] {
         let mut original = app();

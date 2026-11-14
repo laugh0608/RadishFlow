@@ -768,6 +768,7 @@ mod formal_actions;
 mod equipment_export;
 mod equipment_matrix;
 mod equipment_rating_editor;
+pub(super) use equipment_rating_editor::fits as assert_text_fits;
 mod equipment_rating_export;
 
 mod result_provenance_ui;

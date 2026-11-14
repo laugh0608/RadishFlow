@@ -272,6 +272,13 @@ fn dispatch_bootstrap_trigger(
                 committed,
             })
         }
+        StudioBootstrapTrigger::ApplyFeedMolarFlowBatch(checked) => {
+            Ok(StudioBootstrapDispatch::FeedMolarFlowBatchApplied(
+                session
+                    .app_state
+                    .apply_feed_molar_flow_batch(checked, normalized_system_time_now()?),
+            ))
+        }
         StudioBootstrapTrigger::ProjectPresentation(command) => {
             let changed = session
                 .app_state
