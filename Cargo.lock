@@ -2680,6 +2680,7 @@ version = "0.1.0"
 dependencies = [
  "eframe",
  "reqwest",
+ "rf-ffi",
  "rf-flash",
  "rf-flowsheet",
  "rf-model",

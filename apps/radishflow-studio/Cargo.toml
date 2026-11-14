@@ -24,6 +24,9 @@ rf-ui = { path = "../../crates/rf-ui" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+[dev-dependencies]
+rf-ffi = { path = "../../crates/rf-ffi" }
+
 [target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
 rfd = { version = "0.15", default-features = false }
 

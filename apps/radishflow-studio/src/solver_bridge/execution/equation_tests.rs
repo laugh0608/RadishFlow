@@ -170,7 +170,8 @@ fn equation_failure_evidence_and_late_completion_never_publish_values() {
     select(&mut app, FlowPlanConfiguration::EquationOriented(o));
     let mut done = execute(&mut app);
     assert_eq!(done.execution_outcome(), WorkspaceExecutionOutcome::Failed);
-    let SolveOutcome::EquationFailed(f) = &mut done.outcome else {
+    let SolveOutcome::Executed(FlowExecutionOutcome::EquationOriented(Err(f))) = &mut done.outcome
+    else {
         panic!()
     };
     f.evidence.conditional_evaluations[0].target_residual_mol_s = Some(f64::NAN);
@@ -214,7 +215,7 @@ fn equation_structure_incomplete_pairs_and_released_missing_input_are_distinct()
         app.workspace
             .flow_plan
             .current()
-            .validate_for(&app.workspace)
+            .validate_for(&app.workspace.document.flowsheet)
             .is_ok()
     );
     run(&mut app);
@@ -233,7 +234,7 @@ fn equation_structure_incomplete_pairs_and_released_missing_input_are_distinct()
             app.workspace
                 .flow_plan
                 .current()
-                .validate_for(&app.workspace)
+                .validate_for(&app.workspace.document.flowsheet)
                 .is_err()
         );
     }

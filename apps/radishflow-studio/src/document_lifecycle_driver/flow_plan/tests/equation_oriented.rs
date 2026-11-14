@@ -77,7 +77,7 @@ fn equation_save_reopen_preserves_bound_scales_units_and_missing_results() {
             .workspace
             .flow_plan
             .current()
-            .validate_for(&reopened.workspace)
+            .validate_for(&reopened.workspace.document.flowsheet)
             .is_ok()
     );
     assert_eq!(

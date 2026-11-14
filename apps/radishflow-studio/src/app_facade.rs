@@ -498,7 +498,7 @@ pub(crate) fn preflight_workspace_run(
         .workspace
         .flow_plan
         .current()
-        .validate_for(&app.workspace)
+        .validate_for(&app.workspace.document.flowsheet)
     {
         return WorkspaceRunPreflight::Blocked {
             package_id: None,

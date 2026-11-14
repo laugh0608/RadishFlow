@@ -313,7 +313,12 @@ fn gui_explicit_connection_button_builds_the_return_edge_before_running() {
     click_text(&mut app, &ctx, "Confirm connection", 0);
     assert_eq!(app.platform_host.document().revision, revision + 1);
     let w = &app.platform_host.modeling_inputs().workspace;
-    assert!(w.flow_plan.current().validate_for(w).is_ok());
+    assert!(
+        w.flow_plan
+            .current()
+            .validate_for(&w.document.flowsheet)
+            .is_ok()
+    );
     assert!(rf_solver::sequential_execution_order(&w.document.flowsheet).is_err());
     click_text(&mut app, &ctx, "Run F5", 0);
     drain(&mut app, &ctx);

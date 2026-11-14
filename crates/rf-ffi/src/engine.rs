@@ -6,7 +6,11 @@ use rf_property_package::{
     PropertyPackageProvider, PropertyPackageSource, load_property_package_files,
     prepare_local_context,
 };
-use rf_solver::{FlowsheetSolver, SequentialModularSolver, SolveSnapshot, SolverServices};
+use rf_solver::{
+    ControlledSolveOutcome, SolveSnapshot, SolverServices,
+    execution::{FlowExecutionOutcome, UncontrolledSolve, execute_flow},
+    flow_plan::FlowPlanConfiguration,
+};
 use rf_store::{StoredProjectFile, parse_project_file_json};
 use rf_thermo::{AntoineCoefficients, ThermoComponent, ThermoSystem};
 use rf_types::{ComponentId, RfError, RfResult};
@@ -62,7 +66,17 @@ impl Engine {
             thermo: context.thermo(),
             flash_solver: context.tp_flash(),
         };
-        let snapshot = SequentialModularSolver.solve(&services, &project.document.flowsheet)?;
+        let FlowExecutionOutcome::Acyclic(outcome) = execute_flow(
+            &project.document.flowsheet,
+            &FlowPlanConfiguration::Acyclic,
+            &services,
+            &mut UncontrolledSolve,
+        ) else {
+            unreachable!("legacy FFI only dispatches the acyclic plan");
+        };
+        let ControlledSolveOutcome::Completed(snapshot) = outcome? else {
+            unreachable!("uncontrolled execution cannot cancel");
+        };
 
         self.latest_snapshot = Some(snapshot);
         self.clear_last_error();

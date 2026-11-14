@@ -483,3 +483,6 @@ fn v3_is_rejected_before_headless_inspection_modeling_or_solving() {
 
 #[path = "headless_cli/v3.rs"]
 mod v3;
+
+#[path = "headless_cli/shared_flow_execution.rs"]
+mod shared_flow_execution;

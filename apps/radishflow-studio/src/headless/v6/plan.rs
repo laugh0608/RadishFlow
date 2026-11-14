@@ -284,7 +284,7 @@ pub(super) fn query(app: &AppState) -> Result<Value, Failure> {
         w.flow_plan.current(),
         FlowPlanConfiguration::EquationOriented(_)
     ) {
-        let ready = w.flow_plan.current().validate_for(w);
+        let ready = w.flow_plan.current().validate_for(&w.document.flowsheet);
         let structure = crate::equation_actions::inspect_equation_structure(w);
         json!({"plan_revision":w.flow_plan.revision(),"configuration":wire(w.flow_plan.current())?,"ready":ready.is_ok(),"not_ready":ready.err().map(|e|json!({"code":e.context().diagnostic_code(),"message":e.to_string()})),"simulation_dirty":w.flow_plan.is_dirty(),"in_memory_required_project_schema_version":crate::project_save_version(app),"in_memory_required_capabilities":required_capabilities(app),"equation_preview":structure.as_ref().ok().map(|s|crate::equation_result_projection::definition(&s.definition)).transpose().map_err(domain)?,"preview_error":structure.err().map(|e|json!({"code":e.context().diagnostic_code(),"message":e.to_string()}))})
     } else {

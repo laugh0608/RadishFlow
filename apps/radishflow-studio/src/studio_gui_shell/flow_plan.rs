@@ -321,7 +321,11 @@ impl ReadyAppState {
             }
         });
         let workspace = &self.platform_host.modeling_inputs().workspace;
-        match workspace.flow_plan.current().validate_for(workspace) {
+        match workspace
+            .flow_plan
+            .current()
+            .validate_for(&workspace.document.flowsheet)
+        {
             Ok(()) => {
                 ui.label(tr(zh,"计划拓扑与绑定已就绪；运行时继续检查输入与物性。","Plan topology and bindings ready; runtime also checks physical inputs and property package."));
             }

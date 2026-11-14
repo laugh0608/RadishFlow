@@ -3,7 +3,7 @@ mod mixed;
 use super::*;
 use crate::{InputUnitOrigin, NumericParseOutcome, parse_numeric_input};
 use rf_types::{
-    ComponentId,
+    ComponentId, StreamId,
     units::{MeasurementUnit, QuantityKind, from_canonical},
 };
 use std::collections::BTreeMap;

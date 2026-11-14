@@ -709,7 +709,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - 默认包选择当前采取保守策略：无 entitlement 时仅在本地缓存中唯一包可选时自动选中；有 entitlement 时仅在“本地缓存 ∩ entitlement manifests”唯一时自动选中，多包场景必须显式指定 package
 - `WorkspaceSolveService` 生成默认 `snapshot_id` / `sequence`；应用层以 `Manual / Automatic`、`SimulationMode` 和 `pending_reason` 门控运行
 - `ResumeWorkspace` 先做 package / readiness preflight；未就绪保持 `Hold` / pending 并返回 modeling notice，通过后才切到 `Active` 按 Automatic 运行
-- `rf-property-package` 的 provider 装载指定包，`prepare_local_context` 冻结服务；执行按捕获计划分派相应 solver，包错误保留结构化诊断。后台准备失败与同步兼容的处理差异见 [AF3 契约](../topics/runtime-messages/run-control-and-watch-conditions.md#af3b-已实现契约2026-10-24)
+- `rf-property-package` 装载已选包，`prepare_local_context` 冻结服务。`rf-solver::execution::execute_flow` 分派捕获的计划并返回类型化结果。后台与同步准备失败的处理见 [AF3 契约](../topics/runtime-messages/run-control-and-watch-conditions.md#af3b-已实现契约2026-10-24)。
 - 完成先经输入 / 计划资格及载荷检查，再把成功结果映射为对应 `FlowResultRecord` 并 `store_snapshot`；失败沿既有诊断 / 日志路径处理，迟到结果不得发布。`SolveSnapshot` 仅指无回路载荷，详见[结果参考](../reference/solve-snapshot-results.md)
 - Automatic 的上述 skip 也写入 `AppLogFeed`；运行回执 `StudioWorkspaceRunDispatch` 提供模式、pending、最新快照和日志摘要，`StudioWorkspaceModeDispatch` 独立承接模式切换
 - `main.rs` 经 `run_studio_bootstrap` / `StudioBootstrapTrigger` 进入应用；`run_panel_driver` 消费 `RunPanelWidgetModel + WorkspaceControlState`，后者提供 mode、status、pending、快照摘要与可用动作

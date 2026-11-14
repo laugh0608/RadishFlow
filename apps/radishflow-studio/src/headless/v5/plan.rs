@@ -97,7 +97,7 @@ pub(super) fn wire(plan: &FlowPlanConfiguration) -> Result<Value, Failure> {
 }
 pub(super) fn query(app: &AppState) -> Result<Value, Failure> {
     let w = &app.workspace;
-    let ready = w.flow_plan.current().validate_for(w);
+    let ready = w.flow_plan.current().validate_for(&w.document.flowsheet);
     let preview = if let FlowPlanConfiguration::Simultaneous(o) = w.flow_plan.current() {
         rf_solver::simultaneous::assemble(&w.document.flowsheet,o).ok().map(|p| p.blocks().iter().enumerate().map(|(i,b)|json!({"index":i,"members":b.members.iter().map(|id|id.as_str()).collect::<Vec<_>>(),"couplings":b.couplings.iter().map(crate::modular_result_projection::binding).collect::<Vec<_>>()})).collect::<Vec<_>>())
     } else {

@@ -126,7 +126,7 @@ fn vector(v: &BTreeMap<rf_types::ComponentId, f64>) -> Vec<ComponentValue> {
 }
 pub fn query(app: &rf_ui::AppState) -> Result<Value, Failure> {
     let w = &app.workspace;
-    let ready = w.flow_plan.current().validate_for(w);
+    let ready = w.flow_plan.current().validate_for(&w.document.flowsheet);
     Ok(
         json!({"plan_revision":w.flow_plan.revision(),"configuration":wire(w.flow_plan.current())?,"ready":ready.is_ok(),"not_ready":ready.err().map(|e|json!({"code":e.context().diagnostic_code(),"message":e.to_string()})),"simulation_dirty":w.flow_plan.is_dirty(),"methods":["radishflow.acyclic-sm/1","radishflow.partitioned-sm/1"],"in_memory_required_project_schema_version":crate::project_save_version(app)}),
     )

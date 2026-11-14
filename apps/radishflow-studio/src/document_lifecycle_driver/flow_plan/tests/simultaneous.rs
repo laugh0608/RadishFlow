@@ -69,7 +69,7 @@ fn modular_save_reopen_preserves_bound_scales_units_and_missing_results() {
             .workspace
             .flow_plan
             .current()
-            .validate_for(&reopened.workspace)
+            .validate_for(&reopened.workspace.document.flowsheet)
             .is_ok()
     );
     assert_eq!(
@@ -194,7 +194,7 @@ fn incomplete_modular_scale_bindings_roundtrip_and_old_protocol_stays_readonly()
         app.workspace
             .flow_plan
             .current()
-            .validate_for(&app.workspace)
+            .validate_for(&app.workspace.document.flowsheet)
             .is_err()
     );
     dispatch_document_lifecycle(
@@ -225,7 +225,7 @@ fn incomplete_modular_scale_bindings_roundtrip_and_old_protocol_stays_readonly()
             .workspace
             .flow_plan
             .current()
-            .validate_for(&reopened.workspace)
+            .validate_for(&reopened.workspace.document.flowsheet)
             .is_err()
     );
     let StudioProjectOpen::ReadOnly(readonly) =

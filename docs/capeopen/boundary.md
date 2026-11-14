@@ -176,14 +176,13 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - 输入字符串使用 `pointer + length` 传入，解释为 UTF-8
 - 输出字符串由 Rust 侧分配为 UTF-8 C string，并统一通过 `rf_string_free` 释放
 - 最近一次错误当前同时支持文本导出和结构化 JSON 导出，后续 `.NET` 适配层不必只靠错误文本分支
-- `flowsheet_load_json` 当前加载 `StoredProjectFile` JSON
+- `flowsheet_load_json` 只加载工程 v1 / v2 的 `StoredProjectFile` JSON。装载成功清空快照，装载失败保留原工程与快照。
 - `property_package_load_from_files` 当前允许把本地 `manifest.json + payload.rfpkg` 注册到 engine 内的 package registry
 - `property_package_list_json` 当前导出 engine 内可用 package manifest 列表，供上层列包与选包
-- `flowsheet_solve` 当前按 `package_id` 选择物性包，并把最新 `SolveSnapshot` 留在 engine 内
-- `flowsheet_get_snapshot_json` 当前导出最近一次成功求解的整份 `SolveSnapshot` JSON
-- `stream_get_snapshot_json` 当前从最近一次成功求解的 `SolveSnapshot` 导出单股流体 JSON
+- `flowsheet_solve` 按显式 `package_id` 选包，以无回路计划调用 [共享执行入口](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)。求解成功替换快照。
+- `flowsheet_get_snapshot_json` 与 `stream_get_snapshot_json` 分别导出已加载工程最近成功的整份快照与单股结果。后续求解失败时，该快照仍可读取。本次求解是否成功以 `flowsheet_solve` 返回状态为准。
 - 返回状态码当前分为两层：FFI 前置错误（如空指针、非法 UTF-8、未加载 flowsheet / 未生成 snapshot）与 `rf_types::ErrorCode` 映射的内核错误；结构化错误 JSON 当前会额外带出 `ffiStatus`、`code`、`diagnosticCode`、`relatedUnitIds`、`relatedStreamIds` 与 `relatedPortTargets`
-- 运行时物性包文件加载只验证 manifest / payload 可注册；若某个求解实际需要的热力学字段缺失，应在 `flowsheet_solve` 阶段返回对应内核状态，例如 `RfFfiStatus::Thermo` 与 `ffiStatus=thermo`，失败后不生成可导出的 solve snapshot
+- 物性包文件加载验证 manifest / payload 的注册资格。求解所需热力学数据缺失时，`flowsheet_solve` 返回对应内核状态，例如 `RfFfiStatus::Thermo` 与 `ffiStatus=thermo`。
 
 当前这版运行时仍是最小实现，额外明确以下暂时约束：
 

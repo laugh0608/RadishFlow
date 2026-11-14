@@ -5,7 +5,7 @@ use crate::{
     result_query::{FlowResultUnavailable, FlowResultView},
 };
 use rf_model::Flowsheet;
-use rf_solver::partitioned::FixedRecycleBoundary;
+use rf_solver::partitioned::{FixedRecycleBoundary, RecycleSolveOptions};
 mod simultaneous;
 fn app() -> AppState {
     AppState::new(FlowsheetDocument::new(

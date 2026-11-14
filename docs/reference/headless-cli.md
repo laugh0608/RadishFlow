@@ -1,6 +1,6 @@
 # 本地无界面运行接口
 
-更新时间：2026-11-12
+更新时间：2026-11-14
 
 用途：说明 Studio 旧 v1 / v2、AF4c v3、QS1-C v4、QS2-C v5、QS3 v6 与 QS4 v7 命令、JSON 请求 / 响应和错误语义。
 
@@ -10,13 +10,15 @@
 
 ## 版本与兼容边界
 
-[AF4c](../topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)的 `query` / `execute` 已通过真实进程验证。本文先列旧协议，v3–v7 见后文。
+v3–v7 使用 `query` / `execute`，见[新版协议](#新版-v3查询)。
 
-B3-5 在 v2 增加受控创建 / 连接和步骤引用，保留 v1 的字段、路径与错误契约。v1 / v2 按 SI 读写，`unit` 标签来自共享目录；输入不接收单位字段。带单位请求须另定协议。 [单位系统](../topics/units-and-quantity-system.md) · [建模辅助](../topics/modeling-assistance-and-specifications.md)
+v2 增加受控创建 / 连接和步骤引用，保留 v1 的字段、路径与错误契约。v1 / v2 按 SI 读写，`unit` 标签来自共享目录，输入不接收单位字段。 [单位系统](../topics/units-and-quantity-system.md) · [建模辅助](../topics/modeling-assistance-and-specifications.md)
 
-U2-I1 通过共享存储读取工程 v1 / v2。非法呈现配置使装载失败；合法配置不影响 CLI 的 SI 数值与标签。工程外层版本与请求版本独立。 [单位存储接口](../topics/units/unit-sets-and-persistence.md#u2-存储接口)
+工程版本与请求版本独立。v1 / v2 的显示配置经存储校验，CLI 仍输出 SI。 [单位存储接口](../topics/units/unit-sets-and-persistence.md#u2-存储接口)
 
-旧 `inspect`、v1 `run` 与 v2 workflow 在建模 / 求解前拒绝外层 v3 及以上文件，工程区缺省或为空也拒绝。 [v3 生命周期](../topics/project-lifecycle-storage.md#完整设备保存与最小-studio-生命周期2026-10-15)
+旧 `inspect`、v1 `run` 与 v2 workflow 在建模前拒绝工程 v3 及以上、缺失或空工程区。 [v3 生命周期](../topics/project-lifecycle-storage.md#完整设备保存与最小-studio-生命周期2026-10-15)
+
+流程 Run 使用[共享执行入口](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)。
 
 含 `radishflow.object-identity` 或 `radishflow.variable-watch-list` 的 v4 工程，v3 `query` / `execute` 拒绝装载。v4–v7 `query` 只返回安全元数据；`execute` 核对工程 ID 与指纹后返回 `read_only_project`，早于资源读取和步骤执行。 [VB-D02](../topics/variable-browser/identity-storage.md) · [VB-D03](../topics/variable-browser/watch-list.md)
 

@@ -34,7 +34,8 @@ pub enum ControlledSolveOutcome {
     Cancelled,
 }
 
-pub(crate) struct UncontrolledSolve;
+/// Synchronous execution without progress observation or cancellation.
+pub struct UncontrolledSolve;
 
 impl SolverControl for UncontrolledSolve {
     fn checkpoint(&mut self, _: SolveProgress) -> ControlFlow<()> {

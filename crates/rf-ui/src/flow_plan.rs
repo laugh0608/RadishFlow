@@ -1,89 +1,12 @@
 //! Project-owned steady-state configuration. Identity, history and drafts remain
 //! session local; a plan change is independent of the physical edit context.
 mod editor;
-mod simultaneous;
 use crate::{FlowRunQualification, RunStatus, SolvePendingReason, WorkspaceState};
 pub use editor::*;
-use rf_solver::partitioned::{RecycleSolveOptions, assemble_partitioned_plan};
-use rf_types::{RfError, RfResult, StreamId, UnitId};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-};
+pub use rf_solver::flow_plan::FlowPlanConfiguration;
+use rf_types::{RfError, RfResult};
+use std::{collections::BTreeMap, sync::Arc};
 
-#[derive(Debug, Clone, Default, PartialEq)]
-pub enum FlowPlanConfiguration {
-    #[default]
-    Acyclic,
-    Partitioned(RecycleSolveOptions),
-    Simultaneous(rf_solver::simultaneous::ModularOptions),
-    EquationOriented(rf_solver::equation_oriented::EquationOptions),
-    Mixed(rf_solver::mixed::MixedOptions),
-}
-impl FlowPlanConfiguration {
-    pub fn validate_configuration(&self) -> RfResult<()> {
-        match self {
-            Self::Acyclic => Ok(()),
-            Self::Mixed(o) => o.validate_shape(),
-            Self::Partitioned(o) => o.validate_configuration(),
-            Self::Simultaneous(o) => simultaneous::validate_configuration(o),
-            Self::EquationOriented(o) => o.validate_shape().map_err(|e| e.error),
-        }
-    }
-    pub fn validate_for(&self, workspace: &WorkspaceState) -> RfResult<()> {
-        match self {
-            Self::Mixed(o) => {
-                rf_solver::mixed::assemble(&workspace.document.flowsheet, o).map(|_| ())
-            }
-            Self::EquationOriented(o) => {
-                rf_solver::equation_oriented::assemble(&workspace.document.flowsheet, o)
-                    .and_then(|p| p.require_ready())
-                    .map_err(|e| e.error)
-            }
-            Self::Acyclic => {
-                rf_solver::sequential_execution_order(&workspace.document.flowsheet).map(|_| ())
-            }
-            Self::Partitioned(o) => {
-                assemble_partitioned_plan(&workspace.document.flowsheet, o).map(|_| ())
-            }
-            Self::Simultaneous(o) => {
-                rf_solver::simultaneous::assemble(&workspace.document.flowsheet, o).map(|_| ())
-            }
-        }
-    }
-    pub fn referenced_unit_ids(&self) -> BTreeSet<UnitId> {
-        match self {
-            Self::Acyclic => BTreeSet::new(),
-            Self::EquationOriented(o) => o.referenced_unit_ids(),
-            Self::Mixed(o) => o.referenced_unit_ids(),
-            Self::Simultaneous(o) => o
-                .scales
-                .iter()
-                .flat_map(|s| s.keys())
-                .flat_map(|b| [b.source.unit_id.clone(), b.sink.unit_id.clone()])
-                .collect(),
-            Self::Partitioned(o) => o
-                .tears
-                .iter()
-                .flat_map(|t| [t.source.unit_id.clone(), t.sink.unit_id.clone()])
-                .collect(),
-        }
-    }
-    pub fn referenced_stream_ids(&self) -> BTreeSet<StreamId> {
-        match self {
-            Self::Acyclic => BTreeSet::new(),
-            Self::EquationOriented(o) => o.referenced_stream_ids(),
-            Self::Mixed(o) => o.referenced_stream_ids(),
-            Self::Simultaneous(o) => o
-                .scales
-                .iter()
-                .flat_map(|s| s.keys())
-                .map(|b| b.stream.clone())
-                .collect(),
-            Self::Partitioned(o) => o.tears.iter().map(|t| t.stream_id.clone()).collect(),
-        }
-    }
-}
 #[derive(Debug, Clone)]
 pub struct FlowPlanGeneration(Arc<()>);
 impl FlowPlanGeneration {

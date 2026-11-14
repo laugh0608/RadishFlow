@@ -61,7 +61,7 @@ flowchart TD
 | `rf-flash` | TP Flash、Rachford-Rice、相分率与相组成 | 数值假设与验证边界见 [热力学模型](../thermo/mvp-model.md) |
 | `rf-unitops` | 七类内建单元 / 工厂、规格规则、组分衡算 / 响应 / 方程能力，以及独立设备计算 | 各模型分别声明支持的能力；Mixer、Valve 和焓模型仍有简化假设 |
 | `rf-flowsheet` | 端口、流股引用、一源一汇校验及文档侧有来源的入口压力上下文 | 终端产品流可没有 sink；不借用未运行模板伪造压力依据 |
-| `rf-solver` | 无回路 SM、QS0 独立物料任务、QS1 分块回流、QS2 仿射联立、QS3 物料 EO、QS4 Local＋正向 EO 的 DAG 与独立复核 | 各方法按自身能力执行，不自动换策略；跨块混合回路与通用非线性未实现 |
+| `rf-solver` | 稳态计划值、共享执行分派、无回路 SM、QS0 独立物料任务、QS1 分块回流、QS2 仿射联立、QS3 物料 EO、QS4 Local＋正向 EO 的 DAG 与独立复核 | 各方法按自身能力执行，不自动换策略；跨块混合回路与通用非线性未实现 |
 | `rf-store` | 项目 v1—v4、sidecar、偏好、授权缓存、物性包与设备 / 正式流程计划编解码 | 已知能力可编辑，未知能力整份只读；工程版本与 CLI 版本独立，见 [存储专题](../topics/project-lifecycle-storage.md) |
 | `rf-ffi` | engine 句柄、JSON 输入输出、错误映射与字符串释放 | 对外只暴露窄 C ABI，不向内核引入 COM |
 | `rf-ui` | AppState、草稿、共享输入事务、工程查询、来源与结果 presentation | 只读消费求解结果，不另算热力学 |
@@ -71,6 +71,8 @@ flowchart TD
 | `xtask` | 仓库治理、文本门禁和 Rust 基线检查 | `.sh` / `.ps1` 是平台包装入口 |
 
 典型计算调用方向为 `Studio 或 rf-ffi -> rf-solver -> rf-unitops -> rf-flash / rf-thermo`；`rf-flowsheet` 提供连接校验，`rf-model / rf-types` 提供领域数据。该描述是职责路径，不是完整 Cargo 依赖图。
+
+Studio 后台与 CLI 经应用桥接调用 `rf-solver::execution::execute_flow`。`rf-ffi` 在旧工程校验和选包后调用同一入口。输入冻结、物性加载、任务调度及结果接收的归属见[共享稳态执行契约](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)。
 
 `rf-model::equipment` 拥有任务、输入与固定采纳证据；`rf-unitops::separator_sizing` 复用来源绑定，纯函数检查并返回拥有输入 / 来源副本的只读候选，无 UI、IO、COM 或流程求解调用。`rf-ui::engineering` 管理正式事务、独立历史及结果资格，`editor` 管理草稿与影响确认；Studio 设备页消费同一应用状态，并通过 `rf-store::project_v3` 保存正式输入。设备检查 / 计算不依赖流程 Run 或物性包选择；重开后结果 Missing。单行 / 矩阵导出已接通；C1 的 `separator_adoption` 纯映射与应用 / 编辑器原子采纳、v3 保存已实现，局部画板已确认，采纳 UI 与固定证据输出已接通；流程关联未接入。
 
