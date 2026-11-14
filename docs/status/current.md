@@ -21,7 +21,7 @@
 - 插件、分层许可与公共 API 授权 / 配额已纳入 [规划](../radishflow-mvp-roadmap.md#插件与公共-api-的实施切片)；运行时、许可政策、接口和部署待切片决策。
 - [单位系统](../topics/units-and-quantity-system.md)、[规格与辅助](../topics/modeling-assistance-and-specifications.md)、[设备设计与校核](../topics/equipment-design-and-rating.md) 首批已有实现，进展见下文；设备工程不等待完整动态，未来 Agent 复用统一入口，当前不接入 AI。
 - [工程基础与来源](../topics/engineering-basis-and-cases.md)已支撑独立设备；变更影响、差异与证据复核纳入[后续切片](../radishflow-mvp-roadmap.md#工程工作流的配套切片)，流程关联仍待实施，近期顺序服从 AF。
-- 旧 `.pen` 保留；停用 pen.dev / Pencil，详见 [UI 计划](../architecture/studio-ui-topic-plan.md)。
+- 新交互评审可选本机 Penpot；旧稿保留，Pencil 停用。见 [UI 计划](../architecture/studio-ui-topic-plan.md)。
 - 当前尚未进入正式 tag / release 节点；`v26.5.1-dev` 仅作历史 staging 记录。
 
 ## 当前开发范围与优先级

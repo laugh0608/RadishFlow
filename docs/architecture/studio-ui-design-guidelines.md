@@ -126,7 +126,7 @@ UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baselin
 
 ## 后续 UI 专题与设计稿资产
 
-当前文档记录的是 MVP α / β 阶段已经形成的 Studio UI 规范、真实 UI 收口经验和下一轮主设计稿约束，不等同于完整产品 UI 设计系统。长期视觉定位、排版与控件结构见 `studio-visual-system.md`；状态映射、token 与迁移验收归 [颜色与状态专题](../topics/color-and-state-system.md)。Studio UI 专题阶段的端点边界、主工作流、状态模型和 `.pen` 设计稿规则见 `studio-ui-topic-plan.md`；保留的 Studio 主设计稿见 `docs/architecture/designs/studio-client-main.pen`（新增功能分区待重评），文字 brief 见 `docs/architecture/designs/studio-client-main-brief.md`。本文继续承担设计规范职责，不承载阶段推进流水。
+当前文档记录的是 MVP α / β 阶段已经形成的 Studio UI 规范、真实 UI 收口经验和下一轮主设计稿约束，不等同于完整产品 UI 设计系统。长期视觉定位、排版与控件结构见 `studio-visual-system.md`；状态映射、token 与迁移验收归 [颜色与状态专题](../topics/color-and-state-system.md)。Studio UI 专题阶段的端点边界、主工作流、状态模型和设计评审规则见 `studio-ui-topic-plan.md`；保留的 Studio 主设计稿见 `docs/architecture/designs/studio-client-main.pen`（新增功能分区待重评），文字 brief 见 `docs/architecture/designs/studio-client-main-brief.md`。本文继续承担设计规范职责，不承载阶段推进流水。
 
 旧版 P0 设计稿口径（保留历史范围，新增功能分区待重评）：
 
@@ -137,11 +137,11 @@ UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baselin
 
 设计流程应采用设计稿先行：
 
-- 先形成可编辑设计源稿并渲染评审图，再根据认可的设计开发。2026-11-14 起暂停 pen.dev / Pencil，工具与格式安排见 [UI 专题计划](studio-ui-topic-plan.md#设计工具与文档规则)。
+- 先形成可编辑设计源稿并渲染评审图，再根据认可的设计开发。后续新交互可选用本机 Penpot，工具与选用范围见 [UI 专题计划](studio-ui-topic-plan.md#设计工具与文档规则)。
 - 设计稿必须随仓库保存和同步，不能只留在个人本地或聊天记录里。
 - 专题启动时应同时读取 `docs/architecture/ui-inspiration-reference.md`，明确每个设计稿借鉴了哪些设计原则，以及哪些视觉元素不得照抄。
 - 原则上每个明确端点或界面域维护一个独立设计包，避免把客户端、服务端管理和移动端视图混在同一个设计稿里；但模块设置这类 Workbench 内部结构应先在主稿中统一，不为每个单元复制整套 Workbench。
-- 设计包归 `docs/architecture/designs/`，包含可编辑源稿、渲染图及 brief；旧 `.pen` 保留，不用文本工具读取 / 改写。
+- 设计包归 `docs/architecture/designs/`，包含可编辑源稿、渲染图及 brief。采用 Penpot 时按 [评审包与恢复验证](studio-ui-topic-plan.md#penpot-评审包与恢复验证)归档。
 - 每次按设计稿实现 UI 时，应同步记录该实现对应的源稿 / 版本、评审状态和偏离设计稿的原因。
 
 ## 信息架构
