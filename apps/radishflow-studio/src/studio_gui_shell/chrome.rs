@@ -521,10 +521,10 @@ impl ReadyAppState {
             StudioGuiWindowDockRegion::LeftSidebar,
         )
         .clamp(240.0, 280.0);
+        // Layout state owns these non-draggable widths. default_width would
+        // preserve egui's old panel width after a layout or viewport change.
         egui::SidePanel::left("studio.left_sidebar")
-            .default_width(left_width)
-            .min_width(240.0)
-            .max_width(280.0)
+            .exact_width(left_width)
             .resizable(false)
             .show(ctx, |ui| {
                 self.render_left_workbench(ui, window);
@@ -545,9 +545,7 @@ impl ReadyAppState {
         .clamp(340.0, 420.0);
         let problem_width = ctx.available_rect().width() - right_width - 16.0;
         egui::SidePanel::right("studio.right_sidebar")
-            .default_width(right_width)
-            .min_width(340.0)
-            .max_width(420.0)
+            .exact_width(right_width)
             .resizable(false)
             .show(ctx, |ui| {
                 self.prepare_modeling_problem_field_layout(

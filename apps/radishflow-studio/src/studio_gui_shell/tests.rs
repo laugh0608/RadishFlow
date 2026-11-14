@@ -189,6 +189,7 @@ mod result_export;
 mod result_review;
 mod runtime;
 mod runtime_synthetic_flash_inlet_boundary;
+mod sidebar_width;
 mod unit_deletion;
 
 fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGuiCommandEntry> {

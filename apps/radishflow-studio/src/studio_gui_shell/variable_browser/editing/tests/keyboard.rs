@@ -79,6 +79,49 @@ fn begin(app: &mut ReadyAppState, ctx: &egui::Context, width: f32) {
 }
 
 #[test]
+fn browser_tab_to_units_keeps_an_untouched_explicit_edit_session() {
+    let mut app = app();
+    app.locale = StudioShellLocale::En;
+    let selection = select(
+        &mut app,
+        ObjectId::Stream("stream-feed".into()),
+        VariableField::MolarFlow,
+    );
+    app.variable_browser.mode = BrowserMode::Side;
+    let original = app.platform_host.document().clone();
+    let ctx = egui::Context::default();
+    ctx.enable_accesskit();
+    begin(&mut app, &ctx, 400.0);
+    let generation = field(&app, &selection).generation;
+    assert!(generation.is_some());
+    frame(
+        &mut app,
+        &ctx,
+        400.0,
+        vec![key(egui::Key::Tab, egui::Modifiers::NONE)],
+    );
+    let output = frame(&mut app, &ctx, 400.0, vec![]);
+    assert_eq!(field(&app, &selection).generation, generation);
+    assert_eq!(
+        output
+            .platform_output
+            .accesskit_update
+            .as_ref()
+            .unwrap()
+            .focus,
+        node(&output, Role::ComboBox, "Input value input unit")
+    );
+    frame(
+        &mut app,
+        &ctx,
+        400.0,
+        vec![key(egui::Key::Enter, egui::Modifiers::NONE)],
+    );
+    assert!(ctx.memory(|memory| memory.any_popup_open()));
+    assert_eq!(app.platform_host.document(), &original);
+}
+
+#[test]
 fn browser_keyboard_unit_menu_escape_and_draft_return_share_u2() {
     for (width, mode) in [(1200.0, BrowserMode::Expanded), (400.0, BrowserMode::Side)] {
         let mut app = app();

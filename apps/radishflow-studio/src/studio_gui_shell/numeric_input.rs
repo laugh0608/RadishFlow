@@ -581,8 +581,10 @@ impl ReadyAppState {
                 }
             });
         }
-        // An untouched focus session should not freeze display units after focus moves away.
-        if response.lost_focus()
+        // Inspector starts sessions implicitly on focus; release untouched ones.
+        // Browser Edit is explicit and must survive Tab to its unit selector.
+        if matches!(surface, NumericEditSurface::Inspector)
+            && response.lost_focus()
             && !field.pending
             && !field.can_undo
             && !field.can_redo

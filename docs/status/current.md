@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-11-13
+更新时间：2026-11-14
 
 ## 用途
 
@@ -21,7 +21,7 @@
 - 插件、分层许可与公共 API 授权 / 配额已纳入 [规划](../radishflow-mvp-roadmap.md#插件与公共-api-的实施切片)；运行时、许可政策、接口和部署待切片决策。
 - [单位系统](../topics/units-and-quantity-system.md)、[规格与辅助](../topics/modeling-assistance-and-specifications.md)、[设备设计与校核](../topics/equipment-design-and-rating.md) 首批已有实现，进展见下文；设备工程不等待完整动态，未来 Agent 复用统一入口，当前不接入 AI。
 - [工程基础、工况与来源](../topics/engineering-basis-and-cases.md) 已支撑当前设备链路；目标反算、工程检查、压力 / 公用工程和交付按 [配套切片](../radishflow-mvp-roadmap.md#工程工作流的配套切片) 扩展，近期顺序服从 AF。
-- 旧 `.pen` 保留，新增分区按 [UI 计划](../architecture/studio-ui-topic-plan.md) 评审；U2 / V0 局部画板已获认可。
+- 旧 `.pen` 保留；停用 pen.dev / Pencil，详见 [UI 计划](../architecture/studio-ui-topic-plan.md)。
 - 当前尚未进入正式 tag / release 节点；`v26.5.1-dev` 仅作历史 staging 记录。
 
 ## 当前开发范围与优先级
@@ -42,7 +42,7 @@
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
 
 
-### 最近进展（截至 2026-11-13）
+### 最近进展（截至 2026-11-14）
 
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
 - PR #18 已合入 `master` 并回灌 `dev`（`4772fbba`）。AF3-V10 已补 macOS 在途切换、最后窗口退出、脏改取消关闭及另存面板交错代表证据；退出等待返回编辑仍待原生补证，AF1 未定因。见 [W46](../devlogs/2026-11/2026-W46.md)。
@@ -50,7 +50,7 @@
 
 ### 下一步
 
-- [ ] [VB-D04 首片已接通](../topics/variable-and-object-browser.md#接下来事项)；补精确 400 px 原生与 D03 / D04 主稿，平台残项保持。
+- [x] [VB-D04 首片与 400 px macOS 补验](../topics/variable-and-object-browser.md#接下来事项)通过；D03 / D04 补稿暂停，平台残项保持。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
 - [ ] 按 [QS3 保留项](../topics/modeling/equation-oriented-block.md#接下来事项)补方法特定原生交互与平台项；共享取消 / join 代表及数值直证已补。
 - [x] [QS4 首片 A—D](../topics/modeling/mixed-partition-execution.md)已按批准方案及认可画板完成；跨块回路、更多策略与逆向规格另审。
@@ -114,7 +114,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-13：2,104 项 Rust 测试、VB-D04 macOS 代表实窗通过，见 [W46](../devlogs/2026-11/2026-W46.md)。
+- 2026-11-14：2,106 项 Rust 测试、VB-D04 精确 400 px macOS 键盘通过，见 [W46](../devlogs/2026-11/2026-W46.md)。
 
 - 2026-11-10：PR #18 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 
