@@ -398,9 +398,9 @@ fn equipment_export_reopen_same_ids_revokes_captured_output_and_pending_confirma
     fs::remove_dir_all(project.parent().unwrap()).unwrap();
 }
 
-struct EquipmentPicker {
-    path: Option<PathBuf>,
-    supported: bool,
+pub(super) struct EquipmentPicker {
+    pub path: Option<PathBuf>,
+    pub supported: bool,
 }
 impl ProjectFilePicker for EquipmentPicker {
     fn supports_equipment_export_dialogs(&self) -> bool {

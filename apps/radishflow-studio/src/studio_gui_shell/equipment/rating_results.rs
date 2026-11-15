@@ -35,8 +35,10 @@ pub(super) fn render(
     let mut body = |ui: &mut egui::Ui| match outcome {
         Err(failure) => {
             for issue in &failure.issues {
-                if ui.link(rating_labels::issue_label(l, issue)).clicked() {
-                    requested = Some(issue.target.clone());
+                let response = ui.link(rating_labels::issue_label(l, issue));
+                source::reveal_focused_action(&response);
+                if response.clicked() {
+                    requested = Some((issue.target.clone(), response.id));
                 }
             }
         }
@@ -58,7 +60,13 @@ pub(super) fn render(
         .zip(radishflow_studio::EquipmentResultGuard::capture(
             session, key,
         ))
-        .map(|(target, guard)| super::super::result_review::EquipmentNavigation { target, guard })
+        .map(
+            |((target, button), guard)| super::super::result_review::EquipmentNavigation {
+                target,
+                guard,
+                button,
+            },
+        )
 }
 fn render_result(
     ui: &mut egui::Ui,
@@ -66,7 +74,7 @@ fn render_result(
     result: &SeparatorRatingResult,
     units: &DisplayUnitSet,
     evidence_only: bool,
-) -> Option<RatingIssueTarget> {
+) -> Option<(RatingIssueTarget, egui::Id)> {
     let p = result.performance();
     let capture = result.capture();
     let task = &capture.input;
@@ -176,20 +184,20 @@ fn render_result(
         ));
     }
     for section in result.missing_axial_sections() {
-        if ui
-            .link(format!(
-                "{}：{}",
-                tr(l, "未填写轴向段", "Missing axial section",),
-                field_label(l, EquipmentField::Axial(*section))
-            ))
-            .clicked()
-        {
-            requested = Some(RatingIssueTarget::AxialSection(*section));
+        let response = ui.link(format!(
+            "{}：{}",
+            tr(l, "未填写轴向段", "Missing axial section",),
+            field_label(l, EquipmentField::Axial(*section))
+        ));
+        if response.clicked() {
+            requested = Some((RatingIssueTarget::AxialSection(*section), response.id));
         }
     }
     for issue in result.height_issues() {
-        if ui.link(rating_labels::issue_label(l, issue)).clicked() {
-            requested = Some(issue.target.clone());
+        let response = ui.link(rating_labels::issue_label(l, issue));
+        source::reveal_focused_action(&response);
+        if response.clicked() {
+            requested = Some((issue.target.clone(), response.id));
         }
     }
     ui.heading(tr(

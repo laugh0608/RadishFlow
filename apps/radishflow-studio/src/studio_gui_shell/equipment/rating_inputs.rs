@@ -18,7 +18,7 @@ pub(super) fn geometry(
     inputs: &EngineeringInputs,
     units: &DisplayUnitSet,
     focus: Option<EquipmentInputField>,
-    open_source: &mut Option<(rf_types::SourceId, Option<EquipmentInputField>)>,
+    open_source: &mut Option<source::SourceLink>,
 ) {
     ui.heading(tr(l, "给定几何", "Given geometry"));
     ui.label(tr(
@@ -38,7 +38,7 @@ pub(super) fn geometry(
             units,
             focus == Some(display),
         ) {
-            *open_source = Some((source, Some(display)));
+            *open_source = Some(source);
         }
         committed(
             ui,
@@ -77,7 +77,7 @@ pub(super) fn geometry(
                 let key = RatingGeometryField::Axial(section);
                 let field = EquipmentInputField::Geometry(key);
                 if let Some(source) = binding::render(ui, l, field, draft.fields.get_mut(&key).expect("axial draft"), inputs, units, focus == Some(field)) {
-                    *open_source = Some((source, Some(field)));
+                    *open_source = Some(source);
                 }
                 committed(ui, l, formal.axial_sections.get(&section), QuantityKind::Length, inputs, units);
             }
@@ -92,7 +92,7 @@ pub(super) fn case(
     inputs: &EngineeringInputs,
     units: &DisplayUnitSet,
     focus: Option<EquipmentInputField>,
-    open_source: &mut Option<(rf_types::SourceId, Option<EquipmentInputField>)>,
+    open_source: &mut Option<source::SourceLink>,
 ) {
     ui.heading(tr(l, "当前工况", "Current case"));
     text_row(ui, tr(l, "工况名称", "Case name"), &mut draft.name);
@@ -114,7 +114,7 @@ pub(super) fn case(
             units,
             focus == Some(display),
         ) {
-            *open_source = Some((source, Some(display)));
+            *open_source = Some(source);
         }
         committed(
             ui,
@@ -158,7 +158,7 @@ fn sources(
     l: StudioShellLocale,
     selected: &mut Vec<rf_types::SourceId>,
     inputs: &EngineeringInputs,
-    open_source: &mut Option<(rf_types::SourceId, Option<EquipmentInputField>)>,
+    open_source: &mut Option<source::SourceLink>,
 ) {
     ui.label(tr(
         l,
@@ -189,8 +189,9 @@ fn sources(
                         selected.retain(|id| *id != source.id);
                     }
                 }
-                if ui.small_button(tr(l, "查看来源", "View source")).clicked() {
-                    *open_source = Some((source.id.clone(), None));
+                let response = ui.small_button(tr(l, "查看来源", "View source"));
+                if let Some(source) = source::SourceLink::clicked(&source.id, &response) {
+                    *open_source = Some(source);
                 }
             });
         });

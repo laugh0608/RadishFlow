@@ -41,8 +41,10 @@ pub(super) fn render(
     let mut body = |ui: &mut egui::Ui| match outcome {
         Err(failure) => {
             for issue in &failure.issues {
-                if ui.link(issue_label(l, issue)).clicked() {
-                    requested = Some(issue.target.clone());
+                let response = ui.link(issue_label(l, issue));
+                source::reveal_focused_action(&response);
+                if response.clicked() {
+                    requested = Some((issue.target.clone(), response.id));
                 }
             }
         }
@@ -64,7 +66,13 @@ pub(super) fn render(
         .zip(radishflow_studio::EquipmentResultGuard::capture(
             session, &member,
         ))
-        .map(|(target, guard)| super::super::result_review::EquipmentNavigation { target, guard })
+        .map(
+            |((target, button), guard)| super::super::result_review::EquipmentNavigation {
+                target,
+                guard,
+                button,
+            },
+        )
 }
 fn render_candidate(
     ui: &mut egui::Ui,

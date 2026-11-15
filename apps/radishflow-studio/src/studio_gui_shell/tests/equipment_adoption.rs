@@ -429,7 +429,7 @@ fn adoption_shell_matrix_replacement_removes_old_segments_preserves_rows_and_rej
     }
 }
 
-fn fixture(name: &str) -> (ReadyAppState, PathBuf, EquipmentCaseKey) {
+pub(super) fn fixture(name: &str) -> (ReadyAppState, PathBuf, EquipmentCaseKey) {
     let path = test_preferences_path(name).with_extension("rfproj.json");
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     fs::write(

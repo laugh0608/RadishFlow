@@ -25,7 +25,7 @@ mod source;
 mod task;
 mod widgets;
 pub(super) use calculation_table::CalculationTableFormat;
-use export::EquipmentExportTarget;
+use export::{EquipmentExportRequest, RatingExportOrigin};
 use fields::EquipmentInputField;
 use labels::*;
 pub(super) use labels::{
@@ -50,8 +50,10 @@ pub(super) struct EquipmentPageState {
     adoption_evidence_first: bool,
     adoption_return_focus: Option<egui::Id>,
     pub(super) pending_export: Option<export::PendingEquipmentExport>,
+    rating_export_return: Option<RatingExportOrigin>,
     pub(super) section: EquipmentSection,
-    source_return: Option<(EquipmentEditorTarget, Option<EquipmentInputField>)>,
+    source_return: Option<source::SourceReturn>,
+    source_button_focus: Option<egui::Id>,
     focus_field: Option<EquipmentInputField>,
     focus_source: bool,
     pub(super) new_project: bool,
@@ -161,7 +163,10 @@ impl ReadyAppState {
                     })
                 {
                     self.equipment.source_readonly = false;
-                    self.equipment.source_return = Some((target, None));
+                    self.equipment.source_return = Some(source::SourceReturn::from_editor(
+                        target,
+                        self.equipment.section,
+                    ));
                 }
             }
             Err(error) => self
@@ -192,6 +197,9 @@ impl ReadyAppState {
         }
     }
     pub(super) fn enter_equipment(&mut self) {
+        if self.screen != StudioShellScreen::Equipment {
+            self.equipment.rating_export_return = None;
+        }
         self.screen = StudioShellScreen::Equipment;
         let workspace = &self.platform_host.modeling_inputs().workspace;
         if workspace.equipment_editor.active().is_none()
@@ -205,19 +213,12 @@ impl ReadyAppState {
             self.equipment_command(EquipmentEditorCommand::Select(target));
         }
     }
-    pub(super) fn return_from_equipment_source(&mut self) -> bool {
-        let Some((target, field)) = self.equipment.source_return.take() else {
-            return false;
-        };
-        self.equipment.source_readonly = false;
-        self.equipment.focus_field = field;
-        self.equipment.section = EquipmentSection::Inputs;
-        self.equipment_command(EquipmentEditorCommand::Select(target));
-        true
-    }
     pub(super) fn render_equipment_page(&mut self, ctx: &egui::Context) {
         // Restore after the closing modal's last layer has stopped owning input.
         let return_focus = self.equipment.adoption_return_focus.take();
+        if let Some(button) = self.equipment.source_button_focus.take() {
+            ctx.memory_mut(|memory| memory.request_focus(button));
+        }
         let workspace = &self.platform_host.modeling_inputs().workspace;
         let session = workspace.engineering.clone();
         let editor = workspace.equipment_editor.clone();
@@ -229,6 +230,8 @@ impl ReadyAppState {
         let mut commands = Vec::new();
         let mut export_request = None;
         let mut open_source = None;
+        let mut source_to_open = None;
+        let mut return_to_source_origin = false;
         let mut adoption_request = None;
         if sidebar {
             egui::SidePanel::left("equipment-project-navigation")
@@ -305,6 +308,7 @@ impl ReadyAppState {
                     });
             }
             let Some(target) = editor.active().cloned() else {
+                self.equipment.rating_export_return = None;
                 ui.label(tr(
                     locale,
                     "新建设备任务，逐项填写输入与来源。",
@@ -321,12 +325,16 @@ impl ReadyAppState {
                     &units,
                     &mut commands,
                     &mut export_request,
+                    &mut source_to_open,
                 );
                 return;
             }
-            if self.equipment.source_readonly && matches!(target, EquipmentEditorTarget::Source(_))
+            self.equipment.rating_export_return = None;
+            if self.equipment.source_readonly
+                && let EquipmentEditorTarget::Source(id) = &target
             {
-                self.render_equipment_source_snapshot(ui, &target, inputs, &units, &mut commands);
+                return_to_source_origin =
+                    self.render_equipment_source_snapshot(ui, id, inputs, &units);
                 return;
             }
             let Some(record) = editor.draft(&target) else {
@@ -398,18 +406,7 @@ impl ReadyAppState {
                         self.equipment.section = EquipmentSection::Results;
                     }
                 }
-                if self.equipment.source_return.is_some()
-                    && ui
-                        .button(tr(locale, "返回输入字段", "Return to input field"))
-                        .clicked()
-                {
-                    // Dispatch after the current frame's draft change, preserving any source edits.
-                    if let Some((return_to, field)) = self.equipment.source_return.take() {
-                        commands.push(EquipmentEditorCommand::Select(return_to));
-                        self.equipment.focus_field = field;
-                        self.equipment.section = EquipmentSection::Inputs;
-                    }
-                }
+                return_to_source_origin = self.render_equipment_source_return_button(ui, false);
             });
             if let EquipmentEditorTarget::Task(id) = &target {
                 let enabled = !self.equipment_target_busy(id, None)
@@ -434,8 +431,10 @@ impl ReadyAppState {
                         ),
                     ] {
                         if ui.add_enabled(enabled, egui::Button::new(label)).clicked() {
-                            export_request =
-                                Some((EquipmentExportTarget::Task(id.clone()), format));
+                            export_request = Some(EquipmentExportRequest::Sizing {
+                                task: id.clone(),
+                                format,
+                            });
                         }
                     }
                     ui.label(tr(locale, "计算表使用项目单位", "Table uses project units"));
@@ -489,13 +488,13 @@ impl ReadyAppState {
                         egui::ScrollArea::vertical()
                             .id_salt(("equipment-result", id, evidence))
                             .show(&mut columns[1], |ui| {
-                                if let Some(target) =
+                                if let Some((target, button)) =
                                     results::render(ui, locale, id, &session, &units, evidence)
                                         .and_then(|navigation| {
                                             self.current_equipment_navigation(navigation)
                                         })
                                 {
-                                    self.equipment_issue_target(target, &mut open_source);
+                                    self.equipment_issue_target(target, button, &mut open_source);
                                 }
                             });
                     }
@@ -523,15 +522,25 @@ impl ReadyAppState {
                     },
                 );
             }
-            if let Some((id, field)) = open_source.take() {
-                self.equipment.source_return = Some((target, field));
-                commands.push(EquipmentEditorCommand::Select(
-                    EquipmentEditorTarget::Source(id),
+            if let Some(link) = open_source.take() {
+                source_to_open = Some(source::SourceOpen::from_link(
+                    link,
+                    target,
+                    None,
+                    self.equipment.section,
+                    false,
                 ));
             }
         });
         for command in commands {
             self.equipment_command(command);
+        }
+        if return_to_source_origin {
+            self.return_from_equipment_source();
+            ctx.request_repaint();
+        }
+        if let Some(source) = source_to_open {
+            self.open_equipment_source(source);
         }
         if let Some((id, focus)) = adoption_request {
             self.begin_geometry_adoption(&id);
@@ -539,12 +548,9 @@ impl ReadyAppState {
                 form.return_focus = Some(focus);
             }
         }
-        if let Some((target, format)) = export_request {
-            if let EquipmentExportTarget::Task(id) = target {
-                self.export_equipment_from_picker(&id, format);
-            } else {
-                self.export_target_from_picker(&target, format);
-            }
+        if let Some(request) = export_request {
+            self.export_equipment_request(request);
+            ctx.request_repaint();
         }
         self.render_equipment_confirmation(ctx);
         self.render_equipment_creation(ctx);
@@ -566,7 +572,7 @@ impl ReadyAppState {
         session: &rf_ui::engineering::EngineeringSession,
         units: &DisplayUnitSet,
         allow_results: bool,
-        open_source: &mut Option<(rf_types::SourceId, Option<EquipmentInputField>)>,
+        open_source: &mut Option<source::SourceLink>,
     ) {
         let section = if allow_results {
             self.equipment.section
@@ -603,7 +609,7 @@ impl ReadyAppState {
                         }
                     }
                     if section != EquipmentSection::Inputs {
-                        if let Some(target) = results::render(
+                        if let Some((target, button)) = results::render(
                             ui,
                             locale,
                             id,
@@ -613,7 +619,7 @@ impl ReadyAppState {
                         )
                         .and_then(|navigation| self.current_equipment_navigation(navigation))
                         {
-                            self.equipment_issue_target(target, open_source);
+                            self.equipment_issue_target(target, button, open_source);
                         }
                         return;
                     }
@@ -646,10 +652,10 @@ impl ReadyAppState {
     fn equipment_issue_target(
         &mut self,
         target: separator_sizing::IssueTarget,
-        open_source: &mut Option<(rf_types::SourceId, Option<EquipmentInputField>)>,
+        button: egui::Id,
+        open_source: &mut Option<source::SourceLink>,
     ) {
         use separator_sizing::IssueTarget;
-        self.equipment.section = EquipmentSection::Inputs;
         match target {
             IssueTarget::Input(field) => {
                 self.equipment.focus_field = Some(EquipmentField::Input(field).into())
@@ -657,9 +663,13 @@ impl ReadyAppState {
             IssueTarget::AxialSection(field) => {
                 self.equipment.focus_field = Some(EquipmentField::Axial(field).into())
             }
-            IssueTarget::Source(id) => *open_source = Some((id, None)),
+            IssueTarget::Source(id) => {
+                *open_source = Some(source::SourceLink { source: id, button });
+                return;
+            }
             _ => {}
         }
+        self.equipment.section = EquipmentSection::Inputs;
     }
     fn equipment_issue(
         &mut self,

@@ -21,15 +21,25 @@ impl ReadyAppState {
         session: &EngineeringSession,
         units: &DisplayUnitSet,
         commands: &mut Vec<EquipmentEditorCommand>,
-        export: &mut Option<(EquipmentExportTarget, CalculationTableFormat)>,
+        export: &mut Option<EquipmentExportRequest>,
+        source_to_open: &mut Option<source::SourceOpen>,
     ) {
         let l = self.locale;
         let Some(task) = task_id(target).and_then(|id| session.inputs().rating_task(id)) else {
             return;
         };
         let Some(key) = self.selected_rating_member(task, Some(target)) else {
+            self.equipment.rating_export_return = None;
             return;
         };
+        if self
+            .equipment
+            .rating_export_return
+            .as_ref()
+            .is_some_and(|origin| !origin.matches_view(self, target, &key))
+        {
+            self.equipment.rating_export_return = None;
+        }
         self.equipment
             .rating_selection
             .insert(task.id.clone(), key.case_id.clone());
@@ -47,6 +57,9 @@ impl ReadyAppState {
             .or_insert(task.method.version >= 2);
         let show_overview = wide || overview;
         let only_overview = !wide && overview;
+        if only_overview {
+            self.equipment.rating_export_return = None;
+        }
         let mut restored_focus = false;
         if self.equipment.restore_rating_focus.as_ref() == Some(target)
             && self.equipment.focus_field.is_none()
@@ -94,7 +107,8 @@ impl ReadyAppState {
                 self.equipment.rating_overview.insert(task.id.clone(), true);
             }
             ui.label(format!(
-                "{} · {}",
+                "{} · {} · {}",
+                key.case_id,
                 nonempty(&case.name, tr(l, "未命名工况", "Untitled case",)),
                 rating_labels::status_label(l, session.case_result_status(&key))
             ));
@@ -120,8 +134,19 @@ impl ReadyAppState {
                     (CalculationTableFormat::Csv, tr(l, "当前工况 CSV", "Current case CSV")),
                     (CalculationTableFormat::Json, tr(l, "当前工况 JSON", "Current case JSON")),
                 ] {
-                    if ui.add_enabled(!pending && !self.equipment_target_busy(&key.task_id, Some(&key.case_id)) && session.current_rating(&key).is_some(), egui::Button::new(label)).clicked() {
-                        *export = Some((EquipmentExportTarget::Rating(key.clone()), format));
+                    let response = ui.add_enabled(
+                        !pending && !self.equipment_target_busy(&key.task_id, Some(&key.case_id)) && session.current_rating(&key).is_some(),
+                        egui::Button::new(label),
+                    );
+                    self.restore_rating_export_button(ui, format, &response);
+                    if response.clicked() {
+                        *export = Some(EquipmentExportRequest::Rating(RatingExportOrigin {
+                            member: key.clone(),
+                            format,
+                            target: target.clone(),
+                            section: self.equipment.section,
+                            window: self.current_window_id(),
+                        }));
                     }
                 }
             });
@@ -147,9 +172,11 @@ impl ReadyAppState {
                     _ => None,
                 };
                 if let Some(issue) = issue
-                    && ui.button(tr(l, "定位输入", "Go to input")).clicked()
                 {
-                    requested_issue = Some(issue);
+                    let response = ui.button(tr(l, "定位输入", "Go to input"));
+                    if response.clicked() {
+                        requested_issue = Some((issue, response.id));
+                    }
                 }
             }
             if let Some(issues) = editor.checked_rating_issues(&key, session) {
@@ -157,8 +184,10 @@ impl ReadyAppState {
                     ui.label(tr(l, "输入检查通过（未执行校核）。", "Input check passed (rating was not run)."));
                 }
                 for issue in issues {
-                    if ui.link(rating_labels::issue_label(l, issue)).clicked() {
-                        requested_issue = Some(issue.target.clone());
+                    let response = ui.link(rating_labels::issue_label(l, issue));
+                    source::reveal_focused_action(&response);
+                    if response.clicked() {
+                        requested_issue = Some((issue.target.clone(), response.id));
                     }
                 }
             }
@@ -228,14 +257,16 @@ impl ReadyAppState {
                 },
             );
         }
-        if let Some(issue) = requested_issue {
-            self.rating_issue_target(issue, &key, commands, &mut open_source);
+        if let Some((issue, button)) = requested_issue {
+            self.rating_issue_target(issue, &key, button, commands, &mut open_source);
         }
-        if let Some((id, field)) = open_source {
-            self.equipment.source_return = Some((target.clone(), field));
-            self.equipment.source_readonly = true;
-            commands.push(EquipmentEditorCommand::Select(
-                EquipmentEditorTarget::Source(id),
+        if let Some(link) = open_source {
+            *source_to_open = Some(source::SourceOpen::from_link(
+                link,
+                target.clone(),
+                Some(key),
+                self.equipment.section,
+                true,
             ));
         }
     }
@@ -243,15 +274,11 @@ impl ReadyAppState {
         &mut self,
         issue: RatingIssueTarget,
         key: &EquipmentCaseKey,
+        button: egui::Id,
         commands: &mut Vec<EquipmentEditorCommand>,
-        open_source: &mut Option<(rf_types::SourceId, Option<EquipmentInputField>)>,
+        open_source: &mut Option<source::SourceLink>,
     ) {
         use RatingIssueTarget::*;
-        self.equipment.section = EquipmentSection::Inputs;
-        self.equipment
-            .rating_overview
-            .insert(key.task_id.clone(), false);
-        self.equipment.rating_scroll_top = true;
         let target = match issue {
             GeometryInput(field) => {
                 self.equipment.focus_field = Some(EquipmentInputField::Geometry(
@@ -282,13 +309,18 @@ impl ReadyAppState {
                 })
             }
             Source(id) => {
-                *open_source = Some((id, None));
+                *open_source = Some(source::SourceLink { source: id, button });
                 return;
             }
             Task | Method | Basis | Calculation => {
                 EquipmentEditorTarget::RatingTask(key.task_id.clone())
             }
         };
+        self.equipment.section = EquipmentSection::Inputs;
+        self.equipment
+            .rating_overview
+            .insert(key.task_id.clone(), false);
+        self.equipment.rating_scroll_top = true;
         commands.push(EquipmentEditorCommand::Select(target));
     }
 }
