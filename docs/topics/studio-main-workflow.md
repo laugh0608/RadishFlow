@@ -1,6 +1,6 @@
 # Studio 主工作台与空白项目建模主路径
 
-更新时间：2026-11-12
+更新时间：2026-11-15
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -30,7 +30,7 @@
 
 已完成：
 
-- Home、独立 `物性` / `设备` 页、`流程图` 工作台、`运行`、`结果`、`工具`、`设置` 已形成顶层导航。首页已限制大图预览并区分单链箭头与单元概览；当前工程返回和最近项目打开沿用正式路径，具体数据 / 缓存边界见[应用架构](../architecture/app-architecture.md#studio-shell-ui-规范化边界)。
+- Home、独立 `物性` / `设备` 页、`流程图` 工作台、`流程运行`、`流程结果`、`工具`、`设置` 已形成顶层导航。流程运行与结果页标明当前流程，工程基础沿现有上下文入口。首页已限制大图预览并区分单链箭头与单元概览；当前工程返回和最近项目打开沿用正式路径。 [应用架构](../architecture/app-architecture.md#studio-shell-ui-规范化边界)
 - 普通空白项目创建后先进入 `物性`，物性 readiness 通过后才能进入流程图建模。
 - Workbench 已稳定为左侧 `模块 / 项目`、中央 Canvas、右侧 `检查器 / 模块设置 / 模块结果`、底部运行信息与状态汇总。
 - `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 已有受控建模能力和 focused 回归。
@@ -63,8 +63,8 @@
 3. 选择内置 `binary-hydrocarbon-lite-v1` package 和 methane / ethane 项目组分。
 4. 进入 `流程图`，从左侧 `模块` 放置 Feed、Heater / Cooler / Valve、Mixer、Flash Drum。
 5. 通过 Canvas suggestion、Inspector 和模块设置补齐连接、Feed source stream、composition 和单元参数。
-6. 运行求解，在右侧模块结果、底部结果表、状态汇总和诊断中审阅同一份当前 `SolveSnapshot`。
-7. 保存、重开、rerun，确认结果和旧快照状态一致。
+6. 在 `流程图` 或 `流程运行` 运行求解。诊断定位到字段、端口或对象后，可返回发起页面的原诊断列表。原项仍有效时恢复动作焦点，已失效时说明原因并可重新检查。
+7. 在 `流程结果`、右侧模块结果和底部结果表审阅同一份当前结果。切页保留对象选择、设备工况、未提交草稿及仍有资格的结果。保存写入已提交输入，重开后须重跑。 [R2 接线与验收](../architecture/designs/reviews/2026-11-15-studio-r1/README.md#r2-产品接线范围)
 
 ## 范围
 
@@ -92,7 +92,7 @@
 - 物性选择来自 `workspace_document.property_package_choices` 和 `project_component_choices`。
 - 建模输入缺口来自 shared modeling readiness。
 - 运行和失败状态来自 Run Panel / workspace control model。
-- 当前结果来自当前 revision 的 latest `SolveSnapshot`。
+- 当前结果来自工作区查询认定为 Current 的 `FlowResultRecord`。
 - Workbench 不维护第二套项目、物性、运行或结果状态。
 
 ### 命令与接口

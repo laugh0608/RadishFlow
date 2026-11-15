@@ -1,6 +1,6 @@
 # Review Solve Results
 
-更新时间：2026-11-12
+更新时间：2026-11-15
 
 > 本文用于运行与验证当前 MVP 用户路径。内置样例与历史 `official` 称谓表示仓库演示 / 回归案例，运行成功不构成工程精度验证；解释结果前请阅读 [模型与样例边界](../thermo/mvp-model.md)。
 
@@ -37,22 +37,28 @@ EO 的原比例与求得值并列；采纳必须显式预览 / 确认，完成�
 
 如果只是第一次上手，先从第一条开始；如果你更想看 non-flash intermediate 的 `bubble_dew_window`，第二条更直观。
 
-这些 official hydrocarbon 示例项目已经保存 `binary-hydrocarbon-lite-v1`，界面会显示为 `二元烃 Lite`。结果审阅只消费当前 revision 的最新 `SolveSnapshot`，不从运行结果反推或修正物性包选择；如果 Home、独立 `物性` 页或左侧 `项目输入` 仍显示 `未选择`，应回到项目文件 / Property page choice 状态排查。
+这些 official hydrocarbon 示例项目已经保存 `binary-hydrocarbon-lite-v1`，界面会显示为 `二元烃 Lite`。结果审阅只读取当前工作区认定为 Current 的流程结果，不从运行结果反推或修正物性包选择；如果 Home、独立 `物性` 页或左侧 `项目输入` 仍显示 `未选择`，应回到项目文件 / Property page choice 状态排查。
 
 如果你是从 Home 的 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例` 进入，先按 `docs/guides/author-small-cases.md` 完成放置、连接和参数提交，再回到本文档审阅结果。
 
 ## 先看哪四处
 
-一次运行成功后，右侧切到 `模块结果`，底部切到 `结果表`。需要完整结果审阅时点击顶部 `结果`，按下面顺序看：
+一次运行成功后，右侧切到 `模块结果`，底部切到 `结果表`。需要完整结果审阅时点击顶部 `流程结果`，按下面顺序看：
 
-1. 顶部 `结果` screen 的当前快照状态，以及右侧 `模块结果` 的选中单元 Module Results 摘要
+1. 顶部 `流程结果` screen 的当前快照状态，以及右侧 `模块结果` 的选中单元 Module Results 摘要
 2. 结果审阅区的流股结果视图和 comparison
 3. 底部 `结果表`、`关联求解步骤` / step 列表和诊断目标
 4. 当前对象 `检查器` / Module Settings 中的已提交参数、端口和关联诊断
 
 当前这些位置里的结果相关字段都应该只读消费同一份有资格的流程结果 DTO；如果某个结果字段只在其中一处出现，通常应先怀疑消费层回归，而不是先猜数值层分叉。Module Settings 中的参数字段和端口仍来自 active inspector / document command surface，不是结果快照字段。
 
-当前中文 UI 中，这四处通常对应顶部 `结果` screen、右侧 `模块结果` tab、右侧 `检查器 / 模块设置` tab、底部 `结果表 / 诊断`，以及命令入口中的结果定位项。英文术语在本文档中只用于指代内部结果组织方式，不表示默认界面必须显示英文。右侧 `检查器` 在选中单元时消费当前对象 Inspector；右侧 `模块设置` 消费 Module Settings DTO，负责参数、端口、连接动作、诊断动作和帮助空状态；latest unit result 应在右侧 `模块结果` 中看，不应回流到 Module Settings。
+当前中文 UI 中，这四处通常对应顶部 `流程结果` screen、右侧 `模块结果` tab、右侧 `检查器 / 模块设置` tab、底部 `结果表 / 诊断`，以及命令入口中的结果定位项。英文术语在本文档中只用于指代内部结果组织方式，不表示默认界面必须显示英文。右侧 `检查器` 在选中单元时消费当前对象 Inspector；右侧 `模块设置` 消费 Module Settings DTO，负责参数、端口、连接动作、诊断动作和帮助空状态；latest unit result 应在右侧 `模块结果` 中看，不应回流到 Module Settings。
+
+## 从画布查看流向与诊断
+
+在 `流程图` 选择流股，「二维流向与路径」会标出流股及直接端点。当前结果为正流量且系统偏好允许时，可用「播放方向示意」。零流量或结果缺失、过期、失败时保留静态连接方向。用「在流程结果中查看」核对流股行，再返回画布恢复原流股与动作焦点。
+
+从运行诊断定位字段或端口后，选择「返回原运行诊断」回到原列表。诊断仍有效时恢复发起动作焦点。正式输入修复、结果已替换或目标被删除时，原列表会说明原因。 [R2 实窗验收](../architecture/designs/reviews/2026-11-15-studio-r1/README.md#macos-实窗验收)
 
 ## 小案例作者路径的结果核对
 
@@ -201,7 +207,7 @@ Module Results 当前还会把 selected unit result、consumed / produced stream
 
 1. 在流股对比里用 `检查` 或当前流股选项从 `stream-liquid / stream-vapor` 跳到对应对象详情
 2. 在 Module Results 里用输入/输出流股的 `检查`，核对 `Flash Drum` inlet/outlet 和 step stream 是否还是同一份结果
-3. 在 `诊断目标` 里再跳一次 flash inlet 或 flash unit，确认 `结果` 审阅入口、当前对象 `检查器` 和 Module Settings 没有分叉成第二套 consumer 语义
+3. 在 `诊断目标` 里再跳一次 flash inlet 或 flash unit，确认 `流程结果` 页、当前对象 `检查器` 和 Module Settings 没有分叉成第二套 consumer 语义
 4. 在 command palette 或菜单中搜索 `result` / `snapshot` / stream label，确认 `Results` command 也定位到同一份当前快照结果
 
 这里要注意：
@@ -246,7 +252,7 @@ Module Results 当前还会把 selected unit result、consumed / produced stream
 
 ## 当前快照复制 / 导出
 
-顶部 `结果` 页提供 `复制当前结果` 与 `导出当前结果...`，与运行结果审阅区的输出入口共用当前工作区查询认定为 Current 的同一份有资格的流程结果。尚未运行、重开后未重跑或结果已过期时，两个入口禁用；重新运行后再输出。文本头包含快照 ID、sequence、`document_revision`、`display_units` 单位身份和 `number_format` 显示格式说明，内容覆盖：
+顶部 `流程结果` 页提供 `复制当前结果` 与 `导出当前结果...`，与运行结果审阅区的输出入口共用当前工作区查询认定为 Current 的同一份有资格的流程结果。尚未运行、重开后未重跑或结果已过期时，两个入口禁用；重新运行后再输出。文本头包含快照 ID、sequence、`document_revision`、`display_units` 单位身份和 `number_format` 显示格式说明，内容覆盖：
 
 - 流股摘要
 - Review 摘要：source / intermediate / terminal streams、latest unit results、diagnostics count
@@ -308,7 +314,7 @@ Module Results 当前还会把 selected unit result、consumed / produced stream
 1. 全局 `stream` 结果
 2. upstream unit step 的输出流股
 3. downstream unit step 的输入流股
-4. 顶部 `结果` screen、右侧 `模块结果` / Module Results 与当前对象 `检查器` / Module Settings 的展示
+4. 顶部 `流程结果` screen、右侧 `模块结果` / Module Results 与当前对象 `检查器` / Module Settings 的展示
 
 如果 1 到 3 已经不一致，先查 solver / snapshot。  
 如果 1 到 3 一致、但 4 不一致，优先查 Studio consumer。

@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-11-14
+更新时间：2026-11-15
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -57,7 +57,7 @@ AF6 的[代码链路与场景审查](../topics/modeling/solver-strategies-and-as
 - [AF3](../topics/runtime-messages/run-control-and-watch-conditions.md)已接 GUI 流程 / 设备后台、精确取消、守卫接收与退出收尾；兼容入口仍同步。
 - AF4a / AF5a 的 `rf-ui::project_query` 只读发现工程对象；流程 / 设备分别检查结果资格，执行来源随结果保留，见[查询契约](../topics/variable-and-object-browser.md#af4a-工程发现与上下文契约2026-10-24)。
 - 负责把 Studio shell 入口组织为可复现的 MVP α / β 工作流：默认显示 Home，普通空白项目先进入独立 `物性` 页，小案例作者入口可从空白项目直接进入左侧 `模块` 清单，进入 case 后暴露主路径命令
-- 负责让 `流程图` / `运行` 上下文工具栏、Run Panel `Resume`、`F5 / Shift+F5`、AppHost、StudioGuiDriver、StudioGuiHost command registry 等正式运行入口复用同一层建模输入 readiness；shell 只负责 notice、focus 和用户反馈，不在各入口复制另一套输入判断
+- 负责让 `流程图` / `流程运行` 上下文工具栏、Run Panel `Resume`、`F5 / Shift+F5`、AppHost、StudioGuiDriver、StudioGuiHost command registry 等正式运行入口复用同一层建模输入 readiness；shell 只负责 notice、focus 和用户反馈，不在各入口复制另一套输入判断
 - 负责在 GUI shell 层提供用户操作与求解审计输出；默认 stderr 日志只作为开发态 smoke 和诊断入口，不替代未来正式审计 / telemetry 设计
 - 负责遵守 `eframe` / `winit` 事件循环约束：Windows 事件循环在主线程创建；干净且无在途任务的最后窗口 close 不得被 `CancelClose` 拦截，关闭前清理逻辑窗口并停止当帧 fallback 布局；脏工作区 close 必须先确认保存 / 舍弃 / 取消
 - 负责桌面窗口渲染后端选择：macOS 开发态使用 `eframe/wgpu` + Metal backend；裸二进制系统日志后续由 `.app` bundle / `Info.plist` / 签名打包流程治理
@@ -78,16 +78,16 @@ Studio 首页、工作台分区、运行后结果视图和项目切换确认流�
 - `StudioGuiWindowHomeCaseTileModel` 承载预览、路径 / 来源、物性包、组分及状态。独立当前卡片取 `workspace_document`，不写 recent；命中当前路径的 recent 卡片沿用磁盘缓存并更新状态，点击直接返回 workspace。`package_summary` 映射可读 label，稳定 package id 保留在内部契约。
 - `StudioGuiWindowHomePreviewModel` 区分小图、计数与不可用。真实工程超过 6 单元不投影节点 / 边；独立当前卡片取快照计数。小图仅连通单向链画箭头，其余无箭头。预览最多两行，名称省略并保留完整提示 / 辅助功能文本，窄区改计数。示例沿用标题投影，未知物流数不补造；读取 / 缓存策略保持。
 - 新建 / 打开 / 关闭消费 `ProjectSaveState`；确认绑定当前状态，过期重验，取消 / 失败保留现场，见 [生命周期](../topics/project-lifecycle-storage.md#u2-离开保护与保存状态)。Home 返回只切页；保存不提交草稿，有草稿不自动关闭。
-- 进入 case 后，第一层只保留 `文件 / 主页 / 物性 / 设备 / 流程图 / 运行 / 结果 / 工具 / 设置` 主入口、当前项目摘要和必要状态。普通空白项目选齐 package 和至少一个项目组分前，`流程图` 入口不可用；禁用原因必须来自 Property page DTO 的同一 readiness。
-- `物性 / 流程图 / 运行 / 结果` screen 下方分别消费 `window.property_context_toolbar`、`window.flowsheet_context_toolbar`、`window.run_context_toolbar` 和 `window.result_context_toolbar`。工具栏只展示当前 screen 的主路径命令和状态，不展开调试命令全集；`运行` 工具栏不重复 Monitor 状态 chip，`结果` 工具栏不把所有 stream / unit focus command 展开成长按钮。
+- 进入 case 后，第一层只保留 `文件 / 主页 / 物性 / 设备 / 流程图 / 流程运行 / 流程结果 / 工具 / 设置` 主入口、当前项目摘要和必要状态。普通空白项目选齐 package 和至少一个项目组分前，`流程图` 入口不可用；禁用原因必须来自 Property page DTO 的同一 readiness。
+- `物性 / 流程图 / 流程运行 / 流程结果` screen 下方分别消费 `window.property_context_toolbar`、`window.flowsheet_context_toolbar`、`window.run_context_toolbar` 和 `window.result_context_toolbar`。工具栏只展示当前 screen 的主路径命令和状态，不展开调试命令全集；`流程运行` 工具栏不重复 Monitor 状态 chip，`流程结果` 工具栏不把所有 stream / unit focus command 展开成长按钮。
 - 工作台左侧为 `模块 / 项目`，中央为 Canvas，右侧为 `检查器 / 模块设置 / 模块结果 / 变量浏览器`，底部为消息、运行审阅、诊断和结果表。`模块` 消费 Canvas palette，按 `流股源 / 调节单元 / 汇合与分离` 分类。`项目` 提供项目输入摘要、示例和对象树，项目级输入在独立 `物性` 页编辑；两处使用同源物性包标签。
 - 变量浏览器的展开与侧区共用工作区选择、查询及定位。壳层持有视图状态，工程持有有序关注引用；显示值由当前工程及结果资格派生。 [变量浏览器](../topics/variable-and-object-browser.md)
-- `模块设置` 只消费 `StudioGuiWindowModuleSettingsModel`，从 active unit Inspector detail 派生参数摘要、字段、端口、连接动作和诊断动作；参数摘要不得混入 latest-result。`模块结果` 只消费 `StudioGuiWindowModuleResultsModel`，从 current-revision latest `SolveSnapshot` 派生 selected unit result、consumed / produced stream、related steps、diagnostics 和 diagnostic actions。
-- 运行派发后，shell 成功时切至右侧 `模块结果` / 底部 `结果表`，失败时切至 `检查器` / `消息`；此反馈不切换顶部 screen。结果面只读消费当前 revision 的最新 `SolveSnapshot`；stale snapshot 只显示过期提示，不继续驱动 Result Inspector、结果表、Results commands、复制 / 导出或 `review_summary`。
+- `模块设置` 只消费 `StudioGuiWindowModuleSettingsModel`，从 active unit Inspector detail 派生参数摘要、字段、端口、连接动作和诊断动作；参数摘要不得混入 latest-result。`模块结果` 只消费 `StudioGuiWindowModuleResultsModel`，从 Current `FlowResultRecord` 派生选中单元结果、consumed / produced stream、related steps、diagnostics 和 diagnostic actions。
+- 运行派发后，shell 成功时切至右侧 `模块结果` / 底部 `结果表`，失败时切至 `检查器` / `消息`；此反馈不切换顶部 screen。结果面只读消费工作区认定为 Current 的 `FlowResultRecord`；stale snapshot 只显示过期提示，不继续驱动 Result Inspector、结果表、Results commands、复制 / 导出或 `review_summary`。
 - 底部 `结果表` 的 stream / unit 行必须派发正式 `inspector.focus_stream:*` / `inspector.focus_unit:*`，分别定位到右侧 `检查器` / `模块结果`，底部仍停留在 `结果表`。底部状态汇总只消费 `StudioGuiWindowStatusSummaryModel`，snapshot 一致性等低高度信息可以放在标题行，不另建 shell 私有摘要。
 - 开发态 stderr 与 GUI activity 可继续服务 smoke，但正式 UI 只展示用户能采取行动的摘要，不把平台 timer、`TimerElapsed`、`SystemTime` 或 host internals 混入主路径。
 
-当前 Studio UI 主设计稿已收敛到 `docs/architecture/designs/studio-client-main.pen`。它是设计目标，不代表当前代码已达到最终视觉细化。实现时必须复用既有 `WorkspaceDocument`、inspector draft、command surface、run panel state 和 latest current-revision `SolveSnapshot`；布局变化不得新增私有选择、结果、诊断或参数缓存。
+当前 Studio UI 主设计稿已收敛到 `docs/architecture/designs/studio-client-main.pen`。它是设计目标，不代表当前代码已达到最终视觉细化。实现时必须复用既有 `WorkspaceDocument`、inspector draft、command surface、run panel state 和 Current `FlowResultRecord`。布局变化不得新增私有选择、结果、诊断或参数缓存。
 
 ### 独立设备编辑边界
 
@@ -636,7 +636,7 @@ pub struct StepSnapshot {
 
 ### 运行前 readiness
 
-Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前，会先做一层通用建模输入检查。当前包括 `流程图` / `运行` 上下文工具栏中的 `运行当前流程`、Run Panel `Resume`、`F5 / Shift+F5`、命令面板、AppHost、StudioGuiDriver 与 StudioGuiHost command registry 等正式入口。它的职责是阻止明显未完成的建模输入进入求解器，让用户先回到具体 stream / unit 补齐输入。
+Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前，会先做一层通用建模输入检查。当前包括 `流程图` / `流程运行` 上下文工具栏中的 `运行当前流程`、Run Panel `Resume`、`F5 / Shift+F5`、命令面板、AppHost、StudioGuiDriver 与 StudioGuiHost command registry 等正式入口。它的职责是阻止明显未完成的建模输入进入求解器，让用户先回到具体 stream / unit 补齐输入。
 
 当前检查范围：
 
@@ -721,7 +721,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - Studio app-host GUI 动作入口统一为 `StudioAppHostController::dispatch_ui_command(command_id)`。run panel command registry 首批稳定命令为 `run_panel.run_manual`、`run_panel.resume_workspace`、`run_panel.set_hold`、`run_panel.set_active` 与 `run_panel.recover_failure`；菜单、快捷键、命令面板、palette 和 runtime 小型 action button 都应复用这条派发链。
 - Canvas 编辑复用 command surface；移动只写 sidecar，连接 / 删除进入工程历史。删除、历史和修复的显式放弃经 `StudioConfirmedInputAction` / `InputEditCheckpoint` 重验，事务成功才发布，对象删除保留范围外草稿，见 [离开保护](../topics/units/input-drafts-and-interactions.md#i4-统一离开确认与失败保护)。公开变量写入门禁不变。
 - 结果审阅、错误定位和诊断目标都必须复用 `StudioGuiWindowDiagnosticTargetActionModel`、`inspector.focus_stream:*`、`inspector.focus_unit:*` 或既有 focus action。`selected_stream / comparison_stream / selected_unit` 只是 shell-local selector state，不缓存第二份结果；comparison 复位不代表结果语义变化。
-- `StudioGuiCommandRegistry` 从 Current `FlowResultRecord` 派生 `Results` command section；result stream / unit navigation 只暴露为正式 focus command。顶部 `结果` 工具栏只扫读结果入口和状态，不承担所有对象定位按钮。
+- `StudioGuiCommandRegistry` 从 Current `FlowResultRecord` 派生 `Results` command section；result stream / unit navigation 只暴露为正式 focus command。顶部 `流程结果` 工具栏只扫读结果入口和状态，不承担所有对象定位按钮。
 - shell 输出重验当前快照，落盘复用 staged write；运行 / 恢复反馈按正式 dispatch 和 applied target 同步面板与画布，见 [结果与恢复专题](../topics/results-review-diagnostics.md)。
 - Module Settings、Module Results、case-level `review_summary` 和 `stale_solve_snapshot` 的边界见本文上方 `Studio Shell UI 规范化边界` 与 `docs/reference/solve-snapshot-results.md`。它们都服务当前 revision 的结果审阅和轻量导出，不成为第二套结果缓存或报表模型。
 - 失败详情只消费 `latest_diagnostic`，显示 primary code、revision、severity、count 与相关 target；GUI 不从 message 文本反解析或私造端口级 command。Run Panel recovery action 必须区分聚焦与修复，用户主动选中流股后的恢复动作走对应 `canvas.*selected_stream*` 命令，不复用 failure-only recovery command。

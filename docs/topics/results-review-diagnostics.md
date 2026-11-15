@@ -12,7 +12,7 @@
 
 ## 专题目标
 
-- 流程结果审阅只消费属于当前会话 / 输入的最新 `SolveSnapshot`；revision 相同不足以证明归属，旧结果只作为 stale notice。
+- 流程结果审阅只从 `FlowResultView::Current` 读取 `FlowResultRecord` 数值。工作区查询核对会话、修订与执行计划，过期结果提供状态及来源说明。
 - stream / unit 定位、模块结果、底部结果表和状态汇总使用同一套 snapshot / review summary / command 口径。
 - 诊断和 recovery action 指向可修复对象，不用 UI 私有状态掩盖真实失败。
 
@@ -20,7 +20,7 @@
 
 - Material Stream 结果、phase rows、composition 和 stream focus 细节见 `modeling/material-stream.md`。
 - Feed、Heater / Cooler、Flash Drum、Mixer、Valve 的单元结果语义见 `unitops/` 下对应专题。
-- 本专题只保留跨对象的 `SolveSnapshot`、结果表、模块结果、状态汇总、诊断和 recovery 统一口径。
+- 本专题维护跨对象的流程结果资格、结果表、模块结果、状态汇总、诊断和 recovery 统一口径。
 
 ## 规划衔接与设备结果边界
 
@@ -156,6 +156,11 @@ macOS 实窗：普通空白来源 Feed–Heater–Flash，降低 Feed 压力产�
 - 完整工厂三维布局、管道布置与碰撞检查独立评估，均不是 U2、首个设备计算或动态求解的前置条件；三维展示不等于三维 CFD 或机械制造能力。
 
 V1—V4 均须先评审相应 R0 / R1 用户路径，再逐切片实现。验证覆盖适用的单位切换、结果身份、零流量、过期 / 缺失、关闭动画、诊断叠加和大流程退化路径。
+
+### 可视化接下来事项
+
+1. 补验 V1 的 macOS 原版实窗。播放正流量流股时开启系统「减少动态效果」，核对停播和静态箭头。再关闭该偏好，核对重新播放仍需显式点击，最后恢复原系统偏好。Windows／Linux 实窗和实际读屏随既定平台节点补验。 [V1 验收记录](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)
+2. 建议随后评审 V2 工程数据着色的 R0／R1 首片。沿用 Feed–Heater–Flash，先做一张流股摩尔流量图层画板，用 Heated Outlet 和 Liquid Outlet 分别验证正值、零值。评审图例的变量、项目显示单位、范围与快照身份，以及过期／缺失时的降级和诊断标记辨识。产品接线另行确认。
 
 参考边界：[DWSIM 官方接口文档](https://dwsim.org/api_help/html/Methods_T_DWSIM_FormFlowsheet.htm) 可确认流程画布动画开关机制，不能据此认定其高级版已交付完整 3D 流程；本规划不依赖该未确认产品说法。
 

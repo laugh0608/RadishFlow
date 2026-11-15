@@ -42,11 +42,11 @@
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
 
 
-### 最近进展（截至 2026-11-14）
+### 最近进展（截至 2026-11-15）
 
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
 - PR #18 已合入 `master` 并回灌 `dev`（`4772fbba`）。
-- AF3-V10 已补 macOS 切换、关闭和另存交错。受控实窗验证退出等待返回、草稿保留及旧结果拒收，原版自然时序待验。见 [W46](../devlogs/2026-11/2026-W46.md)。
+- AF3-V10 已补 macOS 切换、关闭和另存交错。「等待中返回」通过受控实窗，原版待验。见 [W46](../devlogs/2026-11/2026-W46.md)。
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
 
 ### 下一步
@@ -61,7 +61,7 @@
 - [x] AF2a / b 与 AF3—AF5 已接通批准范围，见[基础切片](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)。
 - [x] AF6、QS0 独立物料任务和 QS1—QS3 有限回流 / 联立模块 / 物料 EO 已接通；QS4 首片已接通，后续混合策略、热 / 相平衡 EO 与动态另审。
 - [x] [R2](../architecture/studio-ui-topic-plan.md) macOS 代表实窗通过。
-- [ ] [可视化 V1—V4](../topics/results-review-diagnostics.md#流程可视化与回放规划) 中 V1 已接线，macOS 代表路径通过，系统偏好切换待验。
+- [ ] V1 补验 macOS「减少动态效果」切换，随后评审 V2 首片。 [可视化下一步](../topics/results-review-diagnostics.md#可视化接下来事项)
 
 ### 相关规划
 
@@ -82,7 +82,7 @@
 ## 当前能力基线
 
 - 受控流程覆盖原无回路示例，以及固定温压 Feed / Mixer / Splitter 的分块回流、仿射联立和物料 EO 正向 / 单比例反算；正式计划、运行、采纳、保存重开与结果审阅已接通。方法能力按专题区分，不自动切换。
-- Studio 已形成 Home、独立物性页、独立设备页、流程图工作台、模块设置 / 结果和运行状态区域的主路径；设备计算与流程 Run 分离，支持尺寸、逐行校核及有限矩阵 CSV / JSON。
+- Studio 主路径覆盖 Home、物性、独立设备、流程图、流程运行和流程结果。独立设备支持尺寸、逐行校核及有限矩阵 CSV / JSON。
 - Rust Core 与 `.NET 10` 适配层保持隔离；CAPE-OPEN / COM 语义不进入 Rust Core。
 - 数值实现仍使用演示物性、常热容显热和简化单元行为；golden、结果透传与用户路径验收不等于独立物理准确性证明，见 [热力学模型](../thermo/mvp-model.md)。
 - 能力、命令和验收证据以 `docs/topics/`、`docs/mvp/`、`docs/reference/` 与历史周志为准。

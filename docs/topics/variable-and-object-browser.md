@@ -163,7 +163,7 @@ VB2 的单值完成不代表批量事务完成；VB3 按消费者逐项记录覆
 | 编号 | 决策 | 最迟完成时机 |
 | --- | --- | --- |
 | VB-D01 | 首批节点 / 变量 / 动作覆盖矩阵，类别顺序与停靠 / 窄窗口布局 | VB0 对应局部 R0 / R1 |
-| VB-D02 | [存储与迁移](variable-browser/identity-storage.md)及 Studio 首批标量路径已接通 | 外部协议随 VB3 再审 |
+| VB-D02 | [存储与迁移](variable-browser/identity-storage.md)、Studio 首批标量路径和 [CLI v8 只读查询](variable-browser/stable-references.md#vb3-cli-只读查询首片)已接通 | 其他外部协议按 VB3 消费者评审 |
 | VB-D03 | [关注项归属、存储与恢复](variable-browser/watch-list.md)首片已接通 | VB-A04 流程标量 |
 | VB-D04 | [受控单值编辑首片](variable-browser/single-value-editing.md)已接通，进料批量首片独立交付 | VB2 各编辑增量前 |
 | VB-D05 | 多上下文请求、分页 / 订阅一致性、限制及权限映射 | VB3 对应消费者前 |
