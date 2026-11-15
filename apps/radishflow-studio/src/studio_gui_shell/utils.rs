@@ -716,14 +716,17 @@ pub(super) fn notice_color_from_entitlement(level: rf_ui::EntitlementNoticeLevel
 }
 
 pub(super) fn render_status_chip(ui: &mut egui::Ui, label: &str, color: egui::Color32) {
+    status_chip_frame(color).show(ui, |ui| {
+        ui.label(egui::RichText::new(label).color(color).small());
+    });
+}
+
+pub(super) fn status_chip_frame(color: egui::Color32) -> egui::Frame {
     egui::Frame::new()
         .fill(color.gamma_multiply(0.12))
         .stroke(egui::Stroke::new(1.0_f32, color.gamma_multiply(0.8)))
         .corner_radius(6.0)
         .inner_margin(egui::Margin::symmetric(8, 3))
-        .show(ui, |ui| {
-            ui.label(egui::RichText::new(label).color(color).small());
-        });
 }
 
 pub(super) fn render_wrapped_label(ui: &mut egui::Ui, text: impl ToString) {

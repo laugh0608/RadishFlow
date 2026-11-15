@@ -215,6 +215,168 @@ fn equation_gui_first_numeric_edit_keeps_focus_and_corrected_enter_applies() {
 }
 
 #[test]
+fn equation_gui_english_chrome_leaves_room_for_narrow_plan() {
+    let mut app = equation_app();
+    let ctx = narrow_plan_context();
+    app.dispatch_ui_command("run_panel.run_manual");
+    drain(&mut app, &ctx);
+    let snapshot = app.platform_host.snapshot();
+    let mut window = snapshot.window_model();
+    for (width, weights) in [(1027.0, [12, 25, 23]), (1116.0, [28, 26, 46])] {
+        for (region, weight) in window.layout_state.region_weights.iter_mut().zip(weights) {
+            region.weight = weight;
+        }
+        let _ = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(width, 857.0),
+                )),
+                ..Default::default()
+            },
+            |ctx| {
+                let mut hovered = false;
+                app.render_top_bar(ctx, &snapshot.app_host_state.windows, &window, &mut hovered);
+                app.render_left_sidebar(ctx, &window, &mut hovered);
+                app.render_right_sidebar(ctx, &window, &mut hovered);
+                app.render_bottom_status_bar(ctx, &window);
+                app.render_bottom_drawer(ctx, &window);
+                let center = ctx.available_rect();
+                assert!((410.0..=420.0).contains(&center.width()), "{center:?}");
+                assert!(
+                    center.height() >= 5.0 * 24.0,
+                    "editor viewport at {width}: {center:?}"
+                );
+                app.render_center_stage(ctx, &window, &mut hovered);
+            },
+        );
+    }
+}
+
+#[test]
+fn equation_gui_narrow_plan_scrolls_keyboard_focus_into_view() {
+    let mut app = equation_app();
+    let ctx = narrow_plan_context();
+    ctx.style_mut(|style| style.scroll_animation = egui::style::ScrollAnimation::none());
+    let workspace = &app.platform_host.modeling_inputs().workspace;
+    let mut draft = FlowPlanDraft::new(workspace, workspace.flow_plan.current().clone());
+    draft
+        .edit_number(
+            FlowPlanNumericField::ProductTarget(options(true).target.unwrap().source),
+            1.5,
+            MeasurementUnit::MolePerSecond,
+        )
+        .unwrap()
+        .raw = "1.6".into();
+    app.background_action(Action::FlowPlanDraft {
+        access: FlowEditAccess::Editable,
+        draft: Some(draft),
+    });
+    let window = app.platform_host.snapshot().window_model();
+    let frame = |app: &mut ReadyAppState, height: f32, events: Vec<egui::Event>| {
+        let mut focused = None;
+        let output = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(NARROW_PLAN_VIEWPORT, height),
+                )),
+                modifiers: events
+                    .iter()
+                    .find_map(|event| match event {
+                        egui::Event::Key { modifiers, .. } => Some(*modifiers),
+                        _ => None,
+                    })
+                    .unwrap_or_default(),
+                events,
+                focused: true,
+                ..Default::default()
+            },
+            |ctx| {
+                app.render_center_stage(ctx, &window, &mut false);
+                focused = ctx
+                    .memory(|memory| memory.focused())
+                    .and_then(|id| ctx.read_response(id));
+            },
+        );
+        (output, focused)
+    };
+    let (output, _) = frame(&mut app, 3000.0, vec![]);
+    let mut positions = Vec::new();
+    for shape in &output.shapes {
+        text_position(&shape.shape, "1.6", &mut positions);
+    }
+    assert_eq!(positions.len(), 1);
+    let pos = positions[0];
+    for pressed in [true, false] {
+        frame(
+            &mut app,
+            3000.0,
+            vec![egui::Event::PointerButton {
+                pos,
+                button: egui::PointerButton::Primary,
+                pressed,
+                modifiers: egui::Modifiers::NONE,
+            }],
+        );
+    }
+    let target = ctx
+        .memory(|memory| memory.focused())
+        .expect("focused target");
+    const HEIGHT: f32 = 300.0;
+    let visible_focus = |app: &mut ReadyAppState, name: &str| {
+        let response = frame(app, HEIGHT, vec![]).1.expect("focused widget");
+        let rect = response.rect;
+        assert!(
+            rect.top() >= 0.0 && rect.bottom() <= HEIGHT,
+            "{name} outside the plan viewport: {rect:?}"
+        );
+        response.id
+    };
+    let press_tab = |app: &mut ReadyAppState, shift| {
+        let modifiers = if shift {
+            egui::Modifiers::SHIFT
+        } else {
+            egui::Modifiers::NONE
+        };
+        for pressed in [true, false] {
+            frame(
+                app,
+                HEIGHT,
+                vec![narrow_plan_key(egui::Key::Tab, pressed, modifiers)],
+            );
+        }
+        // Backward focus resolves on the next pass, before the scroll settles.
+        frame(app, HEIGHT, vec![]);
+    };
+    press_tab(&mut app, true);
+    assert_ne!(visible_focus(&mut app, "bisection budget"), target);
+    press_tab(&mut app, false);
+    assert_eq!(visible_focus(&mut app, "product target"), target);
+    for name in [
+        "target unit",
+        "unmatched regions",
+        "all variables",
+        "apply plan",
+    ] {
+        press_tab(&mut app, false);
+        visible_focus(&mut app, name);
+    }
+    frame(
+        &mut app,
+        HEIGHT,
+        vec![narrow_plan_key(
+            egui::Key::Enter,
+            true,
+            egui::Modifiers::NONE,
+        )],
+    );
+    assert!(
+        matches!(app.platform_host.modeling_inputs().workspace.flow_plan.current(), FlowPlanConfiguration::EquationOriented(options) if options.target.as_ref().unwrap().value_mol_s == 1.6)
+    );
+}
+
+#[test]
 fn equation_gui_run_preview_cancel_adopt_stale_and_save_reopen() {
     let mut app = equation_app();
     let ctx = egui::Context::default();

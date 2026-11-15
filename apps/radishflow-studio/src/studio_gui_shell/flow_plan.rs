@@ -46,6 +46,10 @@ impl ReadyAppState {
         }
     }
     pub(super) fn render_flow_plan(&mut self, ui: &mut egui::Ui) {
+        // egui resolves backward tab focus on the next pass, even in an idle window.
+        if ui.input(|input| input.key_pressed(egui::Key::Tab)) {
+            ui.ctx().request_repaint();
+        }
         let zh = self.locale == StudioShellLocale::ZhCn;
         ui.heading(tr(zh, "稳态运行计划", "Steady-state run plan"));
         let workspace = &self.platform_host.modeling_inputs().workspace;
@@ -66,13 +70,12 @@ impl ReadyAppState {
         let mut candidate = draft.candidate().clone();
         let applied_method = PlanMethod::of(&current);
         ui.horizontal_wrapped(|ui| {
-            if ui
-                .add_enabled(
-                    editable && self.background_command_enabled("run_panel.run_manual"),
-                    egui::Button::new(tr(zh, "运行 F5", "Run F5")),
-                )
-                .clicked()
-            {
+            let run = ui.add_enabled(
+                editable && self.background_command_enabled("run_panel.run_manual"),
+                egui::Button::new(tr(zh, "运行 F5", "Run F5")),
+            );
+            reveal_plan_focus(&run);
+            if run.clicked() {
                 self.dispatch_ui_command("run_panel.run_manual");
             }
             ui.label(format!(
@@ -97,7 +100,7 @@ impl ReadyAppState {
         let mut method = PlanMethod::of(&candidate);
         let numeric_pending = draft.has_modified_numbers();
         ui.add_enabled_ui(editable && !numeric_pending, |ui| {
-            egui::ComboBox::from_id_salt("flow-method")
+            let method_picker = egui::ComboBox::from_id_salt("flow-method")
                 .selected_text(method.label(zh))
                 .show_ui(ui, |ui| {
                     for choice in [
@@ -110,6 +113,7 @@ impl ReadyAppState {
                         ui.selectable_value(&mut method, choice, choice.label(zh));
                     }
                 });
+            reveal_plan_focus(&method_picker.response);
         });
         if numeric_pending {
             ui.small(tr(
@@ -264,14 +268,13 @@ impl ReadyAppState {
         }
         ui.horizontal_wrapped(|ui| {
             let can_apply = editable && pending && configuration.is_ok();
-            let apply_clicked = ui
-                .add_enabled(
-                    can_apply,
-                    egui::Button::new(tr(zh, "应用计划", "Apply plan")),
-                )
-                .clicked();
+            let apply = ui.add_enabled(
+                can_apply,
+                egui::Button::new(tr(zh, "应用计划", "Apply plan")),
+            );
+            reveal_plan_focus(&apply);
             let rejected = if can_apply
-                && (apply_clicked || apply_requested || equation_submission.is_some())
+                && (apply.clicked() || apply_requested || equation_submission.is_some())
             {
                 !self.plan_action(Action::ConfigureFlowPlan {
                     expected: draft.context().clone(),
@@ -285,6 +288,10 @@ impl ReadyAppState {
             };
             if rejected && let Some(field) = equation_submission {
                 ui.memory_mut(|memory| memory.request_focus(field));
+                if let Some(response) = ui.ctx().read_response(field) {
+                    // Enter can restore the same ID without a focus-change event.
+                    response.scroll_to_me(None);
+                }
             }
             for (title, command) in [
                 (
@@ -310,7 +317,9 @@ impl ReadyAppState {
                             .can_redo(),
                         _ => true,
                     };
-                if ui.add_enabled(allowed, egui::Button::new(title)).clicked() {
+                let button = ui.add_enabled(allowed, egui::Button::new(title));
+                reveal_plan_focus(&button);
+                if button.clicked() {
                     self.plan_action(Action::ConfigureFlowPlan {
                         expected: expected.clone(),
                         access,
@@ -318,13 +327,12 @@ impl ReadyAppState {
                     });
                 }
             }
-            if ui
-                .add_enabled(
-                    editable && pending,
-                    egui::Button::new(tr(zh, "放弃草稿", "Discard draft")),
-                )
-                .clicked()
-            {
+            let discard = ui.add_enabled(
+                editable && pending,
+                egui::Button::new(tr(zh, "放弃草稿", "Discard draft")),
+            );
+            reveal_plan_focus(&discard);
+            if discard.clicked() {
                 self.plan_action(Action::FlowPlanDraft {
                     access,
                     draft: None,
@@ -355,6 +363,12 @@ impl ReadyAppState {
         }
     }
 }
+fn reveal_plan_focus(response: &egui::Response) {
+    if response.gained_focus() {
+        response.scroll_to_me(None);
+    }
+}
+
 fn number(
     ui: &mut egui::Ui,
     draft: &mut FlowPlanDraft,
@@ -372,6 +386,7 @@ fn number(
                 .id_salt("plan-number")
                 .desired_width(ui.available_width().min(260.0)),
         );
+        reveal_plan_focus(&response);
         let submitted = response.lost_focus()
             && ui.input(|i| {
                 i.key_pressed(egui::Key::Enter)
@@ -379,7 +394,7 @@ fn number(
             });
         let mut selected = input.unit;
         if let Some(quantity) = field.quantity() {
-            egui::ComboBox::from_id_salt("unit")
+            let unit_picker = egui::ComboBox::from_id_salt("unit")
                 .selected_text(selected.definition().symbol)
                 .show_ui(ui, |ui| {
                     for unit in ALL_UNITS
@@ -389,6 +404,7 @@ fn number(
                         ui.selectable_value(&mut selected, *unit, unit.definition().symbol);
                     }
                 });
+            reveal_plan_focus(&unit_picker.response);
             if selected != draft.numbers()[&field].unit
                 && let Err(error) = draft.change_input_unit(&field, selected)
             {

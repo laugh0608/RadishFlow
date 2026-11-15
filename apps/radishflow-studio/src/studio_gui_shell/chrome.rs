@@ -1,5 +1,7 @@
 use super::*;
 
+mod status;
+
 impl ReadyAppState {
     pub(super) fn render_top_bar(
         &mut self,
@@ -156,22 +158,7 @@ impl ReadyAppState {
                 }
             }
         });
-        if !toolbar.status_items.is_empty() {
-            ui.horizontal_wrapped(|ui| {
-                for status in &toolbar.status_items {
-                    ui.small(format!(
-                        "{}: {}",
-                        self.locale.runtime_label(status.label),
-                        self.locale.runtime_label(&status.value)
-                    ));
-                    render_status_chip(
-                        ui,
-                        self.locale.runtime_label(&status.status_label).as_ref(),
-                        context_toolbar_status_color(&status.status_label),
-                    );
-                }
-            });
-        }
+        self.render_context_toolbar_statuses(ui, toolbar);
     }
 
     fn render_context_toolbar_item(
@@ -586,130 +573,6 @@ impl ReadyAppState {
                 } else {
                     self.render_bottom_workbench(ui, window);
                 }
-            });
-    }
-
-    pub(super) fn render_bottom_status_bar(
-        &mut self,
-        ctx: &egui::Context,
-        window: &StudioGuiWindowModel,
-    ) {
-        egui::TopBottomPanel::bottom("studio.status_bar")
-            .min_height(30.0)
-            .resizable(false)
-            .show(ctx, |ui| {
-                ui.horizontal_wrapped(|ui| {
-                    self.render_modeling_draft_access(ui);
-                    ui.separator();
-                    ui.small(
-                        egui::RichText::new(self.locale.runtime_label("Run").as_ref()).strong(),
-                    );
-                    if let Some(metric) = window
-                        .status_summary
-                        .metrics
-                        .iter()
-                        .find(|metric| metric.label == "Run")
-                    {
-                        render_status_chip(
-                            ui,
-                            self.locale.runtime_label(&metric.status_label).as_ref(),
-                            run_status_color(&metric.status_label),
-                        );
-                    }
-                    ui.separator();
-                    ui.small(
-                        egui::RichText::new(self.locale.runtime_label("Snapshot").as_ref())
-                            .strong(),
-                    );
-                    render_status_chip(
-                        ui,
-                        self.locale
-                            .runtime_label(window.status_summary.snapshot_consistency_label)
-                            .as_ref(),
-                        context_toolbar_status_color(
-                            window.status_summary.snapshot_consistency_label,
-                        ),
-                    );
-                    ui.separator();
-                    ui.small(super::unit_settings::project_units_label(
-                        self.locale,
-                        window
-                            .runtime
-                            .workspace_document
-                            .presentation
-                            .display_units(),
-                    ));
-                    ui.separator();
-                    ui.small(
-                        if matches!(
-                            self.platform_host
-                                .modeling_inputs()
-                                .workspace
-                                .flow_plan
-                                .current(),
-                            rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(_)
-                        ) {
-                            if self.locale == StudioShellLocale::ZhCn {
-                                "求解器: 分块回流（固定温压）"
-                            } else {
-                                "Solver: Partitioned recycle (fixed T/P)"
-                            }
-                        } else if matches!(
-                            self.platform_host
-                                .modeling_inputs()
-                                .workspace
-                                .flow_plan
-                                .current(),
-                            rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
-                        ) {
-                            if self.locale == StudioShellLocale::ZhCn {
-                                "求解器: 固定温压仿射联立模块"
-                            } else {
-                                "Solver: Fixed-T/P affine modular"
-                            }
-                        } else {
-                            if matches!(
-                                self.platform_host
-                                    .modeling_inputs()
-                                    .workspace
-                                    .flow_plan
-                                    .current(),
-                                rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
-                            ) {
-                                if self.locale == StudioShellLocale::ZhCn {
-                                    "求解器: 固定温压物料方程"
-                                } else {
-                                    "Solver: Fixed-T/P material equations"
-                                }
-                            } else if matches!(
-                                self.platform_host
-                                    .modeling_inputs()
-                                    .workspace
-                                    .flow_plan
-                                    .current(),
-                                rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
-                            ) {
-                                if self.locale == StudioShellLocale::ZhCn {
-                                    "求解器: 固定温压混合分区"
-                                } else {
-                                    "Solver: Fixed-T/P mixed material"
-                                }
-                            } else {
-                                self.locale.text(ShellText::SolverSequentialModular)
-                            }
-                        },
-                    );
-                    ui.separator();
-                    ui.small(self.locale.text(ShellText::FlowsheetMode));
-                    if let Some(selection) = window.canvas.widget.view().current_selection.as_ref()
-                    {
-                        ui.separator();
-                        ui.small(
-                            self.locale
-                                .selected_target(selection.kind_label, &selection.target_id),
-                        );
-                    }
-                });
             });
     }
 

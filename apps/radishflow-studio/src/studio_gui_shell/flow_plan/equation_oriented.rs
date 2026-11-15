@@ -80,26 +80,23 @@ impl ReadyAppState {
         let mut selected = o.released.as_ref().map(|r| r.binding.unit.clone());
         let before = selected.clone();
         ui.add_enabled_ui(can_change, |ui| {
-            egui::ComboBox::from_id_salt("eo-release")
-                .width(ui.available_width().min(300.0))
-                .selected_text(
-                    selected
-                        .as_ref()
-                        .map(ToString::to_string)
-                        .unwrap_or_else(|| {
-                            tr(zh, "不释放比例（正向）", "No released fraction (forward)").into()
-                        }),
-                )
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(
-                        &mut selected,
-                        None,
-                        tr(zh, "不释放比例", "No released fraction"),
-                    );
-                    for id in &splitters {
-                        ui.selectable_value(&mut selected, Some(id.clone()), id.to_string());
-                    }
-                });
+            let picker =
+                egui::ComboBox::from_id_salt("eo-release")
+                    .width(ui.available_width().min(300.0))
+                    .selected_text(selected.as_ref().map(ToString::to_string).unwrap_or_else(
+                        || tr(zh, "不释放比例（正向）", "No released fraction (forward)").into(),
+                    ))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut selected,
+                            None,
+                            tr(zh, "不释放比例", "No released fraction"),
+                        );
+                        for id in &splitters {
+                            ui.selectable_value(&mut selected, Some(id.clone()), id.to_string());
+                        }
+                    });
+            reveal_plan_focus(&picker.response);
         });
         if selected != before {
             o.released = selected.map(|unit| ReleasedSplitFraction {
@@ -141,10 +138,9 @@ impl ReadyAppState {
                     ),
                 );
             }
-            if ui
-                .button(tr(zh, "定位释放字段", "Locate released field"))
-                .clicked()
-            {
+            let locate = ui.button(tr(zh, "定位释放字段", "Locate released field"));
+            reveal_plan_focus(&locate);
+            if locate.clicked() {
                 self.dispatch_ui_command(radishflow_studio::inspector_target_command_id(
                     &rf_ui::InspectorTarget::Unit(r.binding.unit.clone()),
                 ));
@@ -181,7 +177,7 @@ impl ReadyAppState {
         let mut target = o.target.as_ref().map(|t| t.source.clone());
         let before = target.clone();
         ui.add_enabled_ui(can_change, |ui| {
-            egui::ComboBox::from_id_salt("eo-product")
+            let picker = egui::ComboBox::from_id_salt("eo-product")
                 .width(ui.available_width().min(300.0))
                 .selected_text(
                     target
@@ -203,6 +199,7 @@ impl ReadyAppState {
                         );
                     }
                 });
+            reveal_plan_focus(&picker.response);
         });
         if target != before {
             o.target = target.map(|source| ProductTotalTarget {
@@ -271,7 +268,7 @@ impl ReadyAppState {
                         "Under/over-specified regions exist; running is blocked.",
                     )
                 });
-                ui.collapsing(
+                let unmatched = ui.collapsing(
                     tr(zh, "未匹配与关联区域", "Unmatched and associated regions"),
                     |ui| {
                         for (label, region) in [
@@ -288,7 +285,8 @@ impl ReadyAppState {
                         }
                     },
                 );
-                ui.collapsing(
+                reveal_plan_focus(&unmatched.header_response);
+                let variables = ui.collapsing(
                     tr(
                         zh,
                         "完整变量 / 方程（只读）",
@@ -304,6 +302,7 @@ impl ReadyAppState {
                         }
                     },
                 );
+                reveal_plan_focus(&variables.header_response);
             }
             Err(e) => {
                 ui.label(format!(
