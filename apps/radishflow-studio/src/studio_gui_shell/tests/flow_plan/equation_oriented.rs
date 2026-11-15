@@ -70,6 +70,150 @@ fn key(app: &mut ReadyAppState, ctx: &egui::Context, key: egui::Key) {
         }],
     );
 }
+
+// CentralPanel's horizontal margins leave 400 points for the plan editor.
+const NARROW_PLAN_VIEWPORT: f32 = 416.0;
+
+fn narrow_plan_context() -> egui::Context {
+    let ctx = egui::Context::default();
+    ctx.style_mut(|style| {
+        for font in style.text_styles.values_mut() {
+            font.size = 20.0;
+        }
+    });
+    ctx
+}
+
+fn focus_narrow_plan_number(app: &mut ReadyAppState, ctx: &egui::Context, raw: &str) -> egui::Id {
+    let output = output_at_width(app, ctx, NARROW_PLAN_VIEWPORT, vec![]);
+    let mut positions = Vec::new();
+    for shape in output.shapes {
+        text_position(&shape.shape, raw, &mut positions);
+    }
+    assert_eq!(positions.len(), 1, "expected one numeric field with {raw}");
+    click_at_width(app, ctx, NARROW_PLAN_VIEWPORT, positions[0]);
+    ctx.memory(|memory| memory.focused())
+        .expect("numeric field focused by click")
+}
+
+fn narrow_plan_key(key: egui::Key, pressed: bool, modifiers: egui::Modifiers) -> egui::Event {
+    egui::Event::Key {
+        key,
+        physical_key: None,
+        pressed,
+        repeat: false,
+        modifiers,
+    }
+}
+
+#[test]
+fn equation_gui_invalid_enter_refocuses_submitted_field_and_preserves_drafts() {
+    let spec = options(true);
+    let target = FlowPlanNumericField::ProductTarget(spec.target.unwrap().source);
+    let budget = FlowPlanNumericField::BisectionBudget(spec.released.unwrap().binding);
+    for (field, target_raw, budget_raw, submitted_raw) in [
+        ("product target", "1e-", "63", "1e-"),
+        ("bisection budget", "1.6", "129", "129"),
+    ] {
+        let mut app = equation_app();
+        let ctx = narrow_plan_context();
+        app.dispatch_ui_command("run_panel.run_manual");
+        drain(&mut app, &ctx);
+        let workspace = &app.platform_host.modeling_inputs().workspace;
+        let before = FlowPlanEditContext::capture(workspace);
+        let mut draft = FlowPlanDraft::new(workspace, workspace.flow_plan.current().clone());
+        draft
+            .edit_number(target.clone(), 1.5, MeasurementUnit::KilomolePerHour)
+            .unwrap()
+            .raw = target_raw.into();
+        draft
+            .edit_number(budget.clone(), 64.0, MeasurementUnit::One)
+            .unwrap()
+            .raw = budget_raw.into();
+        app.background_action(Action::FlowPlanDraft {
+            access: FlowEditAccess::Editable,
+            draft: Some(draft),
+        });
+        let focused = focus_narrow_plan_number(&mut app, &ctx, submitted_raw);
+        let draft = app
+            .platform_host
+            .modeling_inputs()
+            .workspace
+            .flow_plan
+            .draft()
+            .unwrap()
+            .clone();
+        for pressed in [true, false] {
+            output_at_width(
+                &mut app,
+                &ctx,
+                NARROW_PLAN_VIEWPORT,
+                vec![narrow_plan_key(
+                    egui::Key::Enter,
+                    pressed,
+                    egui::Modifiers::NONE,
+                )],
+            );
+        }
+        assert_eq!(
+            ctx.memory(|memory| memory.focused()),
+            Some(focused),
+            "after Enter on {field}"
+        );
+        let workspace = &app.platform_host.modeling_inputs().workspace;
+        assert_eq!(workspace.flow_plan.draft(), Some(&draft));
+        assert_eq!(FlowPlanEditContext::capture(workspace), before);
+        assert!(matches!(
+            workspace.flow_result(),
+            FlowResultView::Current { .. }
+        ));
+        assert!(!app.background_command_enabled("run_panel.run_manual"));
+    }
+}
+
+#[test]
+fn equation_gui_first_numeric_edit_keeps_focus_and_corrected_enter_applies() {
+    let mut app = equation_app();
+    let ctx = narrow_plan_context();
+    let focused = focus_narrow_plan_number(&mut app, &ctx, "1.5");
+    let replace = |app: &mut ReadyAppState, text: &str| {
+        output_at_width(
+            app,
+            &ctx,
+            NARROW_PLAN_VIEWPORT,
+            vec![
+                narrow_plan_key(egui::Key::A, true, egui::Modifiers::COMMAND),
+                egui::Event::Text(text.into()),
+                narrow_plan_key(egui::Key::A, false, egui::Modifiers::COMMAND),
+            ],
+        );
+        output_at_width(app, &ctx, NARROW_PLAN_VIEWPORT, vec![]);
+    };
+    replace(&mut app, "1e-");
+    assert_eq!(
+        ctx.memory(|memory| memory.focused()),
+        Some(focused),
+        "after draft controls appear"
+    );
+    replace(&mut app, "1.6");
+    output_at_width(
+        &mut app,
+        &ctx,
+        NARROW_PLAN_VIEWPORT,
+        vec![narrow_plan_key(
+            egui::Key::Enter,
+            true,
+            egui::Modifiers::NONE,
+        )],
+    );
+    let plan = &app.platform_host.modeling_inputs().workspace.flow_plan;
+    assert!(plan.draft().is_none());
+    assert!(
+        matches!(plan.current(), FlowPlanConfiguration::EquationOriented(options) if options.target.as_ref().unwrap().value_mol_s == 1.6)
+    );
+    assert_ne!(ctx.memory(|memory| memory.focused()), Some(focused));
+}
+
 #[test]
 fn equation_gui_run_preview_cancel_adopt_stale_and_save_reopen() {
     let mut app = equation_app();

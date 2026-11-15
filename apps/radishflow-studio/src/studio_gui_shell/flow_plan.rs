@@ -179,7 +179,7 @@ impl ReadyAppState {
                         (FlowPlanNumericField::Temperature, tr(zh,"温度","Temperature"), options.boundary.temperature_k, MeasurementUnit::Kelvin),
                         (FlowPlanNumericField::Pressure, tr(zh,"压力","Pressure"), options.boundary.pressure_pa, MeasurementUnit::Pascal),
                         (FlowPlanNumericField::IterationBudget, tr(zh,"迭代预算","Iteration budget"), options.max_iteration_evaluations as f64, MeasurementUnit::One),
-                    ] { apply_requested |= number(ui, &mut draft, field, title, value, unit, &mut self.flow_plan.notice); }
+                    ] { apply_requested |= number(ui, &mut draft, field, title, value, unit, &mut self.flow_plan.notice).is_some(); }
                     ui.small(tr(zh,"独立最终复核另计 1 次；验收容差随方法固定。","One independent final verification; method acceptance tolerances are fixed."));
                 });
                 let mut remove = None;
@@ -201,7 +201,7 @@ impl ReadyAppState {
                         for (initial, values) in [(true, &tear.initial_component_flows_mol_s),(false, &tear.component_scales_mol_s)] {
                             if let Some(values) = values { for (component, value) in values {
                                 let field = if initial { FlowPlanNumericField::InitialComponent { stream: tear.stream_id.clone(), component: component.clone() } } else { FlowPlanNumericField::ResidualScale { stream: tear.stream_id.clone(), component: component.clone() } };
-                                apply_requested |= number(ui, &mut draft, field, &format!("{} {component}", if initial { tr(zh,"初值","Initial") } else { tr(zh,"尺度","Scale") }), *value, MeasurementUnit::MolePerSecond, &mut self.flow_plan.notice);
+                                apply_requested |= number(ui, &mut draft, field, &format!("{} {component}", if initial { tr(zh,"初值","Initial") } else { tr(zh,"尺度","Scale") }), *value, MeasurementUnit::MolePerSecond, &mut self.flow_plan.notice).is_some();
                             }}
                         }
                     });
@@ -219,11 +219,15 @@ impl ReadyAppState {
                 apply_requested |= self.render_simultaneous_plan(ui, &mut draft, options);
             });
         }
-        if let FlowPlanConfiguration::EquationOriented(options) = &mut candidate {
-            ui.add_enabled_ui(editable, |ui| {
-                apply_requested |= self.render_equation_plan(ui, &mut draft, options);
-            });
-        }
+        let equation_submission =
+            if let FlowPlanConfiguration::EquationOriented(options) = &mut candidate {
+                ui.add_enabled_ui(editable, |ui| {
+                    self.render_equation_plan(ui, &mut draft, options)
+                })
+                .inner
+            } else {
+                None
+            };
         if let FlowPlanConfiguration::Mixed(options) = &mut candidate {
             ui.add_enabled_ui(editable, |ui| {
                 apply_requested |= self.render_mixed_plan(ui, &mut draft, options);
@@ -259,21 +263,28 @@ impl ReadyAppState {
             });
         }
         ui.horizontal_wrapped(|ui| {
-            if ui
+            let can_apply = editable && pending && configuration.is_ok();
+            let apply_clicked = ui
                 .add_enabled(
-                    editable && pending && configuration.is_ok(),
+                    can_apply,
                     egui::Button::new(tr(zh, "应用计划", "Apply plan")),
                 )
-                .clicked()
-                || (apply_requested && editable && pending && configuration.is_ok())
+                .clicked();
+            let rejected = if can_apply
+                && (apply_clicked || apply_requested || equation_submission.is_some())
             {
-                self.plan_action(Action::ConfigureFlowPlan {
+                !self.plan_action(Action::ConfigureFlowPlan {
                     expected: draft.context().clone(),
                     access,
                     command: FlowPlanCommand::Apply(
                         configuration.clone().expect("enabled valid draft"),
                     ),
-                });
+                })
+            } else {
+                configuration.is_err()
+            };
+            if rejected && let Some(field) = equation_submission {
+                ui.memory_mut(|memory| memory.request_focus(field));
             }
             for (title, command) in [
                 (
@@ -352,14 +363,13 @@ fn number(
     value: f64,
     unit: MeasurementUnit,
     notice: &mut Option<String>,
-) -> bool {
+) -> Option<egui::Id> {
     ui.push_id(&field, |ui| {
         ui.label(label);
-        let Ok(input) = draft.edit_number(field.clone(), value, unit) else {
-            return false;
-        };
+        let input = draft.edit_number(field.clone(), value, unit).ok()?;
         let response = ui.add(
             egui::TextEdit::singleline(&mut input.raw)
+                .id_salt("plan-number")
                 .desired_width(ui.available_width().min(260.0)),
         );
         let submitted = response.lost_focus()
@@ -385,7 +395,7 @@ fn number(
                 *notice = Some(error.to_string());
             }
         }
-        submitted
+        submitted.then_some(response.id)
     })
     .inner
 }

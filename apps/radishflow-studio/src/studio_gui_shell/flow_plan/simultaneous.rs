@@ -104,7 +104,8 @@ impl ReadyAppState {
                 value,
                 unit,
                 &mut self.flow_plan.notice,
-            );
+            )
+            .is_some();
         }
         // Discovery ignores the explicit map so invalid saved references remain
         // editable beside the current graph. It never repairs them implicitly.
@@ -241,8 +242,8 @@ impl ReadyAppState {
                             }
                             if ui.add_enabled(can_change, egui::Button::new(tr(zh,"移除此尺度绑定","Remove scale binding"))).clicked() { remove = Some(binding.clone()); }
                         });
-                        apply |= number(ui, draft, FlowPlanNumericField::CouplingVariableScale(binding.clone()), tr(zh,"变量尺度","Variable scale"), scale.variable_mol_s, MeasurementUnit::MolePerSecond, &mut self.flow_plan.notice);
-                        apply |= number(ui, draft, FlowPlanNumericField::CouplingResidualScale(binding.clone()), tr(zh,"残差尺度","Residual scale"), scale.residual_mol_s, MeasurementUnit::MolePerSecond, &mut self.flow_plan.notice);
+                        apply |= number(ui, draft, FlowPlanNumericField::CouplingVariableScale(binding.clone()), tr(zh,"变量尺度","Variable scale"), scale.variable_mol_s, MeasurementUnit::MolePerSecond, &mut self.flow_plan.notice).is_some();
+                        apply |= number(ui, draft, FlowPlanNumericField::CouplingResidualScale(binding.clone()), tr(zh,"残差尺度","Residual scale"), scale.residual_mol_s, MeasurementUnit::MolePerSecond, &mut self.flow_plan.notice).is_some();
                     });
                 });
             }

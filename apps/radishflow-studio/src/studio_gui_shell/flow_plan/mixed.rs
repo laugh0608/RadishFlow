@@ -32,7 +32,8 @@ impl ReadyAppState {
                 value,
                 unit,
                 &mut self.flow_plan.notice,
-            );
+            )
+            .is_some();
         }
         let can_change = !draft.has_modified_numbers();
         let flow = self.platform_host.document().flowsheet.clone();
@@ -90,11 +91,11 @@ impl ReadyAppState {
                         ui.collapsing(tr(zh,"完整显式变量 / 残差尺度","Complete explicit variable / residual scales"),|ui| {
                             for (binding,v) in &s.variables {
                                 ui.label(format!("{binding:?}"));
-                                apply |= number(ui,draft,FlowPlanNumericField::MixedVariableScale { block:b.id.clone(),binding:binding.clone() },tr(zh,"变量尺度","Variable scale"),*v,MeasurementUnit::MolePerSecond,&mut self.flow_plan.notice);
+                                apply |= number(ui,draft,FlowPlanNumericField::MixedVariableScale { block:b.id.clone(),binding:binding.clone() },tr(zh,"变量尺度","Variable scale"),*v,MeasurementUnit::MolePerSecond,&mut self.flow_plan.notice).is_some();
                             }
                             for (binding,v) in &s.equations {
                                 ui.label(format!("{binding:?}"));
-                                apply |= number(ui,draft,FlowPlanNumericField::MixedResidualScale { block:b.id.clone(),binding:binding.clone() },tr(zh,"残差尺度","Residual scale"),*v,MeasurementUnit::MolePerSecond,&mut self.flow_plan.notice);
+                                apply |= number(ui,draft,FlowPlanNumericField::MixedResidualScale { block:b.id.clone(),binding:binding.clone() },tr(zh,"残差尺度","Residual scale"),*v,MeasurementUnit::MolePerSecond,&mut self.flow_plan.notice).is_some();
                             }
                         });
                     }

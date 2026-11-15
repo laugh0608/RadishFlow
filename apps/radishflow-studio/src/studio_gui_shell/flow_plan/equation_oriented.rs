@@ -7,10 +7,10 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         draft: &mut FlowPlanDraft,
         o: &mut EquationOptions,
-    ) -> bool {
+    ) -> Option<egui::Id> {
         let zh = self.locale == StudioShellLocale::ZhCn;
         ui.small(tr(zh,"Feed / Mixer / Splitter 固定温压物料方程；反算仅支持一个分流比例和一个终端产品总量。","Fixed-T/P Feed / Mixer / Splitter material equations; one released split fraction and one terminal product target."));
-        let mut apply = false;
+        let mut submission = None;
         for (field, title, value, unit) in [
             (
                 FlowPlanNumericField::Temperature,
@@ -25,7 +25,7 @@ impl ReadyAppState {
                 MeasurementUnit::Pascal,
             ),
         ] {
-            apply |= number(
+            submission = number(
                 ui,
                 draft,
                 field,
@@ -33,7 +33,8 @@ impl ReadyAppState {
                 value,
                 unit,
                 &mut self.flow_plan.notice,
-            );
+            )
+            .or(submission);
         }
         let can_change = !draft.has_modified_numbers();
         let flow = &self.platform_host.document().flowsheet;
@@ -165,7 +166,7 @@ impl ReadyAppState {
                     r.max_iterations as f64,
                 ),
             ] {
-                apply |= number(
+                submission = number(
                     ui,
                     draft,
                     field,
@@ -173,7 +174,8 @@ impl ReadyAppState {
                     value,
                     MeasurementUnit::One,
                     &mut self.flow_plan.notice,
-                );
+                )
+                .or(submission);
             }
         }
         let mut target = o.target.as_ref().map(|t| t.source.clone());
@@ -219,7 +221,7 @@ impl ReadyAppState {
                     ),
                 );
             }
-            apply |= number(
+            submission = number(
                 ui,
                 draft,
                 FlowPlanNumericField::ProductTarget(t.source.clone()),
@@ -227,7 +229,8 @@ impl ReadyAppState {
                 t.value_mol_s,
                 MeasurementUnit::MolePerSecond,
                 &mut self.flow_plan.notice,
-            );
+            )
+            .or(submission);
         }
         // A draft preview is explicitly separate from the applied qualified query.
         let mut preview_draft = draft.clone();
@@ -370,7 +373,7 @@ impl ReadyAppState {
                             } else {
                                 MeasurementUnit::MolePerSecond
                             };
-                            apply |= number(
+                            submission = number(
                                 ui,
                                 draft,
                                 FlowPlanNumericField::EquationVariableScale(b.clone()),
@@ -378,7 +381,8 @@ impl ReadyAppState {
                                 *v,
                                 unit,
                                 &mut self.flow_plan.notice,
-                            );
+                            )
+                            .or(submission);
                             if ui
                                 .add_enabled(
                                     can_change,
@@ -393,7 +397,7 @@ impl ReadyAppState {
                     for (b, v) in &scales.equations {
                         ui.push_id(b, |ui| {
                             ui.label(format!("{b:?}"));
-                            apply |= number(
+                            submission = number(
                                 ui,
                                 draft,
                                 FlowPlanNumericField::EquationResidualScale(b.clone()),
@@ -401,7 +405,8 @@ impl ReadyAppState {
                                 *v,
                                 MeasurementUnit::MolePerSecond,
                                 &mut self.flow_plan.notice,
-                            );
+                            )
+                            .or(submission);
                             if ui
                                 .add_enabled(
                                     can_change,
@@ -441,7 +446,7 @@ impl ReadyAppState {
                 },
             );
         }
-        apply
+        submission
     }
     fn equation_variable_row(&mut self, ui: &mut egui::Ui, b: &VariableBinding, zh: bool) {
         ui.label(format!("{b:?}"));

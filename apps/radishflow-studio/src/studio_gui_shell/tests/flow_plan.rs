@@ -201,11 +201,19 @@ fn output(
     ctx: &egui::Context,
     events: Vec<egui::Event>,
 ) -> egui::FullOutput {
+    output_at_width(app, ctx, 900.0, events)
+}
+fn output_at_width(
+    app: &mut ReadyAppState,
+    ctx: &egui::Context,
+    width: f32,
+    events: Vec<egui::Event>,
+) -> egui::FullOutput {
     ctx.run(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
-                egui::vec2(900.0, 3000.0),
+                egui::vec2(width, 3000.0),
             )),
             modifiers: events
                 .iter()
@@ -241,9 +249,13 @@ fn text_position(shape: &egui::Shape, text: &str, positions: &mut Vec<egui::Pos2
     }
 }
 fn click_at(app: &mut ReadyAppState, ctx: &egui::Context, pos: egui::Pos2) {
-    output(
+    click_at_width(app, ctx, 900.0, pos);
+}
+fn click_at_width(app: &mut ReadyAppState, ctx: &egui::Context, width: f32, pos: egui::Pos2) {
+    output_at_width(
         app,
         ctx,
+        width,
         vec![
             egui::Event::PointerMoved(pos),
             egui::Event::PointerButton {
@@ -254,9 +266,10 @@ fn click_at(app: &mut ReadyAppState, ctx: &egui::Context, pos: egui::Pos2) {
             },
         ],
     );
-    output(
+    output_at_width(
         app,
         ctx,
+        width,
         vec![egui::Event::PointerButton {
             pos,
             button: egui::PointerButton::Primary,
