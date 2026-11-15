@@ -688,8 +688,8 @@ fn top_bar_aligns_primary_navigation_and_command_buckets() {
         "主页",
         "物性",
         "流程图",
-        "运行",
-        "结果",
+        "流程运行",
+        "流程结果",
         "工具",
         "设置",
     ];
@@ -1480,7 +1480,7 @@ fn top_bar_exposes_home_property_and_flowsheet_navigation() {
     let mut app = ready_app_state(&synced_workspace_config());
     let texts = render_top_bar_texts(&mut app);
 
-    for expected in ["主页", "物性", "流程图", "运行"] {
+    for expected in ["主页", "物性", "流程图", "流程运行", "流程结果"] {
         assert!(
             texts.iter().any(|text| text == expected),
             "expected top bar navigation to render `{expected}`, rendered texts: {:?}",

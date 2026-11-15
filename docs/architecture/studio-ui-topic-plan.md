@@ -27,7 +27,7 @@
 | 当前代码 | Home、物性、流程工作台、现有输入 / 结果和变量浏览已有实现，范围见 [Studio 专题](../topics/studio-main-workflow.md) | 基础修复继续按真实能力推进，不借重设计虚构新命令或新结果 |
 | 保留主稿 | 旧 brief 记录 Home / Property / Flowsheet / Module 四个主 frame，反映原范围 | 保留历史评审范围；新功能分区待重评，不表述为新稿已完成 |
 | 新版信息架构 | [R0 决策](designs/studio-client-main-brief.md#studio-r0-首轮信息架构评审2026-11-15)已确认采用 A、流程入口命名、返回和跨页规则。工程基础沿用设备任务及来源入口 | [R1 两条局部路径](designs/reviews/2026-11-15-studio-r1/README.md)已复核并获所有者认可 |
-| 新版视觉与代码 | U2 / V0 局部画板获认可。本轮 R1 画板获认可，产品接线另行确认 | R2 逐切片映射正式能力并验收 |
+| 新版视觉与代码 | U2 / V0 和本轮 R1 画板获认可。[R2](designs/reviews/2026-11-15-studio-r1/README.md#r2-产品接线范围)流程入口与诊断往返已接线 | 流程 macOS 实窗待验，设备来源与导出返回接线待确认 |
 
 ## 产品任务与功能分区候选
 

@@ -72,7 +72,9 @@ fn render_result_inspector_texts(
     selected_stream_id: &str,
 ) -> Vec<String> {
     let inspector = snapshot.result_inspector(Some(selected_stream_id));
-    render_runtime_area_texts(app, |app, ui| app.render_result_inspector(ui, &inspector))
+    render_runtime_area_texts(app, |app, ui| {
+        app.render_result_inspector(ui, &inspector, None)
+    })
 }
 
 fn render_runtime_module_results_tab_texts(
@@ -165,7 +167,7 @@ fn render_result_inspector_with_unit_texts_with_open_sections(
     let inspector =
         snapshot.result_inspector_with_unit(Some(selected_stream_id), None, Some(selected_unit_id));
     render_runtime_area_texts_with_open_sections(app, open_section_labels, |app, ui| {
-        app.render_result_inspector(ui, &inspector);
+        app.render_result_inspector(ui, &inspector, None);
     })
 }
 
@@ -185,7 +187,7 @@ fn render_shell_selected_result_inspector_texts(
         selected_unit_id.as_deref(),
     );
     render_runtime_area_texts_with_open_sections(app, open_section_labels, |app, ui| {
-        app.render_result_inspector(ui, &inspector);
+        app.render_result_inspector(ui, &inspector, None);
     })
 }
 
@@ -1974,7 +1976,7 @@ fn runtime_panel_renders_official_near_boundary_flash_diagnostic_actions_and_foc
             Some("flash-1"),
         );
         let unit_texts = render_runtime_area_texts(&mut app, |app, ui| {
-            app.render_result_inspector(ui, &unit_inspector)
+            app.render_result_inspector(ui, &unit_inspector, None)
         });
         assert!(
             unit_texts

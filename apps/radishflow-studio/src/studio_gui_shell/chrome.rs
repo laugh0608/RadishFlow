@@ -1,4 +1,5 @@
 use super::*;
+use flow_diagnostics::RunDiagnosticSurface;
 
 mod status;
 
@@ -59,6 +60,7 @@ impl ReadyAppState {
                 self.render_tools_top_menu(ui, windows, current_window_id, window);
                 self.render_settings_top_menu(ui);
             });
+            self.render_flow_page_context(ui, window);
             let context_toolbar = match self.screen {
                 StudioShellScreen::Property => Some(&window.property_context_toolbar),
                 StudioShellScreen::Workbench => Some(&window.flowsheet_context_toolbar),
@@ -76,6 +78,8 @@ impl ReadyAppState {
             if self.screen != StudioShellScreen::Equipment {
                 self.render_failure_recovery_action(ui, window);
             }
+            self.render_run_diagnostic_return_notice(ui, RunDiagnosticSurface::Toolbar);
+            self.render_run_diagnostic_return(ui);
             self.render_project_operation_strip(ui);
             if self.screen != StudioShellScreen::Equipment
                 && !window.commands.menu_tree.is_empty()
@@ -336,12 +340,12 @@ impl ReadyAppState {
         ui.selectable_value(
             &mut self.screen,
             StudioShellScreen::Run,
-            self.locale.text(ShellText::Run),
+            self.locale.text(ShellText::FlowsheetRun),
         );
         ui.selectable_value(
             &mut self.screen,
             StudioShellScreen::Results,
-            self.locale.text(ShellText::Results),
+            self.locale.text(ShellText::FlowsheetResults),
         );
     }
 
@@ -569,7 +573,13 @@ impl ReadyAppState {
                     ui.separator();
                     egui::ScrollArea::vertical()
                         .id_salt("background-run-log-scroll")
-                        .show(ui, |ui| self.render_bottom_run_log(ui, window));
+                        .show(ui, |ui| {
+                            self.render_bottom_run_log(ui, window);
+                            self.render_run_diagnostic_return_notice(
+                                ui,
+                                RunDiagnosticSurface::Drawer,
+                            );
+                        });
                 } else {
                     self.render_bottom_workbench(ui, window);
                 }
@@ -1354,21 +1364,24 @@ impl ReadyAppState {
                 self.modeling_problem_scroll_page()
             ))
             .auto_shrink([false, false])
-            .show(ui, |ui| match self.bottom_drawer_tab {
-                StudioShellBottomDrawerTab::Messages => self.render_bottom_messages(ui, window),
-                StudioShellBottomDrawerTab::RunLog => self.render_bottom_run_log(ui, window),
-                StudioShellBottomDrawerTab::Convergence => {
-                    self.render_bottom_convergence(ui, window)
+            .show(ui, |ui| {
+                match self.bottom_drawer_tab {
+                    StudioShellBottomDrawerTab::Messages => self.render_bottom_messages(ui, window),
+                    StudioShellBottomDrawerTab::RunLog => self.render_bottom_run_log(ui, window),
+                    StudioShellBottomDrawerTab::Convergence => {
+                        self.render_bottom_convergence(ui, window)
+                    }
+                    StudioShellBottomDrawerTab::Suggestions => {
+                        self.render_bottom_suggestions(ui, window)
+                    }
+                    StudioShellBottomDrawerTab::Diagnostics => {
+                        self.render_modeling_problems(ui, window)
+                    }
+                    StudioShellBottomDrawerTab::ResultsTable => {
+                        self.render_bottom_results_table(ui, window)
+                    }
                 }
-                StudioShellBottomDrawerTab::Suggestions => {
-                    self.render_bottom_suggestions(ui, window)
-                }
-                StudioShellBottomDrawerTab::Diagnostics => {
-                    self.render_modeling_problems(ui, window)
-                }
-                StudioShellBottomDrawerTab::ResultsTable => {
-                    self.render_bottom_results_table(ui, window)
-                }
+                self.render_run_diagnostic_return_notice(ui, RunDiagnosticSurface::Drawer);
             });
     }
 
@@ -1616,7 +1629,11 @@ impl ReadyAppState {
                 });
                 render_wrapped_label(ui, &diagnostic.message);
                 if !diagnostic.diagnostic_actions.is_empty() {
-                    self.render_diagnostic_target_actions(ui, &diagnostic.diagnostic_actions);
+                    self.render_run_diagnostic_actions(
+                        ui,
+                        &diagnostic.diagnostic_actions,
+                        RunDiagnosticSurface::Drawer,
+                    );
                 }
                 if index + 1 < snapshot.diagnostics.len() {
                     ui.separator();

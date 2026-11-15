@@ -2,7 +2,7 @@ use super::*;
 use radishflow_studio::modeling_specifications::*;
 use rf_ui::variable_browser::{ObjectId, VariableField};
 
-fn numeric(app: &ReadyAppState, key: &str) -> rf_ui::NumericFieldPresentation {
+pub(super) fn numeric(app: &ReadyAppState, key: &str) -> rf_ui::NumericFieldPresentation {
     app.platform_host
         .snapshot()
         .runtime
@@ -469,4 +469,52 @@ fn problem_selection_is_read_only_and_localized_panel_fits_narrow_and_large_text
             }
         }
     }
+}
+
+#[test]
+fn returning_to_a_resolved_problem_focuses_its_notice_without_running() {
+    let mut app = ready_app_state(&synced_workspace_config());
+    commit_source_pressure(&mut app, "85000");
+    let key = app.modeling_problems.checks().entries()[0].key.clone();
+    app.open_modeling_problems();
+    app.modeling_problems.select_problem(Some(key.clone()));
+    assert!(app.locate_specification_target(key.targets[0].clone()));
+
+    commit_source_pressure(&mut app, "120000");
+    app.modeling_problems
+        .recommendations
+        .recheck(app.platform_host.modeling_inputs());
+    app.open_modeling_problems();
+
+    let ctx = egui::Context::default();
+    ctx.enable_accesskit();
+    let window = app.platform_host.snapshot().window_model();
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(400.0, 860.0),
+            )),
+            focused: true,
+            ..Default::default()
+        },
+        |ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                app.render_modeling_problems(ui, &window);
+            });
+        },
+    );
+    let tree = output.platform_output.accesskit_update.unwrap();
+    assert!(
+        tree.nodes
+            .iter()
+            .any(|(id, node)| *id == tree.focus && node.value() == Some("原问题已解决。"))
+    );
+    assert!(
+        app.platform_host
+            .snapshot()
+            .runtime
+            .latest_solve_snapshot
+            .is_none()
+    );
 }

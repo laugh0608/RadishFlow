@@ -237,6 +237,7 @@ impl ReadyAppState {
         &mut self,
         ui: &mut egui::Ui,
         inspector: &radishflow_studio::StudioGuiWindowResultInspectorModel,
+        surface: Option<RunDiagnosticSurface>,
     ) {
         ui.label(egui::RichText::new(self.locale.text(ShellText::ResultInspector)).strong());
         ui.small(self.locale.text(ShellText::SelectStream));
@@ -300,9 +301,10 @@ impl ReadyAppState {
 
                 if !inspector.unit_diagnostic_actions.is_empty() {
                     ui.collapsing(self.locale.text(ShellText::DiagnosticTargets), |ui| {
-                        self.render_diagnostic_target_actions(
+                        self.render_diagnostic_actions(
                             ui,
                             &inspector.unit_diagnostic_actions,
+                            surface,
                         );
                     });
                 }
@@ -332,6 +334,7 @@ impl ReadyAppState {
                                 inspector.snapshot_id,
                                 inspector.selected_unit_id.as_deref().unwrap_or("none")
                             ),
+                            surface,
                         );
                         ui.add_space(4.0);
                     }
@@ -373,7 +376,7 @@ impl ReadyAppState {
 
         if !inspector.diagnostic_actions.is_empty() {
             ui.collapsing(self.locale.text(ShellText::DiagnosticTargets), |ui| {
-                self.render_diagnostic_target_actions(ui, &inspector.diagnostic_actions);
+                self.render_diagnostic_actions(ui, &inspector.diagnostic_actions, surface);
             });
         }
 
@@ -401,6 +404,7 @@ impl ReadyAppState {
                         inspector.snapshot_id,
                         inspector.selected_stream_id.as_deref().unwrap_or("none")
                     ),
+                    surface,
                 );
                 ui.add_space(4.0);
             }

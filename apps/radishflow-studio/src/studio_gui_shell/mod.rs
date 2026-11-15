@@ -35,6 +35,7 @@ mod canvas_navigation;
 mod chrome;
 mod equipment;
 mod failure_recovery;
+mod flow_diagnostics;
 mod flow_plan;
 mod fonts;
 mod home_dashboard;
@@ -167,6 +168,7 @@ struct ReadyAppState {
     module_palette_filter: String,
     variable_browser: variable_browser::VariableBrowserState,
     modeling_problems: modeling_problems::ModelingProblemsState,
+    run_diagnostic_navigation: Option<flow_diagnostics::RunDiagnosticNavigation>,
     canvas_viewport_navigation: CanvasViewportNavigationState,
     canvas_initial_viewport_fit: CanvasInitialViewportFitState,
     canvas_viewport_fit_to_content_requested: bool,
@@ -530,6 +532,7 @@ impl ReadyAppState {
             module_palette_filter: String::new(),
             variable_browser: variable_browser::VariableBrowserState::default(),
             modeling_problems,
+            run_diagnostic_navigation: None,
             canvas_viewport_navigation: CanvasViewportNavigationState::default(),
             canvas_initial_viewport_fit: canvas_initial_viewport_fit_from_config(config),
             canvas_viewport_fit_to_content_requested: false,

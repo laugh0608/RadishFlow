@@ -26,3 +26,18 @@
 - 桌面采用 1280 × 720 CSS px、14 px 基准字号。窄区采用 400 × 820 CSS px、20 px 基准字号；PNG 记录可滚动内容全高。实测 Chrome 157.0.8103.51，使用仓库自带 Inter Variable 与 Source Han Sans SC 字体。
 - Playwright 在中英文桌面和窄区复核 Tab、Enter、Escape、字段及原动作焦点、跨页选择与草稿，另核对在途结果归属、导出捕获失效后的拒绝、取消与确认重开。PNG 核对布局、状态标签、按钮和焦点轮廓。
 - 产品接线和原生验收单独确认。原生保存面板、AF1 定因及 AF3-V10「等待中返回」按原专题跟踪。
+
+## R2 产品接线范围
+
+依据为已认可的 2026-11-15 v1（`6ab10464`）。所有者确认先接通流程导航与诊断往返，第一片已接通。设备来源与导出后的焦点恢复为第二片，接线范围待确认。两个切片均限定在 Studio 的文案、呈现及会话内导航，运行、保存、结果资格和输出沿用既有契约。
+
+| 顺序 | 接线和允许偏离 |
+| --- | --- |
+| 1. 流程导航和诊断 | 在现有一级导航及对应页头使用「流程运行／流程结果」和 `Flowsheet run`／`Flowsheet results`，从 `workspace_document.flowsheet_name` 显示当前流程。保留 Run 页的配置、独立物料衡算和原结果入口。当前问题复用 `SpecificationProblemKey` 和现有字段聚焦。运行诊断从「流程运行」「流程结果」或底部诊断发起只读定位时，带上来源页面、列表位置和当前诊断身份，沿 `FlowResultGuard` 重验后派发现有命令。返回恢复原项和焦点。原项已解决、结果已替换或目标已移除时，回原列表并说明原因；跨工程会话清除返回位置。使用现有结构化目标，有字段则落到字段，仅有对象或端口时按该粒度定位。重检沿现有检查入口，重跑沿 `run_panel.run_manual`／F5。 |
+| 2. 设备来源与导出返回 | 来源往返补齐原设备、`EquipmentCaseKey`、页签及发起字段或动作。就地展开的执行来源继续就地查看。保留按工况的选择、草稿、在途校核和取消目标。单工况 CSV／JSON 沿用 `capture_rating_output` 和原生选择器，取消选路或覆盖确认后回同一工况的同格式按钮。以现有计算身份、项目单位和写入前重验为准。画板中的浏览器保存示意由现有原生面板承接。 |
+
+接线入口见 [Studio 顶部导航](../../../../../apps/radishflow-studio/src/studio_gui_shell/chrome.rs)、[当前问题定位](../../../../../apps/radishflow-studio/src/studio_gui_shell/modeling_problems/mod.rs)、[运行诊断往返](../../../../../apps/radishflow-studio/src/studio_gui_shell/flow_diagnostics.rs)、[结果守卫](../../../../../apps/radishflow-studio/src/studio_gui_shell/result_review.rs)、[设备来源页](../../../../../apps/radishflow-studio/src/studio_gui_shell/equipment/source.rs)及[计算表导出](../../../../../apps/radishflow-studio/src/studio_gui_shell/equipment/export.rs)。
+
+第一片在两页页头提供「运行诊断」入口，打开既有底部诊断列表并保留所在页。只读定位沿已有命令与守卫，回到发起按钮时恢复焦点并滚动至可见位置。重检后当前问题已解决时，焦点落在原列表的说明。运行被替换、对象删除或同文件重开按实际身份处理。画板的模拟运行编号和数值由产品的真实运行、结果和来源取代。
+
+`6ab10464` 上的 16 项定向回归用于核对接线前的语义。第一片新增回归覆盖中英文桌面与 400 px／20 px 局部区、原入口回焦、结构化端口定位、草稿、原项解决、对象移除、运行替换及同文件重开。macOS 实窗待验，V-103 同名工况和原生导出回焦随第二片验证。AF1 与 AF3-V10 按各自专题跟踪。

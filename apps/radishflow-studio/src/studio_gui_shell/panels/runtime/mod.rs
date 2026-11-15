@@ -1,5 +1,6 @@
 use super::super::*;
 use super::commands::entitlement_command_id;
+use flow_diagnostics::RunDiagnosticSurface;
 
 mod inspector;
 mod property;
@@ -21,6 +22,10 @@ impl ReadyAppState {
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 self.render_runtime_area_contents(ui, window, area_id);
+                self.render_run_diagnostic_return_notice(
+                    ui,
+                    RunDiagnosticSurface::Runtime(area_id),
+                );
             });
     }
 
@@ -204,6 +209,7 @@ impl ReadyAppState {
                             ui,
                             diagnostic,
                             format!("module-results:diagnostic:{index}"),
+                            None,
                         );
                         ui.add_space(4.0);
                     }
@@ -285,14 +291,14 @@ impl ReadyAppState {
                 .recovery_title
                 .unwrap_or(self.locale.text(ShellText::SuggestedRecovery));
             if let Some(action) = failure.recovery_action.as_ref() {
-                let _ = self.render_small_command_action(ui, action);
+                self.render_run_diagnostic_action(ui, action, RunDiagnosticSurface::Drawer, None);
             } else {
                 ui.small(egui::RichText::new(title).strong());
             }
             render_wrapped_small(ui, recovery_detail);
         }
         if let Some(detail) = failure.diagnostic_detail.as_ref() {
-            self.render_failure_diagnostic_detail(ui, detail);
+            self.render_failure_diagnostic_detail(ui, detail, RunDiagnosticSurface::Drawer);
         }
         if let Some(message) = failure.latest_log_message.as_ref() {
             render_wrapped_small(
@@ -312,7 +318,7 @@ impl ReadyAppState {
             .cloned()
             .collect::<Vec<_>>();
         if !focus_actions.is_empty() {
-            self.render_diagnostic_target_actions(ui, &focus_actions);
+            self.render_run_diagnostic_actions(ui, &focus_actions, RunDiagnosticSurface::Drawer);
         }
     }
 
@@ -749,7 +755,13 @@ impl ReadyAppState {
                     );
                     ui.push_id(
                         format!("runtime:result-inspector:{}", snapshot.snapshot_id),
-                        |ui| self.render_result_inspector(ui, &inspector),
+                        |ui| {
+                            self.render_result_inspector(
+                                ui,
+                                &inspector,
+                                Some(RunDiagnosticSurface::Runtime(area_id)),
+                            )
+                        },
                     );
                 }
             } else if let Some(failure) = window.runtime.latest_failure.as_ref() {
@@ -769,7 +781,11 @@ impl ReadyAppState {
                 );
                 render_wrapped_label(ui, &failure.message);
                 if let Some(detail) = failure.diagnostic_detail.as_ref() {
-                    self.render_failure_diagnostic_detail(ui, detail);
+                    self.render_failure_diagnostic_detail(
+                        ui,
+                        detail,
+                        RunDiagnosticSurface::Runtime(area_id),
+                    );
                 }
                 if let Some(message) = failure.latest_log_message.as_ref() {
                     render_wrapped_small(
@@ -786,7 +802,11 @@ impl ReadyAppState {
                     render_wrapped_small(ui, recovery_detail);
                 }
                 if !failure.diagnostic_actions.is_empty() {
-                    self.render_diagnostic_target_actions(ui, &failure.diagnostic_actions);
+                    self.render_run_diagnostic_actions(
+                        ui,
+                        &failure.diagnostic_actions,
+                        RunDiagnosticSurface::Runtime(area_id),
+                    );
                 }
             } else if let Some(stale_snapshot) = window.runtime.stale_solve_snapshot.as_ref() {
                 self.render_stale_solve_snapshot_notice(ui, stale_snapshot);
@@ -831,6 +851,7 @@ impl ReadyAppState {
                                         window.layout_state.scope.layout_key,
                                         area_label(area_id)
                                     ),
+                                    Some(RunDiagnosticSurface::Runtime(area_id)),
                                 );
                                 ui.add_space(6.0);
                             }
@@ -1010,6 +1031,7 @@ impl ReadyAppState {
         &mut self,
         ui: &mut egui::Ui,
         diagnostic: &radishflow_studio::StudioGuiWindowDiagnosticModel,
+        surface: Option<RunDiagnosticSurface>,
     ) {
         if diagnostic.target_candidates.is_empty() {
             return;
@@ -1017,7 +1039,11 @@ impl ReadyAppState {
         ui.horizontal_wrapped(|ui| {
             ui.small(self.locale.text(ShellText::DiagnosticTargets));
             for target in &diagnostic.target_candidates {
-                let _ = self.render_small_command_action(ui, &target.action);
+                if let Some(surface) = surface {
+                    self.render_run_diagnostic_action(ui, &target.action, surface, None);
+                } else {
+                    self.render_small_command_action(ui, &target.action);
+                }
             }
         });
     }
@@ -1027,6 +1053,7 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         diagnostic: &radishflow_studio::StudioGuiWindowDiagnosticModel,
         grid_id_prefix: String,
+        surface: Option<RunDiagnosticSurface>,
     ) {
         ui.horizontal_wrapped(|ui| {
             render_status_chip(
@@ -1039,7 +1066,7 @@ impl ReadyAppState {
             ui.small(&diagnostic.code);
         });
         render_wrapped_label(ui, &diagnostic.message);
-        self.render_diagnostic_targets(ui, diagnostic);
+        self.render_diagnostic_targets(ui, diagnostic, surface);
         if let Some(units) = diagnostic.related_units_text.as_ref() {
             render_wrapped_small(ui, format!("units: {units}"));
         }
@@ -1061,6 +1088,24 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         actions: &[radishflow_studio::StudioGuiWindowDiagnosticTargetActionModel],
     ) {
+        self.render_diagnostic_actions(ui, actions, None);
+    }
+
+    pub(in crate::studio_gui_shell) fn render_run_diagnostic_actions(
+        &mut self,
+        ui: &mut egui::Ui,
+        actions: &[radishflow_studio::StudioGuiWindowDiagnosticTargetActionModel],
+        surface: RunDiagnosticSurface,
+    ) {
+        self.render_diagnostic_actions(ui, actions, Some(surface));
+    }
+
+    fn render_diagnostic_actions(
+        &mut self,
+        ui: &mut egui::Ui,
+        actions: &[radishflow_studio::StudioGuiWindowDiagnosticTargetActionModel],
+        surface: Option<RunDiagnosticSurface>,
+    ) {
         ui.horizontal_wrapped(|ui| {
             ui.small(self.locale.text(ShellText::DiagnosticTargets));
             for action in actions {
@@ -1073,7 +1118,11 @@ impl ReadyAppState {
                     target_label.as_ref(),
                     summary.as_ref()
                 ));
-                let _ = self.render_small_command_action(ui, &action.action);
+                if let Some(surface) = surface {
+                    self.render_run_diagnostic_action(ui, &action.action, surface, None);
+                } else {
+                    self.render_small_command_action(ui, &action.action);
+                }
             }
         });
     }
@@ -1082,6 +1131,7 @@ impl ReadyAppState {
         &mut self,
         ui: &mut egui::Ui,
         detail: &radishflow_studio::StudioGuiWindowFailureDiagnosticDetailModel,
+        surface: RunDiagnosticSurface,
     ) {
         ui.add_space(4.0);
         ui.horizontal_wrapped(|ui| {
@@ -1101,7 +1151,7 @@ impl ReadyAppState {
             ui.horizontal_wrapped(|ui| {
                 ui.small("units");
                 for target in &detail.related_units {
-                    let _ = self.render_small_command_action(ui, &target.action);
+                    self.render_run_diagnostic_action(ui, &target.action, surface, None);
                 }
             });
         }
@@ -1109,7 +1159,7 @@ impl ReadyAppState {
             ui.horizontal_wrapped(|ui| {
                 ui.small("streams");
                 for target in &detail.related_streams {
-                    let _ = self.render_small_command_action(ui, &target.action);
+                    self.render_run_diagnostic_action(ui, &target.action, surface, None);
                 }
             });
         }
@@ -1131,9 +1181,17 @@ impl ReadyAppState {
             for target in &detail.related_ports {
                 ui.horizontal_wrapped(|ui| {
                     ui.small(format!("{}:{}", target.unit_id, target.port_name));
-                    let _ = self.render_small_command_action(ui, &target.unit_action);
+                    self.render_run_diagnostic_action(
+                        ui,
+                        &target.unit_action,
+                        surface,
+                        Some(rf_types::DiagnosticPortTarget::new(
+                            target.unit_id.as_str(),
+                            target.port_name.clone(),
+                        )),
+                    );
                     if let Some(stream) = target.stream_result.as_ref() {
-                        let _ = self.render_small_command_action(ui, &stream.focus_action);
+                        self.render_run_diagnostic_action(ui, &stream.focus_action, surface, None);
                     }
                 });
                 if let Some(stream) = target.stream_result.as_ref() {
@@ -1148,24 +1206,50 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         action: &radishflow_studio::StudioGuiWindowCommandActionModel,
     ) -> egui::Response {
-        let current = action.result_is_current(&self.platform_host.modeling_inputs().workspace);
-        let label = self.localized_command_action_label(action);
-        let response = ui
-            .add_enabled(
-                self.background_command_enabled(&action.command_id) && current,
-                egui::Button::new(label.as_ref()).small(),
-            )
-            .on_hover_text(&action.hover_text)
-            .on_disabled_hover_text(match self.locale {
-                StudioShellLocale::ZhCn => "结果或目标已变化，不能从这条结果定位；请返回当前结果。",
-                StudioShellLocale::En => {
-                    "Result or target changed; return to current results before navigating."
-                }
-            });
+        let response = self.render_small_command_button(ui, action);
         if response.clicked() {
             self.dispatch_result_action(action);
         }
         response
+    }
+
+    pub(in crate::studio_gui_shell) fn render_run_diagnostic_action(
+        &mut self,
+        ui: &mut egui::Ui,
+        action: &radishflow_studio::StudioGuiWindowCommandActionModel,
+        surface: RunDiagnosticSurface,
+        port: Option<rf_types::DiagnosticPortTarget>,
+    ) -> egui::Response {
+        let response = self.render_small_command_button(ui, action);
+        self.restore_run_diagnostic_button(surface, action, &response);
+        if response.clicked() {
+            ui.input_mut(|input| {
+                input.consume_key(egui::Modifiers::NONE, egui::Key::Enter);
+                input.consume_key(egui::Modifiers::NONE, egui::Key::Space);
+            });
+            self.activate_run_diagnostic(surface, response.id, action, port);
+        }
+        response
+    }
+
+    fn render_small_command_button(
+        &self,
+        ui: &mut egui::Ui,
+        action: &radishflow_studio::StudioGuiWindowCommandActionModel,
+    ) -> egui::Response {
+        let current = action.result_is_current(&self.platform_host.modeling_inputs().workspace);
+        let label = self.localized_command_action_label(action);
+        ui.add_enabled(
+            self.background_command_enabled(&action.command_id) && current,
+            egui::Button::new(label.as_ref()).small(),
+        )
+        .on_hover_text(&action.hover_text)
+        .on_disabled_hover_text(match self.locale {
+            StudioShellLocale::ZhCn => "结果或目标已变化，不能从这条结果定位；请返回当前结果。",
+            StudioShellLocale::En => {
+                "Result or target changed; return to current results before navigating."
+            }
+        })
     }
 
     fn localized_command_action_label<'a>(

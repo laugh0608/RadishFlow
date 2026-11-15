@@ -263,6 +263,7 @@ impl ReadyAppState {
                         ui,
                         diagnostic,
                         format!("module-settings:diagnostic:{index}"),
+                        None,
                     );
                     ui.add_space(4.0);
                 }
@@ -289,7 +290,12 @@ impl ReadyAppState {
             );
             ui.small(&detail.target.target_id);
         });
-        render_wrapped_label(ui, &detail.title);
+        let title = ui.add(
+            egui::Label::new(&detail.title)
+                .wrap()
+                .sense(egui::Sense::focusable_noninteractive()),
+        );
+        self.focus_specification_inspector(&title, &detail.target.command_id);
 
         if !detail.summary_rows.is_empty() {
             egui::Grid::new(format!("inspector-summary:{}", detail.target.command_id))
@@ -532,6 +538,7 @@ impl ReadyAppState {
                             "active-inspector:{}:diagnostic:{index}",
                             detail.target.command_id
                         ),
+                        None,
                     );
                     ui.add_space(4.0);
                 }

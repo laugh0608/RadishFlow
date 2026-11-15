@@ -317,6 +317,10 @@ impl ReadyAppState {
             rf_store::project_v4::FlowPlanSupport::Mixed,
         ) {
             Ok(radishflow_studio::StudioProjectOpen::ReadOnly(project)) => {
+                if self.at_run_diagnostic_target() {
+                    self.modeling_problems.clear_destination();
+                }
+                self.run_diagnostic_navigation = None;
                 self.background_action(radishflow_studio::StudioBackgroundRunAction::Detach);
                 self.read_only_project = Some(project_read_only::ReadOnlyProjectView {
                     path: project_path,

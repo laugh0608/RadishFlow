@@ -44,6 +44,27 @@ impl ModelingProblemsState {
         self.field_page
     }
 
+    pub(super) fn runtime_details(&self) -> bool {
+        self.runtime_details
+    }
+
+    pub(super) fn set_runtime_details(&mut self, enabled: bool) {
+        self.runtime_details = enabled;
+    }
+
+    pub(super) fn show_destination(&mut self, target: SpecificationTarget) {
+        self.destination = Some(target);
+        self.pending_focus = true;
+        self.field_page = true;
+    }
+
+    pub(super) fn clear_destination(&mut self) {
+        self.destination = None;
+        self.pending_focus = false;
+        self.field_page = false;
+        self.embedded_fields = false;
+    }
+
     pub fn select_problem(&mut self, key: Option<SpecificationProblemKey>) {
         self.selected = key;
     }
@@ -117,7 +138,8 @@ impl ReadyAppState {
     }
 
     pub(super) fn render_modeling_problem_return(&mut self, ui: &mut egui::Ui) {
-        if self.modeling_problems.destination.is_some()
+        if !self.at_run_diagnostic_target()
+            && self.modeling_problems.destination.is_some()
             && ui
                 .button(tr(
                     self.locale,
@@ -176,9 +198,8 @@ impl ReadyAppState {
                 _ => unreachable!(),
             }
         }
-        self.modeling_problems.destination = Some(target);
-        self.modeling_problems.pending_focus = true;
-        self.modeling_problems.field_page = true;
+        self.run_diagnostic_navigation = None;
+        self.modeling_problems.show_destination(target);
         true
     }
 
@@ -230,6 +251,20 @@ impl ReadyAppState {
             response.scroll_to_me(Some(egui::Align::Center));
             response.request_focus();
             self.modeling_problems.pending_focus = false;
+        }
+    }
+
+    pub(super) fn focus_specification_inspector(
+        &mut self,
+        response: &egui::Response,
+        command_id: &str,
+    ) {
+        if let Some(inspector) = radishflow_studio::inspector_target_from_command_id(command_id) {
+            let target = match inspector {
+                rf_ui::InspectorTarget::Unit(id) => SpecificationTarget::Unit(id),
+                rf_ui::InspectorTarget::Stream(id) => SpecificationTarget::Stream(id),
+            };
+            self.focus_specification_section(response, target);
         }
     }
 
@@ -364,6 +399,54 @@ impl ReadyAppState {
             .max_height(220.)
             .auto_shrink([false, true])
             .show(ui, |ui| {
+                if let Some(key) = self.modeling_problems.selected.as_ref()
+                    && !entries.iter().any(|entry| {
+                        &entry.key == key && entry.state != SpecificationEntryState::TargetRemoved
+                    })
+                {
+                    let label = if key
+                        .targets
+                        .iter()
+                        .any(|target| !target.exists(self.platform_host.document()))
+                    {
+                        tr(
+                            self.locale,
+                            "原问题目标已移除。",
+                            "The original problem target was removed.",
+                        )
+                    } else if self
+                        .modeling_problems
+                        .checks()
+                        .current_report()
+                        .is_some_and(|report| {
+                            report.coverage.iter().any(|entry| {
+                                entry.scope == key.scope
+                                    && entry.coverage == SpecificationCoverage::Evaluated
+                            })
+                        })
+                    {
+                        tr(
+                            self.locale,
+                            "原问题已解决。",
+                            "The original problem was resolved.",
+                        )
+                    } else {
+                        tr(
+                            self.locale,
+                            "检查已更新，原条目不可用。",
+                            "The check changed. The original entry is unavailable.",
+                        )
+                    };
+                    let response = ui.add(
+                        egui::Label::new(label)
+                            .wrap()
+                            .sense(egui::Sense::focusable_noninteractive()),
+                    );
+                    if std::mem::take(&mut self.modeling_problems.restore_selection) {
+                        response.scroll_to_me(None);
+                        response.request_focus();
+                    }
+                }
                 for entry in entries {
                     let selected = self.modeling_problems.selected.as_ref() == Some(&entry.key);
                     let label = format!(
@@ -381,6 +464,7 @@ impl ReadyAppState {
                         })
                         .inner;
                     if selected && self.modeling_problems.restore_selection {
+                        response.scroll_to_me(None);
                         response.request_focus();
                         self.modeling_problems.restore_selection = false;
                     }

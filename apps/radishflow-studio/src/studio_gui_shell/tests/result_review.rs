@@ -574,7 +574,7 @@ fn render_result_inspector_review_texts(
                         );
                     },
                 );
-                app.render_result_inspector(ui, &inspector);
+                app.render_result_inspector(ui, &inspector, None);
             });
         },
     );
