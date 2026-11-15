@@ -1,10 +1,10 @@
 # 本地无界面运行接口
 
-更新时间：2026-11-14
+更新时间：2026-11-15
 
-用途：说明 Studio 旧 v1 / v2、AF4c v3、QS1-C v4、QS2-C v5、QS3 v6 与 QS4 v7 命令、JSON 请求 / 响应和错误语义。
+用途：说明 CLI v1–v8 命令、JSON 协议与错误。
 
-读者：使用本地脚本执行参数化工况的用户及适配器开发者。
+读者：本地脚本用户和适配器开发者。
 
 不包含：公共网络 API、COM、录制脚本、后台任务与项目保存。
 
@@ -12,7 +12,9 @@
 
 v3–v7 使用 `query` / `execute`，见[新版协议](#新版-v3查询)。
 
-v2 增加受控创建 / 连接和步骤引用，保留 v1 的字段、路径与错误契约。v1 / v2 按 SI 读写，`unit` 标签来自共享目录，输入不接收单位字段。 [单位系统](../topics/units-and-quantity-system.md) · [建模辅助](../topics/modeling-assistance-and-specifications.md)
+v8 `query` 仅支持 `stable_variable`。`execute` 在工程 IO 前返回 `unsupported_version`。 [v8 契约](../topics/variable-browser/stable-references.md#vb3-cli-只读查询首片)
+
+v2 增加受控创建 / 连接和步骤引用，保留 v1 的字段、路径与错误契约。v1 / v2 按 SI 读写，`unit` 来自共享目录，输入无单位字段。 [单位系统](../topics/units-and-quantity-system.md) · [建模辅助](../topics/modeling-assistance-and-specifications.md)
 
 工程版本与请求版本独立。v1 / v2 的显示配置经存储校验，CLI 仍输出 SI。 [单位存储接口](../topics/units/unit-sets-and-persistence.md#u2-存储接口)
 

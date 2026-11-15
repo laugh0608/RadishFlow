@@ -1,6 +1,6 @@
 # VB-D02 稳定变量引用契约
 
-更新时间：2026-11-12
+更新时间：2026-11-15
 
 ## 用途与状态
 
@@ -58,3 +58,48 @@ rfvar:1/doc-demo/unit/heater-1/b91c614d-4a7a-4d0e-82ba-09c82da255ba/inputs/outle
 | 存储兼容 | 旧格式正常打开，显式升级取消或失败保留原文件。保存重开恢复身份，旧写入器对新能力按现有只读和写入保护处理。 |
 
 阶段验证见 [W46](../../devlogs/2026-11/2026-W46.md)。
+
+## VB3 CLI 只读查询首片
+
+2026-11-15 项目所有者确认后实施。调用场景为维护者复核 Studio 保存后的正式输入。沿用 VB2 双进料实窗验收工程 `VB2-Batch.rfproj.json` 的 r3 副本，外层 v4，已保存对象身份和关注清单。复核 `stream-feed-a` 的输入总摩尔流量 `10 mol/s`，以及 `stream-liquid` 的结果总摩尔流量 `Missing`。用公开算例复现时，在 Studio 对临时副本启用并保存稳定引用，将进料 A 保存为 `10 mol/s`，重开后复制两条引用。自动验收复用同一 Studio 生命周期准备样本。 [公开算例](../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json) · [VB2 实窗证据](../../devlogs/2026-11/2026-W46.md#2026-11-14-vb2-进料流量批量编辑首片)
+
+### 请求与响应
+
+`--headless query <request.json>` 的 `schema_version: 8` 只接受 `stable_variable` 查询。请求字段为 `schema_version`、`project` 和 `queries`。相对路径以请求文件为基准，查询 ID 非空白且唯一，可用空列表读取工程头。保持严格 JSON 校验。复用样例时，将 `project` 和 `reference` 换成自己的保存文件与 Studio 复制的完整引用。
+
+```json
+{
+  "schema_version": 8,
+  "project": "VB2-Batch.rfproj.json",
+  "queries": [
+    {
+      "id": "feed-a-flow",
+      "query": {
+        "kind": "stable_variable",
+        "reference": "rfvar:1/vb2-batch-native-review/stream/stream-feed-a/1d8a0644-26f9-430c-96e1-2943f578a703/inputs/molar_flow"
+      }
+    }
+  ]
+}
+```
+
+- 复用 v7 的计划读取覆盖，为 v8 `query` 单独启用已知对象身份及关注清单存储能力。工程外层仍为 v4。可识别但无已保存身份的工程按 `object_identities_unavailable` 返回查询错误；未知必需能力仍整份保护，工程头返回只读原因，查询项返回 `unsupported_capability`。
+- 用现有 `StableVariableReference` 解析并核对已加载工程，再由 `ProjectQuery` 读取字段。沿用首批标量表及现有流字段序列化形状，在成功项 `value` 中附上规范 `reference`，`variable.writable` 为 `false`。数字沿用 SI，`variable.source` 复用字段来源。工程头的 `read_only` 仍说明文件能力是否触发保护，`file_sha256` 来自本次装载的原字节。
+- 复用响应外层及逐项顺序。成功读取进料返回 `state: "valid"`、`value: 10.0`、`unit: "mol/s"`、`source.kind: "document_input"`。新进程从保存文件读取结果字段时返回 `state: "missing"`、`value: null`、`source.kind: "no_result"`，退出 `0`。字段未指定继续使用 `unspecified`。首次查询不恢复求解快照、不启动计算、不读物性缓存、不写工程及用户状态。
+
+### 拒绝顺序与验收
+
+先校验请求版本、结构与路径，再装载工程并执行整份能力保护。可用工作区中的单项错误沿用稳定引用解析顺序。格式错误用 `invalid_variable_reference`，未知引用版本用 `unsupported_reference_version`，未纳入的字段或分区用 `unsupported_field`。解析后按工程 ID、身份区、对象存在性、创建标识、对象字段顺序检查，分别返回 `different_document`、`object_identities_unavailable`、`object_missing`、`object_recreated`、`field_missing`。查询项失败带 `query_id`，后续只读项继续，顶层保留首错，退出 `2`。
+
+`execute` 收到 v8 请求后，在读取工程前返回请求级 `unsupported_version`，沿用未建立协议上下文时的 v3 错误响应，退出 `2`。
+
+| VB-A07 验收 | 通过条件 |
+| --- | --- |
+| 共享读取 | Studio 保存后重开与 CLI 读取同一文件，两条引用的字段身份、SI 值、来源和结果资格一致。修改显示单位后 CLI 仍为 SI。重命名或另存继承对象身份后按显式选择的文件读取。 |
+| 身份与错误 | 覆盖非法文本、未知版本、未纳入字段、合法字段在对象上缺失、不同文档、对象删除、同 ID 重建、旧文件未启用身份、未知必需能力、已知身份区损坏及混合成功与失败的查询。失败项无数值。 |
+| 协议兼容 | 旧 `inspect` / `run` 及 CLI v3 保留 v4 拒绝；v4–v7 `query` 仍只给安全元数据，`execute` 对有效请求仍依次核对工程 ID、文件指纹和只读保护。v3–v7 严格拒绝 `stable_variable`。v8 `execute` 在工程 IO 前按现有请求级 `unsupported_version` 拒绝。 |
+| 真实进程与磁盘边界 | 复用 CLI 子进程矩阵，验证单份 JSON、退出码、错误阶段和逐项回执。查询成功与失败后逐字节比较工程、现有 sidecar 与目录清单。按影响面跑共享查询回归及正式仓库基线。 |
+
+首片止于本地只读标量复核。CLI 写入、关注清单枚举、运行、多工况、COM 和录制各按对应消费者另行评审。 [CLI 现行版本契约](../../reference/headless-cli.md#版本与兼容边界)
+
+macOS 真实 CLI 进程验收通过，另以 VB2 实窗保存的 r3 文件字节复跑代表场景。 [W46 验收证据](../../devlogs/2026-11/2026-W46.md#2026-11-15-vb3-cli-v8-实现与验收)

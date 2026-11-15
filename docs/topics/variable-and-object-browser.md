@@ -1,6 +1,6 @@
 # 统一变量与对象浏览器
 
-更新时间：2026-11-14
+更新时间：2026-11-15
 
 ## 用途与状态
 
@@ -9,7 +9,7 @@
 不包含：最终 UI 画板、冻结的路径语法 / DTO / ABI、COM 激活方式、完整脚本运行时或新的项目格式。
 
 - 层级：二级功能。父专题为 [Studio 主工作流](studio-main-workflow.md)，跨端边界见 [统一对外 API](../architecture/simulation-platform.md#对象变量与动作树)。
-- 状态：部分实现。AF4a / AF5a 查询、AF4b 动作及 AF4c CLI 已完成。VB1 已接通只读浏览、首批流程稳定引用与工程关注清单；VB2 已接通单值与进料总摩尔流量批量首片。
+- 状态：部分实现。AF4a / AF5a 查询、AF4b 动作及 AF4c CLI 已完成。VB1 已接通只读浏览、首批流程稳定引用与工程关注清单，VB2 已接通单值与进料总摩尔流量批量首片，VB3 已接通 CLI v8 只读稳定引用。
 - 定位：一个变量工作区提供工程视图与变量树视图，共用稳定身份、领域描述、查询和正式命令。覆盖所有公开工程变量与动作，逐步纳入非画布对象。
 - 顺序：U2-I1—I4 与 U3 首批已接通，I5 按确认节点补验；VB0 纳入 R0 / R1 及 G0 关系设计，VB1 衔接 U3，VB2 依赖 U2 编辑闭环，VB3 按 P2 与领域能力扩展。依赖和排期入口见 [路线图](../radishflow-mvp-roadmap.md#变量与对象浏览器的配套切片)。
 - VB0 首片方案与 9 张局部画板已于 2026-11-11 获认可，见[设计附件](../architecture/designs/studio-variable-browser-brief.md)；VB1 首片实现与保留项见下文。
@@ -284,7 +284,7 @@ GUI 调用入口根据当前只读视图拒绝编辑与运行事件，不能仅�
 
 ## 接下来事项
 
-1. **建议先评审 VB3 的 CLI 只读路径。** 找到一个需要复核 Studio 工程标量的实际调用方，选定带已保存对象身份的 v4 工程和一个 `rfvar:1` 引用。按 VB-A07 对照同一文件重开后的正式输入和 Missing 结果，覆盖跨工程、对象重建、未知引用版本及不支持字段的结构化拒绝。先明确版本能力、旧请求的拒绝顺序及结果状态，再确认是否实施。首片提案限只读查询，保留 SI、磁盘只读及写入契约。 [稳定引用](variable-browser/stable-references.md) · [CLI 参考](../reference/headless-cli.md)
+1. **按实际调用方评审 VB3 后续覆盖。** CLI v8 已接通本地只读标量复核，后续消费者按需启动。 [首片接口与验收](variable-browser/stable-references.md#vb3-cli-只读查询首片)
 2. **继续记录 VB2 验收残项。** 单值首片已有精确 400 px macOS 键盘证据，进料总摩尔流量批量首片已有 VB-A06 定向与 macOS 代表证据。组合约束和更多字段按实际工程另审，系统缩放、读屏与跨平台实窗按既定节点补验。 [VB-D04](variable-browser/single-value-editing.md#实现与验收状态2026-11-13) · [VB2 验收](../architecture/designs/reviews/2026-11-14-vb2-penpot/README.md#首片验收)
 3. **按现有流程维护设计归档。** D03 / D04 保留已认可源稿与 PNG，主稿补入暂停。新交互按 UI 计划评审。 [UI 计划](../architecture/studio-ui-topic-plan.md#设计工具与文档规则)
 

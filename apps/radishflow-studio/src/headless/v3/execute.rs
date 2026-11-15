@@ -12,40 +12,29 @@ use serde_json::{Value, json};
 use std::path::Path;
 
 pub fn file(path: &Path, response: &mut Response) -> Result<(), Failure> {
-    let bytes = super::request_bytes(path)?;
-    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(super::invalid_request)?["schema_version"]
-        == 7
-    {
-        response.schema_version = 7;
-        return super::super::planned::execute_file::<super::super::v7::Plan>(
-            path, &bytes, response,
-        );
+    let (version, bytes) = super::read_request(path)?;
+    if !matches!(version, 3..=7) {
+        return Err(Failure::new(
+            Stage::Request,
+            Code::UnsupportedVersion,
+            "execute requires schema_version 3 through 7",
+        ));
     }
-    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(super::invalid_request)?["schema_version"]
-        == 6
-    {
-        response.schema_version = 6;
-        return super::super::planned::execute_file::<super::super::v6::Plan>(
+    response.schema_version = version;
+    match version {
+        3 => execute_v3(path, &bytes, response),
+        4 => super::super::v4::execute_file::<super::super::v4::protocol::Plan>(
             path, &bytes, response,
-        );
+        ),
+        5 => super::super::planned::execute_file::<super::super::v5::Plan>(path, &bytes, response),
+        6 => super::super::planned::execute_file::<super::super::v6::Plan>(path, &bytes, response),
+        7 => super::super::planned::execute_file::<super::super::v7::Plan>(path, &bytes, response),
+        _ => unreachable!("validated execute version"),
     }
-    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(super::invalid_request)?["schema_version"]
-        == 5
-    {
-        response.schema_version = 5;
-        return super::super::planned::execute_file::<super::super::v5::Plan>(
-            path, &bytes, response,
-        );
-    }
-    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(super::invalid_request)?["schema_version"]
-        == 4
-    {
-        response.schema_version = 4;
-        return super::super::v4::execute_file::<super::super::v4::protocol::Plan>(
-            path, &bytes, response,
-        );
-    }
-    let request: ExecuteRequest = serde_json::from_slice(&bytes).map_err(super::invalid_request)?;
+}
+
+fn execute_v3(path: &Path, bytes: &[u8], response: &mut Response) -> Result<(), Failure> {
+    let request: ExecuteRequest = serde_json::from_slice(bytes).map_err(super::invalid_request)?;
     debug_assert_eq!(request.schema_version, 3);
     super::runs::validate_resources(&request)?;
     super::validate_ids(request.steps.iter().map(|s| s.id.as_str()))?;
@@ -128,7 +117,7 @@ pub fn file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     );
     for q in &request.queries {
         query::push_reply(
-            q,
+            &q.id,
             query::editable(&app, &q.query, &refs, &executions),
             response,
         );

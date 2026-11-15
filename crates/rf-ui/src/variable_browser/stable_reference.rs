@@ -1,7 +1,9 @@
-use super::{ObjectId, VariableField, VariableId, VariableSection};
+use super::{ObjectId, VariableDescriptor, VariableField, VariableId, VariableSection};
 use crate::{
     WorkspaceState,
-    project_query::{ProjectField, ProjectObjectId, ProjectObjectRef, ProjectQuery},
+    project_query::{
+        ProjectField, ProjectFieldValue, ProjectObjectId, ProjectObjectRef, ProjectQuery,
+    },
 };
 use rf_types::ObjectCreationId;
 use std::{fmt, str::FromStr};
@@ -48,7 +50,7 @@ impl StableVariableReference {
             .object_creation_id(&variable.object)
             .ok_or(VariableReferenceError::ObjectMissing)?
             .clone();
-        check_field(workspace, &variable)?;
+        read_field(workspace, &variable)?;
         Ok(Self { variable, creation })
     }
 
@@ -65,7 +67,7 @@ impl StableVariableReference {
             .saved_object_creation_id(&variable.object)
             .ok_or(VariableReferenceError::ObjectNotSaved)?
             .clone();
-        check_field(workspace, &variable)?;
+        read_field(workspace, &variable)?;
         Ok(Self { variable, creation })
     }
 
@@ -73,12 +75,19 @@ impl StableVariableReference {
         &self,
         workspace: &WorkspaceState,
     ) -> Result<VariableId, VariableReferenceError> {
+        self.read(workspace).map(|field| field.id)
+    }
+
+    /// Checks identity and reads the formal field through the shared project query.
+    pub fn read(
+        &self,
+        workspace: &WorkspaceState,
+    ) -> Result<VariableDescriptor, VariableReferenceError> {
         check_target(workspace, &self.variable)?;
         if workspace.object_creation_id(&self.variable.object) != Some(&self.creation) {
             return Err(VariableReferenceError::ObjectRecreated);
         }
-        check_field(workspace, &self.variable)?;
-        Ok(self.variable.clone())
+        read_field(workspace, &self.variable)
     }
 
     pub fn supports(variable: &VariableId) -> bool {
@@ -122,11 +131,11 @@ fn check_target(
     Ok(())
 }
 
-fn check_field(
+fn read_field(
     workspace: &WorkspaceState,
     variable: &VariableId,
-) -> Result<(), VariableReferenceError> {
-    ProjectQuery::new(workspace)
+) -> Result<VariableDescriptor, VariableReferenceError> {
+    let descriptor = ProjectQuery::new(workspace)
         .read_field(
             &object_ref(variable),
             &ProjectField::Flow {
@@ -135,7 +144,10 @@ fn check_field(
             },
         )
         .map_err(|_| VariableReferenceError::FieldMissing)?;
-    Ok(())
+    let ProjectFieldValue::Flow(field) = descriptor.value else {
+        unreachable!("flow field query returned an engineering field")
+    };
+    Ok(field)
 }
 
 impl fmt::Display for StableVariableReference {

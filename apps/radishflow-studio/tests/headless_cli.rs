@@ -13,7 +13,7 @@ struct Fixture {
     root: PathBuf,
 }
 impl Fixture {
-    fn new() -> Self {
+    fn empty() -> Self {
         static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
         let root = std::env::temp_dir().join(format!(
             "rf-headless-{}-{}-{}",
@@ -25,6 +25,11 @@ impl Fixture {
                 .as_nanos()
         ));
         fs::create_dir(&root).unwrap();
+        Self { root }
+    }
+    fn new() -> Self {
+        let fixture = Self::empty();
+        let root = &fixture.root;
         fs::write(
             root.join("工程 example.rfproj.json"),
             include_bytes!(
@@ -45,7 +50,7 @@ impl Fixture {
             None,
         );
         write_auth_cache_index(root.join("index.json"), &index).unwrap();
-        Self { root }
+        fixture
     }
     fn request(&self) -> Value {
         let mut request: Value = serde_json::from_str(include_str!(

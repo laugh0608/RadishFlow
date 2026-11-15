@@ -19,21 +19,21 @@ pub fn queries(opened: &StudioProjectOpen, queries: &[Query], response: &mut Res
             StudioProjectOpen::Editable(app) => editable(app, &query.query, &bindings, &executions),
             StudioProjectOpen::ReadOnly(project) => read_only(project, &query.query, &bindings),
         };
-        push_reply(query, result, response);
+        push_reply(&query.id, result, response);
     }
 }
-pub fn push_reply(query: &Query, result: Result<Value, Failure>, response: &mut Response) {
+pub fn push_reply(id: &str, result: Result<Value, Failure>, response: &mut Response) {
     let (value, error) = match result {
         Ok(value) => (Some(value), None),
         Err(mut e) => {
             e.stage = Stage::Query;
-            e.query_id = Some(query.id.clone());
+            e.query_id = Some(id.to_owned());
             response.fail(e.clone());
             (None, Some(e))
         }
     };
     response.queries.push(QueryReply {
-        id: query.id.clone(),
+        id: id.to_owned(),
         value,
         error,
     });
