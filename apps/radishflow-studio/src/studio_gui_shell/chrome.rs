@@ -80,6 +80,7 @@ impl ReadyAppState {
             }
             self.render_run_diagnostic_return_notice(ui, RunDiagnosticSurface::Toolbar);
             self.render_run_diagnostic_return(ui);
+            self.render_flow_path_return(ui);
             self.render_project_operation_strip(ui);
             if self.screen != StudioShellScreen::Equipment
                 && !window.commands.menu_tree.is_empty()
@@ -943,7 +944,7 @@ impl ReadyAppState {
             .on_hover_text(&item.detail);
         if response.clicked() {
             self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
-            self.dispatch_ui_command(&item.command_id);
+            self.select_canvas_stream(&item.command_id);
         }
         if let Some(summary) = item.attention_summary.as_ref() {
             render_wrapped_small(ui, summary);

@@ -164,6 +164,7 @@ impl ReadyAppState {
         self.background_action(Action::Detach);
         self.platform_host = host;
         self.run_diagnostic_navigation = None;
+        self.flow_path = Default::default();
         if let Some(owner) = self.background_runs.clone() {
             self.background_action(Action::Install(owner));
         }

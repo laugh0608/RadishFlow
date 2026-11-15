@@ -321,6 +321,7 @@ impl ReadyAppState {
                     self.modeling_problems.clear_destination();
                 }
                 self.run_diagnostic_navigation = None;
+                self.flow_path = Default::default();
                 self.background_action(radishflow_studio::StudioBackgroundRunAction::Detach);
                 self.read_only_project = Some(project_read_only::ReadOnlyProjectView {
                     path: project_path,
@@ -479,6 +480,7 @@ impl ReadyAppState {
     pub(super) fn update(&mut self, ctx: &egui::Context) {
         self.reconcile_browser_session();
         self.poll_background_runs(ctx);
+        self.reconcile_flow_path();
         if self.render_background_exit(ctx) {
             return;
         }

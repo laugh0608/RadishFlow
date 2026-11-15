@@ -18,7 +18,7 @@
 
 2026-09-16 后续确认补入 [工程设计基础、工况与来源](../topics/engineering-basis-and-cases.md)、目标反算、分层工程检查、压力 / 公用工程、候选权衡与轻量工程交付。先细化共同条件、工况矩阵和来源及其 UI 关系，工程数值和专业检查随模型能力推进；B3-5 无界面建模已接通，U1 单位基础已接通，后续按 U2 / U3 及规格 / 设备依赖推进。
 
-2026-09-17 确认 [颜色与状态语义](../topics/color-state/semantics-and-composition.md) 随 U2 / UI 重设计推进；[流程可视化](../topics/results-review-diagnostics.md#流程可视化与回放规划尚未实现) 按二维流向、数据着色、设备三维及动态回放分期。二维建模为主入口，三维复用同一对象与几何，整厂布局另评估；动画不推进仿真时间，回放依赖真实时间结果，均不等于三维 CFD。当前只确认规划，不新增实现、依赖或项目格式。
+2026-09-17 确认 [颜色与状态语义](../topics/color-state/semantics-and-composition.md) 随 U2 / UI 重设计推进；[流程可视化](../topics/results-review-diagnostics.md#流程可视化与回放规划) 按二维流向、数据着色、设备三维及动态回放分期。二维建模为主入口，三维复用同一对象与几何，整厂布局另评估；动画不推进仿真时间，回放依赖真实时间结果，均不等于三维 CFD。各切片实施状态见结果专题。
 
 [开发者诊断与模型验证](../topics/runtime-messages/developer-diagnostics-and-model-validation.md) 将算法、模块、物性与插件的调用证据及参数对照纳入同一诊断体系，支持独立模型实验与工程运行关联；不另建状态真相或提前承诺开发 SDK。
 

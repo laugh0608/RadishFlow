@@ -64,7 +64,7 @@ impl ReadyAppState {
         });
     }
 
-    fn open_flow_diagnostics(&mut self) {
+    pub(super) fn open_flow_diagnostics(&mut self) {
         self.bottom_drawer_tab = StudioShellBottomDrawerTab::Diagnostics;
         self.background_run_details_open = false;
         self.modeling_problems.set_runtime_details(true);

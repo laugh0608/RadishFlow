@@ -210,6 +210,7 @@ impl ReadyAppState {
 
         self.cancel_drag_session(Some(window_id));
         self.dispatch_event(StudioGuiEvent::CloseWindowRequested { window_id });
+        self.reconcile_flow_path();
         self.logical_window_count() == 0
     }
 }

@@ -13,6 +13,7 @@ impl ReadyAppState {
         self.render_canvas_stage_summary(ui, widget);
         self.render_canvas_object_action_strip(ui, widget);
         self.render_canvas_legend(ui, widget);
+        self.render_flow_path(ui, window);
         ui.separator();
         self.render_canvas_drop_surface(ui);
         ui.add_space(8.0);
@@ -404,7 +405,7 @@ impl ReadyAppState {
         });
     }
 
-    fn render_canvas_drop_surface(&mut self, ui: &mut egui::Ui) {
+    pub(in crate::studio_gui_shell) fn render_canvas_drop_surface(&mut self, ui: &mut egui::Ui) {
         // Earlier controls can change selection or topology in this same egui frame.
         // Resolve navigation and paint geometry from the same current presentation.
         let mut window = self.platform_host.snapshot().window_model();
@@ -414,6 +415,26 @@ impl ReadyAppState {
         let focus_callout = view.focus_callout.as_ref();
         let unit_blocks = &view.unit_blocks;
         let stream_lines = &view.stream_lines;
+        let flow_path = (self.screen == StudioShellScreen::Workbench)
+            .then(|| self.flow_path.selected())
+            .flatten()
+            .and_then(|id| {
+                stream_lines
+                    .iter()
+                    .find(|stream| stream.stream_id == id.as_str())
+            });
+        let unqualified_path_end = flow_path.and_then(|path| {
+            if path.source.is_some() == path.sink.is_some()
+                || self.flow_path_has_current_amount(&path.stream_id)
+            {
+                return None;
+            }
+            Some(if path.source.is_none() {
+                OpenPathEnd::Source
+            } else {
+                OpenPathEnd::Sink
+            })
+        });
         self.reconcile_canvas_viewport_navigation(view);
         let available_width = ui.available_width().max(320.0);
         let desired_size = egui::vec2(available_width, 280.0);
@@ -449,7 +470,16 @@ impl ReadyAppState {
         let mut clicked_stream_command = None;
         let mut hovered_stream = false;
         for stream in stream_lines {
-            let geometry = canvas_stream_line_geometry(rect, &viewport_transform, stream);
+            let path_selected = flow_path.is_some_and(|path| path.line_id == stream.line_id);
+            let open_end = if path_selected {
+                unqualified_path_end
+            } else {
+                None
+            };
+            let mut geometry = canvas_stream_line_geometry(rect, &viewport_transform, stream);
+            if let Some(end) = open_end {
+                end.shorten(&mut geometry);
+            }
             let is_viewport_focus = self
                 .canvas_viewport_navigation
                 .is_active_anchor(&stream.line_id);
@@ -465,17 +495,38 @@ impl ReadyAppState {
             if is_viewport_focus {
                 paint_canvas_viewport_stream_focus(&painter, geometry);
             }
-            paint_canvas_stream_line(&painter, geometry, stream);
-            paint_canvas_stream_label(&painter, rect, geometry, stream);
+            let selected = flow_path.map_or(stream.is_active_inspector_target, |_| path_selected);
+            paint_canvas_stream_line(&painter, geometry, selected, open_end);
+            if path_selected
+                && geometry.start != geometry.end
+                && ui.is_rect_visible(canvas_stream_line_hit_rect(geometry))
+                && !ui.input(|input| input.viewport().minimized.unwrap_or(false))
+                && let Some(phase) = self.flow_path.phase(ui.input(|input| input.time))
+            {
+                paint_flow_path_motion(&painter, geometry, phase);
+                ui.ctx().request_repaint_after(Duration::from_millis(33));
+            }
+            let label_rect = if open_end.is_none() {
+                paint_canvas_stream_label(&painter, rect, geometry, stream, selected)
+            } else {
+                None
+            };
             paint_canvas_stream_status_badges(&painter, geometry, &stream.status_badges);
+            let line_hit = canvas_stream_line_hit_rect(geometry);
             let stream_response = ui
                 .interact(
-                    canvas_stream_line_hit_rect(geometry),
+                    label_rect.map_or(line_hit, |label_rect| line_hit.union(label_rect)),
                     ui.make_persistent_id(format!("canvas-stream:{}", stream.line_id)),
                     egui::Sense::click(),
                 )
                 .on_hover_text(&stream.hover_text)
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
+            stream_response.widget_info(|| {
+                egui::WidgetInfo::selected(egui::WidgetType::Button, true, selected, &stream.name)
+            });
+            if stream_response.has_focus() {
+                paint_canvas_viewport_stream_focus(&painter, geometry);
+            }
             hovered_stream |= stream_response.hovered();
             if stream_response.clicked() {
                 clicked_stream_command = Some(stream.command_id.clone());
@@ -513,6 +564,19 @@ impl ReadyAppState {
                 paint_canvas_viewport_unit_focus(&painter, unit_rect);
             }
             paint_canvas_unit_block(&painter, unit_rect, unit);
+            if flow_path.is_some_and(|path| {
+                [path.source.as_ref(), path.sink.as_ref()]
+                    .into_iter()
+                    .flatten()
+                    .any(|endpoint| endpoint.unit_id == unit.unit_id)
+            }) {
+                painter.rect_stroke(
+                    unit_rect.expand(2.0),
+                    6.0,
+                    egui::Stroke::new(2.0, egui::Color32::from_rgb(32, 102, 176)),
+                    egui::StrokeKind::Outside,
+                );
+            }
             paint_canvas_unit_status_badges(&painter, unit_rect, &unit.status_badges);
             for port in &unit.ports {
                 let port_anchor = canvas_unit_port_anchor_in_rect(
@@ -628,6 +692,9 @@ impl ReadyAppState {
         }
 
         if let Some(callout) = focus_callout
+            && !flow_path.is_some_and(|path| {
+                callout.kind_label == "Stream" && callout.target_id == path.stream_id
+            })
             && let Some(anchor) = canvas_focus_callout_anchor(
                 rect,
                 &viewport_transform,
@@ -645,7 +712,7 @@ impl ReadyAppState {
         let clicked_port = clicked_port_command.is_some();
         if let Some(command_id) = clicked_port_command {
             self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
-            self.dispatch_ui_command(command_id);
+            self.select_canvas_stream(&command_id);
         }
 
         let clicked_stream = clicked_stream_command.is_some();
@@ -653,7 +720,7 @@ impl ReadyAppState {
             && !clicked_port
             && let Some(command_id) = clicked_stream_command
         {
-            self.dispatch_ui_command(command_id);
+            self.select_canvas_stream(&command_id);
         }
 
         let hovered_port = hovered_port_callout.is_some();
@@ -1006,25 +1073,35 @@ fn canvas_stream_line_hit_rect(geometry: CanvasStreamLineGeometry) -> egui::Rect
     egui::Rect::from_two_pos(geometry.start, geometry.end).expand(8.0)
 }
 
+#[derive(Clone, Copy)]
+enum OpenPathEnd {
+    Source,
+    Sink,
+}
+
+impl OpenPathEnd {
+    fn shorten(self, geometry: &mut CanvasStreamLineGeometry) {
+        let stub = egui::vec2(10.0, 0.0);
+        match self {
+            Self::Source => geometry.start = geometry.end - stub,
+            Self::Sink => geometry.end = geometry.start + stub,
+        }
+    }
+}
+
 fn paint_canvas_stream_line(
     painter: &egui::Painter,
     geometry: CanvasStreamLineGeometry,
-    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
+    selected: bool,
+    open_end: Option<OpenPathEnd>,
 ) {
-    let color = if stream.is_active_inspector_target {
+    let color = if selected {
         egui::Color32::from_rgb(32, 102, 176)
     } else {
         egui::Color32::from_rgb(42, 142, 122)
     };
-    let stroke = egui::Stroke::new(
-        if stream.is_active_inspector_target {
-            2.4_f32
-        } else {
-            1.6_f32
-        },
-        color,
-    );
-    if stream.is_active_inspector_target {
+    let stroke = egui::Stroke::new(if selected { 2.4_f32 } else { 1.6_f32 }, color);
+    if selected {
         painter.line_segment(
             [geometry.start, geometry.end],
             egui::Stroke::new(
@@ -1041,8 +1118,30 @@ fn paint_canvas_stream_line(
         ),
     );
     painter.line_segment([geometry.start, geometry.end], stroke);
-    painter.circle_filled(geometry.start, 3.5, color);
-    paint_canvas_stream_arrow(painter, geometry, color);
+    if !matches!(open_end, Some(OpenPathEnd::Source)) {
+        painter.circle_filled(geometry.start, 3.5, color);
+    }
+    if let Some(open_end) = open_end {
+        let position = match open_end {
+            OpenPathEnd::Source => geometry.start,
+            OpenPathEnd::Sink => geometry.end,
+        };
+        painter.circle(position, 3.5, egui::Color32::WHITE, stroke);
+    } else {
+        paint_canvas_stream_arrow(painter, geometry, color);
+    }
+}
+
+fn paint_flow_path_motion(painter: &egui::Painter, geometry: CanvasStreamLineGeometry, phase: f32) {
+    for fraction in [phase, (phase + 0.5).fract()] {
+        let position = geometry.start.lerp(geometry.end, fraction);
+        painter.circle(
+            position,
+            3.5,
+            egui::Color32::WHITE,
+            egui::Stroke::new(1.5, egui::Color32::from_rgb(32, 102, 176)),
+        );
+    }
 }
 
 fn paint_canvas_viewport_stream_focus(painter: &egui::Painter, geometry: CanvasStreamLineGeometry) {
@@ -1078,12 +1177,11 @@ fn paint_canvas_stream_label(
     canvas_rect: egui::Rect,
     geometry: CanvasStreamLineGeometry,
     stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
-) {
+    selected: bool,
+) -> Option<egui::Rect> {
     let label = canvas_stream_label_text(stream);
     let size = canvas_stream_label_size(&label);
-    let Some(label_rect) = canvas_stream_label_rect(geometry, stream) else {
-        return;
-    };
+    let label_rect = canvas_stream_label_rect(geometry, stream)?;
     let mut min = label_rect.min;
     min.x = min
         .x
@@ -1092,7 +1190,7 @@ fn paint_canvas_stream_label(
         .y
         .clamp(canvas_rect.top() + 8.0, canvas_rect.bottom() - size.y - 8.0);
     let rect = egui::Rect::from_min_size(min, size);
-    let color = if stream.is_active_inspector_target {
+    let color = if selected {
         egui::Color32::from_rgb(32, 102, 176)
     } else {
         egui::Color32::from_rgb(42, 142, 122)
@@ -1120,6 +1218,7 @@ fn paint_canvas_stream_label(
         egui::FontId::proportional(10.5),
         color,
     );
+    Some(rect)
 }
 
 fn canvas_stream_label_rect(

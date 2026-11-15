@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RadishFlow Studio · V1</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="boards.js"></script>
+</head>
+<body>
+  <div class="board">
+    <header class="app-header">
+      <a class="brand" href="boards.html" aria-label="RadishFlow Studio">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>RadishFlow <small>Studio</small></span>
+      </a>
+      <span class="project-name">Feed–Heater–Flash</span>
+      <nav data-label="navigation">
+        <button type="button" class="nav-btn" id="canvas-nav" aria-current="page" data-text="canvas"></button>
+        <button type="button" class="nav-btn" id="result-nav" data-text="results"></button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="workspace" aria-labelledby="canvas-title">
+        <div class="page-heading">
+          <div>
+            <h1 id="canvas-title" tabindex="-1" data-text="canvas"></h1>
+            <p class="subtitle">feed-heater-flash-binary-hydrocarbon</p>
+          </div>
+          <span class="status" id="run-status"></span>
+        </div>
+        <div class="layout">
+          <section class="panel canvas-panel" aria-labelledby="path-title">
+            <div class="panel-heading">
+              <div>
+                <h2 id="path-title" data-text="path"></h2>
+                <p id="motion-reason" class="muted" aria-live="polite"></p>
+              </div>
+              <button type="button" class="motion" id="motion" aria-describedby="motion-reason">
+                <span id="motion-icon" aria-hidden="true"></span>
+                <span id="motion-text"></span>
+              </button>
+            </div>
+            <div class="diagram">
+              <canvas id="diagram-lines" aria-hidden="true"></canvas>
+              <div id="diagram-objects"></div>
+            </div>
+            <div class="legend" data-label="legendLabel">
+              <span><i class="line-swatch" aria-hidden="true"></i><span data-text="topology"></span></span>
+              <span><i class="line-swatch selected" aria-hidden="true"></i><span data-text="selection"></span></span>
+              <span><i class="warning-swatch" aria-hidden="true">!</i><span data-text="diagnostic"></span></span>
+            </div>
+          </section>
+
+          <aside class="panel inspector" aria-labelledby="inspector-title">
+            <div id="stream-detail">
+              <div class="inspector-heading">
+                <label id="inspector-title" for="stream" data-text="stream"></label>
+                <select id="stream"></select>
+                <span class="mono" id="stream-id"></span>
+              </div>
+              <div class="inspector-body">
+                <h2 data-text="connections"></h2>
+                <ol id="endpoints"></ol>
+                <section class="diagnostic-card" id="issue" hidden>
+                  <span class="warning-swatch" aria-hidden="true">!</span>
+                  <div>
+                    <strong data-text="unbound"></strong>
+                    <p>Heater · inlet</p>
+                    <button type="button" class="text-btn" id="inspect-issue" data-text="viewIssue"></button>
+                  </div>
+                </section>
+                <div class="readout">
+                  <div class="readout-heading">
+                    <h2 data-text="molarFlow"></h2>
+                    <label class="sr-only" for="unit" data-text="unit"></label>
+                    <select id="unit">
+                      <option value="mol/s">mol/s</option>
+                      <option value="kmol/h">kmol/h</option>
+                    </select>
+                  </div>
+                  <div id="value-block">
+                    <strong id="flow-value"></strong> <span id="flow-unit"></span>
+                  </div>
+                  <p id="result-origin" class="muted"></p>
+                </div>
+                <button type="button" class="text-btn" id="show-result" data-text="viewResult"></button>
+              </div>
+            </div>
+
+            <section id="diagnostic-detail" class="inspector-body" aria-labelledby="diagnostic-title" hidden>
+              <button type="button" class="text-btn back-btn" id="back-issue" data-text="backIssue"></button>
+              <h2 id="diagnostic-title" data-text="diagnosticTitle"></h2>
+              <div class="diagnostic-card">
+                <span class="warning-swatch" aria-hidden="true">!</span>
+                <div>
+                  <strong data-text="unbound"></strong>
+                  <p>Heater · inlet</p>
+                  <p class="mono">solver.connection_validation.unbound_inlet_port</p>
+                </div>
+              </div>
+              <button type="button" id="locate-issue" data-text="locateIssue"></button>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="result-page" aria-labelledby="results-title" hidden>
+        <div class="page-heading">
+          <div>
+            <h1 id="results-title" tabindex="-1" data-text="results"></h1>
+            <p class="subtitle">feed-heater-flash-binary-hydrocarbon</p>
+          </div>
+          <span class="status" id="results-status"></span>
+        </div>
+        <div class="panel result-panel">
+          <button type="button" class="text-btn back-btn" id="back-canvas" data-text="backCanvas"></button>
+          <h2 id="result-stream"></h2>
+          <dl>
+            <div><dt data-text="molarFlow"></dt><dd id="result-flow"></dd></div>
+            <div><dt data-text="resultSource"></dt><dd id="result-run"></dd></div>
+          </dl>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <section class="review" id="review-controls" aria-labelledby="review-title" hidden>
+    <h2 id="review-title" data-text="reviewTitle"></h2>
+    <label for="scenario" data-text="scenario"></label>
+    <select id="scenario"></select>
+    <label for="language" data-text="language"></label>
+    <select id="language">
+      <option value="zh">中文</option>
+      <option value="en">English</option>
+    </select>
+    <label><input type="checkbox" id="large-text"> <span data-text="largeText"></span></label>
+  </section>
+</body>
+</html>
