@@ -162,7 +162,7 @@ V1—V4 均须先评审相应 R0 / R1 用户路径，再逐切片实现。验证
 ### 可视化接下来事项
 
 1. V1 已于 2026-11-16 完成 macOS 原版实窗补验。开启「减弱动态效果」后停止播放并保留静态箭头，关闭后须显式点击才恢复。Windows／Linux 实窗和实际读屏随既定平台节点补验。 [V1 验收记录](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)
-2. V2 摩尔流量首片已完成接线及 macOS 代表实窗。Windows／Linux 原生操作、实际读屏和原生极窄布局待验证。后续物理量图层及跨工况固定标尺按使用场景评审。 [V2 验收记录](../architecture/designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)
+2. V2 摩尔流量首片已完成接线、macOS 代表实窗和中英文 400 点／20 px 原生窄区复验。Windows／Linux 原生操作及实际读屏待验证。后续物理量图层及跨工况固定标尺按使用场景评审。 [V2 验收记录](../architecture/designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)
 
 参考边界：[DWSIM 官方接口文档](https://dwsim.org/api_help/html/Methods_T_DWSIM_FormFlowsheet.htm) 可确认流程画布动画开关机制，不能据此认定其高级版已交付完整 3D 流程；本规划不依赖该未确认产品说法。
 

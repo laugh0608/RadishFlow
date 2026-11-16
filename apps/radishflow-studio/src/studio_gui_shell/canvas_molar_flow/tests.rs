@@ -317,3 +317,77 @@ fn canvas_molar_flow_failure_keeps_the_existing_diagnostic_action() {
     assert!(!contains(&screen, "0 mol/s – 5 mol/s"));
     std::fs::remove_file(path).unwrap();
 }
+
+#[test]
+fn narrow_canvas_scrolls_the_flow_legend_and_selected_stream_into_view() {
+    for locale in [StudioShellLocale::En, StudioShellLocale::ZhCn] {
+        let (mut app, path) = example(EXAMPLE);
+        app.screen = StudioShellScreen::Workbench;
+        app.locale = locale;
+        app.canvas_stream_layer = CanvasStreamLayer::MolarFlow;
+        app.dispatch_ui_command("run_panel.run_manual");
+        app.select_canvas_stream("inspector.focus_stream:stream-heated");
+
+        let ctx = egui::Context::default();
+        ctx.all_styles_mut(|style| {
+            for font in style.text_styles.values_mut() {
+                font.size = 20.0;
+            }
+        });
+        let frame = |app: &mut ReadyAppState, time| {
+            ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(416.0, 420.0),
+                    )),
+                    time: Some(time),
+                    ..Default::default()
+                },
+                |ctx| {
+                    let window = app.platform_host.snapshot().window_model();
+                    egui::CentralPanel::default().show(ctx, |ui| {
+                        app.render_canvas_area(ui, &window, StudioGuiWindowAreaId::Canvas);
+                    });
+                },
+            )
+        };
+        for step in 0..16 {
+            let _ = frame(&mut app, f64::from(step) * 0.1);
+        }
+        let out = frame(&mut app, 1.6);
+        let range = "0 mol/s – 5 mol/s";
+        let visible_text = |label| {
+            out.shapes.iter().any(|clipped| {
+                matches!(&clipped.shape, egui::Shape::Text(text) if text.galley.text() == label)
+                    && clipped
+                        .clip_rect
+                        .expand(1.0)
+                        .contains_rect(clipped.shape.visual_bounding_rect())
+            })
+        };
+        assert!(visible_text(range), "range was clipped in {locale:?}");
+        assert!(
+            visible_text(localized(
+                locale,
+                "当前快照 · 运行 #1 · r0",
+                "Current snapshot · Run #1 · r0",
+            )),
+            "snapshot identity was clipped in {locale:?}"
+        );
+        assert!(
+            visible_text(localized(locale, "摩尔流量", "Molar flow")),
+            "scrolling the plot hid the layer choice in {locale:?}"
+        );
+        let colored: Vec<_> = out.shapes.iter().filter(|clipped| {
+            matches!(&clipped.shape, egui::Shape::LineSegment { stroke, .. } if stroke.color == HIGH)
+        }).collect();
+        assert!(
+            colored.iter().any(|clipped| clipped
+                .clip_rect
+                .intersects(clipped.shape.visual_bounding_rect())),
+            "{locale:?}: {colored:?}"
+        );
+        std::fs::remove_file(path).unwrap();
+    }
+}

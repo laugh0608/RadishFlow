@@ -424,7 +424,7 @@ fn a_large_flow_only_schedules_preview_repaints_while_playing_on_a_visible_canva
                         if clipped {
                             ui.set_clip_rect(egui::Rect::NOTHING);
                         }
-                        app.render_canvas_drop_surface(ui);
+                        app.render_canvas_drop_surface(ui, ui.available_width());
                     });
                 },
             );

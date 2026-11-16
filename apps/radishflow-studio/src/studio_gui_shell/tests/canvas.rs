@@ -1766,7 +1766,7 @@ fn canvas_viewport_fit_to_content_resets_sidecar_offset_without_dirtying_project
     let ctx = egui::Context::default();
     let _ = ctx.run(egui::RawInput::default(), |ctx| {
         egui::CentralPanel::default().show(ctx, |ui| {
-            app.render_canvas_drop_surface(ui);
+            app.render_canvas_drop_surface(ui, ui.available_width());
         });
     });
     let fitted_offset = app.canvas_initial_viewport_fit.offset;

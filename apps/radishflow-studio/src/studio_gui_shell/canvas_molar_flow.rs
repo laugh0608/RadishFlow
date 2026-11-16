@@ -161,14 +161,15 @@ impl CanvasMolarFlow<'_> {
             }
         };
 
-        ui.horizontal_wrapped(|ui| {
-            ui.strong(title);
-            ui.small(format!(
+        ui.strong(title);
+        render_wrapped_small(
+            ui,
+            format!(
                 "{} · {} #{sequence} · r{revision}",
                 localized(locale, "当前快照", "Current snapshot"),
                 localized(locale, "运行", "Run"),
-            ));
-        });
+            ),
+        );
         if let Some(maximum) = maximum {
             ui.horizontal_wrapped(|ui| {
                 paint_scale(ui, *maximum > 0.0);

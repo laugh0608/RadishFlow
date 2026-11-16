@@ -16,14 +16,21 @@ impl ReadyAppState {
         let widget = &window.canvas.widget;
         self.render_canvas_toolbar(ui, widget);
         ui.add_space(4.0);
-        self.render_canvas_stage_summary(ui, widget);
-        self.render_canvas_object_action_strip(ui, widget);
-        self.render_canvas_legend(ui, widget);
-        self.render_flow_path(ui, window);
-        ui.separator();
-        self.render_canvas_drop_surface(ui);
-        ui.add_space(8.0);
-        self.render_canvas_suggestions(ui, widget, window, area_id);
+        egui::ScrollArea::vertical()
+            .id_salt("flowsheet-canvas-content")
+            .auto_shrink([false, false])
+            .drag_to_scroll(false)
+            .show(ui, |ui| {
+                let canvas_width = ui.available_width();
+                self.render_canvas_stage_summary(ui, widget);
+                self.render_canvas_object_action_strip(ui, widget);
+                self.render_canvas_legend(ui, widget);
+                self.render_flow_path(ui, window);
+                ui.separator();
+                self.render_canvas_drop_surface(ui, canvas_width);
+                ui.add_space(8.0);
+                self.render_canvas_suggestions(ui, widget, window, area_id);
+            });
     }
 
     fn render_canvas_toolbar(
@@ -125,19 +132,19 @@ impl ReadyAppState {
             ui.small(
                 egui::RichText::new(self.locale.runtime_label("Canvas status").as_ref()).strong(),
             );
-            render_status_chip(
+            render_canvas_chip(
                 ui,
                 &self
                     .locale
                     .count_label(object_list.unit_count, "unit", "units"),
                 egui::Color32::from_rgb(86, 118, 168),
             );
-            render_status_chip(
+            render_canvas_chip(
                 ui,
                 &compact_canvas_material_line_count(object_list.stream_count, self.locale),
                 egui::Color32::from_rgb(42, 142, 122),
             );
-            render_status_chip(
+            render_canvas_chip(
                 ui,
                 &self
                     .locale
@@ -145,7 +152,7 @@ impl ReadyAppState {
                 egui::Color32::from_rgb(86, 96, 108),
             );
             if object_list.attention_count > 0 {
-                render_status_chip(
+                render_canvas_chip(
                     ui,
                     &self
                         .locale
@@ -154,18 +161,18 @@ impl ReadyAppState {
                 );
             }
             if let Some(status) = view.run_status.as_ref() {
-                render_status_chip(
+                render_canvas_chip(
                     ui,
                     self.locale.runtime_label(status.status_label).as_ref(),
                     run_status_color(status.status_label),
                 );
             }
-            render_status_chip(
+            render_canvas_chip(
                 ui,
                 self.locale.runtime_label(viewport.mode_label).as_ref(),
                 egui::Color32::from_rgb(86, 118, 168),
             );
-            render_status_chip(
+            render_canvas_chip(
                 ui,
                 self.locale.runtime_label(viewport.layout_label).as_ref(),
                 egui::Color32::from_rgb(86, 96, 108),
@@ -414,7 +421,11 @@ impl ReadyAppState {
         });
     }
 
-    pub(in crate::studio_gui_shell) fn render_canvas_drop_surface(&mut self, ui: &mut egui::Ui) {
+    pub(in crate::studio_gui_shell) fn render_canvas_drop_surface(
+        &mut self,
+        ui: &mut egui::Ui,
+        canvas_width: f32,
+    ) {
         // Earlier controls can change selection or topology in this same egui frame.
         // Resolve navigation and paint geometry from the same current presentation.
         let mut window = self.platform_host.snapshot().window_model();
@@ -448,11 +459,15 @@ impl ReadyAppState {
         let molar_flow = self
             .canvas_stream_layer
             .project(&self.platform_host.modeling_inputs().workspace);
-        if let Some(layer) = &molar_flow {
-            layer.render_legend(ui, self.locale, stream_lines);
-        }
-        let available_width = ui.available_width().max(320.0);
-        let desired_size = egui::vec2(available_width, 280.0);
+        let molar_legend = molar_flow.as_ref().map(|layer| {
+            ui.scope(|ui| {
+                ui.set_max_width(canvas_width);
+                layer.render_legend(ui, self.locale, stream_lines);
+            })
+            .response
+            .rect
+        });
+        let desired_size = egui::vec2(canvas_width.max(320.0), 280.0);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click_and_drag());
         let fit_to_content = self.canvas_viewport_fit_to_content_requested;
         let viewport_transform = if fit_to_content {
@@ -501,9 +516,10 @@ impl ReadyAppState {
                 .canvas_viewport_navigation
                 .take_pending_scroll_for_anchor(&stream.line_id)
             {
-                ui.scroll_to_rect(
+                scroll_to_canvas_target(
+                    ui,
                     canvas_stream_line_hit_rect(geometry).expand(42.0),
-                    Some(egui::Align::Center),
+                    molar_legend,
                 );
             }
             if is_viewport_focus {
@@ -561,6 +577,9 @@ impl ReadyAppState {
             });
             if stream_response.has_focus() {
                 paint_canvas_viewport_stream_focus(&painter, geometry);
+                if stream_response.gained_focus() {
+                    scroll_to_canvas_target(ui, line_hit, molar_legend);
+                }
             }
             hovered_stream |= stream_response.hovered();
             if stream_response.clicked() {
@@ -596,7 +615,7 @@ impl ReadyAppState {
                 .canvas_viewport_navigation
                 .take_pending_scroll_for_anchor(&anchor_label)
             {
-                ui.scroll_to_rect(unit_rect.expand(42.0), Some(egui::Align::Center));
+                scroll_to_canvas_target(ui, unit_rect.expand(42.0), molar_legend);
             }
             if is_viewport_focus {
                 paint_canvas_viewport_unit_focus(&painter, unit_rect);
@@ -810,6 +829,21 @@ impl ReadyAppState {
             self.clear_canvas_selection();
         }
     }
+}
+
+fn scroll_to_canvas_target(
+    ui: &mut egui::Ui,
+    target: egui::Rect,
+    molar_legend: Option<egui::Rect>,
+) {
+    if let Some(legend) = molar_legend {
+        let with_legend = target.union(legend);
+        if with_legend.height() <= ui.clip_rect().height() {
+            ui.scroll_to_rect(with_legend, Some(egui::Align::Center));
+            return;
+        }
+    }
+    ui.scroll_to_rect(target, Some(egui::Align::Center));
 }
 
 impl ReadyAppState {
@@ -1555,16 +1589,15 @@ fn render_canvas_chip_with_hover(
     color: egui::Color32,
     hover_text: &str,
 ) {
-    let response = egui::Frame::new()
-        .fill(color.gamma_multiply(0.12))
-        .stroke(egui::Stroke::new(1.0_f32, color.gamma_multiply(0.8)))
-        .corner_radius(6.0)
-        .inner_margin(egui::Margin::symmetric(8, 3))
+    render_canvas_chip(ui, label, color).on_hover_text(hover_text);
+}
+
+fn render_canvas_chip(ui: &mut egui::Ui, label: &str, color: egui::Color32) -> egui::Response {
+    status_chip_frame(color)
         .show(ui, |ui| {
-            ui.label(egui::RichText::new(label).color(color).small());
+            ui.add(egui::Label::new(egui::RichText::new(label).color(color).small()).extend());
         })
-        .response;
-    response.on_hover_text(hover_text);
+        .response
 }
 
 fn canvas_status_badge_color(severity_label: &str) -> egui::Color32 {
