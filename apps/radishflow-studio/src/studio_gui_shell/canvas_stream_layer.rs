@@ -17,12 +17,14 @@ pub(super) enum CanvasStreamLayer {
     ConnectionDirection,
     MolarFlow,
     Temperature,
+    AbsolutePressure,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum StreamColorVariable {
     MolarFlow,
     Temperature,
+    AbsolutePressure,
 }
 
 pub(super) struct CanvasStreamColoring<'a> {
@@ -44,10 +46,12 @@ enum StreamColorResult<'a> {
 #[derive(Clone, Copy)]
 enum StreamColorReading {
     Value(f64),
+    ZeroFlowPressure(f64),
     Missing,
     ZeroFlow,
     InvalidFlow,
     InvalidTemperature,
+    InvalidPressure,
 }
 
 #[derive(Clone, Copy)]
@@ -70,6 +74,7 @@ impl CanvasStreamLayer {
             Self::ConnectionDirection => return None,
             Self::MolarFlow => StreamColorVariable::MolarFlow,
             Self::Temperature => StreamColorVariable::Temperature,
+            Self::AbsolutePressure => StreamColorVariable::AbsolutePressure,
         };
         let view = workspace.flow_result();
         let result = match view {
@@ -98,8 +103,8 @@ impl CanvasStreamLayer {
 
     pub(super) fn render_choice(&mut self, ui: &mut egui::Ui, locale: StudioShellLocale) {
         ui.separator();
-        ui.small(localized(locale, "图层", "Layer"));
-        for (layer, label) in [
+        let label = localized(locale, "图层", "Layer");
+        let choices = [
             (
                 Self::ConnectionDirection,
                 localized(locale, "连接方向", "Connection direction"),
@@ -109,11 +114,46 @@ impl CanvasStreamLayer {
                 Self::Temperature,
                 localized(locale, "流股温度", "Stream temperature"),
             ),
-        ] {
-            let response = ui.radio_value(self, layer, label);
-            if response.has_focus() {
-                response.scroll_to_me(None);
-            }
+            (
+                Self::AbsolutePressure,
+                localized(locale, "流股绝对压力", "Stream absolute pressure"),
+            ),
+        ];
+        let text_width = |text: &str, style: egui::TextStyle| {
+            ui.painter()
+                .layout_no_wrap(text.into(), style.resolve(ui.style()), egui::Color32::WHITE)
+                .size()
+                .x
+        };
+        let spacing = ui.spacing();
+        let widest_choice = choices
+            .iter()
+            .map(|(_, text)| text_width(text, egui::TextStyle::Button))
+            .fold(0.0, f32::max);
+        let selector_width = spacing.combo_width.max(
+            widest_choice
+                + spacing.icon_width
+                + spacing.icon_spacing
+                + 2.0 * spacing.button_padding.x,
+        );
+        if ui.available_size_before_wrap().x
+            < text_width(label, egui::TextStyle::Small) + spacing.item_spacing.x + selector_width
+        {
+            ui.end_row();
+        }
+        ui.small(label);
+        let selector = super::choice_selector::choice_selector(
+            ui,
+            "canvas-stream-layer",
+            label,
+            *self,
+            &choices,
+        );
+        if let Some(layer) = selector.inner {
+            *self = layer;
+        }
+        if selector.response.has_focus() {
+            selector.response.scroll_to_me(None);
         }
     }
 }
@@ -123,6 +163,7 @@ impl StreamColorVariable {
         match self {
             Self::MolarFlow => QuantityKind::MolarFlow,
             Self::Temperature => QuantityKind::AbsoluteTemperature,
+            Self::AbsolutePressure => QuantityKind::AbsolutePressure,
         }
     }
 
@@ -139,6 +180,16 @@ impl StreamColorVariable {
                 StreamColorReading::Value(stream.temperature_k)
             }
             Self::Temperature => StreamColorReading::InvalidTemperature,
+            Self::AbsolutePressure
+                if stream.pressure_pa.is_finite() && stream.pressure_pa > 0.0 =>
+            {
+                if flow == 0.0 {
+                    StreamColorReading::ZeroFlowPressure(stream.pressure_pa)
+                } else {
+                    StreamColorReading::Value(stream.pressure_pa)
+                }
+            }
+            Self::AbsolutePressure => StreamColorReading::InvalidPressure,
         }
     }
 
@@ -160,7 +211,9 @@ impl StreamColorScale {
         readings: impl Iterator<Item = StreamColorReading>,
     ) -> Option<Self> {
         let mut values = readings.filter_map(|reading| match reading {
-            StreamColorReading::Value(value) => Some(value),
+            StreamColorReading::Value(value) | StreamColorReading::ZeroFlowPressure(value) => {
+                Some(value)
+            }
             _ => None,
         });
         let first = values.next()?;
@@ -170,7 +223,7 @@ impl StreamColorScale {
         Some(Self {
             minimum: match variable {
                 StreamColorVariable::MolarFlow => 0.0,
-                StreamColorVariable::Temperature => minimum,
+                StreamColorVariable::Temperature | StreamColorVariable::AbsolutePressure => minimum,
             },
             maximum,
         })
@@ -180,7 +233,7 @@ impl StreamColorScale {
         let ratio = if self.minimum == self.maximum {
             match variable {
                 StreamColorVariable::MolarFlow => 0.0,
-                StreamColorVariable::Temperature => 0.5,
+                StreamColorVariable::Temperature | StreamColorVariable::AbsolutePressure => 0.5,
             }
         } else {
             (value - self.minimum) / (self.maximum - self.minimum)
@@ -201,9 +254,15 @@ impl CanvasStreamColoring<'_> {
             };
         };
         match (readings.get(stream_id), scale) {
-            (Some(StreamColorReading::Value(value)), Some(scale)) => StreamLayerStroke {
+            (
+                Some(
+                    reading @ (StreamColorReading::Value(value)
+                    | StreamColorReading::ZeroFlowPressure(value)),
+                ),
+                Some(scale),
+            ) => StreamLayerStroke {
                 color: scale.color(self.variable, *value),
-                dashed: false,
+                dashed: matches!(reading, StreamColorReading::ZeroFlowPressure(_)),
             },
             _ => StreamLayerStroke {
                 color: NEUTRAL,
@@ -226,6 +285,11 @@ impl CanvasStreamColoring<'_> {
             .unwrap_or(StreamColorReading::Missing);
         Some(match reading {
             StreamColorReading::Value(value) => self.variable.format(value, *unit, locale),
+            StreamColorReading::ZeroFlowPressure(value) => format!(
+                "{} · {}",
+                self.variable.format(value, *unit, locale),
+                localized(locale, "零流量", "Zero flow"),
+            ),
             StreamColorReading::ZeroFlow => localized(locale, "零流量", "Zero flow").into(),
             StreamColorReading::InvalidFlow => {
                 localized(locale, "流量无效", "Invalid molar flow").into()
@@ -233,9 +297,15 @@ impl CanvasStreamColoring<'_> {
             StreamColorReading::InvalidTemperature => {
                 localized(locale, "温度无效", "Invalid temperature").into()
             }
+            StreamColorReading::InvalidPressure => {
+                localized(locale, "绝压无效", "Invalid absolute pressure").into()
+            }
             StreamColorReading::Missing => match self.variable {
                 StreamColorVariable::MolarFlow => localized(locale, "无流量数据", "No flow value"),
                 StreamColorVariable::Temperature => localized(locale, "温度缺失", "No temperature"),
+                StreamColorVariable::AbsolutePressure => {
+                    localized(locale, "绝压缺失", "No absolute pressure")
+                }
             }
             .into(),
         })
@@ -246,6 +316,7 @@ impl CanvasStreamColoring<'_> {
         ui: &mut egui::Ui,
         locale: StudioShellLocale,
         streams: &[radishflow_studio::StudioGuiCanvasStreamLineViewModel],
+        selected: Option<&radishflow_studio::StudioGuiCanvasStreamLineViewModel>,
     ) {
         ui.add_space(4.0);
         ui.strong(match self.variable {
@@ -255,6 +326,11 @@ impl CanvasStreamColoring<'_> {
             StreamColorVariable::Temperature => {
                 localized(locale, "流股温度图例", "Stream temperature legend")
             }
+            StreamColorVariable::AbsolutePressure => localized(
+                locale,
+                "流股绝对压力图例",
+                "Stream absolute pressure legend",
+            ),
         });
         let (readings, scale, unit, sequence, revision) = match &self.result {
             StreamColorResult::Current {
@@ -304,32 +380,54 @@ impl CanvasStreamColoring<'_> {
                     scale.color(self.variable, scale.maximum),
                 );
                 let minimum = self.variable.format(scale.minimum, *unit, locale);
-                let label = if self.variable == StreamColorVariable::Temperature
-                    && scale.minimum == scale.maximum
-                {
-                    format!("{minimum} · {}", localized(locale, "等温", "Isothermal"))
-                } else {
-                    format!(
+                let equal = match self.variable {
+                    StreamColorVariable::MolarFlow => None,
+                    StreamColorVariable::Temperature => {
+                        Some(localized(locale, "等温", "Isothermal"))
+                    }
+                    StreamColorVariable::AbsolutePressure => {
+                        Some(localized(locale, "等压", "Equal pressure"))
+                    }
+                };
+                let label = match equal.filter(|_| scale.minimum == scale.maximum) {
+                    Some(equal) => format!("{minimum} · {equal}"),
+                    None => format!(
                         "{minimum} – {}",
                         self.variable.format(scale.maximum, *unit, locale)
-                    )
+                    ),
                 };
                 render_wrapped_small(ui, label);
             });
+        }
+        if self.variable == StreamColorVariable::AbsolutePressure
+            && let Some(stream) = selected
+            && let Some(readout) = self.stream_readout(&stream.stream_id, locale)
+        {
+            render_wrapped_small(ui, format!("{} · {readout}", stream.name));
         }
         let mut zero_flow = false;
         let mut unavailable = false;
         for stream in streams {
             match readings.get(stream.stream_id.as_str()) {
                 Some(StreamColorReading::Value(_)) => {}
-                Some(StreamColorReading::ZeroFlow) => zero_flow = true,
+                Some(StreamColorReading::ZeroFlow | StreamColorReading::ZeroFlowPressure(_)) => {
+                    zero_flow = true;
+                }
                 _ => unavailable = true,
             }
         }
         if zero_flow {
             render_wrapped_small(
                 ui,
-                localized(locale, "虚线表示零流量。", "Dashes mark zero flow."),
+                if self.variable == StreamColorVariable::AbsolutePressure {
+                    localized(
+                        locale,
+                        "带色虚线表示零流量，记录压力参与标尺。",
+                        "Colored dashes mark zero flow. Recorded pressure counts in the scale.",
+                    )
+                } else {
+                    localized(locale, "虚线表示零流量。", "Dashes mark zero flow.")
+                },
             );
         }
         if unavailable || (scale.is_none() && !zero_flow) {
@@ -343,6 +441,11 @@ impl CanvasStreamColoring<'_> {
                         locale,
                         "虚线表示温度不可用。",
                         "Dashes mark unavailable temperatures.",
+                    ),
+                    StreamColorVariable::AbsolutePressure => localized(
+                        locale,
+                        "中性虚线表示绝压不可用。",
+                        "Neutral dashes mark unavailable absolute pressure.",
                     ),
                 },
             );

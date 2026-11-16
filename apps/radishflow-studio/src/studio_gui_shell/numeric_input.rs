@@ -468,7 +468,7 @@ impl ReadyAppState {
                 } else {
                     format!("{label} input unit")
                 };
-                let selection = super::unit_selector::unit_selector(
+                let selection = super::choice_selector::choice_selector(
                     ui,
                     id.with("unit"),
                     &accessible_label,

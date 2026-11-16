@@ -60,10 +60,8 @@
 - [ ] 按 [AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23) 捕获异常现场，定因后确认修复并验收；未复现不等于收口。
 - [x] AF2a / b 与 AF3—AF5 已接通批准范围，见[基础切片](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)。
 - [x] AF6、QS0 独立物料任务和 QS1—QS3 有限回流 / 联立模块 / 物料 EO 已接通；QS4 首片已接通，后续混合策略、热 / 相平衡 EO 与动态另审。
-- [x] [R2](../architecture/studio-ui-topic-plan.md) macOS 代表实窗通过。
-- [x] V1 的 macOS「减弱动态效果」切换通过。 [验收记录](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)
-- [x] [V2 流股摩尔流量首片](../architecture/designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)已接入，macOS 代表实窗及中英文 400 点／20 px 原生窄区通过。
-- [x] [V2 流股温度图层](../architecture/designs/reviews/2026-11-16-studio-v2-temperature/README.md#产品验收)已接入，macOS 代表实窗及中英文 400 点／20 px 原生窄区通过。
+- [x] Studio R2、V1 减弱动态效果与 V2 摩尔流量／温度的 macOS 代表实窗通过。V2 已复验中英文 400 点／20 px 原生窄区。 [Studio UI 计划](../architecture/studio-ui-topic-plan.md)
+- [x] [V2 流股绝对压力](../architecture/designs/reviews/2026-11-16-studio-v2-pressure/README.md#产品接线) 已接入。
 
 ### 相关规划
 
@@ -117,13 +115,13 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-16：Rust 基线 2,148 项通过，含 45 项 CLI 进程测试。V2 macOS 代表实窗及窄区见 [W47](../devlogs/2026-11/2026-W47.md)，其他窄区与 .NET 证据见 [W46](../devlogs/2026-11/2026-W46.md)。
+- 2026-11-16：Rust 基线 2,150 项通过，含 45 项 CLI 进程测试。V2 macOS 代表实窗及窄区见 [W47](../devlogs/2026-11/2026-W47.md)，其他窄区与 .NET 证据见 [W46](../devlogs/2026-11/2026-W46.md)。
 
 - 2026-11-10：PR #18 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 
 - 2026-11-05：正式 2,069 项 Rust 测试、大图和首页原生代表验证通过；C2-A 新包另有 15 项 Python 测试与 552 行工程重放。见 [W45](../devlogs/2026-11/2026-W45.md)。
 
-- 既有功能与实窗证据见 [W38](../devlogs/2026-09/2026-W38.md)，跨平台、native 与 `.NET` 历史基线见 [W37](../devlogs/2026-09/2026-W37.md)，更早记录见 [W36](../devlogs/2026-09/2026-W36.md)；历史证据不替代新增路径或发布验收。
+- 跨平台、实窗与 `.NET` 历史证据见各专题及周志；新增路径和发布按各自范围验收。
 
 ## 当前范围控制
 

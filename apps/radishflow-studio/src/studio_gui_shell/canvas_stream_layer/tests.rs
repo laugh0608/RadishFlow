@@ -7,10 +7,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 static NEXT_PROJECT: AtomicUsize = AtomicUsize::new(0);
 const EXAMPLE: &str = "feed-heater-flash-binary-hydrocarbon.rfproj.json";
+const VALVE_EXAMPLE: &str = "feed-valve-flash-binary-hydrocarbon.rfproj.json";
 
 fn example(name: &str) -> (ReadyAppState, PathBuf) {
     let path = std::env::temp_dir().join(format!(
-        "rf-v2-molar-flow-{}-{}.rfproj.json",
+        "rf-v2-stream-layer-{}-{}.rfproj.json",
         std::process::id(),
         NEXT_PROJECT.fetch_add(1, Ordering::Relaxed)
     ));
@@ -35,6 +36,24 @@ fn temperature_layer(app: &ReadyAppState) -> CanvasStreamColoring<'_> {
     CanvasStreamLayer::Temperature
         .project(&app.platform_host.modeling_inputs().workspace)
         .unwrap()
+}
+
+fn absolute_pressure_layer(app: &ReadyAppState) -> CanvasStreamColoring<'_> {
+    CanvasStreamLayer::AbsolutePressure
+        .project(&app.platform_host.modeling_inputs().workspace)
+        .unwrap()
+}
+
+fn commit_unit_field(app: &mut ReadyAppState, unit: &str, field: &str, value: &str) {
+    app.dispatch_ui_command(format!("inspector.focus_unit:{unit}"));
+    let field = format!("unit:{unit}:{field}");
+    app.dispatch_inspector_field_draft_update(
+        radishflow_studio::inspector_draft_update_command_id(&field),
+        value,
+    );
+    app.dispatch_inspector_field_draft_commit(
+        radishflow_studio::inspector_draft_commit_command_id(&field),
+    );
 }
 
 #[test]
@@ -257,15 +276,7 @@ fn temperature_colors_actual_results_and_isothermal_reruns_in_canonical_units() 
     app.apply_presentation_command(ProjectPresentationCommand::Apply(DisplayUnitSet::si()))
         .unwrap();
     for unit in ["heater-1", "flash-1"] {
-        app.dispatch_ui_command(format!("inspector.focus_unit:{unit}"));
-        let field = format!("unit:{unit}:outlet_temperature_k");
-        app.dispatch_inspector_field_draft_update(
-            radishflow_studio::inspector_draft_update_command_id(&field),
-            "300",
-        );
-        app.dispatch_inspector_field_draft_commit(
-            radishflow_studio::inspector_draft_commit_command_id(&field),
-        );
+        commit_unit_field(&mut app, unit, "outlet_temperature_k", "300");
         let stale = temperature_layer(&app);
         assert!(matches!(
             stale.result,
@@ -376,6 +387,202 @@ fn temperature_excludes_zero_missing_and_invalid_streams_from_the_scale() {
     std::fs::remove_file(path).unwrap();
 }
 
+#[test]
+fn absolute_pressure_projects_actual_valve_runs_and_preserves_si_colors() {
+    let (mut app, path) = example(VALVE_EXAMPLE);
+    assert!(matches!(
+        absolute_pressure_layer(&app).result,
+        StreamColorResult::Unavailable(ResultStatus::Missing)
+    ));
+    app.dispatch_ui_command("run_panel.run_manual");
+    let layer = absolute_pressure_layer(&app);
+    assert!(matches!(
+        layer.result,
+        StreamColorResult::Current {
+            scale: Some(StreamColorScale {
+                minimum: 650000.0,
+                maximum: 700000.0
+            }),
+            sequence: 1,
+            revision: 0,
+            ..
+        }
+    ));
+    assert_eq!(layer.stroke("stream-feed").color, HIGH);
+    assert_eq!(layer.stroke("stream-throttled").color, LOW);
+    assert!(!layer.stroke("stream-liquid").dashed);
+
+    for (unit, inlet, outlet) in [
+        (MeasurementUnit::Kilopascal, "700 kPa", "650 kPa"),
+        (MeasurementUnit::Megapascal, "0.7 MPa", "0.65 MPa"),
+        (MeasurementUnit::Bar, "7 bar", "6.5 bar"),
+        (MeasurementUnit::Pascal, "700000 Pa", "650000 Pa"),
+    ] {
+        let mut units = DisplayUnitSet::si();
+        units
+            .set_unit(QuantityKind::AbsolutePressure, unit)
+            .unwrap();
+        app.apply_presentation_command(ProjectPresentationCommand::Apply(units))
+            .unwrap();
+        let layer = absolute_pressure_layer(&app);
+        assert!(matches!(
+            layer.result,
+            StreamColorResult::Current {
+                sequence: 1,
+                revision: 0,
+                ..
+            }
+        ));
+        for (id, color, display) in [
+            ("stream-feed", HIGH, inlet),
+            ("stream-throttled", LOW, outlet),
+        ] {
+            assert_eq!(layer.stroke(id).color, color);
+            assert_eq!(
+                layer.stream_readout(id, StudioShellLocale::En).as_deref(),
+                Some(display)
+            );
+        }
+    }
+
+    commit_unit_field(&mut app, "flash-1", "outlet_temperature_k", "345");
+    let stale = absolute_pressure_layer(&app);
+    assert!(matches!(
+        stale.result,
+        StreamColorResult::Unavailable(ResultStatus::Stale)
+    ));
+    assert_eq!(stale.stroke("stream-throttled").color, NEUTRAL);
+    assert!(!stale.stroke("stream-throttled").dashed);
+    assert_eq!(
+        stale.stream_readout("stream-throttled", StudioShellLocale::En),
+        None
+    );
+    app.dispatch_ui_command("run_panel.run_manual");
+    let layer = absolute_pressure_layer(&app);
+    assert!(matches!(
+        layer.result,
+        StreamColorResult::Current {
+            sequence: 2,
+            revision: 1,
+            ..
+        }
+    ));
+    assert_eq!(layer.stroke("stream-liquid").color, LOW);
+    assert!(layer.stroke("stream-liquid").dashed);
+    assert_eq!(
+        layer
+            .stream_readout("stream-liquid", StudioShellLocale::En)
+            .as_deref(),
+        Some("650000 Pa · Zero flow")
+    );
+
+    for unit in ["valve-1", "flash-1"] {
+        commit_unit_field(&mut app, unit, "outlet_pressure_pa", "700000");
+    }
+    for sequence in [3, 4] {
+        app.dispatch_ui_command("run_panel.run_manual");
+        let layer = absolute_pressure_layer(&app);
+        assert!(matches!(
+            layer.result,
+            StreamColorResult::Current {
+                scale: Some(StreamColorScale { minimum: 700000.0, maximum: 700000.0 }),
+                sequence: actual,
+                revision: 3,
+                ..
+            } if actual == sequence
+        ));
+        for id in [
+            "stream-feed",
+            "stream-throttled",
+            "stream-liquid",
+            "stream-vapor",
+        ] {
+            assert_eq!(layer.stroke(id).color, scale_color(0.5));
+        }
+        assert!(layer.stroke("stream-liquid").dashed);
+    }
+
+    let (_, other_path) = example(EXAMPLE);
+    app.canvas_stream_layer = CanvasStreamLayer::AbsolutePressure;
+    app.open_project(other_path.clone(), "pressure layer project switch");
+    assert_eq!(
+        app.canvas_stream_layer,
+        CanvasStreamLayer::ConnectionDirection
+    );
+    assert!(matches!(
+        absolute_pressure_layer(&app).result,
+        StreamColorResult::Unavailable(ResultStatus::Missing)
+    ));
+    std::fs::remove_file(other_path).unwrap();
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn absolute_pressure_counts_the_zero_flow_extreme_and_excludes_invalid_values() {
+    let (mut app, path) = example(VALVE_EXAMPLE);
+    app.dispatch_ui_command("run_panel.run_manual");
+    let mut workspace = app.platform_host.modeling_inputs().workspace.clone();
+    let mut snapshot = rf_ui::latest_snapshot(&workspace).unwrap().clone();
+    snapshot
+        .streams
+        .retain(|stream| stream.stream_id.as_str() != "stream-vapor");
+    let liquid = snapshot
+        .streams
+        .iter_mut()
+        .find(|stream| stream.stream_id.as_str() == "stream-liquid")
+        .unwrap();
+    liquid.pressure_pa = 600000.0;
+    liquid.total_molar_flow_mol_s = 0.0;
+    workspace.store_snapshot(snapshot.clone(), 4);
+    let layer = CanvasStreamLayer::AbsolutePressure
+        .project(&workspace)
+        .unwrap();
+    assert!(matches!(
+        layer.result,
+        StreamColorResult::Current {
+            scale: Some(StreamColorScale {
+                minimum: 600000.0,
+                maximum: 700000.0
+            }),
+            ..
+        }
+    ));
+    assert!(layer.stroke("stream-liquid").dashed);
+    assert_eq!(layer.stroke("stream-liquid").color, LOW);
+    assert_eq!(layer.stroke("stream-throttled").color, scale_color(0.5));
+    assert_eq!(layer.stroke("stream-vapor").color, NEUTRAL);
+    assert!(layer.stroke("stream-vapor").dashed);
+    assert_eq!(
+        layer
+            .stream_readout("stream-vapor", StudioShellLocale::En)
+            .as_deref(),
+        Some("No absolute pressure")
+    );
+
+    for invalid in [f64::NAN, f64::INFINITY, 0.0, -1.0] {
+        for stream in &mut snapshot.streams {
+            stream.pressure_pa = invalid;
+        }
+        workspace.store_snapshot(snapshot.clone(), 4);
+        let layer = CanvasStreamLayer::AbsolutePressure
+            .project(&workspace)
+            .unwrap();
+        assert!(matches!(
+            layer.result,
+            StreamColorResult::Current { scale: None, .. }
+        ));
+        assert_eq!(layer.stroke("stream-liquid").color, NEUTRAL);
+        assert!(layer.stroke("stream-liquid").dashed);
+        assert_eq!(
+            layer
+                .stream_readout("stream-liquid", StudioShellLocale::En)
+                .as_deref(),
+            Some("Invalid absolute pressure")
+        );
+    }
+    std::fs::remove_file(path).unwrap();
+}
+
 fn frame(
     app: &mut ReadyAppState,
     ctx: &egui::Context,
@@ -458,6 +665,22 @@ fn canvas_stream_layer_keyboard_choice_keeps_stream_and_shows_the_current_legend
             "流股温度图例",
             "300 K – 345 K",
         ),
+        (
+            400.0,
+            StudioShellLocale::En,
+            CanvasStreamLayer::AbsolutePressure,
+            "Stream absolute pressure",
+            "Stream absolute pressure legend",
+            "95000 Pa – 120000 Pa",
+        ),
+        (
+            400.0,
+            StudioShellLocale::ZhCn,
+            CanvasStreamLayer::AbsolutePressure,
+            "流股绝对压力",
+            "流股绝对压力图例",
+            "95000 Pa – 120000 Pa",
+        ),
     ] {
         app.locale = locale;
         app.canvas_stream_layer = CanvasStreamLayer::ConnectionDirection;
@@ -472,10 +695,14 @@ fn canvas_stream_layer_keyboard_choice_keeps_stream_and_shows_the_current_legend
         }
         let first = frame(&mut app, &ctx, width, vec![]);
         assert!(!contains(&first, legend));
+        let selector_label = localized(locale, "图层", "Layer");
         let (choice, selector) = first
             .nodes
             .iter()
-            .find(|(_, node)| node.label() == Some(label))
+            .find(|(_, node)| {
+                node.role() == egui::accesskit::Role::ComboBox
+                    && node.label() == Some(selector_label)
+            })
             .unwrap();
         let bounds = selector.bounds().unwrap();
         assert!(
@@ -493,21 +720,47 @@ fn canvas_stream_layer_keyboard_choice_keeps_stream_and_shows_the_current_legend
             })],
         );
         assert_eq!(focus.focus, *choice);
-        frame(
-            &mut app,
-            &ctx,
-            width,
-            [true, false]
-                .map(|pressed| egui::Event::Key {
-                    key: egui::Key::Enter,
-                    physical_key: Some(egui::Key::Enter),
-                    pressed,
-                    repeat: false,
-                    modifiers: egui::Modifiers::NONE,
-                })
-                .to_vec(),
+        let press = |app: &mut ReadyAppState, key| {
+            frame(
+                app,
+                &ctx,
+                width,
+                [true, false]
+                    .map(|pressed| egui::Event::Key {
+                        key,
+                        physical_key: Some(key),
+                        pressed,
+                        repeat: false,
+                        modifiers: egui::Modifiers::NONE,
+                    })
+                    .to_vec(),
+            )
+        };
+        press(&mut app, egui::Key::Enter);
+        let open = frame(&mut app, &ctx, width, vec![]);
+        assert!(contains(&open, label));
+        let steps = match layer {
+            CanvasStreamLayer::MolarFlow => 1,
+            CanvasStreamLayer::Temperature => 2,
+            CanvasStreamLayer::AbsolutePressure => 3,
+            CanvasStreamLayer::ConnectionDirection => unreachable!(),
+        };
+        for _ in 0..steps {
+            press(&mut app, egui::Key::ArrowDown);
+        }
+        assert_eq!(
+            app.canvas_stream_layer,
+            CanvasStreamLayer::ConnectionDirection
         );
+        press(&mut app, egui::Key::Enter);
         let changed = frame(&mut app, &ctx, width, vec![]);
+        assert_eq!(changed.focus, *choice);
+        let (_, selected) = changed.nodes.iter().find(|(id, _)| id == choice).unwrap();
+        let bounds = selected.bounds().unwrap();
+        assert!(
+            bounds.x0 >= 0.0 && bounds.x1 <= f64::from(width),
+            "{bounds:?}"
+        );
         assert_eq!(app.canvas_stream_layer, layer);
         assert_eq!(
             app.flow_path.selected(),
@@ -515,6 +768,17 @@ fn canvas_stream_layer_keyboard_choice_keeps_stream_and_shows_the_current_legend
         );
         assert!(contains(&changed, legend));
         assert!(contains(&changed, range));
+        if layer == CanvasStreamLayer::AbsolutePressure {
+            assert!(changed.nodes.iter().any(|(_, node)| {
+                node.role() == egui::accesskit::Role::Label
+                    && node.value()
+                        == Some(localized(
+                            locale,
+                            "Liquid Outlet · 95000 Pa · 零流量",
+                            "Liquid Outlet · 95000 Pa · Zero flow",
+                        ))
+            }));
+        }
         assert_eq!(app.platform_host.document(), &document);
     }
     std::fs::remove_file(path).unwrap();
@@ -530,6 +794,7 @@ fn canvas_stream_layer_failure_keeps_the_existing_diagnostic_action() {
     for (layer, range) in [
         (CanvasStreamLayer::MolarFlow, "0 mol/s – 5 mol/s"),
         (CanvasStreamLayer::Temperature, "300 K – 345 K"),
+        (CanvasStreamLayer::AbsolutePressure, "95000 Pa – 120000 Pa"),
     ] {
         app.canvas_stream_layer = layer;
         assert!(matches!(

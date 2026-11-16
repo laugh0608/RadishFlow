@@ -209,7 +209,7 @@ VB2 关注清单批量页复用同一 U2 文本、单位和本地历史。文本
 
 ### I5 单位菜单键盘与窄栏验证
 
-2026-10-02 实窗复现单位菜单第二次向下键把焦点移到菜单外“撤销输入”，回车误撤销候选。输入、项目和检查器显示单位现共用 [单位选择器](../../../apps/radishflow-studio/src/studio_gui_shell/unit_selector.rs)：展开时焦点留在选择器，上下键、Tab / Shift+Tab 循环选项，Home / End 到首尾，Enter / Space 选择；Escape 仅关菜单并恢复选择器焦点，数值字段再次 Escape 才取消候选并回到输入框。关闭后 Tab 继续到后续控件。可访问性节点标明展开状态、受控菜单和当前活动选项，候选移动本身不改单位或工程。
+2026-10-02 实窗复现单位菜单第二次向下键把焦点移到菜单外“撤销输入”，回车误撤销候选。输入、项目和检查器显示单位共用 [下拉选择器](../../../apps/radishflow-studio/src/studio_gui_shell/choice_selector.rs)。展开时焦点留在选择器，上下键、Tab / Shift+Tab 循环选项，Home / End 到首尾，Enter / Space 选择。Escape 仅关菜单并恢复选择器焦点，数值字段再次 Escape 才取消候选并回到输入框。关闭后 Tab 继续到后续控件。可访问性节点标明展开状态、受控菜单和当前活动选项，候选移动本身不改单位或工程。
 
 [键盘回归](../../../apps/radishflow-studio/src/studio_gui_shell/tests/unit_menu_keyboard.rs) 覆盖焦点、取消、输入单位换算、显式应用及两类显示设置草稿；修复前的越界焦点和 Escape 丢焦回归失败，修复后通过。macOS 实窗验证输入 `1.4 bar → 140 kPa` 后 Tab / Enter 显式提交 `140000 Pa`，菜单 Escape 保留候选、Shift+Tab 返回输入；项目和视图菜单经 Home / End / Enter 选择后按 Tab 到应用，均保持数值草稿。显式 kPa 下 `1.4 bar` 后缀冲突保留原文且禁止应用，显示设置变化不重新解释该草稿。
 

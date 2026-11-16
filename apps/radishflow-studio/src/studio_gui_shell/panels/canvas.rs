@@ -462,7 +462,7 @@ impl ReadyAppState {
         let layer_legend = stream_coloring.as_ref().map(|layer| {
             ui.scope(|ui| {
                 ui.set_max_width(canvas_width);
-                layer.render_legend(ui, self.locale, stream_lines);
+                layer.render_legend(ui, self.locale, stream_lines, flow_path);
             })
             .response
             .rect

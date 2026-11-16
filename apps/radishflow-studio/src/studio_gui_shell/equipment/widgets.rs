@@ -57,7 +57,7 @@ pub(super) fn quantity(
         .iter()
         .map(|u| (*u, u.definition().symbol))
         .collect::<Vec<_>>();
-    let selection = super::super::unit_selector::unit_selector(
+    let selection = super::super::choice_selector::choice_selector(
         ui,
         id.with("unit"),
         &format!("{label} {}", tr(locale, "输入单位", "input unit")),

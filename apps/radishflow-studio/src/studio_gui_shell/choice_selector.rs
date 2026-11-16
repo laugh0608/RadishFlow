@@ -1,8 +1,8 @@
 use super::{egui, state_presentation::StudioStateTokens};
 
-/// Keep keyboard navigation inside a unit menu instead of egui's spatial focus search.
+/// Keep keyboard navigation inside a choice menu instead of egui's spatial focus search.
 /// The selector owns focus; the highlighted option is its accessible active descendant.
-pub(super) fn unit_selector<T: Copy + PartialEq>(
+pub(super) fn choice_selector<T: Copy + PartialEq>(
     ui: &mut egui::Ui,
     id_salt: impl std::hash::Hash,
     label: &str,
@@ -19,12 +19,12 @@ pub(super) fn unit_selector<T: Copy + PartialEq>(
             widget.weak_bg_fill = StudioStateTokens::EDIT;
             widget.bg_stroke = egui::Stroke::new(1.0, StudioStateTokens::FOCUS);
         }
-        render_unit_selector(ui, id_salt, label, selected, choices)
+        render_choice_selector(ui, id_salt, label, selected, choices)
     })
     .inner
 }
 
-fn render_unit_selector<T: Copy + PartialEq>(
+fn render_choice_selector<T: Copy + PartialEq>(
     ui: &mut egui::Ui,
     id_salt: impl std::hash::Hash,
     label: &str,
@@ -34,10 +34,10 @@ fn render_unit_selector<T: Copy + PartialEq>(
     let selected_index = choices
         .iter()
         .position(|(value, _)| *value == selected)
-        .expect("selected unit must be an allowed choice");
+        .expect("selection must be one of the choices");
     // ComboBox hashes its salt before combining it with the parent UI identity.
     let button_id = ui.make_persistent_id(egui::Id::new(&id_salt));
-    let cursor_id = button_id.with("unit-menu-cursor");
+    let cursor_id = button_id.with("choice-menu-cursor");
     let was_open = egui::ComboBox::is_open(ui.ctx(), button_id);
     let mut cursor = if was_open {
         ui.data_mut(|data| data.get_temp::<usize>(cursor_id))
@@ -75,7 +75,7 @@ fn render_unit_selector<T: Copy + PartialEq>(
     let response = egui::ComboBox::from_id_salt(id_salt)
         .selected_text(choices[selected_index].1)
         .show_ui(ui, |ui| {
-            let popup_id = button_id.with("unit-options");
+            let popup_id = button_id.with("choices");
             popup = Some(popup_id);
             let ctx = ui.ctx().clone();
             ctx.accesskit_node_builder(popup_id, |node| {

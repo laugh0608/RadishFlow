@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RadishFlow Studio · 流股绝对压力</title>
+  <link rel="stylesheet" href="../2026-11-16-studio-v2-molar-flow/styles.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="boards.js" defer></script>
+</head>
+<body>
+  <header class="app-bar">
+    <span class="wordmark"><span class="brand-mark" aria-hidden="true"></span>RadishFlow Studio</span>
+    <span class="area" data-text="flowsheet"></span>
+  </header>
+  <main>
+    <header class="project-header">
+      <h1>Feed–Valve–Flash</h1>
+      <span class="status" id="status"></span>
+    </header>
+    <div class="workspace">
+      <section class="panel canvas-panel" aria-labelledby="canvas-title">
+        <header class="toolbar">
+          <h2 id="canvas-title" data-text="canvas"></h2>
+          <div class="layer-control">
+            <label for="layer" data-text="layer"></label>
+            <select id="layer">
+              <option value="topology" data-text="topology"></option>
+              <option value="molar" data-text="molar"></option>
+              <option value="temperature" data-text="temperature"></option>
+              <option value="pressure" data-text="pressure"></option>
+            </select>
+          </div>
+        </header>
+        <div class="diagram" id="diagram" role="group" data-label="diagramLabel">
+          <canvas id="lines" aria-hidden="true"></canvas>
+          <div class="node" id="feed"><span class="node-mark" aria-hidden="true"></span>Feed</div>
+          <div class="node" id="valve"><span class="node-mark" aria-hidden="true"></span>Valve</div>
+          <div class="node" id="flash"><span class="node-mark" aria-hidden="true"></span>Flash Drum</div>
+          <div id="stream-labels"></div>
+          <button type="button" class="issue-pin" id="issue-pin" data-label="issueAction" hidden>!</button>
+        </div>
+        <section class="legend" aria-labelledby="legend-title">
+          <div class="legend-heading">
+            <h3 id="legend-title"></h3>
+            <span id="origin"></span>
+          </div>
+          <div class="scale" id="scale" hidden>
+            <div class="ramp" aria-hidden="true"></div>
+            <div class="bounds"><span id="min"></span><span id="max"></span></div>
+          </div>
+          <p id="layer-note" aria-live="polite"></p>
+          <p id="layer-note-detail" class="legend-detail"></p>
+        </section>
+      </section>
+
+      <aside class="panel detail-panel" aria-labelledby="streams-title">
+        <header class="detail-heading">
+          <h2 id="streams-title" data-text="streamResults"></h2>
+          <label class="unit-control" for="unit">
+            <span data-text="displayUnit"></span>
+            <select id="unit"></select>
+          </label>
+        </header>
+        <ul id="stream-results"></ul>
+        <section class="issue-detail" id="issue-detail" aria-labelledby="issue-title" hidden>
+          <h3 id="issue-title" tabindex="-1" data-text="issueTitle"></h3>
+          <p data-text="issueBody"></p>
+          <button type="button" id="back-to-issue" data-text="returnToPort"></button>
+        </section>
+      </aside>
+    </div>
+
+    <section class="review" id="review" aria-labelledby="review-title">
+      <h2 id="review-title" data-text="review"></h2>
+      <label><span data-text="scenario"></span><select id="scenario"></select></label>
+      <label><span data-text="zeroPolicy"></span>
+        <select id="policy">
+          <option value="include" data-text="include"></option>
+          <option value="exclude" data-text="exclude"></option>
+        </select>
+      </label>
+      <label><span data-text="language"></span>
+        <select id="language"><option value="zh">中文</option><option value="en">English</option></select>
+      </label>
+    </section>
+  </main>
+</body>
+</html>

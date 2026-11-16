@@ -313,7 +313,7 @@ impl ReadyAppState {
                         .filter(|unit| units.clone().set_unit(quantity, **unit).is_ok())
                         .map(|unit| (*unit, unit.definition().symbol))
                         .collect();
-                    if let Some(unit) = super::unit_selector::unit_selector(
+                    if let Some(unit) = super::choice_selector::choice_selector(
                         ui,
                         quantity.definition().id,
                         &locale.project_unit_selector_name(quantity),
