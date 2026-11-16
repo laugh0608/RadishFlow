@@ -60,8 +60,8 @@
 - [ ] 按 [AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23) 捕获异常现场，定因后确认修复并验收；未复现不等于收口。
 - [x] AF2a / b 与 AF3—AF5 已接通批准范围，见[基础切片](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)。
 - [x] AF6、QS0 独立物料任务和 QS1—QS3 有限回流 / 联立模块 / 物料 EO 已接通；QS4 首片已接通，后续混合策略、热 / 相平衡 EO 与动态另审。
-- [x] Studio R2、V1 减弱动态效果与 V2 摩尔流量／温度的 macOS 代表实窗通过。V2 已复验中英文 400 点／20 px 原生窄区。 [Studio UI 计划](../architecture/studio-ui-topic-plan.md)
-- [x] [V2 流股绝对压力](../architecture/designs/reviews/2026-11-16-studio-v2-pressure/README.md#产品接线) 已接入。
+- [x] Studio R2、V1 动效与 V2 三个流股图层通过 macOS 代表验证。 [UI 计划](../architecture/studio-ui-topic-plan.md)
+- [ ] 先核对相结果口径，再评审 [V2 气相摩尔分率](../topics/results-review-diagnostics.md#可视化接下来事项)。
 
 ### 相关规划
 

@@ -1,6 +1,6 @@
 # 结果审阅、诊断与恢复
 
-更新时间：2026-11-14
+更新时间：2026-11-16
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -139,11 +139,15 @@ macOS 实窗：普通空白来源 Feed–Heater–Flash，降低 Feed 压力产�
 | V3 设备参数驱动三维 | 随分离器 / 换热器可信几何结果；工程范围由设备专题拥有 | 几何与参数同源，候选 / 已采纳及示意 / 按尺寸展示可辨，二维 / 三维选择与过期状态一致 |
 | V4 动态结果回放 | P5 / P6 的时间序列、事件及相应物理模型 | 时间轴、趋势与设备状态同步；播放速度与仿真时间分开，缺数据不插造物理响应 |
 
-2026-11-15 [V1 已接入 Studio](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#产品接线)。共享结果查询提供当前流股摩尔流量，诊断定位沿 R2，画布为只读呈现。macOS 代表路径及系统动态效果偏好切换已通过，Windows／Linux 实窗与实际读屏待补。V2—V4 按下述边界推进。
+2026-11-15 [V1 已接入 Studio](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#产品接线)。方向示意读取当前摩尔流量，诊断定位沿 R2。2026-11-16 macOS 原版实窗验证开启「减弱动态效果」后立即停播并保留静态箭头，关闭后须显式点击才恢复。 [V1 验收记录](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)
 
-2026-11-16 [V2 摩尔流量首片已接入 Studio](../architecture/designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)。默认显示连接方向，开启摩尔流量后按当前快照的 SI `0…max` 着色。图例显示项目单位及快照身份，失效时退回中性拓扑。macOS 代表实窗通过。
+2026-11-16 V2 三个物料流股图层已接入，macOS 代表实窗和中英文 400 点／20 px 原生窄区通过。图层共用当前快照和单位目录，图例标注运行及修订。失效时撤下色带和读数，保留连接方向与诊断入口。 [画布交互契约](../architecture/canvas-interaction-contract.md#当前物料流股图层)
 
-2026-11-16 [V2 流股温度已接入 Studio](../architecture/designs/reviews/2026-11-16-studio-v2-temperature/README.md#产品验收)。标尺取当前快照中有限正流量流股的有效绝对温度范围。等温时单色单值，零流量显示中性虚线及说明。macOS 代表实窗和中英文原生窄区已通过。
+| 已接入图层 | 标尺和零流量语义 |
+| --- | --- |
+| [摩尔流量](../architecture/designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收) | 当前快照的 SI `0…最大值`，零流量取色带低端 |
+| [流股温度](../architecture/designs/reviews/2026-11-16-studio-v2-temperature/README.md#产品验收) | 有限正流量流股的有效绝对温度范围，等温单色单值，零流量使用中性虚线 |
+| [流股绝对压力](../architecture/designs/reviews/2026-11-16-studio-v2-pressure/README.md#产品接线) | 当前快照的有效绝压范围，等压单色单值，零流量的有效绝压参与范围并使用带色虚线 |
 
 ### 动画与数据可信度
 
@@ -163,10 +167,9 @@ V1—V4 均须先评审相应 R0 / R1 用户路径，再逐切片实现。验证
 
 ### 可视化接下来事项
 
-1. V1 已于 2026-11-16 完成 macOS 原版实窗补验。开启「减弱动态效果」后停止播放并保留静态箭头，关闭后须显式点击才恢复。Windows／Linux 实窗和实际读屏随既定平台节点补验。 [V1 验收记录](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)
-2. V2 摩尔流量首片已完成接线、macOS 代表实窗和中英文 400 点／20 px 原生窄区复验。Windows／Linux 原生操作及实际读屏待验证。后续物理量图层及跨工况固定标尺按使用场景评审。 [V2 验收记录](../architecture/designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)
-3. [V2 流股温度](../architecture/designs/reviews/2026-11-16-studio-v2-temperature/README.md#产品验收) 已完成接线和 macOS 代表验收。Windows／Linux 原生操作及实际读屏随既定平台节点补验。
-4. [V2 流股绝对压力](../architecture/designs/reviews/2026-11-16-studio-v2-pressure/README.md#产品接线) 已接入。标尺取当前快照的有效绝压范围，零流量支路的有效压力纳入标尺并使用带色虚线。
+1. **下一批建议先做 V2 气相摩尔分率 R0／R1 评审。** 核对当前快照中已物化的 `vapor` 相及 `MolarPhaseFraction` 单位口径。评审固定 `0…1 mol/mol` 标尺及 `0…100 mol%` 显示，区分有相证据的零气相、气相结果缺失、零流量和越界数值。 [流股快照契约](../reference/solve-snapshot-results.md#streamstatesnapshot-的稳定语义)
+2. **先核实算例能力。** Feed–Valve–Flash 的 Vapor Outlet 有 `1 mol/mol`，正流量的 Feed 和 Valve Outlet 查询气相分率均返回 `variable_missing`。同一快照的 Liquid Outlet 有液相分率，气相行缺席。首轮需核对真实两相流股能否提供中间分率，画板应标明模拟值，评审后再确定接线范围。 [周志证据](../devlogs/2026-11/2026-W47.md#2026-11-16-收口与接下来事项)
+3. Windows／Linux 实窗及实际读屏随既定节点补验。跨工况共用温压或流量标尺按使用场景另审。
 
 参考边界：[DWSIM 官方接口文档](https://dwsim.org/api_help/html/Methods_T_DWSIM_FormFlowsheet.htm) 可确认流程画布动画开关机制，不能据此认定其高级版已交付完整 3D 流程；本规划不依赖该未确认产品说法。
 

@@ -28,8 +28,7 @@
 | 保留主稿 | 旧 brief 记录 Home / Property / Flowsheet / Module 四个主 frame，反映原范围 | 保留历史评审范围；新功能分区待重评，不表述为新稿已完成 |
 | 新版信息架构 | [R0 决策](designs/studio-client-main-brief.md#studio-r0-首轮信息架构评审2026-11-15)已确认采用 A、流程入口命名、返回和跨页规则。工程基础沿用设备任务及来源入口 | [R1 两条局部路径](designs/reviews/2026-11-15-studio-r1/README.md)已复核并获所有者认可 |
 | 新版视觉与代码 | U2 / V0 和本轮 R1 画板获认可。[R2](designs/reviews/2026-11-15-studio-r1/README.md#r2-产品接线范围)两片已接通，macOS 代表路径通过 | Windows／Linux 原生复验待补 |
-| 流程画布 | [V1 二维流向与路径](designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)、V2 [摩尔流量](designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)与[流股温度](designs/reviews/2026-11-16-studio-v2-temperature/README.md#产品验收)已接入，macOS 代表实窗及 V2 中英文 400 点／20 px 画布复验通过 | Windows／Linux 实窗与实际读屏待验证 |
-| V2 流股绝对压力 | [已按评审结论接入](designs/reviews/2026-11-16-studio-v2-pressure/README.md#产品接线)，覆盖真实压降、等压、零流量压力与失败定位 | 跨工况标尺按使用场景另审 |
+| 流程画布 | [V1 二维流向与路径](designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)、V2 [摩尔流量](designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)、[流股温度](designs/reviews/2026-11-16-studio-v2-temperature/README.md#产品验收)和[流股绝对压力](designs/reviews/2026-11-16-studio-v2-pressure/README.md#产品接线)已接入。macOS 代表实窗及 V2 中英文 400 点／20 px 窄区通过 | [气相摩尔分率局部评审](../topics/results-review-diagnostics.md#可视化接下来事项)，Windows／Linux 实窗与实际读屏待验证 |
 
 ## 产品任务与功能分区候选
 
@@ -59,7 +58,7 @@
 
 ## 首批必须评审的代表路径
 
-首批单位事件与草稿路径以 [U2 事件表](../topics/units/input-drafts-and-interactions.md#u2-事件表) 为准，已接受触发策略已合入 UE 表，剩余接口按 UD 清单审定。首批单位字段同时评审了 [V0 状态语义](../topics/color-state/semantics-and-composition.md)，完整迁移和产品验收待续。V1 已接入，V2—V4 的画板依 [可视化切片](../topics/results-review-diagnostics.md#流程可视化与回放规划) 推进。
+首批单位事件与草稿路径以 [U2 事件表](../topics/units/input-drafts-and-interactions.md#u2-事件表) 为准，已接受触发策略已合入 UE 表，剩余接口按 UD 清单审定。首批单位字段同时评审了 [V0 状态语义](../topics/color-state/semantics-and-composition.md)，完整迁移和产品验收待续。画布后续画板按 [可视化切片](../topics/results-review-diagnostics.md#流程可视化与回放规划) 推进。
 
 1. **单位输入与显示**：固定显示单位→临时选择输入单位→校验并提交→回显；切换显示单位→结果 / 导出一致→保存重开。覆盖非法 / 未完成草稿、温差 / 温度、缺转换上下文和精度；来源、可编辑性、缺项、草稿、时效与诊断可组合，选择 / 焦点不遮警告。
 2. **规格与推荐**：缺项或规格冲突→查看依据→定位字段→修正 / 执行建议→重检→运行；覆盖未分析、不支持、建议过期、对象删除和撤销。

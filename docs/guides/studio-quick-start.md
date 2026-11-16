@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-11-15
+更新时间：2026-11-16
 
 > 本文用于运行与验证当前 MVP 用户路径。内置样例与历史 `official` 称谓表示仓库演示 / 回归案例，运行成功不构成工程精度验证；解释结果前请阅读 [模型与样例边界](../thermo/mvp-model.md)。
 
@@ -119,6 +119,8 @@ cargo run -p radishflow-studio
 - `docs/guides/run-first-flowsheet.md`
 
 示例跑通后，可从首页 `创建 Mixer-Flash 小案例` 或 `创建 Heater-Flash 小案例` 开始，按[小案例作者指南](author-small-cases.md)完成放置、连接、参数提交、运行和保存重开；入口只提供空白项目与任务清单。顶部 `流程结果` 页可复制或导出当前结果，缺失 / 过期时先重跑。macOS / Windows 提供 `.txt` 保存选择器，已有目标需确认覆盖；Linux 暂用复制。取消或失败不改变工程路径，完整契约见[结果审阅指南](review-solve-results.md#当前快照复制--导出)。
+
+求解后可在「流程图」画布的「图层」下拉菜单查看摩尔流量、流股温度或流股绝对压力。 [从画布查看流向与诊断](review-solve-results.md#从画布查看流向与诊断)
 
 ## 启动首页
 
