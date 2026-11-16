@@ -1,6 +1,6 @@
 //! Material stream geometry annotations and presentation on the process canvas.
 use super::*;
-use crate::studio_gui_shell::canvas_molar_flow::MolarFlowStroke;
+use crate::studio_gui_shell::canvas_stream_layer::StreamLayerStroke;
 
 #[derive(Clone, Copy)]
 pub(super) enum OpenPathEnd {
@@ -23,7 +23,7 @@ pub(super) fn paint_canvas_stream_line(
     geometry: CanvasStreamLineGeometry,
     selected: bool,
     open_end: Option<OpenPathEnd>,
-    flow_stroke: Option<MolarFlowStroke>,
+    flow_stroke: Option<StreamLayerStroke>,
 ) {
     let color = flow_stroke
         .as_ref()

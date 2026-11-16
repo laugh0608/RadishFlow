@@ -101,7 +101,7 @@ impl FlowPathReading {
             return Self::NoStreamFlow;
         };
         let amount = value.total_molar_flow_mol_s;
-        if !canvas_molar_flow::is_valid_result_molar_flow(amount) {
+        if !canvas_stream_layer::is_valid_result_molar_flow(amount) {
             return Self::InvalidFlow;
         }
         Self::Current {

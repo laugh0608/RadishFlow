@@ -456,10 +456,10 @@ impl ReadyAppState {
             })
         });
         self.reconcile_canvas_viewport_navigation(view);
-        let molar_flow = self
+        let stream_coloring = self
             .canvas_stream_layer
             .project(&self.platform_host.modeling_inputs().workspace);
-        let molar_legend = molar_flow.as_ref().map(|layer| {
+        let layer_legend = stream_coloring.as_ref().map(|layer| {
             ui.scope(|ui| {
                 ui.set_max_width(canvas_width);
                 layer.render_legend(ui, self.locale, stream_lines);
@@ -519,7 +519,7 @@ impl ReadyAppState {
                 scroll_to_canvas_target(
                     ui,
                     canvas_stream_line_hit_rect(geometry).expand(42.0),
-                    molar_legend,
+                    layer_legend,
                 );
             }
             if is_viewport_focus {
@@ -527,10 +527,10 @@ impl ReadyAppState {
             }
             let selected = flow_path.map_or(stream.is_active_inspector_target, |_| path_selected);
             let line_hit = canvas_stream_line_hit_rect(geometry);
-            let layer_stroke = molar_flow
+            let layer_stroke = stream_coloring
                 .as_ref()
                 .map(|layer| layer.stroke(&stream.stream_id));
-            let readout = molar_flow
+            let readout = stream_coloring
                 .as_ref()
                 .filter(|_| ui.is_rect_visible(line_hit.expand(28.0)))
                 .and_then(|layer| layer.stream_readout(&stream.stream_id, self.locale));
@@ -578,7 +578,7 @@ impl ReadyAppState {
             if stream_response.has_focus() {
                 paint_canvas_viewport_stream_focus(&painter, geometry);
                 if stream_response.gained_focus() {
-                    scroll_to_canvas_target(ui, line_hit, molar_legend);
+                    scroll_to_canvas_target(ui, line_hit, layer_legend);
                 }
             }
             hovered_stream |= stream_response.hovered();
@@ -615,7 +615,7 @@ impl ReadyAppState {
                 .canvas_viewport_navigation
                 .take_pending_scroll_for_anchor(&anchor_label)
             {
-                scroll_to_canvas_target(ui, unit_rect.expand(42.0), molar_legend);
+                scroll_to_canvas_target(ui, unit_rect.expand(42.0), layer_legend);
             }
             if is_viewport_focus {
                 paint_canvas_viewport_unit_focus(&painter, unit_rect);
@@ -834,9 +834,9 @@ impl ReadyAppState {
 fn scroll_to_canvas_target(
     ui: &mut egui::Ui,
     target: egui::Rect,
-    molar_legend: Option<egui::Rect>,
+    layer_legend: Option<egui::Rect>,
 ) {
-    if let Some(legend) = molar_legend {
+    if let Some(legend) = layer_legend {
         let with_legend = target.union(legend);
         if with_legend.height() <= ui.clip_rect().height() {
             ui.scroll_to_rect(with_legend, Some(egui::Align::Center));

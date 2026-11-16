@@ -28,7 +28,7 @@
 | 保留主稿 | 旧 brief 记录 Home / Property / Flowsheet / Module 四个主 frame，反映原范围 | 保留历史评审范围；新功能分区待重评，不表述为新稿已完成 |
 | 新版信息架构 | [R0 决策](designs/studio-client-main-brief.md#studio-r0-首轮信息架构评审2026-11-15)已确认采用 A、流程入口命名、返回和跨页规则。工程基础沿用设备任务及来源入口 | [R1 两条局部路径](designs/reviews/2026-11-15-studio-r1/README.md)已复核并获所有者认可 |
 | 新版视觉与代码 | U2 / V0 和本轮 R1 画板获认可。[R2](designs/reviews/2026-11-15-studio-r1/README.md#r2-产品接线范围)两片已接通，macOS 代表路径通过 | Windows／Linux 原生复验待补 |
-| 流程画布 | [V1 二维流向与路径](designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)与 [V2 摩尔流量首片](designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)已接入，macOS 代表实窗及 V2 中英文 400 点／20 px 画布复验通过 | Windows／Linux 实窗与实际读屏待验证 |
+| 流程画布 | [V1 二维流向与路径](designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)、V2 [摩尔流量](designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)与[流股温度](designs/reviews/2026-11-16-studio-v2-temperature/README.md#产品验收)已接入，macOS 代表实窗及 V2 中英文 400 点／20 px 画布复验通过 | Windows／Linux 实窗与实际读屏待验证 |
 
 ## 产品任务与功能分区候选
 

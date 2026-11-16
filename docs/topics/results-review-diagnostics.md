@@ -143,6 +143,8 @@ macOS 实窗：普通空白来源 Feed–Heater–Flash，降低 Feed 压力产�
 
 2026-11-16 [V2 摩尔流量首片已接入 Studio](../architecture/designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)。默认显示连接方向，开启摩尔流量后按当前快照的 SI `0…max` 着色。图例显示项目单位及快照身份，失效时退回中性拓扑。macOS 代表实窗通过。
 
+2026-11-16 [V2 流股温度已接入 Studio](../architecture/designs/reviews/2026-11-16-studio-v2-temperature/README.md#产品验收)。标尺取当前快照中有限正流量流股的有效绝对温度范围。等温时单色单值，零流量显示中性虚线及说明。macOS 代表实窗和中英文原生窄区已通过。
+
 ### 动画与数据可信度
 
 - 流向动画只作展示，不推进仿真时间、不触发求解、不修改工程修订。画面刷新、求解进度和物理时间分别表达；动画播放不表示求解器正在运行。提供关闭 / 减少动画选项，隐藏视图暂停刷新，实施前验证目标平台和大流程性能。
@@ -163,7 +165,7 @@ V1—V4 均须先评审相应 R0 / R1 用户路径，再逐切片实现。验证
 
 1. V1 已于 2026-11-16 完成 macOS 原版实窗补验。开启「减弱动态效果」后停止播放并保留静态箭头，关闭后须显式点击才恢复。Windows／Linux 实窗和实际读屏随既定平台节点补验。 [V1 验收记录](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)
 2. V2 摩尔流量首片已完成接线、macOS 代表实窗和中英文 400 点／20 px 原生窄区复验。Windows／Linux 原生操作及实际读屏待验证。后续物理量图层及跨工况固定标尺按使用场景评审。 [V2 验收记录](../architecture/designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)
-3. [V2 流股温度 R0／R1](../architecture/designs/reviews/2026-11-16-studio-v2-temperature/README.md) 待评审。真实稳态快照已核对有温差、仅调整 Heater 和全流股等温。待确认由当前流动流股确定温度标尺，以及零流量使用中性虚线的表达。
+3. [V2 流股温度](../architecture/designs/reviews/2026-11-16-studio-v2-temperature/README.md#产品验收) 已完成接线和 macOS 代表验收。Windows／Linux 原生操作及实际读屏随既定平台节点补验。
 
 参考边界：[DWSIM 官方接口文档](https://dwsim.org/api_help/html/Methods_T_DWSIM_FormFlowsheet.htm) 可确认流程画布动画开关机制，不能据此认定其高级版已交付完整 3D 流程；本规划不依赖该未确认产品说法。
 

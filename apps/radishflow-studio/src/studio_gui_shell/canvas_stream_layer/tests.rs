@@ -25,8 +25,14 @@ fn example(name: &str) -> (ReadyAppState, PathBuf) {
     (app, path)
 }
 
-fn current_layer(app: &ReadyAppState) -> CanvasMolarFlow<'_> {
+fn current_layer(app: &ReadyAppState) -> CanvasStreamColoring<'_> {
     CanvasStreamLayer::MolarFlow
+        .project(&app.platform_host.modeling_inputs().workspace)
+        .unwrap()
+}
+
+fn temperature_layer(app: &ReadyAppState) -> CanvasStreamColoring<'_> {
+    CanvasStreamLayer::Temperature
         .project(&app.platform_host.modeling_inputs().workspace)
         .unwrap()
 }
@@ -44,16 +50,19 @@ fn canvas_molar_flow_tracks_the_current_run_and_scales_before_unit_conversion() 
             .is_none()
     );
     assert!(matches!(
-        current_layer(&app),
-        CanvasMolarFlow::Unavailable(ResultStatus::Missing)
+        current_layer(&app).result,
+        StreamColorResult::Unavailable(ResultStatus::Missing)
     ));
 
     app.dispatch_ui_command("run_panel.run_manual");
     let layer = current_layer(&app);
     assert!(matches!(
-        layer,
-        CanvasMolarFlow::Current {
-            maximum: Some(5.0),
+        layer.result,
+        StreamColorResult::Current {
+            scale: Some(StreamColorScale {
+                minimum: 0.0,
+                maximum: 5.0
+            }),
             sequence: 1,
             revision: 0,
             ..
@@ -81,9 +90,12 @@ fn canvas_molar_flow_tracks_the_current_run_and_scales_before_unit_conversion() 
     .unwrap();
     let layer = current_layer(&app);
     assert!(matches!(
-        layer,
-        CanvasMolarFlow::Current {
-            maximum: Some(5.0),
+        layer.result,
+        StreamColorResult::Current {
+            scale: Some(StreamColorScale {
+                minimum: 0.0,
+                maximum: 5.0
+            }),
             sequence: 1,
             revision: 0,
             ..
@@ -100,8 +112,8 @@ fn canvas_molar_flow_tracks_the_current_run_and_scales_before_unit_conversion() 
 
     app.dispatch_ui_command("run_panel.run_manual");
     assert!(matches!(
-        current_layer(&app),
-        CanvasMolarFlow::Current {
+        current_layer(&app).result,
+        StreamColorResult::Current {
             sequence: 2,
             revision: 0,
             ..
@@ -113,8 +125,8 @@ fn canvas_molar_flow_tracks_the_current_run_and_scales_before_unit_conversion() 
     app.dispatch_ui_command("canvas.delete_selected_stream");
     let stale = current_layer(&app);
     assert!(matches!(
-        stale,
-        CanvasMolarFlow::Unavailable(ResultStatus::Stale)
+        stale.result,
+        StreamColorResult::Unavailable(ResultStatus::Stale)
     ));
     assert_eq!(stale.stroke("stream-liquid").color, NEUTRAL);
     assert!(!stale.stroke("stream-liquid").dashed);
@@ -130,8 +142,8 @@ fn canvas_molar_flow_tracks_the_current_run_and_scales_before_unit_conversion() 
         CanvasStreamLayer::ConnectionDirection
     );
     assert!(matches!(
-        current_layer(&app),
-        CanvasMolarFlow::Unavailable(ResultStatus::Missing)
+        current_layer(&app).result,
+        StreamColorResult::Unavailable(ResultStatus::Missing)
     ));
     std::fs::remove_file(path).unwrap();
 }
@@ -156,9 +168,12 @@ fn canvas_molar_flow_excludes_missing_and_invalid_values_from_the_range() {
     workspace.store_snapshot(snapshot, 4);
     let layer = CanvasStreamLayer::MolarFlow.project(&workspace).unwrap();
     assert!(matches!(
-        layer,
-        CanvasMolarFlow::Current {
-            maximum: Some(0.0),
+        layer.result,
+        StreamColorResult::Current {
+            scale: Some(StreamColorScale {
+                minimum: 0.0,
+                maximum: 0.0
+            }),
             ..
         }
     ));
@@ -174,6 +189,190 @@ fn canvas_molar_flow_excludes_missing_and_invalid_values_from_the_range() {
     }
     assert_eq!(layer.stroke("stream-liquid").color, LOW);
     assert!(!layer.stroke("stream-liquid").dashed);
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn temperature_colors_actual_results_and_isothermal_reruns_in_canonical_units() {
+    let (mut app, path) = example(EXAMPLE);
+    assert!(matches!(
+        temperature_layer(&app).result,
+        StreamColorResult::Unavailable(ResultStatus::Missing)
+    ));
+    app.dispatch_ui_command("run_panel.run_manual");
+    let layer = temperature_layer(&app);
+    assert!(matches!(
+        layer.result,
+        StreamColorResult::Current {
+            scale: Some(StreamColorScale {
+                minimum: 300.0,
+                maximum: 345.0
+            }),
+            sequence: 1,
+            revision: 0,
+            ..
+        }
+    ));
+    assert_eq!(layer.stroke("stream-feed").color, LOW);
+    assert_eq!(layer.stroke("stream-heated").color, HIGH);
+    assert_eq!(layer.stroke("stream-liquid").color, NEUTRAL);
+    assert!(layer.stroke("stream-liquid").dashed);
+    assert_eq!(
+        layer
+            .stream_readout("stream-liquid", StudioShellLocale::En)
+            .as_deref(),
+        Some("Zero flow")
+    );
+    assert_eq!(
+        current_layer(&app)
+            .stream_readout("stream-liquid", StudioShellLocale::En)
+            .as_deref(),
+        Some("0 mol/s")
+    );
+
+    app.apply_presentation_command(ProjectPresentationCommand::Apply(
+        DisplayUnitSet::engineering(),
+    ))
+    .unwrap();
+    let layer = temperature_layer(&app);
+    assert!(matches!(
+        layer.result,
+        StreamColorResult::Current {
+            sequence: 1,
+            revision: 0,
+            ..
+        }
+    ));
+    for (id, color, display) in [
+        ("stream-feed", LOW, "26.85 °C"),
+        ("stream-heated", HIGH, "71.85 °C"),
+    ] {
+        assert_eq!(layer.stroke(id).color, color);
+        assert_eq!(
+            layer.stream_readout(id, StudioShellLocale::En).as_deref(),
+            Some(display)
+        );
+    }
+
+    app.apply_presentation_command(ProjectPresentationCommand::Apply(DisplayUnitSet::si()))
+        .unwrap();
+    for unit in ["heater-1", "flash-1"] {
+        app.dispatch_ui_command(format!("inspector.focus_unit:{unit}"));
+        let field = format!("unit:{unit}:outlet_temperature_k");
+        app.dispatch_inspector_field_draft_update(
+            radishflow_studio::inspector_draft_update_command_id(&field),
+            "300",
+        );
+        app.dispatch_inspector_field_draft_commit(
+            radishflow_studio::inspector_draft_commit_command_id(&field),
+        );
+        let stale = temperature_layer(&app);
+        assert!(matches!(
+            stale.result,
+            StreamColorResult::Unavailable(ResultStatus::Stale)
+        ));
+        assert_eq!(stale.stroke("stream-heated").color, NEUTRAL);
+        assert!(!stale.stroke("stream-heated").dashed);
+        assert_eq!(
+            stale.stream_readout("stream-heated", StudioShellLocale::En),
+            None
+        );
+        app.dispatch_ui_command("run_panel.run_manual");
+        if unit == "heater-1" {
+            let layer = temperature_layer(&app);
+            assert_eq!(layer.stroke("stream-heated").color, LOW);
+            assert_eq!(layer.stroke("stream-vapor").color, HIGH);
+        }
+    }
+
+    for sequence in [3, 4] {
+        let layer = temperature_layer(&app);
+        assert!(matches!(
+            layer.result,
+            StreamColorResult::Current {
+                scale: Some(StreamColorScale { minimum: 300.0, maximum: 300.0 }),
+                sequence: actual,
+                revision: 2,
+                ..
+            } if actual == sequence
+        ));
+        for id in ["stream-feed", "stream-heated", "stream-vapor"] {
+            assert_eq!(layer.stroke(id).color, scale_color(0.5));
+            assert!(!layer.stroke(id).dashed);
+        }
+        assert!(layer.stroke("stream-liquid").dashed);
+        if sequence == 3 {
+            app.dispatch_ui_command("run_panel.run_manual");
+        }
+    }
+    app.canvas_stream_layer = CanvasStreamLayer::Temperature;
+    app.open_project(path.clone(), "temperature layer same-file regression");
+    assert_eq!(
+        app.canvas_stream_layer,
+        CanvasStreamLayer::ConnectionDirection
+    );
+    assert!(matches!(
+        temperature_layer(&app).result,
+        StreamColorResult::Unavailable(ResultStatus::Missing)
+    ));
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn temperature_excludes_zero_missing_and_invalid_streams_from_the_scale() {
+    let (mut app, path) = example(EXAMPLE);
+    app.dispatch_ui_command("run_panel.run_manual");
+    let mut workspace = app.platform_host.modeling_inputs().workspace.clone();
+    let mut snapshot = rf_ui::latest_snapshot(&workspace).unwrap().clone();
+    snapshot
+        .streams
+        .retain(|stream| stream.stream_id.as_str() != "stream-feed");
+    for stream in &mut snapshot.streams {
+        match stream.stream_id.as_str() {
+            "stream-heated" => stream.temperature_k = f64::INFINITY,
+            "stream-liquid" => stream.temperature_k = 1300.0,
+            "stream-vapor" => stream.total_molar_flow_mol_s = -5.0,
+            id => panic!("Unexpected stream {id}"),
+        }
+    }
+    workspace.store_snapshot(snapshot.clone(), 4);
+    let layer = CanvasStreamLayer::Temperature.project(&workspace).unwrap();
+    assert!(matches!(
+        layer.result,
+        StreamColorResult::Current { scale: None, .. }
+    ));
+    for (id, message) in [
+        ("stream-feed", "No temperature"),
+        ("stream-heated", "Invalid temperature"),
+        ("stream-liquid", "Zero flow"),
+        ("stream-vapor", "Invalid molar flow"),
+    ] {
+        assert!(layer.stroke(id).dashed);
+        assert_eq!(layer.stroke(id).color, NEUTRAL);
+        assert_eq!(
+            layer.stream_readout(id, StudioShellLocale::En).as_deref(),
+            Some(message)
+        );
+    }
+
+    let heated = snapshot
+        .streams
+        .iter_mut()
+        .find(|stream| stream.stream_id.as_str() == "stream-heated")
+        .unwrap();
+    heated.temperature_k = 280.0;
+    workspace.store_snapshot(snapshot, 4);
+    let layer = CanvasStreamLayer::Temperature.project(&workspace).unwrap();
+    assert!(matches!(
+        layer.result,
+        StreamColorResult::Current {
+            scale: Some(StreamColorScale {
+                minimum: 280.0,
+                maximum: 280.0
+            }),
+            ..
+        }
+    ));
     std::fs::remove_file(path).unwrap();
 }
 
@@ -212,26 +411,53 @@ fn contains(tree: &TreeUpdate, text: &str) -> bool {
 }
 
 #[test]
-fn canvas_molar_flow_keyboard_choice_keeps_stream_and_shows_the_current_legend() {
+fn canvas_stream_layer_keyboard_choice_keeps_stream_and_shows_the_current_legend() {
     let (mut app, path) = example(EXAMPLE);
     app.screen = StudioShellScreen::Workbench;
     app.dispatch_ui_command("run_panel.run_manual");
     app.select_canvas_stream("inspector.focus_stream:stream-liquid");
     let document = app.platform_host.document().clone();
-    for (width, locale, label, legend) in [
+    for (width, locale, layer, label, legend, range) in [
         (
             1280.0,
             StudioShellLocale::En,
+            CanvasStreamLayer::MolarFlow,
             "Molar flow",
             "Molar flow legend",
+            "0 mol/s – 5 mol/s",
         ),
         (
             400.0,
             StudioShellLocale::En,
+            CanvasStreamLayer::MolarFlow,
             "Molar flow",
             "Molar flow legend",
+            "0 mol/s – 5 mol/s",
         ),
-        (400.0, StudioShellLocale::ZhCn, "摩尔流量", "摩尔流量图例"),
+        (
+            400.0,
+            StudioShellLocale::ZhCn,
+            CanvasStreamLayer::MolarFlow,
+            "摩尔流量",
+            "摩尔流量图例",
+            "0 mol/s – 5 mol/s",
+        ),
+        (
+            400.0,
+            StudioShellLocale::En,
+            CanvasStreamLayer::Temperature,
+            "Stream temperature",
+            "Stream temperature legend",
+            "300 K – 345 K",
+        ),
+        (
+            400.0,
+            StudioShellLocale::ZhCn,
+            CanvasStreamLayer::Temperature,
+            "流股温度",
+            "流股温度图例",
+            "300 K – 345 K",
+        ),
     ] {
         app.locale = locale;
         app.canvas_stream_layer = CanvasStreamLayer::ConnectionDirection;
@@ -282,39 +508,47 @@ fn canvas_molar_flow_keyboard_choice_keeps_stream_and_shows_the_current_legend()
                 .to_vec(),
         );
         let changed = frame(&mut app, &ctx, width, vec![]);
-        assert_eq!(app.canvas_stream_layer, CanvasStreamLayer::MolarFlow);
+        assert_eq!(app.canvas_stream_layer, layer);
         assert_eq!(
             app.flow_path.selected(),
             Some(&StreamId::new("stream-liquid"))
         );
         assert!(contains(&changed, legend));
-        assert!(contains(&changed, "0 mol/s – 5 mol/s"));
+        assert!(contains(&changed, range));
         assert_eq!(app.platform_host.document(), &document);
     }
     std::fs::remove_file(path).unwrap();
 }
 
 #[test]
-fn canvas_molar_flow_failure_keeps_the_existing_diagnostic_action() {
+fn canvas_stream_layer_failure_keeps_the_existing_diagnostic_action() {
     let (mut app, path) = example("failures/unbound-inlet-port.rfproj.json");
     app.screen = StudioShellScreen::Workbench;
     app.locale = StudioShellLocale::En;
     app.dispatch_ui_command("run_panel.run_manual");
     app.select_canvas_stream("inspector.focus_stream:stream-heated");
-    app.canvas_stream_layer = CanvasStreamLayer::MolarFlow;
-    assert!(matches!(
-        current_layer(&app),
-        CanvasMolarFlow::Unavailable(ResultStatus::Failed)
-    ));
-    let ctx = egui::Context::default();
-    ctx.enable_accesskit();
-    let screen = frame(&mut app, &ctx, 1280.0, vec![]);
-    assert!(contains(
-        &screen,
-        "The run produced no result for coloring. Showing connection direction."
-    ));
-    assert!(contains(&screen, "View flowsheet run diagnostics"));
-    assert!(!contains(&screen, "0 mol/s – 5 mol/s"));
+    for (layer, range) in [
+        (CanvasStreamLayer::MolarFlow, "0 mol/s – 5 mol/s"),
+        (CanvasStreamLayer::Temperature, "300 K – 345 K"),
+    ] {
+        app.canvas_stream_layer = layer;
+        assert!(matches!(
+            layer
+                .project(&app.platform_host.modeling_inputs().workspace)
+                .unwrap()
+                .result,
+            StreamColorResult::Unavailable(ResultStatus::Failed)
+        ));
+        let ctx = egui::Context::default();
+        ctx.enable_accesskit();
+        let screen = frame(&mut app, &ctx, 1280.0, vec![]);
+        assert!(contains(
+            &screen,
+            "The run produced no result for coloring. Showing connection direction."
+        ));
+        assert!(contains(&screen, "View flowsheet run diagnostics"));
+        assert!(!contains(&screen, range));
+    }
     std::fs::remove_file(path).unwrap();
 }
 

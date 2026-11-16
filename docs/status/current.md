@@ -63,7 +63,7 @@
 - [x] [R2](../architecture/studio-ui-topic-plan.md) macOS 代表实窗通过。
 - [x] V1 的 macOS「减弱动态效果」切换通过。 [验收记录](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)
 - [x] [V2 流股摩尔流量首片](../architecture/designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)已接入，macOS 代表实窗及中英文 400 点／20 px 原生窄区通过。
-- [ ] 评审 [V2 流股温度图层](../architecture/designs/reviews/2026-11-16-studio-v2-temperature/README.md)的当前快照标尺、等温显示及零流量表达。
+- [x] [V2 流股温度图层](../architecture/designs/reviews/2026-11-16-studio-v2-temperature/README.md#产品验收)已接入，macOS 代表实窗及中英文 400 点／20 px 原生窄区通过。
 
 ### 相关规划
 
@@ -117,7 +117,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-16：Rust 基线 2,146 项通过，含 45 项 CLI 进程测试。V2 macOS 代表实窗及窄区见 [W47](../devlogs/2026-11/2026-W47.md)，其他窄区与 .NET 证据见 [W46](../devlogs/2026-11/2026-W46.md)。
+- 2026-11-16：Rust 基线 2,148 项通过，含 45 项 CLI 进程测试。V2 macOS 代表实窗及窄区见 [W47](../devlogs/2026-11/2026-W47.md)，其他窄区与 .NET 证据见 [W46](../devlogs/2026-11/2026-W46.md)。
 
 - 2026-11-10：PR #18 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 

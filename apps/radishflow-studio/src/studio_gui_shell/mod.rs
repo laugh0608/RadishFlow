@@ -31,8 +31,8 @@ use rf_ui::{
 
 mod app;
 mod authoring;
-mod canvas_molar_flow;
 mod canvas_navigation;
+mod canvas_stream_layer;
 mod chrome;
 mod equipment;
 mod failure_recovery;
@@ -172,7 +172,7 @@ struct ReadyAppState {
     modeling_problems: modeling_problems::ModelingProblemsState,
     run_diagnostic_navigation: Option<flow_diagnostics::RunDiagnosticNavigation>,
     flow_path: flow_path::FlowPathState,
-    canvas_stream_layer: canvas_molar_flow::CanvasStreamLayer,
+    canvas_stream_layer: canvas_stream_layer::CanvasStreamLayer,
     canvas_viewport_navigation: CanvasViewportNavigationState,
     canvas_initial_viewport_fit: CanvasInitialViewportFitState,
     canvas_viewport_fit_to_content_requested: bool,
@@ -538,7 +538,7 @@ impl ReadyAppState {
             modeling_problems,
             run_diagnostic_navigation: None,
             flow_path: flow_path::FlowPathState::default(),
-            canvas_stream_layer: canvas_molar_flow::CanvasStreamLayer::default(),
+            canvas_stream_layer: canvas_stream_layer::CanvasStreamLayer::default(),
             canvas_viewport_navigation: CanvasViewportNavigationState::default(),
             canvas_initial_viewport_fit: canvas_initial_viewport_fit_from_config(config),
             canvas_viewport_fit_to_content_requested: false,
