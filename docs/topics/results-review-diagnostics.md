@@ -139,7 +139,9 @@ macOS 实窗：普通空白来源 Feed–Heater–Flash，降低 Feed 压力产�
 | V3 设备参数驱动三维 | 随分离器 / 换热器可信几何结果；工程范围由设备专题拥有 | 几何与参数同源，候选 / 已采纳及示意 / 按尺寸展示可辨，二维 / 三维选择与过期状态一致 |
 | V4 动态结果回放 | P5 / P6 的时间序列、事件及相应物理模型 | 时间轴、趋势与设备状态同步；播放速度与仿真时间分开，缺数据不插造物理响应 |
 
-2026-11-15 [V1 已接入 Studio](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#产品接线)。共享结果查询提供当前流股摩尔流量，诊断定位沿 R2，画布为只读呈现。macOS 代表路径通过，系统减少动态效果动态切换及其他平台原生组合待验。V2—V4 按下述边界推进。
+2026-11-15 [V1 已接入 Studio](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#产品接线)。共享结果查询提供当前流股摩尔流量，诊断定位沿 R2，画布为只读呈现。macOS 代表路径及系统动态效果偏好切换已通过，Windows／Linux 实窗与实际读屏待补。V2—V4 按下述边界推进。
+
+2026-11-16 [V2 摩尔流量首片已接入 Studio](../architecture/designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)。默认显示连接方向，开启摩尔流量后按当前快照的 SI `0…max` 着色。图例显示项目单位及快照身份，失效时退回中性拓扑。macOS 代表实窗通过。
 
 ### 动画与数据可信度
 
@@ -159,8 +161,8 @@ V1—V4 均须先评审相应 R0 / R1 用户路径，再逐切片实现。验证
 
 ### 可视化接下来事项
 
-1. 补验 V1 的 macOS 原版实窗。播放正流量流股时开启系统「减少动态效果」，核对停播和静态箭头。再关闭该偏好，核对重新播放仍需显式点击，最后恢复原系统偏好。Windows／Linux 实窗和实际读屏随既定平台节点补验。 [V1 验收记录](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)
-2. 建议随后评审 V2 工程数据着色的 R0／R1 首片。沿用 Feed–Heater–Flash，先做一张流股摩尔流量图层画板，用 Heated Outlet 和 Liquid Outlet 分别验证正值、零值。评审图例的变量、项目显示单位、范围与快照身份，以及过期／缺失时的降级和诊断标记辨识。产品接线另行确认。
+1. V1 已于 2026-11-16 完成 macOS 原版实窗补验。开启「减弱动态效果」后停止播放并保留静态箭头，关闭后须显式点击才恢复。Windows／Linux 实窗和实际读屏随既定平台节点补验。 [V1 验收记录](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)
+2. V2 摩尔流量首片已完成接线及 macOS 代表实窗。Windows／Linux 原生操作、实际读屏和原生极窄布局待验证。后续物理量图层及跨工况固定标尺按使用场景评审。 [V2 验收记录](../architecture/designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)
 
 参考边界：[DWSIM 官方接口文档](https://dwsim.org/api_help/html/Methods_T_DWSIM_FormFlowsheet.htm) 可确认流程画布动画开关机制，不能据此认定其高级版已交付完整 3D 流程；本规划不依赖该未确认产品说法。
 

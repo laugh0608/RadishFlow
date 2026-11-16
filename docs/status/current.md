@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-11-15
+更新时间：2026-11-16
 
 ## 用途
 
@@ -42,7 +42,7 @@
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
 
 
-### 最近进展（截至 2026-11-15）
+### 最近进展（截至 2026-11-16）
 
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
 - PR #18 已合入 `master` 并回灌 `dev`（`4772fbba`）。
@@ -61,7 +61,8 @@
 - [x] AF2a / b 与 AF3—AF5 已接通批准范围，见[基础切片](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)。
 - [x] AF6、QS0 独立物料任务和 QS1—QS3 有限回流 / 联立模块 / 物料 EO 已接通；QS4 首片已接通，后续混合策略、热 / 相平衡 EO 与动态另审。
 - [x] [R2](../architecture/studio-ui-topic-plan.md) macOS 代表实窗通过。
-- [ ] V1 补验 macOS「减少动态效果」切换，随后评审 V2 首片。 [可视化下一步](../topics/results-review-diagnostics.md#可视化接下来事项)
+- [x] V1 的 macOS「减弱动态效果」切换通过。 [验收记录](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)
+- [x] [V2 流股摩尔流量首片](../architecture/designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)已接入，macOS 代表实窗通过。
 
 ### 相关规划
 
@@ -115,7 +116,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-15：Rust 基线 2,140 项通过，含 45 项 CLI 进程测试。400 px 实窗、.NET 证据见 [W46](../devlogs/2026-11/2026-W46.md)。
+- 2026-11-16：Rust 基线 2,145 项通过，含 45 项 CLI 进程测试。V2 macOS 代表实窗见 [W47](../devlogs/2026-11/2026-W47.md)，既有 400 px 实窗和 .NET 证据见 [W46](../devlogs/2026-11/2026-W46.md)。
 
 - 2026-11-10：PR #18 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 
@@ -146,7 +147,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 - 代码风格、命名和抽象判断：`docs/development/code-style.md`
 - 分支与 PR 治理：`docs/adr/0001-branch-and-pr-governance.md`
 - 单位 / 建模辅助 / 设备设计的详细规划见本文当前结论链接；分离器与换热器子专题从设备专题进入。UI 功能分区、旧稿状态和 R0—R2 见 UI 计划。
-- 最新周志：[W46](../devlogs/2026-11/2026-W46.md)。QS、性能和 C2-A 见 W45，QS 实现 / 历史验证见 W44，AF 见 W43，设备见 W42，U / A 见 W41。
+- 最新周志：[W47](../devlogs/2026-11/2026-W47.md)。Studio R2／V1 接线与 QS3 实窗见 W46，QS、性能和 C2-A 见 W45，QS 实现 / 历史验证见 W44，AF 见 W43，设备见 W42，U / A 见 W41。
 
 ## 更新规则
 

@@ -322,6 +322,7 @@ impl ReadyAppState {
                 }
                 self.run_diagnostic_navigation = None;
                 self.flow_path = Default::default();
+                self.canvas_stream_layer = Default::default();
                 self.background_action(radishflow_studio::StudioBackgroundRunAction::Detach);
                 self.read_only_project = Some(project_read_only::ReadOnlyProjectView {
                     path: project_path,

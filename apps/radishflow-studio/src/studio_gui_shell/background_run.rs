@@ -165,6 +165,7 @@ impl ReadyAppState {
         self.platform_host = host;
         self.run_diagnostic_navigation = None;
         self.flow_path = Default::default();
+        self.canvas_stream_layer = Default::default();
         if let Some(owner) = self.background_runs.clone() {
             self.background_action(Action::Install(owner));
         }
