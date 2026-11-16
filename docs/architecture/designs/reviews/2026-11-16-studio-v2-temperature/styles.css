@@ -1,0 +1,6 @@
+.bounds[data-equal="true"] { justify-content: center; }
+#layer-note + #layer-note-detail { margin-block-start: .38rem; }
+.ramp[data-equal="true"] { background: #436592; }
+.result-value[data-kind="zero-flow"] { color: var(--muted); }
+.legend-detail { color: var(--muted); font-size: .82rem; }
+.legend-detail:empty { display: none; }

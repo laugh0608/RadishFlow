@@ -63,6 +63,7 @@
 - [x] [R2](../architecture/studio-ui-topic-plan.md) macOS 代表实窗通过。
 - [x] V1 的 macOS「减弱动态效果」切换通过。 [验收记录](../architecture/designs/reviews/2026-11-15-studio-v1-flow-path/README.md#验收结果)
 - [x] [V2 流股摩尔流量首片](../architecture/designs/reviews/2026-11-16-studio-v2-molar-flow/README.md#产品验收)已接入，macOS 代表实窗及中英文 400 点／20 px 原生窄区通过。
+- [ ] 评审 [V2 流股温度图层](../architecture/designs/reviews/2026-11-16-studio-v2-temperature/README.md)的当前快照标尺、等温显示及零流量表达。
 
 ### 相关规划
 
