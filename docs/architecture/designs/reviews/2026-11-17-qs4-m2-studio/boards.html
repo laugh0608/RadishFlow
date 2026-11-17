@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Studio · M2</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../2026-11-16-studio-v2-molar-flow/styles.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="boards.js" defer></script>
+</head>
+<body>
+  <header class="app-bar">
+    <span class="wordmark"><span class="brand-mark" aria-hidden="true"></span>RadishFlow Studio</span>
+    <span class="area" data-text="workbench"></span>
+  </header>
+  <main>
+    <section class="review-bar" aria-label="Review controls">
+      <label><span data-text="scenario"></span><select id="scenario"></select></label>
+      <label><span data-text="language"></span>
+        <select id="language"><option value="zh">中文</option><option value="en">English</option></select>
+      </label>
+      <label><span data-text="size"></span>
+        <select id="size"><option value="100">100%</option><option value="200">200%</option></select>
+      </label>
+    </section>
+    <div class="project-header">
+      <h1>Methane / Ethane</h1>
+      <span id="state" class="status" aria-live="polite"></span>
+    </div>
+    <div id="board"></div>
+  </main>
+  <dialog id="save" aria-labelledby="save-title">
+    <h2 id="save-title" data-text="confirmSave"></h2>
+    <div class="dialog-details">
+      <p data-text="saveNotice"></p>
+      <dl class="facts">
+        <div><dt data-text="target"></dt><dd><code>mixed-recycle.rfproj.json</code></dd></div>
+        <div><dt data-text="capability"></dt><dd><code>radishflow.solver.fixed-tp-mixed-recycle / 1</code></dd></div>
+      </dl>
+    </div>
+    <form method="dialog" class="controls">
+      <button value="cancel" data-text="cancel" autofocus></button>
+      <button value="save-as" data-text="saveAs"></button>
+      <button value="confirm" data-text="saveNow" class="primary"></button>
+    </form>
+  </dialog>
+</body>
+</html>

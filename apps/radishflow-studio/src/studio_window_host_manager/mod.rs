@@ -206,11 +206,15 @@ impl StudioAppWindowHostManager {
     }
 
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
-        Ok(Self {
-            session: StudioWindowSession::new(config)?,
+        Ok(Self::from_session(StudioWindowSession::new(config)?))
+    }
+
+    pub(crate) fn from_session(session: StudioWindowSession) -> Self {
+        Self {
+            session,
             registered_windows: BTreeSet::new(),
             foreground_window_id: None,
-        })
+        }
     }
 
     pub fn session(&self) -> &StudioWindowSession {

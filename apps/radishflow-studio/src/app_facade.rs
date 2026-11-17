@@ -754,6 +754,7 @@ fn describe_workspace_skip_reason(reason: WorkspaceSolveSkipReason) -> &'static 
     match reason {
         WorkspaceSolveSkipReason::HoldMode => "simulation mode is Hold",
         WorkspaceSolveSkipReason::NoPendingRequest => "there is no pending solve request",
+        WorkspaceSolveSkipReason::ExplicitRunRequired => "mixed recycle requires an explicit run",
     }
 }
 

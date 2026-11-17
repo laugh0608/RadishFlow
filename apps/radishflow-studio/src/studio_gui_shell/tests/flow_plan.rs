@@ -349,3 +349,4 @@ mod simultaneous;
 mod equation_oriented;
 
 mod mixed;
+mod mixed_recycle;

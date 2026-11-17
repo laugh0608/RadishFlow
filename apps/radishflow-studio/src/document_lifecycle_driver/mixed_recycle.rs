@@ -10,7 +10,7 @@ use rf_ui::{WorkspaceState, flow_plan::FlowPlanEditContext};
 use std::collections::BTreeMap;
 
 /// A v4 mixed-recycle save review bound to the selected inputs and target.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedMixedRecycleSave {
     source: SaveSource,
     prepared: PreparedProjectV4Write,
@@ -18,7 +18,7 @@ pub struct PreparedMixedRecycleSave {
     compatibility: Option<ProjectSaveCompatibility>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct SaveSource {
     plan: FlowPlanEditContext,
     path: Option<PathBuf>,
@@ -80,6 +80,10 @@ impl PreparedMixedRecycleSave {
 
     pub fn compatibility(&self) -> Option<&ProjectSaveCompatibility> {
         self.compatibility.as_ref()
+    }
+
+    pub fn replaces_file(&self) -> bool {
+        self.prepared.target_fingerprint().is_some()
     }
 
     pub fn commit(

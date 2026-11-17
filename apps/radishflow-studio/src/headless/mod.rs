@@ -266,6 +266,9 @@ fn run_request_file(path: &Path, response: &mut Response) -> Result<(), Failure>
                     crate::WorkspaceSolveSkipReason::NoPendingRequest => {
                         "workspace has no pending request"
                     }
+                    crate::WorkspaceSolveSkipReason::ExplicitRunRequired => {
+                        "mixed recycle requires an explicit run"
+                    }
                 },
             ));
             return Ok(());

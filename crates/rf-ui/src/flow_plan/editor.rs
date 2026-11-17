@@ -252,12 +252,7 @@ impl FlowPlanDraft {
                 FlowPlanNumericField::Temperature => options.boundary.temperature_k = value,
                 FlowPlanNumericField::Pressure => options.boundary.pressure_pa = value,
                 FlowPlanNumericField::IterationBudget => {
-                    if !(1.0..=500.0).contains(&value) || value.fract() != 0.0 {
-                        return Err(RfError::invalid_input(
-                            "iteration budget must be in 1..=500",
-                        ));
-                    }
-                    options.max_iteration_evaluations = value as usize;
+                    options.max_iteration_evaluations = iteration_budget(value)?;
                 }
                 FlowPlanNumericField::InitialComponent { stream, component }
                 | FlowPlanNumericField::ResidualScale { stream, component } => {
@@ -287,6 +282,15 @@ impl FlowPlanDraft {
         candidate.validate_configuration()?;
         Ok(candidate)
     }
+}
+
+fn iteration_budget(value: f64) -> RfResult<usize> {
+    if !(1.0..=500.0).contains(&value) || value.fract() != 0.0 {
+        return Err(RfError::invalid_input(
+            "iteration budget must be in 1..=500",
+        ));
+    }
+    Ok(value as usize)
 }
 impl WorkspaceState {
     pub fn apply_flow_plan_draft(&mut self) -> RfResult<bool> {

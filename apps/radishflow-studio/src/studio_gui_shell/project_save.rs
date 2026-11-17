@@ -1,12 +1,20 @@
 use super::locale::tr;
 use super::*;
-use radishflow_studio::{ProjectSaveCompatibility, StudioDocumentLifecycleCommand};
+use radishflow_studio::{
+    PreparedMixedRecycleSave, ProjectSaveCompatibility, StudioDocumentLifecycleCommand,
+};
 
-pub(super) struct PendingFormatUpgrade {
-    checkpoint: input_departure::ProjectDepartureCheckpoint,
-    compatibility: ProjectSaveCompatibility,
-    target_contents: Option<Vec<u8>>,
-    path: PathBuf,
+pub(super) enum PendingFormatUpgrade {
+    Legacy {
+        checkpoint: Box<input_departure::ProjectDepartureCheckpoint>,
+        compatibility: ProjectSaveCompatibility,
+        target_contents: Option<Vec<u8>>,
+        path: PathBuf,
+    },
+    MixedRecycle {
+        prepared: Box<PreparedMixedRecycleSave>,
+        overwrite: bool,
+    },
 }
 
 impl ReadyAppState {
@@ -31,6 +39,39 @@ impl ReadyAppState {
     }
 
     pub(super) fn request_save_project_as(&mut self, path: PathBuf, confirm_overwrite: bool) {
+        if self.read_only_project.is_some() {
+            return;
+        }
+        if matches!(
+            self.platform_host.modeling_inputs().workspace.flow_plan.current(),
+            rf_ui::flow_plan::FlowPlanConfiguration::Mixed(plan) if plan.recycle.is_some()
+        ) {
+            let prepared = match self.platform_host.prepare_mixed_recycle_save(&path) {
+                Ok(prepared) => Box::new(prepared),
+                Err(error) => {
+                    self.record_project_save_failure(path, &error);
+                    self.project_open.pending_save_as_overwrite = None;
+                    return;
+                }
+            };
+            let overwrite = prepared.replaces_file() && !self.is_current_project_path(&path);
+            self.project_open.pending_save_as_overwrite = None;
+            if overwrite || prepared.compatibility().is_some() {
+                self.pending_format_upgrade = Some(PendingFormatUpgrade::MixedRecycle {
+                    prepared,
+                    overwrite,
+                });
+            } else {
+                self.dispatch_project_save(
+                    path,
+                    StudioDocumentLifecycleCommand::SaveMixedRecycle {
+                        prepared,
+                        capability_confirmed: false,
+                    },
+                );
+            }
+            return;
+        }
         if confirm_overwrite && self.save_as_requires_overwrite_confirmation(&path) {
             self.project_open.pending_save_as_overwrite = Some(path.clone());
             self.project_open.notice = Some(ProjectOpenNotice {
@@ -61,8 +102,8 @@ impl ReadyAppState {
                     return;
                 }
             };
-            self.pending_format_upgrade = Some(PendingFormatUpgrade {
-                checkpoint: self.project_departure_checkpoint(),
+            self.pending_format_upgrade = Some(PendingFormatUpgrade::Legacy {
+                checkpoint: Box::new(self.project_departure_checkpoint()),
                 compatibility,
                 target_contents,
                 path,
@@ -73,43 +114,73 @@ impl ReadyAppState {
         self.execute_project_save(path, false);
     }
 
-    pub(super) fn confirm_format_upgrade(&mut self) {
+    pub(super) fn confirm_format_upgrade(&mut self) -> bool {
         let Some(pending) = self.pending_format_upgrade.take() else {
-            return;
+            return false;
         };
-        if self.project_departure_checkpoint() != pending.checkpoint
-            || self
-                .platform_host
-                .project_save_compatibility(&pending.path)
-                .ok()
-                != Some(Some(pending.compatibility))
-            || read_save_target(&pending.path).ok().as_ref() != Some(&pending.target_contents)
+        let PendingFormatUpgrade::Legacy {
+            checkpoint,
+            compatibility,
+            target_contents,
+            path,
+        } = pending
+        else {
+            let PendingFormatUpgrade::MixedRecycle { prepared, .. } = pending else {
+                unreachable!()
+            };
+            return self.dispatch_project_save(
+                prepared.path().to_owned(),
+                StudioDocumentLifecycleCommand::SaveMixedRecycle {
+                    prepared,
+                    capability_confirmed: true,
+                },
+            );
+        };
+        if self.project_departure_checkpoint() != *checkpoint
+            || self.platform_host.project_save_compatibility(&path).ok()
+                != Some(Some(compatibility))
+            || read_save_target(&path).ok().as_ref() != Some(&target_contents)
         {
             self.cancel_project_save("保存目标已失效", "工程或输入已变化，请重新检查后保存。");
-            return;
+            return false;
         }
-        self.execute_project_save(pending.path, true);
+        self.execute_project_save(path, true)
     }
 
-    fn execute_project_save(&mut self, path: PathBuf, upgrade: bool) {
-        let Some(window_id) = self.current_window_id() else {
-            return;
-        };
-        let save_as = self
-            .platform_host
+    fn is_current_project_path(&self, path: &std::path::Path) -> bool {
+        self.platform_host
             .snapshot()
             .runtime
             .workspace_document
             .project_path
             .as_deref()
-            .is_none_or(|current| !paths_match(std::path::Path::new(current), &path));
+            .is_some_and(|current| paths_match(std::path::Path::new(current), path))
+    }
+
+    fn execute_project_save(&mut self, path: PathBuf, upgrade: bool) -> bool {
         let command = if upgrade {
             StudioDocumentLifecycleCommand::SaveUpgraded { path: path.clone() }
-        } else if !save_as {
+        } else if self.is_current_project_path(&path) {
             StudioDocumentLifecycleCommand::Save
         } else {
             StudioDocumentLifecycleCommand::SaveAs { path: path.clone() }
         };
+        self.dispatch_project_save(path, command)
+    }
+
+    fn dispatch_project_save(
+        &mut self,
+        path: PathBuf,
+        command: StudioDocumentLifecycleCommand,
+    ) -> bool {
+        let Some(window_id) = self.current_window_id() else {
+            return false;
+        };
+        let save_as = !self.is_current_project_path(&path);
+        let mixed = matches!(
+            command,
+            StudioDocumentLifecycleCommand::SaveMixedRecycle { .. }
+        );
         match self.dispatch_event_result(StudioGuiEvent::WindowTriggerRequested {
             window_id,
             trigger: StudioRuntimeTrigger::DocumentLifecycle(command),
@@ -132,8 +203,15 @@ impl ReadyAppState {
                     detail: format!("Saved revision {revision} to {}. 未提交输入 {pending} 项；草稿未写入文件。", path.display()),
                 }));
                 self.persist_saved_canvas_layout();
+                true
             }
-            Err(error) => self.record_project_save_failure(path, &error),
+            Err(error) => {
+                self.record_project_save_failure(path, &error);
+                if mixed {
+                    self.project_open.pending_save_as_overwrite = None;
+                }
+                false
+            }
         }
     }
 
@@ -208,11 +286,26 @@ impl ReadyAppState {
     }
 
     pub(super) fn render_format_upgrade(&mut self, ctx: &egui::Context) -> bool {
-        let Some(pending) = self.pending_format_upgrade.as_ref() else {
-            return false;
+        let (path, compatibility) = match self.pending_format_upgrade.as_ref() {
+            Some(PendingFormatUpgrade::Legacy {
+                path,
+                compatibility,
+                ..
+            }) => (path.display().to_string(), compatibility.clone()),
+            Some(PendingFormatUpgrade::MixedRecycle {
+                prepared,
+                overwrite,
+            }) => {
+                self.render_mixed_recycle_save(
+                    ctx,
+                    prepared.path().display().to_string(),
+                    prepared.compatibility().cloned(),
+                    *overwrite,
+                );
+                return true;
+            }
+            None => return false,
         };
-        let path = pending.path.display().to_string();
-        let compatibility = pending.compatibility.clone();
         let zh = self.locale == StudioShellLocale::ZhCn;
         let response = egui::Modal::new(egui::Id::new("project-format-upgrade")).show(ctx, |ui| {
             ui.set_width((ctx.screen_rect().width() - 40.0).clamp(220.0, 520.0));
@@ -285,22 +378,7 @@ impl ReadyAppState {
                     cancel.request_focus();
                 }
                 if confirm.clicked() {
-                    self.confirm_format_upgrade();
-                    if !self
-                        .platform_host
-                        .snapshot()
-                        .runtime
-                        .workspace_document
-                        .save_state
-                        .needs_close_confirmation()
-                        && self
-                            .project_open
-                            .pending_close_window_confirmation
-                            .is_some()
-                        && self.finish_saved_close()
-                    {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                    }
+                    self.confirm_save_and_maybe_close(ctx);
                 }
                 if save_as.clicked() {
                     self.pending_format_upgrade = None;
@@ -315,6 +393,85 @@ impl ReadyAppState {
             self.cancel_project_save("已取消升级", "文件、保存基线和草稿保持不变。");
         }
         true
+    }
+
+    fn confirm_save_and_maybe_close(&mut self, ctx: &egui::Context) {
+        if self.confirm_format_upgrade()
+            && !self
+                .platform_host
+                .snapshot()
+                .runtime
+                .workspace_document
+                .save_state
+                .needs_close_confirmation()
+            && self
+                .project_open
+                .pending_close_window_confirmation
+                .is_some()
+            && self.finish_saved_close()
+        {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        }
+    }
+
+    fn render_mixed_recycle_save(
+        &mut self,
+        ctx: &egui::Context,
+        path: String,
+        compatibility: Option<ProjectSaveCompatibility>,
+        overwrite: bool,
+    ) {
+        let locale = self.locale;
+        let response = egui::Modal::new(egui::Id::new("mixed-recycle-save")).show(ctx, |ui| {
+            ui.set_width((ctx.screen_rect().width() - 48.0).clamp(220.0, 500.0));
+            ui.heading(tr(locale, "确认保存混合回流计划", "Confirm mixed recycle save"));
+            egui::ScrollArea::vertical().max_height((ctx.screen_rect().height() * 0.45).max(70.0)).show(ui, |ui| {
+                ui.label(path);
+                if overwrite {
+                    ui.strong(tr(locale, "将覆盖已有目标文件。", "This replaces the existing destination file."));
+                }
+                if let Some(compatibility) = compatibility {
+                    ui.label(tr(locale, "保存为 v4，声明混合回流能力。不支持该能力的旧版本会整份只读打开。", "Save as v4 with the mixed recycle capability. Older versions without it open the entire file read-only."));
+                    if let ProjectSaveCompatibility::FlowCapabilities { required, replaces_target_object_identities, replaces_target_variable_watch_list, .. } = compatibility {
+                        if replaces_target_object_identities {
+                            ui.strong(tr(locale, "覆盖可能使目标工程的旧变量引用失效。", "Overwriting can invalidate old variable references."));
+                        }
+                        if replaces_target_variable_watch_list {
+                            ui.strong(tr(locale, "将替换目标工程已有的关注清单。", "This replaces the destination project's watch list."));
+                        }
+                        for capability in required {
+                            ui.label(format!("{} / {}", capability.id, capability.version));
+                        }
+                    } else {
+                        ui.label(format!("{} / 1", rf_store::project_v4::MIXED_RECYCLE_CAPABILITY));
+                    }
+                }
+            });
+            ui.horizontal_wrapped(|ui| {
+                let cancel = ui.button(tr(locale, "取消", "Cancel"));
+                let save_as = ui.button(tr(locale, "另存为…", "Save As…"));
+                let confirm = ui.button(tr(locale, "继续保存", "Continue and save"));
+                if ui.memory(|m| m.focused().is_none())
+                    || (!cancel.has_focus() && !save_as.has_focus() && !confirm.has_focus()
+                        && !save_as.lost_focus() && !confirm.lost_focus())
+                {
+                    cancel.request_focus();
+                }
+                if cancel.clicked() {
+                    self.cancel_project_save("Save canceled", "Project file and save baseline preserved.");
+                }
+                if save_as.clicked() {
+                    self.pending_format_upgrade = None;
+                    self.save_project_as_from_picker();
+                }
+                if confirm.clicked() {
+                    self.confirm_save_and_maybe_close(ctx);
+                }
+            });
+        });
+        if response.should_close() && self.pending_format_upgrade.is_some() {
+            self.cancel_project_save("Save canceled", "Project file and save baseline preserved.");
+        }
     }
 }
 

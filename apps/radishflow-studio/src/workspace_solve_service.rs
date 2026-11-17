@@ -20,6 +20,7 @@ pub enum WorkspaceSolveTrigger {
 pub enum WorkspaceSolveSkipReason {
     HoldMode,
     NoPendingRequest,
+    ExplicitRunRequired,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -162,6 +163,13 @@ fn should_skip_workspace_solve(
 ) -> Option<WorkspaceSolveSkipReason> {
     if matches!(trigger, WorkspaceSolveTrigger::Manual) {
         return None;
+    }
+
+    if matches!(
+        app_state.workspace.flow_plan.current(),
+        rf_ui::flow_plan::FlowPlanConfiguration::Mixed(options) if options.recycle.is_some()
+    ) {
+        return Some(WorkspaceSolveSkipReason::ExplicitRunRequired);
     }
 
     if !matches!(

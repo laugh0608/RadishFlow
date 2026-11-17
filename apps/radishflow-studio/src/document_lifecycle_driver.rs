@@ -28,6 +28,10 @@ pub enum StudioDocumentLifecycleCommand {
     SaveUpgraded {
         path: PathBuf,
     },
+    SaveMixedRecycle {
+        prepared: Box<PreparedMixedRecycleSave>,
+        capability_confirmed: bool,
+    },
     InitializeObjectIdentities(Box<PreparedObjectIdentityInitialization>),
 }
 
@@ -328,6 +332,12 @@ pub fn dispatch_document_lifecycle(
         StudioDocumentLifecycleCommand::InitializeObjectIdentities(prepared) => {
             return prepared.commit(app_state);
         }
+        StudioDocumentLifecycleCommand::SaveMixedRecycle {
+            prepared,
+            capability_confirmed,
+        } => {
+            return prepared.commit(app_state, capability_confirmed);
+        }
         command => command,
     };
     let upgrade_confirmed = matches!(command, StudioDocumentLifecycleCommand::SaveUpgraded { .. });
@@ -352,7 +362,8 @@ pub fn dispatch_document_lifecycle(
                 };
             (action, path)
         }
-        StudioDocumentLifecycleCommand::InitializeObjectIdentities(_) => unreachable!(),
+        StudioDocumentLifecycleCommand::InitializeObjectIdentities(_)
+        | StudioDocumentLifecycleCommand::SaveMixedRecycle { .. } => unreachable!(),
     };
 
     if project_save_compatibility(app_state, &path)?.is_some() && !upgrade_confirmed {

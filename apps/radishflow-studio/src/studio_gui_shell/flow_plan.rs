@@ -14,6 +14,7 @@ mod connection;
 mod equation_oriented;
 pub(super) mod equation_results;
 mod mixed;
+mod mixed_recycle;
 pub(super) mod mixed_results;
 mod results;
 mod simultaneous;
@@ -69,6 +70,12 @@ impl ReadyAppState {
         let original = draft.clone();
         let mut candidate = draft.candidate().clone();
         let applied_method = PlanMethod::of(&current);
+        let applied_recycle =
+            matches!(&current, FlowPlanConfiguration::Mixed(options) if options.recycle.is_some());
+        let saved_recycle = workspace
+            .flow_plan
+            .saved_capabilities()
+            .contains_key(rf_store::project_v4::MIXED_RECYCLE_CAPABILITY);
         ui.horizontal_wrapped(|ui| {
             let run = ui.add_enabled(
                 editable && self.background_command_enabled("run_panel.run_manual"),
@@ -81,7 +88,15 @@ impl ReadyAppState {
             ui.label(format!(
                 "{}: {}",
                 tr(zh, "已应用", "Applied"),
-                applied_method.label(zh)
+                if applied_recycle {
+                    tr(
+                        zh,
+                        "混合分区 · 单撕裂回流",
+                        "Mixed partition · Single tear recycle",
+                    )
+                } else {
+                    applied_method.label(zh)
+                }
             ));
             ui.label(
                 if self
@@ -97,6 +112,19 @@ impl ReadyAppState {
                 },
             );
         });
+        if applied_recycle {
+            ui.small(tr(
+                zh,
+                "仅显式运行。Active 下也须点击 Run 或按 F5。",
+                "Manual run only, including in Active mode. Select Run or press F5.",
+            ));
+        } else if saved_recycle {
+            ui.small(tr(
+                zh,
+                "使用另存为保存当前计划，保留原混合回流工程。",
+                "Use Save As for this plan to keep the original mixed-recycle project.",
+            ));
+        }
         let mut method = PlanMethod::of(&candidate);
         let numeric_pending = draft.has_modified_numbers();
         ui.add_enabled_ui(editable && !numeric_pending, |ui| {
@@ -234,7 +262,7 @@ impl ReadyAppState {
             };
         if let FlowPlanConfiguration::Mixed(options) = &mut candidate {
             ui.add_enabled_ui(editable, |ui| {
-                apply_requested |= self.render_mixed_plan(ui, &mut draft, options);
+                apply_requested |= self.render_mixed_plan(ui, &mut draft, options, &bindings);
             });
         }
         draft.replace_candidate(candidate);

@@ -32,7 +32,10 @@ impl StudioGuiHost {
     }
 
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
-        let controller = StudioAppHostController::new(config)?;
+        Self::from_controller(StudioAppHostController::new(config)?)
+    }
+
+    pub(crate) fn from_controller(controller: StudioAppHostController) -> RfResult<Self> {
         let layout_state_overrides = match controller.document_path() {
             Some(project_path) => load_persisted_window_layouts(project_path)?,
             None => BTreeMap::new(),

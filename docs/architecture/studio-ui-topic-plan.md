@@ -153,3 +153,5 @@ R0 与后续基础规划衔接；B3-5、纯单位转换和规则逻辑不等待�
 ## QS4 局部画板（2026-11-04，已认可并接线）
 
 [QS4 六图](../topics/modeling/mixed-partition-execution.md#局部画板2026-11-04已认可)已在原主稿保留旧设计后新增，覆盖显式分区 / 能力、块与真实边界、失败 / 取消、中英 400 px 草稿和 v4 保存 / 只读。所有者明确认可后接通运行页，复用正式配置、动作、worker 和结果资格；自动窄区 / 字体、F5、计划 Stale 与保存重开，以及 macOS 代表路径见 W45。符号布局只展示绑定与数量，数值可解性在实际边界到达后判断；全局 R0、OS 倍率与其他平台验收保持。
+
+QS4 M2 的 [局部画板](designs/reviews/2026-11-17-qs4-m2-studio/README.md)已认可。工作台支持单撕裂配置、v4 保存确认、显式 Run／F5 及结果审阅，macOS 代表路径和自动验收归 [M2 专题](../topics/modeling/mixed-partition-execution.md#m2-studio-界面接入评审)。

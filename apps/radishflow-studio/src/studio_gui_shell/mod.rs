@@ -402,6 +402,15 @@ impl RadishFlowStudioApp {
     }
 }
 
+fn read_studio_gui_project(
+    path: &std::path::Path,
+) -> RfResult<radishflow_studio::StudioProjectOpen> {
+    radishflow_studio::read_studio_project_with_support(
+        path,
+        rf_store::project_v4::FlowPlanSupport::MixedRecycle,
+    )
+}
+
 fn studio_shell_runtime_config(project_path: Option<PathBuf>) -> StudioRuntimeConfig {
     let mut config = StudioRuntimeConfig {
         entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
@@ -476,30 +485,22 @@ impl ReadyAppState {
                     }),
                 ),
             };
-        let read_only_project = if config.untitled_blank_project.is_none() {
-            match radishflow_studio::read_studio_project_with_support(
-                &config.project_path,
-                rf_store::project_v4::FlowPlanSupport::Mixed,
-            )? {
-                radishflow_studio::StudioProjectOpen::ReadOnly(project) => {
+        let (read_only_project, platform_host) = if config.untitled_blank_project.is_none() {
+            match read_studio_gui_project(&config.project_path)? {
+                radishflow_studio::StudioProjectOpen::ReadOnly(project) => (
                     Some(project_read_only::ReadOnlyProjectView {
                         path: config.project_path.clone(),
                         project,
-                    })
+                    }),
+                    StudioGuiPlatformHost::new(&studio_shell_blank_runtime_config())?,
+                ),
+                radishflow_studio::StudioProjectOpen::Editable(app) => {
+                    (None, StudioGuiPlatformHost::from_project_app(config, *app)?)
                 }
-                radishflow_studio::StudioProjectOpen::Editable(_) => None,
             }
         } else {
-            None
+            (None, StudioGuiPlatformHost::new(config)?)
         };
-        let fallback_config;
-        let host_config = if read_only_project.is_some() {
-            fallback_config = studio_shell_blank_runtime_config();
-            &fallback_config
-        } else {
-            config
-        };
-        let platform_host = StudioGuiPlatformHost::new(host_config)?;
         let modeling_problems =
             modeling_problems::ModelingProblemsState::new(platform_host.document());
         let mut ready = ReadyAppState {

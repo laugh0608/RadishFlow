@@ -330,13 +330,28 @@ impl StudioRuntime {
     }
 
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
-        Ok(Self {
-            session: crate::bootstrap::BootstrapSession::new(config)?,
+        Ok(Self::from_session(crate::bootstrap::BootstrapSession::new(
+            config,
+        )?))
+    }
+
+    pub(crate) fn from_app_state(
+        config: &StudioRuntimeConfig,
+        app: rf_ui::AppState,
+    ) -> RfResult<Self> {
+        Ok(Self::from_session(
+            crate::bootstrap::BootstrapSession::from_app_state(config, app)?,
+        ))
+    }
+
+    fn from_session(session: crate::bootstrap::BootstrapSession) -> Self {
+        Self {
+            session,
             next_host_effect_id: 1,
             pending_host_effects: BTreeMap::new(),
             stale_host_effect_ids: BTreeSet::new(),
             last_applied_host_effect_id: None,
-        })
+        }
     }
 
     pub fn dispatch_trigger(

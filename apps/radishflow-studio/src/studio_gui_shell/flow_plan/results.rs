@@ -7,6 +7,7 @@ impl ReadyAppState {
         ui.separator();
         ui.heading(tr(zh, "流程结果", "Flow results"));
         let mut adopt = false;
+        let mut locate = None;
         match workspace.flow_result() {
             FlowResultView::Current { snapshot, origin } => {
                 ui.strong("Current");
@@ -40,7 +41,7 @@ impl ReadyAppState {
                     ));
                 }
                 if let rf_ui::FlowResultRecord::Mixed(s) = snapshot {
-                    self.render_mixed_current(ui, &s.result);
+                    locate = self.render_mixed_current(ui, &s.result, origin);
                 }
                 if let rf_ui::FlowResultRecord::EquationOriented(s) = snapshot {
                     adopt = self.render_equation_current(ui, &s.result);
@@ -77,6 +78,30 @@ impl ReadyAppState {
                         "Failure diagnostics only; no partial results published.",
                     ));
                     ui.label(super::mixed_results::progress_text(&failure.progress, zh));
+                    if let Some(code) = failure.error.context().diagnostic_code() {
+                        ui.label(code);
+                    }
+                    if let Some(report) = &failure.recycle {
+                        let unit = workspace
+                            .project_presentation
+                            .display_units()
+                            .unit_for(rf_types::units::QuantityKind::MolarFlow);
+                        if super::mixed_results::render_recycle_report(ui, report, unit, zh, false)
+                        {
+                            locate = Some(report.tear.stream_id.clone());
+                        }
+                    } else {
+                        for id in failure.error.context().related_stream_ids() {
+                            let button = ui.add_enabled(
+                                workspace.document.flowsheet.streams.contains_key(id),
+                                egui::Button::new(format!("{} {id}", tr(zh, "定位", "Locate"))),
+                            );
+                            reveal_plan_focus(&button);
+                            if button.clicked() {
+                                locate = Some(id.clone());
+                            }
+                        }
+                    }
                     for line in radishflow_studio::mixed_evidence::failure_lines(
                         failure,
                         workspace.project_presentation.display_units(),
@@ -147,6 +172,11 @@ impl ReadyAppState {
                     ));
                 }
             }
+        }
+        if let Some(stream) = locate {
+            self.dispatch_ui_command(radishflow_studio::inspector_target_command_id(
+                &rf_ui::InspectorTarget::Stream(stream),
+            ));
         }
         if adopt {
             let access = if self.read_only_project.is_some() {

@@ -100,6 +100,13 @@ impl ReadyAppState {
                         "No calculation request is pending."
                     }
                 }
+                radishflow_studio::WorkspaceSolveSkipReason::ExplicitRunRequired => {
+                    if zh {
+                        "混合回流须使用 Run／F5 显式运行。"
+                    } else {
+                        "Use Run or F5 to start mixed recycle."
+                    }
+                }
             }
             .into(),
             Reply::Blocked(Rejection::Equipment(error)) => self.equipment_edit_error(error),
@@ -297,13 +304,18 @@ impl ReadyAppState {
         !matches!(
             command,
             "run_panel.run_manual" | "run_panel.resume_workspace"
-        ) || (!self.background_busy() && !self.modular_plan_draft_pending())
+        ) || self.can_start_background_flow()
     }
     pub(super) fn run_panel_background_enabled(&self, action: rf_ui::RunPanelActionId) -> bool {
         !matches!(
             action,
             rf_ui::RunPanelActionId::RunManual | rf_ui::RunPanelActionId::Resume
-        ) || (!self.background_busy() && !self.modular_plan_draft_pending())
+        ) || self.can_start_background_flow()
+    }
+    fn can_start_background_flow(&self) -> bool {
+        self.read_only_project.is_none()
+            && !self.background_busy()
+            && !self.modular_plan_draft_pending()
     }
     pub(super) fn background_command_label<'a>(&self, command: &str, fallback: &'a str) -> &'a str {
         let fallback = self.recommendation_command_label(command, fallback);

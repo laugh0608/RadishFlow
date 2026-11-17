@@ -312,10 +312,7 @@ impl ReadyAppState {
     }
 
     pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
-        match radishflow_studio::read_studio_project_with_support(
-            &project_path,
-            rf_store::project_v4::FlowPlanSupport::Mixed,
-        ) {
+        let project_app = match read_studio_gui_project(&project_path) {
             Ok(radishflow_studio::StudioProjectOpen::ReadOnly(project)) => {
                 if self.at_run_diagnostic_target() {
                     self.modeling_problems.clear_destination();
@@ -349,11 +346,11 @@ impl ReadyAppState {
                 ));
                 return;
             }
-            Ok(radishflow_studio::StudioProjectOpen::Editable(_)) => {}
-        }
+            Ok(radishflow_studio::StudioProjectOpen::Editable(app)) => *app,
+        };
         let config = studio_shell_runtime_config(Some(project_path.clone()));
 
-        match StudioGuiPlatformHost::new(&config) {
+        match StudioGuiPlatformHost::from_project_app(&config, project_app) {
             Ok(platform_host) => {
                 self.replace_background_host(platform_host);
                 self.read_only_project = None;

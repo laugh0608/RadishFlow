@@ -322,6 +322,7 @@ fn reply_value(
             let reason = match reason {
                 crate::WorkspaceSolveSkipReason::HoldMode => "hold_mode",
                 crate::WorkspaceSolveSkipReason::NoPendingRequest => "no_pending_request",
+                crate::WorkspaceSolveSkipReason::ExplicitRunRequired => "explicit_run_required",
             };
             (
                 json!({"outcome":"skipped","reason":reason}),

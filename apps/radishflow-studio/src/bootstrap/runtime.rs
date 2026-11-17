@@ -674,7 +674,7 @@ impl BootstrapSession {
     }
 
     pub(crate) fn new(config: &StudioBootstrapConfig) -> RfResult<Self> {
-        let mut app_state = match config.untitled_blank_project.as_ref() {
+        let app_state = match config.untitled_blank_project.as_ref() {
             Some(untitled) => app_state_from_untitled_blank_project(
                 &untitled.document_id,
                 &untitled.title,
@@ -682,6 +682,13 @@ impl BootstrapSession {
             ),
             None => crate::load_project_app_state(&config.project_path)?,
         };
+        Self::from_app_state(config, app_state)
+    }
+
+    pub(crate) fn from_app_state(
+        config: &StudioBootstrapConfig,
+        mut app_state: rf_ui::AppState,
+    ) -> RfResult<Self> {
         let cache_root = PropertyPackageCacheRoot::temporary("studio-bootstrap")?;
         let seeded_auth_cache = seed_sample_auth_cache(
             cache_root.path(),
@@ -1049,8 +1056,10 @@ impl BootstrapSession {
 
     fn dispatch_automatic_run_after_canvas_write_if_needed(&mut self) -> RfResult<()> {
         let run_panel = &self.app_state.workspace.run_panel;
-        if !matches!(run_panel.simulation_mode, rf_ui::SimulationMode::Active)
-            || run_panel.pending_reason != Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+        if run_panel.pending_reason != Some(rf_ui::SolvePendingReason::DocumentRevisionAdvanced)
+            || crate::WorkspaceSolveService::new()
+                .skip_reason(&self.app_state, crate::WorkspaceSolveTrigger::Automatic)
+                .is_some()
         {
             return Ok(());
         }

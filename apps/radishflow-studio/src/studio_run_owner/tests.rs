@@ -8,7 +8,7 @@ use crate::test_support::{
 use rf_ui::engineering::{
     EngineeringInputs, EngineeringSession, EquipmentCaseKey, EquipmentResultStatus,
 };
-use rf_ui::{DocumentMetadata, FlowRunDisposition, FlowsheetDocument};
+use rf_ui::{DocumentMetadata, FlowRunDisposition, FlowsheetDocument, SimulationMode};
 use std::{
     thread,
     time::{Duration, Instant, UNIX_EPOCH},

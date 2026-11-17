@@ -6,9 +6,10 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         draft: &mut FlowPlanDraft,
         o: &mut MixedOptions,
+        bindings: &[TearSpecification],
     ) -> bool {
         let zh = self.locale == StudioShellLocale::ZhCn;
-        ui.small(tr(zh,"显式分区：每个单元恰属一块；块间须为 DAG。Local 单单元，EO 仅固定比例正向物料方程。","Explicit partition: each unit belongs to one block; the block graph must be a DAG. Local has one unit; EO supports forward fixed-fraction material equations."));
+        ui.small(tr(zh,"每个单元恰属一块。Local 单单元，EO 使用固定比例正向物料方程。","Each unit belongs to one block. Local has one unit; EO uses forward fixed-fraction material equations."));
         let mut apply = false;
         for (field, title, value, unit) in [
             (
@@ -127,10 +128,16 @@ impl ReadyAppState {
                 method: MixedBlockMethod::Local,
             });
         }
+        apply |= self.render_mixed_recycle_options(ui, draft, o, &flow, bindings);
         match assemble(&flow, o) {
             Ok(p) => {
                 ui.label(format!(
-                    "DAG: {}",
+                    "{}: {}",
+                    if o.recycle.is_some() {
+                        tr(zh, "切开撕裂后的块顺序", "Block order after the tear")
+                    } else {
+                        "DAG"
+                    },
                     p.blocks()
                         .iter()
                         .map(|b| b.id.as_str())
