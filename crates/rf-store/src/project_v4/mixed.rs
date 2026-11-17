@@ -1,6 +1,29 @@
 use super::*;
 use rf_types::UnitId;
 pub const MIXED_METHOD: &str = "radishflow.fixed-tp-mixed-material";
+pub const MIXED_RECYCLE_METHOD: &str = "radishflow.fixed-tp-mixed-recycle";
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredMixedRecyclePlan {
+    pub mixed: StoredMixedPlan,
+    pub max_iteration_evaluations: usize,
+    pub tear: StoredTear,
+}
+
+impl StoredMixedRecyclePlan {
+    pub(super) fn validate(&self) -> RfResult<()> {
+        self.mixed.validate()?;
+        if !(1..=500).contains(&self.max_iteration_evaluations)
+            || self.tear.residual_scaling != StoredResidualScaling::EvaluatedFreshTotal
+        {
+            return Err(RfError::invalid_input(
+                "simulation: mixed recycle requires a budget in 1..=500 and fresh-total residual scaling",
+            ));
+        }
+        self.tear.validate()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct StoredMixedPlan {

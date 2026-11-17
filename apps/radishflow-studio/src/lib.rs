@@ -115,11 +115,12 @@ pub use document_history_driver::{
 };
 pub use document_lifecycle_driver::{
     DocumentLifecycleOutcome, FILE_SAVE_AS_COMMAND_ID, FILE_SAVE_COMMAND_ID,
-    PreparedObjectIdentityInitialization, ProjectSaveCompatibility, StudioDocumentLifecycleAction,
-    StudioDocumentLifecycleCommand, StudioProjectOpen, StudioReadOnlyProject,
-    dispatch_document_lifecycle, load_project_app_state, prepare_object_identity_initialization,
-    project_save_compatibility, project_save_requires_upgrade, project_save_version,
-    read_studio_project, read_studio_project_with_support,
+    PreparedMixedRecycleSave, PreparedObjectIdentityInitialization, ProjectSaveCompatibility,
+    StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand, StudioProjectOpen,
+    StudioReadOnlyProject, dispatch_document_lifecycle, load_project_app_state,
+    prepare_mixed_recycle_save, prepare_object_identity_initialization, project_save_compatibility,
+    project_save_requires_upgrade, project_save_version, read_studio_project,
+    read_studio_project_with_support,
 };
 pub use entitlement_control::{
     StudioEntitlementAction, StudioEntitlementActionOutcome, StudioEntitlementFailure,

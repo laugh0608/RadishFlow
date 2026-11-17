@@ -18,6 +18,7 @@ pub enum StoredFlowPlan {
     Simultaneous(StoredModularPlan),
     EquationOriented(StoredEquationPlan),
     Mixed(super::StoredMixedPlan),
+    MixedRecycle(Box<super::StoredMixedRecyclePlan>),
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -63,6 +64,37 @@ pub struct StoredTear {
     pub sink: StoredPortBinding,
     pub initialization: StoredTearInitialization,
     pub residual_scaling: StoredResidualScaling,
+}
+
+impl StoredTear {
+    pub(super) fn validate(&self) -> RfResult<()> {
+        if self.stream_id.as_str().trim().is_empty() {
+            return Err(RfError::invalid_input(
+                "simulation.tears: blank stream identity",
+            ));
+        }
+        for port in [&self.source, &self.sink] {
+            if port.unit_id.as_str().trim().is_empty() || port.port.trim().is_empty() {
+                return Err(RfError::invalid_input(
+                    "simulation.tears: blank unit or port binding",
+                ));
+            }
+        }
+        if let StoredTearInitialization::ComponentFlows { values_mol_s } = &self.initialization {
+            validate_values(values_mol_s, false)?;
+        }
+        if let StoredResidualScaling::ComponentValues { values_mol_s } = &self.residual_scaling {
+            validate_values(values_mol_s, true)?;
+        }
+        Ok(())
+    }
+
+    fn canonicalize_initialization(&mut self) {
+        if let StoredTearInitialization::ComponentFlows { values_mol_s } = &mut self.initialization
+        {
+            values_mol_s.sort_by(|left, right| left.component_id.cmp(&right.component_id));
+        }
+    }
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct StoredRecyclePlan {
@@ -184,12 +216,16 @@ impl StoredFlowPlan {
                 Self::Simultaneous(_) => SIMULTANEOUS_METHOD,
                 Self::EquationOriented(_) => EQUATION_ORIENTED_METHOD,
                 Self::Mixed(_) => super::MIXED_METHOD,
+                Self::MixedRecycle(_) => super::MIXED_RECYCLE_METHOD,
             }
             .into(),
             version: 1,
         }
     }
     pub fn validate(&self) -> RfResult<()> {
+        if let Self::MixedRecycle(p) = self {
+            return p.validate();
+        }
         if let Self::Mixed(p) = self {
             return p.validate();
         }
@@ -219,21 +255,7 @@ impl StoredFlowPlan {
                     "simulation.tears: blank or duplicate stream identity",
                 ));
             }
-            for port in [&tear.source, &tear.sink] {
-                if port.unit_id.as_str().trim().is_empty() || port.port.trim().is_empty() {
-                    return Err(RfError::invalid_input(
-                        "simulation.tears: blank unit or port binding",
-                    ));
-                }
-            }
-            if let StoredTearInitialization::ComponentFlows { values_mol_s } = &tear.initialization
-            {
-                validate_values(values_mol_s, false)?;
-            }
-            if let StoredResidualScaling::ComponentValues { values_mol_s } = &tear.residual_scaling
-            {
-                validate_values(values_mol_s, true)?;
-            }
+            tear.validate()?;
         }
         Ok(())
     }
@@ -292,6 +314,15 @@ impl Serialize for StoredFlowPlan {
             wire.fixed_boundary = Some(plan.fixed_boundary.clone());
             wire.blocks = Some(plan.canonicalized().blocks);
         }
+        if let Self::MixedRecycle(plan) = self {
+            wire.acceptance_contract_version = Some(1);
+            wire.fixed_boundary = Some(plan.mixed.fixed_boundary.clone());
+            wire.blocks = Some(plan.mixed.canonicalized().blocks);
+            wire.max_iteration_evaluations = Some(plan.max_iteration_evaluations);
+            let mut tear = plan.tear.clone();
+            tear.canonicalize_initialization();
+            wire.tears = Some(vec![tear]);
+        }
         wire.serialize(s)
     }
 }
@@ -310,10 +341,36 @@ impl<'de> Deserialize<'de> for StoredFlowPlan {
                 "simulation: EO fields require EO method",
             ));
         }
-        if w.method.id != super::MIXED_METHOD && w.blocks.is_some() {
+        if !matches!(
+            w.method.id.as_str(),
+            super::MIXED_METHOD | super::MIXED_RECYCLE_METHOD
+        ) && w.blocks.is_some()
+        {
             return Err(serde::de::Error::custom("blocks require Mixed method"));
         }
         let result = match (w.method.id.as_str(), w.method.version) {
+            (super::MIXED_RECYCLE_METHOD, 1)
+                if w.acceptance_contract_version == Some(1)
+                    && w.response_contract_version.is_none()
+                    && w.scaling.is_none() =>
+            {
+                let [mut tear]: [StoredTear; 1] =
+                    w.tears.ok_or_else(missing)?.try_into().map_err(|_| {
+                        serde::de::Error::custom(
+                            "simulation.tears: mixed recycle requires exactly one tear",
+                        )
+                    })?;
+                tear.canonicalize_initialization();
+                Self::MixedRecycle(Box::new(super::StoredMixedRecyclePlan {
+                    mixed: super::StoredMixedPlan {
+                        fixed_boundary: w.fixed_boundary.ok_or_else(missing)?,
+                        blocks: w.blocks.ok_or_else(missing)?,
+                    }
+                    .canonicalized(),
+                    max_iteration_evaluations: w.max_iteration_evaluations.ok_or_else(missing)?,
+                    tear,
+                }))
+            }
             (super::MIXED_METHOD, 1)
                 if w.acceptance_contract_version == Some(1)
                     && w.equation_contract_version.is_none()

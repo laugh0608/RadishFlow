@@ -1,6 +1,9 @@
 use super::*;
-use crate::flow_plan_actions::{flow_plan_configuration, stored_flow_plan};
-use rf_store::project_v4::{self, ProjectV4Read, StoredProjectV4};
+use crate::flow_plan_actions::{flow_plan_configuration, stored_flow_plan_with_support};
+use rf_store::project_v4::{
+    self, FlowPlanSupport, PreparedProjectV4Write, ProjectV4Read, RequiredCapability,
+    StoredProjectV4,
+};
 
 #[derive(Debug)]
 pub enum StudioReadOnlyProject {
@@ -87,6 +90,13 @@ pub(super) fn parse_v4(
     }
 }
 pub(super) fn project(app: &AppState) -> RfResult<ProjectV4Read> {
+    project_with_support(app, FlowPlanSupport::Mixed)
+}
+
+pub(super) fn project_with_support(
+    app: &AppState,
+    support: FlowPlanSupport,
+) -> RfResult<ProjectV4Read> {
     let file = stored_project_file_from_app_state(app);
     let saved = app.workspace.engineering.capture_save();
     Ok(ProjectV4Read::Editable(Box::new(StoredProjectV4 {
@@ -98,7 +108,10 @@ pub(super) fn project(app: &AppState) -> RfResult<ProjectV4Read> {
                 basis: saved.inputs().basis.clone(),
                 tasks: saved.inputs().tasks.clone(),
             }),
-        steady_state_plan: stored_flow_plan(app.workspace.flow_plan.current())?,
+        steady_state_plan: stored_flow_plan_with_support(
+            app.workspace.flow_plan.current(),
+            support,
+        )?,
         object_identities: app.workspace.current_object_identities(),
         variable_watch_list: app
             .workspace
@@ -111,16 +124,32 @@ pub(super) fn compatibility(
     app: &AppState,
     path: &Path,
 ) -> RfResult<Option<ProjectSaveCompatibility>> {
-    let prepared =
-        project_v4::prepare_write(path, &project(app)?, rf_store::FileOverwritePolicy::Allow)?;
+    let project = project(app)?;
+    let prepared = project_v4::prepare_write(path, &project, rf_store::FileOverwritePolicy::Allow)?;
+    let ProjectV4Read::Editable(project) = project else {
+        unreachable!("application input is editable")
+    };
+    Ok(prepared_compatibility(
+        app,
+        &prepared,
+        &project_v4::required_capabilities(&project),
+    ))
+}
+
+pub(super) fn prepared_compatibility(
+    app: &AppState,
+    prepared: &PreparedProjectV4Write,
+    required: &[RequiredCapability],
+) -> Option<ProjectSaveCompatibility> {
+    let path = prepared.path();
     let source = app.workspace.project_presentation.source_file_version();
     if source != Some(4) {
-        return Ok(Some(ProjectSaveCompatibility::Format {
+        return Some(ProjectSaveCompatibility::Format {
             version: 4,
             includes_rating: app.workspace.engineering.inputs().has_rating(),
-        }));
+        });
     }
-    let new_capabilities = added_source_capabilities(app)?;
+    let new_capabilities = new_source_capabilities(app, required);
     let replaces_target_object_identities = app.workspace.document_path.as_deref() != Some(path)
         && prepared.replaces_target_object_identities();
     let replaces_target_variable_watch_list = app.workspace.document_path.as_deref() != Some(path)
@@ -136,8 +165,8 @@ pub(super) fn compatibility(
     {
         // Capture the full required set as well as the source delta: a later
         // change to the method cannot reuse an earlier capability review.
-        return Ok(Some(ProjectSaveCompatibility::FlowCapabilities {
-            required: required_capabilities(app)?,
+        return Some(ProjectSaveCompatibility::FlowCapabilities {
+            required: required.to_vec(),
             added_from_source: new_capabilities,
             replaces_target_object_identities,
             replaces_target_variable_watch_list,
@@ -149,9 +178,9 @@ pub(super) fn compatibility(
             } else {
                 None
             },
-        }));
+        });
     }
-    Ok(None)
+    None
 }
 
 pub(crate) fn required_capabilities(
@@ -166,10 +195,18 @@ pub(crate) fn required_capabilities(
 pub(super) fn added_source_capabilities(
     app: &AppState,
 ) -> RfResult<Vec<project_v4::RequiredCapability>> {
-    Ok(required_capabilities(app)?
-        .into_iter()
+    Ok(new_source_capabilities(app, &required_capabilities(app)?))
+}
+
+fn new_source_capabilities(
+    app: &AppState,
+    required: &[RequiredCapability],
+) -> Vec<RequiredCapability> {
+    required
+        .iter()
         .filter(|c| app.workspace.flow_plan.saved_capabilities().get(&c.id) != Some(&c.version))
-        .collect())
+        .cloned()
+        .collect()
 }
 pub(super) fn save(app: &AppState, path: &Path, upgrade_confirmed: bool) -> RfResult<()> {
     let prepared =
@@ -184,11 +221,22 @@ pub(super) fn save(app: &AppState, path: &Path, upgrade_confirmed: bool) -> RfRe
             "project v4 upgrade requires confirmation",
         ));
     }
-    if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+    write_prepared_project(&prepared, upgrade_confirmed)
+}
+
+pub(super) fn write_prepared_project(
+    prepared: &PreparedProjectV4Write,
+    upgrade_confirmed: bool,
+) -> RfResult<()> {
+    if let Some(parent) = prepared
+        .path()
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+    {
         std::fs::create_dir_all(parent)
             .map_err(|e| RfError::invalid_input(format!("create project directory: {e}")))?;
     }
-    project_v4::write_prepared(&prepared, upgrade_confirmed)
+    project_v4::write_prepared(prepared, upgrade_confirmed)
 }
 #[cfg(test)]
 mod tests;

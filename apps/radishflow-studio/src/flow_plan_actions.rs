@@ -35,11 +35,29 @@ pub fn execute_flow_plan_action(
     })
 }
 pub fn stored_flow_plan(plan: &FlowPlanConfiguration) -> RfResult<StoredFlowPlan> {
-    if matches!(plan, FlowPlanConfiguration::Mixed(o) if o.recycle.is_some()) {
-        return Err(
-            RfError::invalid_input("mixed cross-block recycle is an in-memory plan")
-                .with_diagnostic_code("workspace.plan.in_memory_only"),
-        );
+    stored_flow_plan_with_support(plan, FlowPlanSupport::Mixed)
+}
+
+pub(crate) fn stored_flow_plan_with_support(
+    plan: &FlowPlanConfiguration,
+    support: FlowPlanSupport,
+) -> RfResult<StoredFlowPlan> {
+    if let FlowPlanConfiguration::Mixed(options) = plan
+        && let Some(recycle) = &options.recycle
+    {
+        if support == FlowPlanSupport::MixedRecycle {
+            return Ok(StoredFlowPlan::MixedRecycle(Box::new(
+                StoredMixedRecyclePlan {
+                    mixed: mixed::stored(options),
+                    max_iteration_evaluations: recycle.max_iteration_evaluations,
+                    tear: stored_tear(&recycle.tear),
+                },
+            )));
+        }
+        return Err(RfError::invalid_input(
+            "the project consumer does not support mixed cross-block recycle",
+        )
+        .with_diagnostic_code("workspace.plan.in_memory_only"));
     }
     Ok(match plan {
         FlowPlanConfiguration::Acyclic => StoredFlowPlan::Acyclic,
@@ -123,6 +141,14 @@ pub fn flow_plan_configuration(plan: StoredFlowPlan) -> RfResult<FlowPlanConfigu
     let value = match plan {
         StoredFlowPlan::Acyclic => FlowPlanConfiguration::Acyclic,
         StoredFlowPlan::Mixed(o) => FlowPlanConfiguration::Mixed(mixed::configuration(o)?),
+        StoredFlowPlan::MixedRecycle(plan) => {
+            let mut options = mixed::configuration(plan.mixed)?;
+            options.recycle = Some(Box::new(rf_solver::mixed::MixedRecycleOptions {
+                tear: tear_configuration(plan.tear),
+                max_iteration_evaluations: plan.max_iteration_evaluations,
+            }));
+            FlowPlanConfiguration::Mixed(options)
+        }
         StoredFlowPlan::EquationOriented(p) => {
             FlowPlanConfiguration::EquationOriented(equation_oriented::configuration(p)?)
         }
@@ -136,36 +162,36 @@ pub fn flow_plan_configuration(plan: StoredFlowPlan) -> RfResult<FlowPlanConfigu
                     pressure_pa: plan.fixed_boundary.pressure_pa,
                 },
                 max_iteration_evaluations: plan.max_iteration_evaluations,
-                tears: plan
-                    .tears
-                    .into_iter()
-                    .map(|t| TearSpecification {
-                        stream_id: t.stream_id,
-                        source: DiagnosticPortTarget::new(t.source.unit_id, t.source.port),
-                        sink: DiagnosticPortTarget::new(t.sink.unit_id, t.sink.port),
-                        initial_component_flows_mol_s: match t.initialization {
-                            StoredTearInitialization::ZeroComponentFlows => None,
-                            StoredTearInitialization::ComponentFlows { values_mol_s } => Some(
-                                values_mol_s
-                                    .into_iter()
-                                    .map(|v| (v.component_id, v.value))
-                                    .collect(),
-                            ),
-                        },
-                        component_scales_mol_s: match t.residual_scaling {
-                            StoredResidualScaling::EvaluatedFreshTotal => None,
-                            StoredResidualScaling::ComponentValues { values_mol_s } => Some(
-                                values_mol_s
-                                    .into_iter()
-                                    .map(|v| (v.component_id, v.value))
-                                    .collect(),
-                            ),
-                        },
-                    })
-                    .collect(),
+                tears: plan.tears.into_iter().map(tear_configuration).collect(),
             })
         }
     };
     value.validate_configuration()?;
     Ok(value)
+}
+
+fn tear_configuration(tear: StoredTear) -> TearSpecification {
+    TearSpecification {
+        stream_id: tear.stream_id,
+        source: DiagnosticPortTarget::new(tear.source.unit_id, tear.source.port),
+        sink: DiagnosticPortTarget::new(tear.sink.unit_id, tear.sink.port),
+        initial_component_flows_mol_s: match tear.initialization {
+            StoredTearInitialization::ZeroComponentFlows => None,
+            StoredTearInitialization::ComponentFlows { values_mol_s } => Some(
+                values_mol_s
+                    .into_iter()
+                    .map(|v| (v.component_id, v.value))
+                    .collect(),
+            ),
+        },
+        component_scales_mol_s: match tear.residual_scaling {
+            StoredResidualScaling::EvaluatedFreshTotal => None,
+            StoredResidualScaling::ComponentValues { values_mol_s } => Some(
+                values_mol_s
+                    .into_iter()
+                    .map(|v| (v.component_id, v.value))
+                    .collect(),
+            ),
+        },
+    }
 }

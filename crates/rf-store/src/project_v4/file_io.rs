@@ -10,6 +10,7 @@ use std::{
 pub struct PreparedProjectV4Write {
     path: PathBuf,
     contents: String,
+    support: FlowPlanSupport,
     target_fingerprint: Option<String>,
     requires_upgrade: bool,
     target_has_object_identities: bool,
@@ -20,6 +21,10 @@ pub struct PreparedProjectV4Write {
 impl PreparedProjectV4Write {
     pub fn path(&self) -> &Path {
         &self.path
+    }
+    /// Check the same canonical project bytes that this preparation would write.
+    pub fn captures_project(&self, project: &ProjectV4Read) -> RfResult<bool> {
+        Ok(to_pretty_json_with_support(project, self.support)? == self.contents)
     }
     pub fn target_fingerprint(&self) -> Option<&str> {
         self.target_fingerprint.as_deref()
@@ -50,8 +55,17 @@ pub fn prepare_write(
     project: &ProjectV4Read,
     overwrite: FileOverwritePolicy,
 ) -> RfResult<PreparedProjectV4Write> {
+    prepare_write_with_support(path, project, overwrite, FlowPlanSupport::Mixed)
+}
+
+pub fn prepare_write_with_support(
+    path: impl AsRef<Path>,
+    project: &ProjectV4Read,
+    overwrite: FileOverwritePolicy,
+    support: FlowPlanSupport,
+) -> RfResult<PreparedProjectV4Write> {
     let path = path.as_ref();
-    let contents = to_pretty_json(project)?;
+    let contents = to_pretty_json_with_support(project, support)?;
     let existing = target_bytes(path)?;
     if existing.is_some() && overwrite == FileOverwritePolicy::Forbid {
         return Err(RfError::invalid_input("project target already exists"));
@@ -72,7 +86,7 @@ pub fn prepare_write(
                 crate::project_v3::ProjectV3Read::Editable(_) => true,
                 _ => return Err(readonly_target()),
             },
-            4 => match parse(text)? {
+            4 => match parse_with_support(text, support)? {
                 ProjectV4Read::ReadOnly(_) => return Err(readonly_target()),
                 ProjectV4Read::Editable(existing) => {
                     let ProjectV4Read::Editable(new) = project else {
@@ -133,6 +147,7 @@ pub fn prepare_write(
     Ok(PreparedProjectV4Write {
         path: path.into(),
         contents,
+        support,
         target_fingerprint: existing.as_ref().map(|b| sha256_hex(b)),
         requires_upgrade,
         target_has_object_identities,

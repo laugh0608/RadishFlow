@@ -1,8 +1,10 @@
 pub(crate) mod flow_plan;
+mod mixed_recycle;
 mod object_identities;
 #[cfg(test)]
 mod watch_list_tests;
 pub use flow_plan::StudioReadOnlyProject;
+pub use mixed_recycle::{PreparedMixedRecycleSave, prepare_mixed_recycle_save};
 pub use object_identities::{
     PreparedObjectIdentityInitialization, prepare_object_identity_initialization,
 };

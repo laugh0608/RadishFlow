@@ -29,6 +29,7 @@ pub const FLOW_PLAN_CAPABILITY: &str = "radishflow.flow-plan";
 pub const SPLITTER_CAPABILITY: &str = "radishflow.unit.splitter";
 pub const PARTITIONED_CAPABILITY: &str = "radishflow.solver.partitioned-sm";
 pub const MIXED_CAPABILITY: &str = "radishflow.solver.fixed-tp-mixed-material";
+pub const MIXED_RECYCLE_CAPABILITY: &str = "radishflow.solver.fixed-tp-mixed-recycle";
 pub const EQUATION_ORIENTED_CAPABILITY: &str = "radishflow.solver.fixed-tp-material-eo";
 pub const SIMULTANEOUS_CAPABILITY: &str = "radishflow.solver.fixed-tp-affine-modular-lu";
 pub const OBJECT_IDENTITY_CAPABILITY: &str = "radishflow.object-identity";
@@ -41,12 +42,40 @@ pub enum ObjectIdentitySupport {
 }
 
 /// A consumer's supported vocabulary is independent of the project envelope version.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum FlowPlanSupport {
     Sequential,
     Simultaneous,
     EquationOriented,
     Mixed,
+    MixedRecycle,
+}
+
+impl FlowPlanSupport {
+    fn supports_method(self, method: &str) -> bool {
+        match method {
+            ACYCLIC_METHOD | PARTITIONED_METHOD => true,
+            SIMULTANEOUS_METHOD => self >= Self::Simultaneous,
+            EQUATION_ORIENTED_METHOD => self >= Self::EquationOriented,
+            MIXED_METHOD => self >= Self::Mixed,
+            MIXED_RECYCLE_METHOD => self >= Self::MixedRecycle,
+            _ => false,
+        }
+    }
+
+    fn supports_capability(self, capability: &str, identities: ObjectIdentitySupport) -> bool {
+        match capability {
+            FLOW_PLAN_CAPABILITY | SPLITTER_CAPABILITY | PARTITIONED_CAPABILITY => true,
+            SIMULTANEOUS_CAPABILITY => self.supports_method(SIMULTANEOUS_METHOD),
+            EQUATION_ORIENTED_CAPABILITY => self.supports_method(EQUATION_ORIENTED_METHOD),
+            MIXED_CAPABILITY => self.supports_method(MIXED_METHOD),
+            MIXED_RECYCLE_CAPABILITY => self.supports_method(MIXED_RECYCLE_METHOD),
+            OBJECT_IDENTITY_CAPABILITY | VARIABLE_WATCH_LIST_CAPABILITY => {
+                identities == ObjectIdentitySupport::Supported
+            }
+            _ => false,
+        }
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -169,6 +198,9 @@ pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapabilit
     if matches!(project.steady_state_plan, StoredFlowPlan::Mixed(_)) {
         ids.push(MIXED_CAPABILITY);
     }
+    if matches!(project.steady_state_plan, StoredFlowPlan::MixedRecycle(_)) {
+        ids.push(MIXED_RECYCLE_CAPABILITY);
+    }
     ids.sort();
     ids.into_iter()
         .map(|id| RequiredCapability {
@@ -208,31 +240,7 @@ pub fn parse_for_consumer(
     let mut reasons: Vec<String> = wire
         .required_capabilities
         .iter()
-        .filter(|c| {
-            c.version != 1
-                || ![
-                    FLOW_PLAN_CAPABILITY,
-                    SPLITTER_CAPABILITY,
-                    PARTITIONED_CAPABILITY,
-                    SIMULTANEOUS_CAPABILITY,
-                    EQUATION_ORIENTED_CAPABILITY,
-                    MIXED_CAPABILITY,
-                    OBJECT_IDENTITY_CAPABILITY,
-                    VARIABLE_WATCH_LIST_CAPABILITY,
-                ]
-                .contains(&c.id.as_str())
-                || (identity_support == ObjectIdentitySupport::Unavailable
-                    && matches!(
-                        c.id.as_str(),
-                        OBJECT_IDENTITY_CAPABILITY | VARIABLE_WATCH_LIST_CAPABILITY
-                    ))
-                || (support == FlowPlanSupport::Sequential && c.id == SIMULTANEOUS_CAPABILITY)
-                || (!matches!(
-                    support,
-                    FlowPlanSupport::EquationOriented | FlowPlanSupport::Mixed
-                ) && c.id == EQUATION_ORIENTED_CAPABILITY)
-                || (support != FlowPlanSupport::Mixed && c.id == MIXED_CAPABILITY)
-        })
+        .filter(|c| c.version != 1 || !support.supports_capability(&c.id, identity_support))
         .map(|c| format!("{} / {}", c.id, c.version))
         .collect();
     if !reasons.is_empty() {
@@ -242,7 +250,10 @@ pub fn parse_for_consumer(
         serde_json::from_value(wire.simulation.clone()).map_err(json_error)?;
     let modular = probe.steady_state_plan.method.id == SIMULTANEOUS_METHOD;
     let eo = probe.steady_state_plan.method.id == EQUATION_ORIENTED_METHOD;
-    let mixed = probe.steady_state_plan.method.id == MIXED_METHOD;
+    let mixed = matches!(
+        probe.steady_state_plan.method.id.as_str(),
+        MIXED_METHOD | MIXED_RECYCLE_METHOD
+    );
     if (modular || eo || mixed)
         && (probe.steady_state_plan.method.version == 0
             || probe.steady_state_plan.acceptance_contract_version == Some(0)
@@ -253,22 +264,8 @@ pub fn parse_for_consumer(
             "simulation: contract versions must be positive",
         ));
     }
-    if ![
-        ACYCLIC_METHOD,
-        PARTITIONED_METHOD,
-        SIMULTANEOUS_METHOD,
-        EQUATION_ORIENTED_METHOD,
-        MIXED_METHOD,
-    ]
-    .contains(&probe.steady_state_plan.method.id.as_str())
+    if !support.supports_method(&probe.steady_state_plan.method.id)
         || probe.steady_state_plan.method.version != 1
-        || (mixed && support != FlowPlanSupport::Mixed)
-        || (modular && support == FlowPlanSupport::Sequential)
-        || (eo
-            && !matches!(
-                support,
-                FlowPlanSupport::EquationOriented | FlowPlanSupport::Mixed
-            ))
         || (eo
             && probe
                 .steady_state_plan
@@ -396,11 +393,24 @@ fn readonly(contents: &str, value: &Value, reasons: Vec<String>) -> RfResult<Pro
     }))
 }
 pub fn to_pretty_json(project: &ProjectV4Read) -> RfResult<String> {
+    to_pretty_json_with_support(project, FlowPlanSupport::Mixed)
+}
+
+pub fn to_pretty_json_with_support(
+    project: &ProjectV4Read,
+    support: FlowPlanSupport,
+) -> RfResult<String> {
     let ProjectV4Read::Editable(p) = project else {
         return Err(RfError::invalid_input(
             "project v4 is read-only; saving is prohibited",
         ));
     };
+    if !support.supports_method(&p.steady_state_plan.method().id) {
+        return Err(RfError::invalid_input(
+            "project v4 writer does not support the selected steady-state method",
+        )
+        .with_diagnostic_code("store.project.unsupported_write_method"));
+    }
     document::validate(&p.document)?;
     validate_watch_list(p)?;
     let wire = WriteWire {
