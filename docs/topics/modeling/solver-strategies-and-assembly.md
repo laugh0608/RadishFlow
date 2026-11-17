@@ -75,7 +75,7 @@ flowchart TD
 
 ## 共享稳态执行契约
 
-Studio、CLI 和 FFI 使用 [`rf-solver::execution::execute_flow`](../../../crates/rf-solver/src/execution.rs)。入口借用调用方捕获的 `Flowsheet`、显式 `FlowPlanConfiguration` 和已装配的 `SolverServices`，按计划执行无回路、分块回流、联立模块、物料 EO 或混合 DAG。计划形状及图就绪检查可单独调用，数值执行按各方法的边界检查并装配。方法或模型能力不足时返回原有诊断。
+Studio、CLI 和 FFI 使用 [`rf-solver::execution::execute_flow`](../../../crates/rf-solver/src/execution.rs)。入口借用调用方捕获的 `Flowsheet`、显式 `FlowPlanConfiguration` 和已装配的 `SolverServices`，按计划执行无回路、分块回流、联立模块、物料 EO、混合 DAG 或固定温压单撕裂混合回流。计划形状及图就绪检查可单独调用，数值执行按各方法的边界检查并装配。方法或模型能力不足时返回原有诊断。
 
 `FlowExecutionOutcome` 按执行方法携带结果及失败证据。成功、失败和协作取消可区分，取消仍在各方法的既定检查点生效。工程格式、宿主能力、包资格和 worker 错误在调用方处理。缓存或本地文件最终通过 `rf-property-package` 装配单次运行的上下文。求值阶段只使用冻结服务，实际包指纹由 Studio 执行桥用于结果来源。
 

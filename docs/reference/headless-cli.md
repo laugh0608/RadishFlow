@@ -1,18 +1,19 @@
 # 本地无界面运行接口
 
-更新时间：2026-11-15
+更新时间：2026-11-17
 
-用途：说明 CLI v1–v8 命令、JSON 协议与错误。
-
-读者：本地脚本用户和适配器开发者。
+用途：CLI v1–v9 命令、协议与错误。
+读者：本地脚本和适配器开发者。
 
 不包含：公共网络 API、COM、录制脚本、后台任务与项目保存。
 
 ## 版本与兼容边界
 
-v3–v7 使用 `query` / `execute`，见[新版协议](#新版-v3查询)。
+v3–v7 使用 [`query` / `execute`](#新版-v3查询)。
 
 v8 `query` 仅支持 `stable_variable`。`execute` 在工程 IO 前返回 `unsupported_version`。 [v8 契约](../topics/variable-browser/stable-references.md#vb3-cli-只读查询首片)
+
+v9 查询并运行已保存的 M2 工程。 [v9 契约与示例](../topics/modeling/mixed-partition-execution.md#m2-cli-首片评审)
 
 v2 增加受控创建 / 连接和步骤引用，保留 v1 的字段、路径与错误契约。v1 / v2 按 SI 读写，`unit` 来自共享目录，输入无单位字段。 [单位系统](../topics/units-and-quantity-system.md) · [建模辅助](../topics/modeling-assistance-and-specifications.md)
 
@@ -34,9 +35,9 @@ radishflow-studio --headless run request.json
 radishflow-studio --headless --help
 ```
 
-开发工作区可执行 `cargo build --locked -p radishflow-studio`，随后使用 `target/debug/radishflow-studio`（Windows 为 `.exe`）。无界面分支在 GUI 初始化前执行，不打开窗口、访问最近项目或写入偏好。当前仍构建和链接 Studio 的既有桌面依赖，不承诺图形依赖已从产物中移除。其他平台运行态按阶段集中验证。
+用 `cargo build --locked -p radishflow-studio` 构建 `target/debug/radishflow-studio`（Windows 带 `.exe`）。CLI 在 GUI 初始化前运行，跳过最近项目和偏好，构建仍链接桌面依赖。其他平台运行态按阶段验证。
 
-每次命令创建独立内存工作区，加载已有 `*.rfproj.json`，结束时丢弃本次修改。标准输出是一个 UTF-8 JSON 响应，帮助命令除外；输出故障信息写入标准错误。保存响应可由调用方重定向到独立文件，不能把目标设为输入项目或缓存文件。编译日志属于 Cargo 输出，不属于响应协议。
+每条命令加载已有 `*.rfproj.json`，退出时丢弃内存修改。stdout 只含 UTF-8 JSON 响应或帮助，输出故障写入 stderr。保存响应时重定向到独立文件，避开输入项目和缓存。Cargo 编译日志属于构建输出。
 
 ## 查询后运行
 

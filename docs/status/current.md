@@ -54,7 +54,7 @@
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
 - [x] QS3／QS4 macOS 取消与重跑通过，QS3 英文窄区焦点可见性复验通过。见 [专题](../topics/modeling/equation-oriented-block.md#接下来事项)。
-- [ ] [QS4 M2 CLI v9](../topics/modeling/mixed-partition-execution.md#m2-cli-首片评审)已批准。M2 v4 保存、重开及重跑已验，Studio 界面另审。
+- [x] [QS4 M2 CLI v9](../topics/modeling/mixed-partition-execution.md#m2-cli-首片评审)及 v4 保存已验。Studio 界面另审。
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)的设备数据 / 事务 / 保存 / UI / 输出及代表验证完成，流程关联未实现。
 - [ ] 按 [AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23) 捕获异常现场，定因后确认修复并验收；未复现不等于收口。
@@ -115,7 +115,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-17：Rust 基线 2,166 项通过，含 45 项 CLI 进程测试。M2 工程保存和 V2 实窗见 [W47](../devlogs/2026-11/2026-W47.md)，窄区与 .NET 证据见 [W46](../devlogs/2026-11/2026-W46.md)。
+- 2026-11-17：Rust 基线 2,170 项通过，含 49 项 CLI 进程测试。M2 CLI／保存和 V2 实窗见 [W47](../devlogs/2026-11/2026-W47.md)，窄区与 .NET 见 [W46](../devlogs/2026-11/2026-W46.md)。
 
 - 2026-11-10：PR #18 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 

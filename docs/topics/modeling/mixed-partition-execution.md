@@ -10,7 +10,7 @@
 
 **方案状态：QS4-D01—D05 已批准；执行状态：首片 QS4-A—D 已完成本机实现与阶段验证。** 2026-11-04 所有者批准连续实施，六张局部画板随后明确认可。前置验收 / 方案提交为 `787609e0`；Local＋正向 EO 的 DAG 组合、工程 v4、GUI / CLI v7 已接通，正式 2,051 项、独立历史读写器与 macOS 代表路径通过，证据见 [W45](../../devlogs/2026-11/2026-W45.md)。首片完成不关闭后续混合策略、平台或发布门禁。
 
-**M2 已验证内存执行、共享运行接收和 v4 正式保存。** [M2 算例与验收](#m2首个跨块回流算例与验收)与[工程保存](#正式计划与工程保存)均于 2026-11-17 获批。CLI 和 Studio 界面接入各自评审。
+**M2 已验证内存执行、共享运行接收、v4 保存和 CLI v9。** 见 [算例与验收](#m2首个跨块回流算例与验收)、[工程保存](#正式计划与工程保存)和 [CLI 接入](#m2-cli-首片评审)。Studio 界面接入另审。
 
 ## 用户价值与首批出口
 
@@ -249,7 +249,7 @@ flowchart LR
 | 入口 | 首片词汇 |
 | --- | --- |
 | `--headless query` | `schema_version: 9`。顶层使用 `project`、`queries`，允许空查询读取工程头。`results` 仅开放 `scope: flow_plan` 和 `scope: flow`。查询从一次读取的 v4 文件建立会话、返回同一原字节的 SHA-256。 |
-| `--headless execute` | 同样只消费已应用的 M2 v4 计划。要求 `expected_project.document_id`、`expected_project.file_sha256`、`flow_resources` 和至少一个按序执行的 `run_flow` 步骤。每步用已有 `expected_revision` 与 `expected_plan_revision` 字段核对两个修订。末尾 `queries` 使用同一查询词汇。 |
+| `--headless execute` | 同样只消费已应用的 M2 v4 计划。要求 `expected_project.document_id`、`expected_project.file_sha256`、`flow_resources` 和至少一个按序执行的 `run_flow` 步骤。每步用无符号整数 `expected_revision` 与 `expected_plan_revision` 核对两个修订。末尾 `queries` 使用同一查询词汇。 |
 
 - 复用现有响应外层、严格 JSON 校验、唯一且非空的步骤／查询 ID 和以请求文件为基准的相对路径。步骤仅在本次会话运行已保存配置。建模、计划编辑、采纳、保存、后台取消、稳定变量查询和 Studio 界面均各有现行入口或独立评审范围。
 - 先校验请求和资源字段，再读取工程。execute 按工程 ID、原字节指纹、只读保护、M2 方法、两个修订和图就绪性的顺序检查，最后读取物性索引并装配选定的已授权包。已知格式错返回 `invalid_project`；未知必需能力由工程保护处理，query 只给安全元数据，execute 在执行步骤前返回 `read_only_project`。有效 M1 工程在 v9 返回 `unsupported_capability`，工程头仍按实际文件标为可编辑。
@@ -259,7 +259,7 @@ flowchart LR
 
 - `results(flow_plan)` 返回计划修订、M2 方法与验收版本、规范配置摘要、就绪状态及可定位诊断。配置包含固定温压、块及其成员、候选评价预算、唯一撕裂流股的源／汇端口、初值和残差尺度规则。字段采用现有 CLI 的 snake_case 与 SI；撕裂绑定使用工程的流股／单元 ID 和真实端口名。就绪性由共享计划检查提供。
 - `results(flow)` 在新进程重开时返回 `missing`；成功且被接收时返回 `current` 和独立辨识值 `execution_kind: mixed_recycle`，含已复核的流股、块和边界、全局分量衡算。回流证据来自本次实际求值，包含固定尺度、候选与独立复核的残差轨迹、最终复核的假设值及实际返回值。来源带 M2 方法／验收版本、配置摘要、本请求执行步骤及实际物性包来源。
-- 开始前门禁按现有 `blocked`／退出 3 返回。预算耗尽等已接收的数值失败使用 `failed`／退出 4，步骤回执和最终查询共享失败投影。最后一次试值、返回值、残差和已完成块仅在 `diagnostic_evidence` 内。成功路径校验数值有限，失败诊断复用现有缺值规则。失败后的后续运行步骤停止，最终查询沿用原失败优先级。
+- 就绪性门禁返回 `blocked`／退出 3，并随步骤错误返回与 `flow_plan.not_ready` 相同的定位数据。修订不符返回 `record_conflict`／退出 2。预算耗尽等已接收的数值失败返回 `failed`／退出 4，步骤回执和最终查询共享失败投影。最后一次试值、返回值、残差和已完成块仅在 `diagnostic_evidence` 内。当前结果拒绝非有限数，诊断用现有 `non_finite` 标记记录。失败后的后续运行步骤停止，最终查询沿用原失败优先级。
 
 | 验收场景 | 通过条件 |
 | --- | --- |
@@ -268,3 +268,34 @@ flowchart LR
 | 兼容与磁盘 | 当前及固定旧构建复跑 v7／v8 的 M1 和 M2（含移除能力标记的对照），覆盖 M2 正常、失败和早期拒绝的真实进程。比较临时目录清单与工程、包缓存、索引及偏好文件的原字节。通过定向检查与锁定离线 `check-repo`。 |
 
 批准范围为独立 v9 的已保存 M2 查询、显式运行及结果投影。Studio 界面接入另审。 [既有 M1 CLI 契约](../../reference/headless-cli-v7.md)
+
+#### v9 请求示例
+
+先执行 `radishflow-studio --headless query query.json`。查询请求可使用下面的 `schema_version`、`project` 和 `queries` 三项，工程路径相对请求文件。将响应中的 `project.document_id` 和 `project.file_sha256` 填入执行请求，使用工程头的 `flow_revision` 和计划查询的 `plan_revision`。把资源路径指向已有的本地已授权物性包，再执行 `radishflow-studio --headless execute run.json`。
+
+```json
+{
+  "schema_version": 9,
+  "project": "saved-m2.rfproj.json",
+  "expected_project": {
+    "document_id": "example-qs4-fixed-tp-mixed-material",
+    "file_sha256": "<query 响应中的 file_sha256>"
+  },
+  "flow_resources": {
+    "cache_root": "./property-package-cache",
+    "auth_cache_index": "./auth-cache-index.json",
+    "package": {"kind": "preferred"}
+  },
+  "steps": [
+    {"id": "solve", "action": {"kind": "run_flow", "expected_revision": 0, "expected_plan_revision": 0}}
+  ],
+  "queries": [
+    {"id": "plan", "query": {"kind": "results", "scope": "flow_plan"}},
+    {"id": "result", "query": {"kind": "results", "scope": "flow"}}
+  ]
+}
+```
+
+成功回执和同请求的结果查询都带 `origin.execution.step`。在 `recycle.residual_trace` 中，候选轮为 `iteration`，独立复核为 `verification`，各轮给出 `evaluation`、`max_absolute_mol_s` 和 `max_scaled`。`recycle.last_sweep` 记录撕裂汇端的 `assumed` 和源端的 `returned`。后续独立查询重新打开工程，结果为 `missing`。
+
+**本机验收通过。** 两组初值、预算耗尽、早期拒绝、v7／v8 兼容和文件原字节保护均经真实进程验证。 [实施与验证记录](../../devlogs/2026-11/2026-W47.md#2026-11-17-qs4-m2-cli-v9-实现与验证)

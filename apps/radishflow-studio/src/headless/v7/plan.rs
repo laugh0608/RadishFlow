@@ -153,8 +153,19 @@ pub(super) fn wire(p: &FlowPlanConfiguration) -> Result<Value, Failure> {
     else {
         return <v6::Plan as PlanProtocol>::wire(p);
     };
-    let blocks = p
-        .blocks
+    serde_json::to_value(MixedPlan::Mixed {
+        acceptance_contract_version: 1,
+        temperature_k: p.fixed_boundary.temperature_k,
+        pressure_pa: p.fixed_boundary.pressure_pa,
+        blocks: wire_blocks(p.blocks)?,
+    })
+    .map_err(old::invalid_request)
+}
+
+pub(in crate::headless) fn wire_blocks(
+    blocks: Vec<StoredMixedBlock>,
+) -> Result<Vec<Block>, Failure> {
+    blocks
         .into_iter()
         .map(|b| {
             Ok(Block {
@@ -197,14 +208,7 @@ pub(super) fn wire(p: &FlowPlanConfiguration) -> Result<Value, Failure> {
                 },
             })
         })
-        .collect::<Result<_, Failure>>()?;
-    serde_json::to_value(MixedPlan::Mixed {
-        acceptance_contract_version: 1,
-        temperature_k: p.fixed_boundary.temperature_k,
-        pressure_pa: p.fixed_boundary.pressure_pa,
-        blocks,
-    })
-    .map_err(old::invalid_request)
+        .collect()
 }
 pub(super) fn query(app: &AppState) -> Result<Value, Failure> {
     if let FlowPlanConfiguration::Mixed(o) = app.workspace.flow_plan.current() {

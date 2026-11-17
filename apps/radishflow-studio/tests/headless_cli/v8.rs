@@ -419,7 +419,7 @@ fn v8_process_checks_the_query_vocabulary_and_rejects_execute_before_project_io(
     assert_eq!(response["error"]["code"], "invalid_request");
     assert!(response["project"].is_null());
 
-    duplicate["schema_version"] = json!(9);
+    duplicate["schema_version"] = json!(u32::MAX);
     let (code, response) = f.v3("query", &duplicate);
     assert_eq!(code, 2, "{response}");
     assert_eq!(response["error"]["stage"], "request");

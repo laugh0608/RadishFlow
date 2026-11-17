@@ -146,7 +146,7 @@ pub(super) fn load_stable_query_project(
     )
 }
 
-fn load_project_with_support(
+pub(super) fn load_project_with_support(
     path: &Path,
     supported_project_version: u32,
     plan_support: FlowPlanSupport,
@@ -205,11 +205,11 @@ fn load_project_with_support(
 }
 fn query_file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     let (version, bytes) = read_request(path)?;
-    if !matches!(version, 3..=super::v8::VERSION) {
+    if !matches!(version, 3..=super::v9::VERSION) {
         return Err(Failure::new(
             Stage::Request,
             Code::UnsupportedVersion,
-            "query requires schema_version 3 through 8",
+            "query requires schema_version 3 through 9",
         ));
     }
     response.schema_version = version;
@@ -220,6 +220,7 @@ fn query_file(path: &Path, response: &mut Response) -> Result<(), Failure> {
         6 => super::planned::query_file::<super::v6::Plan>(path, &bytes, response),
         7 => super::planned::query_file::<super::v7::Plan>(path, &bytes, response),
         super::v8::VERSION => super::v8::query_file(path, &bytes, response),
+        super::v9::VERSION => super::v9::query_file(path, &bytes, response),
         _ => unreachable!("validated query version"),
     }
 }

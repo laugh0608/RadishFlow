@@ -1,5 +1,5 @@
 //! Mixed-plan vocabulary is isolated from v1-v6 consumers.
-mod plan;
+pub(super) mod plan;
 mod results;
 use super::{
     planned::{PlanProtocol, domain, invalid, required_capabilities},
