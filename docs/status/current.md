@@ -54,12 +54,12 @@
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
 - [x] QS3／QS4 macOS 取消与重跑通过，QS3 英文窄区焦点可见性复验通过。见 [专题](../topics/modeling/equation-oriented-block.md#接下来事项)。
-- [x] [QS4 首片与 M2](../topics/modeling/mixed-partition-execution.md)内存执行、v4 保存重开和显式重跑已验证。M2 CLI 与 Studio 界面接入另审。
+- [ ] [QS4 M2 CLI v9](../topics/modeling/mixed-partition-execution.md#m2-cli-首片评审)已批准。M2 v4 保存、重开及重跑已验，Studio 界面另审。
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)的设备数据 / 事务 / 保存 / UI / 输出及代表验证完成，流程关联未实现。
 - [ ] 按 [AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23) 捕获异常现场，定因后确认修复并验收；未复现不等于收口。
 - [x] AF2a / b 与 AF3—AF5 已接通批准范围，见[基础切片](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)。
-- [x] AF6、QS0 独立物料任务和 QS1—QS3 有限回流 / 联立模块 / 物料 EO 已接通；QS4 首片已接通，后续混合策略、热 / 相平衡 EO 与动态另审。
+- [x] AF6、QS0 独立物料、QS1—QS3 有限回流 / 联立模块 / 物料 EO、QS4 首片已接通。后续混合策略、热 / 相平衡 EO 与动态另审。
 - [x] Studio R2、V1 动效与 V2 三个流股图层通过 macOS 代表验证。 [UI 计划](../architecture/studio-ui-topic-plan.md)
 - [ ] [V2 气相摩尔分率](../topics/results-review-diagnostics.md#可视化接下来事项)已用六个工况核对流股快照，R0 待评审，当前建议暂缓图层。
 
