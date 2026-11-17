@@ -46,20 +46,21 @@
 
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
 - PR #18 已合入 `master` 并回灌 `dev`（`4772fbba`）。
-- AF3-V10 已补 macOS 切换、关闭和另存交错。「等待中返回」通过受控实窗，11 月 17 日原版两轮正常退出，等待返回仍待同会话补证。见 [AF3 验收记录](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24)。
+- AF3-V10 已补 macOS 切换、关闭和另存交错。「等待中返回」已有受控实窗证据，原版待验。
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
+- [QS4 M2](../topics/modeling/mixed-partition-execution.md)已通过核心、v4 保存、CLI v9 与 Studio 本机代表验收。
 
 ### 下一步
 
+- [ ] 优先补 AF3-V10 原版 macOS「等待中返回」。在同一会话核对返回编辑、草稿保留、旧回执拒收与 worker 回收，随后显式重跑。仍未捕获等待窗口则保持待验。 [AF3 验收记录](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24)
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
 - [x] QS3／QS4 macOS 取消与重跑通过，QS3 英文窄区焦点可见性复验通过。见 [专题](../topics/modeling/equation-oriented-block.md#接下来事项)。
-- [x] [QS4 M2 Studio 首片](../topics/modeling/mixed-partition-execution.md#m2-studio-界面接入评审)接通，自动及 macOS 代表验收通过。
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)的设备数据 / 事务 / 保存 / UI / 输出及代表验证完成，流程关联未实现。
 - [ ] 按 [AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23) 捕获异常现场，定因后确认修复并验收；未复现不等于收口。
 - [x] AF2a / b 与 AF3—AF5 已接通批准范围，见[基础切片](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)。
-- [x] AF6、QS0 独立物料、QS1—QS3 有限回流 / 联立模块 / 物料 EO、QS4 首片已接通。后续混合策略、热 / 相平衡 EO 与动态另审。
+- [x] AF6 与 QS0—QS4 已接通。后续混合策略、热／相平衡 EO 与动态另审。
 - [x] Studio R2、V1 动效与 V2 三个流股图层通过 macOS 代表验证。 [UI 计划](../architecture/studio-ui-topic-plan.md)
 - [ ] [V2 气相摩尔分率](../topics/results-review-diagnostics.md#可视化接下来事项)已用六个工况核对流股快照，R0 待评审，当前建议暂缓图层。
 

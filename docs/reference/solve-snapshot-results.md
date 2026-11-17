@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-11-04
+更新时间：2026-11-17
 
 ## 目的
 
@@ -54,7 +54,9 @@
 
 QS1 记录撕裂 / 迭代与最终复核；QS2 记录响应、耦合、LU / 条件 / 后向误差；QS3 记录变量 / 方程、规格 / 区间轨迹、条件系统与完整 Jacobian、原值 / 求得比例及实际 I/O。部分失败证据不能作为正式流股发布。方法边界分别见 [QS1-C](../topics/modeling/recycle-project-and-consumers.md)、[QS2-C](../topics/modeling/simultaneous-project-and-consumers.md)、[QS3](../topics/modeling/equation-oriented-block.md)。QS0 独立物料任务与设备结果不属于 FlowResultRecord。
 
-[QS4](../topics/modeling/mixed-partition-execution.md) 保留 Local / EO 分块、原身份的跨块边界、实际单元复核和全局衡算证据；全部通过后才形成 MixedFlowSnapshot。失败 / 取消中的已完成块只供诊断，不发布为本次运行的顶层 Current 或部分成功流股；符号布局也不证明实际边界下数值可解。
+QS4 的 M1 和 M2 都使用 `MixedFlowSnapshot`，保留 Local / EO 分块、原身份的跨块边界、实际单元复核和全局分量衡算。M2 另带实际撕裂尺度、候选与独立复核的残差轨迹，以及最后一轮汇端消费的假设值和源端的实际返回值。闭合和全局分量衡算通过后，正式流股取复核轮的实际生产值。 [QS4 验收契约](../topics/modeling/mixed-partition-execution.md#m2首个跨块回流算例与验收)
+
+预算耗尽或复核失败时，当次块进度、试值和已有残差只供失败诊断。取消先受理时拒收迟到载荷，沿用原结果资格。Studio 从 `FlowResultView` 的 Current 显示合格数值，CLI v9 在同一显式运行请求中投影 `execution_kind: mixed_recycle` 及实际物性包来源。重开工程从 Missing 开始。 [M2 CLI 结果投影](../topics/modeling/mixed-partition-execution.md#m2-cli-首片评审)
 
 ## `SolveSnapshot` 的稳定语义
 
