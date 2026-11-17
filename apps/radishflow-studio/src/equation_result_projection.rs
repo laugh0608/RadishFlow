@@ -56,7 +56,7 @@ pub fn structure(s: &StructuralReport) -> Value {
 fn definition_with(d: &EquationDefinition, n: Numbers) -> RfResult<Value> {
     let stored = crate::flow_plan_actions::stored_flow_plan(
         &rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(d.options.clone()),
-    );
+    )?;
     let configuration = if d
         .equations
         .iter()

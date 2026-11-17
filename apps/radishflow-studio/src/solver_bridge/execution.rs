@@ -109,8 +109,11 @@ impl SolveOutcome {
     }
 
     fn mixed_method(&self) -> Option<&'static str> {
-        matches!(self, Self::Executed(FlowExecutionOutcome::Mixed(_)))
-            .then_some(rf_solver::mixed::METHOD)
+        match self {
+            Self::Executed(FlowExecutionOutcome::Mixed(Ok(result))) => Some(result.method),
+            Self::Executed(FlowExecutionOutcome::Mixed(Err(failure))) => Some(failure.method),
+            _ => None,
+        }
     }
 
     fn equation_invoked(&self) -> bool {
@@ -570,17 +573,14 @@ fn complete_with_publication(
         .with_plan_evidence(rf_ui::result_query::ExecutedFlowPlan {
             method: match &completion.plan {
                 FlowPlanConfiguration::Acyclic => "radishflow.acyclic-sm/1",
-                FlowPlanConfiguration::Mixed(_) => rf_solver::mixed::METHOD,
+                FlowPlanConfiguration::Mixed(options) => options.method(),
                 FlowPlanConfiguration::Partitioned(_) => "radishflow.partitioned-sm/1",
                 FlowPlanConfiguration::Simultaneous(_) => "radishflow.fixed-tp-affine-modular-lu/1",
                 FlowPlanConfiguration::EquationOriented(_) => "radishflow.fixed-tp-material-eo/1",
             },
             acceptance_contract_version: 1,
-            configuration_sha256: rf_store::sha256_hex(
-                &serde_json::to_vec(&crate::flow_plan_actions::stored_flow_plan(
-                    &completion.plan,
-                ))
-                .expect("validated frozen plan is serializable"),
+            configuration_sha256: crate::flow_plan_actions::runtime_configuration_sha256(
+                &completion.plan,
             ),
             equation_oriented: matches!(
                 completion.plan,
@@ -592,13 +592,13 @@ fn complete_with_publication(
                 equation_contract_version: rf_solver::equation_oriented::EQUATION_CONTRACT_VERSION,
                 core_backend: completion.outcome.equation_backend(),
             }),
-            mixed: matches!(completion.plan, FlowPlanConfiguration::Mixed(_)).then(|| {
-                rf_ui::result_query::MixedExecutionEvidence {
-                    capability: rf_store::project_v4::MIXED_CAPABILITY,
-                    capability_version: 1,
-                    core_method: completion.outcome.mixed_method(),
-                }
-            }),
+            mixed:
+                matches!(&completion.plan, FlowPlanConfiguration::Mixed(o) if o.recycle.is_none())
+                    .then(|| rf_ui::result_query::MixedExecutionEvidence {
+                        capability: rf_store::project_v4::MIXED_CAPABILITY,
+                        capability_version: 1,
+                        core_method: completion.outcome.mixed_method(),
+                    }),
             modular: matches!(completion.plan, FlowPlanConfiguration::Simultaneous(_)).then(|| {
                 rf_ui::result_query::ModularExecutionEvidence {
                     capability: rf_store::project_v4::SIMULTANEOUS_CAPABILITY,
@@ -768,8 +768,12 @@ fn complete_with_publication(
         }
     }
     let publish_failure_origin = match &completion.outcome {
-        SolveOutcome::CancelledBeforeExecution
-        | SolveOutcome::Executed(FlowExecutionOutcome::Mixed(_)) => false,
+        SolveOutcome::CancelledBeforeExecution => false,
+        SolveOutcome::Executed(FlowExecutionOutcome::Mixed(_)) if matches!(&completion.plan, FlowPlanConfiguration::Mixed(o) if o.recycle.is_none()) =>
+        {
+            // Preserve the existing DAG failure projection.
+            false
+        }
         SolveOutcome::Executed(execution) => execution.status() == FlowExecutionStatus::Failed,
         SolveOutcome::PackageFailed { .. } | SolveOutcome::InfrastructureFailed(_) => true,
         SolveOutcome::PreparationFailed { .. } => publish_preparation_failure,

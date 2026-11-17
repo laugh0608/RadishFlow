@@ -44,6 +44,7 @@ impl PlanMethod {
         };
         match self {
             Self::Mixed => FlowPlanConfiguration::Mixed(rf_solver::mixed::MixedOptions {
+                recycle: None,
                 boundary,
                 blocks: vec![],
             }),

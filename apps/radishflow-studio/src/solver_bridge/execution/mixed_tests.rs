@@ -2,7 +2,7 @@ use super::plan_contract_tests::execute;
 use super::*;
 use crate::{
     qs1_test_support::select,
-    qs4_test_support::{case, explicit},
+    qs4_test_support::{case, explicit, recycle_case},
 };
 use rf_solver::mixed::MixedStage;
 use rf_ui::{FlowResultRecord, result_query::FlowResultView};
@@ -185,4 +185,177 @@ fn mixed_cancel_at_outer_stages_keeps_previous_current_and_diagnostics_separate(
         ));
         assert!(app.workspace.mixed_failure_evidence().is_none());
     }
+}
+
+#[test]
+fn mixed_recycle_accepts_verified_success_once_and_reports_current_numeric_failure() {
+    let mut successful = recycle_case(500);
+    let mut done = execute(&mut successful);
+    assert_eq!(
+        done.execution_outcome(),
+        WorkspaceExecutionOutcome::Succeeded
+    );
+    assert_eq!(
+        complete_workspace_solve(&mut successful, &mut done),
+        FlowRunDisposition::Applied
+    );
+    let FlowResultView::Current {
+        snapshot: FlowResultRecord::Mixed(snapshot),
+        origin,
+    } = successful.workspace.flow_result()
+    else {
+        panic!("verified M2 result must be Current");
+    };
+    assert_eq!(
+        snapshot
+            .result
+            .recycle
+            .as_ref()
+            .unwrap()
+            .residual_trace
+            .len(),
+        14
+    );
+    assert!(crate::mixed_result_projection::result(&snapshot.result).is_err());
+    let origin = origin.execution().unwrap().plan.as_ref().unwrap();
+    assert_eq!(origin.method, rf_solver::mixed::RECYCLE_METHOD);
+    assert!(
+        origin.mixed.is_none(),
+        "the runtime method is independent of a project capability"
+    );
+    let history = successful.workspace.snapshot_history.clone();
+    assert!(matches!(
+        complete_workspace_solve(&mut successful, &mut done),
+        FlowRunDisposition::Discarded(_)
+    ));
+    assert_eq!(successful.workspace.snapshot_history, history);
+
+    let mut failing = recycle_case(1);
+    let mut failed = execute(&mut failing);
+    assert_eq!(
+        failed.execution_outcome(),
+        WorkspaceExecutionOutcome::Failed
+    );
+    assert_eq!(
+        complete_workspace_solve(&mut failing, &mut failed),
+        FlowRunDisposition::Applied
+    );
+    let FlowResultView::Failed { diagnostic, origin } = failing.workspace.flow_result() else {
+        panic!("iteration exhaustion must become Failed for the current task");
+    };
+    assert_eq!(
+        diagnostic.primary_code.as_deref(),
+        Some("solver.mixed.iteration_limit")
+    );
+    assert_ne!(
+        origin
+            .execution()
+            .unwrap()
+            .plan
+            .as_ref()
+            .unwrap()
+            .configuration_sha256,
+        crate::flow_plan_actions::runtime_configuration_sha256(
+            successful.workspace.flow_plan.current()
+        )
+    );
+    assert!(rf_ui::latest_snapshot(&failing.workspace).is_none());
+    assert!(
+        crate::mixed_result_projection::failure(
+            failing.workspace.mixed_failure_evidence().unwrap()
+        )
+        .is_err()
+    );
+    assert_eq!(
+        failing
+            .workspace
+            .mixed_failure_evidence()
+            .unwrap()
+            .recycle
+            .as_ref()
+            .unwrap()
+            .residual_trace
+            .len(),
+        1,
+    );
+}
+
+#[test]
+fn mixed_recycle_rejects_plan_aba_and_a_late_failure_after_reopen() {
+    let mut app = recycle_case(500);
+    let mut prior = execute(&mut app);
+    complete_workspace_solve(&mut app, &mut prior);
+    let mut late = execute(&mut app);
+    let plan = app.workspace.flow_plan.current().clone();
+    select(&mut app, FlowPlanConfiguration::Acyclic);
+    select(&mut app, plan);
+    assert!(matches!(
+        complete_workspace_solve(&mut app, &mut late),
+        FlowRunDisposition::Discarded(_)
+    ));
+    assert!(matches!(
+        app.workspace.flow_result(),
+        FlowResultView::Stale { .. }
+    ));
+
+    let mut failing = recycle_case(1);
+    let mut late = execute(&mut failing);
+    failing.workspace.reset_flow_run_session();
+    assert!(matches!(
+        complete_workspace_solve(&mut failing, &mut late),
+        FlowRunDisposition::Discarded(_)
+    ));
+    assert!(matches!(
+        failing.workspace.flow_result(),
+        FlowResultView::Missing { .. }
+    ));
+    assert!(failing.workspace.mixed_failure_evidence().is_none());
+}
+
+#[test]
+fn dag_and_recycle_payloads_are_distinct_inside_the_mixed_method_family() {
+    let mut dag = case();
+    let mut cyclic = recycle_case(500);
+    let mut left = execute(&mut dag);
+    let mut right = execute(&mut cyclic);
+    assert_eq!(
+        left.execution_outcome(),
+        WorkspaceExecutionOutcome::Succeeded
+    );
+    assert_eq!(
+        right.execution_outcome(),
+        WorkspaceExecutionOutcome::Succeeded
+    );
+    std::mem::swap(&mut left.outcome, &mut right.outcome);
+    for (app, completed) in [(&mut dag, &mut left), (&mut cyclic, &mut right)] {
+        assert_eq!(
+            complete_workspace_solve(app, completed),
+            FlowRunDisposition::Applied
+        );
+        assert_eq!(
+            completed
+                .completion_result()
+                .unwrap_err()
+                .context()
+                .diagnostic_code(),
+            Some("workspace.run.plan_payload_mismatch")
+        );
+        assert!(matches!(
+            app.workspace.flow_result(),
+            FlowResultView::Failed { .. }
+        ));
+        assert!(rf_ui::latest_snapshot(&app.workspace).is_none());
+    }
+}
+
+#[test]
+fn mixed_recycle_cannot_be_projected_as_the_saved_dag() {
+    let app = recycle_case(500);
+    assert_eq!(
+        crate::flow_plan_actions::stored_flow_plan(app.workspace.flow_plan.current())
+            .unwrap_err()
+            .context()
+            .diagnostic_code(),
+        Some("workspace.plan.in_memory_only")
+    );
 }

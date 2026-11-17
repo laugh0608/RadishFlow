@@ -34,8 +34,14 @@ pub fn execute_flow_plan_action(
         context: FlowPlanEditContext::capture(&app.workspace),
     })
 }
-pub fn stored_flow_plan(plan: &FlowPlanConfiguration) -> StoredFlowPlan {
-    match plan {
+pub fn stored_flow_plan(plan: &FlowPlanConfiguration) -> RfResult<StoredFlowPlan> {
+    if matches!(plan, FlowPlanConfiguration::Mixed(o) if o.recycle.is_some()) {
+        return Err(
+            RfError::invalid_input("mixed cross-block recycle is an in-memory plan")
+                .with_diagnostic_code("workspace.plan.in_memory_only"),
+        );
+    }
+    Ok(match plan {
         FlowPlanConfiguration::Acyclic => StoredFlowPlan::Acyclic,
         FlowPlanConfiguration::Mixed(o) => StoredFlowPlan::Mixed(mixed::stored(o)),
         FlowPlanConfiguration::EquationOriented(o) => {
@@ -51,49 +57,67 @@ pub fn stored_flow_plan(plan: &FlowPlanConfiguration) -> StoredFlowPlan {
                     pressure_pa: options.boundary.pressure_pa,
                 },
                 max_iteration_evaluations: options.max_iteration_evaluations,
-                tears: options
-                    .tears
-                    .iter()
-                    .map(|tear| StoredTear {
-                        stream_id: tear.stream_id.clone(),
-                        source: StoredPortBinding {
-                            unit_id: tear.source.unit_id.clone(),
-                            port: tear.source.port_name.clone(),
-                        },
-                        sink: StoredPortBinding {
-                            unit_id: tear.sink.unit_id.clone(),
-                            port: tear.sink.port_name.clone(),
-                        },
-                        initialization: match &tear.initial_component_flows_mol_s {
-                            None => StoredTearInitialization::ZeroComponentFlows,
-                            Some(values) => StoredTearInitialization::ComponentFlows {
-                                values_mol_s: values
-                                    .iter()
-                                    .map(|(id, &value)| StoredComponentValue {
-                                        component_id: id.clone(),
-                                        value,
-                                    })
-                                    .collect(),
-                            },
-                        },
-                        residual_scaling: match &tear.component_scales_mol_s {
-                            None => StoredResidualScaling::EvaluatedFreshTotal,
-                            Some(values) => StoredResidualScaling::ComponentValues {
-                                values_mol_s: values
-                                    .iter()
-                                    .map(|(id, &value)| StoredComponentValue {
-                                        component_id: id.clone(),
-                                        value,
-                                    })
-                                    .collect(),
-                            },
-                        },
-                    })
-                    .collect(),
+                tears: options.tears.iter().map(stored_tear).collect(),
             })
         }
+    })
+}
+
+fn stored_tear(tear: &TearSpecification) -> StoredTear {
+    StoredTear {
+        stream_id: tear.stream_id.clone(),
+        source: StoredPortBinding {
+            unit_id: tear.source.unit_id.clone(),
+            port: tear.source.port_name.clone(),
+        },
+        sink: StoredPortBinding {
+            unit_id: tear.sink.unit_id.clone(),
+            port: tear.sink.port_name.clone(),
+        },
+        initialization: match &tear.initial_component_flows_mol_s {
+            None => StoredTearInitialization::ZeroComponentFlows,
+            Some(values) => StoredTearInitialization::ComponentFlows {
+                values_mol_s: values
+                    .iter()
+                    .map(|(id, &value)| StoredComponentValue {
+                        component_id: id.clone(),
+                        value,
+                    })
+                    .collect(),
+            },
+        },
+        residual_scaling: match &tear.component_scales_mol_s {
+            None => StoredResidualScaling::EvaluatedFreshTotal,
+            Some(values) => StoredResidualScaling::ComponentValues {
+                values_mol_s: values
+                    .iter()
+                    .map(|(id, &value)| StoredComponentValue {
+                        component_id: id.clone(),
+                        value,
+                    })
+                    .collect(),
+            },
+        },
     }
 }
+
+pub(crate) fn runtime_configuration_sha256(plan: &FlowPlanConfiguration) -> String {
+    let bytes = match plan {
+        FlowPlanConfiguration::Mixed(options) if let Some(recycle) = &options.recycle => {
+            // An execution fingerprint, independent of the project format.
+            serde_json::to_vec(&(
+                options.method(),
+                mixed::stored(options),
+                stored_tear(&recycle.tear),
+                recycle.max_iteration_evaluations,
+            ))
+        }
+        _ => serde_json::to_vec(&stored_flow_plan(plan).expect("persistable plan")),
+    }
+    .expect("validated frozen plan is serializable");
+    rf_store::sha256_hex(&bytes)
+}
+
 pub fn flow_plan_configuration(plan: StoredFlowPlan) -> RfResult<FlowPlanConfiguration> {
     plan.validate()?;
     let value = match plan {

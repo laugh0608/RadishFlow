@@ -63,6 +63,7 @@ pub(super) fn configuration(p: StoredMixedPlan) -> RfResult<MixedOptions> {
         });
     }
     let o = MixedOptions {
+        recycle: None,
         boundary: FixedRecycleBoundary {
             temperature_k: p.fixed_boundary.temperature_k,
             pressure_pa: p.fixed_boundary.pressure_pa,

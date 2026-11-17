@@ -50,7 +50,7 @@ pub(super) fn query_file<P: PlanProtocol>(
     let executions = Executions::default();
     queries::<P>(&opened, &request.queries, &refs, &executions, response);
     if let StudioProjectOpen::Editable(app) = &opened {
-        required_version::<P>(app, response);
+        required_version::<P>(app, response)?;
     }
     Ok(())
 }
@@ -161,7 +161,7 @@ pub(super) fn execute_file<P: PlanProtocol>(
                         .collect();
                     let mut review = json!({"steps":prefix,"flow_plan":P::wire(app.workspace.flow_plan.current())?,"in_memory_required_project_schema_version":crate::project_save_version(app)});
                     if P::VERSION >= 5 {
-                        review["in_memory_required_capabilities"] = required_capabilities(app);
+                        review["in_memory_required_capabilities"] = required_capabilities(app)?;
                     }
                     old::execute::step_action_review(
                         app,
@@ -178,7 +178,7 @@ pub(super) fn execute_file<P: PlanProtocol>(
             }
         },
     );
-    required_version::<P>(&app, response);
+    required_version::<P>(&app, response)?;
     queries::<P>(
         &StudioProjectOpen::Editable(app),
         &request.queries,
@@ -188,13 +188,17 @@ pub(super) fn execute_file<P: PlanProtocol>(
     );
     Ok(())
 }
-fn required_version<P: PlanProtocol>(app: &AppState, response: &mut Response) {
+fn required_version<P: PlanProtocol>(
+    app: &AppState,
+    response: &mut Response,
+) -> Result<(), Failure> {
     if let Some(project) = &mut response.project {
         project.in_memory_required_project_schema_version = Some(crate::project_save_version(app));
         if P::VERSION >= 5 {
-            project.in_memory_required_capabilities = Some(required_capabilities(app));
+            project.in_memory_required_capabilities = Some(required_capabilities(app)?);
         }
     }
+    Ok(())
 }
 fn no_confirmation<P>(step: &Step<P>) -> Result<(), Failure> {
     if step.confirmation.is_some() {
@@ -446,9 +450,11 @@ pub(super) trait PlanProtocol:
     fn query(app: &AppState) -> Result<Value, Failure>;
     fn flow(app: &AppState, executions: &Executions) -> Result<Value, Failure>;
 }
-pub(super) fn required_capabilities(app: &AppState) -> Value {
+pub(super) fn required_capabilities(app: &AppState) -> Result<Value, Failure> {
     if crate::project_save_version(app) < 4 {
-        return json!([]);
+        return Ok(json!([]));
     }
-    json!(crate::document_lifecycle_driver::flow_plan::required_capabilities(app))
+    crate::document_lifecycle_driver::flow_plan::required_capabilities(app)
+        .map(|caps| json!(caps))
+        .map_err(domain)
 }

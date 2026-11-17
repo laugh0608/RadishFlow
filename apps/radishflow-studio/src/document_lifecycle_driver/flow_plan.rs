@@ -86,10 +86,10 @@ pub(super) fn parse_v4(
         }
     }
 }
-pub(super) fn project(app: &AppState) -> ProjectV4Read {
+pub(super) fn project(app: &AppState) -> RfResult<ProjectV4Read> {
     let file = stored_project_file_from_app_state(app);
     let saved = app.workspace.engineering.capture_save();
-    ProjectV4Read::Editable(Box::new(StoredProjectV4 {
+    Ok(ProjectV4Read::Editable(Box::new(StoredProjectV4 {
         document: file.document,
         display_units: file.presentation.display_units,
         engineering: saved
@@ -98,21 +98,21 @@ pub(super) fn project(app: &AppState) -> ProjectV4Read {
                 basis: saved.inputs().basis.clone(),
                 tasks: saved.inputs().tasks.clone(),
             }),
-        steady_state_plan: stored_flow_plan(app.workspace.flow_plan.current()),
+        steady_state_plan: stored_flow_plan(app.workspace.flow_plan.current())?,
         object_identities: app.workspace.current_object_identities(),
         variable_watch_list: app
             .workspace
             .variable_watch_list
             .entries_for_save()
             .map(<[String]>::to_vec),
-    }))
+    })))
 }
 pub(super) fn compatibility(
     app: &AppState,
     path: &Path,
 ) -> RfResult<Option<ProjectSaveCompatibility>> {
     let prepared =
-        project_v4::prepare_write(path, &project(app), rf_store::FileOverwritePolicy::Allow)?;
+        project_v4::prepare_write(path, &project(app)?, rf_store::FileOverwritePolicy::Allow)?;
     let source = app.workspace.project_presentation.source_file_version();
     if source != Some(4) {
         return Ok(Some(ProjectSaveCompatibility::Format {
@@ -120,7 +120,7 @@ pub(super) fn compatibility(
             includes_rating: app.workspace.engineering.inputs().has_rating(),
         }));
     }
-    let new_capabilities = added_source_capabilities(app);
+    let new_capabilities = added_source_capabilities(app)?;
     let replaces_target_object_identities = app.workspace.document_path.as_deref() != Some(path)
         && prepared.replaces_target_object_identities();
     let replaces_target_variable_watch_list = app.workspace.document_path.as_deref() != Some(path)
@@ -137,7 +137,7 @@ pub(super) fn compatibility(
         // Capture the full required set as well as the source delta: a later
         // change to the method cannot reuse an earlier capability review.
         return Ok(Some(ProjectSaveCompatibility::FlowCapabilities {
-            required: required_capabilities(app),
+            required: required_capabilities(app)?,
             added_from_source: new_capabilities,
             replaces_target_object_identities,
             replaces_target_variable_watch_list,
@@ -154,24 +154,28 @@ pub(super) fn compatibility(
     Ok(None)
 }
 
-pub(crate) fn required_capabilities(app: &AppState) -> Vec<project_v4::RequiredCapability> {
-    let ProjectV4Read::Editable(p) = project(app) else {
+pub(crate) fn required_capabilities(
+    app: &AppState,
+) -> RfResult<Vec<project_v4::RequiredCapability>> {
+    let ProjectV4Read::Editable(p) = project(app)? else {
         unreachable!("application input is editable")
     };
-    project_v4::required_capabilities(&p)
+    Ok(project_v4::required_capabilities(&p))
 }
 
-pub(super) fn added_source_capabilities(app: &AppState) -> Vec<project_v4::RequiredCapability> {
-    required_capabilities(app)
+pub(super) fn added_source_capabilities(
+    app: &AppState,
+) -> RfResult<Vec<project_v4::RequiredCapability>> {
+    Ok(required_capabilities(app)?
         .into_iter()
         .filter(|c| app.workspace.flow_plan.saved_capabilities().get(&c.id) != Some(&c.version))
-        .collect()
+        .collect())
 }
 pub(super) fn save(app: &AppState, path: &Path, upgrade_confirmed: bool) -> RfResult<()> {
     let prepared =
-        project_v4::prepare_write(path, &project(app), rf_store::FileOverwritePolicy::Allow)?;
+        project_v4::prepare_write(path, &project(app)?, rf_store::FileOverwritePolicy::Allow)?;
     if (app.workspace.project_presentation.source_file_version() != Some(4)
-        || !added_source_capabilities(app).is_empty()
+        || !added_source_capabilities(app)?.is_empty()
         || (app.workspace.document_path.as_deref() != Some(path)
             && prepared.replaces_target_variable_watch_list()))
         && !upgrade_confirmed

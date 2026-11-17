@@ -218,7 +218,8 @@ pub fn project_save_requires_upgrade(app: &AppState) -> bool {
     source == Some(1)
         || (target >= 3 && source != Some(target))
         || app.workspace.engineering.rating_capability_is_new()
-        || (target == 4 && !flow_plan::added_source_capabilities(app).is_empty())
+        || (target == 4
+            && flow_plan::added_source_capabilities(app).map_or(true, |v| !v.is_empty()))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -360,7 +361,9 @@ pub fn dispatch_document_lifecycle(
     let version = project_save_version(app_state);
     let engineering = app_state.workspace.engineering.capture_save();
     let project_file = stored_project_file_from_app_state(app_state);
-    let flow_capabilities = (version == 4).then(|| flow_plan::required_capabilities(app_state));
+    let flow_capabilities = (version == 4)
+        .then(|| flow_plan::required_capabilities(app_state))
+        .transpose()?;
     if version == 4 {
         flow_plan::save(app_state, &path, upgrade_confirmed)?;
     } else if version == 3 {

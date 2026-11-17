@@ -104,6 +104,6 @@ pub(super) fn query(app: &AppState) -> Result<Value, Failure> {
         None
     };
     Ok(
-        json!({"plan_revision":w.flow_plan.revision(),"configuration":wire(w.flow_plan.current())?,"ready":ready.is_ok(),"not_ready":ready.err().map(|e|json!({"code":e.context().diagnostic_code(),"message":e.to_string()})),"simulation_dirty":w.flow_plan.is_dirty(),"methods":["radishflow.acyclic-sm/1","radishflow.partitioned-sm/1","radishflow.fixed-tp-affine-modular-lu/1"],"in_memory_required_project_schema_version":crate::project_save_version(app),"in_memory_required_capabilities":required_capabilities(app),"coupling_preview":preview}),
+        json!({"plan_revision":w.flow_plan.revision(),"configuration":wire(w.flow_plan.current())?,"ready":ready.is_ok(),"not_ready":ready.err().map(|e|json!({"code":e.context().diagnostic_code(),"message":e.to_string()})),"simulation_dirty":w.flow_plan.is_dirty(),"methods":["radishflow.acyclic-sm/1","radishflow.partitioned-sm/1","radishflow.fixed-tp-affine-modular-lu/1"],"in_memory_required_project_schema_version":crate::project_save_version(app),"in_memory_required_capabilities":required_capabilities(app)?,"coupling_preview":preview}),
     )
 }

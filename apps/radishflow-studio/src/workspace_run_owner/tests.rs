@@ -1079,4 +1079,5 @@ fn current_cache_preparation_failure_is_published_and_clears_its_pending_attempt
 mod partitioned;
 
 mod equation_oriented;
+mod mixed_recycle;
 mod simultaneous;

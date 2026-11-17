@@ -64,7 +64,7 @@ pub fn prepare_object_identity_initialization(
     }
     let workspace = &app.workspace;
     let allocated = workspace.prepare_object_identities()?;
-    let ProjectV4Read::Editable(mut project) = flow_plan::project(app) else {
+    let ProjectV4Read::Editable(mut project) = flow_plan::project(app)? else {
         unreachable!("the active workspace is editable")
     };
     project.object_identities = Some(WorkspaceState::project_object_identities(

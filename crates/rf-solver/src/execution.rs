@@ -117,6 +117,13 @@ impl FlowExecutionOutcome {
     }
 
     pub fn matches_plan(&self, plan: &FlowPlanConfiguration) -> bool {
+        if let (Self::Mixed(outcome), FlowPlanConfiguration::Mixed(options)) = (self, plan) {
+            let method = match outcome {
+                Ok(result) => result.method,
+                Err(failure) => failure.method,
+            };
+            return method == options.method();
+        }
         matches!(
             (self, plan),
             (Self::Acyclic(_), FlowPlanConfiguration::Acyclic)
@@ -129,7 +136,6 @@ impl FlowExecutionOutcome {
                     Self::EquationOriented(_),
                     FlowPlanConfiguration::EquationOriented(_)
                 )
-                | (Self::Mixed(_), FlowPlanConfiguration::Mixed(_))
         )
     }
 }
