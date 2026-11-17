@@ -46,7 +46,7 @@
 
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
 - PR #18 已合入 `master` 并回灌 `dev`（`4772fbba`）。
-- AF3-V10 已补 macOS 切换、关闭和另存交错。「等待中返回」通过受控实窗，原版待验。见 [W46](../devlogs/2026-11/2026-W46.md)。
+- AF3-V10 已补 macOS 切换、关闭和另存交错。「等待中返回」通过受控实窗，11 月 17 日原版两轮正常退出，等待返回仍待同会话补证。见 [AF3 验收记录](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24)。
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
 
 ### 下一步
