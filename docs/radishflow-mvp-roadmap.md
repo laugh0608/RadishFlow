@@ -1,6 +1,6 @@
 # RadishFlow 开发路线图
 
-更新时间：2026-11-16
+更新时间：2026-11-17
 
 ## 用途
 
@@ -146,7 +146,7 @@ U3 首批已接入项目显示单位。A1 / A2 与设备模型可按各自切片
 
 ### 颜色与流程可视化的配套切片
 
-V0 已接通首批数值字段。Studio 已接入 V1 和 V2 的摩尔流量、流股温度、流股绝对压力。V2 气相摩尔分率进入局部评审准备，V3／V4 按几何和时序结果能力推进。U2→U3→规格／推荐→首个可信设备任务的主线保持。 [V0 追踪](topics/color-state/requirements-traceability.md) · [可视化接下来事项](topics/results-review-diagnostics.md#可视化接下来事项)
+V0 已接通首批数值字段。Studio 已接入 V1 和 V2 的摩尔流量、流股温度、流股绝对压力。V2 气相摩尔分率 R0 已有流股快照证据，接入范围待评审。V3／V4 按几何和时序结果能力推进。U2→U3→规格／推荐→首个可信设备任务的主线保持。 [V0 追踪](topics/color-state/requirements-traceability.md) · [可视化接下来事项](topics/results-review-diagnostics.md#可视化接下来事项)
 
 | 切片 | 进入时机 | 真相源与退出依据 |
 | --- | --- | --- |

@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-11-16
+更新时间：2026-11-17
 
 ## 用途
 
@@ -42,7 +42,7 @@
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
 
 
-### 最近进展（截至 2026-11-16）
+### 最近进展（截至 2026-11-17）
 
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
 - PR #18 已合入 `master` 并回灌 `dev`（`4772fbba`）。
@@ -61,7 +61,7 @@
 - [x] AF2a / b 与 AF3—AF5 已接通批准范围，见[基础切片](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)。
 - [x] AF6、QS0 独立物料任务和 QS1—QS3 有限回流 / 联立模块 / 物料 EO 已接通；QS4 首片已接通，后续混合策略、热 / 相平衡 EO 与动态另审。
 - [x] Studio R2、V1 动效与 V2 三个流股图层通过 macOS 代表验证。 [UI 计划](../architecture/studio-ui-topic-plan.md)
-- [ ] 先核对相结果口径，再评审 [V2 气相摩尔分率](../topics/results-review-diagnostics.md#可视化接下来事项)。
+- [ ] [V2 气相摩尔分率](../topics/results-review-diagnostics.md#可视化接下来事项)已用六个工况核对流股快照，R0 待评审，当前建议暂缓图层。
 
 ### 相关规划
 
