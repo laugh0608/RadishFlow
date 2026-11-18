@@ -183,3 +183,40 @@ fn v4_save_as_checks_source_capabilities_and_keeps_all_baselines_on_failure() {
         4
     );
 }
+
+#[test]
+fn core_composition_specs_and_scales_cannot_be_applied_or_saved_as_v1_flow_targets() {
+    use rf_solver::equation_oriented::{
+        EquationBinding, ExplicitEquationScales, ProductMoleFractionTarget, ProductTarget,
+    };
+    let mut o = crate::qs3_test_support::options(true);
+    let source = o.target.as_ref().unwrap().source().clone();
+    let component = rf_types::ComponentId::new("methane");
+    o.target = Some(ProductTarget::MoleFraction(Box::new(
+        ProductMoleFractionTarget {
+            source: source.clone(),
+            component: component.clone(),
+            value_mol_mol: 0.35,
+        },
+    )));
+    let mut scales_only = crate::qs3_test_support::options(false);
+    scales_only.scales = Some(ExplicitEquationScales {
+        variables: Default::default(),
+        equations: [(
+            EquationBinding::ProductMoleFraction { source, component },
+            5.0,
+        )]
+        .into(),
+    });
+    for options in [o, scales_only] {
+        let plan = FlowPlanConfiguration::EquationOriented(options);
+        let workspace = rf_ui::flow_plan::validate_workspace_plan(&plan).unwrap_err();
+        let storage = crate::flow_plan_actions::stored_flow_plan(&plan).unwrap_err();
+        for error in [workspace, storage] {
+            assert_eq!(
+                error.context().diagnostic_code(),
+                Some("workspace.plan.in_memory_only")
+            );
+        }
+    }
+}

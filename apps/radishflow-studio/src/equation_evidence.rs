@@ -71,7 +71,7 @@ fn evidence(p: &mut Projection<'_>, e: &EquationEvidence) {
             s.interval.1
         ));
     }
-    if let Some(t) = &e.verified_target {
+    if let Some(VerifiedTarget::TotalMolarFlow(t)) = &e.verified_target {
         let target = p.flow(t.target.source.stream.as_str(), t.target.value_mol_s);
         let actual = p.flow(t.target.source.stream.as_str(), t.actual_mol_s);
         let residual = p.flow(t.target.source.stream.as_str(), t.residual_mol_s);

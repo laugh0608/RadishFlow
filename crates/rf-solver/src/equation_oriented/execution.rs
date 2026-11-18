@@ -130,11 +130,18 @@ pub(super) fn solve_scoped(
         .entry(run.progress.stage)
         .or_default() += run.stage_started.elapsed();
     run.costs.elapsed = start.elapsed();
+    let (equation_contract_version, acceptance_contract_version) = match options.target {
+        Some(ProductTarget::MoleFraction(_)) => (
+            PRODUCT_COMPOSITION_CONTRACT_VERSION,
+            PRODUCT_COMPOSITION_CONTRACT_VERSION,
+        ),
+        _ => (EQUATION_CONTRACT_VERSION, ACCEPTANCE_CONTRACT_VERSION),
+    };
     match result {
         Ok(streams) => Ok(EquationResult {
             backend: backend.expect("executed backend"),
-            equation_contract_version: EQUATION_CONTRACT_VERSION,
-            acceptance_contract_version: ACCEPTANCE_CONTRACT_VERSION,
+            equation_contract_version,
+            acceptance_contract_version,
             streams,
             evidence: run.evidence,
             costs: run.costs,
@@ -148,6 +155,10 @@ pub(super) fn solve_scoped(
             costs: run.costs,
         })),
     }
+}
+struct TargetCheck {
+    sign_residual: f64,
+    converged: bool,
 }
 impl Execution<'_> {
     pub(super) fn at(&mut self, stage: EquationStage, iteration: Option<usize>) -> EoResult<()> {
@@ -200,7 +211,7 @@ impl Execution<'_> {
                 .map(|v| v.0);
         };
         let (mut lower, mut upper) = (released.lower, released.upper);
-        let (lo_values, mut lo_residual) = self.conditional(
+        let (lo_values, lo_residual) = self.conditional(
             p,
             Some(lower),
             Some((lower, upper)),
@@ -214,13 +225,17 @@ impl Execution<'_> {
             EquationStage::BracketEndpoint,
             1,
         )?;
-        if target_converged(p, lo_residual) {
+        let mut lo_residual = lo_residual.expect("inverse target");
+        let hi_residual = hi_residual.expect("inverse target");
+        if lo_residual.converged {
             return Ok(lo_values);
         }
-        if target_converged(p, hi_residual) {
+        if hi_residual.converged {
             return Ok(hi_values);
         }
-        if lo_residual.is_sign_positive() == hi_residual.is_sign_positive() {
+        if lo_residual.sign_residual.is_sign_positive()
+            == hi_residual.sign_residual.is_sign_positive()
+        {
             return Err(error(
                 EquationFailureKind::TargetNotBracketed,
                 "target_not_bracketed",
@@ -243,10 +258,13 @@ impl Execution<'_> {
                 EquationStage::IntervalEvaluation,
                 iteration,
             )?;
-            if upper - lower <= FRACTION_INTERVAL_TOLERANCE && target_converged(p, residual) {
+            let residual = residual.expect("inverse target");
+            if upper - lower <= FRACTION_INTERVAL_TOLERANCE && residual.converged {
                 return Ok(values);
             }
-            if residual.is_sign_positive() == lo_residual.is_sign_positive() {
+            if residual.sign_residual.is_sign_positive()
+                == lo_residual.sign_residual.is_sign_positive()
+            {
                 lower = midpoint;
                 lo_residual = residual;
             } else {
@@ -267,7 +285,7 @@ impl Execution<'_> {
         interval: Option<(f64, f64)>,
         stage: EquationStage,
         iteration: usize,
-    ) -> EoResult<(Vec<f64>, f64)> {
+    ) -> EoResult<(Vec<f64>, Option<TargetCheck>)> {
         self.at(stage, Some(iteration))?;
         self.costs.conditional_linear_evaluations += 1;
         let slot = self.evidence.conditional_evaluations.len();
@@ -278,6 +296,7 @@ impl Execution<'_> {
                 interval,
                 linear: None,
                 target_residual_mol_s: None,
+                composition: None,
                 completed: false,
             });
         let mut base = vec![0.0; p.variables.len()];
@@ -298,7 +317,7 @@ impl Execution<'_> {
             .equations
             .iter()
             .enumerate()
-            .filter_map(|(i, e)| (!matches!(e, EquationBinding::ProductTotal { .. })).then_some(i))
+            .filter_map(|(i, e)| (!e.is_product_target()).then_some(i))
             .collect();
         let e = p.evaluate(&base)?;
         let matrix: Vec<Vec<_>> = rows
@@ -326,37 +345,51 @@ impl Execution<'_> {
         for &i in &rows {
             require_residual(e.residuals_mol_s[i], p.residual_scales[i])?;
         }
-        let target = p
+        let sample = &mut self.evidence.conditional_evaluations[slot];
+        let target = if let Some(i) = p
             .equations
             .iter()
-            .position(|e| matches!(e, EquationBinding::ProductTotal { .. }))
-            .map(|i| e.residuals_mol_s[i]);
-        if target.is_some() {
+            .position(EquationBinding::is_product_target)
+        {
             self.costs.target_evaluations += 1;
-        }
-        let sample = &mut self.evidence.conditional_evaluations[slot];
-        sample.target_residual_mol_s = target;
+            let residual = e.residuals_mol_s[i];
+            sample.target_residual_mol_s = Some(residual);
+            if let AssembledEquation::ProductMoleFraction {
+                components,
+                selected,
+                target,
+            } = &p.rows[i]
+            {
+                let total: f64 = components.iter().map(|&j| base[j]).sum();
+                let component = base[*selected];
+                sample.composition = Some(ProductCompositionEvaluation::measure(
+                    total,
+                    component,
+                    component / total,
+                    *target,
+                )?);
+            }
+            Some(TargetCheck {
+                sign_residual: sample.composition.map_or(residual, |v| v.residual_mol_mol),
+                converged: material_residual_accepted(residual, p.residual_scales[i])
+                    && sample.composition.is_none_or(|v| v.accepted()),
+            })
+        } else {
+            None
+        };
         sample.completed = true;
         self.at(stage, Some(iteration))?;
-        Ok((base, target.unwrap_or(0.0)))
+        Ok((base, target))
     }
 }
-fn target_converged(p: &EquationProblem, residual: f64) -> bool {
-    let i = p
-        .equations
-        .iter()
-        .position(|e| matches!(e, EquationBinding::ProductTotal { .. }))
-        .expect("paired target");
-    residual.is_finite()
-        && residual.abs() <= ABSOLUTE_TOLERANCE_MOL_S
-        && (residual / p.residual_scales[i]).abs() <= SCALED_TOLERANCE
-}
-pub(super) fn require_residual(value: f64, scale: f64) -> EoResult<()> {
-    if !(value.is_finite()
+fn material_residual_accepted(value: f64, scale: f64) -> bool {
+    value.is_finite()
         && scale.is_finite()
         && (value / scale).abs() <= SCALED_TOLERANCE
-        && value.abs() <= ABSOLUTE_TOLERANCE_MOL_S)
-    {
+        && value.abs() <= ABSOLUTE_TOLERANCE_MOL_S
+}
+pub(super) fn require_residual(value: f64, scale: f64) -> EoResult<()> {
+    if !material_residual_accepted(value, scale) {
         Err(error(
             EquationFailureKind::LocalVerification,
             "residual",

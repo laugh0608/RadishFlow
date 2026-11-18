@@ -7,6 +7,30 @@ pub use rf_solver::flow_plan::FlowPlanConfiguration;
 use rf_types::{RfError, RfResult};
 use std::{collections::BTreeMap, sync::Arc};
 
+/// Studio plans can only select specifications supported by its project and result contracts.
+pub fn validate_workspace_plan(plan: &FlowPlanConfiguration) -> RfResult<()> {
+    use rf_solver::equation_oriented::{EquationBinding, ExplicitEquationScales, ProductTarget};
+    let composition_scale = |s: &ExplicitEquationScales| {
+        s.equations
+            .keys()
+            .any(|e| matches!(e, EquationBinding::ProductMoleFraction { .. }))
+    };
+    let core_only = match plan {
+        FlowPlanConfiguration::EquationOriented(o) => matches!(o.target, Some(ProductTarget::MoleFraction(_)))
+            || o.scales.as_ref().is_some_and(composition_scale),
+        FlowPlanConfiguration::Mixed(o) => o.blocks.iter().any(|b|
+            matches!(&b.method, rf_solver::mixed::MixedBlockMethod::EquationOriented {scales: Some(s)} if composition_scale(s))),
+        _ => false,
+    };
+    if core_only {
+        return Err(RfError::invalid_input(
+            "the workspace does not support product mole fraction specifications",
+        )
+        .with_diagnostic_code("workspace.plan.in_memory_only"));
+    }
+    plan.validate_configuration()
+}
+
 #[derive(Debug, Clone)]
 pub struct FlowPlanGeneration(Arc<()>);
 impl FlowPlanGeneration {
@@ -197,7 +221,7 @@ impl WorkspaceState {
         if let FlowPlanConfiguration::Mixed(o) = &mut next {
             *o = o.canonicalized();
         }
-        next.validate_configuration()?;
+        validate_workspace_plan(&next)?;
         if next == self.flow_plan.current {
             return Ok(false);
         }

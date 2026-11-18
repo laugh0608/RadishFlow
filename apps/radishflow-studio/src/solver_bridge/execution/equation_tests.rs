@@ -166,7 +166,12 @@ fn equation_structure_and_adoption_guards_reject_plan_aba_busy_readonly_and_draf
 fn equation_failure_evidence_and_late_completion_never_publish_values() {
     let mut app = case(true);
     let mut o = options(true);
-    o.target.as_mut().unwrap().value_mol_s = 3.0;
+    o.target
+        .as_mut()
+        .unwrap()
+        .total_flow_mut()
+        .unwrap()
+        .value_mol_s = 3.0;
     select(&mut app, FlowPlanConfiguration::EquationOriented(o));
     let mut done = execute(&mut app);
     assert_eq!(done.execution_outcome(), WorkspaceExecutionOutcome::Failed);

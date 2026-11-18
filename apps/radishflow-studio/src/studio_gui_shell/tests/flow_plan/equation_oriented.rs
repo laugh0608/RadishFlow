@@ -17,14 +17,14 @@ fn options(inverse: bool) -> EquationOptions {
             upper: 0.95,
             max_iterations: 64,
         });
-        o.target = Some(ProductTotalTarget {
+        o.target = Some(ProductTarget::TotalMolarFlow(ProductTotalTarget {
             source: PortBinding {
                 unit: "splitter-1".into(),
                 port: MaterialPort::OutletB,
                 stream: "s-pa".into(),
             },
             value_mol_s: 1.5,
-        });
+        }));
     }
     o
 }
@@ -109,7 +109,7 @@ fn narrow_plan_key(key: egui::Key, pressed: bool, modifiers: egui::Modifiers) ->
 #[test]
 fn equation_gui_invalid_enter_refocuses_submitted_field_and_preserves_drafts() {
     let spec = options(true);
-    let target = FlowPlanNumericField::ProductTarget(spec.target.unwrap().source);
+    let target = FlowPlanNumericField::ProductTarget(spec.target.unwrap().source().clone());
     let budget = FlowPlanNumericField::BisectionBudget(spec.released.unwrap().binding);
     for (field, target_raw, budget_raw, submitted_raw) in [
         ("product target", "1e-", "63", "1e-"),
@@ -209,7 +209,7 @@ fn equation_gui_first_numeric_edit_keeps_focus_and_corrected_enter_applies() {
     let plan = &app.platform_host.modeling_inputs().workspace.flow_plan;
     assert!(plan.draft().is_none());
     assert!(
-        matches!(plan.current(), FlowPlanConfiguration::EquationOriented(options) if options.target.as_ref().unwrap().value_mol_s == 1.6)
+        matches!(plan.current(), FlowPlanConfiguration::EquationOriented(options) if options.target.as_ref().and_then(ProductTarget::total_flow).unwrap().value_mol_s == 1.6)
     );
     assert_ne!(ctx.memory(|memory| memory.focused()), Some(focused));
 }
@@ -262,7 +262,7 @@ fn equation_gui_narrow_plan_scrolls_keyboard_focus_into_view() {
     let mut draft = FlowPlanDraft::new(workspace, workspace.flow_plan.current().clone());
     draft
         .edit_number(
-            FlowPlanNumericField::ProductTarget(options(true).target.unwrap().source),
+            FlowPlanNumericField::ProductTarget(options(true).target.unwrap().source().clone()),
             1.5,
             MeasurementUnit::MolePerSecond,
         )
@@ -372,7 +372,7 @@ fn equation_gui_narrow_plan_scrolls_keyboard_focus_into_view() {
         )],
     );
     assert!(
-        matches!(app.platform_host.modeling_inputs().workspace.flow_plan.current(), FlowPlanConfiguration::EquationOriented(options) if options.target.as_ref().unwrap().value_mol_s == 1.6)
+        matches!(app.platform_host.modeling_inputs().workspace.flow_plan.current(), FlowPlanConfiguration::EquationOriented(options) if options.target.as_ref().and_then(ProductTarget::total_flow).unwrap().value_mol_s == 1.6)
     );
 }
 
@@ -461,7 +461,7 @@ fn equation_gui_narrow_bilingual_numeric_draft_blocks_run_and_adoption() {
     let w = &app.platform_host.modeling_inputs().workspace;
     let revision = w.document.revision;
     let mut draft = FlowPlanDraft::new(w, w.flow_plan.current().clone());
-    let binding = options(true).target.unwrap().source;
+    let binding = options(true).target.unwrap().source().clone();
     draft
         .edit_number(
             FlowPlanNumericField::ProductTarget(binding.clone()),
@@ -531,7 +531,12 @@ fn equation_gui_incomplete_structure_and_failed_bracket_never_show_current_value
     app.dispatch_ui_command("run_panel.run_manual");
     assert!(!app.background_busy());
     let mut o = options(true);
-    o.target.as_mut().unwrap().value_mol_s = 3.0;
+    o.target
+        .as_mut()
+        .unwrap()
+        .total_flow_mut()
+        .unwrap()
+        .value_mol_s = 3.0;
     configure(&mut app, o);
     app.dispatch_ui_command("run_panel.run_manual");
     drain(&mut app, &ctx);

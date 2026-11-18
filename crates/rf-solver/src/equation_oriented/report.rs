@@ -58,6 +58,7 @@ pub struct ConditionalLinearEvaluation {
     pub interval: Option<(f64, f64)>,
     pub linear: Option<LinearEvidence>,
     pub target_residual_mol_s: Option<f64>,
+    pub composition: Option<ProductCompositionEvaluation>,
     pub completed: bool,
 }
 #[derive(Debug, Clone, PartialEq)]
@@ -68,9 +69,57 @@ pub struct SolvedSplitFraction {
     pub interval: (f64, f64),
 }
 #[derive(Debug, Clone, PartialEq)]
-pub struct VerifiedTarget {
+pub enum VerifiedTarget {
+    TotalMolarFlow(VerifiedTotalTarget),
+    MoleFraction(VerifiedCompositionTarget),
+}
+#[derive(Debug, Clone, PartialEq)]
+pub struct VerifiedTotalTarget {
     pub target: ProductTotalTarget,
     pub actual_mol_s: f64,
+    pub residual_mol_s: f64,
+    pub scaled_residual: f64,
+}
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ProductCompositionEvaluation {
+    pub total_mol_s: f64,
+    pub component_mol_s: f64,
+    pub actual_mol_mol: f64,
+    pub residual_mol_mol: f64,
+}
+impl ProductCompositionEvaluation {
+    pub(super) fn measure(total: f64, component: f64, actual: f64, target: f64) -> EoResult<Self> {
+        if !total.is_finite() || total <= 0.0 {
+            return Err(error(
+                EquationFailureKind::UndefinedComposition,
+                "product_flow",
+                format!(
+                    "product composition requires positive finite total flow, got {total} mol/s"
+                ),
+            ));
+        }
+        if !actual.is_finite() {
+            return Err(error(
+                EquationFailureKind::NonFinite,
+                "product_fraction",
+                "nonfinite product mole fraction",
+            ));
+        }
+        Ok(Self {
+            total_mol_s: total,
+            component_mol_s: component,
+            actual_mol_mol: actual,
+            residual_mol_mol: actual - target,
+        })
+    }
+    pub(super) fn accepted(&self) -> bool {
+        self.residual_mol_mol.abs() <= COMPOSITION_TOLERANCE_MOL_MOL
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub struct VerifiedCompositionTarget {
+    pub target: ProductMoleFractionTarget,
+    pub composition: ProductCompositionEvaluation,
     pub residual_mol_s: f64,
     pub scaled_residual: f64,
 }

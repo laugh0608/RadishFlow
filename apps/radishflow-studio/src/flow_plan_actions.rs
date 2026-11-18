@@ -48,7 +48,7 @@ pub(crate) fn stored_flow_plan_with_support(
         if support == FlowPlanSupport::MixedRecycle {
             return Ok(StoredFlowPlan::MixedRecycle(Box::new(
                 StoredMixedRecyclePlan {
-                    mixed: mixed::stored(options),
+                    mixed: mixed::stored(options)?,
                     max_iteration_evaluations: recycle.max_iteration_evaluations,
                     tear: stored_tear(&recycle.tear),
                 },
@@ -61,9 +61,9 @@ pub(crate) fn stored_flow_plan_with_support(
     }
     Ok(match plan {
         FlowPlanConfiguration::Acyclic => StoredFlowPlan::Acyclic,
-        FlowPlanConfiguration::Mixed(o) => StoredFlowPlan::Mixed(mixed::stored(o)),
+        FlowPlanConfiguration::Mixed(o) => StoredFlowPlan::Mixed(mixed::stored(o)?),
         FlowPlanConfiguration::EquationOriented(o) => {
-            StoredFlowPlan::EquationOriented(equation_oriented::stored(o))
+            StoredFlowPlan::EquationOriented(equation_oriented::stored(o)?)
         }
         FlowPlanConfiguration::Simultaneous(options) => {
             StoredFlowPlan::Simultaneous(simultaneous::stored(options))
@@ -125,7 +125,7 @@ pub(crate) fn runtime_configuration_sha256(plan: &FlowPlanConfiguration) -> Stri
             // An execution fingerprint, independent of the project format.
             serde_json::to_vec(&(
                 options.method(),
-                mixed::stored(options),
+                mixed::stored(options).expect("validated workspace block scales"),
                 stored_tear(&recycle.tear),
                 recycle.max_iteration_evaluations,
             ))

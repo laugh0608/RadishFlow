@@ -25,9 +25,12 @@ use std::collections::BTreeMap;
 
 pub const EQUATION_CONTRACT_VERSION: u32 = 1;
 pub const ACCEPTANCE_CONTRACT_VERSION: u32 = 1;
+/// Core equation and acceptance contract for a terminal component mole fraction.
+pub const PRODUCT_COMPOSITION_CONTRACT_VERSION: u32 = 2;
 pub const MAX_DIMENSION: usize = 128;
 pub const ABSOLUTE_TOLERANCE_MOL_S: f64 = 1e-10;
 pub const SCALED_TOLERANCE: f64 = 1e-10;
+pub const COMPOSITION_TOLERANCE_MOL_MOL: f64 = 1e-10;
 pub const FRACTION_INTERVAL_TOLERANCE: f64 = 1e-12;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -74,6 +77,18 @@ pub enum EquationBinding {
     ProductTotal {
         source: PortBinding,
     },
+    ProductMoleFraction {
+        source: PortBinding,
+        component: ComponentId,
+    },
+}
+impl EquationBinding {
+    fn is_product_target(&self) -> bool {
+        matches!(
+            self,
+            Self::ProductTotal { .. } | Self::ProductMoleFraction { .. }
+        )
+    }
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReleasedSplitFraction {
@@ -88,6 +103,37 @@ pub struct ProductTotalTarget {
     pub value_mol_s: f64,
 }
 #[derive(Debug, Clone, PartialEq)]
+pub struct ProductMoleFractionTarget {
+    pub source: PortBinding,
+    pub component: ComponentId,
+    pub value_mol_mol: f64,
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum ProductTarget {
+    TotalMolarFlow(ProductTotalTarget),
+    MoleFraction(Box<ProductMoleFractionTarget>),
+}
+impl ProductTarget {
+    pub fn source(&self) -> &PortBinding {
+        match self {
+            Self::TotalMolarFlow(t) => &t.source,
+            Self::MoleFraction(t) => &t.source,
+        }
+    }
+    pub fn total_flow(&self) -> Option<&ProductTotalTarget> {
+        match self {
+            Self::TotalMolarFlow(t) => Some(t),
+            Self::MoleFraction(_) => None,
+        }
+    }
+    pub fn total_flow_mut(&mut self) -> Option<&mut ProductTotalTarget> {
+        match self {
+            Self::TotalMolarFlow(t) => Some(t),
+            Self::MoleFraction(_) => None,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
 pub struct ExplicitEquationScales {
     pub variables: BTreeMap<VariableBinding, f64>,
     pub equations: BTreeMap<EquationBinding, f64>,
@@ -96,7 +142,7 @@ pub struct ExplicitEquationScales {
 pub struct EquationOptions {
     pub boundary: FixedBoundary,
     pub released: Option<ReleasedSplitFraction>,
-    pub target: Option<ProductTotalTarget>,
+    pub target: Option<ProductTarget>,
     pub scales: Option<ExplicitEquationScales>,
 }
 impl EquationOptions {
@@ -137,16 +183,24 @@ impl EquationOptions {
                 "split interval requires 0 <= lower < upper <= 1 and 1..128 bisections",
             ));
         }
-        if self
-            .target
-            .as_ref()
-            .is_some_and(|t| !t.value_mol_s.is_finite() || t.value_mol_s <= 0.0)
-        {
-            return Err(error(
-                EquationFailureKind::InvalidSpecification,
-                "target",
-                "product target must be positive and finite",
-            ));
+        match &self.target {
+            Some(ProductTarget::TotalMolarFlow(t))
+                if !t.value_mol_s.is_finite() || t.value_mol_s <= 0.0 =>
+            {
+                return Err(error(
+                    EquationFailureKind::InvalidSpecification,
+                    "target",
+                    "product flow target must be positive and finite",
+                ));
+            }
+            Some(ProductTarget::MoleFraction(t)) if !(0.0..=1.0).contains(&t.value_mol_mol) => {
+                return Err(error(
+                    EquationFailureKind::InvalidSpecification,
+                    "target",
+                    "product mole fraction must be finite and in [0, 1]",
+                ));
+            }
+            _ => {}
         }
         if self.scales.as_ref().is_some_and(|s| {
             s.variables
@@ -247,6 +301,11 @@ enum AssembledEquation {
         components: Vec<usize>,
         target: f64,
     },
+    ProductMoleFraction {
+        components: Vec<usize>,
+        selected: usize,
+        target: f64,
+    },
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct EquationEvaluation {
@@ -295,6 +354,37 @@ impl EquationProblem {
         &self.structure
     }
     pub fn require_ready(&self) -> EoResult<()> {
+        // A fixed closed outlet can make the structure singular before either
+        // bracket endpoint is evaluated. Its composition is already undefined.
+        if let Some(ProductTarget::MoleFraction(t)) = &self.options.target {
+            let source = &self.flowsheet.units[&t.source.unit];
+            let fixed = self
+                .options
+                .released
+                .as_ref()
+                .is_none_or(|r| r.binding.unit != source.id);
+            if fixed
+                && matches!(
+                    (t.source.port, source.parameters.outlet_a_split_fraction),
+                    (MaterialPort::OutletA, Some(0.0)) | (MaterialPort::OutletB, Some(1.0))
+                )
+                || self
+                    .feeds
+                    .get(&source.id)
+                    .is_some_and(|s| s.total_molar_flow_mol_s == 0.0)
+            {
+                let mut e = error(
+                    EquationFailureKind::UndefinedComposition,
+                    "product_flow",
+                    "the fixed terminal source produces zero mol/s",
+                );
+                e.error = e
+                    .error
+                    .with_related_stream_id(t.source.stream.clone())
+                    .with_related_component_id(t.component.clone());
+                return Err(e);
+            }
+        }
         if !self.structure.is_square_matched() {
             let kind = match (
                 self.structure.unmatched_variables.is_empty(),

@@ -1,7 +1,7 @@
 use super::*;
 use rf_solver::mixed::*;
-pub(super) fn stored(o: &MixedOptions) -> StoredMixedPlan {
-    StoredMixedPlan {
+pub(super) fn stored(o: &MixedOptions) -> RfResult<StoredMixedPlan> {
+    Ok(StoredMixedPlan {
         fixed_boundary: StoredFixedBoundary {
             temperature_k: o.boundary.temperature_k,
             pressure_pa: o.boundary.pressure_pa,
@@ -9,25 +9,27 @@ pub(super) fn stored(o: &MixedOptions) -> StoredMixedPlan {
         blocks: o
             .blocks
             .iter()
-            .map(|b| StoredMixedBlock {
-                id: b.id.as_str().into(),
-                members: b.members.iter().cloned().collect(),
-                method: match &b.method {
-                    MixedBlockMethod::Local => StoredMixedBlockMethod::Local,
-                    MixedBlockMethod::EquationOriented { .. } => {
-                        StoredMixedBlockMethod::EquationOriented {
-                            equation_contract_version: 1,
-                            scaling: equation_oriented::stored(
-                                &b.equation_options(o.boundary).expect("EO block"),
-                            )
-                            .scaling,
+            .map(|b| {
+                Ok(StoredMixedBlock {
+                    id: b.id.as_str().into(),
+                    members: b.members.iter().cloned().collect(),
+                    method: match &b.method {
+                        MixedBlockMethod::Local => StoredMixedBlockMethod::Local,
+                        MixedBlockMethod::EquationOriented { .. } => {
+                            StoredMixedBlockMethod::EquationOriented {
+                                equation_contract_version: 1,
+                                scaling: equation_oriented::stored(
+                                    &b.equation_options(o.boundary).expect("EO block"),
+                                )?
+                                .scaling,
+                            }
                         }
-                    }
-                },
+                    },
+                })
             })
-            .collect(),
+            .collect::<RfResult<_>>()?,
     }
-    .canonicalized()
+    .canonicalized())
 }
 pub(super) fn configuration(p: StoredMixedPlan) -> RfResult<MixedOptions> {
     p.validate()?;

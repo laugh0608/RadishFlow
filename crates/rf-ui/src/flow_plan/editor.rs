@@ -279,7 +279,7 @@ impl FlowPlanDraft {
                 }
             }
         }
-        candidate.validate_configuration()?;
+        validate_workspace_plan(&candidate)?;
         Ok(candidate)
     }
 }

@@ -2,7 +2,10 @@ use rf_solver::equation_oriented::*;
 use rf_store::project_v4::*;
 use rf_types::{RfError, RfResult, StreamId};
 
-pub(super) fn stored(o: &EquationOptions) -> StoredEquationPlan {
+pub(super) fn stored(o: &EquationOptions) -> RfResult<StoredEquationPlan> {
+    if matches!(o.target, Some(ProductTarget::MoleFraction(_))) {
+        return Err(unsupported_composition());
+    }
     let mut specifications = Vec::new();
     if let Some(r) = &o.released {
         specifications.push(StoredEquationSpecification::ReleaseSplitFraction {
@@ -15,14 +18,14 @@ pub(super) fn stored(o: &EquationOptions) -> StoredEquationPlan {
             },
         });
     }
-    if let Some(t) = &o.target {
+    if let Some(ProductTarget::TotalMolarFlow(t)) = &o.target {
         specifications.push(StoredEquationSpecification::ProductTotalMolarFlow {
             stream_id: t.source.stream.clone(),
             source: stored_port(&t.source),
             value_mol_s: t.value_mol_s,
         });
     }
-    StoredEquationPlan {
+    Ok(StoredEquationPlan {
         fixed_boundary: StoredFixedBoundary {
             temperature_k: o.boundary.temperature_k,
             pressure_pa: o.boundary.pressure_pa,
@@ -42,15 +45,17 @@ pub(super) fn stored(o: &EquationOptions) -> StoredEquationPlan {
                 equations: s
                     .equations
                     .iter()
-                    .map(|(b, v)| StoredEquationScale {
-                        binding: stored_equation(b),
-                        scale_si: *v,
+                    .map(|(b, v)| {
+                        Ok(StoredEquationScale {
+                            binding: stored_equation(b)?,
+                            scale_si: *v,
+                        })
                     })
-                    .collect(),
+                    .collect::<RfResult<_>>()?,
             },
         },
     }
-    .canonicalized()
+    .canonicalized())
 }
 pub(super) fn configuration(plan: StoredEquationPlan) -> RfResult<EquationOptions> {
     plan.validate()?;
@@ -78,10 +83,10 @@ pub(super) fn configuration(plan: StoredEquationPlan) -> RfResult<EquationOption
                 source,
                 value_mol_s,
             } => {
-                o.target = Some(ProductTotalTarget {
+                o.target = Some(ProductTarget::TotalMolarFlow(ProductTotalTarget {
                     source: port(source, stream_id)?,
                     value_mol_s,
-                })
+                }))
             }
         }
     }
@@ -165,8 +170,13 @@ pub(super) fn variable(b: StoredEquationVariableBinding) -> VariableBinding {
         }
     }
 }
-pub(super) fn stored_equation(b: &EquationBinding) -> StoredEquationBinding {
-    match b {
+fn unsupported_composition() -> RfError {
+    RfError::invalid_input("the project format does not support product composition targets")
+        .with_diagnostic_code("workspace.plan.in_memory_only")
+}
+fn stored_equation(b: &EquationBinding) -> RfResult<StoredEquationBinding> {
+    Ok(match b {
+        EquationBinding::ProductMoleFraction { .. } => return Err(unsupported_composition()),
         EquationBinding::Unit {
             unit,
             role,
@@ -204,7 +214,7 @@ pub(super) fn stored_equation(b: &EquationBinding) -> StoredEquationBinding {
             stream_id: source.stream.clone(),
             source: stored_port(source),
         },
-    }
+    })
 }
 pub(super) fn equation(b: StoredEquationBinding) -> RfResult<EquationBinding> {
     Ok(match b {

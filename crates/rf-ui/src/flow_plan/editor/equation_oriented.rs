@@ -40,7 +40,7 @@ pub(super) fn applies_to(field: &FlowPlanNumericField, plan: &FlowPlanConfigurat
             ReleasedLower(b) | ReleasedUpper(b) | BisectionBudget(b),
         ) => o.released.as_ref().is_some_and(|r| &r.binding == b),
         (FlowPlanConfiguration::EquationOriented(o), ProductTarget(b)) => {
-            o.target.as_ref().is_some_and(|t| &t.source == b)
+            o.target.as_ref().and_then(|t| t.total_flow()).is_some_and(|t| &t.source == b)
         }
         (FlowPlanConfiguration::EquationOriented(o), EquationVariableScale(b)) => o
             .scales
@@ -88,6 +88,7 @@ pub(super) fn apply(
         ProductTarget(b) => {
             o.target
                 .as_mut()
+                .and_then(|t| t.total_flow_mut())
                 .filter(|t| &t.source == b)
                 .ok_or_else(invalid)?
                 .value_mol_s = value

@@ -42,6 +42,9 @@ pub fn equation(e: &EquationBinding) -> Value {
         } => {
             json!({"kind":"boundary","source":{"unit_id":source_unit.as_str(),"port":source_port},"sink":port(sink),"component_id":component.as_str()})
         }
+        EquationBinding::ProductMoleFraction { source, component } => {
+            json!({"kind":"product_mole_fraction","source":port(source),"component_id":component.as_str()})
+        }
         EquationBinding::ProductTotal { source } => {
             json!({"kind":"product_total","source":port(source)})
         }
@@ -91,7 +94,17 @@ fn map(v: &std::collections::BTreeMap<rf_types::ComponentId, f64>, n: Numbers) -
 fn evidence(e: &EquationEvidence, n: Numbers) -> RfResult<Value> {
     let samples=e.conditional_evaluations.iter().map(|s|Ok(json!({"fraction":n.optional(s.fraction)?,"interval":s.interval.map(|(l,u)|n.vector(&[l,u])).transpose()?,"linear":s.linear.as_ref().map(|l|linear(l,n)).transpose()?,"target_residual_mol_s":n.optional(s.target_residual_mol_s)?,"completed":s.completed}))).collect::<RfResult<Vec<_>>>()?;
     let solved=e.solved_parameter.as_ref().map(|s|Ok::<_,RfError>(json!({"binding":parameter(&s.binding),"stored_value":n.optional(s.stored_value)?,"solved_value":n.value(s.value)?,"interval":n.vector(&[s.interval.0,s.interval.1])?}))).transpose()?;
-    let target=e.verified_target.as_ref().map(|t|Ok::<_,RfError>(json!({"source":port(&t.target.source),"target_mol_s":n.value(t.target.value_mol_s)?,"actual_mol_s":n.value(t.actual_mol_s)?,"residual_mol_s":n.value(t.residual_mol_s)?,"scaled_residual":n.value(t.scaled_residual)?}))).transpose()?;
+    let target = match &e.verified_target {
+        None => None,
+        Some(VerifiedTarget::TotalMolarFlow(t)) => Some(
+            json!({"source":port(&t.target.source),"target_mol_s":n.value(t.target.value_mol_s)?,"actual_mol_s":n.value(t.actual_mol_s)?,"residual_mol_s":n.value(t.residual_mol_s)?,"scaled_residual":n.value(t.scaled_residual)?}),
+        ),
+        Some(VerifiedTarget::MoleFraction(_)) => {
+            return Err(RfError::invalid_input(
+                "composition evidence requires the Rust Core result contract",
+            ));
+        }
+    };
     let global=e.global_material.as_ref().map(|g|Ok::<_,RfError>(json!({"fresh_components_mol_s":map(&g.fresh_components_mol_s,n)?,"product_components_mol_s":map(&g.product_components_mol_s,n)?,"component_residuals_mol_s":map(&g.component_residuals_mol_s,n)?,"total_residual_mol_s":n.value(g.total_residual_mol_s)?}))).transpose()?;
     Ok(
         json!({"definition":e.definition.as_ref().map(|d|definition_with(d,n)).transpose()?,"conditional_evaluations":samples,"candidate_values_si":e.candidate_values_si.as_ref().map(|v|n.vector(v)).transpose()?,"candidate_residuals_mol_s":e.candidate_residuals_mol_s.as_ref().map(|v|n.vector(v)).transpose()?,"full_jacobian":e.full_jacobian.as_ref().map(|l|linear(l,n)).transpose()?,"verified_values_si":e.verified_values_si.as_ref().map(|v|n.vector(v)).transpose()?,"verified_residuals_mol_s":e.verified_residuals_mol_s.as_ref().map(|v|n.vector(v)).transpose()?,"solved_parameter":solved,"verified_target":target,"final_units":units(&e.final_units,n)?,"zero_flow_sources":e.zero_flow_sources.iter().map(|(p,s)|json!({"port":port(p),"source":port(s)})).collect::<Vec<_>>(),"global_material":global}),

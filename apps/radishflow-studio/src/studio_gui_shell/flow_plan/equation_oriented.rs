@@ -174,7 +174,7 @@ impl ReadyAppState {
                 .or(submission);
             }
         }
-        let mut target = o.target.as_ref().map(|t| t.source.clone());
+        let mut target = o.target.as_ref().map(|t| t.source().clone());
         let before = target.clone();
         ui.add_enabled_ui(can_change, |ui| {
             let picker = egui::ComboBox::from_id_salt("eo-product")
@@ -202,12 +202,14 @@ impl ReadyAppState {
             reveal_plan_focus(&picker.response);
         });
         if target != before {
-            o.target = target.map(|source| ProductTotalTarget {
-                source,
-                value_mol_s: 1.0,
+            o.target = target.map(|source| {
+                ProductTarget::TotalMolarFlow(ProductTotalTarget {
+                    source,
+                    value_mol_s: 1.0,
+                })
             });
         }
-        if let Some(t) = &o.target {
+        if let Some(ProductTarget::TotalMolarFlow(t)) = &o.target {
             if !products.contains(&t.source) {
                 ui.colored_label(
                     egui::Color32::DARK_RED,
