@@ -1,16 +1,10 @@
 # 当前状态
 
-更新时间：2026-11-17
+更新时间：2026-11-18
 
 ## 用途
 
-用途：恢复当前状态、优先级、临时门禁及范围。
-
-读者：仓库维护者、用户与 AI / Agent。
-
-不包含：完整历史流水、详细功能设计、长期协作规则、命令级测试日志和发布说明。
-
-先读本文档，再经[专题索引](../topics/README.md)进入活跃范围及唯一状态来源；长期规则见协作指南，历史证据见周志。
+供维护者、用户和 Agent 查当前顺位、门禁与范围。[专题索引](../topics/README.md)连接各项设计与验收，长期规则见协作指南，历史证据见周志。
 
 ## 当前结论
 
@@ -52,7 +46,7 @@
 
 ### 下一步
 
-- [ ] 优先补 AF3-V10 原版 macOS「等待中返回」。在同一会话核对返回编辑、草稿保留、旧回执拒收与 worker 回收，随后显式重跑。仍未捕获等待窗口则保持待验。 [AF3 验收记录](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24)
+- [ ] 优先补 AF3-V10 原版 macOS「等待中返回」。在同一会话核对返回编辑、草稿保留、旧回执拒收与 worker 回收，随后显式重跑。失败时修对应路径并用原工程重跑；未捕获则保留触发条件。通过即收口，后续求解器按完整工程算例选题。 [AF3 验收记录](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24)
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
 - [x] QS3／QS4 macOS 取消与重跑通过，QS3 英文窄区焦点可见性复验通过。见 [专题](../topics/modeling/equation-oriented-block.md#接下来事项)。
