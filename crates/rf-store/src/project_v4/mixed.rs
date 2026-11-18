@@ -96,9 +96,13 @@ impl StoredMixedPlan {
                 } = scaling
                     && (variables.iter().any(|s| {
                         matches!(s.binding, StoredEquationVariableBinding::Parameter { .. })
-                    }) || equations
-                        .iter()
-                        .any(|s| matches!(s.binding, StoredEquationBinding::ProductTotal { .. })))
+                    }) || equations.iter().any(|s| {
+                        matches!(
+                            s.binding,
+                            StoredEquationBinding::ProductTotal { .. }
+                                | StoredEquationBinding::ProductMoleFraction { .. }
+                        )
+                    }))
                 {
                     return Err(invalid());
                 }

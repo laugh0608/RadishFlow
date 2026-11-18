@@ -49,6 +49,7 @@ pub enum FlowPlanSupport {
     EquationOriented,
     Mixed,
     MixedRecycle,
+    ProductComposition,
 }
 
 impl FlowPlanSupport {
@@ -63,11 +64,28 @@ impl FlowPlanSupport {
         }
     }
 
-    fn supports_capability(self, capability: &str, identities: ObjectIdentitySupport) -> bool {
-        match capability {
+    pub fn supports_equation_version(self, version: u32) -> bool {
+        match version {
+            1 => self >= Self::EquationOriented,
+            PRODUCT_COMPOSITION_VERSION => self >= Self::ProductComposition,
+            _ => false,
+        }
+    }
+
+    fn supports_capability(
+        self,
+        capability: &RequiredCapability,
+        identities: ObjectIdentitySupport,
+    ) -> bool {
+        if capability.id == EQUATION_ORIENTED_CAPABILITY {
+            return self.supports_equation_version(capability.version);
+        }
+        if capability.version != 1 {
+            return false;
+        }
+        match capability.id.as_str() {
             FLOW_PLAN_CAPABILITY | SPLITTER_CAPABILITY | PARTITIONED_CAPABILITY => true,
             SIMULTANEOUS_CAPABILITY => self.supports_method(SIMULTANEOUS_METHOD),
-            EQUATION_ORIENTED_CAPABILITY => self.supports_method(EQUATION_ORIENTED_METHOD),
             MIXED_CAPABILITY => self.supports_method(MIXED_METHOD),
             MIXED_RECYCLE_CAPABILITY => self.supports_method(MIXED_RECYCLE_METHOD),
             OBJECT_IDENTITY_CAPABILITY | VARIABLE_WATCH_LIST_CAPABILITY => {
@@ -167,12 +185,12 @@ struct PlanProbe {
 }
 
 pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapability> {
-    let mut ids = vec![FLOW_PLAN_CAPABILITY];
+    let mut ids = vec![(FLOW_PLAN_CAPABILITY, 1)];
     if project.object_identities.is_some() {
-        ids.push(OBJECT_IDENTITY_CAPABILITY);
+        ids.push((OBJECT_IDENTITY_CAPABILITY, 1));
     }
     if project.variable_watch_list.is_some() {
-        ids.push(VARIABLE_WATCH_LIST_CAPABILITY);
+        ids.push((VARIABLE_WATCH_LIST_CAPABILITY, 1));
     }
     if project
         .document
@@ -181,31 +199,28 @@ pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapabilit
         .values()
         .any(|u| u.kind == "splitter")
     {
-        ids.push(SPLITTER_CAPABILITY);
+        ids.push((SPLITTER_CAPABILITY, 1));
     }
     if matches!(project.steady_state_plan, StoredFlowPlan::Partitioned(_)) {
-        ids.push(PARTITIONED_CAPABILITY);
+        ids.push((PARTITIONED_CAPABILITY, 1));
     }
     if matches!(project.steady_state_plan, StoredFlowPlan::Simultaneous(_)) {
-        ids.push(SIMULTANEOUS_CAPABILITY);
+        ids.push((SIMULTANEOUS_CAPABILITY, 1));
     }
-    if matches!(
-        project.steady_state_plan,
-        StoredFlowPlan::EquationOriented(_)
-    ) {
-        ids.push(EQUATION_ORIENTED_CAPABILITY);
+    if let StoredFlowPlan::EquationOriented(o) = &project.steady_state_plan {
+        ids.push((EQUATION_ORIENTED_CAPABILITY, o.contract_version()));
     }
     if matches!(project.steady_state_plan, StoredFlowPlan::Mixed(_)) {
-        ids.push(MIXED_CAPABILITY);
+        ids.push((MIXED_CAPABILITY, 1));
     }
     if matches!(project.steady_state_plan, StoredFlowPlan::MixedRecycle(_)) {
-        ids.push(MIXED_RECYCLE_CAPABILITY);
+        ids.push((MIXED_RECYCLE_CAPABILITY, 1));
     }
     ids.sort();
     ids.into_iter()
-        .map(|id| RequiredCapability {
+        .map(|(id, version)| RequiredCapability {
             id: id.into(),
-            version: 1,
+            version,
         })
         .collect()
 }
@@ -240,7 +255,7 @@ pub fn parse_for_consumer(
     let mut reasons: Vec<String> = wire
         .required_capabilities
         .iter()
-        .filter(|c| c.version != 1 || !support.supports_capability(&c.id, identity_support))
+        .filter(|c| !support.supports_capability(c, identity_support))
         .map(|c| format!("{} / {}", c.id, c.version))
         .collect();
     if !reasons.is_empty() {
@@ -270,12 +285,18 @@ pub fn parse_for_consumer(
             && probe
                 .steady_state_plan
                 .equation_contract_version
-                .is_some_and(|v| v != 1))
+                .is_some_and(|v| !support.supports_equation_version(v)))
         || ((probe.steady_state_plan.method.id == PARTITIONED_METHOD || modular || eo || mixed)
             && probe
                 .steady_state_plan
                 .acceptance_contract_version
-                .is_some_and(|v| v != 1))
+                .is_some_and(|v| {
+                    if eo {
+                        !support.supports_equation_version(v)
+                    } else {
+                        v != 1
+                    }
+                }))
         || (modular
             && probe
                 .steady_state_plan
@@ -410,6 +431,13 @@ pub fn to_pretty_json_with_support(
             "project v4 writer does not support the selected steady-state method",
         )
         .with_diagnostic_code("store.project.unsupported_write_method"));
+    }
+    if let StoredFlowPlan::EquationOriented(o) = &p.steady_state_plan
+        && !support.supports_equation_version(o.contract_version())
+    {
+        return Err(RfError::invalid_input(
+            "consumer cannot write this EO contract version",
+        ));
     }
     document::validate(&p.document)?;
     validate_watch_list(p)?;

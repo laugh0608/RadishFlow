@@ -92,6 +92,13 @@ pub fn prepare_write_with_support(
                     let ProjectV4Read::Editable(new) = project else {
                         unreachable!("validated editable write");
                     };
+                    if existing.steady_state_plan.requires_product_composition()
+                        && !new.steady_state_plan.requires_product_composition()
+                    {
+                        return Err(RfError::invalid_input(
+                            "save the lower-capability plan to a different file; the target contains a product composition specification",
+                        ));
+                    }
                     target_has_object_identities = existing.object_identities.is_some();
                     if target_has_object_identities && new.object_identities.is_none() {
                         return Err(RfError::invalid_input(

@@ -1,12 +1,15 @@
 pub(crate) mod flow_plan;
-mod mixed_recycle;
 mod object_identities;
+mod plan_save;
 #[cfg(test)]
 mod watch_list_tests;
 pub use flow_plan::StudioReadOnlyProject;
-pub use mixed_recycle::{PreparedMixedRecycleSave, prepare_mixed_recycle_save};
 pub use object_identities::{
     PreparedObjectIdentityInitialization, prepare_object_identity_initialization,
+};
+pub use plan_save::{
+    PreparedFlowPlanSave, PreparedMixedRecycleSave, prepare_mixed_recycle_save,
+    prepare_product_composition_save,
 };
 use std::path::{Path, PathBuf};
 

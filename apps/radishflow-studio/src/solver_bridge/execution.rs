@@ -181,7 +181,7 @@ pub fn prepare_workspace_solve(
         }
         _ => {}
     }
-    rf_ui::flow_plan::validate_workspace_plan(app_state.workspace.flow_plan.current())?;
+    rf_ui::flow_plan::validate_workspace_run_plan(app_state.workspace.flow_plan.current())?;
     if matches!(
         app_state.workspace.flow_plan.current(),
         FlowPlanConfiguration::EquationOriented(_) | FlowPlanConfiguration::Mixed(_)

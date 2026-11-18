@@ -45,7 +45,7 @@ pub(crate) fn stored_flow_plan_with_support(
     if let FlowPlanConfiguration::Mixed(options) = plan
         && let Some(recycle) = &options.recycle
     {
-        if support == FlowPlanSupport::MixedRecycle {
+        if support >= FlowPlanSupport::MixedRecycle {
             return Ok(StoredFlowPlan::MixedRecycle(Box::new(
                 StoredMixedRecyclePlan {
                     mixed: mixed::stored(options)?,
@@ -63,7 +63,7 @@ pub(crate) fn stored_flow_plan_with_support(
         FlowPlanConfiguration::Acyclic => StoredFlowPlan::Acyclic,
         FlowPlanConfiguration::Mixed(o) => StoredFlowPlan::Mixed(mixed::stored(o)?),
         FlowPlanConfiguration::EquationOriented(o) => {
-            StoredFlowPlan::EquationOriented(equation_oriented::stored(o)?)
+            StoredFlowPlan::EquationOriented(equation_oriented::stored(o, support)?)
         }
         FlowPlanConfiguration::Simultaneous(options) => {
             StoredFlowPlan::Simultaneous(simultaneous::stored(options))
@@ -130,7 +130,10 @@ pub(crate) fn runtime_configuration_sha256(plan: &FlowPlanConfiguration) -> Stri
                 recycle.max_iteration_evaluations,
             ))
         }
-        _ => serde_json::to_vec(&stored_flow_plan(plan).expect("persistable plan")),
+        _ => serde_json::to_vec(
+            &stored_flow_plan_with_support(plan, FlowPlanSupport::ProductComposition)
+                .expect("persistable plan"),
+        ),
     }
     .expect("validated frozen plan is serializable");
     rf_store::sha256_hex(&bytes)

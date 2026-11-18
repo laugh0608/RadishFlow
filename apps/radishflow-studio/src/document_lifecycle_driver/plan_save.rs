@@ -9,9 +9,10 @@ use rf_store::{
 use rf_ui::{WorkspaceState, flow_plan::FlowPlanEditContext};
 use std::collections::BTreeMap;
 
-/// A v4 mixed-recycle save review bound to the selected inputs and target.
+/// A capability-aware v4 save review bound to the selected inputs and target.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PreparedMixedRecycleSave {
+pub struct PreparedFlowPlanSave {
+    support: FlowPlanSupport,
     source: SaveSource,
     prepared: PreparedProjectV4Write,
     required_capabilities: Vec<RequiredCapability>,
@@ -39,33 +40,84 @@ impl SaveSource {
     }
 }
 
-/// Explicit entry for a caller that supports the mixed-recycle project capability.
+/// Only a validated mixed-recycle plan can enter the existing Studio save command.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PreparedMixedRecycleSave(PreparedFlowPlanSave);
+
+impl PreparedMixedRecycleSave {
+    pub fn path(&self) -> &Path {
+        self.0.path()
+    }
+    pub fn compatibility(&self) -> Option<&ProjectSaveCompatibility> {
+        self.0.compatibility()
+    }
+    pub fn replaces_file(&self) -> bool {
+        self.0.replaces_file()
+    }
+    pub fn commit(
+        self,
+        app: &mut AppState,
+        capability_confirmed: bool,
+    ) -> RfResult<DocumentLifecycleOutcome> {
+        self.0.commit(app, capability_confirmed)
+    }
+}
+
 pub fn prepare_mixed_recycle_save(
     app: &AppState,
     path: &Path,
 ) -> RfResult<PreparedMixedRecycleSave> {
-    if path.as_os_str().is_empty() {
-        return Err(RfError::invalid_input("mixed recycle save path is empty"));
-    }
-    let project = flow_plan::project_with_support(app, FlowPlanSupport::MixedRecycle)?;
-    let ProjectV4Read::Editable(inputs) = &project else {
-        unreachable!("application input is editable");
-    };
-    if !matches!(inputs.steady_state_plan, StoredFlowPlan::MixedRecycle(_)) {
+    let support = FlowPlanSupport::MixedRecycle;
+    let project = flow_plan::project_with_support(app, support)?;
+    if !matches!(&project, ProjectV4Read::Editable(p) if matches!(p.steady_state_plan, StoredFlowPlan::MixedRecycle(_)))
+    {
         return Err(
             RfError::invalid_input("the applied project plan is not mixed recycle")
                 .with_diagnostic_code("workspace.plan.mixed_recycle_required"),
         );
     }
+    prepare_plan_save(app, path, support, project).map(PreparedMixedRecycleSave)
+}
+
+/// Prepare a save of the applied EO composition specification, including partial configurations.
+pub fn prepare_product_composition_save(
+    app: &AppState,
+    path: &Path,
+) -> RfResult<PreparedFlowPlanSave> {
+    let support = FlowPlanSupport::ProductComposition;
+    let project = flow_plan::project_with_support(app, support)?;
+    if !matches!(&project, ProjectV4Read::Editable(p) if p.steady_state_plan.requires_product_composition())
+    {
+        return Err(RfError::invalid_input(
+            "the applied plan does not require product composition support",
+        )
+        .with_diagnostic_code("workspace.plan.product_composition_required"));
+    }
+    prepare_plan_save(app, path, support, project)
+}
+
+fn prepare_plan_save(
+    app: &AppState,
+    path: &Path,
+    support: FlowPlanSupport,
+    project: ProjectV4Read,
+) -> RfResult<PreparedFlowPlanSave> {
+    if path.as_os_str().is_empty() {
+        return Err(RfError::invalid_input("project save path is empty"));
+    }
+    let ProjectV4Read::Editable(inputs) = &project else {
+        unreachable!("application input is editable");
+    };
     let required_capabilities = project_v4::required_capabilities(inputs);
     let prepared = project_v4::prepare_write_with_support(
         path,
         &project,
         FileOverwritePolicy::Allow,
-        FlowPlanSupport::MixedRecycle,
+        support,
     )?;
     let compatibility = flow_plan::prepared_compatibility(app, &prepared, &required_capabilities);
-    Ok(PreparedMixedRecycleSave {
+    Ok(PreparedFlowPlanSave {
+        support,
         source: SaveSource::capture(&app.workspace),
         prepared,
         required_capabilities,
@@ -73,7 +125,7 @@ pub fn prepare_mixed_recycle_save(
     })
 }
 
-impl PreparedMixedRecycleSave {
+impl PreparedFlowPlanSave {
     pub fn path(&self) -> &Path {
         self.prepared.path()
     }
@@ -94,10 +146,7 @@ impl PreparedMixedRecycleSave {
         if self.source != SaveSource::capture(&app.workspace)
             || !self
                 .prepared
-                .captures_project(&flow_plan::project_with_support(
-                    app,
-                    FlowPlanSupport::MixedRecycle,
-                )?)?
+                .captures_project(&flow_plan::project_with_support(app, self.support)?)?
         {
             return Err(
                 RfError::invalid_input("project inputs changed since save preparation")

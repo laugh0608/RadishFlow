@@ -204,7 +204,13 @@ fn new_source_capabilities(
 ) -> Vec<RequiredCapability> {
     required
         .iter()
-        .filter(|c| app.workspace.flow_plan.saved_capabilities().get(&c.id) != Some(&c.version))
+        .filter(|c| {
+            app.workspace
+                .flow_plan
+                .saved_capabilities()
+                .get(&c.id)
+                .is_none_or(|saved| c.version > *saved)
+        })
         .cloned()
         .collect()
 }

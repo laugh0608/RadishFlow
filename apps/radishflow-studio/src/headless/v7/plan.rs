@@ -68,7 +68,8 @@ fn wire_equation(e: StoredEquationBinding) -> Result<BlockEquation, Failure> {
             sink: eo::wire_port(&sink),
             component_id: component_id.to_string(),
         },
-        StoredEquationBinding::ProductTotal { .. } => {
+        StoredEquationBinding::ProductTotal { .. }
+        | StoredEquationBinding::ProductMoleFraction { .. } => {
             return Err(invalid(
                 "Mixed blocks do not support inverse specifications",
             ));

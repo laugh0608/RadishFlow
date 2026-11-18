@@ -227,7 +227,7 @@ flowchart LR
 
 #### 读取、保存与资格
 
-- **显式能力。** 应用层通过 `read_studio_project_with_support(..., FlowPlanSupport::MixedRecycle)` 打开工程，通过 `prepare_mixed_recycle_save` 读取兼容性确认信息，再用 `commit` 写入。默认读写入口及 v7／v8 的混合方法上限为 M1。旧 reader 依能力标记或方法探测进入整份只读，保留原字节。旧 writer 拒绝覆盖 M2。M2 writer 同样检查目标能力与原字节指纹。 [应用层保存](../../../apps/radishflow-studio/src/document_lifecycle_driver/mixed_recycle.rs)
+- **显式能力。** 应用层通过 `read_studio_project_with_support(..., FlowPlanSupport::MixedRecycle)` 打开工程，通过 `prepare_mixed_recycle_save` 读取兼容性确认信息，再用 `commit` 写入。默认读写入口及 v7／v8 的混合方法上限为 M1。旧 reader 依能力标记或方法探测进入整份只读，保留原字节。旧 writer 拒绝覆盖 M2。M2 writer 同样检查目标能力与原字节指纹。 [应用层保存](../../../apps/radishflow-studio/src/document_lifecycle_driver/plan_save.rs)
 - **格式与运行就绪性。** 已知方法的缺项、显式 null、重复键、重复绑定、非法预算或非有限／负初值按格式错误处理。未知能力或未知的正方法、验收及块契约版本保持整份只读。图上绑定因后续编辑失效时保留计划和原引用，工程可保存及重开，运行前明确定位缺失流股、端口错配、组分不匹配或切后仍有环。沿用计划引用保留规则，避免删除和重建同名对象后意外重绑。
 - **应用与保存事务。** 复用 `FlowPlanState`、正式 Apply／Undo／Redo、已保存基线与 `simulation_dirty`。正式变化更新计划代次并使旧结果 Stale，计划重排或相同配置是 no-op。首次为来源工程保存 M2 时触发能力确认，包括外层已为 v4 的 M1 工程。提交时复核正式输入、计划代次、准备时的目标路径和原字节指纹。取消、写入失败或目标变化时保留既有文件与工作区保存基线。已保存的 M2 重开后结果为 Missing，显式重跑生成 Current。 [QS1 正式计划事务](recycle-project-and-consumers.md#qs1-c02工作区计划事务与保存状态)
 

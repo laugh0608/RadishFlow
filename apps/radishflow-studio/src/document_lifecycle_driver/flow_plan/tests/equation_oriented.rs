@@ -185,7 +185,7 @@ fn v4_save_as_checks_source_capabilities_and_keeps_all_baselines_on_failure() {
 }
 
 #[test]
-fn core_composition_specs_and_scales_cannot_be_applied_or_saved_as_v1_flow_targets() {
+fn composition_specs_and_scales_cannot_run_or_save_as_v1_flow_targets() {
     use rf_solver::equation_oriented::{
         EquationBinding, ExplicitEquationScales, ProductMoleFractionTarget, ProductTarget,
     };
@@ -210,7 +210,7 @@ fn core_composition_specs_and_scales_cannot_be_applied_or_saved_as_v1_flow_targe
     });
     for options in [o, scales_only] {
         let plan = FlowPlanConfiguration::EquationOriented(options);
-        let workspace = rf_ui::flow_plan::validate_workspace_plan(&plan).unwrap_err();
+        let workspace = rf_ui::flow_plan::validate_workspace_run_plan(&plan).unwrap_err();
         let storage = crate::flow_plan_actions::stored_flow_plan(&plan).unwrap_err();
         for error in [workspace, storage] {
             assert_eq!(

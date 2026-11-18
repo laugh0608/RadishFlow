@@ -108,6 +108,9 @@ pub(in crate::headless) fn wire_equation(b: StoredEquationBinding) -> Result<Equ
             sink: wire_port(&sink),
             component_id: component_id.to_string(),
         },
+        StoredEquationBinding::ProductMoleFraction { .. } => {
+            return Err(invalid("v6 does not support product composition"));
+        }
         StoredEquationBinding::Boundary { .. } => {
             return Err(invalid(
                 "external boundary fields require CLI v7 Mixed configuration",
@@ -220,31 +223,36 @@ pub(super) fn wire(plan: &FlowPlanConfiguration) -> Result<Value, Failure> {
     let specifications = p
         .specifications
         .into_iter()
-        .map(|s| match s {
-            StoredEquationSpecification::ReleaseSplitFraction {
-                unit_id,
-                field,
-                interval,
-            } => Specification::ReleaseSplitFraction {
-                unit: IdentityRef::id(&unit_id),
-                field,
-                interval: Interval {
-                    lower: interval.lower,
-                    upper: interval.upper,
-                    max_iterations: interval.max_iterations,
+        .map(|s| {
+            Ok(match s {
+                StoredEquationSpecification::ProductMoleFraction { .. } => {
+                    return Err(invalid("v6 does not support product composition"));
+                }
+                StoredEquationSpecification::ReleaseSplitFraction {
+                    unit_id,
+                    field,
+                    interval,
+                } => Specification::ReleaseSplitFraction {
+                    unit: IdentityRef::id(&unit_id),
+                    field,
+                    interval: Interval {
+                        lower: interval.lower,
+                        upper: interval.upper,
+                        max_iterations: interval.max_iterations,
+                    },
                 },
-            },
-            StoredEquationSpecification::ProductTotalMolarFlow {
-                stream_id,
-                source,
-                value_mol_s,
-            } => Specification::ProductTotalMolarFlow {
-                stream: IdentityRef::id(&stream_id),
-                source: wire_port(&source),
-                value_mol_s,
-            },
+                StoredEquationSpecification::ProductTotalMolarFlow {
+                    stream_id,
+                    source,
+                    value_mol_s,
+                } => Specification::ProductTotalMolarFlow {
+                    stream: IdentityRef::id(&stream_id),
+                    source: wire_port(&source),
+                    value_mol_s,
+                },
+            })
         })
-        .collect();
+        .collect::<Result<_, Failure>>()?;
     let scaling = match p.scaling {
         StoredEquationScaling::EvaluatedFreshTotal => Scaling::EvaluatedFreshTotal,
         StoredEquationScaling::ExplicitEquations {

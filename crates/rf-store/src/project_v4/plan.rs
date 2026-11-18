@@ -208,6 +208,10 @@ fn present<'de, D: Deserializer<'de>, T: Deserialize<'de>>(d: D) -> Result<Optio
     T::deserialize(d).map(Some)
 }
 impl StoredFlowPlan {
+    pub fn requires_product_composition(&self) -> bool {
+        matches!(self, Self::EquationOriented(o) if o.contract_version() == super::PRODUCT_COMPOSITION_VERSION)
+    }
+
     pub fn method(&self) -> StoredMethod {
         StoredMethod {
             id: match self {
@@ -303,8 +307,8 @@ impl Serialize for StoredFlowPlan {
         }
         if let Self::EquationOriented(plan) = self {
             let plan = plan.canonicalized();
-            wire.acceptance_contract_version = Some(1);
-            wire.equation_contract_version = Some(1);
+            wire.acceptance_contract_version = Some(plan.contract_version());
+            wire.equation_contract_version = wire.acceptance_contract_version;
             wire.fixed_boundary = Some(plan.fixed_boundary);
             wire.specifications = Some(plan.specifications);
             wire.scaling = Some(plan.scaling.into());
@@ -433,36 +437,39 @@ impl<'de> Deserialize<'de> for StoredFlowPlan {
                 })
             }
             (EQUATION_ORIENTED_METHOD, 1)
-                if w.acceptance_contract_version == Some(1)
-                    && w.equation_contract_version == Some(1)
+                if w.acceptance_contract_version == w.equation_contract_version
                     && w.response_contract_version.is_none()
                     && w.tears.is_none()
                     && w.max_iteration_evaluations.is_none() =>
             {
-                Self::EquationOriented(
-                    StoredEquationPlan {
-                        fixed_boundary: w.fixed_boundary.ok_or_else(missing)?,
-                        specifications: w.specifications.ok_or_else(missing)?,
-                        scaling: match w.scaling.ok_or_else(missing)? {
-                            PlanScalingWire::EvaluatedFreshTotal => {
-                                StoredEquationScaling::EvaluatedFreshTotal
-                            }
-                            PlanScalingWire::ExplicitEquations {
-                                variables,
-                                equations,
-                            } => StoredEquationScaling::ExplicitEquations {
-                                variables,
-                                equations,
-                            },
-                            _ => {
-                                return Err(serde::de::Error::custom(
-                                    "simulation: coupling scaling cannot be used by EO method",
-                                ));
-                            }
+                let plan = StoredEquationPlan {
+                    fixed_boundary: w.fixed_boundary.ok_or_else(missing)?,
+                    specifications: w.specifications.ok_or_else(missing)?,
+                    scaling: match w.scaling.ok_or_else(missing)? {
+                        PlanScalingWire::EvaluatedFreshTotal => {
+                            StoredEquationScaling::EvaluatedFreshTotal
+                        }
+                        PlanScalingWire::ExplicitEquations {
+                            variables,
+                            equations,
+                        } => StoredEquationScaling::ExplicitEquations {
+                            variables,
+                            equations,
                         },
-                    }
-                    .canonicalized(),
-                )
+                        _ => {
+                            return Err(serde::de::Error::custom(
+                                "simulation: coupling scaling cannot be used by EO method",
+                            ));
+                        }
+                    },
+                }
+                .canonicalized();
+                if w.equation_contract_version != Some(plan.contract_version()) {
+                    return Err(serde::de::Error::custom(
+                        "simulation: EO specification and contract version differ",
+                    ));
+                }
+                Self::EquationOriented(plan)
             }
             _ => {
                 return Err(serde::de::Error::custom(

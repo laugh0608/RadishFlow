@@ -20,6 +20,7 @@ pub(super) fn stored(o: &MixedOptions) -> RfResult<StoredMixedPlan> {
                                 equation_contract_version: 1,
                                 scaling: equation_oriented::stored(
                                     &b.equation_options(o.boundary).expect("EO block"),
+                                    FlowPlanSupport::Mixed,
                                 )?
                                 .scaling,
                             }

@@ -85,11 +85,17 @@ E2 的 `dq/dalpha=-C*(1-beta)/(1-alpha*beta)^2`；解处为 `-361/132 mol/s`，�
 
 ### 终端产品摩尔分率反算（Rust Core）
 
-在固定 T/P 的 Feed、Mixer、非选择性 Splitter 工程中，`EquationOptions.target` 可选 `ProductTarget::MoleFraction`。目标绑定终端流股、生产者单元及出口、已注册组分和闭区间 [0, 1] 内的摩尔分率。释放一个 Splitter 的 `outlet_a_split_fraction`。Core 统一计划预检和执行入口均支持该规格。组成反算结果的方程与验收契约版本均为 2，既有正向和总量反算使用版本 1。工程 v4、Studio 与 CLI 的组成规格待单独评审。
+在固定 T/P 的 Feed、Mixer、非选择性 Splitter 工程中，`EquationOptions.target` 可选 `ProductTarget::MoleFraction`。目标绑定终端流股、生产者单元及出口、已注册组分和闭区间 [0, 1] 内的摩尔分率。释放一个 Splitter 的 `outlet_a_split_fraction`。Core 统一计划预检和执行入口均支持该规格。组成反算结果的方程与验收契约版本均为 2，既有正向和总量反算使用版本 1。工程 v4 已接通组成规格保存与重开。共享执行回执、CLI v10 与 Studio 交互按后续阶段接入。
 
 令产品总量为 `F = Σ n_j`、目标组分为 i、目标值为 x。装配物料行 `g = n_i − xF`（mol/s），目标行在产品端口的解析偏导为 `δij − x`。目标为 0 或 1 时，恒零偏导从结构关联中剔除。两端与每次二分试点均须有有限正产品流量，用有符号组成误差 `n_i/F − x` 判断括区。固定关闭出口或试点产品流量为零时，返回 `UndefinedComposition`。
 
 候选须满足既有绝对与缩放物料残差、区间和完整 Jacobian 验收，还须满足 `|n_i/F − x| ≤ 1e-10 mol/mol`。实际单元重算后，从生产者流股读取总量与摩尔分率，再分别验收流量形式的残差和绝对组成误差。条件评价保留产品总量、目标组分流量、实际摩尔分率和两种有量纲的残差，最终证据另含缩放残差。该容差用于固定温压物料模型的数值验收。[完整工程与解析解](../flowsheet-modeling-and-solve.md#由产品组成反求分流比例)
+
+### 组成规格的工程 v4 保存与重开
+
+`simulation.steadyStatePlan` 保留 `radishflow.fixed-tp-material-eo/1` 方法及原有比例释放记录。新增 `kind: product_mole_fraction` 目标，持久化 `streamId`、生产者 `source.unitId` 与 `source.port`、`componentId` 和有限的 `valueMolMol`（[0, 1]）。产品总量与组成目标合计最多一项。显式尺度中的同类方程绑定保存相同的源和组分身份，尺度仍为 mol/s。目标或尺度引用组成行时，writer 将 EO 必需能力、方程契约及验收契约一并写为 2。正向及总流量计划使用原版本 1。已知内容与版本不符时报格式错误，未来版本触发整份只读。 [实际保存的工程](../../../examples/flowsheets/fixed-tp-product-composition-binary-hydrocarbon.rfproj.json)
+
+应用正式计划后，调用 `prepare_product_composition_save` 检查源和目标能力，确认后 `commit` 复核会话、计划代次、正式输入及目标原字节指纹。重复保存同能力工程沿用保存基线。切回版本 1 可另存新文件。通过 `read_studio_project_with_support(..., FlowPlanSupport::ProductComposition)` 重开恢复正式输入、计划和尺度，结果为 Missing。草稿与运行结果属于原会话。零流量或已失效的图绑定由运行就绪与数值层诊断。 [保存事务](../../../apps/radishflow-studio/src/document_lifecycle_driver/plan_save.rs) · [本机验收](../../devlogs/2026-11/2026-W47.md#2026-11-18-组成规格-v4-工程保存与重开)
 
 ## D02：模型方程、身份与结构诊断
 
