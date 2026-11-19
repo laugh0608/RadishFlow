@@ -26,22 +26,6 @@ pub fn validate_workspace_plan(plan: &FlowPlanConfiguration) -> RfResult<()> {
     plan.validate_configuration()
 }
 
-/// The current interactive editor and execution receipt implement EO v1.
-pub fn validate_workspace_run_plan(plan: &FlowPlanConfiguration) -> RfResult<()> {
-    if let FlowPlanConfiguration::EquationOriented(o) = plan
-        && (matches!(
-            o.target,
-            Some(rf_solver::equation_oriented::ProductTarget::MoleFraction(_))
-        ) || o.scales.as_ref().is_some_and(has_composition_scale))
-    {
-        return Err(RfError::invalid_input(
-            "running a product composition plan requires EO v2 result support",
-        )
-        .with_diagnostic_code("workspace.plan.in_memory_only"));
-    }
-    validate_workspace_plan(plan)
-}
-
 #[derive(Debug, Clone)]
 pub struct FlowPlanGeneration(Arc<()>);
 impl FlowPlanGeneration {

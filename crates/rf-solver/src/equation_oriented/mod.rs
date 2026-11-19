@@ -154,6 +154,16 @@ impl EquationOptions {
             scales: None,
         }
     }
+    /// Equation and acceptance contract versions for this execution, in that order.
+    pub fn contract_versions(&self) -> (u32, u32) {
+        match self.target {
+            Some(ProductTarget::MoleFraction(_)) => (
+                PRODUCT_COMPOSITION_CONTRACT_VERSION,
+                PRODUCT_COMPOSITION_CONTRACT_VERSION,
+            ),
+            _ => (EQUATION_CONTRACT_VERSION, ACCEPTANCE_CONTRACT_VERSION),
+        }
+    }
     /// Shape is independent of live graph bindings and pairing readiness.
     pub fn validate_shape(&self) -> EoResult<()> {
         self.validate_identities()?;

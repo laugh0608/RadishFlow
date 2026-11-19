@@ -57,8 +57,9 @@ pub fn structure(s: &StructuralReport) -> Value {
     json!({"variable_count":s.variable_count,"equation_count":s.equation_count,"matching_count":s.matching.len(),"square_matched":s.is_square_matched(),"matching":s.matching.iter().map(|(e,v)|json!({"equation":equation(e),"variable":variable(v)})).collect::<Vec<_>>(),"unmatched_variables":s.unmatched_variables.iter().map(variable).collect::<Vec<_>>(),"unmatched_equations":s.unmatched_equations.iter().map(equation).collect::<Vec<_>>(),"underdetermined":region(&s.underdetermined),"overdetermined":region(&s.overdetermined),"numerical_solvability":"not_proven"})
 }
 fn definition_with(d: &EquationDefinition, n: Numbers) -> RfResult<Value> {
-    let stored = crate::flow_plan_actions::stored_flow_plan(
+    let stored = crate::flow_plan_actions::stored_flow_plan_with_support(
         &rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(d.options.clone()),
+        rf_store::project_v4::FlowPlanSupport::ProductComposition,
     )?;
     let configuration = if d
         .equations
@@ -91,19 +92,48 @@ fn map(v: &std::collections::BTreeMap<rf_types::ComponentId, f64>, n: Numbers) -
             .collect::<RfResult<_>>()?,
     ))
 }
+fn composition(c: &ProductCompositionEvaluation, n: Numbers) -> RfResult<Value> {
+    Ok(json!({
+        "total_mol_s": n.value(c.total_mol_s)?,
+        "component_mol_s": n.value(c.component_mol_s)?,
+        "actual_mol_mol": n.value(c.actual_mol_mol)?,
+        "residual_mol_mol": n.value(c.residual_mol_mol)?,
+    }))
+}
+fn conditional_evaluation(s: &ConditionalLinearEvaluation, n: Numbers) -> RfResult<Value> {
+    let mut value = json!({
+        "fraction": n.optional(s.fraction)?,
+        "interval": s.interval.map(|(l, u)| n.vector(&[l, u])).transpose()?,
+        "linear": s.linear.as_ref().map(|l| linear(l, n)).transpose()?,
+        "target_residual_mol_s": n.optional(s.target_residual_mol_s)?,
+        "completed": s.completed,
+    });
+    if let Some(c) = &s.composition {
+        value["composition"] = composition(c, n)?;
+    }
+    Ok(value)
+}
 fn evidence(e: &EquationEvidence, n: Numbers) -> RfResult<Value> {
-    let samples=e.conditional_evaluations.iter().map(|s|Ok(json!({"fraction":n.optional(s.fraction)?,"interval":s.interval.map(|(l,u)|n.vector(&[l,u])).transpose()?,"linear":s.linear.as_ref().map(|l|linear(l,n)).transpose()?,"target_residual_mol_s":n.optional(s.target_residual_mol_s)?,"completed":s.completed}))).collect::<RfResult<Vec<_>>>()?;
+    let samples = e
+        .conditional_evaluations
+        .iter()
+        .map(|s| conditional_evaluation(s, n))
+        .collect::<RfResult<Vec<_>>>()?;
     let solved=e.solved_parameter.as_ref().map(|s|Ok::<_,RfError>(json!({"binding":parameter(&s.binding),"stored_value":n.optional(s.stored_value)?,"solved_value":n.value(s.value)?,"interval":n.vector(&[s.interval.0,s.interval.1])?}))).transpose()?;
     let target = match &e.verified_target {
         None => None,
         Some(VerifiedTarget::TotalMolarFlow(t)) => Some(
             json!({"source":port(&t.target.source),"target_mol_s":n.value(t.target.value_mol_s)?,"actual_mol_s":n.value(t.actual_mol_s)?,"residual_mol_s":n.value(t.residual_mol_s)?,"scaled_residual":n.value(t.scaled_residual)?}),
         ),
-        Some(VerifiedTarget::MoleFraction(_)) => {
-            return Err(RfError::invalid_input(
-                "composition evidence requires the Rust Core result contract",
-            ));
-        }
+        Some(VerifiedTarget::MoleFraction(t)) => Some(json!({
+            "kind": "product_mole_fraction",
+            "source": port(&t.target.source),
+            "component_id": t.target.component.as_str(),
+            "target_mol_mol": n.value(t.target.value_mol_mol)?,
+            "composition": composition(&t.composition, n)?,
+            "residual_mol_s": n.value(t.residual_mol_s)?,
+            "scaled_residual": n.value(t.scaled_residual)?,
+        })),
     };
     let global=e.global_material.as_ref().map(|g|Ok::<_,RfError>(json!({"fresh_components_mol_s":map(&g.fresh_components_mol_s,n)?,"product_components_mol_s":map(&g.product_components_mol_s,n)?,"component_residuals_mol_s":map(&g.component_residuals_mol_s,n)?,"total_residual_mol_s":n.value(g.total_residual_mol_s)?}))).transpose()?;
     Ok(

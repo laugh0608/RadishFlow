@@ -130,13 +130,7 @@ pub(super) fn solve_scoped(
         .entry(run.progress.stage)
         .or_default() += run.stage_started.elapsed();
     run.costs.elapsed = start.elapsed();
-    let (equation_contract_version, acceptance_contract_version) = match options.target {
-        Some(ProductTarget::MoleFraction(_)) => (
-            PRODUCT_COMPOSITION_CONTRACT_VERSION,
-            PRODUCT_COMPOSITION_CONTRACT_VERSION,
-        ),
-        _ => (EQUATION_CONTRACT_VERSION, ACCEPTANCE_CONTRACT_VERSION),
-    };
+    let (equation_contract_version, acceptance_contract_version) = options.contract_versions();
     match result {
         Ok(streams) => Ok(EquationResult {
             backend: backend.expect("executed backend"),

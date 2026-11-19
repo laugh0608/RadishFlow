@@ -117,6 +117,28 @@ impl FlowExecutionOutcome {
     }
 
     pub fn matches_plan(&self, plan: &FlowPlanConfiguration) -> bool {
+        if let (Self::EquationOriented(outcome), FlowPlanConfiguration::EquationOriented(options)) =
+            (self, plan)
+        {
+            return match outcome {
+                Ok(result) => {
+                    (
+                        result.equation_contract_version,
+                        result.acceptance_contract_version,
+                    ) == options.contract_versions()
+                        && result
+                            .evidence
+                            .definition
+                            .as_ref()
+                            .is_some_and(|d| &d.options == options)
+                }
+                Err(failure) => failure
+                    .evidence
+                    .definition
+                    .as_ref()
+                    .is_none_or(|d| &d.options == options),
+            };
+        }
         if let (Self::Mixed(outcome), FlowPlanConfiguration::Mixed(options)) = (self, plan) {
             let method = match outcome {
                 Ok(result) => result.method,
@@ -131,10 +153,6 @@ impl FlowExecutionOutcome {
                 | (
                     Self::Simultaneous(_),
                     FlowPlanConfiguration::Simultaneous(_)
-                )
-                | (
-                    Self::EquationOriented(_),
-                    FlowPlanConfiguration::EquationOriented(_)
                 )
         )
     }

@@ -133,6 +133,19 @@ impl SolveOutcome {
         }
     }
 
+    fn equation_contract_versions(
+        &self,
+        options: &rf_solver::equation_oriented::EquationOptions,
+    ) -> (u32, u32) {
+        match self {
+            Self::Executed(FlowExecutionOutcome::EquationOriented(Ok(result))) => (
+                result.equation_contract_version,
+                result.acceptance_contract_version,
+            ),
+            _ => options.contract_versions(),
+        }
+    }
+
     fn modular_method(&self) -> Option<&'static str> {
         match self {
             Self::Executed(FlowExecutionOutcome::Simultaneous(Ok(result))) => Some(result.method),
@@ -181,7 +194,7 @@ pub fn prepare_workspace_solve(
         }
         _ => {}
     }
-    rf_ui::flow_plan::validate_workspace_run_plan(app_state.workspace.flow_plan.current())?;
+    rf_ui::flow_plan::validate_workspace_plan(app_state.workspace.flow_plan.current())?;
     if matches!(
         app_state.workspace.flow_plan.current(),
         FlowPlanConfiguration::EquationOriented(_) | FlowPlanConfiguration::Mixed(_)
@@ -560,6 +573,22 @@ fn complete_with_publication(
         }
         FlowPlanConfiguration::EquationOriented(_) => "not-invoked",
     };
+    let (equation_oriented, acceptance_contract_version) = match &completion.plan {
+        FlowPlanConfiguration::EquationOriented(options) => {
+            let (equation_version, acceptance_version) =
+                completion.outcome.equation_contract_versions(options);
+            (
+                Some(rf_ui::result_query::EquationExecutionEvidence {
+                    capability: rf_store::project_v4::EQUATION_ORIENTED_CAPABILITY,
+                    capability_version: equation_version,
+                    equation_contract_version: equation_version,
+                    core_backend: completion.outcome.equation_backend(),
+                }),
+                acceptance_version,
+            )
+        }
+        _ => (None, 1),
+    };
     let origin = completion
         .receipt
         .result_origin(
@@ -574,20 +603,11 @@ fn complete_with_publication(
                 FlowPlanConfiguration::Simultaneous(_) => "radishflow.fixed-tp-affine-modular-lu/1",
                 FlowPlanConfiguration::EquationOriented(_) => "radishflow.fixed-tp-material-eo/1",
             },
-            acceptance_contract_version: 1,
+            acceptance_contract_version,
             configuration_sha256: crate::flow_plan_actions::runtime_configuration_sha256(
                 &completion.plan,
             ),
-            equation_oriented: matches!(
-                completion.plan,
-                FlowPlanConfiguration::EquationOriented(_)
-            )
-            .then(|| rf_ui::result_query::EquationExecutionEvidence {
-                capability: rf_store::project_v4::EQUATION_ORIENTED_CAPABILITY,
-                capability_version: 1,
-                equation_contract_version: rf_solver::equation_oriented::EQUATION_CONTRACT_VERSION,
-                core_backend: completion.outcome.equation_backend(),
-            }),
+            equation_oriented,
             mixed:
                 matches!(&completion.plan, FlowPlanConfiguration::Mixed(o) if o.recycle.is_none())
                     .then(|| rf_ui::result_query::MixedExecutionEvidence {
