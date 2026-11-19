@@ -34,6 +34,7 @@
 - Feed source stream 的 temperature、pressure、total molar flow 和 overall composition 进入 readiness。
 - Stream Inspector 可编辑基础 SI 字段和组成条目。
 - 缺 source stream 或 composition 时 readiness 能定位到具体 stream / unit。
+- Rust Core 已支持显式单相显热 Feed，复用有效温压与物料输入。缺热容可定位到组分与流股，温压越界时拒绝执行。既有 Feed 继续使用原序贯与物性入口。 [模型与适用域](../../thermo/mvp-model.md#单相稳态显热模型rust-core)
 
 已知缺口：
 

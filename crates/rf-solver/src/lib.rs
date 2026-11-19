@@ -21,7 +21,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use rf_flash::TpFlashSolver;
 use rf_flowsheet::dependencies::material_dependencies;
 use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
-use rf_thermo::ThermoProvider;
+use rf_thermo::{SensibleEnthalpyModel, ThermoProvider};
 use rf_types::{DiagnosticPortTarget, PortDirection, RfError, RfResult, StreamId, UnitId};
 use rf_unitops::{
     BuiltinUnitKind, UnitOperation, UnitOperationInputs, UnitOperationServices, validate_unit_node,
@@ -205,6 +205,11 @@ pub trait FlowsheetSolver {
 #[derive(Debug, Default)]
 pub struct SequentialModularSolver;
 
+enum SequentialProperties<'a> {
+    Legacy(UnitOperationServices<'a>),
+    SinglePhase(&'a SensibleEnthalpyModel),
+}
+
 impl FlowsheetSolver for SequentialModularSolver {
     fn solve(
         &self,
@@ -222,6 +227,32 @@ impl SequentialModularSolver {
     pub fn solve_controlled(
         &self,
         services: &SolverServices<'_>,
+        flowsheet: &Flowsheet,
+        control: &mut impl SolverControl,
+    ) -> RfResult<ControlledSolveOutcome> {
+        self.solve_with_properties(
+            SequentialProperties::Legacy(UnitOperationServices {
+                thermo: Some(services.thermo),
+                flash_solver: Some(services.flash_solver),
+            }),
+            flowsheet,
+            control,
+        )
+    }
+
+    /// Execute an acyclic flowsheet with a caller-selected single-vapor sensible enthalpy model.
+    pub fn solve_single_phase_controlled(
+        &self,
+        model: &SensibleEnthalpyModel,
+        flowsheet: &Flowsheet,
+        control: &mut impl SolverControl,
+    ) -> RfResult<ControlledSolveOutcome> {
+        self.solve_with_properties(SequentialProperties::SinglePhase(model), flowsheet, control)
+    }
+
+    fn solve_with_properties(
+        &self,
+        properties: SequentialProperties<'_>,
         flowsheet: &Flowsheet,
         control: &mut impl SolverControl,
     ) -> RfResult<ControlledSolveOutcome> {
@@ -266,9 +297,9 @@ impl SequentialModularSolver {
             related_unit_ids: execution_order.clone(),
             related_stream_ids: Vec::new(),
         }];
-        let unit_services = UnitOperationServices {
-            thermo: Some(services.thermo),
-            flash_solver: Some(services.flash_solver),
+        let unit_services = match properties {
+            SequentialProperties::Legacy(services) => services,
+            SequentialProperties::SinglePhase(_) => UnitOperationServices::default(),
         };
 
         for (step_index, unit_id) in execution_order.iter().enumerate() {
@@ -290,14 +321,21 @@ impl SequentialModularSolver {
             let spec = validate_unit_node(unit).map_err(|error| {
                 solver_step_error(step_number, unit, SolverDiagnosticCode::StepSpec, error)
             })?;
-            let operation = instantiate_operation(unit, flowsheet).map_err(|error| {
-                solver_step_error(
-                    step_number,
-                    unit,
-                    SolverDiagnosticCode::StepInstantiation,
-                    error,
-                )
-            })?;
+            let operation = match properties {
+                SequentialProperties::Legacy(_) => {
+                    instantiate_operation(unit, flowsheet).map_err(|error| {
+                        solver_step_error(
+                            step_number,
+                            unit,
+                            SolverDiagnosticCode::StepInstantiation,
+                            error,
+                        )
+                    })
+                }
+                SequentialProperties::SinglePhase(model) => {
+                    rf_unitops::catalog::instantiate_single_phase(unit, &flowsheet.streams, model)
+                }
+            }?;
             let mut inputs = UnitOperationInputs::new();
             let mut consumed_streams = Vec::new();
 
@@ -322,9 +360,20 @@ impl SequentialModularSolver {
             validate_step_stream_inputs(step_number, unit, &consumed_streams)?;
             validate_step_parameters(step_number, unit, &inputs, &consumed_stream_ids)?;
 
-            let outputs = operation.run(&unit_services, &inputs).map_err(|error| {
-                solver_step_execution_error(step_number, unit, &consumed_stream_ids, error)
-            })?;
+            let outputs =
+                operation
+                    .run(&unit_services, &inputs)
+                    .map_err(|error| match properties {
+                        SequentialProperties::Legacy(_) => solver_step_execution_error(
+                            step_number,
+                            unit,
+                            &consumed_stream_ids,
+                            error,
+                        ),
+                        SequentialProperties::SinglePhase(_) => {
+                            error.with_related_unit_id(unit.id.clone())
+                        }
+                    })?;
             let mut produced_streams = Vec::new();
 
             for port in spec

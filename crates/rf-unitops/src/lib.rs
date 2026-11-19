@@ -7,6 +7,7 @@ mod separator_evidence;
 mod separator_hydraulics;
 pub mod separator_rating;
 pub mod separator_sizing;
+mod single_phase;
 pub mod specifications;
 mod splitter;
 pub use splitter::{SPLITTER_SPEC, Splitter, build_splitter_node};

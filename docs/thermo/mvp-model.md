@@ -52,6 +52,12 @@
 
 Mixer 的区别可对照 [IDAES Mixer 模型](https://idaes-pse.readthedocs.io/en/stable/reference_guides/model_libraries/generic/unit_models/mixer.html)：其能量混合使用总焓平衡。该引用用于说明物理模型差异，不表示本仓库采用该实现或与其完成对标。
 
+### 单相稳态显热模型（Rust Core）
+
+`SensibleEnthalpyModel` 从调用方明确提供的组分气相常热容、温区及单一压力构造。组分焓以 `298.15 K` 的气相为零点，混合物摩尔焓为 `Σ zᵢ Cpᵢ (T − 298.15 K)`。温区含端点，热容须有限且为正，正摩尔分率组分缺热容时报告组分身份。该模型的声明范围由调用者提供，代表工况为合成理想气体、`280–420 K`、`100000 Pa`。 [焓模型](../../crates/rf-thermo/src/sensible_enthalpy.rs)
+
+Core 调用方通过 `SequentialModularSolver::solve_single_phase_controlled` 为整次无回路运行显式选择同一模型。当前支持 Feed 和绝热 Mixer，其他单元在此入口报告不支持。Feed 复用有效入口温压，正流量流股物化整体及气相焓，泡露点窗口缺席。Mixer 从实际入口焓流求出口温度，重新物化出口后检查逐组分残差 `≤ 1e-10 mol/s`。能量残差绝对值须 `≤ 1e-6 W`，且以各股焓流绝对值之和（下限 `1 W`）缩放后须 `≤ 1e-10`。零流量入口贡献零焓流，零总流量拒绝混合。既有工程走原序贯入口与物性服务。 [Core 入口](../../crates/rf-solver/src/lib.rs) · [验收记录](../devlogs/2026-11/2026-W47.md#2026-11-19-单相显热-feed-与绝热-mixer)
+
 ## 样例身份与适用范围
 
 `binary-hydrocarbon-lite-v1`、其 methane / ethane 组分名以及历史文档中的 `official hydrocarbon`，标识的是仓库标准演示与回归路径，不代表独立审核的真实物性数据。当前没有从样例追溯到独立参考输出、适用温区和工程误差的完整证据链；这些结果应按演示 / 合成模型解释。

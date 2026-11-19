@@ -4,6 +4,7 @@
 use std::collections::BTreeMap;
 
 use rf_model::{MaterialStreamState, UnitNode};
+use rf_thermo::SensibleEnthalpyModel;
 use rf_types::{RfError, RfResult, StreamId};
 
 use crate::specifications::{BuiltinInputSpecification, input_specification};
@@ -137,6 +138,31 @@ pub fn instantiate_builtin(
         .with_related_unit_id(unit.id.clone())
     })?;
     (builtin_model(kind).construct)(unit, streams)
+}
+
+/// Construct a local operation for the explicitly selected single-phase model.
+pub fn instantiate_single_phase<'a>(
+    unit: &UnitNode,
+    streams: &BTreeMap<StreamId, MaterialStreamState>,
+    model: &'a SensibleEnthalpyModel,
+) -> RfResult<Box<dyn UnitOperation + 'a>> {
+    match BuiltinUnitKind::parse(&unit.kind) {
+        Some(BuiltinUnitKind::Feed) => Ok(Box::new(crate::single_phase::SinglePhaseFeed {
+            outlet: feed_outlet_template(unit, streams)?,
+            model,
+        })),
+        Some(BuiltinUnitKind::Mixer) => Ok(Box::new(crate::single_phase::AdiabaticMixer {
+            outlet: stream_target_for_port(unit, MIXER_OUTLET_PORT, streams)?,
+            outlet_pressure_pa: unit.parameters.outlet_pressure_pa,
+            model,
+        })),
+        _ => Err(RfError::invalid_input(format!(
+            "{} has no single-phase sensible enthalpy model",
+            unit_context(unit),
+        ))
+        .with_diagnostic_code("solver.single_phase.unsupported_unit")
+        .with_related_unit_id(unit.id.clone())),
+    }
 }
 
 fn create_feed(
