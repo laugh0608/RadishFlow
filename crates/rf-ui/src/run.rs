@@ -83,6 +83,7 @@ pub struct StepSnapshot {
 pub struct SolveSnapshot {
     pub common: crate::flow_results::FlowSnapshotHeader,
     pub steps: Vec<StepSnapshot>,
+    pub energy_balances: std::collections::BTreeMap<UnitId, rf_solver::UnitEnergyBalance>,
 }
 
 impl std::ops::Deref for SolveSnapshot {
@@ -117,6 +118,7 @@ impl SolveSnapshot {
                 streams: Vec::new(),
             },
             steps: Vec::new(),
+            energy_balances: Default::default(),
         }
     }
 
@@ -186,6 +188,14 @@ impl SolveSnapshot {
                         .iter()
                         .map(stream_state_snapshot_from_model)
                         .collect(),
+                })
+                .collect(),
+            energy_balances: snapshot
+                .steps
+                .iter()
+                .filter_map(|step| {
+                    step.energy_balance
+                        .map(|balance| (step.unit_id.clone(), balance))
                 })
                 .collect(),
         }

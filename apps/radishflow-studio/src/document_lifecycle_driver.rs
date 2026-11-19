@@ -201,6 +201,7 @@ pub fn project_save_version(app: &AppState) -> u32 {
                 | rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
                 | rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
                 | rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_)
         )
         || app
             .workspace

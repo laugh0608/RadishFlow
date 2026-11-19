@@ -104,6 +104,11 @@ pub(crate) fn prepare_studio_flow_plan_save(
     path: &Path,
 ) -> RfResult<Option<PreparedFlowPlanSave>> {
     match app.workspace.flow_plan.current() {
+        FlowPlanConfiguration::SinglePhase(_) => {
+            let support = FlowPlanSupport::SinglePhase;
+            let project = flow_plan::project_with_support(app, support)?;
+            prepare_plan_save(app, path, support, project).map(Some)
+        }
         FlowPlanConfiguration::EquationOriented(options)
             if options.requires_product_composition() =>
         {
@@ -146,6 +151,9 @@ fn prepare_plan_save(
 }
 
 impl PreparedFlowPlanSave {
+    pub fn requires_single_phase(&self) -> bool {
+        self.support == FlowPlanSupport::SinglePhase
+    }
     pub fn requires_product_composition(&self) -> bool {
         self.support == FlowPlanSupport::ProductComposition
     }

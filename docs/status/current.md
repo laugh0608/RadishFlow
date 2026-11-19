@@ -46,7 +46,7 @@
 
 ### 下一步
 
-- [ ] [单相显热](../thermo/mvp-model.md#单相稳态显热模型rust-core) Feed、Mixer、Heater／Cooler 正反算已通过 Core 验收。待接工程保存与应用。
+- [x] [单相显热正反算](../topics/unitops/heater-cooler.md#v4-保存与重开) 已接通 Core、v4、CLI v11 与 Studio。
 - [ ] AF3-V10 原版 macOS 待验。等待页可操作时，同会话核对返回编辑、草稿、旧回执拒收、worker 回收及显式重跑。 [验收矩阵](../topics/runtime-messages/scenarios-and-acceptance.md)
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
@@ -111,7 +111,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-19：Rust 2,208 项通过，含 52 项 CLI 进程测试。显热、组成反算和实窗见 [W47](../devlogs/2026-11/2026-W47.md)，窄区与 .NET 见 [W46](../devlogs/2026-11/2026-W46.md)。
+- 2026-11-19：Rust 2,214 项通过，含 54 项 CLI 进程测试。显热、组成反算和实窗见 [W47](../devlogs/2026-11/2026-W47.md)，窄区与 .NET 见 [W46](../devlogs/2026-11/2026-W46.md)。
 
 - 2026-11-10：PR #18 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 

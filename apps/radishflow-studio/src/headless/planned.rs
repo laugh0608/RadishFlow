@@ -87,7 +87,9 @@ pub(super) fn execute_file<P: PlanProtocol>(
             })
             .collect(),
     };
-    old::runs::validate_resources(&validation)?;
+    if P::VERSION < super::v11::VERSION || validation.flow_resources.is_some() {
+        old::runs::validate_resources(&validation)?;
+    }
     let (opened, snapshot) =
         old::load_project_version(&project_path(path, &request.project)?, P::VERSION)?;
     let file_hash = snapshot.file_sha256.clone();
@@ -145,6 +147,11 @@ pub(super) fn execute_file<P: PlanProtocol>(
                 };
                 if old::runs::is_run(action) {
                     no_confirmation(step)?;
+                    if P::VERSION >= super::v11::VERSION
+                        && matches!(action, old::actions::Action::RunFlow { .. })
+                    {
+                        return Err(invalid("run_flow requires expected_plan_revision"));
+                    }
                     old::runs::execute(
                         app,
                         &legacy,
@@ -307,14 +314,44 @@ fn new_action<P: PlanProtocol>(
                 },
                 confirmation: None,
             };
-            let mut r = old::runs::execute(
-                app,
-                &legacy,
-                refs,
-                executions,
-                resources,
-                path.parent().unwrap_or(Path::new(".")),
-            )?;
+            let mut r = if matches!(
+                app.workspace.flow_plan.current(),
+                rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_)
+            ) {
+                if resources.is_some() {
+                    return Err(invalid(
+                        "single-vapor runs use saved project properties; omit flow_resources",
+                    ));
+                }
+                let doc = &app.workspace.document;
+                refs.revision(
+                    expected_revision,
+                    Output::Document,
+                    doc.metadata.document_id.as_str(),
+                    doc.revision,
+                )?;
+                let reply = crate::StudioAppFacade::new().run_workspace_project_model(app);
+                let (mut receipt, error) = old::runs::reply_value(reply, &step.id, executions);
+                receipt["diagnostic"] = app
+                    .workspace
+                    .solve_session
+                    .latest_diagnostic
+                    .as_ref()
+                    .map(old::results::flow_diagnostic)
+                    .unwrap_or(Value::Null);
+                old::runs::RunStep { receipt, error }
+            } else {
+                let resources = resources
+                    .ok_or_else(|| invalid("flow_resources is required for this run plan"))?;
+                old::runs::execute(
+                    app,
+                    &legacy,
+                    refs,
+                    executions,
+                    Some(resources),
+                    path.parent().unwrap_or(Path::new(".")),
+                )?
+            };
             r.receipt["plan_revision"] = json!(app.workspace.flow_plan.revision());
             r.receipt["result"] = P::flow(app, executions)?;
             return Ok((r.receipt, r.error));
@@ -390,7 +427,8 @@ fn queries<P: PlanProtocol>(
             StudioProjectOpen::Editable(app) => match &query.query {
                 QueryKind::Plan(PlanQuery::Results { .. }) => P::query(app),
                 QueryKind::Plan(PlanQuery::Actions { .. }) => {
-                    let mut actions=json!([{"kind":"configure_flow_plan","expected_plan_revision":true,"requires_resources":false},{"kind":"run_flow","expected_revision":true,"expected_plan_revision":true,"requires_resources":true}]);
+                    let project_model = matches!(app.workspace.flow_plan.current(), rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_));
+                    let mut actions=json!([{"kind":"configure_flow_plan","expected_plan_revision":true,"requires_resources":false},{"kind":"run_flow","expected_revision":true,"expected_plan_revision":true,"requires_resources":!project_model}]);
                     if P::VERSION>=6 {actions.as_array_mut().expect("array").push(json!({"kind":"adopt_eo_split_fraction","expected_revision":true,"expected_plan_revision":true,"requires_current_request_execution":true,"caller_value":false}));}
                     Ok(actions)
                 },
@@ -456,7 +494,7 @@ pub(super) fn required_capabilities(app: &AppState) -> Result<Value, Failure> {
     }
     crate::document_lifecycle_driver::flow_plan::required_capabilities_with_support(
         app,
-        rf_store::project_v4::FlowPlanSupport::ProductComposition,
+        rf_store::project_v4::FlowPlanSupport::SinglePhase,
     )
     .map(|caps| json!(caps))
     .map_err(domain)

@@ -39,7 +39,7 @@
 
 已知缺口：
 
-- 工程保存、CLI 与 Studio 的热负荷规格及结果审阅待接入；UA、能量流股和严格换热器设计按各自专题推进。
+- UA、能量流股和严格换热器设计按各自专题推进。
 - `Cooler` 复用普通空白建模入口，不新增同构 Home 作者入口；自动化覆盖不代替原生窗口逐项验收。
 
 ## Rust Core 单相显热规格
@@ -47,6 +47,24 @@
 - 显式选择单相常热容模型后，每台单元须在 `UnitOperationParameters::outlet_temperature_k` 与本次运行的 `heat_duties_w` 中选一种规格。缺规格、同时指定、非有限热负荷及错误单元引用均返回结构化诊断。
 - 指定出口温度时返回带符号的热负荷。指定热负荷时反求温度，零负荷且入口有流量时出口等温。零入口流量时，热负荷无法确定出口温度。温区边界由模型声明，越域规格拒绝运行。
 - Core 步骤记录进出口焓流、带符号热负荷、能量残差和缩放信息。两种规格均使用实际出口焓复核。原工程由既有 TP 路径运行。 [显热模型与容差](../../thermo/mvp-model.md#单相稳态显热模型rust-core) · [双进料验收](../../devlogs/2026-11/2026-W47.md#2026-11-19-单相-heater-和-cooler-正反算)
+
+### v4 保存与重开
+
+`simulation.steadyStatePlan.method` 为 `radishflow.acyclic-single-vapor-sensible` v1，要求 `radishflow.solver.single-vapor-sensible` v1。`singlePhase` 保存 `minTemperatureK`、`maxTemperatureK`、`pressurePa`、按组分 ID 的 `heatCapacitiesJPerMolK`，以及按 Heater／Cooler ID 的 `heatDutiesW`。版本 1 固定 `298.15 K` 气相焓参考态，温区含端点。热容与固定压力须正且有限，热负荷为带符号有限值。两种映射按 ID 排序写出。
+
+指定温度在单元的 `parameters.outlet_temperature_k` 保存。指定热负荷使用 `heatDutiesW`，对应单元的出口温度字段缺席。两个输入同在时拒绝读写。尚未完成的单元允许两个输入均缺席，执行时报告缺规格。热容和热负荷引用必须指向工程中的组分与对应单元。实际焓、反求温度、能量残差和运行快照由显式运行生成。重开后结果为 Missing。
+
+已有 v4 TP 工程沿用原方法。缺少单相能力的 v4 读者对新工程提供整份只读保护并拒绝覆盖。首次覆盖已有工程以引入该能力时需确认。移除该能力后另存新路径。 [双进料工程](../../../examples/flowsheets/two-feed-single-vapor-sensible.rfproj.json)
+
+### Studio
+
+Studio 在「稳态运行计划」中选择「单相显热序贯」，录入适用温压与组分热容。在模块设置提交指定出口温度。切换至热负荷时，在运行计划中清除出口温度、录入热负荷并应用计划。切回温度规格时先移除热负荷并应用，再提交出口温度。显式运行后，「流程结果」显示实际出口温度、进出口焓流、带符号热负荷和两种残差。
+
+### CLI v11
+
+`query` 的 `flow_plan` 返回规范配置、配置 SHA-256、就绪状态及诊断。`execute` 的 `run_flow` 校验工程 ID、文件 SHA-256、输入修订与计划修订。运行已保存的单相计划时省略 `flow_resources`，物性取自工程。`flow` 为 Current 时包含实际流股温压与流量、按单元的 `energy_balances`，以及带配置摘要的执行来源。失败只发布诊断。CLI 在内存运行，重新启动查询仍为 Missing。v10 及更早的 v4 读者对新工程整份只读。
+
+v11 可用 `configure_flow_plan` 应用本次请求内的单相计划。`plan.method` 为 `radishflow.acyclic-single-vapor-sensible/1`，`plan.single_phase` 使用 v4 `singlePhase` 的字段。温度规格沿用单元已有参数，热负荷规格从计划读取。 [通用命令契约](../../reference/headless-cli.md)
 
 ## 范围
 
@@ -121,5 +139,5 @@
 ## 状态记录
 
 - 当前状态：Active
-- 最近更新：2026-11-19，完成 Rust Core 单相出口温度与热负荷正反算验收；普通工程的 B2-5 证据见上文。
-- 下一步：显热工程存储与消费者接入按当前优先级推进；普通工程跨平台原生路径随对应平台节点补证。
+- 2026-11-19 完成单相显热正反算的 Core、v4 保存、CLI v11 与 Studio 接入。普通工程的 B2-5 证据见上文。
+- 普通工程跨平台原生路径随对应平台节点补证。

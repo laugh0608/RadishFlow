@@ -91,6 +91,7 @@ pub enum FlowAction {
         variable: VariableId,
         value: VariableValue,
     },
+    ClearHeaterCoolerOutletTemperature(UnitId),
     CreateUnit(BuiltinUnitKind),
     Connect(MaterialConnectionTarget),
     ConnectExact(MaterialConnectionTarget),
@@ -105,7 +106,9 @@ pub enum FlowAction {
 impl FlowAction {
     pub fn kind(&self) -> FlowActionKind {
         match self {
-            Self::Write { .. } => FlowActionKind::Write,
+            Self::Write { .. } | Self::ClearHeaterCoolerOutletTemperature(_) => {
+                FlowActionKind::Write
+            }
             Self::CreateUnit(_) => FlowActionKind::CreateUnit,
             Self::Connect(_) | Self::ConnectExact(_) => FlowActionKind::Connect,
             Self::Disconnect(_) | Self::DisconnectStream { .. } => FlowActionKind::Disconnect,
@@ -273,6 +276,18 @@ fn stage_flow_edit(
                 )
                 .map_err(FlowActionError::Write)?;
             (FlowActionEffect::Written(receipt.variable), receipt.command)
+        }
+        FlowAction::ClearHeaterCoolerOutletTemperature(unit_id) => {
+            let command = next
+                .clear_heater_cooler_outlet_temperature(unit_id.clone(), changed_at)
+                .map_err(FlowActionError::Rejected)?;
+            let variable = VariableId {
+                document: request.expected.document_id().clone(),
+                object: rf_ui::variable_browser::ObjectId::Unit(unit_id.clone()),
+                section: rf_ui::variable_browser::VariableSection::Inputs,
+                field: rf_ui::variable_browser::VariableField::OutletTemperature,
+            };
+            (FlowActionEffect::Written(variable), command)
         }
         FlowAction::CreateUnit(kind) => {
             let receipt = next

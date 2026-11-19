@@ -173,7 +173,7 @@ impl WorkspaceRunOwner {
         if !self.accepting {
             return Ok(WorkspaceRunSubmission::Blocked(WorkspaceRunBlock::Closing));
         }
-        let package_id = match preflight_workspace_run(app, index, command) {
+        let package_id = match preflight_workspace_run(app, Some(index), command) {
             WorkspaceRunPreflight::Ready(id) => id,
             WorkspaceRunPreflight::Skipped(reason) => {
                 return Ok(WorkspaceRunSubmission::Skipped(reason));

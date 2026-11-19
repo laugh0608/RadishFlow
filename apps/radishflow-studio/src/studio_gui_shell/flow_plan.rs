@@ -18,6 +18,7 @@ mod mixed_recycle;
 pub(super) mod mixed_results;
 mod results;
 mod simultaneous;
+mod single_phase;
 use simultaneous::PlanMethod;
 pub(super) mod modular_results;
 
@@ -150,6 +151,7 @@ impl ReadyAppState {
                         PlanMethod::Simultaneous,
                         PlanMethod::EquationOriented,
                         PlanMethod::Mixed,
+                        PlanMethod::SinglePhase,
                     ] {
                         ui.selectable_value(&mut method, choice, choice.label(zh));
                     }
@@ -278,6 +280,33 @@ impl ReadyAppState {
                 apply_requested |= self.render_mixed_plan(ui, &mut draft, options, &bindings);
             });
         }
+        if let FlowPlanConfiguration::SinglePhase(options) = &mut candidate {
+            let thermal = self.single_phase_thermal_units();
+            let (submit, clear) = ui
+                .add_enabled_ui(editable, |ui| {
+                    self.render_single_phase_plan(
+                        ui,
+                        &mut draft,
+                        options,
+                        &components,
+                        &thermal,
+                        matches!(current, FlowPlanConfiguration::SinglePhase(_)),
+                    )
+                })
+                .inner;
+            apply_requested |= submit;
+            if let Some(unit) = clear {
+                let expected =
+                    FlowEditContext::capture(&self.platform_host.modeling_inputs().workspace);
+                self.plan_action(Action::EditFlow {
+                    access,
+                    request: FlowActionRequest {
+                        expected,
+                        action: FlowAction::ClearHeaterCoolerOutletTemperature(unit),
+                    },
+                });
+            }
+        }
         draft.replace_candidate(candidate);
         let configuration = draft.configuration();
         let pending = draft.is_pending(&current);
@@ -287,11 +316,13 @@ impl ReadyAppState {
                 FlowPlanConfiguration::Simultaneous(_)
                     | FlowPlanConfiguration::EquationOriented(_)
                     | FlowPlanConfiguration::Mixed(_)
+                    | FlowPlanConfiguration::SinglePhase(_)
             ) || matches!(
                 current,
                 FlowPlanConfiguration::Simultaneous(_)
                     | FlowPlanConfiguration::EquationOriented(_)
                     | FlowPlanConfiguration::Mixed(_)
+                    | FlowPlanConfiguration::SinglePhase(_)
             ))
         {
             ui.label(tr(zh, "先应用或放弃草稿，才可 Run / F5 或输出当前结果；保存仅写正式配置。", "Apply or discard the draft before Run / F5 or current output. Save writes only formal configuration."));

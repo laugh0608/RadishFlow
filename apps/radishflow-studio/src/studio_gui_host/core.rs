@@ -1624,6 +1624,7 @@ fn workspace_document_snapshot_from_controller(
                     },
                 }
             })
+            .chain(crate::studio_project_component_selection::saved_single_phase_components(controller.app_state()))
             .collect(),
         unit_count: document.flowsheet.units.len(),
         stream_count: document.flowsheet.streams.len(),

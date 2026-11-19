@@ -1,8 +1,9 @@
 //! Versioned project configuration DTOs. They contain no solver workspace or UI identity.
 use super::{
-    EQUATION_ORIENTED_METHOD, SIMULTANEOUS_METHOD, StoredCouplingScale, StoredCouplingScaling,
-    StoredEquationBinding, StoredEquationPlan, StoredEquationScale, StoredEquationScaling,
-    StoredEquationSpecification, StoredEquationVariableBinding, StoredModularPlan,
+    EQUATION_ORIENTED_METHOD, SIMULTANEOUS_METHOD, SINGLE_PHASE_METHOD, StoredCouplingScale,
+    StoredCouplingScaling, StoredEquationBinding, StoredEquationPlan, StoredEquationScale,
+    StoredEquationScaling, StoredEquationSpecification, StoredEquationVariableBinding,
+    StoredModularPlan, StoredSinglePhasePlan,
 };
 use rf_types::{ComponentId, RfError, RfResult, StreamId, UnitId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -19,6 +20,7 @@ pub enum StoredFlowPlan {
     EquationOriented(StoredEquationPlan),
     Mixed(super::StoredMixedPlan),
     MixedRecycle(Box<super::StoredMixedRecyclePlan>),
+    SinglePhase(StoredSinglePhasePlan),
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -167,6 +169,12 @@ struct PlanWire {
         deserialize_with = "present"
     )]
     blocks: Option<Vec<super::StoredMixedBlock>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present"
+    )]
+    single_phase: Option<StoredSinglePhasePlan>,
 }
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -221,12 +229,16 @@ impl StoredFlowPlan {
                 Self::EquationOriented(_) => EQUATION_ORIENTED_METHOD,
                 Self::Mixed(_) => super::MIXED_METHOD,
                 Self::MixedRecycle(_) => super::MIXED_RECYCLE_METHOD,
+                Self::SinglePhase(_) => SINGLE_PHASE_METHOD,
             }
             .into(),
             version: 1,
         }
     }
     pub fn validate(&self) -> RfResult<()> {
+        if let Self::SinglePhase(p) = self {
+            return p.validate();
+        }
         if let Self::MixedRecycle(p) = self {
             return p.validate();
         }
@@ -292,7 +304,11 @@ impl Serialize for StoredFlowPlan {
             equation_contract_version: None,
             specifications: None,
             blocks: None,
+            single_phase: None,
         };
+        if let Self::SinglePhase(plan) = self {
+            wire.single_phase = Some(plan.clone());
+        }
         if let Self::Partitioned(plan) = self {
             wire.acceptance_contract_version = Some(1);
             wire.fixed_boundary = Some(plan.fixed_boundary.clone());
@@ -352,6 +368,11 @@ impl<'de> Deserialize<'de> for StoredFlowPlan {
         {
             return Err(serde::de::Error::custom("blocks require Mixed method"));
         }
+        if w.method.id != SINGLE_PHASE_METHOD && w.single_phase.is_some() {
+            return Err(serde::de::Error::custom(
+                "singlePhase requires the single-vapor method",
+            ));
+        }
         let result = match (w.method.id.as_str(), w.method.version) {
             (super::MIXED_RECYCLE_METHOD, 1)
                 if w.acceptance_contract_version == Some(1)
@@ -392,7 +413,7 @@ impl<'de> Deserialize<'de> for StoredFlowPlan {
                     .canonicalized(),
                 )
             }
-            (ACYCLIC_METHOD, 1)
+            (ACYCLIC_METHOD | SINGLE_PHASE_METHOD, 1)
                 if w.acceptance_contract_version.is_none()
                     && w.fixed_boundary.is_none()
                     && w.max_iteration_evaluations.is_none()
@@ -400,7 +421,15 @@ impl<'de> Deserialize<'de> for StoredFlowPlan {
                     && w.response_contract_version.is_none()
                     && w.scaling.is_none() =>
             {
-                Self::Acyclic
+                if w.method.id == SINGLE_PHASE_METHOD {
+                    Self::SinglePhase(
+                        w.single_phase.ok_or_else(|| {
+                            serde::de::Error::custom("singlePhase settings required")
+                        })?,
+                    )
+                } else {
+                    Self::Acyclic
+                }
             }
             (PARTITIONED_METHOD, 1)
                 if w.acceptance_contract_version == Some(1)

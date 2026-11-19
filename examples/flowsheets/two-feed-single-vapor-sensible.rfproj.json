@@ -1,0 +1,248 @@
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 4,
+  "requiredCapabilities": [
+    {
+      "id": "radishflow.flow-plan",
+      "version": 1
+    },
+    {
+      "id": "radishflow.solver.single-vapor-sensible",
+      "version": 1
+    }
+  ],
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "Two-feed sensible enthalpy",
+      "components": {
+        "component-a": {
+          "id": "component-a",
+          "name": "Component A"
+        },
+        "component-b": {
+          "id": "component-b",
+          "name": "Component B"
+        }
+      },
+      "streams": {
+        "a-out": {
+          "id": "a-out",
+          "name": "Feed A",
+          "temperature_k": 300.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 2.0,
+          "overall_mole_fractions": {
+            "component-a": 1.0,
+            "component-b": 0.0
+          },
+          "phases": []
+        },
+        "b-out": {
+          "id": "b-out",
+          "name": "Feed B",
+          "temperature_k": 360.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 3.0,
+          "overall_mole_fractions": {
+            "component-a": 0.0,
+            "component-b": 1.0
+          },
+          "phases": []
+        },
+        "mixed": {
+          "id": "mixed",
+          "name": "Mixed",
+          "temperature_k": 310.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "component-a": 0.5,
+            "component-b": 0.5
+          },
+          "phases": []
+        },
+        "product": {
+          "id": "product",
+          "name": "Product",
+          "temperature_k": 310.0,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 0.0,
+          "overall_mole_fractions": {
+            "component-a": 0.5,
+            "component-b": 0.5
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "feed-a": {
+          "id": "feed-a",
+          "name": "Feed A",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "a-out"
+            }
+          ]
+        },
+        "feed-b": {
+          "id": "feed-b",
+          "name": "Feed B",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "b-out"
+            }
+          ]
+        },
+        "mixer": {
+          "id": "mixer",
+          "name": "Mixer",
+          "kind": "mixer",
+          "ports": [
+            {
+              "name": "inlet_a",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "a-out"
+            },
+            {
+              "name": "inlet_b",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "b-out"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "mixed"
+            }
+          ],
+          "parameters": {
+            "outlet_pressure_pa": 100000.0
+          }
+        },
+        "heater": {
+          "id": "heater",
+          "name": "Heater",
+          "kind": "heater",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "mixed"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "product"
+            }
+          ],
+          "parameters": {
+            "outlet_temperature_k": 380.0,
+            "outlet_pressure_pa": 100000.0
+          }
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-two-feed-single-vapor",
+      "title": "Two-feed single-vapor sensible enthalpy",
+      "schemaVersion": 1,
+      "createdAt": "2026-11-19T00:00:00Z",
+      "updatedAt": "2026-11-19T00:00:00Z"
+    }
+  },
+  "presentation": {
+    "displayUnits": [
+      {
+        "quantityId": "absolute_temperature",
+        "unitId": "kelvin"
+      },
+      {
+        "quantityId": "temperature_difference",
+        "unitId": "kelvin_difference"
+      },
+      {
+        "quantityId": "absolute_pressure",
+        "unitId": "pascal"
+      },
+      {
+        "quantityId": "molar_flow",
+        "unitId": "mole_per_second"
+      },
+      {
+        "quantityId": "mole_fraction",
+        "unitId": "mole_per_mole"
+      },
+      {
+        "quantityId": "molar_phase_fraction",
+        "unitId": "mole_per_mole"
+      },
+      {
+        "quantityId": "molar_enthalpy",
+        "unitId": "joule_per_mole"
+      },
+      {
+        "quantityId": "actual_volume_flow",
+        "unitId": "cubic_metre_per_second"
+      },
+      {
+        "quantityId": "mass_density",
+        "unitId": "kilogram_per_cubic_metre"
+      },
+      {
+        "quantityId": "velocity",
+        "unitId": "metre_per_second"
+      },
+      {
+        "quantityId": "duration",
+        "unitId": "second"
+      },
+      {
+        "quantityId": "length",
+        "unitId": "metre"
+      },
+      {
+        "quantityId": "area",
+        "unitId": "square_metre"
+      },
+      {
+        "quantityId": "volume",
+        "unitId": "cubic_metre"
+      },
+      {
+        "quantityId": "dimensionless_ratio",
+        "unitId": "one"
+      }
+    ]
+  },
+  "simulation": {
+    "steadyStatePlan": {
+      "method": {
+        "id": "radishflow.acyclic-single-vapor-sensible",
+        "version": 1
+      },
+      "singlePhase": {
+        "minTemperatureK": 280.0,
+        "maxTemperatureK": 420.0,
+        "pressurePa": 100000.0,
+        "heatCapacitiesJPerMolK": {
+          "component-a": 30.0,
+          "component-b": 50.0
+        },
+        "heatDutiesW": {}
+      }
+    }
+  }
+}

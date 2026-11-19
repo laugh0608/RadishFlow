@@ -9,11 +9,13 @@ pub(super) enum PlanMethod {
     Simultaneous,
     EquationOriented,
     Mixed,
+    SinglePhase,
 }
 impl PlanMethod {
     pub(super) fn of(plan: &FlowPlanConfiguration) -> Self {
         match plan {
             FlowPlanConfiguration::Acyclic => Self::Acyclic,
+            FlowPlanConfiguration::SinglePhase(_) => Self::SinglePhase,
             FlowPlanConfiguration::Partitioned(_) => Self::Partitioned,
             FlowPlanConfiguration::Simultaneous(_) => Self::Simultaneous,
             FlowPlanConfiguration::EquationOriented(_) => Self::EquationOriented,
@@ -29,6 +31,7 @@ impl PlanMethod {
                 "Fixed-T/P equations / specification solve",
             ),
             Self::Acyclic => tr(zh, "无环序贯", "Acyclic sequential"),
+            Self::SinglePhase => tr(zh, "单相显热序贯", "Single-vapor sensible heat"),
             Self::Partitioned => tr(
                 zh,
                 "分块回流（固定温压）",
@@ -52,6 +55,17 @@ impl PlanMethod {
                 rf_solver::equation_oriented::EquationOptions::new(boundary),
             ),
             Self::Acyclic => FlowPlanConfiguration::Acyclic,
+            Self::SinglePhase => {
+                FlowPlanConfiguration::SinglePhase(rf_solver::flow_plan::SinglePhaseOptions {
+                    model: rf_thermo::SensibleEnthalpyModel::new(
+                        Default::default(),
+                        250.0..=500.0,
+                        101_325.0,
+                    )
+                    .expect("valid draft interval and pressure"),
+                    heat_duties_w: Default::default(),
+                })
+            }
             Self::Partitioned => FlowPlanConfiguration::Partitioned(RecycleSolveOptions::new(
                 FixedRecycleBoundary {
                     temperature_k: 298.15,
@@ -72,6 +86,7 @@ impl ReadyAppState {
         plan.has_pending_modular_draft()
             || plan.has_pending_equation_draft()
             || plan.has_pending_mixed_draft()
+            || plan.has_pending_single_phase_draft()
     }
 
     pub(super) fn render_simultaneous_plan(

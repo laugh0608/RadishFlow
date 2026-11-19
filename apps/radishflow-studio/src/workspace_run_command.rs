@@ -89,6 +89,20 @@ pub fn resolve_workspace_run_package_id(
     auth_cache_index: &StoredAuthCacheIndex,
     selection: &WorkspaceRunPackageSelection,
 ) -> RfResult<String> {
+    if matches!(
+        app_state.workspace.flow_plan.current(),
+        rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_)
+    ) {
+        return match selection {
+            WorkspaceRunPackageSelection::Preferred => {
+                Ok(rf_store::project_v4::SINGLE_PHASE_METHOD.into())
+            }
+            WorkspaceRunPackageSelection::Explicit(_) => Err(RfError::invalid_input(
+                "single-vapor sensible enthalpy uses the project's property inputs",
+            )
+            .with_diagnostic_code(WORKSPACE_RUN_DIAGNOSTIC_INVALID_SELECTION)),
+        };
+    }
     match selection {
         WorkspaceRunPackageSelection::Explicit(package_id) => {
             resolve_explicit_package_id(app_state, auth_cache_index, package_id)

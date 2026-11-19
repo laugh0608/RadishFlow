@@ -61,6 +61,22 @@ pub(crate) fn stored_flow_plan_with_support(
     }
     Ok(match plan {
         FlowPlanConfiguration::Acyclic => StoredFlowPlan::Acyclic,
+        FlowPlanConfiguration::SinglePhase(options) if support == FlowPlanSupport::SinglePhase => {
+            let (min_temperature_k, max_temperature_k) =
+                options.model.temperature_range_k().into_inner();
+            StoredFlowPlan::SinglePhase(StoredSinglePhasePlan {
+                min_temperature_k,
+                max_temperature_k,
+                pressure_pa: options.model.pressure_pa(),
+                heat_capacities_j_per_mol_k: options.model.heat_capacities_j_per_mol_k().clone(),
+                heat_duties_w: options.heat_duties_w.clone(),
+            })
+        }
+        FlowPlanConfiguration::SinglePhase(_) => {
+            return Err(RfError::invalid_input(
+                "the project consumer does not support single-vapor sensible enthalpy",
+            ));
+        }
         FlowPlanConfiguration::Mixed(o) => StoredFlowPlan::Mixed(mixed::stored(o)?),
         FlowPlanConfiguration::EquationOriented(o) => {
             StoredFlowPlan::EquationOriented(equation_oriented::stored(o, support)?)
@@ -131,7 +147,7 @@ pub(crate) fn runtime_configuration_sha256(plan: &FlowPlanConfiguration) -> Stri
             ))
         }
         _ => serde_json::to_vec(
-            &stored_flow_plan_with_support(plan, FlowPlanSupport::ProductComposition)
+            &stored_flow_plan_with_support(plan, FlowPlanSupport::SinglePhase)
                 .expect("persistable plan"),
         ),
     }
@@ -143,6 +159,16 @@ pub fn flow_plan_configuration(plan: StoredFlowPlan) -> RfResult<FlowPlanConfigu
     plan.validate()?;
     let value = match plan {
         StoredFlowPlan::Acyclic => FlowPlanConfiguration::Acyclic,
+        StoredFlowPlan::SinglePhase(p) => {
+            FlowPlanConfiguration::SinglePhase(rf_solver::flow_plan::SinglePhaseOptions {
+                model: rf_thermo::SensibleEnthalpyModel::new(
+                    p.heat_capacities_j_per_mol_k,
+                    p.min_temperature_k..=p.max_temperature_k,
+                    p.pressure_pa,
+                )?,
+                heat_duties_w: p.heat_duties_w,
+            })
+        }
         StoredFlowPlan::Mixed(o) => FlowPlanConfiguration::Mixed(mixed::configuration(o)?),
         StoredFlowPlan::MixedRecycle(plan) => {
             let mut options = mixed::configuration(plan.mixed)?;

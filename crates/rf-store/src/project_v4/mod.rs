@@ -8,6 +8,7 @@ mod mixed;
 mod object_identities;
 mod plan;
 mod simultaneous;
+mod single_phase;
 use crate::project::STORED_PROJECT_FILE_KIND;
 use crate::project_v3::{
     StoredEngineeringInputs,
@@ -22,6 +23,7 @@ use rf_types::{FlowObjectIdentities, RfError, RfResult, units::DisplayUnitSet};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 pub use simultaneous::*;
+pub use single_phase::*;
 use std::collections::BTreeSet;
 
 pub const VERSION: u32 = 4;
@@ -50,6 +52,7 @@ pub enum FlowPlanSupport {
     Mixed,
     MixedRecycle,
     ProductComposition,
+    SinglePhase,
 }
 
 impl FlowPlanSupport {
@@ -60,6 +63,7 @@ impl FlowPlanSupport {
             EQUATION_ORIENTED_METHOD => self >= Self::EquationOriented,
             MIXED_METHOD => self >= Self::Mixed,
             MIXED_RECYCLE_METHOD => self >= Self::MixedRecycle,
+            SINGLE_PHASE_METHOD => self >= Self::SinglePhase,
             _ => false,
         }
     }
@@ -88,6 +92,7 @@ impl FlowPlanSupport {
             SIMULTANEOUS_CAPABILITY => self.supports_method(SIMULTANEOUS_METHOD),
             MIXED_CAPABILITY => self.supports_method(MIXED_METHOD),
             MIXED_RECYCLE_CAPABILITY => self.supports_method(MIXED_RECYCLE_METHOD),
+            SINGLE_PHASE_CAPABILITY => self.supports_method(SINGLE_PHASE_METHOD),
             OBJECT_IDENTITY_CAPABILITY | VARIABLE_WATCH_LIST_CAPABILITY => {
                 identities == ObjectIdentitySupport::Supported
             }
@@ -216,6 +221,9 @@ pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapabilit
     if matches!(project.steady_state_plan, StoredFlowPlan::MixedRecycle(_)) {
         ids.push((MIXED_RECYCLE_CAPABILITY, 1));
     }
+    if matches!(project.steady_state_plan, StoredFlowPlan::SinglePhase(_)) {
+        ids.push((SINGLE_PHASE_CAPABILITY, 1));
+    }
     ids.sort();
     ids.into_iter()
         .map(|(id, version)| RequiredCapability {
@@ -269,7 +277,7 @@ pub fn parse_for_consumer(
         probe.steady_state_plan.method.id.as_str(),
         MIXED_METHOD | MIXED_RECYCLE_METHOD
     );
-    if (modular || eo || mixed)
+    if (modular || eo || mixed || probe.steady_state_plan.method.id == SINGLE_PHASE_METHOD)
         && (probe.steady_state_plan.method.version == 0
             || probe.steady_state_plan.acceptance_contract_version == Some(0)
             || probe.steady_state_plan.response_contract_version == Some(0)
@@ -388,6 +396,7 @@ pub fn parse_for_consumer(
         variable_watch_list,
     };
     validate_watch_list(&project)?;
+    validate_plan_references(&project)?;
     let actual: BTreeSet<_> = wire.required_capabilities.into_iter().collect();
     if actual != required_capabilities(&project).into_iter().collect() {
         return Err(RfError::invalid_input(
@@ -441,6 +450,7 @@ pub fn to_pretty_json_with_support(
     }
     document::validate(&p.document)?;
     validate_watch_list(p)?;
+    validate_plan_references(p)?;
     let wire = WriteWire {
         kind: STORED_PROJECT_FILE_KIND,
         schema_version: VERSION,
@@ -459,6 +469,13 @@ pub fn to_pretty_json_with_support(
         variable_watch_list: p.variable_watch_list.as_deref(),
     };
     serde_json::to_string_pretty(&wire).map_err(json_error)
+}
+
+fn validate_plan_references(project: &StoredProjectV4) -> RfResult<()> {
+    match &project.steady_state_plan {
+        StoredFlowPlan::SinglePhase(plan) => plan.validate_references(&project.document.flowsheet),
+        _ => Ok(()),
+    }
 }
 
 fn validate_watch_list(project: &StoredProjectV4) -> RfResult<()> {

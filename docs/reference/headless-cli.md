@@ -2,7 +2,7 @@
 
 更新时间：2026-11-19
 
-用途：CLI v1–v10 命令、协议与错误。
+用途：CLI v1–v11 命令、协议与错误。
 读者：本地脚本和适配器开发者。
 
 不包含：公共网络 API、COM、录制脚本、后台任务与项目保存。
@@ -16,6 +16,8 @@ v8 `query` 仅支持 `stable_variable`。`execute` 在工程 IO 前返回 `unsup
 v9 查询并运行已保存的 M2 工程。 [v9 契约与示例](../topics/modeling/mixed-partition-execution.md#m2-cli-首片评审)
 
 v10 支持 [终端产品组成反算](../topics/modeling/equation-oriented-block.md#产品组成反算-cli-v10)。
+
+[v11 单相显热](../topics/unitops/heater-cooler.md#cli-v11)。
 
 v2 增加创建、连接和步骤引用。工程版本独立于请求版本，v1 / v2 按 SI 读写。 [单位系统](../topics/units-and-quantity-system.md) · [单位存储](../topics/units/unit-sets-and-persistence.md#u2-存储接口)
 

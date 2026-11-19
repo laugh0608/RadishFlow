@@ -2,6 +2,7 @@ use super::runtime::collect_shape_texts;
 use super::*;
 use radishflow_studio::{StudioBackgroundRunAction as Action, flow_actions::FlowEditAccess};
 use rf_ui::flow_plan::*;
+mod single_phase;
 fn app() -> ReadyAppState {
     let mut config = synced_workspace_config();
     config.project_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

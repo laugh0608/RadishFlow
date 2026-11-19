@@ -27,6 +27,7 @@ pub(super) fn check_inputs_with_plan(
         rf_ui::flow_plan::FlowPlanConfiguration::Acyclic => {
             rf_solver::sequential_execution_order(flowsheet).map(|_| ())
         }
+        rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_) => plan.validate_for(flowsheet),
         rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(options) => {
             rf_solver::partitioned::assemble_partitioned_plan(flowsheet, options).map(|_| ())
         }
@@ -104,10 +105,17 @@ pub(super) fn check_inputs_with_plan(
     // execution-only parameter failures, regardless of their object IDs.
     for unit in flowsheet.units.values() {
         if let Some(kind) = BuiltinUnitKind::parse(&unit.kind) {
+            let inherits_pressure = matches!(
+                plan,
+                rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_)
+            ) && matches!(
+                kind,
+                BuiltinUnitKind::Heater | BuiltinUnitKind::Cooler | BuiltinUnitKind::Mixer
+            );
             for &parameter in input_specification(kind).required_explicit_parameters {
-                if !released_parameter(plan, &unit.id, parameter)
-                    && parameter.value(&unit.parameters).is_none()
-                {
+                let implicit = (inherits_pressure && parameter == UnitParameter::OutletPressure)
+                    || released_parameter(plan, &unit.id, parameter);
+                if !implicit && parameter.value(&unit.parameters).is_none() {
                     checks
                         .problems
                         .push(SpecificationProblem::MissingParameter {
@@ -321,4 +329,5 @@ fn released_parameter(
     parameter: UnitParameter,
 ) -> bool {
     matches!(plan, rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(o) if parameter == UnitParameter::OutletASplitFraction && o.released.as_ref().is_some_and(|r| &r.binding.unit == unit))
+        || matches!(plan, rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(o) if parameter == UnitParameter::OutletTemperature && o.heat_duties_w.contains_key(unit))
 }

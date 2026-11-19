@@ -685,6 +685,28 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         document: &radishflow_studio::StudioGuiWorkspaceDocumentSnapshot,
     ) {
+        if matches!(
+            self.platform_host
+                .modeling_inputs()
+                .workspace
+                .flow_plan
+                .current(),
+            rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_)
+        ) {
+            self.render_project_tree_row(
+                ui,
+                super::locale::tr(self.locale, "物性来源", "Property source"),
+                super::locale::tr(
+                    self.locale,
+                    "工程气相常热容",
+                    "Project vapor heat capacities",
+                ),
+                None,
+            );
+            ui.add_space(6.0);
+            self.render_project_components(ui, document);
+            return;
+        }
         let property_package_summary = document
             .property_package_choices
             .iter()

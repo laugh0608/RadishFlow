@@ -46,9 +46,16 @@ impl PreparedProjectV4Write {
     }
 }
 pub fn read(path: impl AsRef<Path>) -> RfResult<ProjectV4Read> {
+    read_with_support(path, FlowPlanSupport::Mixed)
+}
+
+pub fn read_with_support(
+    path: impl AsRef<Path>,
+    support: FlowPlanSupport,
+) -> RfResult<ProjectV4Read> {
     let contents = fs::read_to_string(path)
         .map_err(|e| RfError::invalid_input(format!("read v4 project: {e}")))?;
-    parse(&contents)
+    parse_with_support(&contents, support)
 }
 pub fn prepare_write(
     path: impl AsRef<Path>,
@@ -97,6 +104,13 @@ pub fn prepare_write_with_support(
                     {
                         return Err(RfError::invalid_input(
                             "save the lower-capability plan to a different file; the target contains a product composition specification",
+                        ));
+                    }
+                    if matches!(existing.steady_state_plan, StoredFlowPlan::SinglePhase(_))
+                        && !matches!(new.steady_state_plan, StoredFlowPlan::SinglePhase(_))
+                    {
+                        return Err(RfError::invalid_input(
+                            "save the lower-capability plan to a different file; the target contains a single-vapor sensible enthalpy plan",
                         ));
                     }
                     target_has_object_identities = existing.object_identities.is_some();

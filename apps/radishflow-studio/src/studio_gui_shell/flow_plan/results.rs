@@ -11,6 +11,40 @@ impl ReadyAppState {
         match workspace.flow_result() {
             FlowResultView::Current { snapshot, origin } => {
                 ui.strong("Current");
+                if let Some(snapshot) = snapshot.acyclic().filter(|s| !s.energy_balances.is_empty())
+                {
+                    ui.strong(tr(zh, "能量衡算", "Energy balance"));
+                    for (id, balance) in &snapshot.energy_balances {
+                        ui.label(format!(
+                            "{id} · {} {:+.6} W",
+                            tr(zh, "热负荷", "Heat duty"),
+                            balance.heat_duty_w
+                        ));
+                        for output in snapshot
+                            .steps
+                            .iter()
+                            .filter(|step| &step.unit_id == id)
+                            .flat_map(|step| &step.streams)
+                        {
+                            ui.label(format!(
+                                "{} {:.6} K",
+                                tr(zh, "出口温度", "Outlet temperature"),
+                                output.temperature_k
+                            ));
+                        }
+                        ui.label(format!(
+                            "Ḣin {:.6} W · Ḣout {:.6} W",
+                            balance.inlet_enthalpy_flow_w, balance.outlet_enthalpy_flow_w
+                        ));
+                        ui.label(format!(
+                            "{} {:.6e} W · {} {:.6e}",
+                            tr(zh, "能量残差", "Energy residual"),
+                            balance.residual_w,
+                            tr(zh, "缩放残差", "Scaled residual"),
+                            balance.scaled_residual
+                        ));
+                    }
+                }
                 if let rf_ui::FlowResultRecord::Partitioned(part) = snapshot {
                     ui.small(tr(
                         zh,

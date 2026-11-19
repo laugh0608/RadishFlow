@@ -7,7 +7,7 @@ use crate::{
         EquationControl, EquationFailure, EquationFailureKind, EquationOrientedSolver,
         EquationProgress, EquationResult,
     },
-    flow_plan::FlowPlanConfiguration,
+    flow_plan::{FlowPlanConfiguration, SinglePhaseOptions},
     mixed::{
         MixedControl, MixedFailure, MixedFailureKind, MixedProgress, MixedResult, MixedSolver,
     },
@@ -67,6 +67,7 @@ pub enum FlowExecutionStatus {
 #[derive(Debug)]
 pub enum FlowExecutionOutcome {
     Acyclic(RfResult<ControlledSolveOutcome>),
+    SinglePhase(RfResult<ControlledSolveOutcome>),
     Partitioned(Result<Box<PartitionedSolveResult>, Box<PartitionedSolveFailure>>),
     Simultaneous(Result<Box<ModularResult>, Box<ModularFailure>>),
     EquationOriented(Result<Box<EquationResult>, Box<EquationFailure>>),
@@ -77,7 +78,8 @@ impl FlowExecutionOutcome {
     pub fn status(&self) -> FlowExecutionStatus {
         use FlowExecutionStatus::{Cancelled, Failed, Succeeded};
         match self {
-            Self::Acyclic(Ok(ControlledSolveOutcome::Cancelled)) => Cancelled,
+            Self::Acyclic(Ok(ControlledSolveOutcome::Cancelled))
+            | Self::SinglePhase(Ok(ControlledSolveOutcome::Cancelled)) => Cancelled,
             Self::Partitioned(Err(failure))
                 if failure.kind == PartitionedFailureKind::Cancelled =>
             {
@@ -93,11 +95,13 @@ impl FlowExecutionOutcome {
             }
             Self::Mixed(Err(failure)) if failure.kind == MixedFailureKind::Cancelled => Cancelled,
             Self::Acyclic(Ok(_))
+            | Self::SinglePhase(Ok(_))
             | Self::Partitioned(Ok(_))
             | Self::Simultaneous(Ok(_))
             | Self::EquationOriented(Ok(_))
             | Self::Mixed(Ok(_)) => Succeeded,
             Self::Acyclic(Err(_))
+            | Self::SinglePhase(Err(_))
             | Self::Partitioned(Err(_))
             | Self::Simultaneous(Err(_))
             | Self::EquationOriented(Err(_))
@@ -108,7 +112,7 @@ impl FlowExecutionOutcome {
     /// The solver diagnostic, including cancellation evidence where supplied.
     pub fn error(&self) -> Option<&RfError> {
         match self {
-            Self::Acyclic(result) => result.as_ref().err(),
+            Self::Acyclic(result) | Self::SinglePhase(result) => result.as_ref().err(),
             Self::Partitioned(result) => result.as_ref().err().map(|failure| &failure.error),
             Self::Simultaneous(result) => result.as_ref().err().map(|failure| &failure.error),
             Self::EquationOriented(result) => result.as_ref().err().map(|failure| &failure.error),
@@ -149,6 +153,7 @@ impl FlowExecutionOutcome {
         matches!(
             (self, plan),
             (Self::Acyclic(_), FlowPlanConfiguration::Acyclic)
+                | (Self::SinglePhase(_), FlowPlanConfiguration::SinglePhase(_))
                 | (Self::Partitioned(_), FlowPlanConfiguration::Partitioned(_))
                 | (
                     Self::Simultaneous(_),
@@ -156,6 +161,21 @@ impl FlowExecutionOutcome {
                 )
         )
     }
+}
+
+pub fn execute_single_phase(
+    flowsheet: &Flowsheet,
+    options: &SinglePhaseOptions,
+    control: &mut impl SolverControl,
+) -> FlowExecutionOutcome {
+    FlowExecutionOutcome::SinglePhase(
+        SequentialModularSolver.solve_single_phase_with_heat_duties_controlled(
+            &options.model,
+            flowsheet,
+            &options.heat_duties_w,
+            control,
+        ),
+    )
 }
 
 /// Dispatch the selected method without attempting any other plan.
@@ -170,6 +190,9 @@ pub fn execute_flow(
         FlowPlanConfiguration::Acyclic => FlowExecutionOutcome::Acyclic(
             SequentialModularSolver.solve_controlled(services, flowsheet, control),
         ),
+        FlowPlanConfiguration::SinglePhase(options) => {
+            execute_single_phase(flowsheet, options, control)
+        }
         FlowPlanConfiguration::Partitioned(options) => FlowExecutionOutcome::Partitioned(
             PartitionedSequentialSolver
                 .solve_controlled(services, flowsheet, options, control)

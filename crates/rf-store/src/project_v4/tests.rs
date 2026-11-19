@@ -4,6 +4,7 @@ use rf_model::UnitNode;
 use serde_json::{Value, json};
 use std::fs;
 mod simultaneous;
+mod single_phase;
 
 fn fixture() -> StoredProjectV4 {
     let mut file = crate::parse_project_file_json(include_str!(

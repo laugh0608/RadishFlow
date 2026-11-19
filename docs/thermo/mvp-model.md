@@ -60,7 +60,7 @@ Mixer 的区别可对照 [IDAES Mixer 模型](https://idaes-pse.readthedocs.io/e
 
 Core 调用方通过 `SequentialModularSolver::solve_single_phase_controlled` 为整次无回路运行显式选择同一模型。Feed 复用有效入口温压，正流量流股物化整体及气相焓，泡露点窗口缺席。绝热 Mixer 从实际入口焓流求出口温度，检查逐组分残差 `≤ 1e-10 mol/s`。零流量入口贡献零焓流，零总流量拒绝混合。
 
-单相 Heater／Cooler 保持入口流量与组成，按 `Q = F Cp(z) (T_out − T_in)` 处理指定出口温度或指定热负荷，正值向物料供热。指定热负荷通过 `solve_single_phase_with_heat_duties_controlled` 按单元 ID 传入本次运行，要求有限热负荷、正入口流量，并在反求温度前检验由温区端点确定的热负荷区间。两种规格互斥。出口压力沿用入口压力或显式指定，进出口均须满足模型的单一压力。工程存储和既有 TP 运行入口沿用原契约。 [单元专题](../topics/unitops/heater-cooler.md#rust-core-单相显热规格)
+单相 Heater／Cooler 保持入口流量与组成，按 `Q = F Cp(z) (T_out − T_in)` 处理指定出口温度或指定热负荷，正值向物料供热。指定热负荷通过 `solve_single_phase_with_heat_duties_controlled` 按单元 ID 传入本次运行，要求有限热负荷、正入口流量，并在反求温度前检验由温区端点确定的热负荷区间。两种规格互斥。出口压力沿用入口压力或显式指定，进出口均须满足模型的单一压力。选定该模型的工程可在 v4 保存正式配置，原 TP 计划沿用原求解路径。 [单元保存契约](../topics/unitops/heater-cooler.md#v4-保存与重开)
 
 绝热 Mixer 与单相 Heater／Cooler 重新物化出口焓，用 `Ḣ_out − Σ Ḣ_in − Q` 核对能量平衡。残差绝对值须 `≤ 1e-6 W`，以 `max(1 W, Σ |Ḣ_in| + |Ḣ_out| + |Q|)` 缩放后绝对值须 `≤ 1e-10`。单元步骤提供 `UnitEnergyBalance`，含进出口焓流、热负荷、残差与缩放信息。 [Core 入口](../../crates/rf-solver/src/lib.rs) · [验收记录](../devlogs/2026-11/2026-W47.md#2026-11-19-单相-heater-和-cooler-正反算)
 

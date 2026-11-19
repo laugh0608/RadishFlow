@@ -154,7 +154,7 @@ impl StudioRunOwner {
             return Ok(StudioRunSubmission::Closing);
         }
         if self.equipment.is_some() || self.material.is_some() {
-            match crate::app_facade::preflight_workspace_run(app, index, command) {
+            match crate::app_facade::preflight_workspace_run(app, Some(index), command) {
                 crate::app_facade::WorkspaceRunPreflight::Skipped(reason) => {
                     return Ok(StudioRunSubmission::Flow(WorkspaceRunSubmission::Skipped(
                         reason,

@@ -151,14 +151,27 @@ impl DerefMut for FlowResultRecord {
 }
 impl FlowResultRecord {
     pub fn matches_plan(&self, plan: &crate::flow_plan::FlowPlanConfiguration) -> bool {
+        if let Self::Acyclic(snapshot) = self {
+            let single_phase = snapshot
+                .origin
+                .as_ref()
+                .and_then(|o| o.execution())
+                .and_then(|e| e.plan.as_ref())
+                .is_some_and(|p| p.method == "radishflow.acyclic-single-vapor-sensible/1");
+            return if single_phase {
+                matches!(
+                    plan,
+                    crate::flow_plan::FlowPlanConfiguration::SinglePhase(_)
+                )
+            } else {
+                matches!(plan, crate::flow_plan::FlowPlanConfiguration::Acyclic)
+            };
+        }
         matches!(
             (self, plan),
             (
                 Self::Mixed(_),
                 crate::flow_plan::FlowPlanConfiguration::Mixed(_)
-            ) | (
-                Self::Acyclic(_),
-                crate::flow_plan::FlowPlanConfiguration::Acyclic
             ) | (
                 Self::Partitioned(_),
                 crate::flow_plan::FlowPlanConfiguration::Partitioned(_)

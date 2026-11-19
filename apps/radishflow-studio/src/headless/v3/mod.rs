@@ -126,13 +126,18 @@ pub(super) fn load_project_version(
         5 => FlowPlanSupport::Simultaneous,
         6 => FlowPlanSupport::EquationOriented,
         super::v10::VERSION => FlowPlanSupport::ProductComposition,
+        super::v11::VERSION => FlowPlanSupport::SinglePhase,
         _ => FlowPlanSupport::Mixed,
     };
     load_project_with_support(
         path,
         protocol_version.min(rf_store::project_v4::VERSION),
         plan_support,
-        ObjectIdentitySupport::Unavailable,
+        if protocol_version == super::v11::VERSION {
+            ObjectIdentitySupport::Supported
+        } else {
+            ObjectIdentitySupport::Unavailable
+        },
     )
 }
 
@@ -206,11 +211,11 @@ pub(super) fn load_project_with_support(
 }
 fn query_file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     let (version, bytes) = read_request(path)?;
-    if !matches!(version, 3..=super::v10::VERSION) {
+    if !matches!(version, 3..=super::v11::VERSION) {
         return Err(Failure::new(
             Stage::Request,
             Code::UnsupportedVersion,
-            "query requires schema_version 3 through 10",
+            "query requires schema_version 3 through 11",
         ));
     }
     response.schema_version = version;
@@ -224,6 +229,9 @@ fn query_file(path: &Path, response: &mut Response) -> Result<(), Failure> {
         super::v9::VERSION => super::v9::query_file(path, &bytes, response),
         super::v10::VERSION => {
             super::planned::query_file::<super::v10::Plan>(path, &bytes, response)
+        }
+        super::v11::VERSION => {
+            super::planned::query_file::<super::v11::Plan>(path, &bytes, response)
         }
         _ => unreachable!("validated query version"),
     }

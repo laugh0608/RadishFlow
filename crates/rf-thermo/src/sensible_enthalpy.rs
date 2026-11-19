@@ -3,7 +3,7 @@ use super::{MOLE_FRACTION_SUM_TOLERANCE, REFERENCE_TEMPERATURE_K};
 use rf_types::{ComponentId, RfError, RfResult};
 use std::{collections::BTreeMap, ops::RangeInclusive};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SensibleEnthalpyModel {
     heat_capacities_j_per_mol_k: BTreeMap<ComponentId, f64>,
     temperature_range_k: RangeInclusive<f64>,
@@ -64,6 +64,14 @@ impl SensibleEnthalpyModel {
     /// The inclusive temperature interval declared by the caller.
     pub fn temperature_range_k(&self) -> RangeInclusive<f64> {
         self.temperature_range_k.clone()
+    }
+
+    pub fn pressure_pa(&self) -> f64 {
+        self.pressure_pa
+    }
+
+    pub fn heat_capacities_j_per_mol_k(&self) -> &BTreeMap<ComponentId, f64> {
+        &self.heat_capacities_j_per_mol_k
     }
 
     pub fn temperature_for_molar_enthalpy(

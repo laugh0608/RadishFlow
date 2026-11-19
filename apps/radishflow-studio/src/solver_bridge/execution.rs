@@ -6,7 +6,7 @@ use rf_solver::{
     equation_oriented::{EquationFailure, EquationProgress},
     execution::{
         FlowExecutionControl, FlowExecutionOutcome, FlowExecutionStatus, UncontrolledSolve,
-        execute_flow,
+        execute_flow, execute_single_phase,
     },
     mixed::{MixedFailure, MixedProgress},
     partitioned::{PartitionedProgress, PartitionedSolveFailure},
@@ -197,7 +197,9 @@ pub fn prepare_workspace_solve(
     rf_ui::flow_plan::validate_workspace_plan(app_state.workspace.flow_plan.current())?;
     if matches!(
         app_state.workspace.flow_plan.current(),
-        FlowPlanConfiguration::EquationOriented(_) | FlowPlanConfiguration::Mixed(_)
+        FlowPlanConfiguration::EquationOriented(_)
+            | FlowPlanConfiguration::Mixed(_)
+            | FlowPlanConfiguration::SinglePhase(_)
     ) {
         app_state
             .workspace
@@ -212,6 +214,17 @@ pub fn prepare_workspace_solve(
 }
 
 impl PreparedWorkspaceSolve {
+    pub(crate) fn execute_project_model(self) -> CompletedWorkspaceSolve {
+        assert!(matches!(self.plan(), FlowPlanConfiguration::SinglePhase(_)));
+        let (receipt, job) = self.into_job();
+        let output = job.execute(
+            |_| unreachable!("project model has no package load"),
+            false,
+            &mut UncontrolledSolve,
+        );
+        CompletedWorkspaceSolve::from_output(receipt, output)
+    }
+
     pub fn plan(&self) -> &FlowPlanConfiguration {
         self.input.plan()
     }
@@ -303,6 +316,16 @@ impl WorkspaceSolveJob {
     ) -> WorkspaceSolveOutput {
         if control.before_load().is_break() {
             return self.output(SolveOutcome::CancelledBeforeExecution, None);
+        }
+        if let FlowPlanConfiguration::SinglePhase(options) = &self.plan {
+            let outcome = match control.ready() {
+                Ok(ControlFlow::Continue(())) => {
+                    SolveOutcome::Executed(execute_single_phase(&self.flowsheet, options, control))
+                }
+                Ok(ControlFlow::Break(())) => SolveOutcome::CancelledBeforeExecution,
+                Err(error) => SolveOutcome::InfrastructureFailed(error),
+            };
+            return self.output(outcome, None);
         }
         let context = match load(&self.request.package_id) {
             Ok(context) => context,
@@ -472,8 +495,10 @@ impl CompletedWorkspaceSolve {
                     return Err(error.clone());
                 }
                 match execution {
-                    Acyclic(Ok(ControlledSolveOutcome::Completed(snapshot))) => Ok(snapshot),
-                    Acyclic(Ok(ControlledSolveOutcome::Cancelled)) => Err(cancelled_error()),
+                    Acyclic(Ok(ControlledSolveOutcome::Completed(snapshot)))
+                    | SinglePhase(Ok(ControlledSolveOutcome::Completed(snapshot))) => Ok(snapshot),
+                    Acyclic(Ok(ControlledSolveOutcome::Cancelled))
+                    | SinglePhase(Ok(ControlledSolveOutcome::Cancelled)) => Err(cancelled_error()),
                     Partitioned(Ok(_)) => Err(RfError::invalid_input(
                         "partitioned results require the typed flow result query",
                     )),
@@ -550,7 +575,7 @@ fn complete_with_publication(
             concat!("rf-solver::MixedSolver@", env!("CARGO_PKG_VERSION"))
         }
         FlowPlanConfiguration::Mixed(_) => "not-invoked",
-        FlowPlanConfiguration::Acyclic => concat!(
+        FlowPlanConfiguration::Acyclic | FlowPlanConfiguration::SinglePhase(_) => concat!(
             "rf-solver::SequentialModularSolver@",
             env!("CARGO_PKG_VERSION")
         ),
@@ -598,6 +623,9 @@ fn complete_with_publication(
         .with_plan_evidence(rf_ui::result_query::ExecutedFlowPlan {
             method: match &completion.plan {
                 FlowPlanConfiguration::Acyclic => "radishflow.acyclic-sm/1",
+                FlowPlanConfiguration::SinglePhase(_) => {
+                    "radishflow.acyclic-single-vapor-sensible/1"
+                }
                 FlowPlanConfiguration::Mixed(options) => options.method(),
                 FlowPlanConfiguration::Partitioned(_) => "radishflow.partitioned-sm/1",
                 FlowPlanConfiguration::Simultaneous(_) => "radishflow.fixed-tp-affine-modular-lu/1",
@@ -716,9 +744,10 @@ fn complete_with_publication(
             error.message().into(),
             SolveFailureContext::from_error(error),
         ),
-        SolveOutcome::Executed(FlowExecutionOutcome::Acyclic(Ok(
-            ControlledSolveOutcome::Completed(snapshot),
-        ))) => {
+        SolveOutcome::Executed(
+            FlowExecutionOutcome::Acyclic(Ok(ControlledSolveOutcome::Completed(snapshot)))
+            | FlowExecutionOutcome::SinglePhase(Ok(ControlledSolveOutcome::Completed(snapshot))),
+        ) => {
             let mut accepted = SolveSnapshot::from_solver_snapshot(
                 completion.request.snapshot_id.as_str(),
                 revision,
@@ -727,13 +756,26 @@ fn complete_with_publication(
             );
             accepted.origin = Some(origin.clone());
             app_state.store_snapshot(accepted);
+            let source = if completion.package.is_some() {
+                format!("property package `{}`", completion.request.package_id)
+            } else {
+                "project single-vapor sensible enthalpy model".into()
+            };
             app_state.push_log(
                 AppLogLevel::Info,
                 format!(
-                    "Solved document revision {} with property package `{}` into snapshot `{}`",
-                    revision, completion.request.package_id, completion.request.snapshot_id
+                    "Solved document revision {revision} with {source} into snapshot `{}`",
+                    completion.request.snapshot_id
                 ),
             );
+        }
+        SolveOutcome::Executed(FlowExecutionOutcome::SinglePhase(Err(error))) => {
+            record_solve_failure(
+                app_state,
+                revision,
+                error.message().into(),
+                SolveFailureContext::from_error(error),
+            )
         }
         SolveOutcome::Executed(FlowExecutionOutcome::Acyclic(Err(error))) => {
             record_solve_failure(
@@ -747,9 +789,10 @@ fn complete_with_publication(
                 SolveFailureContext::from_error(error),
             );
         }
-        SolveOutcome::Executed(FlowExecutionOutcome::Acyclic(Ok(
-            ControlledSolveOutcome::Cancelled,
-        ))) => {}
+        SolveOutcome::Executed(
+            FlowExecutionOutcome::Acyclic(Ok(ControlledSolveOutcome::Cancelled))
+            | FlowExecutionOutcome::SinglePhase(Ok(ControlledSolveOutcome::Cancelled)),
+        ) => {}
         SolveOutcome::PackageFailed {
             error,
             message,

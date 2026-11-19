@@ -11,6 +11,7 @@ pub mod mixed;
 pub mod partitioned;
 pub mod simultaneous;
 pub use control::{ControlledSolveOutcome, SolveProgress, SolveStage, SolverControl};
+pub use rf_unitops::UnitEnergyBalance;
 
 mod parameter_checks;
 
@@ -24,8 +25,7 @@ use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
 use rf_thermo::{SensibleEnthalpyModel, ThermoProvider};
 use rf_types::{DiagnosticPortTarget, PortDirection, RfError, RfResult, StreamId, UnitId};
 use rf_unitops::{
-    BuiltinUnitKind, UnitEnergyBalance, UnitOperation, UnitOperationInputs, UnitOperationServices,
-    validate_unit_node,
+    BuiltinUnitKind, UnitOperation, UnitOperationInputs, UnitOperationServices, validate_unit_node,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

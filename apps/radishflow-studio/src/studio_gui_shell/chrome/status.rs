@@ -121,6 +121,7 @@ impl ReadyAppState {
             FlowPlanConfiguration::Acyclic => {
                 return self.locale.text(ShellText::SolverSequentialModular);
             }
+            FlowPlanConfiguration::SinglePhase(_) => ("单相显热序贯", "Single-vapor sensible heat"),
         };
         if zh { cn } else { en }
     }

@@ -121,6 +121,13 @@ impl FlowPlanState {
                     || matches!(d.candidate(), FlowPlanConfiguration::Simultaneous(_)))
         })
     }
+    pub fn has_pending_single_phase_draft(&self) -> bool {
+        self.draft.as_ref().is_some_and(|d| {
+            d.is_pending(&self.current)
+                && (matches!(self.current, FlowPlanConfiguration::SinglePhase(_))
+                    || matches!(d.candidate(), FlowPlanConfiguration::SinglePhase(_)))
+        })
+    }
     pub fn current(&self) -> &FlowPlanConfiguration {
         &self.current
     }

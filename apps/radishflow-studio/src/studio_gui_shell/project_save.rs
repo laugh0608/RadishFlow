@@ -299,6 +299,7 @@ impl ReadyAppState {
                     prepared.compatibility().cloned(),
                     *overwrite,
                     prepared.requires_product_composition(),
+                    prepared.requires_single_phase(),
                 );
                 return true;
             }
@@ -419,11 +420,14 @@ impl ReadyAppState {
         compatibility: Option<ProjectSaveCompatibility>,
         overwrite: bool,
         composition: bool,
+        single_phase: bool,
     ) {
         let locale = self.locale;
         let response = egui::Modal::new(egui::Id::new("mixed-recycle-save")).show(ctx, |ui| {
             ui.set_width((ctx.screen_rect().width() - 48.0).clamp(220.0, 500.0));
-            ui.heading(if composition {
+            ui.heading(if single_phase {
+                tr(locale, "确认保存单相显热计划", "Confirm single-vapor plan save")
+            } else if composition {
                 tr(locale, "确认保存产品组成规格", "Confirm product composition save")
             } else {
                 tr(locale, "确认保存混合回流计划", "Confirm mixed recycle save")
@@ -434,7 +438,9 @@ impl ReadyAppState {
                     ui.strong(tr(locale, "将覆盖已有目标文件。", "This replaces the existing destination file."));
                 }
                 if let Some(compatibility) = compatibility {
-                    ui.label(if composition {
+                    ui.label(if single_phase {
+                        tr(locale, "保存为 v4，声明单相显热能力。旧版 Studio 将整份只读打开。", "Save as v4 with the single-vapor capability. Older Studio versions open the entire file read-only.")
+                    } else if composition {
                         tr(locale, "工程将保存为 v4，声明产品组成规格能力。旧版 Studio 将整份只读打开。", "Save as v4 with the product composition capability. Older Studio versions open the entire file read-only.")
                     } else {
                         tr(locale, "保存为 v4，声明混合回流能力。不支持该能力的旧版本会整份只读打开。", "Save as v4 with the mixed recycle capability. Older versions without it open the entire file read-only.")
@@ -450,7 +456,9 @@ impl ReadyAppState {
                             ui.label(format!("{} / {}", capability.id, capability.version));
                         }
                     } else {
-                        let (id, version) = if composition {
+                        let (id, version) = if single_phase {
+                            (rf_store::project_v4::SINGLE_PHASE_CAPABILITY, 1)
+                        } else if composition {
                             (rf_store::project_v4::EQUATION_ORIENTED_CAPABILITY, rf_store::project_v4::PRODUCT_COMPOSITION_VERSION)
                         } else {
                             (rf_store::project_v4::MIXED_RECYCLE_CAPABILITY, 1)

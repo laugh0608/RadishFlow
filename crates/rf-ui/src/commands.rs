@@ -83,6 +83,9 @@ pub enum DocumentCommand {
         parameter: String,
         value: CommandValue,
     },
+    ClearHeaterCoolerOutletTemperature {
+        unit_id: UnitId,
+    },
     SetStreamSpecification {
         stream_id: StreamId,
         field: String,

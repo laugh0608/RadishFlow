@@ -266,7 +266,7 @@ fn failed(code: Code, reason: Value, message: impl Into<String>) -> Failure {
     e.details = Some(Box::new(reason));
     e
 }
-fn reply_value(
+pub(in crate::headless) fn reply_value(
     reply: StudioRunReply,
     step: &str,
     executions: &mut Executions,
