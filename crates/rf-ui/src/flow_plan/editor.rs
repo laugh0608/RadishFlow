@@ -17,6 +17,10 @@ pub enum FlowPlanNumericField {
     ReleasedUpper(rf_solver::equation_oriented::ParameterBinding),
     BisectionBudget(rf_solver::equation_oriented::ParameterBinding),
     ProductTarget(rf_solver::equation_oriented::PortBinding),
+    ProductMoleFraction {
+        source: rf_solver::equation_oriented::PortBinding,
+        component: ComponentId,
+    },
     EquationVariableScale(rf_solver::equation_oriented::VariableBinding),
     EquationResidualScale(rf_solver::equation_oriented::EquationBinding),
     MixedVariableScale {
@@ -48,6 +52,7 @@ impl FlowPlanNumericField {
                 Some(QuantityKind::DimensionlessRatio)
             }
             Self::EquationVariableScale(b) => Some(equation_oriented::variable_quantity(b)),
+            Self::ProductMoleFraction { .. } => Some(QuantityKind::MoleFraction),
             _ => Some(QuantityKind::MolarFlow),
         }
     }
@@ -243,6 +248,7 @@ impl FlowPlanDraft {
                 | FlowPlanNumericField::ReleasedUpper(_)
                 | FlowPlanNumericField::BisectionBudget(_)
                 | FlowPlanNumericField::ProductTarget(_)
+                | FlowPlanNumericField::ProductMoleFraction { .. }
                 | FlowPlanNumericField::EquationVariableScale(_)
                 | FlowPlanNumericField::EquationResidualScale(_) => {
                     return Err(RfError::invalid_input(

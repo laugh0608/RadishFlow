@@ -85,7 +85,7 @@ E2 的 `dq/dalpha=-C*(1-beta)/(1-alpha*beta)^2`；解处为 `-361/132 mol/s`，�
 
 ### 终端产品摩尔分率反算（Rust Core）
 
-在固定 T/P 的 Feed、Mixer、非选择性 Splitter 工程中，`EquationOptions.target` 可选 `ProductTarget::MoleFraction`。目标绑定终端流股、生产者单元及出口、已注册组分和闭区间 [0, 1] 内的摩尔分率。释放一个 Splitter 的 `outlet_a_split_fraction`。Core 统一计划预检和执行入口均支持该规格。组成反算结果的方程与验收契约版本均为 2，既有正向和总量反算使用版本 1。工程 v4 保存与重开、应用层共享执行及结果回执均已接通。CLI v10 已通过真实进程验收，Studio 界面随后接入。
+在固定 T/P 的 Feed、Mixer、非选择性 Splitter 工程中，`EquationOptions.target` 可选 `ProductTarget::MoleFraction`。目标绑定终端流股、生产者单元及出口、已注册组分和闭区间 [0, 1] 内的摩尔分率。释放一个 Splitter 的 `outlet_a_split_fraction`。Core 统一计划预检和执行入口均支持该规格。组成反算结果的方程与验收契约版本均为 2，既有正向和总量反算使用版本 1。v4 保存与重开、共享执行、CLI v10 和 Studio 已接通。
 
 令产品总量为 `F = Σ n_j`、目标组分为 i、目标值为 x。装配物料行 `g = n_i − xF`（mol/s），目标行在产品端口的解析偏导为 `δij − x`。目标为 0 或 1 时，恒零偏导从结构关联中剔除。两端与每次二分试点均须有有限正产品流量，用有符号组成误差 `n_i/F − x` 判断括区。固定关闭出口或试点产品流量为零时，返回 `UndefinedComposition`。
 
@@ -113,6 +113,12 @@ E2 的 `dq/dalpha=-C*(1-beta)/(1-alpha*beta)^2`；解处为 `-361/132 mol/s`，�
 
 - [查询请求](../../../examples/automation/query-product-composition-v10.request.json) 无需物性缓存，重开结果为 Missing。
 - [运行、审阅、采纳、切正向重算](../../../examples/automation/adopt-product-composition-v10.request.template.json) 使用同一工程。在模板中填写本机有效物性缓存及索引路径，工程字节变化时重新查询 SHA-256。首个运行步骤回执保留反算结果，最后的 `results(flow)` 返回正向结果。
+
+### 产品组成反算 Studio
+
+在「流程运行 → 稳态运行计划」选择释放的分流器及终端产品后，从「规格类型与组分」选目标组分。数值输入支持 `mol/mol` 和 `mol%`，本例用 `35 mol%` 与 `0.35 mol/mol` 得到相同的规范配置。草稿按目标类型、生产端口及组分绑定。原流股或组分绑定失效时提示重新选择，运行就绪检查随之阻止运行。
+
+应用后在首次保存 EO 能力 2 时确认 v4 兼容性。重开后按 Run／F5 执行。Current 结果展示原比例、求得比例、实际组成和两种残差，可预览并确认采纳。采纳只更新分流器比例，结果转为 Stale。切回正向需移除释放与产品目标，可另存为使用 EO 能力 1 的 v4 工程。 [本机验收](../../devlogs/2026-11/2026-W47.md#2026-11-19-组成反算-studio-实窗)
 
 
 ## D02：模型方程、身份与结构诊断

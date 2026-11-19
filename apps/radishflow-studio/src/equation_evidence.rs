@@ -80,6 +80,22 @@ fn evidence(p: &mut Projection<'_>, e: &EquationEvidence) {
             t.target.source.stream, t.scaled_residual
         ));
     }
+    if let Some(VerifiedTarget::MoleFraction(t)) = &e.verified_target {
+        let target = p.quantity(
+            t.target.source.stream.as_str(),
+            QuantityKind::MoleFraction,
+            t.target.value_mol_mol,
+        );
+        let actual = p.quantity(
+            t.target.source.stream.as_str(),
+            QuantityKind::MoleFraction,
+            t.composition.actual_mol_mol,
+        );
+        p.output.lines.push(format!(
+            "Product {} / {}: target {target} · actual {actual} · residual {:.9e} mol/mol · {:.9e} mol/s · scaled {:.9e}",
+            t.target.source.stream, t.target.component, t.composition.residual_mol_mol, t.residual_mol_s, t.scaled_residual
+        ));
+    }
     linear(p, "Full Jacobian", e.full_jacobian.as_ref());
     for (i, s) in e.conditional_evaluations.iter().enumerate() {
         let r = s
@@ -93,6 +109,17 @@ fn evidence(p: &mut Projection<'_>, e: &EquationEvidence) {
             s.interval,
             s.completed
         ));
+        if let Some(c) = &s.composition {
+            let actual = p.quantity(
+                "Product mole fraction",
+                QuantityKind::MoleFraction,
+                c.actual_mol_mol,
+            );
+            p.output.lines.push(format!(
+                "Product mole fraction {actual} · residual {:.9e} mol/mol",
+                c.residual_mol_mol
+            ));
+        }
         linear(p, "Conditional material system", s.linear.as_ref());
     }
     p.local_units(&e.final_units);

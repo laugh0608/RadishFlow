@@ -1,5 +1,6 @@
 use super::*;
 use rf_solver::equation_oriented::*;
+use rf_types::units::QuantityKind;
 pub(in crate::studio_gui_shell) fn progress_text(p: &EquationProgress, zh: bool) -> String {
     let stage = match p.stage {
         EquationStage::Assemble => tr(zh, "装配物料方程", "Assembling material equations"),
@@ -49,6 +50,43 @@ impl ReadyAppState {
             .workspace
             .project_presentation
             .display_units();
+        if let Some(VerifiedTarget::MoleFraction(t)) = &r.evidence.verified_target {
+            let fraction = QuantityKind::MoleFraction;
+            let flow = QuantityKind::MolarFlow;
+            let format_value = |value, quantity| {
+                rf_ui::format_quantity(value, quantity, units.unit_for(quantity))
+                    .unwrap_or_else(|error| error.to_string())
+            };
+            ui.label(format!(
+                "{} {} · {} · {}.{}",
+                tr(zh, "终端产品", "Terminal product"),
+                t.target.source.stream,
+                t.target.component,
+                t.target.source.unit,
+                t.target.source.port.name(),
+            ));
+            ui.label(format!(
+                "{} {} · {} {}",
+                tr(zh, "目标", "Target"),
+                format_value(t.target.value_mol_mol, fraction),
+                tr(zh, "实际", "Actual"),
+                format_value(t.composition.actual_mol_mol, fraction),
+            ));
+            ui.label(format!(
+                "{} {} · {} {}",
+                tr(zh, "产品总流量", "Product total flow"),
+                format_value(t.composition.total_mol_s, flow),
+                tr(zh, "组分流量", "Component flow"),
+                format_value(t.composition.component_mol_s, flow),
+            ));
+            ui.small(format!(
+                "{} {:.3e} mol/mol · {} {:.3e} mol/s",
+                tr(zh, "组成残差", "Composition residual"),
+                t.composition.residual_mol_mol,
+                tr(zh, "物料形式残差", "Flow-form residual"),
+                t.residual_mol_s,
+            ));
+        }
         let lines = radishflow_studio::equation_evidence::result_lines(r, units);
         ui.collapsing(
             tr(

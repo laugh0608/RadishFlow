@@ -27,6 +27,55 @@ fn apply(app: &mut AppState, command: FlowPlanCommand) -> bool {
         .apply_flow_plan(&FlowPlanEditContext::capture(&app.workspace), command)
         .unwrap()
 }
+
+#[test]
+fn composition_draft_converts_mole_percent_and_binds_the_selected_component() {
+    use rf_solver::equation_oriented::{
+        EquationOptions, MaterialPort, PortBinding, ProductMoleFractionTarget, ProductTarget,
+    };
+    let app = app();
+    let source = PortBinding {
+        unit: "splitter".into(),
+        port: MaterialPort::OutletB,
+        stream: "product".into(),
+    };
+    let mut options = EquationOptions::new(FixedRecycleBoundary {
+        temperature_k: 300.0,
+        pressure_pa: 650000.0,
+    });
+    let configuration = |component: &str, options: &mut EquationOptions| {
+        options.target = Some(ProductTarget::MoleFraction(Box::new(
+            ProductMoleFractionTarget {
+                source: source.clone(),
+                component: component.into(),
+                value_mol_mol: 0.5,
+            },
+        )));
+        FlowPlanConfiguration::EquationOriented(options.clone())
+    };
+    let methane = FlowPlanNumericField::ProductMoleFraction {
+        source: source.clone(),
+        component: "methane".into(),
+    };
+    let mut draft = FlowPlanDraft::new(&app.workspace, configuration("methane", &mut options));
+    let number = draft
+        .edit_number(methane, 0.5, rf_types::units::MeasurementUnit::MolePercent)
+        .unwrap();
+    number.raw = "35".into();
+    let FlowPlanConfiguration::EquationOriented(applied) = draft.configuration().unwrap() else {
+        panic!("EO draft")
+    };
+    assert!(
+        matches!(applied.target, Some(ProductTarget::MoleFraction(t)) if t.value_mol_mol == 0.35)
+    );
+
+    draft.replace_candidate(configuration("ethane", &mut options));
+    assert!(draft.numbers().is_empty());
+    assert_eq!(
+        draft.configuration().unwrap(),
+        configuration("ethane", &mut options)
+    );
+}
 #[test]
 fn plan_transactions_preserve_input_identity_and_saved_value_but_never_reuse_generation() {
     let mut app = app();

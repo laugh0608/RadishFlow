@@ -614,6 +614,16 @@ impl StudioGuiPlatformHost {
         crate::prepare_mixed_recycle_save(self.driver.host().app_state(), path)
     }
 
+    pub fn prepare_flow_plan_save(
+        &self,
+        path: &std::path::Path,
+    ) -> RfResult<Option<crate::PreparedFlowPlanSave>> {
+        crate::document_lifecycle_driver::prepare_studio_flow_plan_save(
+            self.driver.host().app_state(),
+            path,
+        )
+    }
+
     /// Runtime identity for departure confirmation; not a presentation field.
     pub fn engineering_checkpoint(&self) -> rf_ui::engineering::EngineeringCheckpoint {
         self.driver

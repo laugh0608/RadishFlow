@@ -130,8 +130,18 @@ pub fn convert(
     if from == to {
         return Ok(value);
     }
-    let canonical = value.mul_add(from_scale, from_offset);
-    let result = (canonical - to_offset) / to_scale;
+    // Use the exact percent divisor so inputs such as 35 mol% and 0.35 mol/mol
+    // have the same canonical representation.
+    let canonical = if from == MeasurementUnit::MolePercent {
+        value / 100.0
+    } else {
+        value.mul_add(from_scale, from_offset)
+    };
+    let result = if to == MeasurementUnit::MolePercent {
+        canonical * 100.0
+    } else {
+        (canonical - to_offset) / to_scale
+    };
     if !canonical.is_finite() || !result.is_finite() {
         return Err(ConversionError::Overflow);
     }

@@ -6,7 +6,10 @@ use rf_store::{
         StoredFlowPlan,
     },
 };
-use rf_ui::{WorkspaceState, flow_plan::FlowPlanEditContext};
+use rf_ui::{
+    WorkspaceState,
+    flow_plan::{FlowPlanConfiguration, FlowPlanEditContext},
+};
 use std::collections::BTreeMap;
 
 /// A capability-aware v4 save review bound to the selected inputs and target.
@@ -96,6 +99,23 @@ pub fn prepare_product_composition_save(
     prepare_plan_save(app, path, support, project)
 }
 
+pub(crate) fn prepare_studio_flow_plan_save(
+    app: &AppState,
+    path: &Path,
+) -> RfResult<Option<PreparedFlowPlanSave>> {
+    match app.workspace.flow_plan.current() {
+        FlowPlanConfiguration::EquationOriented(options)
+            if options.requires_product_composition() =>
+        {
+            prepare_product_composition_save(app, path).map(Some)
+        }
+        FlowPlanConfiguration::Mixed(options) if options.recycle.is_some() => {
+            prepare_mixed_recycle_save(app, path).map(|p| Some(p.0))
+        }
+        _ => Ok(None),
+    }
+}
+
 fn prepare_plan_save(
     app: &AppState,
     path: &Path,
@@ -126,6 +146,9 @@ fn prepare_plan_save(
 }
 
 impl PreparedFlowPlanSave {
+    pub fn requires_product_composition(&self) -> bool {
+        self.support == FlowPlanSupport::ProductComposition
+    }
     pub fn path(&self) -> &Path {
         self.prepared.path()
     }

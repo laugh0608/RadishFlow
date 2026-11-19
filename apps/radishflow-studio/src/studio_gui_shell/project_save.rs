@@ -1,7 +1,7 @@
 use super::locale::tr;
 use super::*;
 use radishflow_studio::{
-    PreparedMixedRecycleSave, ProjectSaveCompatibility, StudioDocumentLifecycleCommand,
+    PreparedFlowPlanSave, ProjectSaveCompatibility, StudioDocumentLifecycleCommand,
 };
 
 pub(super) enum PendingFormatUpgrade {
@@ -11,8 +11,8 @@ pub(super) enum PendingFormatUpgrade {
         target_contents: Option<Vec<u8>>,
         path: PathBuf,
     },
-    MixedRecycle {
-        prepared: Box<PreparedMixedRecycleSave>,
+    FlowPlan {
+        prepared: Box<PreparedFlowPlanSave>,
         overwrite: bool,
     },
 }
@@ -42,29 +42,26 @@ impl ReadyAppState {
         if self.read_only_project.is_some() {
             return;
         }
-        if matches!(
-            self.platform_host.modeling_inputs().workspace.flow_plan.current(),
-            rf_ui::flow_plan::FlowPlanConfiguration::Mixed(plan) if plan.recycle.is_some()
-        ) {
-            let prepared = match self.platform_host.prepare_mixed_recycle_save(&path) {
-                Ok(prepared) => Box::new(prepared),
-                Err(error) => {
-                    self.record_project_save_failure(path, &error);
-                    self.project_open.pending_save_as_overwrite = None;
-                    return;
-                }
-            };
+        let prepared = match self.platform_host.prepare_flow_plan_save(&path) {
+            Ok(value) => value.map(Box::new),
+            Err(error) => {
+                self.record_project_save_failure(path, &error);
+                self.project_open.pending_save_as_overwrite = None;
+                return;
+            }
+        };
+        if let Some(prepared) = prepared {
             let overwrite = prepared.replaces_file() && !self.is_current_project_path(&path);
             self.project_open.pending_save_as_overwrite = None;
             if overwrite || prepared.compatibility().is_some() {
-                self.pending_format_upgrade = Some(PendingFormatUpgrade::MixedRecycle {
+                self.pending_format_upgrade = Some(PendingFormatUpgrade::FlowPlan {
                     prepared,
                     overwrite,
                 });
             } else {
                 self.dispatch_project_save(
                     path,
-                    StudioDocumentLifecycleCommand::SaveMixedRecycle {
+                    StudioDocumentLifecycleCommand::SavePreparedFlowPlan {
                         prepared,
                         capability_confirmed: false,
                     },
@@ -125,12 +122,12 @@ impl ReadyAppState {
             path,
         } = pending
         else {
-            let PendingFormatUpgrade::MixedRecycle { prepared, .. } = pending else {
+            let PendingFormatUpgrade::FlowPlan { prepared, .. } = pending else {
                 unreachable!()
             };
             return self.dispatch_project_save(
                 prepared.path().to_owned(),
-                StudioDocumentLifecycleCommand::SaveMixedRecycle {
+                StudioDocumentLifecycleCommand::SavePreparedFlowPlan {
                     prepared,
                     capability_confirmed: true,
                 },
@@ -177,9 +174,9 @@ impl ReadyAppState {
             return false;
         };
         let save_as = !self.is_current_project_path(&path);
-        let mixed = matches!(
+        let prepared_plan = matches!(
             command,
-            StudioDocumentLifecycleCommand::SaveMixedRecycle { .. }
+            StudioDocumentLifecycleCommand::SavePreparedFlowPlan { .. }
         );
         match self.dispatch_event_result(StudioGuiEvent::WindowTriggerRequested {
             window_id,
@@ -207,7 +204,7 @@ impl ReadyAppState {
             }
             Err(error) => {
                 self.record_project_save_failure(path, &error);
-                if mixed {
+                if prepared_plan {
                     self.project_open.pending_save_as_overwrite = None;
                 }
                 false
@@ -292,15 +289,16 @@ impl ReadyAppState {
                 compatibility,
                 ..
             }) => (path.display().to_string(), compatibility.clone()),
-            Some(PendingFormatUpgrade::MixedRecycle {
+            Some(PendingFormatUpgrade::FlowPlan {
                 prepared,
                 overwrite,
             }) => {
-                self.render_mixed_recycle_save(
+                self.render_prepared_flow_plan_save(
                     ctx,
                     prepared.path().display().to_string(),
                     prepared.compatibility().cloned(),
                     *overwrite,
+                    prepared.requires_product_composition(),
                 );
                 return true;
             }
@@ -414,24 +412,33 @@ impl ReadyAppState {
         }
     }
 
-    fn render_mixed_recycle_save(
+    fn render_prepared_flow_plan_save(
         &mut self,
         ctx: &egui::Context,
         path: String,
         compatibility: Option<ProjectSaveCompatibility>,
         overwrite: bool,
+        composition: bool,
     ) {
         let locale = self.locale;
         let response = egui::Modal::new(egui::Id::new("mixed-recycle-save")).show(ctx, |ui| {
             ui.set_width((ctx.screen_rect().width() - 48.0).clamp(220.0, 500.0));
-            ui.heading(tr(locale, "确认保存混合回流计划", "Confirm mixed recycle save"));
+            ui.heading(if composition {
+                tr(locale, "确认保存产品组成规格", "Confirm product composition save")
+            } else {
+                tr(locale, "确认保存混合回流计划", "Confirm mixed recycle save")
+            });
             egui::ScrollArea::vertical().max_height((ctx.screen_rect().height() * 0.45).max(70.0)).show(ui, |ui| {
                 ui.label(path);
                 if overwrite {
                     ui.strong(tr(locale, "将覆盖已有目标文件。", "This replaces the existing destination file."));
                 }
                 if let Some(compatibility) = compatibility {
-                    ui.label(tr(locale, "保存为 v4，声明混合回流能力。不支持该能力的旧版本会整份只读打开。", "Save as v4 with the mixed recycle capability. Older versions without it open the entire file read-only."));
+                    ui.label(if composition {
+                        tr(locale, "工程将保存为 v4，声明产品组成规格能力。旧版 Studio 将整份只读打开。", "Save as v4 with the product composition capability. Older Studio versions open the entire file read-only.")
+                    } else {
+                        tr(locale, "保存为 v4，声明混合回流能力。不支持该能力的旧版本会整份只读打开。", "Save as v4 with the mixed recycle capability. Older versions without it open the entire file read-only.")
+                    });
                     if let ProjectSaveCompatibility::FlowCapabilities { required, replaces_target_object_identities, replaces_target_variable_watch_list, .. } = compatibility {
                         if replaces_target_object_identities {
                             ui.strong(tr(locale, "覆盖可能使目标工程的旧变量引用失效。", "Overwriting can invalidate old variable references."));
@@ -443,7 +450,12 @@ impl ReadyAppState {
                             ui.label(format!("{} / {}", capability.id, capability.version));
                         }
                     } else {
-                        ui.label(format!("{} / 1", rf_store::project_v4::MIXED_RECYCLE_CAPABILITY));
+                        let (id, version) = if composition {
+                            (rf_store::project_v4::EQUATION_ORIENTED_CAPABILITY, rf_store::project_v4::PRODUCT_COMPOSITION_VERSION)
+                        } else {
+                            (rf_store::project_v4::MIXED_RECYCLE_CAPABILITY, 1)
+                        };
+                        ui.label(format!("{id} / {version}"));
                     }
                 }
             });

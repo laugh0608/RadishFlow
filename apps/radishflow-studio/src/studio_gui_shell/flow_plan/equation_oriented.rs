@@ -1,6 +1,47 @@
 use super::*;
 use rf_solver::equation_oriented::*;
+use rf_types::ComponentId;
 use std::collections::BTreeSet;
+#[derive(Clone, PartialEq, Eq)]
+enum ProductBasis {
+    TotalFlow,
+    MoleFraction(ComponentId),
+}
+
+impl ProductBasis {
+    fn of(target: &ProductTarget) -> Self {
+        match target {
+            ProductTarget::TotalMolarFlow(_) => Self::TotalFlow,
+            ProductTarget::MoleFraction(t) => Self::MoleFraction(t.component.clone()),
+        }
+    }
+
+    fn target(self, source: PortBinding) -> ProductTarget {
+        match self {
+            Self::TotalFlow => ProductTarget::TotalMolarFlow(ProductTotalTarget {
+                source,
+                value_mol_s: 1.0,
+            }),
+            Self::MoleFraction(component) => {
+                ProductTarget::MoleFraction(Box::new(ProductMoleFractionTarget {
+                    source,
+                    component,
+                    value_mol_mol: 0.5,
+                }))
+            }
+        }
+    }
+
+    fn title(&self, zh: bool) -> String {
+        match self {
+            Self::TotalFlow => tr(zh, "总摩尔流量", "Total molar flow").into(),
+            Self::MoleFraction(component) => {
+                format!("{} · {component}", tr(zh, "组分摩尔分率", "Mole fraction"))
+            }
+        }
+    }
+}
+
 impl ReadyAppState {
     pub(super) fn render_equation_plan(
         &mut self,
@@ -9,7 +50,7 @@ impl ReadyAppState {
         o: &mut EquationOptions,
     ) -> Option<egui::Id> {
         let zh = self.locale == StudioShellLocale::ZhCn;
-        ui.small(tr(zh,"Feed / Mixer / Splitter 固定温压物料方程；反算仅支持一个分流比例和一个终端产品总量。","Fixed-T/P Feed / Mixer / Splitter material equations; one released split fraction and one terminal product target."));
+        ui.small(tr(zh,"Feed / Mixer / Splitter 固定温压物料方程；反算支持一个分流比例和一个终端产品规格。","Fixed-T/P Feed / Mixer / Splitter material equations; one released split fraction and one terminal product target."));
         let mut submission = None;
         for (field, title, value, unit) in [
             (
@@ -44,6 +85,7 @@ impl ReadyAppState {
             .filter(|u| u.kind == "splitter")
             .map(|u| u.id.clone())
             .collect();
+        let components: Vec<_> = flow.components.keys().cloned().collect();
         let mut products = Vec::new();
         let consumed: BTreeSet<_> = flow
             .units
@@ -174,63 +216,9 @@ impl ReadyAppState {
                 .or(submission);
             }
         }
-        let mut target = o.target.as_ref().map(|t| t.source().clone());
-        let before = target.clone();
-        ui.add_enabled_ui(can_change, |ui| {
-            let picker = egui::ComboBox::from_id_salt("eo-product")
-                .width(ui.available_width().min(300.0))
-                .selected_text(
-                    target
-                        .as_ref()
-                        .map(|p| format!("{} / {}.{}", p.stream, p.unit, p.port.name()))
-                        .unwrap_or_else(|| tr(zh, "无产品目标", "No product target").into()),
-                )
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(
-                        &mut target,
-                        None,
-                        tr(zh, "无产品目标", "No product target"),
-                    );
-                    for p in &products {
-                        ui.selectable_value(
-                            &mut target,
-                            Some(p.clone()),
-                            format!("{} / {}.{}", p.stream, p.unit, p.port.name()),
-                        );
-                    }
-                });
-            reveal_plan_focus(&picker.response);
-        });
-        if target != before {
-            o.target = target.map(|source| {
-                ProductTarget::TotalMolarFlow(ProductTotalTarget {
-                    source,
-                    value_mol_s: 1.0,
-                })
-            });
-        }
-        if let Some(ProductTarget::TotalMolarFlow(t)) = &o.target {
-            if !products.contains(&t.source) {
-                ui.colored_label(
-                    egui::Color32::DARK_RED,
-                    tr(
-                        zh,
-                        "目标不是当前终端出口；未自动重绑。",
-                        "Target is not a current terminal outlet; no automatic rebinding.",
-                    ),
-                );
-            }
-            submission = number(
-                ui,
-                draft,
-                FlowPlanNumericField::ProductTarget(t.source.clone()),
-                tr(zh, "产品总摩尔流量目标", "Product total molar flow target"),
-                t.value_mol_s,
-                MeasurementUnit::MolePerSecond,
-                &mut self.flow_plan.notice,
-            )
+        submission = self
+            .render_product_target(ui, draft, &mut o.target, &products, &components)
             .or(submission);
-        }
         // A draft preview is explicitly separate from the applied qualified query.
         let mut preview_draft = draft.clone();
         preview_draft.replace_candidate(FlowPlanConfiguration::EquationOriented(o.clone()));
@@ -449,6 +437,122 @@ impl ReadyAppState {
         }
         submission
     }
+    fn render_product_target(
+        &mut self,
+        ui: &mut egui::Ui,
+        draft: &mut FlowPlanDraft,
+        specification: &mut Option<ProductTarget>,
+        products: &[PortBinding],
+        components: &[ComponentId],
+    ) -> Option<egui::Id> {
+        let zh = self.locale == StudioShellLocale::ZhCn;
+        let can_change = !draft.has_modified_numbers();
+        ui.label(tr(zh, "终端产品", "Terminal product"));
+        let mut target = specification.as_ref().map(|t| t.source().clone());
+        let before = target.clone();
+        ui.add_enabled_ui(can_change, |ui| {
+            let picker = egui::ComboBox::from_id_salt("eo-product")
+                .width(ui.available_width().min(300.0))
+                .selected_text(
+                    target
+                        .as_ref()
+                        .map(|p| format!("{} / {}.{}", p.stream, p.unit, p.port.name()))
+                        .unwrap_or_else(|| tr(zh, "无产品目标", "No product target").into()),
+                )
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        &mut target,
+                        None,
+                        tr(zh, "无产品目标", "No product target"),
+                    );
+                    for p in products {
+                        ui.selectable_value(
+                            &mut target,
+                            Some(p.clone()),
+                            format!("{} / {}.{}", p.stream, p.unit, p.port.name()),
+                        );
+                    }
+                });
+            reveal_plan_focus(&picker.response);
+        });
+        if target != before {
+            let basis = specification
+                .as_ref()
+                .map_or(ProductBasis::TotalFlow, ProductBasis::of);
+            *specification = target.map(|source| basis.target(source));
+        }
+        let selected = specification.as_ref()?;
+        let source = selected.source().clone();
+        if !products.contains(&source) {
+            ui.colored_label(
+                egui::Color32::DARK_RED,
+                tr(
+                    zh,
+                    "原产品绑定失效，请重新选择终端出口。",
+                    "Select a terminal outlet to replace the unavailable product binding.",
+                ),
+            );
+        }
+        let before = ProductBasis::of(selected);
+        let mut basis = before.clone();
+        ui.label(tr(zh, "规格类型与组分", "Target type and component"));
+        ui.add_enabled_ui(can_change, |ui| {
+            let picker = egui::ComboBox::from_id_salt("eo-product-basis")
+                .width(ui.available_width().min(300.0))
+                .selected_text(basis.title(zh))
+                .show_ui(ui, |ui| {
+                    let total = ProductBasis::TotalFlow;
+                    ui.selectable_value(&mut basis, total.clone(), total.title(zh));
+                    for component in components {
+                        let choice = ProductBasis::MoleFraction(component.clone());
+                        ui.selectable_value(&mut basis, choice.clone(), choice.title(zh));
+                    }
+                });
+            reveal_plan_focus(&picker.response);
+        });
+        if basis != before {
+            *specification = Some(basis.target(source));
+        }
+        let (field, label, value, unit) = match specification.as_ref()? {
+            ProductTarget::TotalMolarFlow(t) => (
+                FlowPlanNumericField::ProductTarget(t.source.clone()),
+                tr(zh, "产品总摩尔流量目标", "Product total molar flow target"),
+                t.value_mol_s,
+                MeasurementUnit::MolePerSecond,
+            ),
+            ProductTarget::MoleFraction(t) => {
+                if !components.contains(&t.component) {
+                    ui.colored_label(
+                        egui::Color32::DARK_RED,
+                        tr(
+                            zh,
+                            "原组分绑定失效，请选择已注册组分。",
+                            "Select a registered component to replace the unavailable component.",
+                        ),
+                    );
+                }
+                (
+                    FlowPlanNumericField::ProductMoleFraction {
+                        source: t.source.clone(),
+                        component: t.component.clone(),
+                    },
+                    tr(zh, "产品摩尔分率目标", "Product mole fraction target"),
+                    t.value_mol_mol,
+                    MeasurementUnit::MolePerMole,
+                )
+            }
+        };
+        number(
+            ui,
+            draft,
+            field,
+            label,
+            value,
+            unit,
+            &mut self.flow_plan.notice,
+        )
+    }
+
     fn equation_variable_row(&mut self, ui: &mut egui::Ui, b: &VariableBinding, zh: bool) {
         ui.label(format!("{b:?}"));
         let unit = match b {

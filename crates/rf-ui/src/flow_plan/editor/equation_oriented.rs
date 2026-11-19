@@ -1,5 +1,5 @@
 use super::*;
-use rf_solver::equation_oriented::{EquationOptions, VariableBinding};
+use rf_solver::equation_oriented::{EquationOptions, ProductTarget as Target, VariableBinding};
 pub(super) fn applies_to(field: &FlowPlanNumericField, plan: &FlowPlanConfiguration) -> bool {
     use FlowPlanNumericField::*;
     match (plan, field) {
@@ -41,6 +41,9 @@ pub(super) fn applies_to(field: &FlowPlanNumericField, plan: &FlowPlanConfigurat
         ) => o.released.as_ref().is_some_and(|r| &r.binding == b),
         (FlowPlanConfiguration::EquationOriented(o), ProductTarget(b)) => {
             o.target.as_ref().and_then(|t| t.total_flow()).is_some_and(|t| &t.source == b)
+        }
+        (FlowPlanConfiguration::EquationOriented(o), ProductMoleFraction { source, component }) => {
+            matches!(&o.target, Some(Target::MoleFraction(t)) if &t.source == source && &t.component == component)
         }
         (FlowPlanConfiguration::EquationOriented(o), EquationVariableScale(b)) => o
             .scales
@@ -92,6 +95,15 @@ pub(super) fn apply(
                 .filter(|t| &t.source == b)
                 .ok_or_else(invalid)?
                 .value_mol_s = value
+        }
+        ProductMoleFraction { source, component } => {
+            let Some(Target::MoleFraction(target)) = &mut o.target else {
+                return Err(invalid());
+            };
+            if &target.source != source || &target.component != component {
+                return Err(invalid());
+            }
+            target.value_mol_mol = value;
         }
         EquationVariableScale(b) => {
             *o.scales

@@ -156,13 +156,23 @@ impl EquationOptions {
     }
     /// Equation and acceptance contract versions for this execution, in that order.
     pub fn contract_versions(&self) -> (u32, u32) {
-        match self.target {
-            Some(ProductTarget::MoleFraction(_)) => (
+        if self.requires_product_composition() {
+            (
                 PRODUCT_COMPOSITION_CONTRACT_VERSION,
                 PRODUCT_COMPOSITION_CONTRACT_VERSION,
-            ),
-            _ => (EQUATION_CONTRACT_VERSION, ACCEPTANCE_CONTRACT_VERSION),
+            )
+        } else {
+            (EQUATION_CONTRACT_VERSION, ACCEPTANCE_CONTRACT_VERSION)
         }
+    }
+    pub fn requires_product_composition(&self) -> bool {
+        matches!(self.target, Some(ProductTarget::MoleFraction(_)))
+            || self.scales.as_ref().is_some_and(|scales| {
+                scales
+                    .equations
+                    .keys()
+                    .any(|row| matches!(row, EquationBinding::ProductMoleFraction { .. }))
+            })
     }
     /// Shape is independent of live graph bindings and pairing readiness.
     pub fn validate_shape(&self) -> EoResult<()> {

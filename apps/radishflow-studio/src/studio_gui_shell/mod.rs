@@ -407,7 +407,7 @@ fn read_studio_gui_project(
 ) -> RfResult<radishflow_studio::StudioProjectOpen> {
     radishflow_studio::read_studio_project_with_support(
         path,
-        rf_store::project_v4::FlowPlanSupport::MixedRecycle,
+        rf_store::project_v4::FlowPlanSupport::ProductComposition,
     )
 }
 

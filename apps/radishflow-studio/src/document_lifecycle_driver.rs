@@ -1,6 +1,7 @@
 pub(crate) mod flow_plan;
 mod object_identities;
 mod plan_save;
+pub(crate) use plan_save::prepare_studio_flow_plan_save;
 #[cfg(test)]
 mod watch_list_tests;
 pub use flow_plan::StudioReadOnlyProject;
@@ -33,6 +34,10 @@ pub enum StudioDocumentLifecycleCommand {
     },
     SaveMixedRecycle {
         prepared: Box<PreparedMixedRecycleSave>,
+        capability_confirmed: bool,
+    },
+    SavePreparedFlowPlan {
+        prepared: Box<PreparedFlowPlanSave>,
         capability_confirmed: bool,
     },
     InitializeObjectIdentities(Box<PreparedObjectIdentityInitialization>),
@@ -341,6 +346,10 @@ pub fn dispatch_document_lifecycle(
         } => {
             return prepared.commit(app_state, capability_confirmed);
         }
+        StudioDocumentLifecycleCommand::SavePreparedFlowPlan {
+            prepared,
+            capability_confirmed,
+        } => return prepared.commit(app_state, capability_confirmed),
         command => command,
     };
     let upgrade_confirmed = matches!(command, StudioDocumentLifecycleCommand::SaveUpgraded { .. });
@@ -366,7 +375,8 @@ pub fn dispatch_document_lifecycle(
             (action, path)
         }
         StudioDocumentLifecycleCommand::InitializeObjectIdentities(_)
-        | StudioDocumentLifecycleCommand::SaveMixedRecycle { .. } => unreachable!(),
+        | StudioDocumentLifecycleCommand::SaveMixedRecycle { .. }
+        | StudioDocumentLifecycleCommand::SavePreparedFlowPlan { .. } => unreachable!(),
     };
 
     if project_save_compatibility(app_state, &path)?.is_some() && !upgrade_confirmed {

@@ -76,6 +76,13 @@ impl ReadyAppState {
             .flow_plan
             .saved_capabilities()
             .contains_key(rf_store::project_v4::MIXED_RECYCLE_CAPABILITY);
+        let saved_composition = workspace
+            .flow_plan
+            .saved_capabilities()
+            .get(rf_store::project_v4::EQUATION_ORIENTED_CAPABILITY)
+            == Some(&rf_store::project_v4::PRODUCT_COMPOSITION_VERSION);
+        let applied_composition = matches!(&current,
+            FlowPlanConfiguration::EquationOriented(options) if options.requires_product_composition());
         ui.horizontal_wrapped(|ui| {
             let run = ui.add_enabled(
                 editable && self.background_command_enabled("run_panel.run_manual"),
@@ -123,6 +130,12 @@ impl ReadyAppState {
                 zh,
                 "使用另存为保存当前计划，保留原混合回流工程。",
                 "Use Save As for this plan to keep the original mixed-recycle project.",
+            ));
+        } else if saved_composition && !applied_composition {
+            ui.small(tr(
+                zh,
+                "使用另存为保存当前计划，保留原产品组成工程。",
+                "Use Save As for this plan to keep the original product composition project.",
             ));
         }
         let mut method = PlanMethod::of(&candidate);
