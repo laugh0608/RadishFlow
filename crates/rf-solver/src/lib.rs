@@ -24,7 +24,8 @@ use rf_model::{Flowsheet, MaterialStreamState, UnitNode, UnitPort};
 use rf_thermo::{SensibleEnthalpyModel, ThermoProvider};
 use rf_types::{DiagnosticPortTarget, PortDirection, RfError, RfResult, StreamId, UnitId};
 use rf_unitops::{
-    BuiltinUnitKind, UnitOperation, UnitOperationInputs, UnitOperationServices, validate_unit_node,
+    BuiltinUnitKind, UnitEnergyBalance, UnitOperation, UnitOperationInputs, UnitOperationServices,
+    validate_unit_node,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -122,6 +123,7 @@ pub struct UnitSolveStep {
     pub unit_kind: String,
     pub consumed_streams: Vec<MaterialStreamState>,
     pub produced_streams: Vec<MaterialStreamState>,
+    pub energy_balance: Option<UnitEnergyBalance>,
     pub summary: String,
 }
 
@@ -207,7 +209,10 @@ pub struct SequentialModularSolver;
 
 enum SequentialProperties<'a> {
     Legacy(UnitOperationServices<'a>),
-    SinglePhase(&'a SensibleEnthalpyModel),
+    SinglePhase {
+        model: &'a SensibleEnthalpyModel,
+        heat_duties_w: &'a BTreeMap<UnitId, f64>,
+    },
 }
 
 impl FlowsheetSolver for SequentialModularSolver {
@@ -247,7 +252,32 @@ impl SequentialModularSolver {
         flowsheet: &Flowsheet,
         control: &mut impl SolverControl,
     ) -> RfResult<ControlledSolveOutcome> {
-        self.solve_with_properties(SequentialProperties::SinglePhase(model), flowsheet, control)
+        self.solve_single_phase_with_heat_duties_controlled(
+            model,
+            flowsheet,
+            &BTreeMap::new(),
+            control,
+        )
+    }
+
+    /// Execute a single-vapor run with optionally specified duties by Heater/Cooler ID.
+    /// A positive duty adds heat. Each Heater/Cooler requires either an explicit
+    /// outlet temperature on its node or a duty in this run's input map.
+    pub fn solve_single_phase_with_heat_duties_controlled(
+        &self,
+        model: &SensibleEnthalpyModel,
+        flowsheet: &Flowsheet,
+        heat_duties_w: &BTreeMap<UnitId, f64>,
+        control: &mut impl SolverControl,
+    ) -> RfResult<ControlledSolveOutcome> {
+        self.solve_with_properties(
+            SequentialProperties::SinglePhase {
+                model,
+                heat_duties_w,
+            },
+            flowsheet,
+            control,
+        )
     }
 
     fn solve_with_properties(
@@ -268,6 +298,17 @@ impl SequentialModularSolver {
             return Ok(ControlledSolveOutcome::Cancelled);
         }
         let execution_order = sequential_execution_order(flowsheet)?;
+        if let SequentialProperties::SinglePhase { heat_duties_w, .. } = properties {
+            for unit in heat_duties_w.keys() {
+                if !flowsheet.units.contains_key(unit) {
+                    return Err(RfError::invalid_input(format!(
+                        "heat duty targets unknown unit `{unit}`"
+                    ))
+                    .with_diagnostic_code("solver.single_phase.unknown_heat_duty_target")
+                    .with_related_unit_id(unit.clone()));
+                }
+            }
+        }
         let total_units = execution_order.len();
         if control
             .checkpoint(SolveProgress {
@@ -299,7 +340,7 @@ impl SequentialModularSolver {
         }];
         let unit_services = match properties {
             SequentialProperties::Legacy(services) => services,
-            SequentialProperties::SinglePhase(_) => UnitOperationServices::default(),
+            SequentialProperties::SinglePhase { .. } => UnitOperationServices::default(),
         };
 
         for (step_index, unit_id) in execution_order.iter().enumerate() {
@@ -332,9 +373,15 @@ impl SequentialModularSolver {
                         )
                     })
                 }
-                SequentialProperties::SinglePhase(model) => {
-                    rf_unitops::catalog::instantiate_single_phase(unit, &flowsheet.streams, model)
-                }
+                SequentialProperties::SinglePhase {
+                    model,
+                    heat_duties_w,
+                } => rf_unitops::catalog::instantiate_single_phase_with_heat_duty(
+                    unit,
+                    &flowsheet.streams,
+                    model,
+                    heat_duties_w.get(unit_id).copied(),
+                ),
             }?;
             let mut inputs = UnitOperationInputs::new();
             let mut consumed_streams = Vec::new();
@@ -370,7 +417,7 @@ impl SequentialModularSolver {
                             &consumed_stream_ids,
                             error,
                         ),
-                        SequentialProperties::SinglePhase(_) => {
+                        SequentialProperties::SinglePhase { .. } => {
                             error.with_related_unit_id(unit.id.clone())
                         }
                     })?;
@@ -414,6 +461,7 @@ impl SequentialModularSolver {
                 unit_kind: unit.kind.clone(),
                 consumed_streams,
                 produced_streams,
+                energy_balance: outputs.energy_balance(),
                 summary,
             });
             if control

@@ -61,6 +61,11 @@ impl SensibleEnthalpyModel {
         Ok(enthalpy)
     }
 
+    /// The inclusive temperature interval declared by the caller.
+    pub fn temperature_range_k(&self) -> RangeInclusive<f64> {
+        self.temperature_range_k.clone()
+    }
+
     pub fn temperature_for_molar_enthalpy(
         &self,
         enthalpy_j_per_mol: f64,
@@ -79,7 +84,8 @@ impl SensibleEnthalpyModel {
         Ok(temperature_k)
     }
 
-    fn validate_domain(&self, temperature_k: f64, pressure_pa: f64) -> RfResult<()> {
+    /// Check a state against the declared temperature interval and fixed pressure.
+    pub fn validate_domain(&self, temperature_k: f64, pressure_pa: f64) -> RfResult<()> {
         if !self.temperature_range_k.contains(&temperature_k) || pressure_pa != self.pressure_pa {
             return Err(RfError::thermo(format!(
                 "state at {temperature_k} K and {pressure_pa} Pa is outside the single-vapor domain of {:?} K at {} Pa",
@@ -90,7 +96,8 @@ impl SensibleEnthalpyModel {
         Ok(())
     }
 
-    fn molar_heat_capacity_j_per_mol_k(
+    /// Composition-weighted constant heat capacity of the vapor.
+    pub fn molar_heat_capacity_j_per_mol_k(
         &self,
         mole_fractions: &BTreeMap<ComponentId, f64>,
     ) -> RfResult<f64> {

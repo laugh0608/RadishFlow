@@ -1,6 +1,6 @@
 # Thermo MVP Model
 
-更新时间：2026-11-10
+更新时间：2026-11-19
 
 ## 用途与维护状态
 
@@ -40,6 +40,8 @@
 
 ## 单元近似与能量解释
 
+下表描述原序贯运行入口的 TP 物性路径。
+
 | 单元 | 当前行为 | 未完成的物理含义 |
 | --- | --- | --- |
 | Feed | 从已提交源流股物化状态与整体焓 | 不提供独立物性准确性证明 |
@@ -56,7 +58,11 @@ Mixer 的区别可对照 [IDAES Mixer 模型](https://idaes-pse.readthedocs.io/e
 
 `SensibleEnthalpyModel` 从调用方明确提供的组分气相常热容、温区及单一压力构造。组分焓以 `298.15 K` 的气相为零点，混合物摩尔焓为 `Σ zᵢ Cpᵢ (T − 298.15 K)`。温区含端点，热容须有限且为正，正摩尔分率组分缺热容时报告组分身份。该模型的声明范围由调用者提供，代表工况为合成理想气体、`280–420 K`、`100000 Pa`。 [焓模型](../../crates/rf-thermo/src/sensible_enthalpy.rs)
 
-Core 调用方通过 `SequentialModularSolver::solve_single_phase_controlled` 为整次无回路运行显式选择同一模型。当前支持 Feed 和绝热 Mixer，其他单元在此入口报告不支持。Feed 复用有效入口温压，正流量流股物化整体及气相焓，泡露点窗口缺席。Mixer 从实际入口焓流求出口温度，重新物化出口后检查逐组分残差 `≤ 1e-10 mol/s`。能量残差绝对值须 `≤ 1e-6 W`，且以各股焓流绝对值之和（下限 `1 W`）缩放后须 `≤ 1e-10`。零流量入口贡献零焓流，零总流量拒绝混合。既有工程走原序贯入口与物性服务。 [Core 入口](../../crates/rf-solver/src/lib.rs) · [验收记录](../devlogs/2026-11/2026-W47.md#2026-11-19-单相显热-feed-与绝热-mixer)
+Core 调用方通过 `SequentialModularSolver::solve_single_phase_controlled` 为整次无回路运行显式选择同一模型。Feed 复用有效入口温压，正流量流股物化整体及气相焓，泡露点窗口缺席。绝热 Mixer 从实际入口焓流求出口温度，检查逐组分残差 `≤ 1e-10 mol/s`。零流量入口贡献零焓流，零总流量拒绝混合。
+
+单相 Heater／Cooler 保持入口流量与组成，按 `Q = F Cp(z) (T_out − T_in)` 处理指定出口温度或指定热负荷，正值向物料供热。指定热负荷通过 `solve_single_phase_with_heat_duties_controlled` 按单元 ID 传入本次运行，要求有限热负荷、正入口流量，并在反求温度前检验由温区端点确定的热负荷区间。两种规格互斥。出口压力沿用入口压力或显式指定，进出口均须满足模型的单一压力。工程存储和既有 TP 运行入口沿用原契约。 [单元专题](../topics/unitops/heater-cooler.md#rust-core-单相显热规格)
+
+绝热 Mixer 与单相 Heater／Cooler 重新物化出口焓，用 `Ḣ_out − Σ Ḣ_in − Q` 核对能量平衡。残差绝对值须 `≤ 1e-6 W`，以 `max(1 W, Σ |Ḣ_in| + |Ḣ_out| + |Q|)` 缩放后绝对值须 `≤ 1e-10`。单元步骤提供 `UnitEnergyBalance`，含进出口焓流、热负荷、残差与缩放信息。 [Core 入口](../../crates/rf-solver/src/lib.rs) · [验收记录](../devlogs/2026-11/2026-W47.md#2026-11-19-单相-heater-和-cooler-正反算)
 
 ## 样例身份与适用范围
 
@@ -72,7 +78,7 @@ Core 调用方通过 `SequentialModularSolver::solve_single_phase_controlled` �
 
 - TP Flash 输出携带 `phase_region` 与 `bubble_dew_window`，并物化 liquid / vapor 与 overall 摩尔焓。
 - Flash Drum outlet 按各自组成重算边界窗口，不直接复用 feed 的窗口。
-- Feed、Mixer、Heater / Cooler、Valve 的整体焓通过同一 TP Flash 路径物化；后续 consumer step 复用已物化流股。
+- 原序贯入口的 Feed、Mixer、Heater / Cooler、Valve 通过同一 TP Flash 路径物化整体焓；后续 consumer step 复用已物化流股。
 - `rf-solver -> rf-ui -> Studio` 传递同一份 T/P/z/H/窗口结果；Result Inspector、Active Inspector 和导出不得分叉另一套数值求值逻辑。
 - `Converged` 表示当前算法与执行契约成功，不包含物性适用域认证、能量守恒认证或工程精度等级。
 

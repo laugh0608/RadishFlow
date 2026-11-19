@@ -1,6 +1,7 @@
 use crate::{
     BuiltinUnitKind, FEED_OUTLET_PORT, MIXER_INLET_A_PORT, MIXER_INLET_B_PORT, MIXER_OUTLET_PORT,
-    StreamTarget, UnitOperation, UnitOperationInputs, UnitOperationOutputs, UnitOperationServices,
+    StreamTarget, UnitEnergyBalance, UnitOperation, UnitOperationInputs, UnitOperationOutputs,
+    UnitOperationServices,
     component_balance::{mixer_component_residual, stream_component_molar_flows},
     mixed_composition, normalized_composition, validate_mixer_outlet_pressure, validated_pressure,
     validated_total_flow,
@@ -9,6 +10,9 @@ use rf_model::{MaterialStreamState, PhaseState};
 use rf_thermo::SensibleEnthalpyModel;
 use rf_types::{PhaseLabel, RfError, RfResult};
 use std::collections::BTreeSet;
+
+mod heat_transfer;
+pub(crate) use heat_transfer::{HeatSpecification, SinglePhaseHeaterCooler};
 
 const ENERGY_ABSOLUTE_TOLERANCE_W: f64 = 1e-6;
 const ENERGY_SCALED_TOLERANCE: f64 = 1e-10;
@@ -87,10 +91,11 @@ impl UnitOperation for AdiabaticMixer<'_> {
         )
         .map_err(|error| error.with_related_stream_id(self.outlet.id.clone()))?;
         verify_component_balance(inlet_a, inlet_b, &outlet)?;
-        verify_energy_balance(enthalpy_a_w, enthalpy_b_w, &outlet)?;
+        let balance = verify_energy_balance(&[enthalpy_a_w, enthalpy_b_w], 0.0, &outlet)?;
 
         let mut outputs = UnitOperationOutputs::new();
         outputs.insert_material_stream(MIXER_OUTLET_PORT, outlet);
+        outputs.energy_balance = Some(balance);
         Ok(outputs)
     }
 }
@@ -152,25 +157,40 @@ fn verify_component_balance(
 }
 
 fn verify_energy_balance(
-    enthalpy_a_w: f64,
-    enthalpy_b_w: f64,
+    inlet_enthalpy_flows_w: &[f64],
+    heat_duty_w: f64,
     outlet: &MaterialStreamState,
-) -> RfResult<()> {
-    let enthalpy_out_w = enthalpy_flow_w(outlet)?;
-    let residual_w = enthalpy_out_w - (enthalpy_a_w + enthalpy_b_w);
-    let scale_w = (enthalpy_a_w.abs() + enthalpy_b_w.abs() + enthalpy_out_w.abs()).max(1.0);
+) -> RfResult<UnitEnergyBalance> {
+    let inlet_enthalpy_flow_w = inlet_enthalpy_flows_w.iter().sum::<f64>();
+    let outlet_enthalpy_flow_w = enthalpy_flow_w(outlet)?;
+    let residual_w = (outlet_enthalpy_flow_w - inlet_enthalpy_flow_w) - heat_duty_w;
+    let residual_scale_w = (inlet_enthalpy_flows_w
+        .iter()
+        .map(|value| value.abs())
+        .sum::<f64>()
+        + outlet_enthalpy_flow_w.abs()
+        + heat_duty_w.abs())
+    .max(1.0);
+    let scaled_residual = residual_w / residual_scale_w;
     if !residual_w.is_finite()
-        || !scale_w.is_finite()
+        || !residual_scale_w.is_finite()
         || residual_w.abs() > ENERGY_ABSOLUTE_TOLERANCE_W
-        || residual_w.abs() / scale_w > ENERGY_SCALED_TOLERANCE
+        || scaled_residual.abs() > ENERGY_SCALED_TOLERANCE
     {
         return Err(RfError::thermo(format!(
-            "adiabatic mixer energy residual is {residual_w} W (scale {scale_w} W)"
+            "unit energy residual is {residual_w} W (scale {residual_scale_w} W)"
         ))
         .with_diagnostic_code("solver.single_phase.energy_balance")
         .with_related_stream_id(outlet.id.clone()));
     }
-    Ok(())
+    Ok(UnitEnergyBalance {
+        inlet_enthalpy_flow_w,
+        outlet_enthalpy_flow_w,
+        heat_duty_w,
+        residual_w,
+        residual_scale_w,
+        scaled_residual,
+    })
 }
 
 fn materialize_vapor(

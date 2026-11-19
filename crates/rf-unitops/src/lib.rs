@@ -414,9 +414,21 @@ impl UnitOperationInputs {
     }
 }
 
+/// Energy balance for one accepted unit evaluation. Positive duty heats the material.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct UnitEnergyBalance {
+    pub inlet_enthalpy_flow_w: f64,
+    pub outlet_enthalpy_flow_w: f64,
+    pub heat_duty_w: f64,
+    pub residual_w: f64,
+    pub residual_scale_w: f64,
+    pub scaled_residual: f64,
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct UnitOperationOutputs {
     material_streams: BTreeMap<String, MaterialStreamState>,
+    energy_balance: Option<UnitEnergyBalance>,
 }
 
 impl UnitOperationOutputs {
@@ -434,6 +446,10 @@ impl UnitOperationOutputs {
 
     pub fn stream(&self, port_name: &str) -> Option<&MaterialStreamState> {
         self.material_streams.get(port_name)
+    }
+
+    pub fn energy_balance(&self) -> Option<UnitEnergyBalance> {
+        self.energy_balance
     }
 }
 
