@@ -74,7 +74,7 @@ DS0 / DS1 在 P3 随模型能力进入，不等待完整 EO 或通用优化。�
 
 双进料交叉回流混配工程要交付甲烷摩尔分率为 0.35 的产品 B。在 300 K、650000 Pa 下，进料 A 为 2 mol/s、甲烷占 0.8，进料 B 为 3 mol/s、甲烷占 0.2。保持 B 侧回流比例 β = 0.25，求 A 侧分流器送往 B 的比例 α，允许区间为 [0, 0.95]。Rust Core 可对这个固定温压、无反应工程执行组成反算。 [完整工程](../../examples/flowsheets/fixed-tp-cross-recycle-binary-hydrocarbon.rfproj.json) · [现有 QS3 规格](modeling/equation-oriented-block.md#规格反算主例-e2)
 
-对正流量产品 B，逐组分消去循环流量可得其甲烷摩尔分率 `(0.6 + 1.6α) / (3 + 2α)`。它在允许区间内严格递增，唯一解为 α = 0.5，此时 B 为 24/7 mol/s，其中甲烷为 1.2 mol/s。Rust Core 将终端流股、生产者端口与组分绑定在一个目标中，由条件 LU 和二分求解单个释放参数。验收同时检查物料残差与产品摩尔分率绝对误差（≤ 1e-10 mol/mol），在实际生产者输出上复验。v4 保存与重开和应用层共享执行已验收。下一阶段接入 CLI v10，用同一工程跑真实进程验收，再接入 Studio。 [数值契约](modeling/equation-oriented-block.md#终端产品摩尔分率反算rust-core) · [共享运行与结果](modeling/equation-oriented-block.md#组成规格的共享运行与结果)
+对正流量产品 B，逐组分消去循环流量可得其甲烷摩尔分率 `(0.6 + 1.6α) / (3 + 2α)`。它在允许区间内严格递增，唯一解为 α = 0.5，此时 B 为 24/7 mol/s，其中甲烷为 1.2 mol/s。Rust Core 将终端流股、生产者端口与组分绑定在一个目标中，由条件 LU 和二分求解单个释放参数。验收同时检查物料残差与产品摩尔分率绝对误差（≤ 1e-10 mol/mol），在实际生产者输出上复验。v4 保存与重开、应用层共享执行及 CLI v10 真实进程均已验收。Studio 界面随后接入。 [数值契约](modeling/equation-oriented-block.md#终端产品摩尔分率反算rust-core) · [共享运行与结果](modeling/equation-oriented-block.md#组成规格的共享运行与结果)
 
 ## 当前实现快照
 

@@ -1,5 +1,5 @@
 //! Read-only-on-disk automation for a saved v4 mixed-recycle plan.
-mod results;
+pub(super) mod results;
 
 use super::{engine, planned::invalid, v3 as old};
 use crate::StudioProjectOpen;

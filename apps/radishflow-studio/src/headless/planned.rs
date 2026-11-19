@@ -454,7 +454,10 @@ pub(super) fn required_capabilities(app: &AppState) -> Result<Value, Failure> {
     if crate::project_save_version(app) < 4 {
         return Ok(json!([]));
     }
-    crate::document_lifecycle_driver::flow_plan::required_capabilities(app)
-        .map(|caps| json!(caps))
-        .map_err(domain)
+    crate::document_lifecycle_driver::flow_plan::required_capabilities_with_support(
+        app,
+        rf_store::project_v4::FlowPlanSupport::ProductComposition,
+    )
+    .map(|caps| json!(caps))
+    .map_err(domain)
 }

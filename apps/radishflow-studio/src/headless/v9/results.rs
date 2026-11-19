@@ -19,9 +19,23 @@ use rf_types::RfError;
 use rf_ui::{AppState, FlowResultRecord, result_query::FlowResultView};
 use serde_json::{Value, json};
 
-pub(super) fn plan(app: &AppState) -> Result<Value, Failure> {
+pub(in crate::headless) fn plan(app: &AppState) -> Result<Value, Failure> {
     let workspace = &app.workspace;
     let configuration = workspace.flow_plan.current();
+    let wire = wire(configuration)?;
+    let ready = configuration.validate_for(&workspace.document.flowsheet);
+    Ok(json!({
+        "plan_revision": workspace.flow_plan.revision(),
+        "configuration_sha256": runtime_configuration_sha256(configuration),
+        "ready": ready.is_ok(),
+        "not_ready": ready.as_ref().err().map(plan_diagnostic),
+        "configuration": wire,
+    }))
+}
+
+pub(in crate::headless) fn wire(
+    configuration: &rf_ui::flow_plan::FlowPlanConfiguration,
+) -> Result<Value, Failure> {
     let StoredFlowPlan::MixedRecycle(stored) =
         stored_flow_plan_with_support(configuration, FlowPlanSupport::MixedRecycle)
             .map_err(domain)?
@@ -32,7 +46,6 @@ pub(super) fn plan(app: &AppState) -> Result<Value, Failure> {
             "v9 requires a mixed-recycle plan",
         ));
     };
-    let ready = configuration.validate_for(&workspace.document.flowsheet);
     let tear = stored.tear;
     let initialization = match tear.initialization {
         StoredTearInitialization::ZeroComponentFlows => Initialization::ZeroComponentFlows,
@@ -49,11 +62,6 @@ pub(super) fn plan(app: &AppState) -> Result<Value, Failure> {
         }
     };
     Ok(json!({
-        "plan_revision": workspace.flow_plan.revision(),
-        "configuration_sha256": runtime_configuration_sha256(configuration),
-        "ready": ready.is_ok(),
-        "not_ready": ready.as_ref().err().map(plan_diagnostic),
-        "configuration": {
             "method": MIXED_RECYCLE_METHOD,
             "acceptance_contract_version": 1,
             "temperature_k": stored.mixed.fixed_boundary.temperature_k,
@@ -67,7 +75,6 @@ pub(super) fn plan(app: &AppState) -> Result<Value, Failure> {
                 "initialization": initialization,
                 "residual_scaling": { "kind": "evaluated_fresh_total" },
             },
-        },
     }))
 }
 
@@ -86,7 +93,7 @@ pub(super) fn plan_diagnostic(error: &RfError) -> Value {
     })
 }
 
-pub(super) fn flow(app: &AppState, executions: &Executions) -> Result<Value, Failure> {
+pub(in crate::headless) fn flow(app: &AppState, executions: &Executions) -> Result<Value, Failure> {
     let mut response = old::results::flow(app, executions);
     let origin = match app.workspace.flow_result() {
         FlowResultView::Current {

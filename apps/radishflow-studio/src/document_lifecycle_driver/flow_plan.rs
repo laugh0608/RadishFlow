@@ -186,7 +186,14 @@ pub(super) fn prepared_compatibility(
 pub(crate) fn required_capabilities(
     app: &AppState,
 ) -> RfResult<Vec<project_v4::RequiredCapability>> {
-    let ProjectV4Read::Editable(p) = project(app)? else {
+    required_capabilities_with_support(app, FlowPlanSupport::Mixed)
+}
+
+pub(crate) fn required_capabilities_with_support(
+    app: &AppState,
+    support: FlowPlanSupport,
+) -> RfResult<Vec<project_v4::RequiredCapability>> {
+    let ProjectV4Read::Editable(p) = project_with_support(app, support)? else {
         unreachable!("application input is editable")
     };
     Ok(project_v4::required_capabilities(&p))

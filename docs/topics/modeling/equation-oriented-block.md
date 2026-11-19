@@ -85,7 +85,7 @@ E2 的 `dq/dalpha=-C*(1-beta)/(1-alpha*beta)^2`；解处为 `-361/132 mol/s`，�
 
 ### 终端产品摩尔分率反算（Rust Core）
 
-在固定 T/P 的 Feed、Mixer、非选择性 Splitter 工程中，`EquationOptions.target` 可选 `ProductTarget::MoleFraction`。目标绑定终端流股、生产者单元及出口、已注册组分和闭区间 [0, 1] 内的摩尔分率。释放一个 Splitter 的 `outlet_a_split_fraction`。Core 统一计划预检和执行入口均支持该规格。组成反算结果的方程与验收契约版本均为 2，既有正向和总量反算使用版本 1。工程 v4 保存与重开、应用层共享执行及结果回执均已接通。CLI v10 和 Studio 界面分期接入。
+在固定 T/P 的 Feed、Mixer、非选择性 Splitter 工程中，`EquationOptions.target` 可选 `ProductTarget::MoleFraction`。目标绑定终端流股、生产者单元及出口、已注册组分和闭区间 [0, 1] 内的摩尔分率。释放一个 Splitter 的 `outlet_a_split_fraction`。Core 统一计划预检和执行入口均支持该规格。组成反算结果的方程与验收契约版本均为 2，既有正向和总量反算使用版本 1。工程 v4 保存与重开、应用层共享执行及结果回执均已接通。CLI v10 已通过真实进程验收，Studio 界面随后接入。
 
 令产品总量为 `F = Σ n_j`、目标组分为 i、目标值为 x。装配物料行 `g = n_i − xF`（mol/s），目标行在产品端口的解析偏导为 `δij − x`。目标为 0 或 1 时，恒零偏导从结构关联中剔除。两端与每次二分试点均须有有限正产品流量，用有符号组成误差 `n_i/F − x` 判断括区。固定关闭出口或试点产品流量为零时，返回 `UndefinedComposition`。
 
@@ -102,6 +102,18 @@ E2 的 `dq/dalpha=-C*(1-beta)/(1-alpha*beta)^2`；解处为 `-361/132 mol/s`，�
 共享应用入口按正式计划冻结输入，接收回执时核对会话、输入、计划代次和运行身份。成功结果的方程与验收版本及装配配置须与冻结计划一致。结果来源记录规范配置 SHA-256、EO 能力及契约版本和实际 Core 后端。失败来源沿用同一冻结配置，数值证据只用于诊断。取消保留上一份有效结果，迟到回执按既有资格丢弃。
 
 内部结构化结果中的 `verified_target` 带产品、生产者出口、组分和目标值。生产者复算得到的总流量、组分流量、实际摩尔分率和组成残差记录于 `composition`，同一目标另有 `residual_mol_s` 及 `scaled_residual`。有定义的条件试算也记录其 `composition` 和流量形式的残差。已发布的反算比例可经 Current 结果显式采纳。正向及总量反算沿用版本 1 的结果结构。 [共享执行桥](../../../apps/radishflow-studio/src/solver_bridge/execution.rs) · [结果投影](../../../apps/radishflow-studio/src/equation_result_projection.rs)
+
+### 产品组成反算 CLI v10
+
+`schema_version: 10` 使用 `query` 和 `execute`。EO 方法仍为 `radishflow.fixed-tp-material-eo/1`。组成目标及其显式尺度行使用 `kind: product_mole_fraction`。两者均以 `stream`、生产者 `source` 和 `component_id` 定位，目标另有 `value_mol_mol`（有限的 [0, 1]）。对应的方程与验收契约均为 2，既有正向及总量反算使用 1。配置语法沿用 [CLI v6](../../reference/headless-cli.md#qs3-cli-v62026-10-31已实现) 的 IdentityRef 与 `scale_si`。
+
+`results(flow_plan)` 返回所需能力、就绪状态、规范配置和 `configuration_sha256`。`run_flow` 的 `result` 与 `results(flow)` 复用共享回执。组成证据位于 `evidence.verified_target` 与 `evidence.conditional_evaluations`，使用 `mol/s` 的物料残差和 `mol/mol` 的组成残差。 [共享结果契约](#组成规格的共享运行与结果)
+
+执行按工程 ID、文件 SHA-256、输入修订和计划修订校验资格。`adopt_eo_split_fraction` 只接受同一请求内的 Current 运行步骤，在内存中更新一个输入。确认类动作使用 `headless-v10-confirm-v1:` 命名空间。v4–v9 查询组成工程返回只读，支持执行的旧协议在步骤及资源加载前拒绝运行。
+
+- [查询请求](../../../examples/automation/query-product-composition-v10.request.json) 无需物性缓存，重开结果为 Missing。
+- [运行、审阅、采纳、切正向重算](../../../examples/automation/adopt-product-composition-v10.request.template.json) 使用同一工程。在模板中填写本机有效物性缓存及索引路径，工程字节变化时重新查询 SHA-256。首个运行步骤回执保留反算结果，最后的 `results(flow)` 返回正向结果。
+
 
 ## D02：模型方程、身份与结构诊断
 

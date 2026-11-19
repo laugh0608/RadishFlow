@@ -46,7 +46,7 @@
 
 ### 下一步
 
-- [ ] [产品组成反求分流比例](../topics/flowsheet-modeling-and-solve.md#由产品组成反求分流比例) v4 保存重开及共享回执已验。下一步接入 CLI v10，随后接 Studio。
+- [ ] [产品组成反求分流比例](../topics/flowsheet-modeling-and-solve.md#由产品组成反求分流比例) v4、共享回执与 CLI v10 已验。下一步接 Studio。
 - [ ] AF3-V10 原版 macOS 待验。等待页可操作时，同会话核对返回编辑、草稿、旧回执拒收、worker 回收及显式重跑。 [验收矩阵](../topics/runtime-messages/scenarios-and-acceptance.md)
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
