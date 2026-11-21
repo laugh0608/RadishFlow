@@ -1,4 +1,4 @@
-use super::super::{v9, v10, v11};
+use super::super::{v9, v10, v11, v12};
 use super::{
     actions::*,
     confirmation::Aliases,
@@ -14,11 +14,14 @@ use std::path::Path;
 
 pub fn file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     let (version, bytes) = super::read_request(path)?;
-    if !matches!(version, 3..=7 | v9::VERSION | v10::VERSION | v11::VERSION) {
+    if !matches!(
+        version,
+        3..=7 | v9::VERSION | v10::VERSION | v11::VERSION | v12::VERSION
+    ) {
         return Err(Failure::new(
             Stage::Request,
             Code::UnsupportedVersion,
-            "execute requires schema_version 3 through 7 or 9 through 11",
+            "execute requires schema_version 3 through 7 or 9 through 12",
         ));
     }
     response.schema_version = version;
@@ -33,6 +36,7 @@ pub fn file(path: &Path, response: &mut Response) -> Result<(), Failure> {
         v9::VERSION => v9::execute_file(path, &bytes, response),
         v10::VERSION => super::super::planned::execute_file::<v10::Plan>(path, &bytes, response),
         v11::VERSION => super::super::planned::execute_file::<v11::Plan>(path, &bytes, response),
+        v12::VERSION => super::super::planned::execute_file::<v12::Plan>(path, &bytes, response),
         _ => unreachable!("validated execute version"),
     }
 }

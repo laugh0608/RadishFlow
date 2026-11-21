@@ -53,6 +53,7 @@ pub enum FlowPlanSupport {
     MixedRecycle,
     ProductComposition,
     SinglePhase,
+    SinglePhaseRecycle,
 }
 
 impl FlowPlanSupport {
@@ -64,6 +65,7 @@ impl FlowPlanSupport {
             MIXED_METHOD => self >= Self::Mixed,
             MIXED_RECYCLE_METHOD => self >= Self::MixedRecycle,
             SINGLE_PHASE_METHOD => self >= Self::SinglePhase,
+            SINGLE_PHASE_RECYCLE_METHOD => self >= Self::SinglePhaseRecycle,
             _ => false,
         }
     }
@@ -93,6 +95,7 @@ impl FlowPlanSupport {
             MIXED_CAPABILITY => self.supports_method(MIXED_METHOD),
             MIXED_RECYCLE_CAPABILITY => self.supports_method(MIXED_RECYCLE_METHOD),
             SINGLE_PHASE_CAPABILITY => self.supports_method(SINGLE_PHASE_METHOD),
+            SINGLE_PHASE_RECYCLE_CAPABILITY => self.supports_method(SINGLE_PHASE_RECYCLE_METHOD),
             OBJECT_IDENTITY_CAPABILITY | VARIABLE_WATCH_LIST_CAPABILITY => {
                 identities == ObjectIdentitySupport::Supported
             }
@@ -224,6 +227,12 @@ pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapabilit
     if matches!(project.steady_state_plan, StoredFlowPlan::SinglePhase(_)) {
         ids.push((SINGLE_PHASE_CAPABILITY, 1));
     }
+    if matches!(
+        project.steady_state_plan,
+        StoredFlowPlan::SinglePhaseRecycle(_)
+    ) {
+        ids.push((SINGLE_PHASE_RECYCLE_CAPABILITY, 1));
+    }
     ids.sort();
     ids.into_iter()
         .map(|(id, version)| RequiredCapability {
@@ -277,7 +286,13 @@ pub fn parse_for_consumer(
         probe.steady_state_plan.method.id.as_str(),
         MIXED_METHOD | MIXED_RECYCLE_METHOD
     );
-    if (modular || eo || mixed || probe.steady_state_plan.method.id == SINGLE_PHASE_METHOD)
+    if (modular
+        || eo
+        || mixed
+        || matches!(
+            probe.steady_state_plan.method.id.as_str(),
+            SINGLE_PHASE_METHOD | SINGLE_PHASE_RECYCLE_METHOD
+        ))
         && (probe.steady_state_plan.method.version == 0
             || probe.steady_state_plan.acceptance_contract_version == Some(0)
             || probe.steady_state_plan.response_contract_version == Some(0)
@@ -474,6 +489,7 @@ pub fn to_pretty_json_with_support(
 fn validate_plan_references(project: &StoredProjectV4) -> RfResult<()> {
     match &project.steady_state_plan {
         StoredFlowPlan::SinglePhase(plan) => plan.validate_references(&project.document.flowsheet),
+        StoredFlowPlan::SinglePhaseRecycle(plan) => plan.validate_for(&project.document.flowsheet),
         _ => Ok(()),
     }
 }

@@ -97,6 +97,27 @@ r* = α/(1−α) f,  m* = 1/(1−α) f,  p* = f
 - 指定热负荷先用新鲜混合流校验稳态可行区间，再按每次循环 Mixer 出口校验本次试算。混合温度经焓反求，端点热负荷允许 `min(1e-6 W, 4 ε × max(|Tin|, |Tmin|, |Tmax|) × F Cp)` 的浮点舍入，其中 `ε` 为 `f64::EPSILON`。端点按实际物化焓流与原指定热负荷复核。无回路热负荷入口仍使用原严格区间。
 - Core 按单相 Splitter、单撕裂指定出口温度、指定热负荷的顺序实现。Splitter 透传强度量，检查两侧组分与焓流总和并记录零热负荷。独立运行入口由调用方传入显热模型、热负荷表、显式撕裂和预算，成功返回单元步骤、实际撕裂复核和整体能量衡算，失败返回诊断、阶段和已有残差。 [Core 入口](../../../crates/rf-solver/src/single_phase_recycle.rs) · [验收记录](../../devlogs/2026-11/2026-W47.md#2026-11-21-固定压力单相显热回流)
 
+### 显热回流 v4 保存契约
+
+工程信封沿用 `schemaVersion: 4`。计划方法为 `radishflow.single-vapor-sensible-recycle/1`，新增必需能力 `radishflow.solver.single-vapor-sensible-recycle/1`。`simulation.steadyStatePlan.singlePhaseRecycle` 保存下列输入。
+
+| 字段 | 契约 |
+| --- | --- |
+| `singlePhase` | 含端点的温区、固定压力、按组分 ID 记录的气相常热容和按单元 ID 记录的 `heatDutiesW`。298.15 K 参考态由方法版本确定。 |
+| `tear` | `streamId`、`source` 与 `sink`。两端各保存 `unitId` 和 `port`，必须是已连接的 Splitter `outlet_a` 与循环 Mixer 入口。 |
+| `tear.initialization` | `zero_flows_and_enthalpy` 使用零流零焓。 `component_flows_and_enthalpy` 保存覆盖全部登记组分的 `componentFlowsMolS` 和有符号的 `enthalpyFlowW`。流量非负且有限，总流为零时焓流为零。正流初值的物性适用性在运行时复核。 |
+| `maxIterationEvaluations` | 显式保存 `1..=500` 的整数。闭合后的一次验证由方法版本规定，独立于该预算。 |
+
+指定出口温度存于 Heater／Cooler 的 `parameters.outlet_temperature_k`，指定热负荷存于计划的 `heatDutiesW`。两种规格互斥，读写都会拒绝冲突和失效撕裂绑定。Splitter 的回流比例沿用 `parameters.outlet_a_split_fraction`。持久化内容为工程输入，重开后须显式求解才能获得结果与残差。支持新方法的读者继续读旧 v4 工程，旧读者通过能力声明保护整份新工程，禁止覆盖。
+
+### 显热回流 CLI v12
+
+使用 `schema_version: 12`，可查询 [双进料回流工程](../../../examples/flowsheets/two-feed-single-vapor-recycle.rfproj.json) 的 `flow_plan`、`flow` 与动作。配置采用 `method: "radishflow.single-vapor-sensible-recycle/1"`，`single_phase_recycle` 内部沿用 v4 字段。按工程 ID、文件指纹、工程修订与计划修订执行 `run_flow`。物性从计划读取，省略 `flow_resources`。运行回执和同一请求的结果查询提供产品与回流的温度、流量、焓流、实际撕裂试值与返回值、残差轨迹、单元及整体能量衡算。新进程查询保存工程时结果起始为 Missing。CLI v11 将该工程整份只读打开，阻止执行。
+
+### 显热回流 Studio
+
+在「稳态运行计划」选择「单相显热回流」，从工程已连接的候选流股明确选择撕裂。可录入迭代预算、显式逐组分流量和有符号的初始焓流。热容及换热规格沿用单相编辑器。应用后保存为 v4，首次声明新能力时进入保存确认。重开从 Missing 起步，Run／F5 后可审阅产品和回流、整体能量与撕裂残差，结果检查器显示最终实际消耗和产出的流股。
+
 ## 依赖图、块计划与撕裂
 
 ### 图与块的职责

@@ -7,7 +7,7 @@ use crate::{
         EquationControl, EquationFailure, EquationFailureKind, EquationOrientedSolver,
         EquationProgress, EquationResult,
     },
-    flow_plan::{FlowPlanConfiguration, SinglePhaseOptions},
+    flow_plan::{FlowPlanConfiguration, SinglePhaseOptions, SinglePhaseRecycleConfiguration},
     mixed::{
         MixedControl, MixedFailure, MixedFailureKind, MixedProgress, MixedResult, MixedSolver,
     },
@@ -18,6 +18,9 @@ use crate::{
     simultaneous::{
         ModularControl, ModularFailure, ModularFailureKind, ModularProgress, ModularResult,
         SimultaneousModularSolver,
+    },
+    single_phase_recycle::{
+        SinglePhaseRecycleFailure, SinglePhaseRecycleResult, SinglePhaseRecycleSolver,
     },
 };
 use rf_model::Flowsheet;
@@ -68,6 +71,7 @@ pub enum FlowExecutionStatus {
 pub enum FlowExecutionOutcome {
     Acyclic(RfResult<ControlledSolveOutcome>),
     SinglePhase(RfResult<ControlledSolveOutcome>),
+    SinglePhaseRecycle(Result<Box<SinglePhaseRecycleResult>, Box<SinglePhaseRecycleFailure>>),
     Partitioned(Result<Box<PartitionedSolveResult>, Box<PartitionedSolveFailure>>),
     Simultaneous(Result<Box<ModularResult>, Box<ModularFailure>>),
     EquationOriented(Result<Box<EquationResult>, Box<EquationFailure>>),
@@ -80,6 +84,7 @@ impl FlowExecutionOutcome {
         match self {
             Self::Acyclic(Ok(ControlledSolveOutcome::Cancelled))
             | Self::SinglePhase(Ok(ControlledSolveOutcome::Cancelled)) => Cancelled,
+            Self::SinglePhaseRecycle(Err(failure)) if failure.is_cancelled() => Cancelled,
             Self::Partitioned(Err(failure))
                 if failure.kind == PartitionedFailureKind::Cancelled =>
             {
@@ -96,12 +101,14 @@ impl FlowExecutionOutcome {
             Self::Mixed(Err(failure)) if failure.kind == MixedFailureKind::Cancelled => Cancelled,
             Self::Acyclic(Ok(_))
             | Self::SinglePhase(Ok(_))
+            | Self::SinglePhaseRecycle(Ok(_))
             | Self::Partitioned(Ok(_))
             | Self::Simultaneous(Ok(_))
             | Self::EquationOriented(Ok(_))
             | Self::Mixed(Ok(_)) => Succeeded,
             Self::Acyclic(Err(_))
             | Self::SinglePhase(Err(_))
+            | Self::SinglePhaseRecycle(Err(_))
             | Self::Partitioned(Err(_))
             | Self::Simultaneous(Err(_))
             | Self::EquationOriented(Err(_))
@@ -113,6 +120,7 @@ impl FlowExecutionOutcome {
     pub fn error(&self) -> Option<&RfError> {
         match self {
             Self::Acyclic(result) | Self::SinglePhase(result) => result.as_ref().err(),
+            Self::SinglePhaseRecycle(result) => result.as_ref().err().map(|failure| &failure.error),
             Self::Partitioned(result) => result.as_ref().err().map(|failure| &failure.error),
             Self::Simultaneous(result) => result.as_ref().err().map(|failure| &failure.error),
             Self::EquationOriented(result) => result.as_ref().err().map(|failure| &failure.error),
@@ -150,6 +158,16 @@ impl FlowExecutionOutcome {
             };
             return method == options.method();
         }
+        if let (
+            Self::SinglePhaseRecycle(outcome),
+            FlowPlanConfiguration::SinglePhaseRecycle(options),
+        ) = (self, plan)
+        {
+            return match outcome {
+                Ok(result) => result.tear == options.recycle.tear,
+                Err(_) => true,
+            };
+        }
         matches!(
             (self, plan),
             (Self::Acyclic(_), FlowPlanConfiguration::Acyclic)
@@ -161,6 +179,18 @@ impl FlowExecutionOutcome {
                 )
         )
     }
+}
+
+pub fn execute_single_phase_recycle(
+    flowsheet: &Flowsheet,
+    options: &SinglePhaseRecycleConfiguration,
+    control: &mut impl PartitionedSolverControl,
+) -> FlowExecutionOutcome {
+    FlowExecutionOutcome::SinglePhaseRecycle(
+        SinglePhaseRecycleSolver
+            .solve_controlled(flowsheet, &options.properties, &options.recycle, control)
+            .map(Box::new),
+    )
 }
 
 pub fn execute_single_phase(
@@ -192,6 +222,9 @@ pub fn execute_flow(
         ),
         FlowPlanConfiguration::SinglePhase(options) => {
             execute_single_phase(flowsheet, options, control)
+        }
+        FlowPlanConfiguration::SinglePhaseRecycle(options) => {
+            execute_single_phase_recycle(flowsheet, options, control)
         }
         FlowPlanConfiguration::Partitioned(options) => FlowExecutionOutcome::Partitioned(
             PartitionedSequentialSolver

@@ -18,6 +18,7 @@ pub enum FlowPlanNumericField {
     SinglePhasePressure,
     VaporHeatCapacity(ComponentId),
     HeatDuty(UnitId),
+    InitialEnthalpyFlow(StreamId),
     IterationBudget,
     ReleasedLower(rf_solver::equation_oriented::ParameterBinding),
     ReleasedUpper(rf_solver::equation_oriented::ParameterBinding),
@@ -58,7 +59,8 @@ impl FlowPlanNumericField {
             Self::IterationBudget
             | Self::BisectionBudget(_)
             | Self::VaporHeatCapacity(_)
-            | Self::HeatDuty(_) => None,
+            | Self::HeatDuty(_)
+            | Self::InitialEnthalpyFlow(_) => None,
             Self::ReleasedLower(_) | Self::ReleasedUpper(_) => {
                 Some(QuantityKind::DimensionlessRatio)
             }
@@ -94,7 +96,9 @@ impl FlowPlanNumericInput {
         }
         if matches!(
             field,
-            FlowPlanNumericField::VaporHeatCapacity(_) | FlowPlanNumericField::HeatDuty(_)
+            FlowPlanNumericField::VaporHeatCapacity(_)
+                | FlowPlanNumericField::HeatDuty(_)
+                | FlowPlanNumericField::InitialEnthalpyFlow(_)
         ) {
             return self
                 .raw
@@ -131,6 +135,10 @@ impl FlowPlanDraft {
     pub fn replace_candidate(&mut self, candidate: FlowPlanConfiguration) {
         self.numbers.retain(|field, _| match &candidate {
             FlowPlanConfiguration::SinglePhase(options) => single_phase::applies_to(field, options),
+            FlowPlanConfiguration::SinglePhaseRecycle(options) => {
+                single_phase::applies_to(field, &options.properties)
+                    || single_phase::applies_to_recycle(field, &options.recycle)
+            }
             _ => equation_oriented::applies_to(field, &candidate),
         });
         self.candidate = candidate;
@@ -225,6 +233,19 @@ impl FlowPlanDraft {
             return single_phase::configuration(options, &self.numbers)
                 .map(FlowPlanConfiguration::SinglePhase);
         }
+        if let FlowPlanConfiguration::SinglePhaseRecycle(options) = &self.candidate {
+            let mut options = (**options).clone();
+            options.properties = single_phase::configuration(
+                &options.properties,
+                self.numbers
+                    .iter()
+                    .filter(|(field, _)| single_phase::applies_to(field, &options.properties)),
+            )?;
+            single_phase::apply_recycle_numbers(&mut options.recycle, &self.numbers)?;
+            let configuration = FlowPlanConfiguration::SinglePhaseRecycle(Box::new(options));
+            configuration.validate_configuration()?;
+            return Ok(configuration);
+        }
         let mut candidate = self.candidate.clone();
         for (field, input) in &self.numbers {
             let value = input.value_si(field)?;
@@ -285,7 +306,8 @@ impl FlowPlanDraft {
                 | FlowPlanNumericField::SinglePhaseMaximumTemperature
                 | FlowPlanNumericField::SinglePhasePressure
                 | FlowPlanNumericField::VaporHeatCapacity(_)
-                | FlowPlanNumericField::HeatDuty(_) => {
+                | FlowPlanNumericField::HeatDuty(_)
+                | FlowPlanNumericField::InitialEnthalpyFlow(_) => {
                     return Err(RfError::invalid_input(
                         "coupling scales are unavailable for a recycle plan",
                     ));

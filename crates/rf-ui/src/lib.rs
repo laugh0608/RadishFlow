@@ -13,7 +13,7 @@ pub mod flow_plan;
 mod flow_results;
 pub use flow_results::{
     EquationFlowSnapshot, FlowResultRecord, FlowSnapshotHeader, MixedFlowSnapshot,
-    PartitionedFlowSnapshot, SimultaneousFlowSnapshot, UnitResultView,
+    PartitionedFlowSnapshot, SimultaneousFlowSnapshot, SinglePhaseRecycleSnapshot, UnitResultView,
 };
 mod flow_run;
 mod ids;

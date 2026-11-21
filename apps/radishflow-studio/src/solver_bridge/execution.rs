@@ -6,7 +6,7 @@ use rf_solver::{
     equation_oriented::{EquationFailure, EquationProgress},
     execution::{
         FlowExecutionControl, FlowExecutionOutcome, FlowExecutionStatus, UncontrolledSolve,
-        execute_flow, execute_single_phase,
+        execute_flow, execute_single_phase, execute_single_phase_recycle,
     },
     mixed::{MixedFailure, MixedProgress},
     partitioned::{PartitionedProgress, PartitionedSolveFailure},
@@ -200,6 +200,7 @@ pub fn prepare_workspace_solve(
         FlowPlanConfiguration::EquationOriented(_)
             | FlowPlanConfiguration::Mixed(_)
             | FlowPlanConfiguration::SinglePhase(_)
+            | FlowPlanConfiguration::SinglePhaseRecycle(_)
     ) {
         app_state
             .workspace
@@ -215,7 +216,7 @@ pub fn prepare_workspace_solve(
 
 impl PreparedWorkspaceSolve {
     pub(crate) fn execute_project_model(self) -> CompletedWorkspaceSolve {
-        assert!(matches!(self.plan(), FlowPlanConfiguration::SinglePhase(_)));
+        assert!(self.plan().project_model_method().is_some());
         let (receipt, job) = self.into_job();
         let output = job.execute(
             |_| unreachable!("project model has no package load"),
@@ -317,11 +318,17 @@ impl WorkspaceSolveJob {
         if control.before_load().is_break() {
             return self.output(SolveOutcome::CancelledBeforeExecution, None);
         }
-        if let FlowPlanConfiguration::SinglePhase(options) = &self.plan {
+        if self.plan.project_model_method().is_some() {
             let outcome = match control.ready() {
-                Ok(ControlFlow::Continue(())) => {
-                    SolveOutcome::Executed(execute_single_phase(&self.flowsheet, options, control))
-                }
+                Ok(ControlFlow::Continue(())) => SolveOutcome::Executed(match &self.plan {
+                    FlowPlanConfiguration::SinglePhase(options) => {
+                        execute_single_phase(&self.flowsheet, options, control)
+                    }
+                    FlowPlanConfiguration::SinglePhaseRecycle(options) => {
+                        execute_single_phase_recycle(&self.flowsheet, options, control)
+                    }
+                    _ => unreachable!("project property plan"),
+                }),
                 Ok(ControlFlow::Break(())) => SolveOutcome::CancelledBeforeExecution,
                 Err(error) => SolveOutcome::InfrastructureFailed(error),
             };
@@ -502,6 +509,9 @@ impl CompletedWorkspaceSolve {
                     Partitioned(Ok(_)) => Err(RfError::invalid_input(
                         "partitioned results require the typed flow result query",
                     )),
+                    SinglePhaseRecycle(Ok(_)) => Err(RfError::invalid_input(
+                        "single-vapor recycle results require the typed flow result query",
+                    )),
                     Mixed(Ok(_)) => Err(RfError::invalid_input(
                         "mixed results require typed flow result query",
                     )),
@@ -583,6 +593,10 @@ fn complete_with_publication(
             "rf-solver::PartitionedSequentialSolver@",
             env!("CARGO_PKG_VERSION")
         ),
+        FlowPlanConfiguration::SinglePhaseRecycle(_) => concat!(
+            "rf-solver::SinglePhaseRecycleSolver@",
+            env!("CARGO_PKG_VERSION")
+        ),
         FlowPlanConfiguration::Simultaneous(_) if completion.outcome.modular_method().is_some() => {
             concat!(
                 "rf-solver::SimultaneousModularSolver@",
@@ -626,6 +640,9 @@ fn complete_with_publication(
                 FlowPlanConfiguration::SinglePhase(_) => {
                     "radishflow.acyclic-single-vapor-sensible/1"
                 }
+                FlowPlanConfiguration::SinglePhaseRecycle(_) => {
+                    "radishflow.single-vapor-sensible-recycle/1"
+                }
                 FlowPlanConfiguration::Mixed(options) => options.method(),
                 FlowPlanConfiguration::Partitioned(_) => "radishflow.partitioned-sm/1",
                 FlowPlanConfiguration::Simultaneous(_) => "radishflow.fixed-tp-affine-modular-lu/1",
@@ -656,6 +673,24 @@ fn complete_with_publication(
         SolveOutcome::CancelledBeforeExecution => {}
         SolveOutcome::Executed(execution)
             if execution.status() == FlowExecutionStatus::Cancelled => {}
+        SolveOutcome::Executed(FlowExecutionOutcome::SinglePhaseRecycle(Ok(result))) => {
+            let mut accepted = rf_ui::SinglePhaseRecycleSnapshot::new(
+                completion.request.snapshot_id.as_str(),
+                revision,
+                completion.request.sequence,
+                (**result).clone(),
+            );
+            accepted.common.origin = Some(origin.clone());
+            app_state.store_snapshot(rf_ui::FlowResultRecord::SinglePhaseRecycle(accepted));
+        }
+        SolveOutcome::Executed(FlowExecutionOutcome::SinglePhaseRecycle(Err(failure))) => {
+            record_solve_failure(
+                app_state,
+                revision,
+                failure.error.to_string(),
+                SolveFailureContext::from_error(&failure.error),
+            );
+        }
         SolveOutcome::Executed(FlowExecutionOutcome::Mixed(Ok(result))) => {
             let mut accepted = rf_ui::MixedFlowSnapshot::new(
                 completion.request.snapshot_id.as_str(),

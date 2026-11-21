@@ -692,6 +692,7 @@ impl ReadyAppState {
                 .flow_plan
                 .current(),
             rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::SinglePhaseRecycle(_)
         ) {
             self.render_project_tree_row(
                 ui,

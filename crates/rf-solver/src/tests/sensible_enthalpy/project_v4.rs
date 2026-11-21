@@ -5,6 +5,8 @@ use std::{
 };
 use v4::{FlowPlanSupport, ProjectV4Read, StoredFlowPlan, StoredProjectV4, StoredSinglePhasePlan};
 
+mod recycle;
+
 const SUPPORT: FlowPlanSupport = FlowPlanSupport::SinglePhase;
 
 fn project(flowsheet: Flowsheet, heat_duties_w: BTreeMap<UnitId, f64>) -> StoredProjectV4 {
@@ -149,7 +151,10 @@ fn project_v4_rejects_conflict_on_read_and_write_and_keeps_existing_tp_project_e
     old.steady_state_plan = StoredFlowPlan::Acyclic;
     let old = ProjectV4Read::Editable(Box::new(old));
     let old_json = v4::to_pretty_json(&old).unwrap();
-    assert_eq!(v4::parse_with_support(&old_json, SUPPORT).unwrap(), old);
+    assert_eq!(
+        v4::parse_with_support(&old_json, FlowPlanSupport::SinglePhaseRecycle).unwrap(),
+        old
+    );
     assert!(!old_json.contains(v4::SINGLE_PHASE_CAPABILITY));
     let provider = build_provider();
     let legacy = SolverServices {

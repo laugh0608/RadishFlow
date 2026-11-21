@@ -1,10 +1,148 @@
+use super::StoredPortBinding;
 use rf_model::Flowsheet;
-use rf_types::{ComponentId, RfError, RfResult, UnitId};
+use rf_types::{
+    ComponentId, DiagnosticPortTarget, PortDirection, PortKind, RfError, RfResult, StreamId, UnitId,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 pub const SINGLE_PHASE_METHOD: &str = "radishflow.acyclic-single-vapor-sensible";
 pub const SINGLE_PHASE_CAPABILITY: &str = "radishflow.solver.single-vapor-sensible";
+pub const SINGLE_PHASE_RECYCLE_METHOD: &str = "radishflow.single-vapor-sensible-recycle";
+pub const SINGLE_PHASE_RECYCLE_CAPABILITY: &str = "radishflow.solver.single-vapor-sensible-recycle";
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StoredSinglePhaseRecyclePlan {
+    pub single_phase: StoredSinglePhasePlan,
+    pub tear: StoredSinglePhaseTear,
+    pub max_iteration_evaluations: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StoredSinglePhaseTear {
+    pub stream_id: StreamId,
+    pub source: StoredPortBinding,
+    pub sink: StoredPortBinding,
+    pub initialization: StoredSinglePhaseTearInitialization,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase",
+    deny_unknown_fields
+)]
+pub enum StoredSinglePhaseTearInitialization {
+    ZeroFlowsAndEnthalpy,
+    ComponentFlowsAndEnthalpy {
+        component_flows_mol_s: BTreeMap<ComponentId, f64>,
+        enthalpy_flow_w: f64,
+    },
+}
+
+impl StoredSinglePhaseRecyclePlan {
+    pub fn validate(&self) -> RfResult<()> {
+        self.single_phase.validate()?;
+        if !(1..=500).contains(&self.max_iteration_evaluations) {
+            return Err(RfError::invalid_input(
+                "singlePhaseRecycle: iteration budget must be in 1..=500",
+            )
+            .with_diagnostic_code("solver.single_phase_recycle.invalid_budget"));
+        }
+        let tear = &self.tear;
+        if tear.stream_id.as_str().trim().is_empty()
+            || tear.source.unit_id.as_str().trim().is_empty()
+            || tear.sink.unit_id.as_str().trim().is_empty()
+            || tear.source.unit_id == tear.sink.unit_id
+            || tear.source.port != "outlet_a"
+            || !matches!(tear.sink.port.as_str(), "inlet_a" | "inlet_b")
+        {
+            return Err(tear.binding_error());
+        }
+        if let StoredSinglePhaseTearInitialization::ComponentFlowsAndEnthalpy {
+            component_flows_mol_s,
+            enthalpy_flow_w,
+        } = &tear.initialization
+        {
+            let total = component_flows_mol_s.values().sum::<f64>();
+            if component_flows_mol_s.is_empty()
+                || component_flows_mol_s
+                    .iter()
+                    .any(|(id, f)| id.as_str().trim().is_empty() || !f.is_finite() || *f < 0.0)
+                || !total.is_finite()
+                || !enthalpy_flow_w.is_finite()
+                || (total == 0.0 && *enthalpy_flow_w != 0.0)
+            {
+                return Err(tear.initialization_error());
+            }
+        }
+        Ok(())
+    }
+
+    pub fn validate_for(&self, flowsheet: &Flowsheet) -> RfResult<()> {
+        self.validate()?;
+        self.single_phase.validate_references(flowsheet)?;
+        let tear = &self.tear;
+        let matching_ports = flowsheet.units.iter().flat_map(|(id, unit)| {
+            unit.ports.iter().filter_map(move |port| {
+                (port.kind == PortKind::Material
+                    && port.stream_id.as_ref() == Some(&tear.stream_id))
+                .then_some((id, unit, port))
+            })
+        });
+        let (mut sources, mut sinks) = (0, 0);
+        for (id, unit, port) in matching_ports {
+            let (binding, kind, count) = match port.direction {
+                PortDirection::Outlet => (&tear.source, "splitter", &mut sources),
+                PortDirection::Inlet => (&tear.sink, "mixer", &mut sinks),
+            };
+            if id != &binding.unit_id
+                || &unit.id != id
+                || unit.kind != kind
+                || port.name != binding.port
+            {
+                return Err(tear.binding_error());
+            }
+            *count += 1;
+        }
+        if !flowsheet.streams.contains_key(&tear.stream_id) || sources != 1 || sinks != 1 {
+            return Err(tear.binding_error());
+        }
+        if let StoredSinglePhaseTearInitialization::ComponentFlowsAndEnthalpy {
+            component_flows_mol_s,
+            ..
+        } = &tear.initialization
+            && !component_flows_mol_s.keys().eq(flowsheet.components.keys())
+        {
+            return Err(tear.initialization_error());
+        }
+        Ok(())
+    }
+}
+
+impl StoredSinglePhaseTear {
+    fn binding_error(&self) -> RfError {
+        RfError::invalid_input(
+            "singlePhaseRecycle: tear must bind the actual Splitter.outlet_a to a Mixer inlet",
+        )
+        .with_diagnostic_code("solver.single_phase_recycle.invalid_tear")
+        .with_related_stream_id(self.stream_id.clone())
+        .with_related_port_targets(
+            [&self.source, &self.sink]
+                .map(|port| DiagnosticPortTarget::new(port.unit_id.clone(), port.port.clone()))
+                .to_vec(),
+        )
+    }
+
+    fn initialization_error(&self) -> RfError {
+        RfError::invalid_input("singlePhaseRecycle: initial flows must match the registered components and be finite and nonnegative, with finite enthalpy flow and zero enthalpy at zero flow")
+            .with_diagnostic_code("solver.single_phase_recycle.invalid_initial_state")
+            .with_related_stream_id(self.stream_id.clone())
+    }
+}
 
 /// Inputs for the version 1 constant-Cp vapor model with the fixed 298.15 K reference.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

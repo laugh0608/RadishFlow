@@ -15,14 +15,14 @@ use plan::Plan;
 use rf_model::{Flowsheet, MaterialStreamState};
 use rf_thermo::SensibleEnthalpyModel;
 use rf_types::{ComponentId, DiagnosticPortTarget, RfError, RfResult, StreamId, UnitId};
+pub use rf_unitops::single_phase_enthalpy_flow_w;
 use rf_unitops::{
     BuiltinUnitKind, ENERGY_ABSOLUTE_TOLERANCE_W, ENERGY_SCALED_TOLERANCE, UnitOperation,
     catalog::{
         instantiate_single_phase_recycle_heat_duty, instantiate_single_phase_with_heat_duty,
     },
     component_balance::stream_component_molar_flows,
-    materialize_single_phase_vapor, single_phase_enthalpy_flow_w,
-    verify_single_phase_energy_balance,
+    materialize_single_phase_vapor, verify_single_phase_energy_balance,
 };
 use std::collections::BTreeMap;
 
@@ -55,6 +55,54 @@ impl SinglePhaseRecycleOptions {
             max_iteration_evaluations: MAX_ITERATION_EVALUATIONS,
         }
     }
+
+    pub(crate) fn validate_configuration(&self) -> RfResult<()> {
+        if !(1..=MAX_ITERATION_EVALUATIONS).contains(&self.max_iteration_evaluations) {
+            return Err(recycle_error(
+                "invalid_budget",
+                format!("recycle evaluation budget must be in 1..={MAX_ITERATION_EVALUATIONS}"),
+            ));
+        }
+        let tear = &self.tear;
+        if tear.stream_id.as_str().trim().is_empty()
+            || [&tear.source, &tear.sink].iter().any(|port| {
+                port.unit_id.as_str().trim().is_empty() || port.port_name.trim().is_empty()
+            })
+        {
+            return Err(recycle_error(
+                "invalid_tear",
+                "choose a connected Splitter outlet and recycle Mixer inlet",
+            ));
+        }
+        Ok(())
+    }
+
+    pub(crate) fn validate_initial_shape(&self) -> RfResult<()> {
+        if let Some(initial) = &self.initial_state {
+            let total = initial.component_flows_mol_s.values().sum::<f64>();
+            if initial.component_flows_mol_s.is_empty()
+                || initial
+                    .component_flows_mol_s
+                    .values()
+                    .any(|f| !f.is_finite() || *f < 0.0)
+                || !total.is_finite()
+                || !initial.enthalpy_flow_w.is_finite()
+                || (total == 0.0 && initial.enthalpy_flow_w != 0.0)
+            {
+                return Err(recycle_error("invalid_initial_state",
+                    "tear requires finite nonnegative flows and zero enthalpy flow at zero total flow")
+                    .with_related_stream_id(self.tear.stream_id.clone()));
+            }
+        }
+        Ok(())
+    }
+}
+
+pub(crate) fn validate_recycle_plan(
+    flowsheet: &Flowsheet,
+    options: &SinglePhaseRecycleOptions,
+) -> RfResult<()> {
+    plan::assemble(flowsheet, options).map(|_| ())
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -90,6 +138,12 @@ pub struct SinglePhaseRecycleFailure {
     pub stage: PartitionedProgress,
     pub trace: Vec<SinglePhaseRecycleResidual>,
     pub last_evaluation: Option<SinglePhaseTearEvaluation>,
+}
+
+impl SinglePhaseRecycleFailure {
+    pub fn is_cancelled(&self) -> bool {
+        self.error.context().diagnostic_code() == Some("solver.single_phase_recycle.cancelled")
+    }
 }
 
 #[derive(Debug, Default)]

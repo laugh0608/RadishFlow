@@ -79,10 +79,8 @@ impl WorkspaceState {
                     .units
                     .get_mut(unit_id)
                     .ok_or_else(|| RfError::missing_entity("unit", unit_id))?;
-                if !matches!(
-                    self.flow_plan.current(),
-                    crate::flow_plan::FlowPlanConfiguration::SinglePhase(_)
-                ) || !matches!(unit.kind.as_str(), "heater" | "cooler")
+                if self.flow_plan.current().project_model_method().is_none()
+                    || !matches!(unit.kind.as_str(), "heater" | "cooler")
                 {
                     return Err(RfError::invalid_input(
                         "clearing outlet temperature requires a single-vapor Heater/Cooler",

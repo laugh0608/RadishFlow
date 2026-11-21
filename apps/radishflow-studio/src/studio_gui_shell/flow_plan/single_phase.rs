@@ -1,5 +1,6 @@
 use super::*;
 use rf_solver::flow_plan::SinglePhaseOptions;
+use rf_solver::single_phase_recycle::{SinglePhaseRecycleOptions, SinglePhaseTearState};
 use rf_thermo::SensibleEnthalpyModel;
 use rf_types::{ComponentId, UnitId};
 
@@ -10,6 +11,124 @@ pub(super) struct ThermalUnit {
 }
 
 impl ReadyAppState {
+    pub(super) fn render_single_phase_recycle_options(
+        &mut self,
+        ui: &mut egui::Ui,
+        draft: &mut FlowPlanDraft,
+        options: &mut SinglePhaseRecycleOptions,
+        components: &[ComponentId],
+        bindings: &[SinglePhaseTearBinding],
+    ) -> bool {
+        let zh = self.locale == StudioShellLocale::ZhCn;
+        let structural_edit = !draft.has_modified_numbers();
+        ui.label(tr(zh, "撕裂流股", "Tear stream"));
+        ui.add_enabled_ui(structural_edit, |ui| {
+            let picker = egui::ComboBox::from_id_salt("single-phase-recycle-tear")
+                .selected_text(if options.tear.stream_id.as_str().is_empty() {
+                    tr(zh, "选择撕裂流股…", "Choose a tear stream…")
+                } else {
+                    options.tear.stream_id.as_str()
+                })
+                .show_ui(ui, |ui| {
+                    if bindings.is_empty() {
+                        ui.label(tr(
+                            zh,
+                            "将 Splitter 的 outlet_a 连至循环 Mixer 的入口。",
+                            "Connect Splitter outlet_a to a recycle Mixer inlet.",
+                        ));
+                    }
+                    for binding in bindings {
+                        let label = format!(
+                            "{} · {}.{} → {}.{}",
+                            binding.stream_id,
+                            binding.source.unit_id,
+                            binding.source.port_name,
+                            binding.sink.unit_id,
+                            binding.sink.port_name
+                        );
+                        if ui
+                            .selectable_label(&options.tear == binding, label)
+                            .clicked()
+                            && &options.tear != binding
+                        {
+                            options.tear = binding.clone();
+                            options.initial_state = None;
+                        }
+                    }
+                });
+            reveal_plan_focus(&picker.response);
+        });
+        if options.tear.stream_id.as_str().is_empty() {
+            return false;
+        }
+        ui.label(format!(
+            "{}.{} → {}.{}",
+            options.tear.source.unit_id,
+            options.tear.source.port_name,
+            options.tear.sink.unit_id,
+            options.tear.sink.port_name
+        ));
+        let mut submit = number(
+            ui,
+            draft,
+            FlowPlanNumericField::IterationBudget,
+            tr(zh, "迭代预算", "Iteration budget"),
+            options.max_iteration_evaluations as f64,
+            MeasurementUnit::One,
+            &mut self.flow_plan.notice,
+        )
+        .is_some();
+        let mut explicit = options.initial_state.is_some();
+        ui.add_enabled_ui(structural_edit, |ui| {
+            let toggle = ui.checkbox(
+                &mut explicit,
+                tr(zh, "显式撕裂初值", "Specify tear initial state"),
+            );
+            reveal_plan_focus(&toggle);
+        });
+        if !explicit {
+            options.initial_state = None;
+            ui.small(tr(
+                zh,
+                "零组分流量与零焓流初值。",
+                "Zero initial component and enthalpy flows.",
+            ));
+            return submit;
+        }
+        let initial = options
+            .initial_state
+            .get_or_insert_with(|| SinglePhaseTearState {
+                component_flows_mol_s: components.iter().cloned().map(|id| (id, 0.0)).collect(),
+                enthalpy_flow_w: 0.0,
+            });
+        for (component, value) in &initial.component_flows_mol_s {
+            submit |= number(
+                ui,
+                draft,
+                FlowPlanNumericField::InitialComponent {
+                    stream: options.tear.stream_id.clone(),
+                    component: component.clone(),
+                },
+                &format!("{component} · mol/s"),
+                *value,
+                MeasurementUnit::MolePerSecond,
+                &mut self.flow_plan.notice,
+            )
+            .is_some();
+        }
+        submit |= number(
+            ui,
+            draft,
+            FlowPlanNumericField::InitialEnthalpyFlow(options.tear.stream_id.clone()),
+            tr(zh, "初始焓流 (W)", "Initial enthalpy flow (W)"),
+            initial.enthalpy_flow_w,
+            MeasurementUnit::One,
+            &mut self.flow_plan.notice,
+        )
+        .is_some();
+        submit
+    }
+
     pub(super) fn single_phase_thermal_units(&self) -> Vec<ThermalUnit> {
         self.platform_host
             .modeling_inputs()

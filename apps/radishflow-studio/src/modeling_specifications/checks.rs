@@ -27,7 +27,10 @@ pub(super) fn check_inputs_with_plan(
         rf_ui::flow_plan::FlowPlanConfiguration::Acyclic => {
             rf_solver::sequential_execution_order(flowsheet).map(|_| ())
         }
-        rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_) => plan.validate_for(flowsheet),
+        rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_)
+        | rf_ui::flow_plan::FlowPlanConfiguration::SinglePhaseRecycle(_) => {
+            plan.validate_for(flowsheet)
+        }
         rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(options) => {
             rf_solver::partitioned::assemble_partitioned_plan(flowsheet, options).map(|_| ())
         }
@@ -105,13 +108,11 @@ pub(super) fn check_inputs_with_plan(
     // execution-only parameter failures, regardless of their object IDs.
     for unit in flowsheet.units.values() {
         if let Some(kind) = BuiltinUnitKind::parse(&unit.kind) {
-            let inherits_pressure = matches!(
-                plan,
-                rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_)
-            ) && matches!(
-                kind,
-                BuiltinUnitKind::Heater | BuiltinUnitKind::Cooler | BuiltinUnitKind::Mixer
-            );
+            let inherits_pressure = plan.single_phase_properties().is_some()
+                && matches!(
+                    kind,
+                    BuiltinUnitKind::Heater | BuiltinUnitKind::Cooler | BuiltinUnitKind::Mixer
+                );
             for &parameter in input_specification(kind).required_explicit_parameters {
                 let implicit = (inherits_pressure && parameter == UnitParameter::OutletPressure)
                     || released_parameter(plan, &unit.id, parameter);
@@ -178,6 +179,7 @@ pub(super) fn check_inputs_with_plan(
                 | rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
                 | rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
                 | rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::SinglePhaseRecycle(_)
         ) {
             // Cyclic inlet pressure comes from the frozen fixed boundary and evaluated
             // streams. Document templates cannot prove the recycle inlet pressure.
@@ -329,5 +331,8 @@ fn released_parameter(
     parameter: UnitParameter,
 ) -> bool {
     matches!(plan, rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(o) if parameter == UnitParameter::OutletASplitFraction && o.released.as_ref().is_some_and(|r| &r.binding.unit == unit))
-        || matches!(plan, rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(o) if parameter == UnitParameter::OutletTemperature && o.heat_duties_w.contains_key(unit))
+        || (parameter == UnitParameter::OutletTemperature
+            && plan
+                .single_phase_properties()
+                .is_some_and(|o| o.heat_duties_w.contains_key(unit)))
 }

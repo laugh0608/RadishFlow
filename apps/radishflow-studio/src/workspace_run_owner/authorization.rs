@@ -25,10 +25,12 @@ impl RunAuthorization {
         package_id: &str,
         now: SystemTime,
     ) -> Result<Self, RunAuthorizationRefusal> {
-        let uses_project_properties = matches!(
-            app.workspace.flow_plan.current(),
-            rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_)
-        );
+        let uses_project_properties = app
+            .workspace
+            .flow_plan
+            .current()
+            .project_model_method()
+            .is_some();
         let authorization = Self {
             authority: app.auth_session.authority_url.clone(),
             subject: app.auth_session.current_user.clone(),

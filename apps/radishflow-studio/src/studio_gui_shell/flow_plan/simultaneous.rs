@@ -10,12 +10,14 @@ pub(super) enum PlanMethod {
     EquationOriented,
     Mixed,
     SinglePhase,
+    SinglePhaseRecycle,
 }
 impl PlanMethod {
     pub(super) fn of(plan: &FlowPlanConfiguration) -> Self {
         match plan {
             FlowPlanConfiguration::Acyclic => Self::Acyclic,
             FlowPlanConfiguration::SinglePhase(_) => Self::SinglePhase,
+            FlowPlanConfiguration::SinglePhaseRecycle(_) => Self::SinglePhaseRecycle,
             FlowPlanConfiguration::Partitioned(_) => Self::Partitioned,
             FlowPlanConfiguration::Simultaneous(_) => Self::Simultaneous,
             FlowPlanConfiguration::EquationOriented(_) => Self::EquationOriented,
@@ -32,6 +34,7 @@ impl PlanMethod {
             ),
             Self::Acyclic => tr(zh, "无环序贯", "Acyclic sequential"),
             Self::SinglePhase => tr(zh, "单相显热序贯", "Single-vapor sensible heat"),
+            Self::SinglePhaseRecycle => tr(zh, "单相显热回流", "Single-vapor sensible recycle"),
             Self::Partitioned => tr(
                 zh,
                 "分块回流（固定温压）",
@@ -55,8 +58,8 @@ impl PlanMethod {
                 rf_solver::equation_oriented::EquationOptions::new(boundary),
             ),
             Self::Acyclic => FlowPlanConfiguration::Acyclic,
-            Self::SinglePhase => {
-                FlowPlanConfiguration::SinglePhase(rf_solver::flow_plan::SinglePhaseOptions {
+            Self::SinglePhase | Self::SinglePhaseRecycle => {
+                let properties = rf_solver::flow_plan::SinglePhaseOptions {
                     model: rf_thermo::SensibleEnthalpyModel::new(
                         Default::default(),
                         250.0..=500.0,
@@ -64,7 +67,24 @@ impl PlanMethod {
                     )
                     .expect("valid draft interval and pressure"),
                     heat_duties_w: Default::default(),
-                })
+                };
+                if self == Self::SinglePhase {
+                    FlowPlanConfiguration::SinglePhase(properties)
+                } else {
+                    use rf_solver::single_phase_recycle::{
+                        SinglePhaseRecycleOptions, SinglePhaseTearBinding,
+                    };
+                    FlowPlanConfiguration::SinglePhaseRecycle(Box::new(
+                        rf_solver::flow_plan::SinglePhaseRecycleConfiguration {
+                            properties,
+                            recycle: SinglePhaseRecycleOptions::new(SinglePhaseTearBinding {
+                                stream_id: "".into(),
+                                source: DiagnosticPortTarget::new("", ""),
+                                sink: DiagnosticPortTarget::new("", ""),
+                            }),
+                        },
+                    ))
+                }
             }
             Self::Partitioned => FlowPlanConfiguration::Partitioned(RecycleSolveOptions::new(
                 FixedRecycleBoundary {

@@ -1,11 +1,8 @@
 # 本地无界面运行接口
 
-更新时间：2026-11-19
+更新时间：2026-11-21
 
-用途：CLI v1–v11 命令、协议与错误。
-读者：本地脚本和适配器开发者。
-
-不包含：公共网络 API、COM、录制脚本、后台任务与项目保存。
+面向本地脚本与适配器的 CLI v1–v12 参考。
 
 ## 版本与兼容边界
 
@@ -17,9 +14,9 @@ v9 查询并运行已保存的 M2 工程。 [v9 契约与示例](../topics/model
 
 v10 支持 [终端产品组成反算](../topics/modeling/equation-oriented-block.md#产品组成反算-cli-v10)。
 
-[v11 单相显热](../topics/unitops/heater-cooler.md#cli-v11)。
+[v11 显热](../topics/unitops/heater-cooler.md#cli-v11) · [v12 显热回流](../topics/modeling/recycle-and-block-execution.md#显热回流-cli-v12)。
 
-v2 增加创建、连接和步骤引用。工程版本独立于请求版本，v1 / v2 按 SI 读写。 [单位系统](../topics/units-and-quantity-system.md) · [单位存储](../topics/units/unit-sets-and-persistence.md#u2-存储接口)
+v2 增加创建、连接和步骤引用。工程与请求独立版本化，v1／v2 按 SI 读写。 [单位存储](../topics/units/unit-sets-and-persistence.md#u2-存储接口)
 
 旧 `inspect`、v1 `run` 与 v2 workflow 在建模前拒绝工程 v3 及以上、缺失或空工程区。 [v3 生命周期](../topics/project-lifecycle-storage.md#完整设备保存与最小-studio-生命周期2026-10-15)
 

@@ -314,10 +314,13 @@ fn new_action<P: PlanProtocol>(
                 },
                 confirmation: None,
             };
-            let mut r = if matches!(
-                app.workspace.flow_plan.current(),
-                rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_)
-            ) {
+            let mut r = if app
+                .workspace
+                .flow_plan
+                .current()
+                .project_model_method()
+                .is_some()
+            {
                 if resources.is_some() {
                     return Err(invalid(
                         "single-vapor runs use saved project properties; omit flow_resources",
@@ -427,7 +430,7 @@ fn queries<P: PlanProtocol>(
             StudioProjectOpen::Editable(app) => match &query.query {
                 QueryKind::Plan(PlanQuery::Results { .. }) => P::query(app),
                 QueryKind::Plan(PlanQuery::Actions { .. }) => {
-                    let project_model = matches!(app.workspace.flow_plan.current(), rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_));
+                    let project_model = app.workspace.flow_plan.current().project_model_method().is_some();
                     let mut actions=json!([{"kind":"configure_flow_plan","expected_plan_revision":true,"requires_resources":false},{"kind":"run_flow","expected_revision":true,"expected_plan_revision":true,"requires_resources":!project_model}]);
                     if P::VERSION>=6 {actions.as_array_mut().expect("array").push(json!({"kind":"adopt_eo_split_fraction","expected_revision":true,"expected_plan_revision":true,"requires_current_request_execution":true,"caller_value":false}));}
                     Ok(actions)
@@ -494,7 +497,7 @@ pub(super) fn required_capabilities(app: &AppState) -> Result<Value, Failure> {
     }
     crate::document_lifecycle_driver::flow_plan::required_capabilities_with_support(
         app,
-        rf_store::project_v4::FlowPlanSupport::SinglePhase,
+        rf_store::project_v4::FlowPlanSupport::SinglePhaseRecycle,
     )
     .map(|caps| json!(caps))
     .map_err(domain)

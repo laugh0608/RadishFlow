@@ -7,6 +7,7 @@ use radishflow_studio::{
     modeling_actions::{MaterialConnectionTarget, MaterialPortTarget},
 };
 use rf_solver::partitioned::{FixedRecycleBoundary, RecycleSolveOptions, TearSpecification};
+use rf_solver::single_phase_recycle::SinglePhaseTearBinding;
 use rf_types::units::{ALL_UNITS, MeasurementUnit, from_canonical};
 use rf_types::{DiagnosticPortTarget, PortDirection, PortKind, StreamId};
 use rf_ui::flow_plan::*;
@@ -152,6 +153,7 @@ impl ReadyAppState {
                         PlanMethod::EquationOriented,
                         PlanMethod::Mixed,
                         PlanMethod::SinglePhase,
+                        PlanMethod::SinglePhaseRecycle,
                     ] {
                         ui.selectable_value(&mut method, choice, choice.label(zh));
                     }
@@ -166,7 +168,17 @@ impl ReadyAppState {
             ));
         }
         if method != PlanMethod::of(&candidate) {
-            candidate = method.default_configuration();
+            let mut next = method.default_configuration();
+            if let Some(properties) = candidate.single_phase_properties() {
+                match &mut next {
+                    FlowPlanConfiguration::SinglePhase(options) => *options = properties.clone(),
+                    FlowPlanConfiguration::SinglePhaseRecycle(options) => {
+                        options.properties = properties.clone()
+                    }
+                    _ => {}
+                }
+            }
+            candidate = next;
             draft.replace_candidate(candidate.clone());
         }
         let components: Vec<_> = self
@@ -219,6 +231,20 @@ impl ReadyAppState {
             })
             .collect();
         let mut apply_requested = false;
+        let sensible_tears: Vec<_> = bindings
+            .iter()
+            .filter(|tear| {
+                tear.source.port_name == "outlet_a"
+                    && flow.units[&tear.source.unit_id].kind == "splitter"
+                    && flow.units[&tear.sink.unit_id].kind == "mixer"
+                    && matches!(tear.sink.port_name.as_str(), "inlet_a" | "inlet_b")
+            })
+            .map(|tear| SinglePhaseTearBinding {
+                stream_id: tear.stream_id.clone(),
+                source: tear.source.clone(),
+                sink: tear.sink.clone(),
+            })
+            .collect();
         ui.add_enabled_ui(editable, |ui| {
             if let FlowPlanConfiguration::Partitioned(options) = &mut candidate {
                 egui::Frame::group(ui.style()).show(ui, |ui| {
@@ -280,18 +306,33 @@ impl ReadyAppState {
                 apply_requested |= self.render_mixed_plan(ui, &mut draft, options, &bindings);
             });
         }
-        if let FlowPlanConfiguration::SinglePhase(options) = &mut candidate {
+        if candidate.project_model_method().is_some() {
             let thermal = self.single_phase_thermal_units();
             let (submit, clear) = ui
                 .add_enabled_ui(editable, |ui| {
-                    self.render_single_phase_plan(
+                    let (properties, recycle_submit) = match &mut candidate {
+                        FlowPlanConfiguration::SinglePhase(options) => (options, false),
+                        FlowPlanConfiguration::SinglePhaseRecycle(options) => {
+                            let submit = self.render_single_phase_recycle_options(
+                                ui,
+                                &mut draft,
+                                &mut options.recycle,
+                                &components,
+                                &sensible_tears,
+                            );
+                            (&mut options.properties, submit)
+                        }
+                        _ => unreachable!("project property plan"),
+                    };
+                    let (submit, clear) = self.render_single_phase_plan(
                         ui,
                         &mut draft,
-                        options,
+                        properties,
                         &components,
                         &thermal,
-                        matches!(current, FlowPlanConfiguration::SinglePhase(_)),
-                    )
+                        current.project_model_method().is_some(),
+                    );
+                    (submit || recycle_submit, clear)
                 })
                 .inner;
             apply_requested |= submit;
@@ -317,12 +358,14 @@ impl ReadyAppState {
                     | FlowPlanConfiguration::EquationOriented(_)
                     | FlowPlanConfiguration::Mixed(_)
                     | FlowPlanConfiguration::SinglePhase(_)
+                    | FlowPlanConfiguration::SinglePhaseRecycle(_)
             ) || matches!(
                 current,
                 FlowPlanConfiguration::Simultaneous(_)
                     | FlowPlanConfiguration::EquationOriented(_)
                     | FlowPlanConfiguration::Mixed(_)
                     | FlowPlanConfiguration::SinglePhase(_)
+                    | FlowPlanConfiguration::SinglePhaseRecycle(_)
             ))
         {
             ui.label(tr(zh, "先应用或放弃草稿，才可 Run / F5 或输出当前结果；保存仅写正式配置。", "Apply or discard the draft before Run / F5 or current output. Save writes only formal configuration."));

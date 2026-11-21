@@ -533,6 +533,7 @@ pub(crate) fn preflight_workspace_run(
         rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
             | rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
             | rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_)
+            | rf_ui::flow_plan::FlowPlanConfiguration::SinglePhaseRecycle(_)
     ) && let Err(error) = app
         .workspace
         .flow_plan
@@ -549,16 +550,15 @@ pub(crate) fn preflight_workspace_run(
     }
     let selected = match index {
         Some(index) => resolve_workspace_run_package_id(app, index, &command.package),
-        None if matches!(
-            app.workspace.flow_plan.current(),
-            rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_)
-        ) =>
-        {
-            Ok(rf_store::project_v4::SINGLE_PHASE_METHOD.into())
-        }
-        None => Err(RfError::invalid_input(
-            "the selected plan requires property package resources",
-        )),
+        None => app
+            .workspace
+            .flow_plan
+            .current()
+            .project_model_method()
+            .map(str::to_owned)
+            .ok_or_else(|| {
+                RfError::invalid_input("the selected plan requires property package resources")
+            }),
     };
     let package_id = match selected {
         Ok(id) => id,

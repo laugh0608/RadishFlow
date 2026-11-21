@@ -104,8 +104,15 @@ pub(crate) fn prepare_studio_flow_plan_save(
     path: &Path,
 ) -> RfResult<Option<PreparedFlowPlanSave>> {
     match app.workspace.flow_plan.current() {
-        FlowPlanConfiguration::SinglePhase(_) => {
-            let support = FlowPlanSupport::SinglePhase;
+        FlowPlanConfiguration::SinglePhase(_) | FlowPlanConfiguration::SinglePhaseRecycle(_) => {
+            let support = if matches!(
+                app.workspace.flow_plan.current(),
+                FlowPlanConfiguration::SinglePhaseRecycle(_)
+            ) {
+                FlowPlanSupport::SinglePhaseRecycle
+            } else {
+                FlowPlanSupport::SinglePhase
+            };
             let project = flow_plan::project_with_support(app, support)?;
             prepare_plan_save(app, path, support, project).map(Some)
         }
@@ -151,8 +158,14 @@ fn prepare_plan_save(
 }
 
 impl PreparedFlowPlanSave {
-    pub fn requires_single_phase(&self) -> bool {
-        self.support == FlowPlanSupport::SinglePhase
+    pub fn single_phase_capability(&self) -> Option<&'static str> {
+        match self.support {
+            FlowPlanSupport::SinglePhase => Some(project_v4::SINGLE_PHASE_CAPABILITY),
+            FlowPlanSupport::SinglePhaseRecycle => {
+                Some(project_v4::SINGLE_PHASE_RECYCLE_CAPABILITY)
+            }
+            _ => None,
+        }
     }
     pub fn requires_product_composition(&self) -> bool {
         self.support == FlowPlanSupport::ProductComposition

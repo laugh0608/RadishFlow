@@ -122,6 +122,9 @@ impl ReadyAppState {
                 return self.locale.text(ShellText::SolverSequentialModular);
             }
             FlowPlanConfiguration::SinglePhase(_) => ("单相显热序贯", "Single-vapor sensible heat"),
+            FlowPlanConfiguration::SinglePhaseRecycle(_) => {
+                ("单相显热回流", "Single-vapor sensible recycle")
+            }
         };
         if zh { cn } else { en }
     }

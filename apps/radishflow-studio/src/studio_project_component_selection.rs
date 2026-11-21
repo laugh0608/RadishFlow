@@ -102,10 +102,11 @@ pub(crate) fn saved_single_phase_components(
     app: &AppState,
 ) -> impl Iterator<Item = crate::StudioGuiProjectComponentChoiceSnapshot> + '_ {
     let workspace = &app.workspace;
-    let selected = matches!(
-        workspace.flow_plan.current(),
-        rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_)
-    );
+    let selected = workspace
+        .flow_plan
+        .current()
+        .project_model_method()
+        .is_some();
     workspace
         .document
         .flowsheet

@@ -76,6 +76,7 @@ pub fn wire(plan: &FlowPlanConfiguration) -> Result<Plan, Failure> {
         FlowPlanConfiguration::Simultaneous(_)
         | FlowPlanConfiguration::EquationOriented(_)
         | FlowPlanConfiguration::SinglePhase(_)
+        | FlowPlanConfiguration::SinglePhaseRecycle(_)
         | FlowPlanConfiguration::Mixed(_) => {
             return Err(Failure::new(
                 Stage::Project,

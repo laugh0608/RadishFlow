@@ -2,6 +2,7 @@
 //! supplied by callers. Configuration checks allow an editable graph that
 //! is not ready to execute.
 use crate::partitioned::{RecycleSolveOptions, assemble_partitioned_plan};
+use crate::single_phase_recycle::{SinglePhaseRecycleOptions, validate_recycle_plan};
 use rf_model::Flowsheet;
 use rf_thermo::SensibleEnthalpyModel;
 use rf_types::{ComponentId, RfError, RfResult, StreamId, UnitId};
@@ -63,6 +64,12 @@ impl SinglePhaseOptions {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct SinglePhaseRecycleConfiguration {
+    pub properties: SinglePhaseOptions,
+    pub recycle: SinglePhaseRecycleOptions,
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub enum FlowPlanConfiguration {
     #[default]
@@ -72,13 +79,35 @@ pub enum FlowPlanConfiguration {
     EquationOriented(crate::equation_oriented::EquationOptions),
     Mixed(crate::mixed::MixedOptions),
     SinglePhase(SinglePhaseOptions),
+    SinglePhaseRecycle(Box<SinglePhaseRecycleConfiguration>),
 }
 impl FlowPlanConfiguration {
+    pub fn single_phase_properties(&self) -> Option<&SinglePhaseOptions> {
+        match self {
+            Self::SinglePhase(options) => Some(options),
+            Self::SinglePhaseRecycle(options) => Some(&options.properties),
+            _ => None,
+        }
+    }
+
+    pub fn project_model_method(&self) -> Option<&'static str> {
+        match self {
+            Self::SinglePhase(_) => Some("radishflow.acyclic-single-vapor-sensible"),
+            Self::SinglePhaseRecycle(_) => Some("radishflow.single-vapor-sensible-recycle"),
+            _ => None,
+        }
+    }
+
     /// Validate the configuration without requiring a ready flowsheet.
     pub fn validate_configuration(&self) -> RfResult<()> {
         match self {
             Self::Acyclic => Ok(()),
             Self::SinglePhase(o) => o.validate_configuration(),
+            Self::SinglePhaseRecycle(o) => {
+                o.properties.validate_configuration()?;
+                o.recycle.validate_configuration()?;
+                o.recycle.validate_initial_shape()
+            }
             Self::Mixed(o) => o.validate_shape(),
             Self::Partitioned(o) => o.validate_configuration(),
             Self::Simultaneous(o) => o.validate_configuration(),
@@ -98,6 +127,11 @@ impl FlowPlanConfiguration {
                 crate::sequential_execution_order(flowsheet)?;
                 o.validate_for(flowsheet)
             }
+            Self::SinglePhaseRecycle(o) => {
+                o.recycle.validate_initial_shape()?;
+                validate_recycle_plan(flowsheet, &o.recycle)?;
+                o.properties.validate_for(flowsheet)
+            }
             Self::Partitioned(o) => assemble_partitioned_plan(flowsheet, o).map(|_| ()),
             Self::Simultaneous(o) => crate::simultaneous::assemble(flowsheet, o).map(|_| ()),
         }
@@ -106,6 +140,16 @@ impl FlowPlanConfiguration {
         match self {
             Self::Acyclic => BTreeSet::new(),
             Self::SinglePhase(o) => o.heat_duties_w.keys().cloned().collect(),
+            Self::SinglePhaseRecycle(o) => o
+                .properties
+                .heat_duties_w
+                .keys()
+                .cloned()
+                .chain([
+                    o.recycle.tear.source.unit_id.clone(),
+                    o.recycle.tear.sink.unit_id.clone(),
+                ])
+                .collect(),
             Self::EquationOriented(o) => o.referenced_unit_ids(),
             Self::Mixed(o) => o.referenced_unit_ids(),
             Self::Simultaneous(o) => o
@@ -124,6 +168,7 @@ impl FlowPlanConfiguration {
     pub fn referenced_stream_ids(&self) -> BTreeSet<StreamId> {
         match self {
             Self::Acyclic | Self::SinglePhase(_) => BTreeSet::new(),
+            Self::SinglePhaseRecycle(o) => [o.recycle.tear.stream_id.clone()].into(),
             Self::EquationOriented(o) => o.referenced_stream_ids(),
             Self::Mixed(o) => o.referenced_stream_ids(),
             Self::Simultaneous(o) => o

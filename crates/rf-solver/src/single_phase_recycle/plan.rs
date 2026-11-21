@@ -1,8 +1,5 @@
 use super::{SinglePhaseRecycleOptions, recycle_error};
-use crate::{
-    dependency_graph::topological_order, fixed_tp_material::validate_vector,
-    partitioned::MAX_ITERATION_EVALUATIONS,
-};
+use crate::{dependency_graph::topological_order, fixed_tp_material::validate_vector};
 use rf_flowsheet::dependencies::material_dependencies;
 use rf_model::Flowsheet;
 use rf_types::{ComponentId, RfResult, StreamId, UnitId};
@@ -23,12 +20,7 @@ pub(super) fn assemble(
     flowsheet: &Flowsheet,
     options: &SinglePhaseRecycleOptions,
 ) -> RfResult<Plan> {
-    if !(1..=MAX_ITERATION_EVALUATIONS).contains(&options.max_iteration_evaluations) {
-        return Err(recycle_error(
-            "invalid_budget",
-            format!("recycle evaluation budget must be in 1..={MAX_ITERATION_EVALUATIONS}"),
-        ));
-    }
+    options.validate_configuration()?;
     let components: Vec<_> = flowsheet.components.keys().cloned().collect();
     if components.is_empty() {
         return Err(recycle_error(

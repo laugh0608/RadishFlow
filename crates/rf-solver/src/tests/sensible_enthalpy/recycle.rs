@@ -30,7 +30,7 @@ fn specify_duty(flow: &mut Flowsheet, kind: BuiltinUnitKind, duty_w: f64) -> Sin
     }
 }
 
-fn case(
+pub(super) fn case(
     kind: BuiltinUnitKind,
     target_temperature_k: f64,
     fraction: f64,
@@ -77,7 +77,7 @@ fn case(
     (flow, options)
 }
 
-fn assert_benchmark(
+pub(super) fn assert_benchmark(
     result: &SinglePhaseRecycleResult,
     target_k: f64,
     duty_w: f64,
