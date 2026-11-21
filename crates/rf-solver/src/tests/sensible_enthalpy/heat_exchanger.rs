@@ -3,7 +3,7 @@ use rf_unitops::{
     StreamTarget,
     heat_exchanger::{
         HeatExchangerResult, HeatExchangerSide, HeatExchangerSpecification,
-        calculate_countercurrent,
+        calculate_countercurrent, estimate_countercurrent_area,
     },
     single_phase_enthalpy_flow_w,
 };
@@ -13,6 +13,8 @@ struct TwoFeedExchanger {
     hot: MaterialStreamState,
     cold: MaterialStreamState,
 }
+
+const BENCHMARK_U_W_PER_M2_K: f64 = 100.0;
 
 impl TwoFeedExchanger {
     fn from_example() -> Self {
@@ -166,6 +168,178 @@ fn heat_exchanger_cold_outlet_specification_recovers_the_forward_result() {
     ] {
         let error = case.solve(ColdOutletTemperatureK(temperature)).unwrap_err();
         assert_eq!(error.context().diagnostic_code(), Some(diagnostic));
+    }
+}
+
+#[test]
+fn heat_exchanger_area_matches_the_two_feed_benchmark_for_each_specification() {
+    use HeatExchangerSpecification::{ColdOutletTemperatureK, HeatDutyW, HotOutletTemperatureK};
+    let case = TwoFeedExchanger::from_example();
+    let [forward, hot_spec, cold_spec] = [
+        HeatDutyW(3000.0),
+        HotOutletTemperatureK(340.0),
+        ColdOutletTemperatureK(350.0),
+    ]
+    .map(|spec| {
+        let thermal = case.solve(spec).unwrap();
+        assert_benchmark(&case, &thermal);
+        let estimate = estimate_countercurrent_area(&thermal, BENCHMARK_U_W_PER_M2_K).unwrap();
+        assert_eq!(
+            estimate.overall_heat_transfer_coefficient_w_per_m2_k,
+            BENCHMARK_U_W_PER_M2_K
+        );
+        assert_close(estimate.lmtd_k, 21.640_425_613_334_45, 1e-8);
+        assert_close(estimate.ua_w_per_k, 138.629_436_111_989_06, 1e-8);
+        assert_close(estimate.required_area_m2, 1.386_294_361_119_890_6, 1e-10);
+        estimate.required_area_m2
+    });
+    assert_close(forward, hot_spec, 1e-10);
+    assert_close(forward, cold_spec, 1e-10);
+    assert_close(hot_spec, cold_spec, 1e-10);
+
+    let thermal = case.solve(HeatDutyW(3000.0)).unwrap();
+    let double_u = estimate_countercurrent_area(&thermal, 2.0 * BENCHMARK_U_W_PER_M2_K).unwrap();
+    assert_close(double_u.ua_w_per_k, 138.629_436_111_989_06, 1e-8);
+    assert_close(double_u.required_area_m2, forward / 2.0, 1e-10);
+}
+
+#[test]
+fn heat_exchanger_area_uses_the_equal_approach_limit() {
+    let mut case = TwoFeedExchanger::from_example();
+    case.hot.total_molar_flow_mol_s = 1.2;
+    let thermal = case
+        .solve(HeatExchangerSpecification::HeatDutyW(1800.0))
+        .unwrap();
+    assert_eq!(thermal.hot_inlet_approach_k, 30.0);
+    assert_eq!(thermal.cold_inlet_approach_k, 30.0);
+    let estimate = estimate_countercurrent_area(&thermal, BENCHMARK_U_W_PER_M2_K).unwrap();
+    assert_eq!(estimate.lmtd_k, 30.0);
+    assert_eq!(estimate.ua_w_per_k, 60.0);
+    assert_close(estimate.required_area_m2, 0.6, 1e-10);
+}
+
+#[test]
+fn heat_exchanger_area_resolves_nearly_equal_approaches_in_either_order() {
+    let mut case = TwoFeedExchanger::from_example();
+    for (hot_flow, expected_lmtd) in [
+        (1.200_000_000_000_004, 30.000_000_000_000_05),
+        (1.199_999_999_999_996, 29.999_999_999_999_95),
+    ] {
+        case.hot.total_molar_flow_mol_s = hot_flow;
+        let thermal = case
+            .solve(HeatExchangerSpecification::HeatDutyW(1800.0))
+            .unwrap();
+        let a = thermal.hot_inlet_approach_k;
+        let b = thermal.cold_inlet_approach_k;
+        assert_eq!(a, 30.0);
+        assert_eq!(b > a, hot_flow > 1.2);
+        assert_ne!(a, b);
+        assert!((a - b).abs() < 1e-10);
+
+        let estimate = estimate_countercurrent_area(&thermal, BENCHMARK_U_W_PER_M2_K).unwrap();
+        assert_close(estimate.lmtd_k, expected_lmtd, 1e-12);
+        assert!(a.min(b) < estimate.lmtd_k && estimate.lmtd_k < a.max(b));
+        assert_close(estimate.ua_w_per_k, 60.0, 1e-8);
+        assert_close(estimate.required_area_m2, 0.6, 1e-10);
+    }
+}
+
+#[test]
+fn heat_exchanger_area_is_zero_at_zero_duty() {
+    let mut case = TwoFeedExchanger::from_example();
+    for (hot_inlet_k, expected_lmtd_k) in [(360.0, 60.0), (300.0, 0.0)] {
+        case.hot.temperature_k = hot_inlet_k;
+        let thermal = case
+            .solve(HeatExchangerSpecification::HeatDutyW(0.0))
+            .unwrap();
+        let estimate = estimate_countercurrent_area(&thermal, BENCHMARK_U_W_PER_M2_K).unwrap();
+        assert_eq!(estimate.lmtd_k, expected_lmtd_k);
+        assert_eq!(estimate.ua_w_per_k, 0.0);
+        assert_eq!(estimate.required_area_m2, 0.0);
+    }
+}
+
+#[test]
+fn heat_exchanger_area_requires_positive_approaches_at_positive_duty() {
+    use HeatExchangerSpecification::HeatDutyW;
+    let case = TwoFeedExchanger::from_example();
+    let error = case
+        .solve(HeatDutyW(3600.0))
+        .and_then(|thermal| estimate_countercurrent_area(&thermal, BENCHMARK_U_W_PER_M2_K))
+        .unwrap_err();
+    assert_eq!(
+        error.context().diagnostic_code(),
+        Some("unit.heat_exchanger.pinch_limit")
+    );
+
+    let mut thermal = case.solve(HeatDutyW(3_599.999_999_999_99)).unwrap();
+    assert!(thermal.hot_inlet_approach_k > 0.0 && thermal.hot_inlet_approach_k < 1e-10);
+    let estimate = estimate_countercurrent_area(&thermal, BENCHMARK_U_W_PER_M2_K).unwrap();
+    assert!(estimate.required_area_m2.is_finite() && estimate.required_area_m2 > 0.0);
+    for (hot_approach_k, cold_approach_k) in [(0.0, 36.0), (10.0, -1.0)] {
+        thermal.hot_inlet_approach_k = hot_approach_k;
+        thermal.cold_inlet_approach_k = cold_approach_k;
+        let error = estimate_countercurrent_area(&thermal, BENCHMARK_U_W_PER_M2_K).unwrap_err();
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("unit.heat_exchanger.pinch_limit")
+        );
+    }
+}
+
+#[test]
+fn heat_exchanger_area_rejects_invalid_u_even_at_zero_duty() {
+    let case = TwoFeedExchanger::from_example();
+    for duty in [3000.0, 0.0] {
+        let thermal = case
+            .solve(HeatExchangerSpecification::HeatDutyW(duty))
+            .unwrap();
+        for u in [0.0, -0.0, -1.0, f64::INFINITY, f64::NEG_INFINITY, f64::NAN] {
+            let error = estimate_countercurrent_area(&thermal, u).unwrap_err();
+            assert_eq!(
+                error.context().diagnostic_code(),
+                Some("unit.heat_exchanger.invalid_overall_heat_transfer_coefficient")
+            );
+        }
+    }
+}
+
+#[test]
+fn heat_exchanger_area_rejects_invalid_thermal_results() {
+    let case = TwoFeedExchanger::from_example();
+    let mut thermal = case
+        .solve(HeatExchangerSpecification::HeatDutyW(3000.0))
+        .unwrap();
+    for (duty, hot_approach, cold_approach) in [
+        (f64::INFINITY, 10.0, 40.0),
+        (-3000.0, 10.0, 40.0),
+        (3000.0, f64::NAN, 40.0),
+        (0.0, 10.0, 40.0),
+        (0.0, -40.0, -40.0),
+    ] {
+        thermal.heat_duty_w = duty;
+        thermal.hot_inlet_approach_k = hot_approach;
+        thermal.cold_inlet_approach_k = cold_approach;
+        let error = estimate_countercurrent_area(&thermal, BENCHMARK_U_W_PER_M2_K).unwrap_err();
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("unit.heat_exchanger.invalid_thermal_result")
+        );
+    }
+}
+
+#[test]
+fn heat_exchanger_area_rejects_overflow_and_underflow_to_zero() {
+    let case = TwoFeedExchanger::from_example();
+    for (duty, u) in [(3000.0, f64::MIN_POSITIVE), (1e-20, f64::MAX)] {
+        let thermal = case
+            .solve(HeatExchangerSpecification::HeatDutyW(duty))
+            .unwrap();
+        let error = estimate_countercurrent_area(&thermal, u).unwrap_err();
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("unit.heat_exchanger.numeric_range")
+        );
     }
 }
 

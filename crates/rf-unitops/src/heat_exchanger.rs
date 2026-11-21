@@ -1,4 +1,4 @@
-//! Independent, adiabatic countercurrent heat exchange between two single-vapor streams.
+//! Adiabatic countercurrent heat exchange and preliminary area between two single-vapor streams.
 use crate::{
     StreamTarget, UnitEnergyBalance,
     component_balance::stream_component_molar_flows,
@@ -69,6 +69,104 @@ pub struct HeatExchangerResult {
     pub cold_inlet_approach_k: f64,
     pub pinch_heat_duty_w: f64,
     pub overall_energy_balance: UnitEnergyBalance,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct HeatExchangerAreaEstimate {
+    pub overall_heat_transfer_coefficient_w_per_m2_k: f64,
+    pub lmtd_k: f64,
+    pub ua_w_per_k: f64,
+    pub required_area_m2: f64,
+}
+
+/// Estimate the required area from a successful countercurrent thermal calculation.
+/// Uses a positive finite constant U and a countercurrent correction factor of one.
+/// At zero duty, UA and area are zero and LMTD is the common terminal approach,
+/// including zero for isothermal inlets.
+pub fn estimate_countercurrent_area(
+    thermal_result: &HeatExchangerResult,
+    overall_heat_transfer_coefficient_w_per_m2_k: f64,
+) -> RfResult<HeatExchangerAreaEstimate> {
+    let u = overall_heat_transfer_coefficient_w_per_m2_k;
+    if !u.is_finite() || u <= 0.0 {
+        return Err(error(
+            "invalid_overall_heat_transfer_coefficient",
+            "overall heat transfer coefficient must be positive and finite",
+        ));
+    }
+
+    let HeatExchangerResult {
+        heat_duty_w,
+        hot_inlet_approach_k,
+        cold_inlet_approach_k,
+        ..
+    } = *thermal_result;
+    if !heat_duty_w.is_finite()
+        || heat_duty_w < 0.0
+        || !hot_inlet_approach_k.is_finite()
+        || !cold_inlet_approach_k.is_finite()
+    {
+        return Err(error(
+            "invalid_thermal_result",
+            "area estimation requires a finite nonnegative duty and finite terminal approaches",
+        ));
+    }
+
+    let (lmtd_k, ua_w_per_k, required_area_m2) = if heat_duty_w == 0.0 {
+        if hot_inlet_approach_k < 0.0 || hot_inlet_approach_k != cold_inlet_approach_k {
+            return Err(error(
+                "invalid_thermal_result",
+                "zero duty requires equal nonnegative terminal approaches",
+            ));
+        }
+        (hot_inlet_approach_k, 0.0, 0.0)
+    } else {
+        if hot_inlet_approach_k <= 0.0 || cold_inlet_approach_k <= 0.0 {
+            return Err(error(
+                "pinch_limit",
+                "positive heat transfer requires a positive temperature difference at each end",
+            ));
+        }
+        let lmtd_k = logarithmic_mean_approach_k(hot_inlet_approach_k, cold_inlet_approach_k);
+        let ua_w_per_k = heat_duty_w / lmtd_k;
+        let required_area_m2 = ua_w_per_k / u;
+        if [lmtd_k, ua_w_per_k, required_area_m2]
+            .into_iter()
+            .any(|value| !value.is_finite() || value <= 0.0)
+        {
+            return Err(error(
+                "numeric_range",
+                "positive duty requires finite positive LMTD, UA and area",
+            ));
+        }
+        (lmtd_k, ua_w_per_k, required_area_m2)
+    };
+
+    Ok(HeatExchangerAreaEstimate {
+        overall_heat_transfer_coefficient_w_per_m2_k,
+        lmtd_k,
+        ua_w_per_k,
+        required_area_m2,
+    })
+}
+
+fn logarithmic_mean_approach_k(first_k: f64, second_k: f64) -> f64 {
+    let lo = first_k.min(second_k);
+    let hi = first_k.max(second_k);
+    if hi == lo {
+        return hi;
+    }
+
+    let span = hi - lo;
+    let relative_span = span / lo;
+    // Preserve near-equal approaches with ln_1p. When the ratio overflows,
+    // the approaches are far enough apart to subtract their logarithms safely.
+    let log_ratio = if relative_span.is_finite() {
+        relative_span.ln_1p()
+    } else {
+        hi.ln() - lo.ln()
+    };
+    span / log_ratio
 }
 
 /// Calculate a steady countercurrent exchanger within the supplied constant-Cp model.
@@ -271,4 +369,16 @@ fn evaluate_side(
 
 fn error(code: &str, message: &str) -> RfError {
     RfError::invalid_input(message).with_diagnostic_code(format!("unit.heat_exchanger.{code}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::logarithmic_mean_approach_k;
+
+    #[test]
+    fn heat_exchanger_lmtd_handles_a_ratio_larger_than_f64() {
+        let lmtd_k = logarithmic_mean_approach_k(1e-200, 1e200);
+        let expected_k = 1e200 / (400.0 * std::f64::consts::LN_10);
+        assert!((lmtd_k / expected_k - 1.0).abs() <= 1e-14);
+    }
 }

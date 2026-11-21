@@ -10,7 +10,7 @@
 
 - 层级：二级功能；父专题：[设备设计与性能校核](../equipment-design-and-rating.md)。
 - 关联：[Heater / Cooler](../unitops/heater-cooler.md)、[现有物性限制](../../thermo/mvp-model.md)、[单位](../units-and-quantity-system.md)、[规格分析](../modeling-assistance-and-specifications.md)。
-- 状态：H0 方案已冻结，H1 独立 Rust Core 已实现。Heater / Cooler 的单股换热规格见对应单元专题。
+- 状态：H0 方案已冻结，H1 热工与 H2 初步面积已在独立 Rust Core 实现。Heater / Cooler 的单股换热规格见对应单元专题。
 
 ## 目标与首版范围
 
@@ -84,4 +84,19 @@ H1 / H2 先保证单工况热工；H3 / H4 逐步覆盖季节供水变化、负�
 
 H1 先验指定负荷，再验指定热侧 `340 K` 和冷侧 `350 K` 都反求 `3000 W`。出口温度和端温差与独立基准之差 `≤ 1e-8 K`，热负荷和焓流与基准之差 `≤ 1e-6 W`。用实际进出口物化物流复核各侧逐组分流量，绝对残差 `≤ 1e-10 mol/s`。各侧及整体能量绝对残差 `≤ 1e-6 W`，缩放残差 `≤ 1e-10`，尺度沿用 `max(1 W, Σ|Ḣin| + Σ|Ḣout| + |Q外边界|)`。整体外边界的 `Q` 为零。验收同时覆盖规格缺失或冲突、零流、温压越域、缺物性、反向和非有限值。
 
-H1 通过 `rf_unitops::heat_exchanger::calculate_countercurrent` 接收两侧入口、出口标识和一种规格，返回物化出口、端温差、夹点极限及实际侧别和整体衡算。面积估算、设备保存、CLI、Studio 和流程关联各按后续切片审定。 [Core 入口](../../../crates/rf-unitops/src/heat_exchanger.rs) · [验收用例](../../../crates/rf-solver/src/tests/sensible_enthalpy/heat_exchanger.rs)
+H1 通过 `rf_unitops::heat_exchanger::calculate_countercurrent` 接收两侧入口、出口标识和一种规格，返回物化出口、端温差、夹点极限及实际侧别和整体衡算。 [Core 入口](../../../crates/rf-unitops/src/heat_exchanger.rs) · [验收用例](../../../crates/rf-solver/src/tests/sensible_enthalpy/heat_exchanger.rs)
+
+## H2 初步面积估算
+
+`rf_unitops::heat_exchanger::estimate_countercurrent_area` 消费成功的 H1 结果中的 `Q`（W）和两端温差（K），以及调用方给定的常数 `U`（W/(m²·K)）。H2 沿用 H1 的稳态、绝热、单气相常热容和零压降假设，纯逆流的温差修正系数为 1。结果包含输入 `U`、LMTD（K）、`UA`（W/K）及初步所需面积（m²）。
+
+- `U` 在所有工况均须有限且严格为正，否则报告 `invalid_overall_heat_transfer_coefficient`。
+- 正负荷要求两端温差严格为正。H1 的 `pinch_limit` 和 `above_pinch` 发生在面积计算前，H2 入口也拒绝正负荷下的非正端温差。判据使用端温差的符号，正温差无额外的最小阈值。
+- 设 `hi`、`lo` 为较大和较小的端温差。相等时 LMTD 取该共同温差。不同且均为正时，LMTD 为 `(hi − lo) / ln(hi/lo)`，用 `ln_1p((hi − lo)/lo)` 保留近等温差的有效位，比例超出浮点范围时用 `ln(hi) − ln(lo)`。随后计算 `UA = Q/LMTD`、`A = UA/U`。正负荷下的非有限或非正计算结果报告 `numeric_range`。
+- 零负荷时两侧出口即各自入口，LMTD 取共同端温差，等温进料时为 `0 K`。`UA = 0 W/K`、`A = 0 m²`，直接返回零值，无需除以 LMTD。
+
+用 65 位十进制从原双进料工程的温度、流量和热容复算。合成基准取 `U = 100 W/(m²·K)`。`Q = 3000 W` 时，热／冷侧出口为 `340／350 K`，端温差为 `10／40 K`，得到 `LMTD = 30/ln(4) = 21.64042561333445 K`、`UA = 100·ln(4) = 138.62943611198906 W/K`、`A = ln(4) = 1.3862943611198906 m²`。三种 H1 规格分别对照同一基准，LMTD、UA、面积的绝对误差分别须 `≤ 1e-8 K`、`≤ 1e-8 W/K`、`≤ 1e-10 m²`，三种规格的面积差须 `≤ 1e-10 m²`。
+
+等端验证将热侧流量设为 `1.2 mol/s`，取 `Q = 1800 W`，两端均为 `30 K`，预期 `UA = 60 W/K`、`A = 0.6 m²`。近等端以热侧流量 `1.2 ± 4e-15 mol/s` 验证两种温差顺序，LMTD 与十进制基准绝对误差须 `≤ 1e-12 K`，且位于两端温差之间。零负荷验收覆盖同温与异温入口，夹点验收沿用 `3600 W` 工况。设备几何、性能校核、保存、CLI、Studio 和流程关联各按后续切片审定。
+
+Core 定向验收通过三种规格、等端与近等端、零负荷、夹点及其下方的可行工况，并覆盖非法 U 与数值范围错误。 [Core 入口](../../../crates/rf-unitops/src/heat_exchanger.rs) · [验收用例](../../../crates/rf-solver/src/tests/sensible_enthalpy/heat_exchanger.rs)
