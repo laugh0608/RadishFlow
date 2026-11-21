@@ -10,7 +10,7 @@
 
 - 层级：二级功能；父专题：[设备设计与性能校核](../equipment-design-and-rating.md)。
 - 关联：[Heater / Cooler](../unitops/heater-cooler.md)、[现有物性限制](../../thermo/mvp-model.md)、[单位](../units-and-quantity-system.md)、[规格分析](../modeling-assistance-and-specifications.md)。
-- 状态：H0 方案已冻结，H1 热工、H2 初步面积和 H3 同心套管校核首片已在独立 Rust Core 实现。H3 正式输入可由显式启用该能力的 Rust 调用方保存、重开并复算。Heater / Cooler 的单股换热规格见对应单元专题。
+- 状态：H0 方案已冻结，H1 热工、H2 初步面积和 H3 同心套管校核首片已在独立 Rust Core 实现。H3 支持 Rust 正式输入保存重开及 CLI v13 只读复核。Heater / Cooler 的单股换热规格见对应单元专题。
 
 ## 目标与首版范围
 
@@ -139,4 +139,10 @@ Core 定向验收通过三种规格、等端与近等端、零负荷、夹点及
 
 - v3／v4 共用 `engineering.tasks` 中的类型 `concentricTubeHeatExchangerRating`，方法为 `radishflow.heat-exchanger.concentric-tube-rating` v1。正式记录保存任务 ID、修订、位号、名称和方法，给定几何及其修订，以及一个带 ID、修订、名称和用途的工况。几何、两侧入口、两侧定物性及各自的单液相温压域、三项限值用有类型的 SI 字段表示。几何可引用工程区来源，每侧物性须引用工程区现有 `SourceRecord`，允许共用来源。
 - 数值键可缺省，有限但越出 H3 适用域的值可保留供修订。已知方法拒绝未知键、重复键、显式 `null`、无效类型、非有限数和悬空来源。存储只接收正式输入，计算结果、会话与草稿均为运行时数据。缺少必需数值时复算返回字段诊断，物理越域沿用 H3 诊断，缺省限值继续表现为未指定。
-- Rust 调用方以 `EquipmentSupport::ConcentricTubeRating` 启用存储能力。重开后由调用方显式调用 `rf_unitops::heat_exchanger::concentric_tube::rate_task`，解析来源后进入原 `rate_countercurrent`。v3 和 v4 均用上表的两档冷侧流量验证正式输入与前后运行结果逐值一致。流程关联、CLI 和 Studio 使用能力各另审。 [存储能力与覆盖门禁](../project-lifecycle-storage.md#h3-同心套管校核存储) · [重开复算用例](../../../crates/rf-solver/tests/heat_exchanger_storage.rs)
+- Rust 调用方以 `EquipmentSupport::ConcentricTubeRating` 启用存储能力。重开后由调用方显式调用 `rf_unitops::heat_exchanger::concentric_tube::rate_task`，解析来源后进入原 `rate_countercurrent`。v3 和 v4 均用上表的两档冷侧流量验证正式输入与前后运行结果逐值一致。 [存储能力与覆盖门禁](../project-lifecycle-storage.md#h3-同心套管校核存储) · [重开复算用例](../../../crates/rf-solver/tests/heat_exchanger_storage.rs)
+
+### H3 CLI 只读复核
+
+CLI v13 显式启用 H3 存储能力，读取 v3／v4 正式输入和来源。装载一次后以原字节指纹绑定工程快照，复算核对同一工程的任务、几何和工况修订。通过应用层保存工况入口执行原 H3 方法，检查结果、数值或失败诊断随本次回执返回。结果资格限本次请求中的精确工况，下一进程重新从 Missing 起步。
+
+真实 CLI 进程按上节独立基准核对 v3／v4 的两档冷侧流量，并检查原文件字节、旧协议的整份保护、身份或修订冲突、未知能力、缺输入及越域。Studio 使用能力和流程关联继续分别评审。 [CLI v13 参考](../../reference/headless-cli.md#h3-同心套管校核-cli-v13) · [进程验收](../../../apps/radishflow-studio/tests/headless_cli/v13.rs)

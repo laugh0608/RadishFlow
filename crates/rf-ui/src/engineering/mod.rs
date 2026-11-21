@@ -5,6 +5,7 @@ mod adoption;
 mod adoption_tests;
 pub use adoption::*;
 mod commands;
+pub mod concentric_tube;
 pub mod editor;
 mod impact;
 mod matrix;

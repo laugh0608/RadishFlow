@@ -1,11 +1,13 @@
 //! One-shot, local, read-only-on-disk automation. No GUI bootstrap or cache seeding.
 mod engine;
 mod planned;
+mod project_file;
 mod protocol;
 mod request;
 mod v10;
 mod v11;
 mod v12;
+mod v13;
 mod v3;
 mod v4;
 mod v5;
@@ -27,7 +29,7 @@ use rf_ui::variable_commands::{VariableWriteError, VariableWriteRequest};
 use rf_ui::{AppState, RunStatus, latest_snapshot, stale_snapshot};
 use std::{ffi::OsString, io::Write as IoWrite, path::Path, time::SystemTime};
 
-pub const HELP: &str = "Usage: radishflow-studio --headless inspect <project.rfproj.json>\n       radishflow-studio --headless run <request.json>\n       radishflow-studio --headless query <v3-through-v12-request.json>\n       radishflow-studio --headless execute <v3-through-v7-or-v9-through-v12-request.json>\n       radishflow-studio --headless --help\n\ninspect returns document identity, revision and variables as JSON.\nrun applies v1 SI writes or v2 create/connect/write steps in memory, solves and reads variables.\nquery reads versioned protocol records; v8 queries saved stable variable references.\nexecute applies explicit in-memory actions and checks.\nv9 queries and runs saved mixed-recycle plans. v10 supports EO product composition specifications. v11 runs project-owned single-vapor energy balances. v12 runs saved single-vapor recycle plans.\nPaths in a run request are relative to that request file. No input files are modified.\nExit codes: 0 success, 2 request/load/step/write/read error, 3 blocked, 4 run failed, 5 output error, 6 confirmation required.\n";
+pub const HELP: &str = "Usage: radishflow-studio --headless inspect <project.rfproj.json>\n       radishflow-studio --headless run <request.json>\n       radishflow-studio --headless query <v3-through-v13-request.json>\n       radishflow-studio --headless execute <v3-through-v7-or-v9-through-v13-request.json>\n       radishflow-studio --headless --help\n\ninspect returns document identity, revision and variables as JSON.\nrun applies v1 SI writes or v2 create/connect/write steps in memory, solves and reads variables.\nquery reads versioned protocol records; v8 queries saved stable variable references.\nexecute applies explicit in-memory actions and checks.\nv9 queries and runs saved mixed-recycle plans. v10 supports EO product composition specifications. v11 runs project-owned single-vapor energy balances. v12 runs saved single-vapor recycle plans. v13 queries and rates one saved concentric-tube case.\nPaths in a run request are relative to that request file. No input files are modified.\nExit codes: 0 success, 2 request/load/step/write/read error, 3 blocked, 4 run failed, 5 output error, 6 confirmation required.\n";
 
 /// Called before the GUI runtime is initialized. stdout contains exactly one JSON response
 /// (or help); diagnostics go to stderr only if writing stdout itself fails.

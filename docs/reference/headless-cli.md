@@ -2,7 +2,7 @@
 
 更新时间：2026-11-21
 
-面向本地脚本与适配器的 CLI v1–v12 参考。
+面向本地脚本与适配器的 CLI v1–v13 参考。
 
 ## 版本与兼容边界
 
@@ -15,6 +15,8 @@ v9 查询并运行已保存的 M2 工程。 [v9 契约与示例](../topics/model
 v10 支持 [终端产品组成反算](../topics/modeling/equation-oriented-block.md#产品组成反算-cli-v10)。
 
 [v11 显热](../topics/unitops/heater-cooler.md#cli-v11) · [v12 显热回流](../topics/modeling/recycle-and-block-execution.md#显热回流-cli-v12)。
+
+v13 复核已保存的同心套管校核任务。 [v13 查询与复算](#h3-同心套管校核-cli-v13)
 
 v2 增加创建、连接和步骤引用。工程与请求独立版本化，v1／v2 按 SI 读写。 [单位存储](../topics/units/unit-sets-and-persistence.md#u2-存储接口)
 
@@ -409,3 +411,57 @@ target/debug/radishflow-studio --headless execute examples/automation/adopt-mate
 
 
 新增协议：[QS4 CLI v7 契约](headless-cli-v7.md)。
+
+## H3 同心套管校核 CLI v13
+
+`--headless query` 和 `--headless execute` 接受 `schema_version: 13` 的请求，读取工程 v3 或 v4。这个版本的动作范围为已保存的 H3 独立任务。请求中的相对工程路径基于请求文件目录。请求按严格 JSON 解析，拒绝未知或重复键、步骤引用及流程资源参数。工程、缓存、偏好、布局和结果文件均无写入。 [H3 数据与能力](../topics/equipment/heat-exchanger-design-and-rating.md#h3-cli-只读复核)
+
+### 发现与查询
+
+先用以下请求发现正式工况。响应 `project` 提供 `document_id`、`project_schema_version` 和原文件字节的 `file_sha256`。工况列表提供 `target`、方法 ID／版本及 `revisions` 中的 `task`、`geometry`、`case`。
+
+```json
+{
+  "schema_version": 13,
+  "project": "concentric-tube.rfproj.json",
+  "queries": [{"id": "cases", "query": {"kind": "objects"}}]
+}
+```
+
+| 查询 | 参数及返回值 |
+| --- | --- |
+| `objects` | 列出工程中已知方法的 H3 工况，按保存顺序返回 |
+| `record` | `target` 取发现返回的 `{"case":{"task":{"id":"…"},"case":{"id":"…"}}}`。返回 `object`、`geometry`、`case` 及被该工况引用的 `sources`。数值为字段名所示的 SI 单位，未填写项返回 `null` |
+| `results` | `scope` 为 `{"object": target}`，其中 `target` 是上行同一个 JSON 对象。返回该工况结果；新进程为 `{"status":"missing"}` |
+
+`queries` 必填，可传空数组仅查询工程元数据。查询 ID 须唯一且非空白。含未知方法或能力的工程整份保护，项目元数据标记 `read_only: true`；此时请求工况数据返回 `read_only_project` 和退出码 3。
+
+### 复算与结果
+
+使用 `--headless execute`，把下面示例中的项目身份、指纹、工况目标和修订替换为发现响应中的实际值。仅支持一个 `rate_concentric_tube` 步骤，`queries` 可同时读取本次结果。
+
+```json
+{
+  "schema_version": 13,
+  "project": "concentric-tube.rfproj.json",
+  "expected_project": {"document_id": "<document_id>", "file_sha256": "<file_sha256>"},
+  "steps": [{
+    "id": "rate",
+    "action": {
+      "kind": "rate_concentric_tube",
+      "target": {"case": {"task": {"id": "h3-rating"}, "case": {"id": "h3-water"}}},
+      "expected_revisions": {"task": 5, "geometry": 7, "case": 11}
+    }
+  }],
+  "queries": [{
+    "id": "performance",
+    "query": {"kind": "results", "scope": {"object": {
+      "case": {"task": {"id": "h3-rating"}, "case": {"id": "h3-water"}}
+    }}}
+  }]
+}
+```
+
+- **计算完成**使用退出码 0。步骤回执与同请求结果查询给出相同的 `current` 结果，包括 `heat_duty_w`、`ua_w_per_k`、LMTD、面积、两侧出口、传热与水力中间量和闭合残差。`checks` 中 `heat_duty`、`hot_pressure_drop`、`cold_pressure_drop` 各返回 `passed`、`failed` 或 `not_specified`。超限时完整数值仍可用。
+- **计算失败**使用退出码 4 和 `run_failed`。该工况结果状态为 `failed`，包含原 Core 的 `diagnostic.code` 与 `message`。步骤拒绝、项目字节变化及错误身份走独立处理。`different_document`、`project_conflict`、`record_conflict` 和 `object_missing` 使用退出码 2。
+- **来源**由 `origin` 给出，包括工程 ID 与文件指纹、步骤 ID、工况身份、三项修订、方法以及几何与两侧物性来源 ID。独立调用 `query` 会重新从 `Missing` 开始。v12 可查询含 H3 工程的安全元数据并禁止执行；已有协议的能力边界照旧。

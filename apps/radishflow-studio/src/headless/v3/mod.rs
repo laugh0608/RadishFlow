@@ -159,12 +159,8 @@ pub(super) fn load_project_with_support(
     plan_support: FlowPlanSupport,
     identity_support: ObjectIdentitySupport,
 ) -> Result<(StudioProjectOpen, ProjectSnapshot), Failure> {
-    let bytes = std::fs::read(path)
-        .map_err(|e| Failure::new(Stage::Project, Code::ProjectIo, e.to_string()))?;
-    let file_sha256 = rf_store::sha256_hex(&bytes);
-    let contents = std::str::from_utf8(&bytes)
-        .map_err(|e| Failure::new(Stage::Project, Code::InvalidProject, e.to_string()))?;
-    if rf_store::project_v3::probe_version(contents)
+    let file = super::project_file::read_project_file(path)?;
+    if rf_store::project_v3::probe_version(&file.contents)
         .map_err(|e| Failure::new(Stage::Project, Code::InvalidProject, e.to_string()))?
         > supported_project_version
     {
@@ -174,8 +170,9 @@ pub(super) fn load_project_with_support(
             "project schema version is not supported by this CLI protocol",
         ));
     }
-    let opened = parse_studio_project_with_support(contents, path, plan_support, identity_support)
-        .map_err(|e| Failure::new(Stage::Project, Code::InvalidProject, e.to_string()))?;
+    let opened =
+        parse_studio_project_with_support(&file.contents, path, plan_support, identity_support)
+            .map_err(|e| Failure::new(Stage::Project, Code::InvalidProject, e.to_string()))?;
     let (document_id, flow_revision, project_schema_version, count, read_only) = match &opened {
         StudioProjectOpen::Editable(app) => (
             app.workspace.document.metadata.document_id.to_string(),
@@ -201,7 +198,7 @@ pub(super) fn load_project_with_support(
             document_id,
             project_schema_version,
             flow_revision,
-            file_sha256,
+            file_sha256: file.sha256,
             read_only,
             read_only_reason: read_only.then_some(Code::UnsupportedCapability),
             equipment_task_count: count,
@@ -212,11 +209,11 @@ pub(super) fn load_project_with_support(
 }
 fn query_file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     let (version, bytes) = read_request(path)?;
-    if !matches!(version, 3..=super::v12::VERSION) {
+    if !matches!(version, 3..=super::v13::VERSION) {
         return Err(Failure::new(
             Stage::Request,
             Code::UnsupportedVersion,
-            "query requires schema_version 3 through 12",
+            "query requires schema_version 3 through 13",
         ));
     }
     response.schema_version = version;
@@ -237,6 +234,7 @@ fn query_file(path: &Path, response: &mut Response) -> Result<(), Failure> {
         super::v12::VERSION => {
             super::planned::query_file::<super::v12::Plan>(path, &bytes, response)
         }
+        super::v13::VERSION => super::v13::query_file(path, &bytes, response),
         _ => unreachable!("validated query version"),
     }
 }
