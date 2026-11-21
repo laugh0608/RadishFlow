@@ -14,7 +14,7 @@
 - 长期覆盖稳态、动态、瞬态、间歇 / 半间歇，以及递归分块、序贯模块、联立模块和联立方程；统一 API 明确采用变量 / 动作浏览树，支持 COM 自动化和操作录制 / 回放。领域与术语边界见 [模拟平台长期规划](../architecture/simulation-platform.md)；目标不表示已实现或同时排期。
 - 插件、分层许可与公共 API 授权 / 配额已纳入 [规划](../radishflow-mvp-roadmap.md#插件与公共-api-的实施切片)；运行时、许可政策、接口和部署待切片决策。
 - [单位系统](../topics/units-and-quantity-system.md)、[规格与辅助](../topics/modeling-assistance-and-specifications.md)、[设备设计与校核](../topics/equipment-design-and-rating.md) 首批已有实现，进展见下文；设备工程不等待完整动态，未来 Agent 复用统一入口，当前不接入 AI。
-- [工程基础与来源](../topics/engineering-basis-and-cases.md)已支撑独立设备；变更影响、差异与证据复核纳入[后续切片](../radishflow-mvp-roadmap.md#工程工作流的配套切片)，流程关联仍待实施，近期顺序服从 AF。
+- [工程基础与来源](../topics/engineering-basis-and-cases.md)已支撑独立设备；变更影响、差异与证据复核纳入[后续切片](../radishflow-mvp-roadmap.md#工程工作流的配套切片)，分离器关联待实施。
 - 新交互评审可选本机 Penpot；旧稿保留，Pencil 停用。见 [UI 计划](../architecture/studio-ui-topic-plan.md)。
 - 当前尚未进入正式 tag / release 节点；`v26.5.1-dev` 仅作历史 staging 记录。
 
@@ -47,7 +47,7 @@
 ### 下一步
 
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
-- [x] [换热器](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-只读复核) CLI、Studio 已验。
+- [x] [换热器](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联首片) Rust 流程关联首片已验。
 - [ ] [AF3-V10](../topics/runtime-messages/scenarios-and-acceptance.md) 11-21 原版等待返回仍待验。
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
@@ -112,7 +112,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-21：Rust 2,273 项通过，含 62 项 CLI 进程测试。显热、换热和实窗见 [W47](../devlogs/2026-11/2026-W47.md)，窄区与 .NET 见 [W46](../devlogs/2026-11/2026-W46.md)。
+- 2026-11-21：Rust 2,279 项通过，含 62 项 CLI 进程测试。显热、换热和实窗见 [W47](../devlogs/2026-11/2026-W47.md)，窄区与 .NET 见 [W46](../devlogs/2026-11/2026-W46.md)。
 
 - 2026-11-10：PR #18 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 

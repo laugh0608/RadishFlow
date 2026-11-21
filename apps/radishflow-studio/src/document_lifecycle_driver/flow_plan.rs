@@ -93,26 +93,31 @@ pub(super) fn parse_v4(
             ) {
                 return Ok(review);
             }
-            let capabilities = project_v4::required_capabilities(&p)
-                .into_iter()
-                .map(|c| (c.id, c.version))
-                .collect();
-            let configuration = flow_plan_configuration(p.steady_state_plan)?;
-            let mut app =
-                app_state_from_stored(p.document, p.display_units, 4, p.engineering, path)?;
-            if let Some(identities) = p.object_identities {
-                app.workspace.install_saved_object_identities(identities);
-            }
-            app.workspace.variable_watch_list =
-                rf_ui::variable_browser::VariableWatchList::from_saved(p.variable_watch_list);
-            app.workspace.flow_plan = rf_ui::flow_plan::FlowPlanState::from_loaded(configuration);
-            app.workspace
-                .flow_plan
-                .record_saved_capabilities(capabilities);
-            app.workspace.reserve_flow_plan_identities();
-            Ok(StudioProjectOpen::Editable(Box::new(app)))
+            Ok(StudioProjectOpen::Editable(Box::new(app_state_from_v4(
+                *p, path,
+            )?)))
         }
     }
+}
+
+pub(super) fn app_state_from_v4(p: StoredProjectV4, path: &Path) -> RfResult<AppState> {
+    let capabilities = project_v4::required_capabilities(&p)
+        .into_iter()
+        .map(|c| (c.id, c.version))
+        .collect();
+    let configuration = flow_plan_configuration(p.steady_state_plan)?;
+    let mut app = app_state_from_stored(p.document, p.display_units, 4, p.engineering, path)?;
+    if let Some(identities) = p.object_identities {
+        app.workspace.install_saved_object_identities(identities);
+    }
+    app.workspace.variable_watch_list =
+        rf_ui::variable_browser::VariableWatchList::from_saved(p.variable_watch_list);
+    app.workspace.flow_plan = rf_ui::flow_plan::FlowPlanState::from_loaded(configuration);
+    app.workspace
+        .flow_plan
+        .record_saved_capabilities(capabilities);
+    app.workspace.reserve_flow_plan_identities();
+    Ok(app)
 }
 pub(super) fn project(app: &AppState) -> RfResult<ProjectV4Read> {
     project_with_support(app, FlowPlanSupport::Mixed)

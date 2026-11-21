@@ -29,24 +29,34 @@ pub(super) fn open(
     engineering: &mut Option<StoredEngineeringInputs>,
     contents: &str,
 ) -> Option<StudioProjectOpen> {
-    if !engineering.as_ref()?.has_concentric_tube_rating() {
-        return None;
-    }
-    let view = StudioH3Review {
-        original_json: contents.into(),
-        schema_version,
-        revision: document.revision,
-        metadata: document.metadata.clone(),
-        sha256: sha256_hex(contents.as_bytes()),
-        units: units.clone(),
-        inputs: engineering.take()?,
-    };
+    let view = StudioH3Review::take(document, units, schema_version, engineering, contents)?;
     Some(StudioProjectOpen::ReadOnly(Box::new(
         StudioReadOnlyProject::H3(Box::new(view)),
     )))
 }
 
 impl StudioH3Review {
+    pub(super) fn take(
+        document: &StoredProjectDocument,
+        units: &DisplayUnitSet,
+        schema_version: u32,
+        engineering: &mut Option<StoredEngineeringInputs>,
+        contents: &str,
+    ) -> Option<Self> {
+        if !engineering.as_ref()?.has_concentric_tube_rating() {
+            return None;
+        }
+        Some(Self {
+            original_json: contents.into(),
+            schema_version,
+            revision: document.revision,
+            metadata: document.metadata.clone(),
+            sha256: sha256_hex(contents.as_bytes()),
+            units: units.clone(),
+            inputs: engineering.take()?,
+        })
+    }
+
     pub fn metadata(&self) -> &StoredDocumentMetadata {
         &self.metadata
     }

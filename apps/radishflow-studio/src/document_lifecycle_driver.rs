@@ -1,4 +1,5 @@
 pub(crate) mod flow_plan;
+mod h3_flow_review;
 mod h3_review;
 mod object_identities;
 mod plan_save;
@@ -6,6 +7,10 @@ pub(crate) use plan_save::prepare_studio_flow_plan_save;
 #[cfg(test)]
 mod watch_list_tests;
 pub use flow_plan::StudioReadOnlyProject;
+pub use h3_flow_review::{
+    H3FlowPreview, H3FlowRating, H3FlowReview, H3FlowStream, H3PureWaterQualification,
+    H3WaterPropertySource,
+};
 pub use h3_review::StudioH3Review;
 pub use object_identities::{
     PreparedObjectIdentityInitialization, prepare_object_identity_initialization,
