@@ -2,6 +2,7 @@ pub mod catalog;
 pub mod component_balance;
 pub mod component_equations;
 pub mod component_response;
+pub mod heat_exchanger;
 pub mod separator_adoption;
 mod separator_evidence;
 mod separator_hydraulics;

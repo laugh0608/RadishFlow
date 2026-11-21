@@ -40,14 +40,15 @@
 
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
 - PR #18 已合入 `master` 并回灌 `dev`（`4772fbba`）。
-- AF3-V10 已补 macOS 切换、关闭和另存交错。受控实窗已验证等待中返回，384 块原版实窗仍未捕获等待页。
+- AF3-V10 受控实窗已验证等待返回。
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
 - [QS4 M2](../topics/modeling/mixed-partition-execution.md)已通过核心、v4 保存、CLI v9 与 Studio 本机代表验收。
 
 ### 下一步
 
-- [x] [单相显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 Core、v4、CLI v12 与 Studio。
-- [ ] AF3-V10 原版 macOS 待验。等待页可操作时，同会话核对返回编辑、草稿、旧回执拒收、worker 回收及显式重跑。 [验收矩阵](../topics/runtime-messages/scenarios-and-acceptance.md)
+- [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
+- [x] [换热器 H0／H1](../topics/equipment/heat-exchanger-design-and-rating.md#h0-冻结方案与独立基准) 正反算 Core 通过。
+- [ ] [AF3-V10](../topics/runtime-messages/scenarios-and-acceptance.md) 11-21 原版等待返回仍待验。
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
 - [x] QS3／QS4 macOS 取消与重跑通过，QS3 英文窄区焦点可见性复验通过。见 [专题](../topics/modeling/equation-oriented-block.md#接下来事项)。
@@ -111,7 +112,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-21：Rust 2,228 项通过，含 56 项 CLI 进程测试。显热、反算和实窗见 [W47](../devlogs/2026-11/2026-W47.md)，窄区与 .NET 见 [W46](../devlogs/2026-11/2026-W46.md)。
+- 2026-11-21：Rust 2,234 项通过，含 56 项 CLI 进程测试。显热、反算和实窗见 [W47](../devlogs/2026-11/2026-W47.md)，窄区与 .NET 见 [W46](../devlogs/2026-11/2026-W46.md)。
 
 - 2026-11-10：PR #18 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 

@@ -18,7 +18,7 @@ pub(crate) use splitter::SinglePhaseSplitter;
 
 pub const ENERGY_ABSOLUTE_TOLERANCE_W: f64 = 1e-6;
 pub const ENERGY_SCALED_TOLERANCE: f64 = 1e-10;
-const COMPONENT_FLOW_TOLERANCE_MOL_S: f64 = 1e-10;
+pub(crate) const COMPONENT_FLOW_TOLERANCE_MOL_S: f64 = 1e-10;
 
 pub(crate) struct SinglePhaseFeed<'a> {
     pub(crate) outlet: MaterialStreamState,

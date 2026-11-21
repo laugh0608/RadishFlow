@@ -16,6 +16,7 @@ use rf_unitops::{
 };
 use std::collections::BTreeMap;
 
+mod heat_exchanger;
 mod project_v4;
 mod recycle;
 
