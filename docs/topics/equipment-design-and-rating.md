@@ -1,6 +1,6 @@
 # 设备设计与性能校核
 
-更新时间：2026-10-22
+更新时间：2026-11-21
 
 ## 用途与状态
 
@@ -10,13 +10,13 @@
 
 - 层级：一级轨道；上位规划：[模拟平台](../architecture/simulation-platform.md)。
 - 子专题：[气液分离器尺寸与校核](equipment/separator-sizing-and-rating.md)、[换热器设计与校核](equipment/heat-exchanger-design-and-rating.md)。
-- 状态：Draft / 方向已确认；独立分离器尺寸 / 校核、有限工况矩阵、UI / 保存 / 输出与代表验收已完成。C-D01—06 已确认，C1 固定采纳、UI / 保存 / 证据输出及代表验证完成；C2 物性与 C3 流程关联本批不实施。具体状态见 [工程专题](engineering-basis-and-cases.md#s2-c1-候选采纳决策2026-10-21已确认)，不以动态和瞬态全部完成为前提。
+- 状态：Draft / 方向已确认。独立分离器尺寸、校核、有限工况矩阵与 C1 固定采纳已完成代表验收。分离器 C2-B／C3 仍受物性和范围门禁约束。换热器已验 H1 热工、H2 初步面积及 H3 同心套管校核，H3 独立复核已接通 CLI v13 与 Studio，流程关联保存与重开限 v4 Rust 应用层。 [分离器门禁](engineering-basis-and-cases.md#c2--c3-进入条件本批不实施) · [换热器现状](equipment/heat-exchanger-design-and-rating.md#h3-流程关联保存与重开)
 
 ## 目标与当前基础
 
 用户可独立计算设备，也可从流程选中设备并引用某一工况，推荐尺寸或检查已有设备的能力。参考 HYSYS 类设备选型体验和 [Aspen EDR](https://www.aspentech.com/en/products/engineering/aspen-exchanger-design-and-rating) 的热工 / 水力设计校核方向；不声称复现商业软件内部算法或达到相同覆盖面。
 
-现有 Flash Drum 是指定 TP 下的相分配单元；Heater / Cooler 是目标温压调节单元。它们尚无严格设备几何、选型或换热器设计能力，物性和焓限制见 [当前模型](../thermo/mvp-model.md)。新设备专题扩展产品目标，旧专题继续管理已实现单元，不能改写历史验收结论。
+Flash Drum 提供指定 TP 的相分配。Heater／Cooler 提供目标温压调节，单气相显热路径另支持指定热负荷。设备尺寸和性能校核由独立工程任务承担。 [当前物性与焓模型](../thermo/mvp-model.md) · [单股换热规格](unitops/heater-cooler.md#rust-core-单相显热规格)
 
 ## 任务分类与用户路径
 
@@ -99,7 +99,7 @@ UI 提供独立设备任务和流程对象上下文入口，汇集输入、推�
 
 涉及核心模型和跨层数据时运行定向及仓库基线；界面与平台按当前状态要求验证。不因本轮文档确认变更现有项目 schema、引入求解器依赖或注册 COM。
 
-下一步：独立单工况分离器已接通输入、来源、检查 / 计算、设备历史及保存重开；2026-10-20 当前计算表 CSV / JSON 导出及相关代表验证已完成。[S2 / G2 方案](equipment/separator-sizing-and-rating.md#s2--g2-实施方案2026-10-20已确认)已确认，S2-A1—A3 已完成模型、计算、事务 / 保存及单行 UI / 校核导出；局部画板获认可，自动与 macOS 代表验证通过。G2-B1—B3 有限矩阵、成员事务 / 资格 / 草稿、保存 / 输出及代表验收已完成；C1 数据 / 事务 / 保存、采纳 UI / 证据输出及代表验收已完成；C2 / C3 暂不实施，未验平台保持。换热器按能量闭环依赖推进。
+分离器 S2-A、G2-B 与 C1 的实施和证据见 [分离器专题](equipment/separator-sizing-and-rating.md#s2--g2-实施方案2026-10-20已确认)。换热器后续建议见 [H3 接下来事项](equipment/heat-exchanger-design-and-rating.md#接下来事项)。
 
 ## 首批方案审定入口（2026-10-11）
 

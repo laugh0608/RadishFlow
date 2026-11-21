@@ -36,7 +36,7 @@
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
 
 
-### 最近进展（截至 2026-11-19）
+### 最近进展（截至 2026-11-21）
 
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
 - PR #18 已合入 `master` 并回灌 `dev`（`4772fbba`）。
@@ -47,7 +47,7 @@
 ### 下一步
 
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
-- [x] [换热器](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联保存与重开) v4 关联保存重开已验。
+- [ ] [H3](../topics/equipment/heat-exchanger-design-and-rating.md#接下来事项) v4 关联保存重开已验，建议先评审 CLI 只读复核。
 - [ ] [AF3-V10](../topics/runtime-messages/scenarios-and-acceptance.md) 11-21 原版等待返回仍待验。
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。

@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-11-17
+更新时间：2026-11-21
 
 ## 用途
 
@@ -61,8 +61,8 @@ flowchart TD
 | `rf-flash` | TP Flash、Rachford-Rice、相分率与相组成 | 数值假设与验证边界见 [热力学模型](../thermo/mvp-model.md) |
 | `rf-unitops` | 七类内建单元 / 工厂、规格规则、组分衡算 / 响应 / 方程能力，以及独立设备计算 | 各模型分别声明支持的能力；Mixer、Valve 和焓模型仍有简化假设 |
 | `rf-flowsheet` | 端口、流股引用、一源一汇校验及文档侧有来源的入口压力上下文 | 终端产品流可没有 sink；不借用未运行模板伪造压力依据 |
-| `rf-solver` | 稳态计划值、共享执行分派、无回路 SM、QS0 独立物料任务、QS1 分块回流、QS2 仿射联立、QS3 物料 EO、QS4 Local＋正向 EO 的 DAG 与独立复核 | 各方法按自身能力执行，不自动换策略；跨块混合回路与通用非线性未实现 |
-| `rf-store` | 项目 v1—v4、sidecar、偏好、授权缓存、物性包与设备 / 正式流程计划编解码 | 已知能力可编辑，未知能力整份只读；工程版本与 CLI 版本独立，见 [存储专题](../topics/project-lifecycle-storage.md) |
+| `rf-solver` | 稳态计划与共享执行分派。QS0 独立物料任务，QS1 分块回流，QS2 仿射联立，QS3 物料 EO，QS4 混合 DAG 与固定温压单撕裂混合回流，单气相显热无回路与单撕裂回流 | 按显式计划执行并验收各方法的适用域 |
+| `rf-store` | 项目 v1—v4、sidecar、偏好、授权缓存、物性包与设备 / 正式流程计划编解码 | 按消费者声明识别能力，未支持的能力整份只读。工程与 CLI 独立版本化，见 [存储专题](../topics/project-lifecycle-storage.md) |
 | `rf-ffi` | engine 句柄、JSON 输入输出、错误映射与字符串释放 | 对外只暴露窄 C ABI，不向内核引入 COM |
 | `rf-ui` | AppState、草稿、共享输入事务、工程查询、来源与结果 presentation | 只读消费求解结果，不另算热力学 |
 | `rf-canvas` | 当前只有占位函数 | 尚未成为实际独立画布实现 |
@@ -74,7 +74,9 @@ flowchart TD
 
 Studio 后台与 CLI 经应用桥接调用 `rf-solver::execution::execute_flow`。`rf-ffi` 在旧工程校验和选包后调用同一入口。输入冻结、物性加载、任务调度及结果接收的归属见[共享稳态执行契约](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)。
 
-`rf-model::equipment` 拥有任务、输入与固定采纳证据；`rf-unitops::separator_sizing` 复用来源绑定，纯函数检查并返回拥有输入 / 来源副本的只读候选，无 UI、IO、COM 或流程求解调用。`rf-ui::engineering` 管理正式事务、独立历史及结果资格，`editor` 管理草稿与影响确认；Studio 设备页消费同一应用状态，并通过 `rf-store::project_v3` 保存正式输入。设备检查 / 计算不依赖流程 Run 或物性包选择；重开后结果 Missing。单行 / 矩阵导出已接通；C1 的 `separator_adoption` 纯映射与应用 / 编辑器原子采纳、v3 保存已实现，局部画板已确认，采纳 UI 与固定证据输出已接通；流程关联未接入。
+`rf-model::equipment` 拥有设备任务、输入与固定采纳证据。`rf-unitops::separator_sizing` 复用来源绑定并返回只读候选。`rf-ui::engineering` 管理独立分离器的正式事务、历史与结果资格，`editor` 管理草稿和影响确认。Studio 设备页消费同一应用状态，通过 `rf-store::project_v3` 保存正式输入。独立分离器可直接检查、计算和导出，C1 固定采纳及其证据已各自接通。 [分离器专题](../topics/equipment/separator-sizing-and-rating.md)
+
+`rf-unitops::heat_exchanger` 负责双侧热工、初步面积及同心套管校核。CLI v13 和 Studio 只读复核使用 `rf-ui::engineering::concentric_tube` 计算已保存的独立工况。Rust 应用层的 `H3FlowReview` 对同一份 v4 工程的 Current 流程快照核对两侧创建身份与物性资格，临时解析入口并复用该校核。v4 保存正式流股引用，重开后重新运行和复算。 [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联保存与重开)
 
 AF4a 的 `rf-ui::project_query` 从单一工作区只读发现流程、设备、基础和来源，分别校验流程身份与设备 checkpoint。AF5a 保留两类结果载荷，Current 才提供数值；执行来源随已接收结果保留，不由当前选包补填。AF4b 已接通流程 / 设备正式动作及运行回执；AF4c 已通过独立 v3 协议覆盖查询、正式编辑 / 确认、同步计算和 C1 采纳，旧 CLI 适配保持。AF5b 的 `FlowResultReview` 将共享查询投影到 GUI，结果动作与输出以领域身份重验；设备历史独立折叠，计算表输出冻结执行来源。
 

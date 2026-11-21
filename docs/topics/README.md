@@ -1,6 +1,6 @@
 # 开发专题索引
 
-更新时间：2026-11-14
+更新时间：2026-11-21
 
 ## 用途
 
@@ -30,7 +30,7 @@
 | [运行、消息与诊断](runtime-messages-and-diagnostics.md) | N0—N5 的运行控制、消息与诊断边界 | 下列七项职责子专题 |
 | [项目生命周期与存储](project-lifecycle-storage.md) | 打开、保存、最近项目、脏改确认与工程容器 | 本文内切片；与控制面协同 |
 | [CAPE-OPEN PMC](capeopen-pmc-adapter.md) | .NET / COM PMC 生命周期、物料边界与未来 COBIA 适配 | [物料治理](capeopen-pmc-adapter.md#物料边界与成功语义治理)、[COBIA 计划](capeopen-pmc-adapter.md#cobia-分阶段接入计划)及 PME 验收入口 |
-| [工程基础与工况](engineering-basis-and-cases.md) | 条件、来源、工况及变更影响 / 证据复核 | 本文内 G0—G3；流程关联仍受 C2 / C3 门禁约束，与设备工程和 Q1—Q3 协同 |
+| [工程基础与工况](engineering-basis-and-cases.md) | 条件、来源、工况及变更影响 / 证据复核 | 本文内 G0—G3；分离器关联见 C2／C3，换热器关联见 H3，与设备工程和 Q1—Q3 协同 |
 | [单位系统](units-and-quantity-system.md) | 量目录、单位集、输入输出一致性 | 下列四项职责子专题与 UNIT / UA 追踪 |
 | [颜色与状态](color-and-state-system.md) | 语义、组合、消费者映射与迁移 | 下列四项职责子专题与 VIS / VA 追踪 |
 | [规格与建模辅助](modeling-assistance-and-specifications.md) | 规格检查、可解释辅助与固定工作流 | 本文内 A1 / A2 等切片 |
