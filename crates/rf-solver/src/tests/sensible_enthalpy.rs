@@ -12,10 +12,12 @@ use rf_thermo::SensibleEnthalpyModel;
 use rf_types::{PhaseLabel, RfResult, UnitId};
 use rf_unitops::{
     BuiltinUnitKind, build_cooler_node, build_feed_node, build_heater_node, build_mixer_node,
+    build_splitter_node,
 };
 use std::collections::BTreeMap;
 
 mod project_v4;
+mod recycle;
 
 const PRESSURE_PA: f64 = 100_000.0;
 const FLOW_TOLERANCE_W: f64 = 1e-6;
@@ -132,6 +134,48 @@ fn enthalpy_flow(stream: &MaterialStreamState) -> f64 {
         .find(|phase| phase.label == PhaseLabel::Overall)
         .unwrap();
     phase.molar_enthalpy_j_per_mol.unwrap() * stream.total_molar_flow_mol_s
+}
+
+#[test]
+fn single_phase_splitter_distributes_flows_and_preserves_intensive_state() {
+    let mut flow = two_feed_mixer_case();
+    for id in ["branch-a", "branch-b"] {
+        let mut template = flow.stream(&"mixed".into()).unwrap().clone();
+        template.id = id.into();
+        flow.insert_stream(template).unwrap();
+    }
+    let splitter = build_splitter_node("split", "split", "mixed", "branch-a", "branch-b");
+    let splitter_id = splitter.id.clone();
+    flow.insert_unit(splitter).unwrap();
+    let model = model();
+    for fraction in [0.0, 0.6, 1.0] {
+        flow.units
+            .get_mut(&splitter_id)
+            .unwrap()
+            .parameters
+            .outlet_a_split_fraction = Some(fraction);
+        let result = solve(&flow, &model).unwrap();
+        let inlet = &result.streams[&"mixed".into()];
+        for (id, share) in [("branch-a", fraction), ("branch-b", 1.0 - fraction)] {
+            let output = &result.streams[&id.into()];
+            assert_eq!(output.total_molar_flow_mol_s, share * 5.0);
+            assert_eq!(output.temperature_k, inlet.temperature_k);
+            assert_eq!(output.pressure_pa, inlet.pressure_pa);
+            assert_eq!(output.overall_mole_fractions, inlet.overall_mole_fractions);
+            assert_eq!(output.bubble_dew_window, None);
+            if share > 0.0 {
+                assert_eq!(output.phases, inlet.phases);
+                assert_close(enthalpy_flow(output), share * 9388.5, FLOW_TOLERANCE_W);
+            } else {
+                assert!(output.phases.is_empty());
+            }
+        }
+        let balance = result.steps.last().unwrap().energy_balance.unwrap();
+        assert_eq!(balance.heat_duty_w, 0.0);
+        assert_close(balance.inlet_enthalpy_flow_w, 9388.5, FLOW_TOLERANCE_W);
+        assert_close(balance.outlet_enthalpy_flow_w, 9388.5, FLOW_TOLERANCE_W);
+        assert!(balance.residual_w.abs() <= FLOW_TOLERANCE_W);
+    }
 }
 
 #[test]

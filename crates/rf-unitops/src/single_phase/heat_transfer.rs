@@ -1,4 +1,6 @@
-use super::{enthalpy_flow_w, materialize_vapor, verify_energy_balance};
+use super::{
+    ENERGY_ABSOLUTE_TOLERANCE_W, enthalpy_flow_w, materialize_vapor, verify_energy_balance,
+};
 use crate::{
     BuiltinUnitKind, HEATER_COOLER_INLET_PORT, HEATER_COOLER_OUTLET_PORT, StreamTarget,
     UnitOperation, UnitOperationInputs, UnitOperationOutputs, UnitOperationServices,
@@ -10,6 +12,12 @@ use rf_types::{RfError, RfResult};
 pub(crate) enum HeatSpecification {
     OutletTemperatureK(f64),
     HeatDutyW(f64),
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum HeatDutyDomain {
+    Strict,
+    RecycleRoundoff,
 }
 
 impl HeatSpecification {
@@ -33,10 +41,11 @@ impl HeatSpecification {
         }
     }
 
-    fn resolve(
+    pub(crate) fn resolve(
         &self,
         model: &SensibleEnthalpyModel,
         inlet: &MaterialStreamState,
+        heat_duty_domain: HeatDutyDomain,
     ) -> RfResult<(f64, f64)> {
         let heat_capacity_rate_w_per_k = inlet.total_molar_flow_mol_s
             * model.molar_heat_capacity_j_per_mol_k(&inlet.overall_mole_fractions)?;
@@ -69,13 +78,24 @@ impl HeatSpecification {
                 let range_k = model.temperature_range_k();
                 let (min_k, max_k) = range_k.into_inner();
                 let (min_w, max_w) = (duty_at(min_k), duty_at(max_k));
-                if !(min_w..=max_w).contains(&duty_w) {
+                // Both the fresh and trial mixers reconstruct temperature from enthalpy.
+                // Bound the resulting endpoint uncertainty in watts.
+                let roundoff_w = match heat_duty_domain {
+                    HeatDutyDomain::Strict => 0.0,
+                    HeatDutyDomain::RecycleRoundoff => {
+                        let magnitude_k =
+                            inlet.temperature_k.abs().max(min_k.abs()).max(max_k.abs());
+                        ((4.0 * f64::EPSILON * magnitude_k) * heat_capacity_rate_w_per_k)
+                            .min(ENERGY_ABSOLUTE_TOLERANCE_W)
+                    }
+                };
+                if !((min_w - roundoff_w)..=(max_w + roundoff_w)).contains(&duty_w) {
                     return Err(RfError::thermo(format!(
                         "heat duty {duty_w} W is outside the single-vapor domain of {min_w}..={max_w} W for this inlet"
                     ))
                     .with_diagnostic_code("thermo.sensible_enthalpy.outside_domain"));
                 }
-                // The duty check enforces the domain before rounding the inverse temperature.
+                // At a valid duty endpoint, round the inverse into the modeled temperature range.
                 let temperature_k =
                     (inlet.temperature_k + duty_w / heat_capacity_rate_w_per_k).clamp(min_k, max_k);
                 Ok((temperature_k, duty_w))
@@ -89,6 +109,7 @@ pub(crate) struct SinglePhaseHeaterCooler<'a> {
     pub(crate) outlet: StreamTarget,
     pub(crate) outlet_pressure_pa: Option<f64>,
     pub(crate) specification: HeatSpecification,
+    pub(crate) heat_duty_domain: HeatDutyDomain,
     pub(crate) model: &'a SensibleEnthalpyModel,
 }
 
@@ -110,7 +131,7 @@ impl UnitOperation for SinglePhaseHeaterCooler<'_> {
         let pressure_pa = self.outlet_pressure_pa.unwrap_or(inlet.pressure_pa);
         let (temperature_k, heat_duty_w) = self
             .specification
-            .resolve(self.model, inlet)
+            .resolve(self.model, inlet, self.heat_duty_domain)
             .map_err(|error| error.with_related_stream_id(self.outlet.id.clone()))?;
         let outlet = materialize_vapor(
             self.model,
@@ -124,7 +145,7 @@ impl UnitOperation for SinglePhaseHeaterCooler<'_> {
             ),
         )
         .map_err(|error| error.with_related_stream_id(self.outlet.id.clone()))?;
-        let balance = verify_energy_balance(&[enthalpy_flow_w(inlet)?], heat_duty_w, &outlet)?;
+        let balance = verify_energy_balance(&[enthalpy_flow_w(inlet)?], heat_duty_w, &[&outlet])?;
         let mut outputs = UnitOperationOutputs::new();
         outputs.insert_material_stream(HEATER_COOLER_OUTLET_PORT, outlet);
         outputs.energy_balance = Some(balance);

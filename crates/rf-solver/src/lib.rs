@@ -10,6 +10,7 @@ mod local_services;
 pub mod mixed;
 pub mod partitioned;
 pub mod simultaneous;
+pub mod single_phase_recycle;
 pub use control::{ControlledSolveOutcome, SolveProgress, SolveStage, SolverControl};
 pub use rf_unitops::UnitEnergyBalance;
 
@@ -207,6 +208,7 @@ pub trait FlowsheetSolver {
 #[derive(Debug, Default)]
 pub struct SequentialModularSolver;
 
+#[derive(Clone, Copy)]
 enum SequentialProperties<'a> {
     Legacy(UnitOperationServices<'a>),
     SinglePhase {
@@ -299,15 +301,7 @@ impl SequentialModularSolver {
         }
         let execution_order = sequential_execution_order(flowsheet)?;
         if let SequentialProperties::SinglePhase { heat_duties_w, .. } = properties {
-            for unit in heat_duties_w.keys() {
-                if !flowsheet.units.contains_key(unit) {
-                    return Err(RfError::invalid_input(format!(
-                        "heat duty targets unknown unit `{unit}`"
-                    ))
-                    .with_diagnostic_code("solver.single_phase.unknown_heat_duty_target")
-                    .with_related_unit_id(unit.clone()));
-                }
-            }
+            validate_heat_duty_targets(flowsheet, heat_duties_w)?;
         }
         let total_units = execution_order.len();
         if control
@@ -338,11 +332,6 @@ impl SequentialModularSolver {
             related_unit_ids: execution_order.clone(),
             related_stream_ids: Vec::new(),
         }];
-        let unit_services = match properties {
-            SequentialProperties::Legacy(services) => services,
-            SequentialProperties::SinglePhase { .. } => UnitOperationServices::default(),
-        };
-
         for (step_index, unit_id) in execution_order.iter().enumerate() {
             if control
                 .checkpoint(SolveProgress {
@@ -383,87 +372,30 @@ impl SequentialModularSolver {
                     heat_duties_w.get(unit_id).copied(),
                 ),
             }?;
-            let mut inputs = UnitOperationInputs::new();
-            let mut consumed_streams = Vec::new();
-
-            for port in spec
-                .ports
-                .iter()
-                .filter(|port| port.direction == PortDirection::Inlet)
-            {
-                let stream = resolved_stream_for_port(unit, port.name, &solved_streams).map_err(
-                    |error| {
-                        solver_step_error(step_number, unit, SolverDiagnosticCode::StepInlet, error)
-                    },
-                )?;
-                consumed_streams.push(stream.clone());
-                inputs.insert_material_stream(port.name, stream.clone());
-            }
-            let consumed_stream_ids = consumed_streams
-                .iter()
-                .map(|stream| stream.id.clone())
-                .collect::<Vec<_>>();
-
-            validate_step_stream_inputs(step_number, unit, &consumed_streams)?;
-            validate_step_parameters(step_number, unit, &inputs, &consumed_stream_ids)?;
-
-            let outputs =
-                operation
-                    .run(&unit_services, &inputs)
-                    .map_err(|error| match properties {
-                        SequentialProperties::Legacy(_) => solver_step_execution_error(
-                            step_number,
-                            unit,
-                            &consumed_stream_ids,
-                            error,
-                        ),
-                        SequentialProperties::SinglePhase { .. } => {
-                            error.with_related_unit_id(unit.id.clone())
-                        }
-                    })?;
-            let mut produced_streams = Vec::new();
-
-            for port in spec
-                .ports
-                .iter()
-                .filter(|port| port.direction == PortDirection::Outlet)
-            {
-                let stream = materialized_output_stream(step_number, unit, port.name, &outputs)?;
-                produced_streams.push(stream.clone());
+            let step = evaluate_unit_step(
+                step_index,
+                unit,
+                spec,
+                operation.as_ref(),
+                &solved_streams,
+                properties,
+            )?;
+            for stream in &step.produced_streams {
                 solved_streams.insert(stream.id.clone(), stream.clone());
             }
-            let produced_stream_ids = stream_ids(&produced_streams);
-
-            let summary = format!(
-                "executed unit `{}` (`{}`) with {} inlet stream(s) [{}] and produced {} outlet stream(s) [{}]",
-                unit.id,
-                unit.kind,
-                consumed_stream_ids.len(),
-                format_stream_ids(&consumed_stream_ids),
-                produced_stream_ids.len(),
-                format_stream_ids(&produced_stream_ids),
-            );
             diagnostics.push(SolveDiagnostic {
                 severity: SolveDiagnosticSeverity::Info,
                 code: SolverDiagnosticCode::UnitExecuted.as_str().to_string(),
-                message: format!("step {}: {}", step_index + 1, summary),
+                message: format!("step {step_number}: {}", step.summary),
                 related_unit_ids: vec![unit.id.clone()],
-                related_stream_ids: consumed_stream_ids
+                related_stream_ids: step
+                    .consumed_streams
                     .iter()
-                    .cloned()
-                    .chain(produced_stream_ids.iter().cloned())
+                    .chain(&step.produced_streams)
+                    .map(|stream| stream.id.clone())
                     .collect(),
             });
-            steps.push(UnitSolveStep {
-                index: step_index,
-                unit_id: unit.id.clone(),
-                unit_name: unit.name.clone(),
-                unit_kind: unit.kind.clone(),
-                consumed_streams,
-                produced_streams,
-                energy_balance: outputs.energy_balance(),
-                summary,
-            });
+            steps.push(step);
             if control
                 .checkpoint(SolveProgress {
                     stage: SolveStage::UnitCompleted,
@@ -513,6 +445,100 @@ impl SequentialModularSolver {
             steps,
         }))
     }
+}
+
+fn validate_heat_duty_targets(
+    flowsheet: &Flowsheet,
+    heat_duties_w: &BTreeMap<UnitId, f64>,
+) -> RfResult<()> {
+    for unit in heat_duties_w.keys() {
+        if !flowsheet.units.contains_key(unit) {
+            return Err(
+                RfError::invalid_input(format!("heat duty targets unknown unit `{unit}`"))
+                    .with_diagnostic_code("solver.single_phase.unknown_heat_duty_target")
+                    .with_related_unit_id(unit.clone()),
+            );
+        }
+    }
+    Ok(())
+}
+
+fn evaluate_unit_step(
+    step_index: usize,
+    unit: &UnitNode,
+    spec: &rf_unitops::UnitOperationSpec,
+    operation: &dyn UnitOperation,
+    solved_streams: &BTreeMap<StreamId, MaterialStreamState>,
+    properties: SequentialProperties<'_>,
+) -> RfResult<UnitSolveStep> {
+    let step_number = step_index + 1;
+    let unit_services = match properties {
+        SequentialProperties::Legacy(services) => services,
+        SequentialProperties::SinglePhase { .. } => UnitOperationServices::default(),
+    };
+
+    let mut inputs = UnitOperationInputs::new();
+    let mut consumed_streams = Vec::new();
+
+    for port in spec
+        .ports
+        .iter()
+        .filter(|port| port.direction == PortDirection::Inlet)
+    {
+        let stream =
+            resolved_stream_for_port(unit, port.name, solved_streams).map_err(|error| {
+                solver_step_error(step_number, unit, SolverDiagnosticCode::StepInlet, error)
+            })?;
+        consumed_streams.push(stream.clone());
+        inputs.insert_material_stream(port.name, stream.clone());
+    }
+    let consumed_stream_ids = consumed_streams
+        .iter()
+        .map(|stream| stream.id.clone())
+        .collect::<Vec<_>>();
+
+    validate_step_stream_inputs(step_number, unit, &consumed_streams)?;
+    validate_step_parameters(step_number, unit, &inputs, &consumed_stream_ids)?;
+
+    let outputs = operation
+        .run(&unit_services, &inputs)
+        .map_err(|error| match properties {
+            SequentialProperties::Legacy(_) => {
+                solver_step_execution_error(step_number, unit, &consumed_stream_ids, error)
+            }
+            SequentialProperties::SinglePhase { .. } => error.with_related_unit_id(unit.id.clone()),
+        })?;
+    let mut produced_streams = Vec::new();
+
+    for port in spec
+        .ports
+        .iter()
+        .filter(|port| port.direction == PortDirection::Outlet)
+    {
+        let stream = materialized_output_stream(step_number, unit, port.name, &outputs)?;
+        produced_streams.push(stream.clone());
+    }
+    let produced_stream_ids = stream_ids(&produced_streams);
+
+    let summary = format!(
+        "executed unit `{}` (`{}`) with {} inlet stream(s) [{}] and produced {} outlet stream(s) [{}]",
+        unit.id,
+        unit.kind,
+        consumed_stream_ids.len(),
+        format_stream_ids(&consumed_stream_ids),
+        produced_stream_ids.len(),
+        format_stream_ids(&produced_stream_ids),
+    );
+    Ok(UnitSolveStep {
+        index: step_index,
+        unit_id: unit.id.clone(),
+        unit_name: unit.name.clone(),
+        unit_kind: unit.kind.clone(),
+        consumed_streams,
+        produced_streams,
+        energy_balance: outputs.energy_balance(),
+        summary,
+    })
 }
 
 /// Validate canonical connections and the current acyclic SM strategy without solving.

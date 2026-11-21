@@ -8,6 +8,12 @@ mod separator_hydraulics;
 pub mod separator_rating;
 pub mod separator_sizing;
 mod single_phase;
+pub use single_phase::{
+    ENERGY_ABSOLUTE_TOLERANCE_W, ENERGY_SCALED_TOLERANCE,
+    enthalpy_flow_w as single_phase_enthalpy_flow_w,
+    materialize_vapor as materialize_single_phase_vapor,
+    verify_energy_balance as verify_single_phase_energy_balance,
+};
 pub mod specifications;
 mod splitter;
 pub use splitter::{SPLITTER_SPEC, Splitter, build_splitter_node};

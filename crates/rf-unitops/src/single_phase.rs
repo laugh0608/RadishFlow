@@ -12,10 +12,12 @@ use rf_types::{PhaseLabel, RfError, RfResult};
 use std::collections::BTreeSet;
 
 mod heat_transfer;
-pub(crate) use heat_transfer::{HeatSpecification, SinglePhaseHeaterCooler};
+mod splitter;
+pub(crate) use heat_transfer::{HeatDutyDomain, HeatSpecification, SinglePhaseHeaterCooler};
+pub(crate) use splitter::SinglePhaseSplitter;
 
-const ENERGY_ABSOLUTE_TOLERANCE_W: f64 = 1e-6;
-const ENERGY_SCALED_TOLERANCE: f64 = 1e-10;
+pub const ENERGY_ABSOLUTE_TOLERANCE_W: f64 = 1e-6;
+pub const ENERGY_SCALED_TOLERANCE: f64 = 1e-10;
 const COMPONENT_FLOW_TOLERANCE_MOL_S: f64 = 1e-10;
 
 pub(crate) struct SinglePhaseFeed<'a> {
@@ -91,7 +93,7 @@ impl UnitOperation for AdiabaticMixer<'_> {
         )
         .map_err(|error| error.with_related_stream_id(self.outlet.id.clone()))?;
         verify_component_balance(inlet_a, inlet_b, &outlet)?;
-        let balance = verify_energy_balance(&[enthalpy_a_w, enthalpy_b_w], 0.0, &outlet)?;
+        let balance = verify_energy_balance(&[enthalpy_a_w, enthalpy_b_w], 0.0, &[&outlet])?;
 
         let mut outputs = UnitOperationOutputs::new();
         outputs.insert_material_stream(MIXER_OUTLET_PORT, outlet);
@@ -100,7 +102,8 @@ impl UnitOperation for AdiabaticMixer<'_> {
     }
 }
 
-fn enthalpy_flow_w(stream: &MaterialStreamState) -> RfResult<f64> {
+/// Read the actual overall enthalpy flow of a materialized single-vapor stream.
+pub fn enthalpy_flow_w(stream: &MaterialStreamState) -> RfResult<f64> {
     if stream.total_molar_flow_mol_s == 0.0 {
         return Ok(0.0);
     }
@@ -156,19 +159,26 @@ fn verify_component_balance(
     Ok(())
 }
 
-fn verify_energy_balance(
+/// Verify a single-vapor energy boundary against independently supplied heat duty.
+pub fn verify_energy_balance(
     inlet_enthalpy_flows_w: &[f64],
     heat_duty_w: f64,
-    outlet: &MaterialStreamState,
+    outlets: &[&MaterialStreamState],
 ) -> RfResult<UnitEnergyBalance> {
     let inlet_enthalpy_flow_w = inlet_enthalpy_flows_w.iter().sum::<f64>();
-    let outlet_enthalpy_flow_w = enthalpy_flow_w(outlet)?;
+    let mut outlet_enthalpy_flow_w = 0.0;
+    let mut absolute_outlet_flows_w = 0.0;
+    for outlet in outlets {
+        let value = enthalpy_flow_w(outlet)?;
+        outlet_enthalpy_flow_w += value;
+        absolute_outlet_flows_w += value.abs();
+    }
     let residual_w = (outlet_enthalpy_flow_w - inlet_enthalpy_flow_w) - heat_duty_w;
     let residual_scale_w = (inlet_enthalpy_flows_w
         .iter()
         .map(|value| value.abs())
         .sum::<f64>()
-        + outlet_enthalpy_flow_w.abs()
+        + absolute_outlet_flows_w
         + heat_duty_w.abs())
     .max(1.0);
     let scaled_residual = residual_w / residual_scale_w;
@@ -181,7 +191,7 @@ fn verify_energy_balance(
             "unit energy residual is {residual_w} W (scale {residual_scale_w} W)"
         ))
         .with_diagnostic_code("solver.single_phase.energy_balance")
-        .with_related_stream_id(outlet.id.clone()));
+        .with_related_stream_ids(outlets.iter().map(|stream| stream.id.clone()).collect()));
     }
     Ok(UnitEnergyBalance {
         inlet_enthalpy_flow_w,
@@ -193,7 +203,8 @@ fn verify_energy_balance(
     })
 }
 
-fn materialize_vapor(
+/// Populate the overall and vapor states from inputs within the declared domain.
+pub fn materialize_vapor(
     model: &SensibleEnthalpyModel,
     mut stream: MaterialStreamState,
 ) -> RfResult<MaterialStreamState> {
