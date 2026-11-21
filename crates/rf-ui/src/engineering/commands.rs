@@ -479,8 +479,12 @@ pub(super) fn validate(inputs: &EngineeringInputs) -> Result<(), EngineeringErro
         .map_err(EngineeringError::InvalidBasis)?;
     validate_equipment_task_identities(&inputs.tasks).map_err(EngineeringError::InvalidIdentity)?;
     for task in &inputs.tasks {
-        if let EquipmentTask::SeparatorRating(task) = task {
-            rating_commands::validate_capability(task)?;
+        match task {
+            EquipmentTask::SeparatorSizing(_) => {}
+            EquipmentTask::SeparatorRating(task) => rating_commands::validate_capability(task)?,
+            EquipmentTask::ConcentricTubeRating(task) => {
+                return Err(EngineeringError::UnsupportedRatingMethod(task.id.clone()));
+            }
         }
         for (reference, quantity, binding) in task_bindings(task) {
             inputs.basis.resolve(quantity, binding).map_err(|error| {
@@ -534,6 +538,7 @@ pub(super) fn task_bindings(
                 )
             }))
             .collect(),
+        EquipmentTask::ConcentricTubeRating(_) => unreachable!("validated engineering session"),
         EquipmentTask::SeparatorRating(t) => t
             .geometry
             .inputs
@@ -594,6 +599,7 @@ pub(super) fn task_sources(task: &EquipmentTask) -> Vec<(EngineeringReference, &
             )
         }))
         .collect(),
+        EquipmentTask::ConcentricTubeRating(_) => unreachable!("validated engineering session"),
     }
 }
 

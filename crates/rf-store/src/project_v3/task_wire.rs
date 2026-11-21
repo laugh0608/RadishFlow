@@ -327,6 +327,7 @@ struct LegacyEngineering {
 }
 #[derive(Deserialize)]
 struct LegacyTask {
+    kind: String,
     case: Option<LegacyCase>,
 }
 #[derive(Deserialize)]
@@ -336,8 +337,9 @@ struct LegacyCase {
 pub(super) fn legacy_payload(contents: &str) -> rf_types::RfResult<bool> {
     let project: LegacyProject = serde_json::from_str(contents).map_err(super::json_error)?;
     Ok(project.engineering.is_some_and(|e| {
-        e.tasks
-            .iter()
-            .any(|t| t.case.as_ref().is_some_and(|c| c.configuration.is_some()))
+        e.tasks.iter().any(|t| {
+            matches!(t.kind.as_str(), TASK_KIND | super::rating_wire::TASK_KIND)
+                && t.case.as_ref().is_some_and(|c| c.configuration.is_some())
+        })
     }))
 }

@@ -56,6 +56,7 @@ impl ReadyAppState {
                                     .iter()
                                     .find(|case| case.id == impact.case_id)
                                     .map(|case| case.name.as_str()),
+                                rf_model::equipment::EquipmentTask::ConcentricTubeRating(_) => None,
                             })
                             .filter(|name| !name.trim().is_empty())
                             .unwrap_or(impact.case_id.as_str());

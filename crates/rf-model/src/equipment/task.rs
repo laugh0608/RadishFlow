@@ -10,41 +10,52 @@ impl From<SeparatorRatingTask> for EquipmentTask {
         Self::SeparatorRating(value)
     }
 }
+impl From<ConcentricTubeRatingTask> for EquipmentTask {
+    fn from(value: ConcentricTubeRatingTask) -> Self {
+        Self::ConcentricTubeRating(Box::new(value))
+    }
+}
 impl EquipmentTask {
     pub fn id(&self) -> &EquipmentTaskId {
         match self {
             Self::SeparatorSizing(t) => &t.id,
             Self::SeparatorRating(t) => &t.id,
+            Self::ConcentricTubeRating(t) => &t.id,
         }
     }
     pub fn revision(&self) -> u64 {
         match self {
             Self::SeparatorSizing(t) => t.revision,
             Self::SeparatorRating(t) => t.revision,
+            Self::ConcentricTubeRating(t) => t.revision,
         }
     }
     pub fn set_revision(&mut self, revision: u64) {
         match self {
             Self::SeparatorSizing(t) => t.revision = revision,
             Self::SeparatorRating(t) => t.revision = revision,
+            Self::ConcentricTubeRating(t) => t.revision = revision,
         }
     }
     pub fn tag(&self) -> &str {
         match self {
             Self::SeparatorSizing(t) => &t.tag,
             Self::SeparatorRating(t) => &t.tag,
+            Self::ConcentricTubeRating(t) => &t.tag,
         }
     }
     pub fn name(&self) -> &str {
         match self {
             Self::SeparatorSizing(t) => &t.name,
             Self::SeparatorRating(t) => &t.name,
+            Self::ConcentricTubeRating(t) => &t.name,
         }
     }
     pub fn method(&self) -> &EquipmentMethod {
         match self {
             Self::SeparatorSizing(t) => &t.method,
             Self::SeparatorRating(t) => &t.method,
+            Self::ConcentricTubeRating(t) => &t.method,
         }
     }
     pub fn as_sizing(&self) -> Option<&SeparatorSizingTask> {
@@ -59,11 +70,18 @@ impl EquipmentTask {
             _ => None,
         }
     }
+    pub fn as_concentric_tube_rating(&self) -> Option<&ConcentricTubeRatingTask> {
+        match self {
+            Self::ConcentricTubeRating(t) => Some(t),
+            _ => None,
+        }
+    }
     pub fn case_ids(&self) -> impl Iterator<Item = &EngineeringCaseId> {
-        let (sizing, rating) = match self {
+        let (single, rating) = match self {
             Self::SeparatorSizing(t) => (Some(&t.case.id), &[][..]),
             Self::SeparatorRating(t) => (None, t.cases.as_slice()),
+            Self::ConcentricTubeRating(t) => (Some(&t.case.id), &[][..]),
         };
-        sizing.into_iter().chain(rating.iter().map(|c| &c.id))
+        single.into_iter().chain(rating.iter().map(|c| &c.id))
     }
 }

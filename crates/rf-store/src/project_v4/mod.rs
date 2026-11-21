@@ -10,6 +10,7 @@ mod plan;
 mod simultaneous;
 mod single_phase;
 use crate::project::STORED_PROJECT_FILE_KIND;
+pub use crate::project_v3::EquipmentSupport;
 use crate::project_v3::{
     StoredEngineeringInputs,
     shared::{self, EngineeringRead, PresentationWire},
@@ -36,6 +37,7 @@ pub const EQUATION_ORIENTED_CAPABILITY: &str = "radishflow.solver.fixed-tp-mater
 pub const SIMULTANEOUS_CAPABILITY: &str = "radishflow.solver.fixed-tp-affine-modular-lu";
 pub const OBJECT_IDENTITY_CAPABILITY: &str = "radishflow.object-identity";
 pub const VARIABLE_WATCH_LIST_CAPABILITY: &str = "radishflow.variable-watch-list";
+pub const CONCENTRIC_TUBE_RATING_CAPABILITY: &str = "radishflow.equipment.concentric-tube-rating";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ObjectIdentitySupport {
@@ -82,6 +84,7 @@ impl FlowPlanSupport {
         self,
         capability: &RequiredCapability,
         identities: ObjectIdentitySupport,
+        equipment: EquipmentSupport,
     ) -> bool {
         if capability.id == EQUATION_ORIENTED_CAPABILITY {
             return self.supports_equation_version(capability.version);
@@ -98,6 +101,9 @@ impl FlowPlanSupport {
             SINGLE_PHASE_RECYCLE_CAPABILITY => self.supports_method(SINGLE_PHASE_RECYCLE_METHOD),
             OBJECT_IDENTITY_CAPABILITY | VARIABLE_WATCH_LIST_CAPABILITY => {
                 identities == ObjectIdentitySupport::Supported
+            }
+            CONCENTRIC_TUBE_RATING_CAPABILITY => {
+                equipment == EquipmentSupport::ConcentricTubeRating
             }
             _ => false,
         }
@@ -201,6 +207,13 @@ pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapabilit
         ids.push((VARIABLE_WATCH_LIST_CAPABILITY, 1));
     }
     if project
+        .engineering
+        .as_ref()
+        .is_some_and(StoredEngineeringInputs::has_concentric_tube_rating)
+    {
+        ids.push((CONCENTRIC_TUBE_RATING_CAPABILITY, 1));
+    }
+    if project
         .document
         .flowsheet
         .units
@@ -254,6 +267,33 @@ pub fn parse_for_consumer(
     support: FlowPlanSupport,
     identity_support: ObjectIdentitySupport,
 ) -> RfResult<ProjectV4Read> {
+    parse_with_consumer_support(
+        contents,
+        support,
+        identity_support,
+        EquipmentSupport::SeparatorOnly,
+    )
+}
+
+pub fn parse_with_equipment_support(
+    contents: &str,
+    support: FlowPlanSupport,
+    equipment_support: EquipmentSupport,
+) -> RfResult<ProjectV4Read> {
+    parse_with_consumer_support(
+        contents,
+        support,
+        ObjectIdentitySupport::Supported,
+        equipment_support,
+    )
+}
+
+fn parse_with_consumer_support(
+    contents: &str,
+    support: FlowPlanSupport,
+    identity_support: ObjectIdentitySupport,
+    equipment_support: EquipmentSupport,
+) -> RfResult<ProjectV4Read> {
     crate::strict_json::validate(contents.as_bytes()).map_err(json_error)?;
     let wire: ReadWire = serde_json::from_str(contents).map_err(json_error)?;
     if wire.kind != STORED_PROJECT_FILE_KIND || wire.schema_version != VERSION {
@@ -272,7 +312,7 @@ pub fn parse_for_consumer(
     let mut reasons: Vec<String> = wire
         .required_capabilities
         .iter()
-        .filter(|c| !support.supports_capability(c, identity_support))
+        .filter(|c| !support.supports_capability(c, identity_support, equipment_support))
         .map(|c| format!("{} / {}", c.id, c.version))
         .collect();
     if !reasons.is_empty() {
@@ -358,7 +398,7 @@ pub fn parse_for_consumer(
     if !reasons.is_empty() {
         return readonly(contents, &wire.document, reasons);
     }
-    let engineering = match shared::decode(contents)? {
+    let engineering = match shared::decode(contents, equipment_support)? {
         EngineeringRead::Supported(inputs) => inputs,
         EngineeringRead::Unsupported(count) => {
             return readonly(
@@ -445,6 +485,14 @@ pub fn to_pretty_json_with_support(
     project: &ProjectV4Read,
     support: FlowPlanSupport,
 ) -> RfResult<String> {
+    to_pretty_json_with_equipment_support(project, support, EquipmentSupport::SeparatorOnly)
+}
+
+pub fn to_pretty_json_with_equipment_support(
+    project: &ProjectV4Read,
+    support: FlowPlanSupport,
+    equipment_support: EquipmentSupport,
+) -> RfResult<String> {
     let ProjectV4Read::Editable(p) = project else {
         return Err(RfError::invalid_input(
             "project v4 is read-only; saving is prohibited",
@@ -475,7 +523,7 @@ pub fn to_pretty_json_with_support(
         simulation: Simulation {
             steady_state_plan: p.steady_state_plan.clone(),
         },
-        engineering: shared::encode(p.engineering.as_ref())?,
+        engineering: shared::encode(p.engineering.as_ref(), equipment_support)?,
         object_identities: p
             .object_identities
             .as_ref()

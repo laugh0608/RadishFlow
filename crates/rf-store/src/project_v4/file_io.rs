@@ -11,6 +11,7 @@ pub struct PreparedProjectV4Write {
     path: PathBuf,
     contents: String,
     support: FlowPlanSupport,
+    equipment_support: EquipmentSupport,
     target_fingerprint: Option<String>,
     requires_upgrade: bool,
     target_has_object_identities: bool,
@@ -24,7 +25,10 @@ impl PreparedProjectV4Write {
     }
     /// Check the same canonical project bytes that this preparation would write.
     pub fn captures_project(&self, project: &ProjectV4Read) -> RfResult<bool> {
-        Ok(to_pretty_json_with_support(project, self.support)? == self.contents)
+        Ok(
+            to_pretty_json_with_equipment_support(project, self.support, self.equipment_support)?
+                == self.contents,
+        )
     }
     pub fn target_fingerprint(&self) -> Option<&str> {
         self.target_fingerprint.as_deref()
@@ -53,9 +57,17 @@ pub fn read_with_support(
     path: impl AsRef<Path>,
     support: FlowPlanSupport,
 ) -> RfResult<ProjectV4Read> {
+    read_with_equipment_support(path, support, EquipmentSupport::SeparatorOnly)
+}
+
+pub fn read_with_equipment_support(
+    path: impl AsRef<Path>,
+    support: FlowPlanSupport,
+    equipment_support: EquipmentSupport,
+) -> RfResult<ProjectV4Read> {
     let contents = fs::read_to_string(path)
         .map_err(|e| RfError::invalid_input(format!("read v4 project: {e}")))?;
-    parse_with_support(&contents, support)
+    parse_with_equipment_support(&contents, support, equipment_support)
 }
 pub fn prepare_write(
     path: impl AsRef<Path>,
@@ -71,8 +83,24 @@ pub fn prepare_write_with_support(
     overwrite: FileOverwritePolicy,
     support: FlowPlanSupport,
 ) -> RfResult<PreparedProjectV4Write> {
+    prepare_write_with_equipment_support(
+        path,
+        project,
+        overwrite,
+        support,
+        EquipmentSupport::SeparatorOnly,
+    )
+}
+
+pub fn prepare_write_with_equipment_support(
+    path: impl AsRef<Path>,
+    project: &ProjectV4Read,
+    overwrite: FileOverwritePolicy,
+    support: FlowPlanSupport,
+    equipment_support: EquipmentSupport,
+) -> RfResult<PreparedProjectV4Write> {
     let path = path.as_ref();
-    let contents = to_pretty_json_with_support(project, support)?;
+    let contents = to_pretty_json_with_equipment_support(project, support, equipment_support)?;
     let existing = target_bytes(path)?;
     if existing.is_some() && overwrite == FileOverwritePolicy::Forbid {
         return Err(RfError::invalid_input("project target already exists"));
@@ -89,11 +117,11 @@ pub fn prepare_write_with_support(
                 crate::parse_project_file_json(text)?;
                 true
             }
-            3 => match crate::project_v3::parse(text)? {
+            3 => match crate::project_v3::parse_with_equipment_support(text, equipment_support)? {
                 crate::project_v3::ProjectV3Read::Editable(_) => true,
                 _ => return Err(readonly_target()),
             },
-            4 => match parse_with_support(text, support)? {
+            4 => match parse_with_equipment_support(text, support, equipment_support)? {
                 ProjectV4Read::ReadOnly(_) => return Err(readonly_target()),
                 ProjectV4Read::Editable(existing) => {
                     let ProjectV4Read::Editable(new) = project else {
@@ -169,6 +197,7 @@ pub fn prepare_write_with_support(
         path: path.into(),
         contents,
         support,
+        equipment_support,
         target_fingerprint: existing.as_ref().map(|b| sha256_hex(b)),
         requires_upgrade,
         target_has_object_identities,

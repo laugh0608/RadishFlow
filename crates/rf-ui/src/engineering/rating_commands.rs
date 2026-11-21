@@ -208,6 +208,7 @@ pub(super) fn task_revisions(task: &EquipmentTask) -> Vec<(EngineeringRecordId, 
                     .map(|c| (EngineeringRecordId::Case(c.id.clone()), c.revision)),
             );
         }
+        EquipmentTask::ConcentricTubeRating(_) => unreachable!("validated engineering session"),
     }
     records
 }
@@ -253,6 +254,7 @@ impl EngineeringSession {
                     )?;
                 }
             }
+            EquipmentTask::ConcentricTubeRating(_) => unreachable!("validated engineering session"),
         }
         Ok(())
     }

@@ -6,6 +6,9 @@ use crate::single_phase::{ENERGY_ABSOLUTE_TOLERANCE_W, ENERGY_SCALED_TOLERANCE};
 use rf_types::{RfError, RfResult};
 use std::f64::consts::PI;
 
+mod task;
+pub use task::rate_task;
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ConcentricTubeGeometry {
     pub active_length_m: f64,

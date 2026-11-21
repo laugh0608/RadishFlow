@@ -380,6 +380,14 @@ GS-01—10 的存储 / 生命周期自动回归已落实：完整字段与三种
 2026-10-21 C1 保存已实现：已知 payload 严格校验内嵌身份、绑定 / 来源闭包、调整理由、有限正尺寸与有效轴向段；拒绝未知字段、重复字段及显式空采纳载荷。旧 S1 / v1 / v2 混合内容保持，普通创建不升级。生命周期按当前基线和实际目标确认 v3 采纳能力，失败保留原文件与内存状态，重开只恢复固定输入 / 证据。冻结 `5e0d940d` 的真实旧读者读取当前 writer 混合输出及含 `1e400` 样本，均整份原文只读并拒绝序列化 / 写入 / 另存；证据见 [W43](../devlogs/2026-10/2026-W43.md)。
 
 
+## H3 同心套管校核存储
+
+H3 使用 v3／v4 共有工程区，沿用外层版本、项目呈现与单位目录。`rf_store::project_v3` 和 `rf_store::project_v4` 的 `*_with_equipment_support` 入口接受 `EquipmentSupport::ConcentricTubeRating`。v4 的稳态计划能力仍由 `FlowPlanSupport` 独立声明。 [H3 正式输入契约](equipment/heat-exchanger-design-and-rating.md#h3-正式输入保存与重开)
+
+- v3 先探测任务类型和方法版本。v4 按实际任务派生 `radishflow.equipment.concentric-tube-rating` v1，支持该能力时核对声明与内容一致。未知 H3 方法版本仍以整份只读处理。
+- 普通 Rust、CLI 与 Studio 读写入口沿用原设备能力。读取只读对象时保留原始 JSON，写入路径拒绝从只读对象保存或另存，也拒绝用其他工程覆盖这样的目标。
+- 新路径可直接保存 H3。覆盖一个已存在且首次加入 H3 的项目须确认能力升级。v3 复用暂存写入。v4 复用 `prepare_write_with_equipment_support` 的升级标记和目标指纹，`write_prepared` 拒绝未确认的升级或已变化的目标。
+
 ## QS1-C 项目 v4（2026-10-31，已实现）
 
 [QS1-C01 / C02](modeling/recycle-project-and-consumers.md#qs1-c01项目-v4-与能力保护)已按确认范围实现独立外层 v4，保存物理 Splitter 参数与项目活动稳态计划，保留原工程区 / 呈现语义，增加能力清单、未知能力整份只读与明确升级。计划有独立保存脏标记，运行资格 / 草稿 / 历史不入文件；沿现有目标检查、staged write 和失败恢复。旧 v1/v2/v3 与直接 serde 的新能力写保护保持。Studio 明确分派 v1—v4，最近工程卡片也使用同一 reader。v4 保存 / 重开、原始字节目标保护、升级取消与写失败、完整 v3 工程 / 单位保留由 QS1-C 的 codec / 生命周期测试覆盖；细则及未测平台以该专题和 W44 为准。

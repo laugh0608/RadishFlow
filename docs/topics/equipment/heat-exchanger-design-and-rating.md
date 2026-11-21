@@ -10,7 +10,7 @@
 
 - 层级：二级功能；父专题：[设备设计与性能校核](../equipment-design-and-rating.md)。
 - 关联：[Heater / Cooler](../unitops/heater-cooler.md)、[现有物性限制](../../thermo/mvp-model.md)、[单位](../units-and-quantity-system.md)、[规格分析](../modeling-assistance-and-specifications.md)。
-- 状态：H0 方案已冻结，H1 热工、H2 初步面积和 H3 同心套管校核首片已在独立 Rust Core 实现。Heater / Cooler 的单股换热规格见对应单元专题。
+- 状态：H0 方案已冻结，H1 热工、H2 初步面积和 H3 同心套管校核首片已在独立 Rust Core 实现。H3 正式输入可由显式启用该能力的 Rust 调用方保存、重开并复算。Heater / Cooler 的单股换热规格见对应单元专题。
 
 ## 目标与首版范围
 
@@ -109,7 +109,7 @@ Core 定向验收通过三种规格、等端与近等端、零负荷、夹点及
 - 计算按内管 `Dh = Di`、环隙 `Dh = Do − Dw`，用对应流通面积和质量通量构造各侧 Reynolds 数。首片域为两侧 `10000 ≤ Re ≤ 40000`、`3 ≤ Pr ≤ 8`、`L/Dh ≥ 100`，且 `0.48 ≤ Dw/Do ≤ 0.60`。以上为本切片限定的范围，不是关联式的通用适用域。
 - 内管采用充分发展圆管 Gnielinski，Darcy 摩擦因子为 `(1.82 log10(Re) − 1.64)^−2`。环隙采用 Gnielinski 2009 内壁受热、外壁绝热口径，以修正 Reynolds 数求 Darcy 因子，保留 `1 + (Dh/L)^(2/3)` 与 `0.75(Dw/Do)^−0.17`，定物性使壁面物性修正为 1。两侧均用 `ΔP = f (L/Dh) ρv²/2`，`Pout = Pin − ΔP`。 [圆管传热](https://link.springer.com/article/10.1007/BF02559682) · [圆管摩擦](https://www.sciencedirect.com/science/article/pii/S0065271708701539) · [环隙关联式与实验，表 1、2](https://repository.up.ac.za/server/api/core/bitstreams/cd5c9004-a1be-4416-a5de-1cf4a03de03b/content)
 - 两侧对流与圆筒壁串联，`1/UA = 1/(hi π Di L) + ln(Dw/Di)/(2 π kw L) + 1/(ho π Dw L)`，`Uo = UA/(π Dw L)`。逆流 ε–NTU 给出热负荷和出口温度，等热容流率时 `ε = NTU/(1 + NTU)`。正负荷要求两端温差为正，用 H2 的对数平均温差复核 `Q = UA × LMTD`。等温入口时 `Q = 0 W`、`LMTD = 0 K`，压降及几何决定的 `UA` 仍有效。
-- 可选准则为最低热负荷和冷热两侧最高压降，阈值须有限且非负。含等值分别按 `Q ≥ Qmin`、`ΔP ≤ ΔPmax` 判定。每项返回通过、未达标或未指定，超限保留完整结果。非法输入、越域和数值闭合失败返回诊断。结果提供两侧出口温压与原摩尔流量、Re、Pr、Nu、膜系数、Darcy 因子、沿程压降、显热残差，以及两侧面积、`Uo`、`UA`、`Q`、LMTD 与闭合残差。保存、流程关联、CLI 和 Studio 各另审。
+- 可选准则为最低热负荷和冷热两侧最高压降，阈值须有限且非负。含等值分别按 `Q ≥ Qmin`、`ΔP ≤ ΔPmax` 判定。每项返回通过、未达标或未指定，超限保留完整结果。非法输入、越域和数值闭合失败返回诊断。结果提供两侧出口温压与原摩尔流量、Re、Pr、Nu、膜系数、Darcy 因子、沿程压降、显热残差，以及两侧面积、`Uo`、`UA`、`Q`、LMTD 与闭合残差。
 
 ### 独立数值基准
 
@@ -134,3 +134,9 @@ Core 定向验收通过三种规格、等端与近等端、零负荷、夹点及
 | Darcy 摩擦因子 | 20000 | 0.0290 | 0.02845 | −1.9% |
 
 以上为图读近似，保留定物性与实验沿程变物性之间的差异。摩擦因子为无量纲对照，实验取压长度 `4.79 m`，首片直段压降用几何有效长度 `4.85 m`。环隙传热在该点偏低，系数沿用原关联式，工程偏差单独记录。
+
+### H3 正式输入保存与重开
+
+- v3／v4 共用 `engineering.tasks` 中的类型 `concentricTubeHeatExchangerRating`，方法为 `radishflow.heat-exchanger.concentric-tube-rating` v1。正式记录保存任务 ID、修订、位号、名称和方法，给定几何及其修订，以及一个带 ID、修订、名称和用途的工况。几何、两侧入口、两侧定物性及各自的单液相温压域、三项限值用有类型的 SI 字段表示。几何可引用工程区来源，每侧物性须引用工程区现有 `SourceRecord`，允许共用来源。
+- 数值键可缺省，有限但越出 H3 适用域的值可保留供修订。已知方法拒绝未知键、重复键、显式 `null`、无效类型、非有限数和悬空来源。存储只接收正式输入，计算结果、会话与草稿均为运行时数据。缺少必需数值时复算返回字段诊断，物理越域沿用 H3 诊断，缺省限值继续表现为未指定。
+- Rust 调用方以 `EquipmentSupport::ConcentricTubeRating` 启用存储能力。重开后由调用方显式调用 `rf_unitops::heat_exchanger::concentric_tube::rate_task`，解析来源后进入原 `rate_countercurrent`。v3 和 v4 均用上表的两档冷侧流量验证正式输入与前后运行结果逐值一致。流程关联、CLI 和 Studio 使用能力各另审。 [存储能力与覆盖门禁](../project-lifecycle-storage.md#h3-同心套管校核存储) · [重开复算用例](../../../crates/rf-solver/tests/heat_exchanger_storage.rs)

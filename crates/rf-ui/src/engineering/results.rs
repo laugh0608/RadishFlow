@@ -90,6 +90,7 @@ impl CalculationRequest {
             EquipmentTask::SeparatorRating(t) => CalculationOutcome::Rating(
                 separator_rating::calculate_case(t, &self.key.member.case_id, &self.basis),
             ),
+            EquipmentTask::ConcentricTubeRating(_) => unreachable!("validated engineering request"),
         };
         CompletedCalculation {
             origin: self.origin,

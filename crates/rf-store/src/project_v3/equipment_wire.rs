@@ -1,4 +1,4 @@
-use super::{StoredEngineeringInputs, rating_wire, task_wire};
+use super::{StoredEngineeringInputs, concentric_tube_wire, rating_wire, task_wire};
 use rf_model::equipment::*;
 use rf_types::{RfError, RfResult, units::QuantityKind};
 use serde::{Deserialize, Serialize};
@@ -12,12 +12,15 @@ pub(super) enum EquipmentWire {
     Sizing(task_wire::TaskWire),
     #[serde(rename = "verticalGasLiquidSeparatorRating")]
     Rating(rating_wire::RatingWire),
+    #[serde(rename = "concentricTubeHeatExchangerRating")]
+    ConcentricTubeRating(Box<concentric_tube_wire::RatingWire>),
 }
 impl From<EquipmentWire> for EquipmentTask {
     fn from(value: EquipmentWire) -> Self {
         match value {
             EquipmentWire::Sizing(t) => Self::SeparatorSizing(t.into()),
             EquipmentWire::Rating(t) => Self::SeparatorRating(t.into()),
+            EquipmentWire::ConcentricTubeRating(t) => ConcentricTubeRatingTask::from(*t).into(),
         }
     }
 }
@@ -26,6 +29,9 @@ impl From<&EquipmentTask> for EquipmentWire {
         match value {
             EquipmentTask::SeparatorSizing(t) => Self::Sizing(t.into()),
             EquipmentTask::SeparatorRating(t) => Self::Rating(t.into()),
+            EquipmentTask::ConcentricTubeRating(t) => {
+                Self::ConcentricTubeRating(Box::new(t.as_ref().into()))
+            }
         }
     }
 }
@@ -68,6 +74,10 @@ pub(super) fn validate(inputs: &StoredEngineeringInputs) -> RfResult<()> {
                 } else {
                     rating_wire::METHOD_VERSION
                 },
+            ),
+            EquipmentTask::ConcentricTubeRating(_) => (
+                CONCENTRIC_TUBE_RATING_METHOD_ID,
+                CONCENTRIC_TUBE_RATING_METHOD_VERSION,
             ),
         };
         if task.method().id != method_id || task.method().version != version {
@@ -149,6 +159,20 @@ pub(super) fn validate(inputs: &StoredEngineeringInputs) -> RfResult<()> {
                         &format!("cases[{case}].applicabilitySourceIds"),
                         &c.applicability_source_ids,
                     )?;
+                }
+            }
+            EquipmentTask::ConcentricTubeRating(t) => {
+                sources("geometry.sourceId", t.geometry.source_id.as_slice())?;
+                sources(
+                    "case.hot.properties.sourceId",
+                    std::slice::from_ref(&t.case.hot.properties.source_id),
+                )?;
+                sources(
+                    "case.cold.properties.sourceId",
+                    std::slice::from_ref(&t.case.cold.properties.source_id),
+                )?;
+                if let Some(field) = concentric_tube_wire::non_finite_field(t) {
+                    return Err(error(&field, "expected a finite SI number".into()));
                 }
             }
         }
