@@ -10,7 +10,7 @@
 
 - 层级：二级功能；父专题：[设备设计与性能校核](../equipment-design-and-rating.md)。
 - 关联：[Heater / Cooler](../unitops/heater-cooler.md)、[现有物性限制](../../thermo/mvp-model.md)、[单位](../units-and-quantity-system.md)、[规格分析](../modeling-assistance-and-specifications.md)。
-- 状态：H0 方案已冻结，H1 热工、H2 初步面积和 H3 同心套管校核首片已在独立 Rust Core 实现。H3 支持正式输入保存重开、CLI v13 与 Studio 只读复核，以及 Rust 应用层流程关联首片。Heater / Cooler 的单股换热规格见对应单元专题。
+- 状态：H0 方案已冻结，H1 热工、H2 初步面积和 H3 同心套管校核首片已在独立 Rust Core 实现。H3 支持正式输入保存重开、CLI v13 与 Studio 只读复核，以及 Rust 应用层的 v4 流程关联保存重开。Heater / Cooler 的单股换热规格见对应单元专题。
 
 ## 目标与首版范围
 
@@ -161,4 +161,12 @@ Rust 应用层 `H3FlowReview` 从同一份 v4 工程字节装载已保存的 H3 
 
 调用方提供已评审的纯水相态依据、温压域和物性来源修订。应用层核对实际执行的物性包 ID、版本及载荷指纹，检查纯水组成、有限正流量、液相窗口和过冷状态。进出口均须在声明的单液相资格域和 H3 定物性域内。缺相态、气相、两相、无合格来源或越域时，诊断关联具体冷热侧与流股。验收夹具用 NIST 的纯水饱和压关联验证过冷相态，H3 定物性沿用独立基准。 [纯水 Antoine 参数](https://webbook.nist.gov/cgi/cbook.cgi?ID=C7732185&Type=ANTOINE)
 
-校核前、返回结果前和读取当前校核时重新检查来源与工况资格。流程改动、重跑、失败、撤销后输入回原值、同名流股重建及重开均撤销旧资格。新流程结果到达后仍须显式预览和校核。关联、结果及流程运行态仅存内存，H3 出口和压降只供校核，原文件字节一致。关联的保存、CLI 和 Studio 接入另审。 [应用层入口](../../../apps/radishflow-studio/src/document_lifecycle_driver/h3_flow_review.rs) · [验收记录](../../devlogs/2026-11/2026-W47.md#2026-11-21-h3-流程关联首片)
+校核前、返回结果前和读取当前校核时重新检查来源与工况资格。流程改动、重跑、失败、撤销后输入回原值、同名流股重建及重开均撤销旧资格。新流程结果到达后仍须显式预览和校核。结果和流程运行态仅存内存，H3 出口和压降只供校核。 [应用层入口](../../../apps/radishflow-studio/src/document_lifecycle_driver/h3_flow_review.rs) · [验收记录](../../devlogs/2026-11/2026-W47.md#2026-11-21-h3-流程关联首片)
+
+### H3 流程关联保存与重开
+
+v4 无回路工程的 H3 `case.flowAssociation` 保存 `hot` 和 `cold` 两条引用，各含同工程的 `streamId`、`creationId`。关联与独立入口互斥。关联工况的两侧 `inlet` 键省略，独立工况仍各自保存 `inlet`。几何、定物性、来源、限值和 H3 方法 v1 沿用原契约。此扩展由 `radishflow.equipment.concentric-tube-flow-association` v1 显式声明。冷热侧须完整、互异且与 v4 的对象身份表一致。 [存储能力与兼容](../project-lifecycle-storage.md#h3-流程关联-v4-存储)
+
+显式保存采纳基于已保存流程输入的当前预览。准备和提交时重验源工程字节、流程资格及目标工况，写入时核对目标指纹。首次覆盖加入关联能力须确认。成功保存推进文档、任务和工况修订，几何修订沿用。取消、源或目标变化及写失败保留文件。 [应用层保存入口](../../../apps/radishflow-studio/src/document_lifecycle_driver/h3_flow_review/save.rs)
+
+重开仅恢复关联引用，流程与 H3 结果均从 `Missing` 起步。调用方重新提供纯水资格，显式运行流程并接收新快照，通过 `preview_saved` 后再校核。原会话的入口快照、预览、运行凭据和结果均不落盘。40／50 mol/s 两档重开复算匹配独立 H3 基准。CLI 和 Studio 接入另审。 [验收记录](../../devlogs/2026-11/2026-W47.md#2026-11-21-h3-流程关联保存与重开)

@@ -1,7 +1,7 @@
-//! Formal SI inputs for one independent concentric-tube rating.
+//! Formal inputs for one concentric-tube rating.
 
 use super::EquipmentMethod;
-use rf_types::{EngineeringCaseId, EquipmentTaskId, SourceId};
+use rf_types::{EngineeringCaseId, EquipmentTaskId, ObjectCreationId, SourceId, StreamId};
 
 pub const CONCENTRIC_TUBE_RATING_METHOD_ID: &str =
     "radishflow.heat-exchanger.concentric-tube-rating";
@@ -36,9 +36,24 @@ pub struct ConcentricTubeRatingCase {
     pub revision: u64,
     pub name: String,
     pub purpose: String,
+    /// A saved association owns both inlets. The inlet values are resolved
+    /// from the same accepted flow result before rating.
+    pub flow_association: Option<ConcentricTubeFlowAssociation>,
     pub hot: ConcentricTubeSideInputs,
     pub cold: ConcentricTubeSideInputs,
     pub limits: ConcentricTubeRatingLimits,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConcentricTubeFlowAssociation {
+    pub hot: ConcentricTubeFlowStream,
+    pub cold: ConcentricTubeFlowStream,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConcentricTubeFlowStream {
+    pub id: StreamId,
+    pub creation_id: ObjectCreationId,
 }
 
 #[derive(Debug, Clone, PartialEq)]

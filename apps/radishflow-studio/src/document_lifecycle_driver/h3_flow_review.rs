@@ -1,6 +1,7 @@
 //! Session-local H3 review of two streams from one accepted flow solve.
 
 mod qualification;
+mod save;
 #[cfg(test)]
 mod tests;
 
@@ -9,14 +10,15 @@ use crate::{
     FlowResultGuard, build_workspace_solve_request, solve_workspace_with_property_package,
 };
 pub use qualification::{H3PureWaterQualification, H3WaterPropertySource};
+pub use rf_model::equipment::ConcentricTubeFlowStream as H3FlowStream;
 use rf_model::equipment::{ConcentricTubeLiquidInlet, ConcentricTubeRatingTask};
 use rf_property_package::PropertyPackageProvider;
 use rf_store::project_v4::{
-    self, EquipmentSupport, FlowPlanSupport, ProjectV4Read, StoredFlowPlan,
+    self, EquipmentSupport, FlowPlanSupport, ProjectV4Read, StoredFlowPlan, StoredProjectV4,
 };
-use rf_types::{ObjectCreationId, RfError, RfResult, StreamId};
+use rf_types::{RfError, RfResult, StreamId};
 use rf_ui::{
-    AppState, FlowResultRecord, SolveSnapshotId, WorkspaceState,
+    AppState, FlowExecutionQualification, FlowResultRecord, SolveSnapshotId, WorkspaceState,
     engineering::{
         EquipmentCaseKey,
         concentric_tube::{ConcentricTubeRating, RatingRevisions, SavedRatingError},
@@ -24,14 +26,11 @@ use rf_ui::{
     result_query::{FlowResultOrigin, FlowResultView},
     variable_browser::ObjectId,
 };
+pub use save::PreparedH3FlowAssociationSave;
 use std::path::Path;
 
-/// A stream reference in the open project's object identity table.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct H3FlowStream {
-    pub id: StreamId,
-    pub creation_id: ObjectCreationId,
-}
+const FLOW_SUPPORT: FlowPlanSupport = FlowPlanSupport::Sequential;
+const EQUIPMENT_SUPPORT: EquipmentSupport = EquipmentSupport::ConcentricTubeFlowAssociation;
 
 #[derive(Debug)]
 pub struct H3FlowPreview {
@@ -86,18 +85,21 @@ pub struct H3FlowRating {
 }
 
 /// Owns the original H3 inputs and a private flow runtime assembled from the
-/// same v4 read. This owner cannot be used as a project editor or writer.
+/// same v4 read. Only an explicit association save can write project data.
 #[derive(Debug)]
 pub struct H3FlowReview {
     saved: StudioH3Review,
     flow: AppState,
+    saved_flow_input: FlowExecutionQualification,
     qualification: H3PureWaterQualification,
 }
 
 impl H3FlowReview {
     pub fn open(path: &Path, qualification: H3PureWaterQualification) -> RfResult<Self> {
         qualification.validate()?;
-        let contents = std::fs::read_to_string(path).map_err(|error| {
+        let path = std::path::absolute(path)
+            .map_err(|error| RfError::invalid_input(format!("resolve project path: {error}")))?;
+        let contents = std::fs::read_to_string(&path).map_err(|error| {
             RfError::invalid_input(format!("read project {}: {error}", path.display()))
         })?;
         if rf_store::project_v3::probe_version(&contents)? != project_v4::VERSION {
@@ -106,20 +108,7 @@ impl H3FlowReview {
                 "H3 flow review requires a v4 project",
             ));
         }
-        let parsed = project_v4::parse_with_equipment_support(
-            &contents,
-            FlowPlanSupport::Sequential,
-            EquipmentSupport::ConcentricTubeRating,
-        )?;
-        let mut project = match parsed {
-            ProjectV4Read::Editable(project) => project,
-            ProjectV4Read::ReadOnly(project) => {
-                return Err(rejected(
-                    "unsupported_project",
-                    project.reasons().join(", "),
-                ));
-            }
-        };
+        let mut project = parse_project(&contents)?;
         if !matches!(project.steady_state_plan, StoredFlowPlan::Acyclic)
             || project.object_identities.is_none()
         {
@@ -136,10 +125,12 @@ impl H3FlowReview {
             &contents,
         )
         .ok_or_else(|| rejected("case_missing", "no saved concentric-tube rating case"))?;
-        let flow = app_state_from_v4(*project, path)?;
+        let flow = app_state_from_v4(*project, &path)?;
+        let saved_flow_input = flow.workspace.flow_execution_qualification();
         Ok(Self {
             saved,
             flow,
+            saved_flow_input,
             qualification,
         })
     }
@@ -173,6 +164,17 @@ impl H3FlowReview {
             .saved
             .case(&member)
             .ok_or_else(|| rejected("case_missing", "saved H3 task / case does not exist"))?;
+        if task
+            .case
+            .flow_association
+            .as_ref()
+            .is_some_and(|saved| saved.hot != hot || saved.cold != cold)
+        {
+            return Err(rejected(
+                "association_mismatch",
+                "the selected streams differ from the saved association",
+            ));
+        }
         if hot.id == cold.id {
             return Err(
                 rejected("same_stream", "hot and cold require distinct streams")
@@ -215,10 +217,29 @@ impl H3FlowReview {
         })
     }
 
+    /// Resolve the saved pair only against a newly accepted Current result.
+    pub fn preview_saved(&self, member: EquipmentCaseKey) -> RfResult<H3FlowPreview> {
+        let saved = self
+            .saved
+            .case(&member)
+            .ok_or_else(|| rejected("case_missing", "saved H3 task / case does not exist"))?
+            .case
+            .flow_association
+            .as_ref()
+            .ok_or_else(|| {
+                rejected(
+                    "association_missing",
+                    "the H3 case has no saved flow association",
+                )
+            })?;
+        self.preview(member, saved.hot.clone(), saved.cold.clone())
+    }
+
     /// Run only for the exact reviewed pair and input set. The effective
     /// inlets live in a temporary task and never replace the saved inputs.
     pub fn rate(&self, preview: H3FlowPreview) -> RfResult<H3FlowRating> {
         let mut task = self.current_case(&preview)?.clone();
+        task.case.flow_association = None;
         task.case.hot.inlet = preview.hot_inlet;
         task.case.cold.inlet = preview.cold_inlet;
         let rating = rf_ui::engineering::concentric_tube::rate_saved_case(
@@ -301,6 +322,16 @@ impl H3FlowReview {
             })?;
         self.qualification
             .inlet(record, properties, self.saved.basis(), side)
+    }
+}
+
+fn parse_project(contents: &str) -> RfResult<Box<StoredProjectV4>> {
+    match project_v4::parse_with_equipment_support(contents, FLOW_SUPPORT, EQUIPMENT_SUPPORT)? {
+        ProjectV4Read::Editable(project) => Ok(project),
+        ProjectV4Read::ReadOnly(project) => Err(rejected(
+            "unsupported_project",
+            project.reasons().join(", "),
+        )),
     }
 }
 

@@ -62,9 +62,16 @@ pub(super) fn validate_for_write(
     inputs: &StoredEngineeringInputs,
     equipment_support: EquipmentSupport,
 ) -> RfResult<()> {
-    if equipment_support == EquipmentSupport::SeparatorOnly && inputs.has_concentric_tube_rating() {
+    if !equipment_support.supports_concentric_tube_rating() && inputs.has_concentric_tube_rating() {
         return Err(RfError::invalid_input(
             "engineering.tasks: writer does not support concentric-tube rating",
+        ));
+    }
+    if inputs.has_concentric_tube_flow_association()
+        && equipment_support != EquipmentSupport::ConcentricTubeFlowAssociation
+    {
+        return Err(RfError::invalid_input(
+            "engineering.tasks: writer does not support concentric-tube flow associations",
         ));
     }
     validate_engineering(inputs)

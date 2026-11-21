@@ -4,6 +4,7 @@ mod document;
 mod equation_oriented;
 pub use equation_oriented::*;
 mod file_io;
+mod h3_flow_association;
 mod mixed;
 mod object_identities;
 mod plan;
@@ -38,6 +39,8 @@ pub const SIMULTANEOUS_CAPABILITY: &str = "radishflow.solver.fixed-tp-affine-mod
 pub const OBJECT_IDENTITY_CAPABILITY: &str = "radishflow.object-identity";
 pub const VARIABLE_WATCH_LIST_CAPABILITY: &str = "radishflow.variable-watch-list";
 pub const CONCENTRIC_TUBE_RATING_CAPABILITY: &str = "radishflow.equipment.concentric-tube-rating";
+pub const CONCENTRIC_TUBE_FLOW_ASSOCIATION_CAPABILITY: &str =
+    "radishflow.equipment.concentric-tube-flow-association";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ObjectIdentitySupport {
@@ -102,8 +105,9 @@ impl FlowPlanSupport {
             OBJECT_IDENTITY_CAPABILITY | VARIABLE_WATCH_LIST_CAPABILITY => {
                 identities == ObjectIdentitySupport::Supported
             }
-            CONCENTRIC_TUBE_RATING_CAPABILITY => {
-                equipment == EquipmentSupport::ConcentricTubeRating
+            CONCENTRIC_TUBE_RATING_CAPABILITY => equipment.supports_concentric_tube_rating(),
+            CONCENTRIC_TUBE_FLOW_ASSOCIATION_CAPABILITY => {
+                equipment == EquipmentSupport::ConcentricTubeFlowAssociation
             }
             _ => false,
         }
@@ -212,6 +216,13 @@ pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapabilit
         .is_some_and(StoredEngineeringInputs::has_concentric_tube_rating)
     {
         ids.push((CONCENTRIC_TUBE_RATING_CAPABILITY, 1));
+    }
+    if project
+        .engineering
+        .as_ref()
+        .is_some_and(StoredEngineeringInputs::has_concentric_tube_flow_association)
+    {
+        ids.push((CONCENTRIC_TUBE_FLOW_ASSOCIATION_CAPABILITY, 1));
     }
     if project
         .document
@@ -452,6 +463,7 @@ fn parse_with_consumer_support(
     };
     validate_watch_list(&project)?;
     validate_plan_references(&project)?;
+    h3_flow_association::validate(&project)?;
     let actual: BTreeSet<_> = wire.required_capabilities.into_iter().collect();
     if actual != required_capabilities(&project).into_iter().collect() {
         return Err(RfError::invalid_input(
@@ -514,6 +526,7 @@ pub fn to_pretty_json_with_equipment_support(
     document::validate(&p.document)?;
     validate_watch_list(p)?;
     validate_plan_references(p)?;
+    h3_flow_association::validate(p)?;
     let wire = WriteWire {
         kind: STORED_PROJECT_FILE_KIND,
         schema_version: VERSION,

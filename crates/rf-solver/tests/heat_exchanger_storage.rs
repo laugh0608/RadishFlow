@@ -107,6 +107,7 @@ fn benchmark_inputs(cold_molar_flow_mol_s: f64) -> v3::StoredEngineeringInputs {
             wall_thermal_conductivity_w_per_m_k: Some(385.0),
         },
         case: ConcentricTubeRatingCase {
+            flow_association: None,
             id: "h3-water".into(),
             revision: 11,
             name: "Clean water".into(),

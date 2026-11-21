@@ -47,7 +47,7 @@
 ### 下一步
 
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
-- [x] [换热器](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联首片) Rust 流程关联首片已验。
+- [x] [换热器](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联保存与重开) v4 关联保存重开已验。
 - [ ] [AF3-V10](../topics/runtime-messages/scenarios-and-acceptance.md) 11-21 原版等待返回仍待验。
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
@@ -112,7 +112,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-21：Rust 2,279 项通过，含 62 项 CLI 进程测试。显热、换热和实窗见 [W47](../devlogs/2026-11/2026-W47.md)，窄区与 .NET 见 [W46](../devlogs/2026-11/2026-W46.md)。
+- 2026-11-21：Rust 2,284 项通过，含 62 项 CLI 进程测试。显热、换热和实窗见 [W47](../devlogs/2026-11/2026-W47.md)，窄区与 .NET 见 [W46](../devlogs/2026-11/2026-W46.md)。
 
 - 2026-11-10：PR #18 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 

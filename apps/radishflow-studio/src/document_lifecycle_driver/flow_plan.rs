@@ -75,7 +75,8 @@ pub(super) fn parse_v4(
         EquipmentSupport::SeparatorOnly => {
             project_v4::parse_for_consumer(contents, support, identity_support)?
         }
-        EquipmentSupport::ConcentricTubeRating => {
+        EquipmentSupport::ConcentricTubeRating
+        | EquipmentSupport::ConcentricTubeFlowAssociation => {
             project_v4::parse_with_equipment_support(contents, support, equipment)?
         }
     };

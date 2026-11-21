@@ -127,6 +127,7 @@ pub fn prepare_write_with_equipment_support(
                     let ProjectV4Read::Editable(new) = project else {
                         unreachable!("validated editable write");
                     };
+                    h3_flow_association::check_overwrite(&existing, new)?;
                     if existing.steady_state_plan.requires_product_composition()
                         && !new.steady_state_plan.requires_product_composition()
                     {

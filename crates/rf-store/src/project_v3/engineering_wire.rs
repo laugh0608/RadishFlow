@@ -46,14 +46,10 @@ impl TaskProbe {
                     rating_wire::ADOPTION_METHOD_VERSION,
                 ],
             ),
-            concentric_tube_wire::TASK_KIND
-                if support == EquipmentSupport::ConcentricTubeRating =>
-            {
-                (
-                    CONCENTRIC_TUBE_RATING_METHOD_ID,
-                    &[CONCENTRIC_TUBE_RATING_METHOD_VERSION],
-                )
-            }
+            concentric_tube_wire::TASK_KIND if support.supports_concentric_tube_rating() => (
+                CONCENTRIC_TUBE_RATING_METHOD_ID,
+                &[CONCENTRIC_TUBE_RATING_METHOD_VERSION],
+            ),
             _ => return false,
         };
         self.method.id == method

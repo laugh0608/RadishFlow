@@ -388,6 +388,12 @@ H3 使用 v3／v4 共有工程区，沿用外层版本、项目呈现与单位�
 - 普通 Rust 和旧 CLI 协议沿用原设备能力。CLI v13 和 Studio 只读复核显式启用 H3 读取和本次复算。读写器保留只读对象的原始 JSON，拒绝从只读对象保存或另存，也拒绝用其他工程覆盖这样的目标。 [CLI v13](../reference/headless-cli.md#h3-同心套管校核-cli-v13) · [Studio 只读复核](equipment/heat-exchanger-design-and-rating.md#h3-studio-只读复核)
 - 新路径可直接保存 H3。覆盖一个已存在且首次加入 H3 的项目须确认能力升级。v3 复用暂存写入。v4 复用 `prepare_write_with_equipment_support` 的升级标记和目标指纹，`write_prepared` 拒绝未确认的升级或已变化的目标。
 
+### H3 流程关联 v4 存储
+
+带 `case.flowAssociation` 的工况要求 v4、无回路计划、`objectIdentities` 和 `radishflow.equipment.concentric-tube-flow-association` v1。关联由 `EquipmentSupport::ConcentricTubeFlowAssociation` 显式启用。读写验证能力声明与内容一致，冷热引用须指向两个不同的本工程流股，并匹配已保存的创建身份。已知格式拒绝缺项、显式 `null`、未知键，以及关联与数值入口混用。v3 继续保存独立 H3 输入。 [H3 关联契约](equipment/heat-exchanger-design-and-rating.md#h3-流程关联保存与重开)
+
+沿用 v4 暂存写入和目标指纹。新路径按显式关联保存动作写入，覆盖首次加入关联能力的目标须确认。旧读者走整份原文只读，旧 writer 拒绝另存与覆盖。支持关联的 writer 也拒绝隐式移除目标已保存的关联。冻结 `ac91d1c3` 验证了两档工程的原文和写保护。CLI v13 与 Studio 原有独立复核仍走原能力门禁。 [重开验收](../devlogs/2026-11/2026-W47.md#2026-11-21-h3-流程关联保存与重开)
+
 ## QS1-C 项目 v4（2026-10-31，已实现）
 
 [QS1-C01 / C02](modeling/recycle-project-and-consumers.md#qs1-c01项目-v4-与能力保护)已按确认范围实现独立外层 v4，保存物理 Splitter 参数与项目活动稳态计划，保留原工程区 / 呈现语义，增加能力清单、未知能力整份只读与明确升级。计划有独立保存脏标记，运行资格 / 草稿 / 历史不入文件；沿现有目标检查、staged write 和失败恢复。旧 v1/v2/v3 与直接 serde 的新能力写保护保持。Studio 明确分派 v1—v4，最近工程卡片也使用同一 reader。v4 保存 / 重开、原始字节目标保护、升级取消与写失败、完整 v3 工程 / 单位保留由 QS1-C 的 codec / 生命周期测试覆盖；细则及未测平台以该专题和 W44 为准。

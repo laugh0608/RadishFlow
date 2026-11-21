@@ -27,6 +27,12 @@ pub const VERSION: u32 = 3;
 pub enum EquipmentSupport {
     SeparatorOnly,
     ConcentricTubeRating,
+    ConcentricTubeFlowAssociation,
+}
+impl EquipmentSupport {
+    pub(crate) fn supports_concentric_tube_rating(self) -> bool {
+        self != Self::SeparatorOnly
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -49,6 +55,12 @@ impl StoredEngineeringInputs {
         self.tasks
             .iter()
             .any(|task| task.as_concentric_tube_rating().is_some())
+    }
+    pub(crate) fn has_concentric_tube_flow_association(&self) -> bool {
+        self.tasks
+            .iter()
+            .filter_map(|task| task.as_concentric_tube_rating())
+            .any(|task| task.case.flow_association.is_some())
     }
 }
 
@@ -198,6 +210,7 @@ pub fn parse_with_equipment_support(
     let tasks = task_wire::decode(contents)?;
     let engineering = engineering.map(|basis| StoredEngineeringInputs { basis, tasks });
     if let Some(inputs) = &engineering {
+        require_v4_for_flow_association(inputs)?;
         validate_engineering(inputs)?;
     }
     Ok(ProjectV3Read::Editable(StoredProjectV3 {
@@ -224,6 +237,7 @@ pub fn to_pretty_json_with_equipment_support(
     };
     project.document.validate()?;
     if let Some(inputs) = &project.engineering {
+        require_v4_for_flow_association(inputs)?;
         shared::validate_for_write(inputs, equipment_support)?;
     }
     let wire = ProjectWire {
@@ -242,6 +256,15 @@ pub fn to_pretty_json_with_equipment_support(
         }),
     };
     serde_json::to_string_pretty(&wire).map_err(json_error)
+}
+
+fn require_v4_for_flow_association(inputs: &StoredEngineeringInputs) -> RfResult<()> {
+    if inputs.has_concentric_tube_flow_association() {
+        return Err(RfError::invalid_input(
+            "engineering.tasks: concentric-tube flow associations require v4",
+        ));
+    }
+    Ok(())
 }
 
 fn json_error(error: serde_json::Error) -> RfError {

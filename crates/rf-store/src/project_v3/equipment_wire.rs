@@ -15,13 +15,13 @@ pub(super) enum EquipmentWire {
     #[serde(rename = "concentricTubeHeatExchangerRating")]
     ConcentricTubeRating(Box<concentric_tube_wire::RatingWire>),
 }
-impl From<EquipmentWire> for EquipmentTask {
-    fn from(value: EquipmentWire) -> Self {
-        match value {
-            EquipmentWire::Sizing(t) => Self::SeparatorSizing(t.into()),
-            EquipmentWire::Rating(t) => Self::SeparatorRating(t.into()),
-            EquipmentWire::ConcentricTubeRating(t) => ConcentricTubeRatingTask::from(*t).into(),
-        }
+impl EquipmentWire {
+    pub(super) fn decode(self) -> RfResult<EquipmentTask> {
+        Ok(match self {
+            Self::Sizing(t) => EquipmentTask::SeparatorSizing(t.into()),
+            Self::Rating(t) => EquipmentTask::SeparatorRating(t.into()),
+            Self::ConcentricTubeRating(t) => t.decode()?.into(),
+        })
     }
 }
 impl From<&EquipmentTask> for EquipmentWire {
@@ -162,6 +162,19 @@ pub(super) fn validate(inputs: &StoredEngineeringInputs) -> RfResult<()> {
                 }
             }
             EquipmentTask::ConcentricTubeRating(t) => {
+                if t.case.flow_association.is_some() {
+                    for (path, inlet) in [
+                        ("case.hot.inlet", t.case.hot.inlet),
+                        ("case.cold.inlet", t.case.cold.inlet),
+                    ] {
+                        if inlet != ConcentricTubeLiquidInlet::default() {
+                            return Err(error(
+                                path,
+                                "a flow-associated case cannot store inlet numbers".into(),
+                            ));
+                        }
+                    }
+                }
                 sources("geometry.sourceId", t.geometry.source_id.as_slice())?;
                 sources(
                     "case.hot.properties.sourceId",

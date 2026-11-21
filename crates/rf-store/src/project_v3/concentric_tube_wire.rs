@@ -1,8 +1,10 @@
-//! Shared v3/v4 formal inputs for the independent concentric-tube rating.
+//! Formal concentric-tube inputs. Stream associations require the v4 envelope.
 
 use super::task_wire::MethodWire;
 use rf_model::equipment::*;
-use rf_types::{EngineeringCaseId, EquipmentTaskId, SourceId};
+use rf_types::{
+    EngineeringCaseId, EquipmentTaskId, ObjectCreationId, RfError, RfResult, SourceId, StreamId,
+};
 use serde::{
     Deserialize, Deserializer, Serialize,
     de::{MapAccess, Visitor, value::MapAccessDeserializer},
@@ -33,6 +35,12 @@ struct CaseWire {
     revision: u64,
     name: String,
     purpose: String,
+    #[serde(
+        default,
+        deserialize_with = "present_object",
+        skip_serializing_if = "Option::is_none"
+    )]
+    flow_association: Option<AssociationWire>,
     #[serde(deserialize_with = "object")]
     hot: SideWire,
     #[serde(deserialize_with = "object")]
@@ -44,10 +52,51 @@ struct CaseWire {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct SideWire {
-    #[serde(deserialize_with = "object")]
-    inlet: InletWire,
+    #[serde(
+        default,
+        deserialize_with = "present_object",
+        skip_serializing_if = "Option::is_none"
+    )]
+    inlet: Option<InletWire>,
     #[serde(deserialize_with = "object")]
     properties: PropertiesWire,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AssociationWire {
+    #[serde(deserialize_with = "object")]
+    hot: StreamWire,
+    #[serde(deserialize_with = "object")]
+    cold: StreamWire,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct StreamWire {
+    stream_id: StreamId,
+    creation_id: String,
+}
+
+impl StreamWire {
+    fn decode(self, path: &str) -> RfResult<ConcentricTubeFlowStream> {
+        Ok(ConcentricTubeFlowStream {
+            id: self.stream_id,
+            creation_id: self
+                .creation_id
+                .parse::<ObjectCreationId>()
+                .map_err(|error| RfError::invalid_input(format!("{path}.creationId: {error}")))?,
+        })
+    }
+}
+
+impl From<&ConcentricTubeFlowStream> for StreamWire {
+    fn from(stream: &ConcentricTubeFlowStream) -> Self {
+        Self {
+            stream_id: stream.id.clone(),
+            creation_id: stream.creation_id.to_string(),
+        }
+    }
 }
 
 fn object<'de, D: Deserializer<'de>, T: Deserialize<'de>>(de: D) -> Result<T, D::Error> {
@@ -68,6 +117,12 @@ fn object<'de, D: Deserializer<'de>, T: Deserialize<'de>>(de: D) -> Result<T, D:
 
 fn present<'de, D: Deserializer<'de>, T: Deserialize<'de>>(de: D) -> Result<Option<T>, D::Error> {
     T::deserialize(de).map(Some)
+}
+
+fn present_object<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
+    de: D,
+) -> Result<Option<T>, D::Error> {
+    object(de).map(Some)
 }
 
 // Each listed SI number is optional, rejects explicit null, and is checked
@@ -162,33 +217,58 @@ si_wire!(LimitsWire for ConcentricTubeRatingLimits {
     numbers { min_heat_duty_w, max_hot_pressure_drop_pa, max_cold_pressure_drop_pa }
 });
 
-impl From<RatingWire> for ConcentricTubeRatingTask {
-    fn from(wire: RatingWire) -> Self {
-        let case = wire.case;
+impl RatingWire {
+    pub(super) fn decode(self) -> RfResult<ConcentricTubeRatingTask> {
+        let case = self.case;
+        let flow_association = case
+            .flow_association
+            .map(|wire| -> RfResult<_> {
+                Ok(ConcentricTubeFlowAssociation {
+                    hot: wire.hot.decode("case.flowAssociation.hot")?,
+                    cold: wire.cold.decode("case.flowAssociation.cold")?,
+                })
+            })
+            .transpose()?;
+        for (name, side) in [("hot", &case.hot), ("cold", &case.cold)] {
+            match (flow_association.is_some(), side.inlet.is_some()) {
+                (true, true) => {
+                    return Err(RfError::invalid_input(format!(
+                        "case.{name}.inlet: a flow-associated case cannot store inlet numbers"
+                    )));
+                }
+                (false, false) => {
+                    return Err(RfError::invalid_input(format!(
+                        "case.{name}.inlet: an independent case requires an inlet object"
+                    )));
+                }
+                _ => {}
+            }
+        }
         let side = |side: SideWire| ConcentricTubeSideInputs {
-            inlet: side.inlet.into(),
+            inlet: side.inlet.map(Into::into).unwrap_or_default(),
             properties: side.properties.into(),
         };
-        Self {
-            id: wire.id,
-            revision: wire.revision,
-            tag: wire.tag,
-            name: wire.name,
+        Ok(ConcentricTubeRatingTask {
+            id: self.id,
+            revision: self.revision,
+            tag: self.tag,
+            name: self.name,
             method: EquipmentMethod {
-                id: wire.method.id,
-                version: wire.method.version,
+                id: self.method.id,
+                version: self.method.version,
             },
-            geometry: wire.geometry.into(),
+            geometry: self.geometry.into(),
             case: ConcentricTubeRatingCase {
                 id: case.id,
                 revision: case.revision,
                 name: case.name,
                 purpose: case.purpose,
+                flow_association,
                 hot: side(case.hot),
                 cold: side(case.cold),
                 limits: case.limits.into(),
             },
-        }
+        })
     }
 }
 
@@ -196,7 +276,10 @@ impl From<&ConcentricTubeRatingTask> for RatingWire {
     fn from(task: &ConcentricTubeRatingTask) -> Self {
         let case = &task.case;
         let side = |side: &ConcentricTubeSideInputs| SideWire {
-            inlet: (&side.inlet).into(),
+            inlet: case
+                .flow_association
+                .is_none()
+                .then(|| (&side.inlet).into()),
             properties: (&side.properties).into(),
         };
         Self {
@@ -214,6 +297,12 @@ impl From<&ConcentricTubeRatingTask> for RatingWire {
                 revision: case.revision,
                 name: case.name.clone(),
                 purpose: case.purpose.clone(),
+                flow_association: case.flow_association.as_ref().map(|association| {
+                    AssociationWire {
+                        hot: (&association.hot).into(),
+                        cold: (&association.cold).into(),
+                    }
+                }),
                 hot: side(&case.hot),
                 cold: side(&case.cold),
                 limits: (&case.limits).into(),

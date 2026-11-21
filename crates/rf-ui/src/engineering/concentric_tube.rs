@@ -40,5 +40,11 @@ pub fn rate_saved_case(
     if actual != expected {
         return Err(SavedRatingError::RevisionConflict { actual });
     }
+    if task.case.flow_association.is_some() {
+        return Err(SavedRatingError::Calculation(
+            RfError::invalid_input("resolve the saved association against a Current flow result")
+                .with_diagnostic_code("equipment.h3.flow.association_unresolved"),
+        ));
+    }
     rate_task(task, basis).map_err(SavedRatingError::Calculation)
 }

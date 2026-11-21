@@ -9,7 +9,7 @@ mod watch_list_tests;
 pub use flow_plan::StudioReadOnlyProject;
 pub use h3_flow_review::{
     H3FlowPreview, H3FlowRating, H3FlowReview, H3FlowStream, H3PureWaterQualification,
-    H3WaterPropertySource,
+    H3WaterPropertySource, PreparedH3FlowAssociationSave,
 };
 pub use h3_review::StudioH3Review;
 pub use object_identities::{
