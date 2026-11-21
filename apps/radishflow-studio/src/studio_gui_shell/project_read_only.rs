@@ -1,10 +1,25 @@
+use super::locale::tr;
 use super::*;
+mod h3;
 
 /// Unsupported projects are inspected separately, never partially loaded into
 /// the editable host. The existing workspace is retained until the view closes.
 pub(super) struct ReadOnlyProjectView {
     pub(super) path: PathBuf,
     pub(super) project: Box<radishflow_studio::StudioReadOnlyProject>,
+    h3: h3::ReviewState,
+}
+impl ReadOnlyProjectView {
+    pub(super) fn new(
+        path: PathBuf,
+        project: Box<radishflow_studio::StudioReadOnlyProject>,
+    ) -> Self {
+        Self {
+            path,
+            project,
+            h3: h3::ReviewState::default(),
+        }
+    }
 }
 impl ReadyAppState {
     pub(super) fn render_read_only_project(&mut self, ctx: &egui::Context) -> bool {
@@ -15,15 +30,25 @@ impl ReadyAppState {
                 self.render_bottom_drawer(ctx, &window);
             }
         }
-        let Some(view) = &self.read_only_project else {
+        let Some(view) = &mut self.read_only_project else {
             return false;
         };
         let zh = self.locale == StudioShellLocale::ZhCn;
-        let mut close =
-            ctx.input(|i| i.key_pressed(egui::Key::Escape) || i.viewport().close_requested());
-        if ctx.input(|i| i.viewport().close_requested()) {
+        let close_requested = ctx.input(|i| i.viewport().close_requested());
+        if close_requested {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
+        let escape = ctx.input(|i| i.key_pressed(egui::Key::Escape));
+        if let radishflow_studio::StudioReadOnlyProject::H3(project) = view.project.as_ref() {
+            let close = view
+                .h3
+                .render(ctx, project, &view.path, self.locale, escape);
+            if close || close_requested {
+                self.read_only_project = None;
+            }
+            return true;
+        }
+        let mut close = escape || close_requested;
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading(if zh {
                 "工程只读检查"
@@ -74,6 +99,18 @@ impl ReadyAppState {
 impl ReadyAppState {
     pub(super) fn check_project_event_access(&self, event: &StudioGuiEvent) -> RfResult<()> {
         if self.read_only_project.is_some() && event_requires_editable_workspace(event) {
+            if self.read_only_project.as_ref().is_some_and(|view| {
+                matches!(
+                    view.project.as_ref(),
+                    radishflow_studio::StudioReadOnlyProject::H3(_)
+                )
+            }) {
+                return Err(rf_types::RfError::invalid_input(tr(
+                    self.locale,
+                    "工程只读。可在复核页复算当前工况。",
+                    "This project is read-only. Rate the selected case in the review.",
+                )));
+            }
             return Err(rf_types::RfError::invalid_input(match self.locale {
                 StudioShellLocale::ZhCn => "当前工程只读，不能编辑或启动计算。",
                 StudioShellLocale::En => {

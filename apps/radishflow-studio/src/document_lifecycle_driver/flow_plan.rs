@@ -9,42 +9,48 @@ use rf_store::project_v4::{
 pub enum StudioReadOnlyProject {
     V3(rf_store::project_v3::ReadOnlyProjectV3),
     V4(project_v4::ReadOnlyProjectV4),
+    H3(Box<StudioH3Review>),
 }
 impl StudioReadOnlyProject {
     pub fn original_json(&self) -> &str {
         match self {
             Self::V3(p) => p.original_json(),
             Self::V4(p) => p.original_json(),
+            Self::H3(p) => &p.original_json,
         }
     }
     pub fn metadata(&self) -> &rf_store::StoredDocumentMetadata {
         match self {
             Self::V3(p) => &p.document().metadata,
             Self::V4(p) => p.metadata(),
+            Self::H3(p) => p.metadata(),
         }
     }
     pub fn revision(&self) -> u64 {
         match self {
             Self::V3(p) => p.document().revision,
             Self::V4(p) => p.revision(),
+            Self::H3(p) => p.revision,
         }
     }
     pub fn schema_version(&self) -> u32 {
         match self {
             Self::V3(_) => 3,
             Self::V4(_) => 4,
+            Self::H3(p) => p.schema_version,
         }
     }
     pub fn task_count(&self) -> Option<usize> {
         match self {
             Self::V3(p) => Some(p.task_count()),
             Self::V4(_) => None,
+            Self::H3(p) => Some(p.task_count()),
         }
     }
     pub fn legacy_document(&self) -> Option<&rf_store::StoredProjectDocument> {
         match self {
             Self::V3(p) => Some(p.document()),
-            Self::V4(_) => None,
+            Self::V4(_) | Self::H3(_) => None,
         }
     }
     pub fn reason_summary(&self) -> String {
@@ -54,6 +60,7 @@ impl StudioReadOnlyProject {
                 p.task_count()
             ),
             Self::V4(p) => p.reasons().join(", "),
+            Self::H3(_) => "saved concentric-tube rating review".into(),
         }
     }
 }
@@ -62,12 +69,30 @@ pub(super) fn parse_v4(
     path: &Path,
     support: project_v4::FlowPlanSupport,
     identity_support: ObjectIdentitySupport,
+    equipment: EquipmentSupport,
 ) -> RfResult<StudioProjectOpen> {
-    match project_v4::parse_for_consumer(contents, support, identity_support)? {
+    let parsed = match equipment {
+        EquipmentSupport::SeparatorOnly => {
+            project_v4::parse_for_consumer(contents, support, identity_support)?
+        }
+        EquipmentSupport::ConcentricTubeRating => {
+            project_v4::parse_with_equipment_support(contents, support, equipment)?
+        }
+    };
+    match parsed {
         ProjectV4Read::ReadOnly(p) => Ok(StudioProjectOpen::ReadOnly(Box::new(
             StudioReadOnlyProject::V4(p),
         ))),
-        ProjectV4Read::Editable(p) => {
+        ProjectV4Read::Editable(mut p) => {
+            if let Some(review) = h3_review::open(
+                &p.document,
+                &p.display_units,
+                4,
+                &mut p.engineering,
+                contents,
+            ) {
+                return Ok(review);
+            }
             let capabilities = project_v4::required_capabilities(&p)
                 .into_iter()
                 .map(|c| (c.id, c.version))

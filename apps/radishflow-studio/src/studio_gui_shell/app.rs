@@ -321,10 +321,10 @@ impl ReadyAppState {
                 self.flow_path = Default::default();
                 self.canvas_stream_layer = Default::default();
                 self.background_action(radishflow_studio::StudioBackgroundRunAction::Detach);
-                self.read_only_project = Some(project_read_only::ReadOnlyProjectView {
-                    path: project_path,
+                self.read_only_project = Some(project_read_only::ReadOnlyProjectView::new(
+                    project_path,
                     project,
-                });
+                ));
                 self.command_palette.close();
                 self.pending_format_upgrade = None;
                 self.pending_identity_initialization = None;

@@ -385,7 +385,7 @@ GS-01—10 的存储 / 生命周期自动回归已落实：完整字段与三种
 H3 使用 v3／v4 共有工程区，沿用外层版本、项目呈现与单位目录。`rf_store::project_v3` 和 `rf_store::project_v4` 的 `*_with_equipment_support` 入口接受 `EquipmentSupport::ConcentricTubeRating`。v4 的稳态计划能力仍由 `FlowPlanSupport` 独立声明。 [H3 正式输入契约](equipment/heat-exchanger-design-and-rating.md#h3-正式输入保存与重开)
 
 - v3 先探测任务类型和方法版本。v4 按实际任务派生 `radishflow.equipment.concentric-tube-rating` v1，支持该能力时核对声明与内容一致。未知 H3 方法版本仍以整份只读处理。
-- 普通 Rust、Studio 及旧 CLI 协议沿用原设备能力。CLI v13 显式启用 H3 读取和本次复算。读写器保留只读对象的原始 JSON，拒绝从只读对象保存或另存，也拒绝用其他工程覆盖这样的目标。 [CLI v13](../reference/headless-cli.md#h3-同心套管校核-cli-v13)
+- 普通 Rust 和旧 CLI 协议沿用原设备能力。CLI v13 和 Studio 只读复核显式启用 H3 读取和本次复算。读写器保留只读对象的原始 JSON，拒绝从只读对象保存或另存，也拒绝用其他工程覆盖这样的目标。 [CLI v13](../reference/headless-cli.md#h3-同心套管校核-cli-v13) · [Studio 只读复核](equipment/heat-exchanger-design-and-rating.md#h3-studio-只读复核)
 - 新路径可直接保存 H3。覆盖一个已存在且首次加入 H3 的项目须确认能力升级。v3 复用暂存写入。v4 复用 `prepare_write_with_equipment_support` 的升级标记和目标指纹，`write_prepared` 拒绝未确认的升级或已变化的目标。
 
 ## QS1-C 项目 v4（2026-10-31，已实现）

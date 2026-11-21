@@ -1,10 +1,12 @@
 pub(crate) mod flow_plan;
+mod h3_review;
 mod object_identities;
 mod plan_save;
 pub(crate) use plan_save::prepare_studio_flow_plan_save;
 #[cfg(test)]
 mod watch_list_tests;
 pub use flow_plan::StudioReadOnlyProject;
+pub use h3_review::StudioH3Review;
 pub use object_identities::{
     PreparedObjectIdentityInitialization, prepare_object_identity_initialization,
 };
@@ -12,6 +14,7 @@ pub use plan_save::{
     PreparedFlowPlanSave, PreparedMixedRecycleSave, prepare_mixed_recycle_save,
     prepare_product_composition_save,
 };
+use rf_store::project_v3::EquipmentSupport;
 use std::path::{Path, PathBuf};
 
 use rf_store::project_v4::ObjectIdentitySupport;
@@ -73,14 +76,31 @@ pub fn read_studio_project_with_support(
     project_path: &Path,
     support: rf_store::project_v4::FlowPlanSupport,
 ) -> RfResult<StudioProjectOpen> {
+    read_studio_project_for_consumer(project_path, support, EquipmentSupport::SeparatorOnly)
+}
+
+pub fn read_studio_project_for_review(project_path: &Path) -> RfResult<StudioProjectOpen> {
+    read_studio_project_for_consumer(
+        project_path,
+        rf_store::project_v4::FlowPlanSupport::SinglePhaseRecycle,
+        EquipmentSupport::ConcentricTubeRating,
+    )
+}
+
+fn read_studio_project_for_consumer(
+    project_path: &Path,
+    support: rf_store::project_v4::FlowPlanSupport,
+    equipment: EquipmentSupport,
+) -> RfResult<StudioProjectOpen> {
     let contents = std::fs::read_to_string(project_path).map_err(|e| {
         RfError::invalid_input(format!("read project {}: {e}", project_path.display()))
     })?;
-    parse_studio_project_with_support(
+    parse_studio_project_for_consumer(
         &contents,
         project_path,
         support,
         ObjectIdentitySupport::Supported,
+        equipment,
     )
 }
 
@@ -105,9 +125,33 @@ pub(crate) fn parse_studio_project_with_support(
     support: rf_store::project_v4::FlowPlanSupport,
     identity_support: ObjectIdentitySupport,
 ) -> RfResult<StudioProjectOpen> {
+    parse_studio_project_for_consumer(
+        contents,
+        project_path,
+        support,
+        identity_support,
+        EquipmentSupport::SeparatorOnly,
+    )
+}
+
+fn parse_studio_project_for_consumer(
+    contents: &str,
+    project_path: &Path,
+    support: rf_store::project_v4::FlowPlanSupport,
+    identity_support: ObjectIdentitySupport,
+    equipment: EquipmentSupport,
+) -> RfResult<StudioProjectOpen> {
     let version = rf_store::project_v3::probe_version(contents)?;
     match version {
-        4 => return flow_plan::parse_v4(contents, project_path, support, identity_support),
+        4 => {
+            return flow_plan::parse_v4(
+                contents,
+                project_path,
+                support,
+                identity_support,
+                equipment,
+            );
+        }
         1..=3 => {}
         _ => return Err(RfError::invalid_input("unsupported project schema version")),
     }
@@ -123,19 +167,30 @@ pub(crate) fn parse_studio_project_with_support(
             )?,
         )));
     }
-    match rf_store::project_v3::parse(contents)? {
+    match rf_store::project_v3::parse_with_equipment_support(contents, equipment)? {
         rf_store::project_v3::ProjectV3Read::ReadOnly(project) => Ok(StudioProjectOpen::ReadOnly(
             Box::new(StudioReadOnlyProject::V3(project)),
         )),
-        rf_store::project_v3::ProjectV3Read::Editable(project) => Ok(StudioProjectOpen::Editable(
-            Box::new(app_state_from_stored(
-                project.document,
-                project.display_units,
+        rf_store::project_v3::ProjectV3Read::Editable(mut project) => {
+            if let Some(review) = h3_review::open(
+                &project.document,
+                &project.display_units,
                 3,
-                project.engineering,
-                project_path,
-            )?),
-        )),
+                &mut project.engineering,
+                contents,
+            ) {
+                return Ok(review);
+            }
+            Ok(StudioProjectOpen::Editable(Box::new(
+                app_state_from_stored(
+                    project.document,
+                    project.display_units,
+                    3,
+                    project.engineering,
+                    project_path,
+                )?,
+            )))
+        }
     }
 }
 /// Load supported project inputs and presentation. Unknown methods require the

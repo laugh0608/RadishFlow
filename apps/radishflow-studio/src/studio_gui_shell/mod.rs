@@ -405,10 +405,7 @@ impl RadishFlowStudioApp {
 fn read_studio_gui_project(
     path: &std::path::Path,
 ) -> RfResult<radishflow_studio::StudioProjectOpen> {
-    radishflow_studio::read_studio_project_with_support(
-        path,
-        rf_store::project_v4::FlowPlanSupport::SinglePhaseRecycle,
-    )
+    radishflow_studio::read_studio_project_for_review(path)
 }
 
 fn studio_shell_runtime_config(project_path: Option<PathBuf>) -> StudioRuntimeConfig {
@@ -488,10 +485,10 @@ impl ReadyAppState {
         let (read_only_project, platform_host) = if config.untitled_blank_project.is_none() {
             match read_studio_gui_project(&config.project_path)? {
                 radishflow_studio::StudioProjectOpen::ReadOnly(project) => (
-                    Some(project_read_only::ReadOnlyProjectView {
-                        path: config.project_path.clone(),
+                    Some(project_read_only::ReadOnlyProjectView::new(
+                        config.project_path.clone(),
                         project,
-                    }),
+                    )),
                     StudioGuiPlatformHost::new(&studio_shell_blank_runtime_config())?,
                 ),
                 radishflow_studio::StudioProjectOpen::Editable(app) => {
