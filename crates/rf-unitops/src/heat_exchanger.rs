@@ -1,4 +1,4 @@
-//! Adiabatic countercurrent heat exchange and preliminary area between two single-vapor streams.
+//! Countercurrent thermal calculation, preliminary area estimation and concentric tube rating.
 use crate::{
     StreamTarget, UnitEnergyBalance,
     component_balance::stream_component_molar_flows,
@@ -9,6 +9,8 @@ use crate::{
 use rf_model::MaterialStreamState;
 use rf_thermo::SensibleEnthalpyModel;
 use rf_types::{RfError, RfResult};
+
+pub mod concentric_tube;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum HeatExchangerSpecification {
