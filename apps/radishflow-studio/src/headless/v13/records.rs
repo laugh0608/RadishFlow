@@ -12,11 +12,11 @@ use rf_ui::engineering::concentric_tube::{
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
 
-pub(super) fn revisions(revisions: RatingRevisions) -> Value {
+pub(in crate::headless) fn revisions(revisions: RatingRevisions) -> Value {
     json!({"task": revisions.task, "geometry": revisions.geometry, "case": revisions.case})
 }
 
-pub(super) fn object(task: &ConcentricTubeRatingTask) -> Value {
+pub(in crate::headless) fn object(task: &ConcentricTubeRatingTask) -> Value {
     json!({
         "kind": "concentric_tube_rating",
         "task_id": task.id,
@@ -30,7 +30,10 @@ pub(super) fn object(task: &ConcentricTubeRatingTask) -> Value {
     })
 }
 
-pub(super) fn record(task: &ConcentricTubeRatingTask, basis: &EngineeringBasis) -> Value {
+pub(in crate::headless) fn record(
+    task: &ConcentricTubeRatingTask,
+    basis: &EngineeringBasis,
+) -> Value {
     let geometry = &task.geometry;
     let case = &task.case;
     let sources: BTreeSet<&SourceId> = geometry
@@ -91,7 +94,7 @@ fn side_inputs(side: &ConcentricTubeSideInputs) -> Value {
     })
 }
 
-pub(super) fn origin(
+pub(in crate::headless) fn origin(
     project: &ProjectSnapshot,
     task: &ConcentricTubeRatingTask,
     step_id: &str,
@@ -112,7 +115,7 @@ pub(super) fn origin(
     })
 }
 
-pub(super) fn current_result(result: ConcentricTubeRating) -> Value {
+pub(in crate::headless) fn current_result(result: ConcentricTubeRating) -> Value {
     json!({
         "status": "current",
         "heat_duty_w": result.heat_duty_w,

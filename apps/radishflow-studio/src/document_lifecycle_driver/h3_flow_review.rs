@@ -1,5 +1,6 @@
 //! Session-local H3 review of two streams from one accepted flow solve.
 
+pub(crate) mod bundled_water;
 mod qualification;
 mod save;
 #[cfg(test)]
@@ -29,8 +30,9 @@ use rf_ui::{
 pub use save::PreparedH3FlowAssociationSave;
 use std::path::Path;
 
-const FLOW_SUPPORT: FlowPlanSupport = FlowPlanSupport::Sequential;
-const EQUIPMENT_SUPPORT: EquipmentSupport = EquipmentSupport::ConcentricTubeFlowAssociation;
+pub(crate) const FLOW_SUPPORT: FlowPlanSupport = FlowPlanSupport::Sequential;
+pub(crate) const EQUIPMENT_SUPPORT: EquipmentSupport =
+    EquipmentSupport::ConcentricTubeFlowAssociation;
 
 #[derive(Debug)]
 pub struct H3FlowPreview {
@@ -108,7 +110,29 @@ impl H3FlowReview {
                 "H3 flow review requires a v4 project",
             ));
         }
-        let mut project = parse_project(&contents)?;
+        let project = parse_project(&contents)?;
+        Self::assemble(&path, *project, &contents, qualification)
+    }
+
+    /// Assemble a previously parsed project with the same bytes used for its fingerprint.
+    pub(crate) fn from_saved_project(
+        path: &Path,
+        project: StoredProjectV4,
+        contents: &str,
+        qualification: H3PureWaterQualification,
+    ) -> RfResult<Self> {
+        qualification.validate()?;
+        let path = std::path::absolute(path)
+            .map_err(|error| RfError::invalid_input(format!("resolve project path: {error}")))?;
+        Self::assemble(&path, project, contents, qualification)
+    }
+
+    fn assemble(
+        path: &Path,
+        mut project: StoredProjectV4,
+        contents: &str,
+        qualification: H3PureWaterQualification,
+    ) -> RfResult<Self> {
         if !matches!(project.steady_state_plan, StoredFlowPlan::Acyclic)
             || project.object_identities.is_none()
         {
@@ -122,10 +146,10 @@ impl H3FlowReview {
             &project.display_units,
             project_v4::VERSION,
             &mut project.engineering,
-            &contents,
+            contents,
         )
         .ok_or_else(|| rejected("case_missing", "no saved concentric-tube rating case"))?;
-        let flow = app_state_from_v4(*project, &path)?;
+        let flow = app_state_from_v4(project, path)?;
         let saved_flow_input = flow.workspace.flow_execution_qualification();
         Ok(Self {
             saved,

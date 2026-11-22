@@ -1,0 +1,312 @@
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 4,
+  "document": {
+    "revision": 1,
+    "flowsheet": {
+      "name": "h3-linked-water-50",
+      "thermo": {
+        "property_package_id": "h3-pure-water-lite-v1"
+      },
+      "components": {
+        "water": {
+          "id": "water",
+          "name": "Water",
+          "formula": "H2O"
+        }
+      },
+      "streams": {
+        "hot-feed": {
+          "id": "hot-feed",
+          "name": "Hot feed",
+          "temperature_k": 303.15,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 14.0,
+          "overall_mole_fractions": {
+            "water": 1.0
+          },
+          "phases": []
+        },
+        "cold-feed": {
+          "id": "cold-feed",
+          "name": "Cold feed",
+          "temperature_k": 293.15,
+          "pressure_pa": 100000.0,
+          "total_molar_flow_mol_s": 50.0,
+          "overall_mole_fractions": {
+            "water": 1.0
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "hot-feed-unit": {
+          "id": "hot-feed-unit",
+          "name": "Hot feed",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "hot-feed"
+            }
+          ]
+        },
+        "cold-feed-unit": {
+          "id": "cold-feed-unit",
+          "name": "Cold feed",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "cold-feed"
+            }
+          ]
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "h3-linked-water-50",
+      "title": "H3 linked water, cold side 50 mol/s",
+      "schemaVersion": 1,
+      "createdAt": "2026-11-22T00:00:00Z",
+      "updatedAt": "2026-11-22T00:00:00Z"
+    }
+  },
+  "requiredCapabilities": [
+    {
+      "id": "radishflow.flow-plan",
+      "version": 1
+    },
+    {
+      "id": "radishflow.object-identity",
+      "version": 1
+    },
+    {
+      "id": "radishflow.equipment.concentric-tube-rating",
+      "version": 1
+    },
+    {
+      "id": "radishflow.equipment.concentric-tube-flow-association",
+      "version": 1
+    }
+  ],
+  "presentation": {
+    "displayUnits": [
+      {
+        "quantityId": "absolute_temperature",
+        "unitId": "kelvin"
+      },
+      {
+        "quantityId": "temperature_difference",
+        "unitId": "kelvin_difference"
+      },
+      {
+        "quantityId": "absolute_pressure",
+        "unitId": "pascal"
+      },
+      {
+        "quantityId": "molar_flow",
+        "unitId": "mole_per_second"
+      },
+      {
+        "quantityId": "mole_fraction",
+        "unitId": "mole_per_mole"
+      },
+      {
+        "quantityId": "molar_phase_fraction",
+        "unitId": "mole_per_mole"
+      },
+      {
+        "quantityId": "molar_enthalpy",
+        "unitId": "joule_per_mole"
+      },
+      {
+        "quantityId": "actual_volume_flow",
+        "unitId": "cubic_metre_per_second"
+      },
+      {
+        "quantityId": "mass_density",
+        "unitId": "kilogram_per_cubic_metre"
+      },
+      {
+        "quantityId": "velocity",
+        "unitId": "metre_per_second"
+      },
+      {
+        "quantityId": "duration",
+        "unitId": "second"
+      },
+      {
+        "quantityId": "length",
+        "unitId": "metre"
+      },
+      {
+        "quantityId": "area",
+        "unitId": "square_metre"
+      },
+      {
+        "quantityId": "volume",
+        "unitId": "cubic_metre"
+      },
+      {
+        "quantityId": "dimensionless_ratio",
+        "unitId": "one"
+      }
+    ]
+  },
+  "simulation": {
+    "steadyStatePlan": {
+      "method": {
+        "id": "radishflow.acyclic-sm",
+        "version": 1
+      }
+    }
+  },
+  "engineering": {
+    "basisEntries": [],
+    "sources": [
+      {
+        "id": "nist-water-table-8",
+        "revision": 3,
+        "kind": "literature",
+        "title": "NIST water properties, table 8",
+        "reference": "https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=832373",
+        "locator": "Table 8",
+        "publicationVersion": "",
+        "accessedOn": "",
+        "adoptionNote": "Water at 298.15 K and 0.1 MPa",
+        "review": "reviewed",
+        "applicability": {
+          "fluidSystem": "Water",
+          "phase": "liquid",
+          "operatingConditions": {
+            "temperatureK": 298.15,
+            "pressurePa": 100000.0
+          },
+          "scope": "Frozen liquid properties"
+        },
+        "observations": []
+      },
+      {
+        "id": "van-zyl-test-section-3",
+        "revision": 3,
+        "kind": "literature",
+        "title": "Van Zyl et al., test section 3",
+        "reference": "Van Zyl et al.",
+        "locator": "Table 5",
+        "publicationVersion": "",
+        "accessedOn": "",
+        "adoptionNote": "Concentric-tube benchmark dimensions",
+        "review": "reviewed",
+        "applicability": {
+          "fluidSystem": "Water",
+          "phase": "liquid",
+          "operatingConditions": {},
+          "scope": "Test section geometry"
+        },
+        "observations": []
+      }
+    ],
+    "tasks": [
+      {
+        "kind": "concentricTubeHeatExchangerRating",
+        "id": "h3-rating",
+        "revision": 6,
+        "tag": "E-301",
+        "name": "Concentric tube benchmark",
+        "method": {
+          "id": "radishflow.heat-exchanger.concentric-tube-rating",
+          "version": 1
+        },
+        "geometry": {
+          "revision": 7,
+          "sourceId": "van-zyl-test-section-3",
+          "activeLengthM": 4.85,
+          "innerTubeInnerDiameterM": 0.01446,
+          "innerTubeOuterDiameterM": 0.01588,
+          "outerTubeInnerDiameterM": 0.02676,
+          "wallThermalConductivityWPerMK": 385.0
+        },
+        "case": {
+          "id": "h3-water",
+          "revision": 12,
+          "name": "Water",
+          "purpose": "Compare heat duty and straight-run pressure drops",
+          "hot": {
+            "properties": {
+              "sourceId": "nist-water-table-8",
+              "liquidDomain": {
+                "minTemperatureK": 293.15,
+                "maxTemperatureK": 303.15,
+                "minPressurePa": 50000.0,
+                "maxPressurePa": 120000.0
+              },
+              "molarMassKgPerMol": 0.01801528,
+              "molarHeatCapacityJPerMolK": 75.3299237376304,
+              "densityKgPerM3": 997.047013,
+              "dynamicViscosityPaS": 0.000889996774,
+              "thermalConductivityWPerMK": 0.607198237
+            }
+          },
+          "cold": {
+            "properties": {
+              "sourceId": "nist-water-table-8",
+              "liquidDomain": {
+                "minTemperatureK": 293.15,
+                "maxTemperatureK": 303.15,
+                "minPressurePa": 50000.0,
+                "maxPressurePa": 120000.0
+              },
+              "molarMassKgPerMol": 0.01801528,
+              "molarHeatCapacityJPerMolK": 75.3299237376304,
+              "densityKgPerM3": 997.047013,
+              "dynamicViscosityPaS": 0.000889996774,
+              "thermalConductivityWPerMK": 0.607198237
+            }
+          },
+          "limits": {
+            "minHeatDutyW": 5500.0,
+            "maxHotPressureDropPa": 11000.0,
+            "maxColdPressureDropPa": 25000.0
+          },
+          "flowAssociation": {
+            "hot": {
+              "streamId": "hot-feed",
+              "creationId": "00000000-0000-4000-8000-0000000001f5"
+            },
+            "cold": {
+              "streamId": "cold-feed",
+              "creationId": "00000000-0000-4000-8000-0000000001f7"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "objectIdentities": {
+    "units": [
+      {
+        "objectId": "hot-feed-unit",
+        "creationId": "00000000-0000-4000-8000-0000000001f6"
+      },
+      {
+        "objectId": "cold-feed-unit",
+        "creationId": "00000000-0000-4000-8000-0000000001f8"
+      }
+    ],
+    "streams": [
+      {
+        "objectId": "hot-feed",
+        "creationId": "00000000-0000-4000-8000-0000000001f5"
+      },
+      {
+        "objectId": "cold-feed",
+        "creationId": "00000000-0000-4000-8000-0000000001f7"
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-11-21
+更新时间：2026-11-22
 
 ## 用途
 
@@ -36,10 +36,10 @@
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
 
 
-### 最近进展（截至 2026-11-21）
+### 最近进展（截至 2026-11-22）
 
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
-- PR #18 已合入 `master` 并回灌 `dev`（`4772fbba`）。
+- PR #19 已合入 `master` 并回灌 `dev`（`39a35703`）。
 - AF3-V10 受控实窗已验证等待返回。
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
 - [QS4 M2](../topics/modeling/mixed-partition-execution.md)已通过核心、v4 保存、CLI v9 与 Studio 本机代表验收。
@@ -47,13 +47,13 @@
 ### 下一步
 
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
-- [ ] [H3](../topics/equipment/heat-exchanger-design-and-rating.md#接下来事项) v4 关联保存重开已验，建议先评审 CLI 只读复核。
+- [x] [H3 CLI v14](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联-cli-v14) 只读关联复核已通过两档验收，Studio 关联另审。
 - [ ] [AF3-V10](../topics/runtime-messages/scenarios-and-acceptance.md) 11-21 原版等待返回仍待验。
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
 - [x] QS3／QS4 macOS 取消与重跑通过，QS3 英文窄区焦点可见性复验通过。见 [专题](../topics/modeling/equation-oriented-block.md#接下来事项)。
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
-- [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)的设备数据 / 事务 / 保存 / UI / 输出及代表验证完成，流程关联未实现。
+- [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)已通过代表验证，分离器关联另审。
 - [ ] 按 [AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23) 捕获异常现场，定因后确认修复并验收；未复现不等于收口。
 - [x] AF2a / b 与 AF3—AF5 已接通批准范围，见[基础切片](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)。
 - [x] AF6 与 QS0—QS4 已接通。后续混合策略、热／相平衡 EO 与动态另审。
@@ -112,9 +112,9 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-21：Rust 2,284 项通过，含 62 项 CLI 进程测试。显热、换热和实窗见 [W47](../devlogs/2026-11/2026-W47.md)，窄区与 .NET 见 [W46](../devlogs/2026-11/2026-W46.md)。
+- 2026-11-22：Rust 2,290 项通过，含 68 项 CLI 进程测试。见 [W47](../devlogs/2026-11/2026-W47.md#2026-11-22-h3-流程关联-cli-v14)。
 
-- 2026-11-10：PR #18 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
+- 2026-11-22：PR #19 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 
 - 2026-11-05：正式 2,069 项 Rust 测试、大图和首页原生代表验证通过；C2-A 新包另有 15 项 Python 测试与 552 行工程重放。见 [W45](../devlogs/2026-11/2026-W45.md)。
 

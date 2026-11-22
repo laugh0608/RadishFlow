@@ -1,0 +1,13 @@
+{
+  "kind": "radishflow.property-package-manifest",
+  "schemaVersion": 1,
+  "packageId": "h3-pure-water-lite-v1",
+  "version": "1",
+  "classification": "derived",
+  "source": "local-bundled",
+  "hash": "sha256:1d175d0a82c4d6f586219a32c1bdbad46555356e5d2d50eab3e6bd7a0cec0c26",
+  "sizeBytes": 511,
+  "componentIds": ["water"],
+  "leaseRequired": false,
+  "expiresAt": null
+}

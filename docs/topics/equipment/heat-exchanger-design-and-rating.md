@@ -1,6 +1,6 @@
 # 换热器设计与性能校核
 
-更新时间：2026-11-21
+更新时间：2026-11-22
 
 ## 用途与状态
 
@@ -10,7 +10,7 @@
 
 - 层级：二级功能；父专题：[设备设计与性能校核](../equipment-design-and-rating.md)。
 - 关联：[Heater / Cooler](../unitops/heater-cooler.md)、[现有物性限制](../../thermo/mvp-model.md)、[单位](../units-and-quantity-system.md)、[规格分析](../modeling-assistance-and-specifications.md)。
-- 状态：H0 方案已冻结，H1 热工、H2 初步面积和 H3 同心套管校核首片已在独立 Rust Core 实现。H3 支持正式输入保存重开、CLI v13 与 Studio 只读复核，以及 Rust 应用层的 v4 流程关联保存重开。Heater / Cooler 的单股换热规格见对应单元专题。
+- 状态：H0 方案已冻结，H1 热工、H2 初步面积和 H3 同心套管校核首片已在独立 Rust Core 实现。H3 支持正式输入保存重开、CLI v13 与 Studio 独立工况只读复核，以及 v4 流程关联保存重开和 CLI v14 只读复核。Heater / Cooler 的单股换热规格见对应单元专题。
 
 ## 目标与首版范围
 
@@ -169,9 +169,86 @@ v4 无回路工程的 H3 `case.flowAssociation` 保存 `hot` 和 `cold` 两条�
 
 显式保存采纳基于已保存流程输入的当前预览。准备和提交时重验源工程字节、流程资格及目标工况，写入时核对目标指纹。首次覆盖加入关联能力须确认。成功保存推进文档、任务和工况修订，几何修订沿用。取消、源或目标变化及写失败保留文件。 [应用层保存入口](../../../apps/radishflow-studio/src/document_lifecycle_driver/h3_flow_review/save.rs)
 
-重开仅恢复关联引用，流程与 H3 结果均从 `Missing` 起步。调用方重新提供纯水资格，显式运行流程并接收新快照，通过 `preview_saved` 后再校核。原会话的入口快照、预览、运行凭据和结果均不落盘。40／50 mol/s 两档重开复算匹配独立 H3 基准。CLI 和 Studio 接入另审。 [验收记录](../../devlogs/2026-11/2026-W47.md#2026-11-21-h3-流程关联保存与重开)
+重开仅恢复关联引用，流程与 H3 结果均从 `Missing` 起步。调用方重新提供纯水资格，显式运行流程并接收新快照，通过 `preview_saved` 后再校核。原会话的入口快照、预览、运行凭据和结果均不落盘。40／50 mol/s 两档重开复算匹配独立 H3 基准。Studio 接入另审。 [验收记录](../../devlogs/2026-11/2026-W47.md#2026-11-21-h3-流程关联保存与重开)
+
+### H3 流程关联 CLI v14
+
+2026-11-22 评审通过。首片从同一份 v4 无回路工程中读取一条已保存的 H3 关联，以一次显式稳态运行取得两条纯水流股的新快照，复核一个工况。沿用工程 v4、现有能力声明和 H3 方法 v1。CLI 只读工程和运行资产，结果经标准输出返回。
+
+#### 纯水资格的证据与取得方式
+
+| 依据 | 已查证的来源与使用边界 |
+| --- | --- |
+| 相态 | NIST Chemistry WebBook 收录的 Gubkov、Fermor 等（1964）纯水 Antoine 关联覆盖 **293–343 K**，原式使用 `log10` 和 bar。现有夹具将其换算为 `ln` 和 kPa。用原式复核 `293.15 K`、`303.15 K` 的饱和压力约为 `2393.50 Pa`、`4276.18 Pa`。该区间饱和压力随温度上升，资格域的下界 `50000 Pa` 仍高于上界温度的饱和压力。首片维持 **293.15–303.15 K、50000–120000 Pa**，两端均含。入口仍须由实际快照提供纯水、正流量、`LiquidOnly` 相态及 `P > P_bubble` 证据，出口继续核对资格域及 H3 保存的定物性域。 [NIST Antoine 表](https://webbook.nist.gov/cgi/cbook.cgi?ID=C7732185&Type=ANTOINE) · [应用层资格检查](../../../apps/radishflow-studio/src/document_lifecycle_driver/h3_flow_review/qualification.rs) |
+| 热工和水力定物性 | Pátek 等（2009）表 8 取 **298.15 K、100000 Pa** 的验证点。质量定压热容 `4181.44618 J/(kg·K)` 按 `0.01801528 kg/mol` 换算为 `75.3299237376304 J/(mol·K)`。密度、黏度、导热系数沿用上述独立基准。两档工程夹具冷热侧均用工程来源 `nist-water-table-8` 修订 `3`。这组常数用于 H3 的限定域复算。 [Pátek 表 8](https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=832373#page=9) · [工程夹具](../../../apps/radishflow-studio/tests/fixtures/h3-review-engineering.json) |
+| 实际执行的物性包 | `h3-flow-water-test` 版本 `1` 是应用层的内存测试夹具。真实 CLI 使用随应用交付的单组分样例 `h3-pure-water-lite-v1` 版本 `1`。两者使用同一来源的纯水相态参数和定热容。 [纯水测试构造](../../../apps/radishflow-studio/src/document_lifecycle_driver/h3_flow_review/tests.rs) · [纯水样例资产](../../../examples/sample-components/property-packages/h3-pure-water-lite-v1/manifest.json) |
+
+应用层资格 `h3-pure-water` 修订 `1` 固定实际包 ID、版本、规范化载荷 SHA-256、`water` 组分 ID、相态引用及适用域。CLI 使用既有装载路径验证内嵌的 manifest 和 payload，运行请求用 `qualification` 的 ID 与修订选取该记录。规范化载荷为 511 字节，指纹为 `sha256:1d175d0a82c4d6f586219a32c1bdbad46555356e5d2d50eab3e6bd7a0cec0c26`。 [应用层资格](../../../apps/radishflow-studio/src/document_lifecycle_driver/h3_flow_review/bundled_water.rs)
+
+装载时要求工程已选包与资格一致，运行后再次用快照来源验证实际包和指纹。两侧正式输入绑定 `nist-water-table-8` 修订 `3`，出处按样例工程的 `reference` 与 `locator` 字段核验，同时核对已评审状态、液相标记及具体常数。工程可收紧定物性域，入口和出口须同时落在保存域和评审域内。替换常数或放大适用域产生资格诊断。首片的证据只覆盖这个限定算例及其温压域，后续包或来源按新的资格修订评审。
+
+#### 协议与 v13 兼容
+
+`schema_version: 14` 沿用 `--headless query`／`execute`、请求文件相对路径、严格 JSON 和标准回执。每次调用只读取一次工程，以同一份字节生成元数据、核对指纹并装配。查询只解析已保存关联，执行才装配物性和运行任务。`current` 只属于本请求使用的工程字节及运行快照，新进程重新从 `missing` 起步。
+
+| 入口 | 请求及响应 |
+| --- | --- |
+| v14 `query` | `project`、`queries`。`objects` 只列保存了关联的 H3 工况。`record` 沿用 v13 的 `target.case` 和工程记录形状，增加 `case.flow_association`，其中 `hot` 和 `cold` 各含 `stream_id`、`creation_id`。响应还包括方法、三项修订、项目已选包 ID 与被引用的来源。`results` 在独立查询进程返回 `{"status":"missing"}`。空 `queries` 只返回工程元数据。 |
+| v14 `execute` | `expected_project` 必须带 `document_id` 和 `file_sha256`。`steps` 恰好一项，动作 `rate_concentric_tube_from_flow` 含 `target`、`expected_revisions`（`task`、`geometry`、`case`）及 `qualification`（`id`、`revision`）。仅使用文件中冻结的冷热侧引用，装配前核对两条流股的创建身份。执行顺序为装载批准的包 → 使用既有入口运行并接收一次稳态快照 → `preview_saved` → `rate` → 返回同一请求的结果。 |
+| v14 回执和结果 | 计算完成用退出码 `0` 和 `current`，保留 v13 的 SI 性能字段及三项 `checks`。步骤回执和同请求目标 `results` 返回相同的结果。`origin` 记录工程 ID／指纹、步骤／工况／修订、H3 方法、冷热流股身份与实际入口、快照 ID／序号、实际包身份与载荷指纹、资格 ID／修订及各来源。`flow_run.run_id` 使用步骤 ID，作用域为本次请求。其他关联工况仍为 `missing`。 |
+| v13 | 独立 H3 工况继续支持 v3／v4 的 `objects`、`record`、`results` 和单步 `rate_concentric_tube`。即使同一 v4 文件还含独立工况，只要出现已保存的流程关联，在 v13 中仍**整份**受保护。`queries: []` 返回安全元数据、`read_only: true` 与 `unsupported_capability`。工况查询或身份正确的执行返回 `read_only_project`、退出码 `3`，执行先核对文档 ID 和指纹。 |
+| v14 兼容保护 | v4 无回路工程可以同时含关联和独立工况，v14 只暴露关联目标。仅含独立 H3 的受支持 v4 工程，关联列表为空，点查独立目标为 `object_missing`。用 v14 打开 v3 时返回 `unsupported_capability`、退出码 `2`，v3 独立复核继续走 v13。v14 发现 v4 内未支持的能力、方法或计划时沿用整份保护。已支持形状中的损坏数据返回 `invalid_project`。 |
+
+以下执行示意中的工程 ID、指纹、工况目标与三项修订取自查询响应。示例工程路径相对于请求文件。
+
+```json
+{
+  "schema_version": 14,
+  "project": "h3-linked-water-40.rfproj.json",
+  "expected_project": {"document_id": "<document_id>", "file_sha256": "<file_sha256>"},
+  "steps": [{
+    "id": "rate",
+    "action": {
+      "kind": "rate_concentric_tube_from_flow",
+      "target": {"case": {"task": {"id": "h3-rating"}, "case": {"id": "h3-water"}}},
+      "expected_revisions": {"task": 6, "geometry": 7, "case": 12},
+      "qualification": {"id": "h3-pure-water", "revision": 1}
+    }
+  }],
+  "queries": [{"id": "performance", "query": {"kind": "results", "scope": {
+    "object": {"case": {"task": {"id": "h3-rating"}, "case": {"id": "h3-water"}}}
+  }}}]
+}
+```
+
+执行依次检查请求形状、可解析工程的 ID／指纹、能力与目标、修订与身份、静态资格和来源。运行成功后用实际包和快照重验入口资格，再进入 H3 计算和出口校验。请求损坏和身份／修订冲突返回退出码 `2`（如 `invalid_request`、`different_document`、`project_conflict`、`record_conflict`）。整份保护或校核前资格拒绝返回 `3`，分别使用 `read_only_project` 或 `action_rejected`。后者携带原资格诊断及工况目标，有流股诊断时提供侧别和流股引用。稳态运行、H3 计算或计算后的出口校验失败返回 `4`、`run_failed` 和 `failed`，保留底层诊断。同一次请求仅成功完成的校核结果可呈现为 `current`。 [现行 v13 协议和错误语义](../../reference/headless-cli.md#h3-同心套管校核-cli-v13)
+
+2026-11-22 在实施前用 macOS CLI 复核 v13，合计 10 次真实进程调用。独立 v3 的 40 mol/s 工况与独立 v4 的 50 mol/s 工况均返回 `current`、退出 `0`，冷侧限值分别为 `passed` 和 `failed`。同时含关联与独立工况的文件，空查询返回安全元数据，工况查询和尝试执行任一工况均返回退出 `3`，文档 ID 和指纹冲突均先返回退出 `2`。临时文件字节及目录条目逐次一致。
+
+#### 真实 CLI 进程验收
+
+用两份冻结的 v4 关联工程分别执行，采用相同的几何、定物性、纯水资格和阈值。热侧固定 `303.15 K`、`100000 Pa`、`14 mol/s`，冷侧入口 `293.15 K`、`100000 Pa`。阈值为热负荷至少 `5500 W`，内管和环隙压降分别至多 `11000 Pa`、`25000 Pa`。真值来自上文独立数值基准。 [重开复算证据](../../devlogs/2026-11/2026-W47.md#2026-11-21-h3-流程关联保存与重开)
+
+| 观测量 | 冷侧 `40 mol/s` | 冷侧 `50 mol/s` | 通过口径 |
+| --- | ---: | ---: | --- |
+| 热负荷 Q（W） | 5521.7076364371 | 5877.4895223707 | 绝对误差 ≤ `1e-6 W` |
+| UA（W/K） | 874.55342311486 | 945.09377880102 | 绝对误差 ≤ `1e-6 W/K` |
+| 热／冷出口（K） | 297.91426274251／294.98250804012 | 297.57690687393／294.71046607530 | 各侧绝对误差 ≤ `1e-8 K` |
+| 内管／环隙压降（Pa） | 9799.8969619738／23679.130040479 | 9799.8969619738／34962.547685264 | 各侧绝对误差 ≤ `1e-4 Pa` |
+| 限值及进程 | 三项 `passed`，`current`，退出 `0` | 仅 `cold_pressure_drop` 为 `failed`，保留完整 `current`，退出 `0` | 逐项比较状态，并核对步骤结果与目标查询一致 |
+
+沿用两侧出口流量及出口绝压闭合检查，并核对各侧显热、整体显热、`Q − UA × LMTD` 的绝对残差均 ≤ `max(1e-6 W, 1e-10 × Q)`。
+
+| 验收场景 | 通过口径 |
+| --- | --- |
+| 发现及结果生命周期 | 查询返回已保存的冷热流股、创建身份及来源。两档各用新进程显式运行并返回本次快照来源，新进程对已执行工况也返回 `missing`。另用含两个关联工况的工程，在一条执行请求中同时查询两项结果，观察另一项仍为 `missing`。查询本身仅执行文件读取和解析。 |
+| 旧协议与未来能力 | 用同一构建分别发 v13／v14 请求，并跑既有 v13 进程测试。两份关联工程在 v13 下只返回安全元数据，工况查询和执行为退出 `3`。独立 v3／v4 样例 v13 输出及退出码照旧。含未知能力的工程在 v14 下整份受保护。 |
+| 身份、修订和格式 | 覆盖错误文档 ID、查询后文件改变、分别冲突的任务／几何／工况修订、替换或重建关联流股后旧请求被拒。篡改保存的创建身份触发 v4 校验，点查无关联的目标返回 `object_missing`。未知／重复键、自行填报的资格内容、多步骤及 v13 请求带新字段在执行前拒绝。 |
+| 资格与诊断 | CLI 用例覆盖未知资格、工程选错包、来源修订或常数不符、两侧相态或温压域不合格，断言诊断能定位到工况及相关侧别／流股。相态和域问题保留如 `equipment.h3.flow.not_single_liquid`、`equipment.h3.flow.outside_phase_domain` 的应用层诊断码。同 ID 同版本但载荷不同的场景由应用层的可替换 provider 用例验证拒绝。至少一例实际流程运行失败和一例 H3 计算失败检查底层诊断及 `failed`，并检查没有 `current` 数值。 |
+| 磁盘只读 | 在隔离目录记录工程、请求和物性资产原始字节及目录条目，覆盖查询、成功、超限、拒绝和失败。每次进程退出后复核文件和目录一致，覆盖缓存、偏好、布局和输出文件。 |
+
+2026-11-22 macOS arm64 上新增六项真实进程验收，两档匹配上表，v13 兼容回归、资格拒绝、失败回执和磁盘保护通过。 [W47 验收记录](../../devlogs/2026-11/2026-W47.md#2026-11-22-h3-流程关联-cli-v14)
 
 ## 接下来事项
 
-1. **建议先评审 CLI 的只读关联复核。** 由新协议显式启用关联能力。查询展示 v4 文件中已保存的冷热流股引用、来源和重开后的 `Missing` 状态。显式动作在当前请求内接收流程结果，再用同一份快照执行一条关联工况。评审时冻结已评审纯水资格的取得方式、工程与流股身份守卫、运行回执及诊断。用真实 CLI 进程验收 40／50 mol/s 两档、旧协议保护、失败诊断和原文件字节一致。 [v13 兼容基线](../../reference/headless-cli.md#h3-同心套管校核-cli-v13)
-2. **Studio 关联复核另审。** 先评审如何展示已保存的侧别、流股与相态依据，以及重开、显式运行和复算之间的状态。验收覆盖超限保留结果、诊断定位、中英文键盘路径与 macOS 代表实窗。 [已验独立复核](#h3-studio-只读复核)
+**Studio 关联复核另审。** 先评审如何展示已保存的侧别、流股与相态依据，以及重开、显式运行和复算之间的状态。验收覆盖超限保留结果、诊断定位、中英文键盘路径与 macOS 代表实窗。 [已验独立复核](#h3-studio-只读复核)

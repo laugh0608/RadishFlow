@@ -1,5 +1,5 @@
 pub(crate) mod flow_plan;
-mod h3_flow_review;
+pub(crate) mod h3_flow_review;
 mod h3_review;
 mod object_identities;
 mod plan_save;

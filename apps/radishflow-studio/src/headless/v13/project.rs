@@ -94,7 +94,7 @@ pub(super) fn load_project(
     }
 }
 
-pub(super) fn check_expected(
+pub(in crate::headless) fn check_expected(
     project: &ProjectSnapshot,
     expected: &ExpectedProject,
 ) -> Result<(), Failure> {
@@ -115,7 +115,7 @@ pub(super) fn check_expected(
     Ok(())
 }
 
-pub(super) fn read_only(stage: Stage) -> Failure {
+pub(in crate::headless) fn read_only(stage: Stage) -> Failure {
     let mut error = Failure::new(
         stage,
         Code::ReadOnlyProject,

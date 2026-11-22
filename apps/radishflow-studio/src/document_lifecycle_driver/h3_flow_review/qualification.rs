@@ -59,9 +59,11 @@ impl H3PureWaterQualification {
             .execution()
             .and_then(|execution| execution.package.as_ref())
             .is_some_and(|package| {
-                package.package_id == self.package_id
-                    && package.version == self.package_version
-                    && package.payload_fingerprint == self.payload_fingerprint
+                self.matches_package(
+                    &package.package_id,
+                    &package.version,
+                    &package.payload_fingerprint,
+                )
             });
         if !matches {
             return Err(rejected(
@@ -70,6 +72,12 @@ impl H3PureWaterQualification {
             ));
         }
         Ok(())
+    }
+
+    pub(super) fn matches_package(&self, id: &str, version: &str, fingerprint: &str) -> bool {
+        id == self.package_id
+            && version == self.package_version
+            && fingerprint == self.payload_fingerprint
     }
 
     pub(super) fn inlet(
@@ -191,7 +199,7 @@ impl H3PureWaterQualification {
     }
 }
 
-fn bounds(
+pub(super) fn bounds(
     domain: ConcentricTubeLiquidDomain,
 ) -> Option<(RangeInclusive<f64>, RangeInclusive<f64>)> {
     fn interval(low: f64, high: f64) -> Option<RangeInclusive<f64>> {
