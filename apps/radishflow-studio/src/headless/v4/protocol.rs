@@ -3,6 +3,7 @@ use super::super::v3::{
     actions::{self as old, Port, RevisionRef},
     protocol::{self as common, *},
 };
+use rf_store::project_v4::StoredTearInitialization;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 use std::path::PathBuf;
@@ -29,6 +30,22 @@ pub struct ComponentValue {
 pub enum Initialization {
     ZeroComponentFlows,
     ComponentFlows { values: Vec<ComponentValue> },
+}
+impl From<StoredTearInitialization> for Initialization {
+    fn from(initialization: StoredTearInitialization) -> Self {
+        match initialization {
+            StoredTearInitialization::ZeroComponentFlows => Self::ZeroComponentFlows,
+            StoredTearInitialization::ComponentFlows { values_mol_s } => Self::ComponentFlows {
+                values: values_mol_s
+                    .into_iter()
+                    .map(|value| ComponentValue {
+                        component_id: value.component_id.into_inner(),
+                        value_mol_s: value.value,
+                    })
+                    .collect(),
+            },
+        }
+    }
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]

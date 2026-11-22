@@ -12,7 +12,7 @@
 
 **M2 已验证内存执行、共享运行接收、v4 保存、CLI v9 与 Studio 首片。** 见 [算例与验收](#m2首个跨块回流算例与验收)、[工程保存](#正式计划与工程保存)、[CLI 接入](#m2-cli-首片评审)和 [Studio 接入](#m2-studio-界面接入评审)。
 
-[M3 串联回流区](mixed-serial-recycle.md)已完成核心、共享运行接收及 [v4 保存](mixed-serial-recycle.md#v4-工程保存评审)的本机验证，消费者接入另审。
+[M3 串联回流区](mixed-serial-recycle.md)已完成核心、共享运行接收及 [v4 保存](mixed-serial-recycle.md#v4-工程保存评审)的本机验证。[CLI v15](mixed-serial-recycle.md#cli-v15-接入评审)已通过实际保存产物的协议兼容与显式运行验收，Studio 接入留到下一批。
 
 ## 用户价值与首批出口
 

@@ -4,10 +4,11 @@ mod project;
 mod records;
 
 use super::{
+    project_file::{check_expected, read_only},
+    request::JsonObject,
     v3::{self, actions::ExpectedProject, protocol::*},
     v13::{
-        CaseTarget, ExpectedRevisions, JsonObject, Query, QueryKind, QueryRequest, ResultScope,
-        project::{check_expected, read_only},
+        CaseTarget, ExpectedRevisions, Query, QueryKind, QueryRequest, ResultScope,
         records as h3_records, reply_queries,
     },
 };

@@ -3,46 +3,21 @@
 pub(super) mod project;
 pub(super) mod records;
 
-use super::v3::{self, actions::ExpectedProject, protocol::*};
-use project::{check_expected, load_project, read_only};
+use super::{
+    project_file::{check_expected, read_only},
+    request::JsonObject,
+    v3::{self, actions::ExpectedProject, protocol::*},
+};
+use project::load_project;
 use rf_model::equipment::ConcentricTubeRatingTask;
 use rf_store::project_v3::StoredEngineeringInputs;
 use rf_types::{EngineeringCaseId, EquipmentTaskId};
 use rf_ui::engineering::concentric_tube::{RatingRevisions, SavedRatingError, rate_saved_case};
-use serde::{
-    Deserialize, Deserializer,
-    de::{MapAccess, Visitor, value::MapAccessDeserializer},
-};
+use serde::Deserialize;
 use serde_json::{Value, json};
-use std::{
-    fmt,
-    marker::PhantomData,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 pub(super) const VERSION: u32 = 13;
-
-// Derived struct decoders also accept positional sequences. This protocol
-// requires named JSON objects for request records and identity references.
-#[derive(PartialEq, Eq)]
-pub(super) struct JsonObject<T>(pub(super) T);
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for JsonObject<T> {
-    fn deserialize<D: Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
-        struct ObjectVisitor<T>(PhantomData<T>);
-        impl<'de, T: Deserialize<'de>> Visitor<'de> for ObjectVisitor<T> {
-            type Value = JsonObject<T>;
-
-            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.write_str("a JSON object")
-            }
-
-            fn visit_map<M: MapAccess<'de>>(self, map: M) -> Result<Self::Value, M::Error> {
-                T::deserialize(MapAccessDeserializer::new(map)).map(JsonObject)
-            }
-        }
-        de.deserialize_map(ObjectVisitor(PhantomData))
-    }
-}
 
 #[derive(Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]

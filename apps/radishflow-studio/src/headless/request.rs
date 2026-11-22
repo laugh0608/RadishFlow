@@ -1,7 +1,10 @@
 //! Strict versioned wire requests, normalized without changing v1's contract.
 use super::{Failure, failure, protocol::*, workflow::*};
-use serde::Deserialize;
-use std::path::PathBuf;
+use serde::{
+    Deserialize, Deserializer,
+    de::{MapAccess, Visitor, value::MapAccessDeserializer},
+};
+use std::{fmt, marker::PhantomData, path::PathBuf};
 
 pub struct ExecutionRequest {
     pub schema_version: u32,
@@ -79,4 +82,26 @@ pub fn parse(bytes: &[u8]) -> Result<ExecutionRequest, Failure> {
 }
 fn invalid_json(error: serde_json::Error) -> Failure {
     failure("request", "invalid_json", error.to_string())
+}
+
+// Derived struct decoders also accept positional sequences. This protocol
+// requires named JSON objects for request records and identity references.
+#[derive(PartialEq, Eq)]
+pub(super) struct JsonObject<T>(pub(super) T);
+impl<'de, T: Deserialize<'de>> Deserialize<'de> for JsonObject<T> {
+    fn deserialize<D: Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
+        struct ObjectVisitor<T>(PhantomData<T>);
+        impl<'de, T: Deserialize<'de>> Visitor<'de> for ObjectVisitor<T> {
+            type Value = JsonObject<T>;
+
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("a JSON object")
+            }
+
+            fn visit_map<M: MapAccess<'de>>(self, map: M) -> Result<Self::Value, M::Error> {
+                T::deserialize(MapAccessDeserializer::new(map)).map(JsonObject)
+            }
+        }
+        de.deserialize_map(ObjectVisitor(PhantomData))
+    }
 }

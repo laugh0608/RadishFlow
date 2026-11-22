@@ -1,11 +1,15 @@
 //! Read-only-on-disk automation for a saved v4 mixed-recycle plan.
 pub(super) mod results;
 
-use super::{engine, planned::invalid, v3 as old};
+use super::{
+    engine,
+    planned::{invalid, validate_saved_flow_run},
+    v3 as old,
+};
 use crate::StudioProjectOpen;
 use old::{
-    actions::{ExpectedProject, FlowResources, RevisionRef},
-    protocol::{Code, Failure, ObjectRef, Output, Response, Stage, Status},
+    actions::{ExpectedProject, FlowResources},
+    protocol::{Code, Failure, ObjectRef, Response, Stage, Status},
     references::{Bindings, Executions},
 };
 use rf_store::project_v4::{self, FlowPlanSupport, ObjectIdentitySupport};
@@ -158,7 +162,11 @@ pub(super) fn execute_file(
         response,
         &mut Bindings::default(),
         |app, refs, _, step| {
-            validate_run(app, refs, &step.action)?;
+            let RunAction::RunFlow {
+                expected_revision,
+                expected_plan_revision,
+            } = step.action;
+            validate_saved_flow_run(app, refs, expected_revision, expected_plan_revision)?;
             let mut run = old::runs::execute_flow(
                 app,
                 &step.id,
@@ -212,33 +220,6 @@ fn require_m2(app: &AppState) -> Result<(), Failure> {
             "v9 requires a saved mixed-recycle plan",
         ))
     }
-}
-
-fn validate_run(app: &AppState, refs: &Bindings, action: &RunAction) -> Result<(), Failure> {
-    let RunAction::RunFlow {
-        expected_revision,
-        expected_plan_revision,
-    } = *action;
-    let workspace = &app.workspace;
-    refs.revision(
-        &RevisionRef::Number(expected_revision),
-        Output::Document,
-        workspace.document.metadata.document_id.as_str(),
-        workspace.document.revision,
-    )?;
-    let actual = workspace.flow_plan.revision();
-    if expected_plan_revision != actual {
-        let mut error = Failure::new(Stage::Step, Code::RecordConflict, "plan revision differs");
-        error.details = Some(Box::new(json!({
-            "owner": "plan", "expected": expected_plan_revision, "actual": actual,
-        })));
-        return Err(error);
-    }
-    workspace
-        .flow_plan
-        .current()
-        .validate_for(&workspace.document.flowsheet)
-        .map_err(|error| old::errors::blocked(results::plan_diagnostic(&error), error.to_string()))
 }
 
 fn queries(app: &AppState, queries: &[Query], executions: &Executions, response: &mut Response) {

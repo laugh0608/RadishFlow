@@ -2,7 +2,7 @@
 
 更新时间：2026-11-22
 
-面向本地脚本与适配器的 CLI v1–v14 参考。
+面向本地脚本与适配器的 CLI v1–v15 参考。
 
 ## 版本与兼容边界
 
@@ -19,6 +19,8 @@ v10 支持 [终端产品组成反算](../topics/modeling/equation-oriented-block
 v13 复核已保存的独立同心套管校核任务。 [v13 查询与复算](#h3-同心套管校核-cli-v13)
 
 v14 查询 v4 保存的 H3 流股关联，并从一次显式稳态运行的快照复核一个纯水工况。 [v14 请求、回执与兼容边界](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联-cli-v14)
+
+v15 查询并显式运行 v4 保存的 M3 串联回流计划。每个独立查询会话从 `missing` 开始。 [v15 请求、回执与验收](../topics/modeling/mixed-serial-recycle.md#cli-v15-接入评审)
 
 v2 增加创建、连接和步骤引用。工程与请求独立版本化，v1／v2 按 SI 读写。 [单位存储](../topics/units/unit-sets-and-persistence.md#u2-存储接口)
 

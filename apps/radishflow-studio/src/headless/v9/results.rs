@@ -2,8 +2,8 @@ use super::{FlowPlanSupport, old};
 use crate::{
     flow_plan_actions::{runtime_configuration_sha256, stored_flow_plan_with_support},
     headless::{
-        planned::domain,
-        v4::protocol::{ComponentValue, Initialization},
+        planned::{domain, plan_diagnostic},
+        v4::protocol::Initialization,
         v7::plan::wire_blocks,
     },
     mixed_result_projection,
@@ -12,9 +12,7 @@ use old::{
     protocol::{Code, Failure, Stage},
     references::Executions,
 };
-use rf_store::project_v4::{
-    MIXED_RECYCLE_CAPABILITY, MIXED_RECYCLE_METHOD, StoredFlowPlan, StoredTearInitialization,
-};
+use rf_store::project_v4::{MIXED_RECYCLE_CAPABILITY, MIXED_RECYCLE_METHOD, StoredFlowPlan};
 use rf_types::RfError;
 use rf_ui::{AppState, FlowResultRecord, result_query::FlowResultView};
 use serde_json::{Value, json};
@@ -47,20 +45,6 @@ pub(in crate::headless) fn wire(
         ));
     };
     let tear = stored.tear;
-    let initialization = match tear.initialization {
-        StoredTearInitialization::ZeroComponentFlows => Initialization::ZeroComponentFlows,
-        StoredTearInitialization::ComponentFlows { values_mol_s } => {
-            Initialization::ComponentFlows {
-                values: values_mol_s
-                    .into_iter()
-                    .map(|value| ComponentValue {
-                        component_id: value.component_id.into_inner(),
-                        value_mol_s: value.value,
-                    })
-                    .collect(),
-            }
-        }
-    };
     Ok(json!({
             "method": MIXED_RECYCLE_METHOD,
             "acceptance_contract_version": 1,
@@ -72,25 +56,10 @@ pub(in crate::headless) fn wire(
                 "stream_id": tear.stream_id,
                 "source": { "unit_id": tear.source.unit_id, "port": tear.source.port },
                 "sink": { "unit_id": tear.sink.unit_id, "port": tear.sink.port },
-                "initialization": initialization,
+                "initialization": Initialization::from(tear.initialization),
                 "residual_scaling": { "kind": "evaluated_fresh_total" },
             },
     }))
-}
-
-pub(super) fn plan_diagnostic(error: &RfError) -> Value {
-    let context = error.context();
-    json!({
-        "code": context.diagnostic_code(),
-        "message": error.to_string(),
-        "unit_ids": context.related_unit_ids(),
-        "stream_ids": context.related_stream_ids(),
-        "component_ids": context.related_component_ids(),
-        "ports": context.related_port_targets().iter().map(|port| json!({
-            "unit_id": port.unit_id,
-            "port": port.port_name,
-        })).collect::<Vec<_>>(),
-    })
 }
 
 pub(in crate::headless) fn flow(app: &AppState, executions: &Executions) -> Result<Value, Failure> {

@@ -4,7 +4,7 @@
 
 用途：定义串联回流的工程算例、独立基准、求解范围与验收条件。读者：solver、共享运行和工程验证维护者。不包含：同一区多撕裂、嵌套回流、热或相平衡方程、自动分区、持久化和消费者接入。
 
-**核心、共享运行接收及 v4 工程保存已完成本机验收。** 现有整图正向 EO 已完成算例对照，消费者接入另审。 [QS4 混合分区](mixed-partition-execution.md)
+**核心、共享运行接收、v4 工程保存与 CLI v15 已完成本机验收。** Studio 接入安排在下一批。 [QS4 混合分区](mixed-partition-execution.md)
 
 ## 工程问题与连接
 
@@ -147,3 +147,89 @@
 | 显式重跑和回归 | 从同一真实保存产物发起共享手动运行，验证新身份、A→B 交接、13 股基准、两区及整图守恒，通过后发布 `Current`。将 A 预算改为 1 的另一个产物只返回失败诊断，B 零调用。补取消拒收，跑 M1／M2 的既有读写、结果和协议回归以及锁定离线全仓检查 |
 
 实际保存产物及移除标记的副本在冻结 `946a99fe` 的 Rust 读写器中均整份只读，保留原字节并拒绝序列化、另存及覆盖。另存的 M2 可由同一旧读写器打开。实际 M3 文件重开后配置摘要一致且保持 `Missing`，显式运行通过两区及整图复核后发布新 `Current`。 [保存验收记录](../../devlogs/2026-11/2026-W47.md#2026-11-22-qs4-m3-v4-工程保存实现与验收)
+
+## CLI v15 接入评审
+
+**已批准并完成本机验收。** `schema_version: 15` 使用显式 M3 读者加载已保存的 v4 工程，经共享正式运行执行，通过 stdout 返回结果。工程外层、M3 方法／能力及验收契约沿用保存批的定义。已有各版本继续按各自的支持范围打开文件。 [现有协议分派](../../../apps/radishflow-studio/src/headless/v3/mod.rs) · [M2 v9 接入](mixed-partition-execution.md#m2-cli-首片评审)
+
+### 请求与执行顺序
+
+| 入口 | v15 词汇 |
+| --- | --- |
+| `--headless query` | `schema_version`、`project`、`queries`。允许 `queries: []` 查看工程头。`results` 只支持 `scope: flow_plan` 和 `scope: flow`。无需物性包或授权索引 |
+| `--headless execute` | 同样带 `schema_version`、`project`、`queries`，另外必填 `expected_project`、`flow_resources` 和**恰好一个** `run_flow` 步骤。`expected_project` 取查询得到的 `document_id` 和原始 `file_sha256`。步骤必填 `expected_revision`、`expected_plan_revision`，均为无符号整数 |
+
+一个执行请求产生一个明确的运行步骤来源。再次计算使用独立 `execute`。查询与执行沿用 `project`／`steps`／`queries`／`error` 响应外层。请求记录使用命名对象，位置数组、未知键、重复键、空白或重复查询 ID、空步骤 ID、空路径与不支持动作在请求校验时拒绝。各路径相对请求文件目录，`flow_resources` 使用既有 `cache_root`、`auth_cache_index` 和 `package` 语法，支持 `preferred` 或明确指定的已授权本地包。范围限定为已保存工程的发现、显式运行和结果复核，建模、编辑计划、写工程、后台取消和稳定变量读取保留在各自入口。
+
+执行顺序为请求校验、同次读取工程与原字节 SHA-256、核对文档 ID 与指纹、整份只读门禁、M3 方法判定、两个修订、共享图就绪性、加载本地资源、手动运行。执行通过现有 `run_flow` 动作、结果发布与接收资格。就绪性命中真实静态诊断时在资源读取前阻断，并可在当前请求的末尾查询看到 `not_ready` 和 `missing`。保护中的工程只返回安全工程头与错误。已识别为 v15 的响应使用 `schema_version: 15`，版本识别前的错误沿用公共解析入口。 [共享读入与指纹](../../../apps/radishflow-studio/src/headless/v3/mod.rs) · [正式运行回执](../../../apps/radishflow-studio/src/headless/v3/runs.rs)
+
+### 旧版边界
+
+| 场景 | 读取与执行 |
+| --- | --- |
+| CLI v1／v2 `run` 与 v3 读取 M3 v4 | 现有外层版本门禁拒绝，不建立工作区。实际产物的 v1／v2 `run` 在 project 阶段退出 2，v3 query 返回 `unsupported_capability`／退出 2 |
+| CLI v4—v14 读取已保存 M3 | 各版本支持的查询遵循原只读协议。工程头 `read_only: true`，指纹对应原文件。M3 能力标记缺失时仍由未知方法门禁保护。只读查询仅提供各协议允许的安全元数据。可执行版本的执行请求在项目只读门禁阻断，v8 沿用只提供稳定变量查询的范围 |
+| v15 读取 M3 v4 | 支持 M3 的正式计划、已知对象身份和关注清单。须满足独立设备能力门禁。未知的必需能力、方法或正契约版本返回整份只读。`query` 仅提供安全元数据和原因，`execute` 返回 `read_only_project`／退出 3 |
+| v15 读取其他已知可编辑计划 | 返回 `unsupported_capability`／退出 2，工程头按文件实际状态显示。已知 M3 v1 的字段坏损或缺少／错配 M3 能力声明返回 `invalid_project`／退出 2 |
+| 实施前冻结构建收到 v15 | 请求阶段返回 `unsupported_version`／退出 2，工程尚未读取 |
+
+### 查询和结果资格
+
+- **计划。** `results(flow_plan)` 返回 `plan_revision`、`configuration_sha256`、`ready`、`not_ready` 与 `configuration`。配置含 M3 方法 `radishflow.fixed-tp-mixed-serial-recycle/1`、必需能力及验收契约、固定温压、块成员、尺度规则和 `recycle_regions`。计划列表按撕裂流股 ID 规范化。每区含独立预算、源／汇端口及初值。显式初值的列表项为 `component_id` 与 `value_mol_s`，单位和字段采用现有 CLI 规则。`not_ready` 复用共享诊断中的代码及单元、流股、端口和组分身份。配置摘要来自规范化运行计划，工程字节指纹来自入口文件。
+- **打开与重复查询。** 每次独立 `query` 都建立新文件会话。已就绪的计划可以伴随 `results(flow)` 的 `{ "status": "missing", "reason": "no_result" }`，此时无 `fields`、`streams`、`origin.execution` 或计算证据。一次 `execute` 成功后，再启动 `query` 仍是 `missing`。
+- **成功。** 只有显式 `run_flow` 获得已接收的成功回执，`steps[0].result` 与本请求末尾的 `results(flow)` 才均返回 `current`。`origin.execution` 带同一请求内 `step`、`scope: request`、实际 solver／物性包来源，以及该次执行方法、必需能力、验收版本和配置摘要。投影使用 `execution_kind: mixed_serial_recycle`，产出真实生产者 `streams`、`blocks`、`boundaries`、`global_material`、`costs` 和按实际依赖排序的 `recycle_regions`。先有 A 区独立复核及衡算，再传递实际产出给 B 区。两区和整图均通过后才可接收整个结果。
+- **区域和边界。** 结果区域带 `equation_block_id`、`stream_id`、`inlet_stream_id`、候选预算、实际 `component_scales_mol_s`、`residual_trace`、`last_sweep` 和 `region_material`。候选和独立复核沿用 `iteration`／`verification` 标识，轨迹包含 `evaluation`、`max_absolute_mol_s` 和 `max_scaled`。最终撕裂汇端 `assumed` 与源端 `returned` 分别保留，逐组分残差为返回减试值。普通边界记录真实生产／消费两端。区域衡算的 `inlet_components_mol_s` 和 `outlet_components_mol_s` 包含本区外部物料，B 区的入口含转供。全局 `fresh_components_mol_s` 仅计两股外部 Feed，`product_components_mol_s` 仅计三股终端流，衡算残差为流出减流入。
+- **失败。** 文档 ID、指纹或修订冲突各返回 `different_document`、`project_conflict` 或 `record_conflict`，退出 2。已知未就绪配置返回 `action_rejected`／退出 3，保持 `missing`。资源或运行准备失败沿用 `run_start_failed`／退出 4，已接收的求解失败使用 `run_failed`／退出 4。预算耗尽等数值失败返回 `failed`，已完成块、真实区域试值、残差及局部调用量只出现在 `diagnostic_evidence`，连同失败阶段和定位身份。只有完成了区域衡算的报告带该证据。成功投影须为有限数，诊断非有限值沿用 `non_finite` 标记。 [混合结果证据](../../../apps/radishflow-studio/src/mixed_result_projection.rs) · [CLI 基础结果资格](../../../apps/radishflow-studio/src/headless/v3/results.rs)
+
+### 实际保存产物与验收表
+
+基准使用保存批由应用写入的 `saved-m3.rfproj.json`，工程 ID 为 `example-qs4-serial-recycle-eo-reference`，外层 v4，输入修订 0。A 区 `s-ra` 保存零初值与预算 100，B 区 `s-rb` 保存 `(2, 3)` mol/s 的甲烷／乙烷初值与预算 240。实际文件 SHA-256 为 `d8b2c39a179205a607dc6645b8cc30f47dc5a7c0017bbec85ae865c119444808`，运行配置摘要为 `ccd5307a18c46753616ffb42116bf0eb7b8dfcf41668e5100f024dadc07dd4e7`。应用层以该文件的逐字节相同副本重开得到 `Missing`，显式运行后得到 13 股 `Current`，两区最大绝对闭合残差实测 `6.38e-12`、`2.62e-11 mol/s`。v15 的实际回执与该独立对照一致。 [已有保存与运行验收](../../devlogs/2026-11/2026-W47.md#2026-11-22-qs4-m3-v4-工程保存实现与验收) · [旧协议预检](../../devlogs/2026-11/2026-W47.md#2026-11-22-qs4-m3-cli-v15-评审预检)
+
+以下 `query` 请求读取同目录的实际保存文件。
+
+```json
+{
+  "schema_version": 15,
+  "project": "saved-m3.rfproj.json",
+  "queries": [
+    { "id": "plan", "query": { "kind": "results", "scope": "flow_plan" } },
+    { "id": "flow", "query": { "kind": "results", "scope": "flow" } }
+  ]
+}
+```
+
+以下 `execute` 请求使用同一文件的 ID、指纹和初始修订。本地缓存路径需对应已授权测试包。
+
+```json
+{
+  "schema_version": 15,
+  "project": "saved-m3.rfproj.json",
+  "expected_project": {
+    "document_id": "example-qs4-serial-recycle-eo-reference",
+    "file_sha256": "d8b2c39a179205a607dc6645b8cc30f47dc5a7c0017bbec85ae865c119444808"
+  },
+  "flow_resources": {
+    "cache_root": "./property-package-cache",
+    "auth_cache_index": "./auth-cache-index.json",
+    "package": { "kind": "preferred" }
+  },
+  "steps": [
+    { "id": "solve", "action": { "kind": "run_flow", "expected_revision": 0, "expected_plan_revision": 0 } }
+  ],
+  "queries": [
+    { "id": "plan", "query": { "kind": "results", "scope": "flow_plan" } },
+    { "id": "flow", "query": { "kind": "results", "scope": "flow" } }
+  ]
+}
+```
+
+| 场景 | 通过条件 |
+| --- | --- |
+| 文件发现与 `Missing` | 对实际产物执行 v15 真进程 `query`，同时取 `flow_plan` 和 `flow`。工程头 v4、同一原始指纹且 `read_only: false`。配置摘要与应用层相同，两条撕裂、100／240 次预算和混合初值准确。`ready: true` 与 `missing` 同时成立。没有包缓存的环境中仍通过 |
+| 显式重跑发布 | 用查询的 ID、指纹与两个修订提交单个步骤。步骤回执和最终查询均 `current`，`origin.execution.step` 相同，实际包来源和配置摘要相同。按独立基准核对 13 股、`s-ab` 与 `s-bf` 两端实际值、A→B 顺序、两区各一次最终复核。撕裂及区域和全局的逐组分绝对误差门槛为 `1e-10 mol/s`，缩放门槛为 `1e-10`，全局总量残差 `≤ 2e-10 mol/s`。终端产品合计 `(4, 6)` mol/s，逐股分量误差 `≤ 1e-9 mol/s`。再次开进程查询仍为 `missing` |
+| 失败结果与诊断 | 由应用 writer 各另存一份 A 或 B 预算为 1 的 M3。首次查询均为 `missing`，显式执行为退出 4／`failed`。A 失败时 B 补料、转供和 B 块零调用。B 失败时能查看诊断里的已复核 A，但正式结果无 `streams` 或 `fields`。用核心既有故障用例加投影测试核对闭合通过而整图守恒失败、诊断的非有限标记以及拒收不发布 `current` |
+| 早期拒绝与就绪检查 | 用真实格式的失效撕裂文件复核 `flow_plan.ready: false` 与同一定位诊断。用不存在的授权索引验证错文档 ID、改单字节、两个修订冲突和未就绪均先于资源读取。合法文件和修订搭配缺失资源则进入 `run_start_failed`，无当前数值 |
+| 请求严格性与方法边界 | 对真实产物测试未知／重复键、位置数组替代对象、空或多步执行、禁止的动作和查询词汇。v15 读取实际 M2 另存产物时拒绝错方法。对 M3 移除标记后，支持 v15 的读者返回 `invalid_project`，v4—v14 仍走只读。未知正能力版本只给安全元数据 |
+| 旧协议和磁盘 | 固定 `2212ad64` 与实施后构建分别重放实际 M3 及去标记副本的 v4—v14 查询，以及所有支持执行的旧版本的早期拒绝。v8 在请求版本门禁拒绝 `execute`。用实际 M2 副本跑 v9 查询及代表执行，保留原协议形状。对成功、失败、启动拒绝和连续独立查询逐字节核对工程、缓存、授权索引、偏好和布局，目录无新增结果文件。完成真实 CLI 进程定向测试及锁定离线全仓检查 |
+
+macOS 本机重放通过。两份 M3 产物在冻结构建和当前构建的 v4–v14 查询均整份只读，每个构建覆盖 22 次查询、20 次项目级执行拒绝和两次 v8 请求级拒绝。v15 依次得到 `missing → current → missing`。A、B 区分别进行 14、35 次候选求值并各完成一次独立复核。13 股组分流量的最大解析偏差为 `5.58e-11 mol/s`，全局总流量残差为 `−3.97e-11 mol/s`。应用 writer 保存的 A／B 预算不足用例分别验证上游失败不执行下游，以及下游失败时已复核 A 仅见于诊断。 [实际回执与运行记录](../../devlogs/2026-11/2026-W47.md#2026-11-22-qs4-m3-cli-v15-实现与验收)

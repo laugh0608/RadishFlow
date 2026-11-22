@@ -209,11 +209,11 @@ pub(super) fn load_project_with_support(
 }
 fn query_file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     let (version, bytes) = read_request(path)?;
-    if !matches!(version, 3..=super::v14::VERSION) {
+    if !matches!(version, 3..=super::v15::VERSION) {
         return Err(Failure::new(
             Stage::Request,
             Code::UnsupportedVersion,
-            "query requires schema_version 3 through 14",
+            "query requires schema_version 3 through 15",
         ));
     }
     response.schema_version = version;
@@ -236,6 +236,7 @@ fn query_file(path: &Path, response: &mut Response) -> Result<(), Failure> {
         }
         super::v13::VERSION => super::v13::query_file(path, &bytes, response),
         super::v14::VERSION => super::v14::query_file(path, &bytes, response),
+        super::v15::VERSION => super::v15::query_file(path, &bytes, response),
         _ => unreachable!("validated query version"),
     }
 }
