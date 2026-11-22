@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 
 mod catalog_compatibility;
 mod control;
+mod sensible_enthalpy;
 
 use rf_flash::PlaceholderTpFlashSolver;
 use rf_model::{

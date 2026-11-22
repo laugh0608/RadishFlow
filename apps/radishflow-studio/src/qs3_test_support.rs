@@ -15,14 +15,14 @@ pub(crate) fn options(inverse: bool) -> EquationOptions {
             upper: 0.95,
             max_iterations: 64,
         });
-        o.target = Some(ProductTotalTarget {
+        o.target = Some(ProductTarget::TotalMolarFlow(ProductTotalTarget {
             source: PortBinding {
                 unit: "splitter-1".into(),
                 port: MaterialPort::OutletB,
                 stream: "s-pa".into(),
             },
             value_mol_s: 1.5,
-        });
+        }));
     }
     o
 }

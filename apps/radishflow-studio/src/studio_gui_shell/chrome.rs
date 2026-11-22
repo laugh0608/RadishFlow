@@ -1,4 +1,7 @@
 use super::*;
+use flow_diagnostics::RunDiagnosticSurface;
+
+mod status;
 
 impl ReadyAppState {
     pub(super) fn render_top_bar(
@@ -57,6 +60,7 @@ impl ReadyAppState {
                 self.render_tools_top_menu(ui, windows, current_window_id, window);
                 self.render_settings_top_menu(ui);
             });
+            self.render_flow_page_context(ui, window);
             let context_toolbar = match self.screen {
                 StudioShellScreen::Property => Some(&window.property_context_toolbar),
                 StudioShellScreen::Workbench => Some(&window.flowsheet_context_toolbar),
@@ -74,6 +78,9 @@ impl ReadyAppState {
             if self.screen != StudioShellScreen::Equipment {
                 self.render_failure_recovery_action(ui, window);
             }
+            self.render_run_diagnostic_return_notice(ui, RunDiagnosticSurface::Toolbar);
+            self.render_run_diagnostic_return(ui);
+            self.render_flow_path_return(ui);
             self.render_project_operation_strip(ui);
             if self.screen != StudioShellScreen::Equipment
                 && !window.commands.menu_tree.is_empty()
@@ -156,22 +163,7 @@ impl ReadyAppState {
                 }
             }
         });
-        if !toolbar.status_items.is_empty() {
-            ui.horizontal_wrapped(|ui| {
-                for status in &toolbar.status_items {
-                    ui.small(format!(
-                        "{}: {}",
-                        self.locale.runtime_label(status.label),
-                        self.locale.runtime_label(&status.value)
-                    ));
-                    render_status_chip(
-                        ui,
-                        self.locale.runtime_label(&status.status_label).as_ref(),
-                        context_toolbar_status_color(&status.status_label),
-                    );
-                }
-            });
-        }
+        self.render_context_toolbar_statuses(ui, toolbar);
     }
 
     fn render_context_toolbar_item(
@@ -349,12 +341,12 @@ impl ReadyAppState {
         ui.selectable_value(
             &mut self.screen,
             StudioShellScreen::Run,
-            self.locale.text(ShellText::Run),
+            self.locale.text(ShellText::FlowsheetRun),
         );
         ui.selectable_value(
             &mut self.screen,
             StudioShellScreen::Results,
-            self.locale.text(ShellText::Results),
+            self.locale.text(ShellText::FlowsheetResults),
         );
     }
 
@@ -395,8 +387,7 @@ impl ReadyAppState {
         }
 
         if ui.button("变量浏览器 / Variable Browser").clicked() {
-            self.command_palette.close();
-            self.variable_browser.open = true;
+            self.open_variable_browser();
             ui.close_menu();
         }
 
@@ -522,10 +513,10 @@ impl ReadyAppState {
             StudioGuiWindowDockRegion::LeftSidebar,
         )
         .clamp(240.0, 280.0);
+        // Layout state owns these non-draggable widths. default_width would
+        // preserve egui's old panel width after a layout or viewport change.
         egui::SidePanel::left("studio.left_sidebar")
-            .default_width(left_width)
-            .min_width(240.0)
-            .max_width(280.0)
+            .exact_width(left_width)
             .resizable(false)
             .show(ctx, |ui| {
                 self.render_left_workbench(ui, window);
@@ -546,9 +537,7 @@ impl ReadyAppState {
         .clamp(340.0, 420.0);
         let problem_width = ctx.available_rect().width() - right_width - 16.0;
         egui::SidePanel::right("studio.right_sidebar")
-            .default_width(right_width)
-            .min_width(340.0)
-            .max_width(420.0)
+            .exact_width(right_width)
             .resizable(false)
             .show(ctx, |ui| {
                 self.prepare_modeling_problem_field_layout(
@@ -585,134 +574,16 @@ impl ReadyAppState {
                     ui.separator();
                     egui::ScrollArea::vertical()
                         .id_salt("background-run-log-scroll")
-                        .show(ui, |ui| self.render_bottom_run_log(ui, window));
+                        .show(ui, |ui| {
+                            self.render_bottom_run_log(ui, window);
+                            self.render_run_diagnostic_return_notice(
+                                ui,
+                                RunDiagnosticSurface::Drawer,
+                            );
+                        });
                 } else {
                     self.render_bottom_workbench(ui, window);
                 }
-            });
-    }
-
-    pub(super) fn render_bottom_status_bar(
-        &mut self,
-        ctx: &egui::Context,
-        window: &StudioGuiWindowModel,
-    ) {
-        egui::TopBottomPanel::bottom("studio.status_bar")
-            .min_height(30.0)
-            .resizable(false)
-            .show(ctx, |ui| {
-                ui.horizontal_wrapped(|ui| {
-                    self.render_modeling_draft_access(ui);
-                    ui.separator();
-                    ui.small(
-                        egui::RichText::new(self.locale.runtime_label("Run").as_ref()).strong(),
-                    );
-                    if let Some(metric) = window
-                        .status_summary
-                        .metrics
-                        .iter()
-                        .find(|metric| metric.label == "Run")
-                    {
-                        render_status_chip(
-                            ui,
-                            self.locale.runtime_label(&metric.status_label).as_ref(),
-                            run_status_color(&metric.status_label),
-                        );
-                    }
-                    ui.separator();
-                    ui.small(
-                        egui::RichText::new(self.locale.runtime_label("Snapshot").as_ref())
-                            .strong(),
-                    );
-                    render_status_chip(
-                        ui,
-                        self.locale
-                            .runtime_label(window.status_summary.snapshot_consistency_label)
-                            .as_ref(),
-                        context_toolbar_status_color(
-                            window.status_summary.snapshot_consistency_label,
-                        ),
-                    );
-                    ui.separator();
-                    ui.small(super::unit_settings::project_units_label(
-                        self.locale,
-                        window
-                            .runtime
-                            .workspace_document
-                            .presentation
-                            .display_units(),
-                    ));
-                    ui.separator();
-                    ui.small(
-                        if matches!(
-                            self.platform_host
-                                .modeling_inputs()
-                                .workspace
-                                .flow_plan
-                                .current(),
-                            rf_ui::flow_plan::FlowPlanConfiguration::Partitioned(_)
-                        ) {
-                            if self.locale == StudioShellLocale::ZhCn {
-                                "求解器: 分块回流（固定温压）"
-                            } else {
-                                "Solver: Partitioned recycle (fixed T/P)"
-                            }
-                        } else if matches!(
-                            self.platform_host
-                                .modeling_inputs()
-                                .workspace
-                                .flow_plan
-                                .current(),
-                            rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
-                        ) {
-                            if self.locale == StudioShellLocale::ZhCn {
-                                "求解器: 固定温压仿射联立模块"
-                            } else {
-                                "Solver: Fixed-T/P affine modular"
-                            }
-                        } else {
-                            if matches!(
-                                self.platform_host
-                                    .modeling_inputs()
-                                    .workspace
-                                    .flow_plan
-                                    .current(),
-                                rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
-                            ) {
-                                if self.locale == StudioShellLocale::ZhCn {
-                                    "求解器: 固定温压物料方程"
-                                } else {
-                                    "Solver: Fixed-T/P material equations"
-                                }
-                            } else if matches!(
-                                self.platform_host
-                                    .modeling_inputs()
-                                    .workspace
-                                    .flow_plan
-                                    .current(),
-                                rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
-                            ) {
-                                if self.locale == StudioShellLocale::ZhCn {
-                                    "求解器: 固定温压混合分区"
-                                } else {
-                                    "Solver: Fixed-T/P mixed material"
-                                }
-                            } else {
-                                self.locale.text(ShellText::SolverSequentialModular)
-                            }
-                        },
-                    );
-                    ui.separator();
-                    ui.small(self.locale.text(ShellText::FlowsheetMode));
-                    if let Some(selection) = window.canvas.widget.view().current_selection.as_ref()
-                    {
-                        ui.separator();
-                        ui.small(
-                            self.locale
-                                .selected_target(selection.kind_label, &selection.target_id),
-                        );
-                    }
-                });
             });
     }
 
@@ -814,6 +685,29 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         document: &radishflow_studio::StudioGuiWorkspaceDocumentSnapshot,
     ) {
+        if matches!(
+            self.platform_host
+                .modeling_inputs()
+                .workspace
+                .flow_plan
+                .current(),
+            rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(_)
+                | rf_ui::flow_plan::FlowPlanConfiguration::SinglePhaseRecycle(_)
+        ) {
+            self.render_project_tree_row(
+                ui,
+                super::locale::tr(self.locale, "物性来源", "Property source"),
+                super::locale::tr(
+                    self.locale,
+                    "工程气相常热容",
+                    "Project vapor heat capacities",
+                ),
+                None,
+            );
+            ui.add_space(6.0);
+            self.render_project_components(ui, document);
+            return;
+        }
         let property_package_summary = document
             .property_package_choices
             .iter()
@@ -1073,7 +967,7 @@ impl ReadyAppState {
             .on_hover_text(&item.detail);
         if response.clicked() {
             self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
-            self.dispatch_ui_command(&item.command_id);
+            self.select_canvas_stream(&item.command_id);
         }
         if let Some(summary) = item.attention_summary.as_ref() {
             render_wrapped_small(ui, summary);
@@ -1245,6 +1139,7 @@ impl ReadyAppState {
     }
 
     fn render_right_workbench(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
+        let old_tab = self.right_sidebar_tab;
         ui.horizontal_wrapped(|ui| {
             ui.selectable_value(
                 &mut self.right_sidebar_tab,
@@ -1261,8 +1156,27 @@ impl ReadyAppState {
                 StudioShellRightSidebarTab::ModuleResults,
                 self.locale.runtime_label("Module Results").as_ref(),
             );
+            ui.selectable_value(
+                &mut self.right_sidebar_tab,
+                StudioShellRightSidebarTab::Variables,
+                if self.locale == StudioShellLocale::ZhCn {
+                    "变量浏览器"
+                } else {
+                    "Variables"
+                },
+            );
         });
         ui.separator();
+        if self.right_sidebar_tab == StudioShellRightSidebarTab::Variables {
+            self.variable_browser.open = true;
+            self.variable_browser.mode = variable_browser::BrowserMode::Side;
+            self.render_variable_browser_content(ui);
+            return;
+        }
+        if old_tab == StudioShellRightSidebarTab::Variables {
+            self.variable_browser.open = false;
+        }
+        self.render_browser_return(ui);
         egui::ScrollArea::vertical()
             .id_salt(format!(
                 "scroll:{}:right-workbench",
@@ -1294,6 +1208,7 @@ impl ReadyAppState {
                     StudioShellRightSidebarTab::ModuleResults => {
                         self.render_runtime_module_results_tab(ui, window)
                     }
+                    StudioShellRightSidebarTab::Variables => unreachable!("browser rendered above"),
                 }
             });
     }
@@ -1473,21 +1388,24 @@ impl ReadyAppState {
                 self.modeling_problem_scroll_page()
             ))
             .auto_shrink([false, false])
-            .show(ui, |ui| match self.bottom_drawer_tab {
-                StudioShellBottomDrawerTab::Messages => self.render_bottom_messages(ui, window),
-                StudioShellBottomDrawerTab::RunLog => self.render_bottom_run_log(ui, window),
-                StudioShellBottomDrawerTab::Convergence => {
-                    self.render_bottom_convergence(ui, window)
+            .show(ui, |ui| {
+                match self.bottom_drawer_tab {
+                    StudioShellBottomDrawerTab::Messages => self.render_bottom_messages(ui, window),
+                    StudioShellBottomDrawerTab::RunLog => self.render_bottom_run_log(ui, window),
+                    StudioShellBottomDrawerTab::Convergence => {
+                        self.render_bottom_convergence(ui, window)
+                    }
+                    StudioShellBottomDrawerTab::Suggestions => {
+                        self.render_bottom_suggestions(ui, window)
+                    }
+                    StudioShellBottomDrawerTab::Diagnostics => {
+                        self.render_modeling_problems(ui, window)
+                    }
+                    StudioShellBottomDrawerTab::ResultsTable => {
+                        self.render_bottom_results_table(ui, window)
+                    }
                 }
-                StudioShellBottomDrawerTab::Suggestions => {
-                    self.render_bottom_suggestions(ui, window)
-                }
-                StudioShellBottomDrawerTab::Diagnostics => {
-                    self.render_modeling_problems(ui, window)
-                }
-                StudioShellBottomDrawerTab::ResultsTable => {
-                    self.render_bottom_results_table(ui, window)
-                }
+                self.render_run_diagnostic_return_notice(ui, RunDiagnosticSurface::Drawer);
             });
     }
 
@@ -1735,7 +1653,11 @@ impl ReadyAppState {
                 });
                 render_wrapped_label(ui, &diagnostic.message);
                 if !diagnostic.diagnostic_actions.is_empty() {
-                    self.render_diagnostic_target_actions(ui, &diagnostic.diagnostic_actions);
+                    self.render_run_diagnostic_actions(
+                        ui,
+                        &diagnostic.diagnostic_actions,
+                        RunDiagnosticSurface::Drawer,
+                    );
                 }
                 if index + 1 < snapshot.diagnostics.len() {
                     ui.separator();
@@ -1789,6 +1711,7 @@ impl ReadyAppState {
         window: &StudioGuiWindowModel,
     ) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            self.render_browser_return(ui);
             self.render_property_workspace_page(ui, window);
         });
     }

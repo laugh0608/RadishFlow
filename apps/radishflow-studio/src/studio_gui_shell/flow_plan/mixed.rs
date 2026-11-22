@@ -6,9 +6,10 @@ impl ReadyAppState {
         ui: &mut egui::Ui,
         draft: &mut FlowPlanDraft,
         o: &mut MixedOptions,
+        bindings: &[TearSpecification],
     ) -> bool {
         let zh = self.locale == StudioShellLocale::ZhCn;
-        ui.small(tr(zh,"显式分区：每个单元恰属一块；块间须为 DAG。Local 单单元，EO 仅固定比例正向物料方程。","Explicit partition: each unit belongs to one block; the block graph must be a DAG. Local has one unit; EO supports forward fixed-fraction material equations."));
+        ui.small(tr(zh,"每个单元恰属一块。Local 单单元，EO 使用固定比例正向物料方程。","Each unit belongs to one block. Local has one unit; EO uses forward fixed-fraction material equations."));
         let mut apply = false;
         for (field, title, value, unit) in [
             (
@@ -32,7 +33,8 @@ impl ReadyAppState {
                 value,
                 unit,
                 &mut self.flow_plan.notice,
-            );
+            )
+            .is_some();
         }
         let can_change = !draft.has_modified_numbers();
         let flow = self.platform_host.document().flowsheet.clone();
@@ -90,11 +92,11 @@ impl ReadyAppState {
                         ui.collapsing(tr(zh,"完整显式变量 / 残差尺度","Complete explicit variable / residual scales"),|ui| {
                             for (binding,v) in &s.variables {
                                 ui.label(format!("{binding:?}"));
-                                apply |= number(ui,draft,FlowPlanNumericField::MixedVariableScale { block:b.id.clone(),binding:binding.clone() },tr(zh,"变量尺度","Variable scale"),*v,MeasurementUnit::MolePerSecond,&mut self.flow_plan.notice);
+                                apply |= number(ui,draft,FlowPlanNumericField::MixedVariableScale { block:b.id.clone(),binding:binding.clone() },tr(zh,"变量尺度","Variable scale"),*v,MeasurementUnit::MolePerSecond,&mut self.flow_plan.notice).is_some();
                             }
                             for (binding,v) in &s.equations {
                                 ui.label(format!("{binding:?}"));
-                                apply |= number(ui,draft,FlowPlanNumericField::MixedResidualScale { block:b.id.clone(),binding:binding.clone() },tr(zh,"残差尺度","Residual scale"),*v,MeasurementUnit::MolePerSecond,&mut self.flow_plan.notice);
+                                apply |= number(ui,draft,FlowPlanNumericField::MixedResidualScale { block:b.id.clone(),binding:binding.clone() },tr(zh,"残差尺度","Residual scale"),*v,MeasurementUnit::MolePerSecond,&mut self.flow_plan.notice).is_some();
                             }
                         });
                     }
@@ -126,10 +128,16 @@ impl ReadyAppState {
                 method: MixedBlockMethod::Local,
             });
         }
+        apply |= self.render_mixed_recycle_options(ui, draft, o, &flow, bindings);
         match assemble(&flow, o) {
             Ok(p) => {
                 ui.label(format!(
-                    "DAG: {}",
+                    "{}: {}",
+                    if o.recycle.is_some() {
+                        tr(zh, "切开撕裂后的块顺序", "Block order after the tear")
+                    } else {
+                        "DAG"
+                    },
                     p.blocks()
                         .iter()
                         .map(|b| b.id.as_str())

@@ -90,7 +90,9 @@ impl<'a> ProjectQuery<'a> {
                 .collect(),
             ProjectRecord::Basis(_) => vec![ProjectField::BasisValue],
             ProjectRecord::Source(_)
-            | ProjectRecord::Equipment(EquipmentTask::SeparatorRating(_)) => Vec::new(),
+            | ProjectRecord::Equipment(
+                EquipmentTask::SeparatorRating(_) | EquipmentTask::ConcentricTubeRating(_),
+            ) => Vec::new(),
         };
         fields
             .into_iter()

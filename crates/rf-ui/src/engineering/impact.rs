@@ -152,6 +152,7 @@ fn task_recipe(task: &EquipmentTask) -> EquipmentTask {
                 c.purpose.clear();
             }
         }
+        EquipmentTask::ConcentricTubeRating(_) => unreachable!("validated engineering session"),
     }
     recipe
 }

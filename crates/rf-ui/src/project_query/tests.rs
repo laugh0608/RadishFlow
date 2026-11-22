@@ -215,7 +215,8 @@ fn input_context_detects_equal_revision_flow_forks_but_ignores_run_cancellation(
             },
             flow,
             UNIX_EPOCH,
-        );
+        )
+        .unwrap();
     }
     assert_eq!(
         app.workspace.document.revision,

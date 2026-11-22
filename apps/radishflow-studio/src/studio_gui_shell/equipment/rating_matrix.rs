@@ -75,7 +75,7 @@ impl ReadyAppState {
         session: &EngineeringSession,
         units: &DisplayUnitSet,
         commands: &mut Vec<EquipmentEditorCommand>,
-        export: &mut Option<(EquipmentExportTarget, CalculationTableFormat)>,
+        export: &mut Option<EquipmentExportRequest>,
         wide: bool,
     ) {
         let l = self.locale;
@@ -177,7 +177,10 @@ impl ReadyAppState {
                     )
                     .clicked()
                 {
-                    *export = Some((EquipmentExportTarget::Matrix(task.id.clone()), format));
+                    *export = Some(EquipmentExportRequest::Matrix {
+                        task: task.id.clone(),
+                        format,
+                    });
                 }
             }
             if ui.button(tr(l, "给定几何", "Given geometry")).clicked() {

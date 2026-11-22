@@ -1,11 +1,20 @@
 use super::*;
-use rf_solver::equation_oriented::{EquationOptions, VariableBinding};
+use rf_solver::equation_oriented::{EquationOptions, ProductTarget as Target, VariableBinding};
 pub(super) fn applies_to(field: &FlowPlanNumericField, plan: &FlowPlanConfiguration) -> bool {
     use FlowPlanNumericField::*;
     match (plan, field) {
         (FlowPlanConfiguration::Acyclic, _) => false,
         (_, Temperature | Pressure) => true,
         (FlowPlanConfiguration::Partitioned(_), IterationBudget) => true,
+        (FlowPlanConfiguration::Mixed(o), IterationBudget) => o.recycle.is_some(),
+        (FlowPlanConfiguration::Mixed(o), InitialComponent { stream, component }) => o
+            .recycle
+            .as_ref()
+            .is_some_and(|recycle| {
+                &recycle.tear.stream_id == stream
+                    && recycle.tear.initial_component_flows_mol_s.as_ref()
+                        .is_some_and(|values| values.contains_key(component))
+            }),
         (FlowPlanConfiguration::Partitioned(o), InitialComponent { stream, component }) => {
             o.tears.iter().any(|t| {
                 &t.stream_id == stream
@@ -31,7 +40,10 @@ pub(super) fn applies_to(field: &FlowPlanNumericField, plan: &FlowPlanConfigurat
             ReleasedLower(b) | ReleasedUpper(b) | BisectionBudget(b),
         ) => o.released.as_ref().is_some_and(|r| &r.binding == b),
         (FlowPlanConfiguration::EquationOriented(o), ProductTarget(b)) => {
-            o.target.as_ref().is_some_and(|t| &t.source == b)
+            o.target.as_ref().and_then(|t| t.total_flow()).is_some_and(|t| &t.source == b)
+        }
+        (FlowPlanConfiguration::EquationOriented(o), ProductMoleFraction { source, component }) => {
+            matches!(&o.target, Some(Target::MoleFraction(t)) if &t.source == source && &t.component == component)
         }
         (FlowPlanConfiguration::EquationOriented(o), EquationVariableScale(b)) => o
             .scales
@@ -79,9 +91,19 @@ pub(super) fn apply(
         ProductTarget(b) => {
             o.target
                 .as_mut()
+                .and_then(|t| t.total_flow_mut())
                 .filter(|t| &t.source == b)
                 .ok_or_else(invalid)?
                 .value_mol_s = value
+        }
+        ProductMoleFraction { source, component } => {
+            let Some(Target::MoleFraction(target)) = &mut o.target else {
+                return Err(invalid());
+            };
+            if &target.source != source || &target.component != component {
+                return Err(invalid());
+            }
+            target.value_mol_mol = value;
         }
         EquationVariableScale(b) => {
             *o.scales

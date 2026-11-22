@@ -540,7 +540,8 @@ fn workspace_browser_rejects_foreign_origin_and_hides_same_revision_fork_values(
             },
             flow,
             std::time::UNIX_EPOCH,
-        );
+        )
+        .unwrap();
     }
     let snapshot = result(&left.workspace.document);
     left.store_snapshot(snapshot);

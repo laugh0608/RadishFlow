@@ -32,7 +32,10 @@ impl StudioGuiHost {
     }
 
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
-        let controller = StudioAppHostController::new(config)?;
+        Self::from_controller(StudioAppHostController::new(config)?)
+    }
+
+    pub(crate) fn from_controller(controller: StudioAppHostController) -> RfResult<Self> {
         let layout_state_overrides = match controller.document_path() {
             Some(project_path) => load_persisted_window_layouts(project_path)?,
             None => BTreeMap::new(),
@@ -1621,6 +1624,7 @@ fn workspace_document_snapshot_from_controller(
                     },
                 }
             })
+            .chain(crate::studio_project_component_selection::saved_single_phase_components(controller.app_state()))
             .collect(),
         unit_count: document.flowsheet.units.len(),
         stream_count: document.flowsheet.streams.len(),

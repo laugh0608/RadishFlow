@@ -6,11 +6,13 @@
 - 为后续真正的 CAPE-OPEN Unit Operation PMC 留出项目边界和最小状态机
 - 提供最小内部 flowsheet/package 配置入口，并通过 `RadishFlow.CapeOpen.Adapter` 接入 `rf-ffi` 求解闭环
 
-当前已确认的宿主兼容性现状：
+2026-11-13 起采用严格单入口 / 单出口：宿主 Feed 必须真实读取，Product 必须完成宿主平衡和回读，取消隐式合并与失败兜底。本机验证通过、Windows / PME 待验；契约与状态见 [PMC 专题](../../../docs/topics/capeopen-pmc-adapter.md#物料边界与成功语义治理)。
+
+以下为 2026-04 的宿主兼容性历史，不覆盖新物料契约：
 
 - `DWSIM / COFE` 已能发现当前 PMC；先前 Windows PowerShell 5 晚绑定 `IDispatch` 探测中的 `0x80131165 Type library is not registered` 当前已不再复现
 - `DWSIM / COFE` 当前均已能正常放置 unit，并连接 `Feed / Product` material streams；COFE 关闭 case 时的 material object release warning 已消失，water/ethanol 复验样例下已能完成 `Validate / Calculate` 并收敛
-- COFE Product material 写回当前优先走最小 `ICapeThermoMaterial` / `ICapeThermoEquilibriumRoutine`，计算前会在可安全读取时用 connected `Feed` material 的 `temperature / pressure / totalFlow / fraction` 临时覆盖 native boundary input，避免自包含 flowsheet JSON 与 PME 入口物料不一致导致 mass balance 警告
+- 当时通过入口物料覆盖与出口平衡处理了 COFE mass balance 警告；该实现已被本轮严格物料契约替代，旧样例需按单出口 runbook 复验。
 - DWSIM 当前真实消费顺序已收敛为 `InitNew -> Initialize -> SimulationContext set -> identification set -> Ports -> Parameters`；因此 `ICapeUtilities` vtable 前序必须保持 `Parameters get -> SimulationContext set -> Initialize -> Terminate -> Edit`，并把 COFE 需要的 `SimulationContext` getter 保留为 `Edit` 之后的同 `DispId(2)` late-bound getter
 - 对照本地 DWSIM `CapeOpenUO.GetParams()` 后，当前已确认 DWSIM 会把 `myparms.Item(i)` 返回的参数对象本身直接 cast 成 `ICapeParameterSpec`、type-specific spec 与 `ICapeParameter`；因此 parameter placeholder 本身也实现 `ICapeParameterSpec` 与 `ICapeOptionParameterSpec`，同时继续保留标准 `Specification` 对象入口
 - 当前 `Validate()` 在未配置 `Flowsheet Json` 等 MVP 必填参数时返回 invalid 是预期行为，不再归类为 discovery、activation、placement 或 port connection 失败
@@ -92,7 +94,7 @@
 说明：
 
 - 当前 `Ports` / `Parameters` 已返回带 `Item(object)` 和 `Count()` 的最小 `ICapeCollection` 风格对象，并支持按 `ComponentName` 或 1-based 索引取项
-- 当前参数对象已提供最小 `ICapeParameter` + `ICapeParameterSpec` 语义，端口对象已提供最小 `ICapeUnitPort` 语义，但仍只覆盖 MVP 所需的字符串参数和占位连接对象
+- 当前参数对象已提供最小 `ICapeParameter` + `ICapeParameterSpec` 语义，端口对象已提供最小 `ICapeUnitPort` 语义，仍只覆盖 MVP 所需的字符串参数；计算连接对象必须提供真实物料接口，只有标识的占位对象不能通过 Validate
 - 当前 `ICapeCollection.Item(object)` 已冻结为“1-based 整数索引或 component name”双入口；除 `int/long` 外，也接受能无损落到整数的 `double/float/decimal` 选择子，以贴近 COM 宿主可能传入的数值 Variant 形状；空白名称、越界索引和非整数数值仍按 `CapeInvalidArgumentException` 拒绝
 - 在 COM 兼容的 `Item(object)` 之外，当前 `UnitOperationParameterCollection` / `UnitOperationPortCollection` 继续复用同一套 typed runtime collection 主通路：`ContainsName(...)`、`TryGetByName(...)`、`GetByName(...)` 与 `GetByOneBasedIndex(...)`；后续 `UnitOp.Mvp` 自身、contract tests 和 smoke host 应优先走这条强类型入口，而不是继续在内部到处手写 `ICapeCollection.Item(object)` 选择子
 - 当前 `ICapeCollection`、`ICapeParameter` 与 `ICapeUnitPort` 的 `ComponentName/ComponentDescription` 已冻结为运行时不可变元数据；宿主可以重复读取，但不能在 MVP runtime 中修改这些标识字段，从而保持 collection lookup、required port 规则与 stable detail key 不漂移

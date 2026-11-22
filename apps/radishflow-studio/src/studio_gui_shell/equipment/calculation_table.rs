@@ -15,7 +15,7 @@ mod rating;
 pub(super) use matrix::encode as encode_matrix;
 pub(super) use rating::encode as encode_rating;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::studio_gui_shell) enum CalculationTableFormat {
     Csv,
     Json,

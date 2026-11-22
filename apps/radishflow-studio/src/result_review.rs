@@ -28,6 +28,7 @@ enum FlowResultPayload {
     Simultaneous,
     EquationOriented,
     Mixed,
+    SinglePhaseRecycle,
 }
 impl FlowResultPayload {
     fn of(snapshot: &FlowResultRecord) -> Self {
@@ -37,6 +38,7 @@ impl FlowResultPayload {
             FlowResultRecord::Simultaneous(_) => Self::Simultaneous,
             FlowResultRecord::EquationOriented(_) => Self::EquationOriented,
             FlowResultRecord::Mixed(_) => Self::Mixed,
+            FlowResultRecord::SinglePhaseRecycle(_) => Self::SinglePhaseRecycle,
         }
     }
 }

@@ -14,7 +14,7 @@ use rf_property_package::{
     CachedPropertyPackageProvider, LocalThermoContext, PackageFailureKind, PackageLoadError,
     PropertyPackageProvider, prepare_local_context,
 };
-use rf_solver::{SequentialModularSolver, SolveFailureContext, SolverServices};
+use rf_solver::SolveFailureContext;
 use rf_store::StoredAuthCacheIndex;
 use rf_types::{RfError, RfResult};
 use rf_ui::{AppLogLevel, AppState, DiagnosticSeverity, DiagnosticSummary, RunStatus};

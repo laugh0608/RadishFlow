@@ -48,6 +48,10 @@ internal static class ContractTestExecutable
         var options = ContractTestOptions.Parse(args);
         var tests = new (string Name, Action<ContractTestContext> Execute)[]
         {
+            ("material-boundary-configuration", ContractTests.MaterialBoundary_RejectsUnsupportedConfiguration),
+            ("material-boundary-mapping", ContractTests.MaterialBoundary_MapsCompleteCompoundSets),
+            ("material-boundary-recovery", ContractTests.MaterialBoundary_FailureAndRecovery),
+            ("material-boundary-protocol", ContractTests.MaterialBoundary_SelectsProtocolBeforeCalls),
             ("assembly-com-identity-contract", static _ => ContractTests.AssemblyComIdentity_StaysAlignedWithTypeLibraryRegistration()),
             ("registration-plan-contract", static _ => ContractTests.RegistrationPlan_ExposesGuardedExecutionBoundary()),
             ("registration-execute-confirm-contract", static _ => ContractTests.RegistrationExecution_RequiresMatchingConfirmToken()),
@@ -87,12 +91,15 @@ internal static class ContractTestExecutable
 
         var selectedTests = tests
             .Where(test => string.Equals(options.TestFilter, "all", StringComparison.OrdinalIgnoreCase) ||
-                           string.Equals(test.Name, options.TestFilter, StringComparison.OrdinalIgnoreCase))
+                           string.Equals(test.Name, options.TestFilter, StringComparison.OrdinalIgnoreCase) ||
+                           (options.TestFilter == "material-boundary" && test.Name.StartsWith("material-boundary-", StringComparison.Ordinal)) ||
+                           (options.TestFilter == "managed" && !test.Name.StartsWith("registration-", StringComparison.Ordinal) &&
+                            !test.Name.StartsWith("pme-", StringComparison.Ordinal)))
             .ToArray();
         if (selectedTests.Length == 0)
         {
             throw new ArgumentException(
-                $"Unsupported contract test `{options.TestFilter}`. Supported values: all|{string.Join("|", tests.Select(test => test.Name))}.");
+                $"Unsupported contract test `{options.TestFilter}`. Supported values: all|managed|material-boundary|{string.Join("|", tests.Select(test => test.Name))}.");
         }
 
         var failures = new List<string>();

@@ -14,6 +14,7 @@ use rf_store::project_v4::*;
 use rf_ui::{AppState, flow_plan::FlowPlanConfiguration};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Value, json};
+pub(super) const METHOD: &str = "radishflow.fixed-tp-material-eo/1";
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Interval {
@@ -76,24 +77,24 @@ pub struct Scale<B> {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
-pub enum Scaling {
+pub enum Scaling<E = Equation> {
     EvaluatedFreshTotal,
     ExplicitEquations {
         variables: Vec<Scale<Variable>>,
-        equations: Vec<Scale<Equation>>,
+        equations: Vec<Scale<E>>,
     },
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
-pub enum EquationPlan {
+pub enum EquationPlan<S = Specification, E = Equation> {
     #[serde(rename = "radishflow.fixed-tp-material-eo/1")]
     EquationOriented {
         equation_contract_version: u32,
         acceptance_contract_version: u32,
         temperature_k: f64,
         pressure_pa: f64,
-        specifications: Vec<Specification>,
-        scaling: Scaling,
+        specifications: Vec<S>,
+        scaling: Scaling<E>,
     },
 }
 #[derive(Debug, Clone)]
@@ -112,7 +113,7 @@ impl Serialize for Plan {
 impl<'de> Deserialize<'de> for Plan {
     fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let value = Value::deserialize(d)?;
-        if value["method"] == "radishflow.fixed-tp-material-eo/1" {
+        if value["method"] == METHOD {
             serde_json::from_value(value)
                 .map(Self::EquationOriented)
                 .map_err(serde::de::Error::custom)

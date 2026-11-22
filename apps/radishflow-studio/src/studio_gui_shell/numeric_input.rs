@@ -14,8 +14,29 @@ struct TypingGroup {
     direction: Option<bool>,
 }
 
+#[derive(Clone, Copy, Default)]
+pub(super) enum NumericEditSurface {
+    #[default]
+    Inspector,
+    Browser {
+        focus: bool,
+    },
+    BrowserBatch {
+        focus: bool,
+    },
+}
+
 impl ReadyAppState {
     fn refresh_numeric_field(&self, field: &mut NumericFieldPresentation) {
+        if !self.numeric_workspace_matches(field) {
+            field.issue = Some(NumericFieldIssue::Rejected(
+                rf_ui::NumericEditError::MissingSession,
+            ));
+            field.can_apply = false;
+            field.can_undo = false;
+            field.can_redo = false;
+            return;
+        }
         match self
             .platform_host
             .numeric_field_presentation(&field.variable, field.view)
@@ -35,6 +56,10 @@ impl ReadyAppState {
         field: &mut NumericFieldPresentation,
         command: NumericEditCommand,
     ) -> bool {
+        if !self.numeric_workspace_matches(field) {
+            self.refresh_numeric_field(field);
+            return false;
+        }
         let Some(window_id) = self.current_window_id() else {
             return false;
         };
@@ -47,6 +72,16 @@ impl ReadyAppState {
             self.platform_host.record_activity_line(error.to_string());
         }
         result.is_ok()
+    }
+
+    fn numeric_workspace_matches(&self, field: &NumericFieldPresentation) -> bool {
+        field.workspace.same_session(
+            &self
+                .platform_host
+                .modeling_inputs()
+                .workspace
+                .flow_run_qualification(),
+        )
     }
 
     fn begin_numeric_field(&mut self, field: &mut NumericFieldPresentation) -> bool {
@@ -100,7 +135,28 @@ impl ReadyAppState {
         label: &str,
         original: &NumericFieldPresentation,
     ) {
+        self.render_numeric_editor(ui, key, label, original, NumericEditSurface::Inspector);
+    }
+
+    pub(super) fn render_numeric_editor(
+        &mut self,
+        ui: &mut egui::Ui,
+        key: &str,
+        label: &str,
+        original: &NumericFieldPresentation,
+        surface: NumericEditSurface,
+    ) {
         let id = ui.make_persistent_id(("numeric-input", &original.variable.document, key));
+        if matches!(
+            surface,
+            NumericEditSurface::Browser { focus: true }
+                | NumericEditSurface::BrowserBatch { focus: true }
+        ) {
+            // The Enter activating Edit belongs to that button, not the newly
+            // mounted TextEdit (which otherwise immediately loses focus).
+            ui.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Enter));
+            ui.memory_mut(|memory| memory.request_focus(id));
+        }
         ui.scope(|ui| {
             // First migration is explicitly light, independent of the OS / surrounding theme.
             ui.set_style({
@@ -112,7 +168,7 @@ impl ReadyAppState {
                 .fill(StudioStateTokens::SURFACE)
                 .inner_margin(8.0)
                 .show(ui, |ui| {
-                    self.render_numeric_field_contents(ui, id, label, original);
+                    self.render_numeric_field_contents(ui, id, label, original, surface);
                 });
         });
     }
@@ -123,9 +179,11 @@ impl ReadyAppState {
         id: egui::Id,
         label: &str,
         original: &NumericFieldPresentation,
+        surface: NumericEditSurface,
     ) {
         let mut field = original.clone();
         self.refresh_numeric_field(&mut field);
+        let batch = matches!(surface, NumericEditSurface::BrowserBatch { .. });
         let zh = matches!(self.locale, StudioShellLocale::ZhCn);
         let group_id = id.with("typing");
         let mut group =
@@ -174,7 +232,7 @@ impl ReadyAppState {
                 let escape = !popup_open
                     && !ime_guard
                     && input.consume_key(egui::Modifiers::NONE, egui::Key::Escape);
-                if ime_guard {
+                if ime_guard || batch {
                     input.consume_key(egui::Modifiers::NONE, egui::Key::Enter);
                 }
                 (undo, redo, escape)
@@ -191,7 +249,9 @@ impl ReadyAppState {
                 group = TypingGroup::default();
             }
             if escape {
-                self.cancel_numeric_field(&mut field);
+                if !batch {
+                    self.cancel_numeric_field(&mut field);
+                }
                 ui.memory_mut(|memory| memory.surrender_focus(id));
                 group = TypingGroup::default();
             }
@@ -237,7 +297,18 @@ impl ReadyAppState {
         let input_frame = output.response.rect + input_margin;
         ui.add_space(6.0);
         let response = output.response;
-        let located = self.apply_specification_field_focus(&response, &field.variable);
+        let located = match surface {
+            NumericEditSurface::Inspector => {
+                self.apply_specification_field_focus(&response, &field.variable)
+                    | self.apply_browser_field_focus(&response, &field.variable)
+            }
+            NumericEditSurface::Browser { focus } | NumericEditSurface::BrowserBatch { focus } => {
+                focus
+            }
+        };
+        if batch && located {
+            response.scroll_to_me(Some(egui::Align::Center));
+        }
         if response.has_focus() {
             ui.data_mut(|data| data.insert_temp(egui::Id::new("numeric-keyboard-owner"), id));
             ui.memory_mut(|memory| {
@@ -397,7 +468,7 @@ impl ReadyAppState {
                 } else {
                     format!("{label} input unit")
                 };
-                let selection = super::unit_selector::unit_selector(
+                let selection = super::choice_selector::choice_selector(
                     ui,
                     id.with("unit"),
                     &accessible_label,
@@ -414,7 +485,9 @@ impl ReadyAppState {
                         input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)
                     })
                 {
-                    self.cancel_numeric_field(&mut field);
+                    if !batch {
+                        self.cancel_numeric_field(&mut field);
+                    }
                     response.request_focus();
                     group = TypingGroup::default();
                 }
@@ -422,6 +495,9 @@ impl ReadyAppState {
         });
         if let Some(unit) = selected_unit {
             self.edit_numeric_field(&mut field, NumericEditEvent::SelectInputUnit(unit));
+            if !matches!(surface, NumericEditSurface::Inspector) {
+                response.request_focus();
+            }
             group = TypingGroup::default();
         }
         ui.colored_label(
@@ -444,18 +520,20 @@ impl ReadyAppState {
             ),
         );
         let enter = !located
+            && !batch
             && !ime_guard
             && response.lost_focus()
             && ui.input(|input| {
                 input.key_pressed(egui::Key::Enter) && input.modifiers == egui::Modifiers::NONE
             });
         ui.horizontal_wrapped(|ui| {
-            let apply = ui
-                .add_enabled(
-                    !ime_guard && field.can_apply,
-                    egui::Button::new(if zh { "应用" } else { "Apply" }),
-                )
-                .clicked();
+            let apply = !batch
+                && ui
+                    .add_enabled(
+                        !ime_guard && field.can_apply,
+                        egui::Button::new(if zh { "应用" } else { "Apply" }),
+                    )
+                    .clicked();
             if !ime_guard && field.can_apply && (enter || apply) {
                 let command = NumericEditCommand::Commit {
                     variable: field.variable.clone(),
@@ -509,20 +587,23 @@ impl ReadyAppState {
                     self.cancel_numeric_field(&mut field);
                     self.begin_numeric_field(&mut field);
                 }
-                if ui
-                    .button(if zh {
-                        "保留候选并重验"
-                    } else {
-                        "Revalidate my candidate"
-                    })
-                    .clicked()
+                if matches!(surface, NumericEditSurface::Inspector)
+                    && ui
+                        .button(if zh {
+                            "保留候选并重验"
+                        } else {
+                            "Revalidate my candidate"
+                        })
+                        .clicked()
                 {
                     self.edit_numeric_field(&mut field, NumericEditEvent::Rebase);
                 }
             });
         }
-        // An untouched focus session should not freeze display units after focus moves away.
-        if response.lost_focus()
+        // Inspector starts sessions implicitly on focus; release untouched ones.
+        // Browser Edit is explicit and must survive Tab to its unit selector.
+        if matches!(surface, NumericEditSurface::Inspector)
+            && response.lost_focus()
             && !field.pending
             && !field.can_undo
             && !field.can_redo

@@ -77,7 +77,7 @@ fn equation_save_reopen_preserves_bound_scales_units_and_missing_results() {
             .workspace
             .flow_plan
             .current()
-            .validate_for(&reopened.workspace)
+            .validate_for(&reopened.workspace.document.flowsheet)
             .is_ok()
     );
     assert_eq!(
@@ -116,6 +116,7 @@ fn v4_save_as_checks_source_capabilities_and_keeps_all_baselines_on_failure() {
     let ProjectSaveCompatibility::FlowCapabilities {
         required,
         added_from_source,
+        ..
     } = compatibility
     else {
         panic!("same outer version must be a capability review")
@@ -181,4 +182,38 @@ fn v4_save_as_checks_source_capabilities_and_keeps_all_baselines_on_failure() {
         project_save_version(&load_project_app_state(&new_path).unwrap()),
         4
     );
+}
+
+#[test]
+fn composition_specs_and_scales_cannot_be_saved_by_v1_consumers() {
+    use rf_solver::equation_oriented::{
+        EquationBinding, ExplicitEquationScales, ProductMoleFractionTarget, ProductTarget,
+    };
+    let mut o = crate::qs3_test_support::options(true);
+    let source = o.target.as_ref().unwrap().source().clone();
+    let component = rf_types::ComponentId::new("methane");
+    o.target = Some(ProductTarget::MoleFraction(Box::new(
+        ProductMoleFractionTarget {
+            source: source.clone(),
+            component: component.clone(),
+            value_mol_mol: 0.35,
+        },
+    )));
+    let mut scales_only = crate::qs3_test_support::options(false);
+    scales_only.scales = Some(ExplicitEquationScales {
+        variables: Default::default(),
+        equations: [(
+            EquationBinding::ProductMoleFraction { source, component },
+            5.0,
+        )]
+        .into(),
+    });
+    for options in [o, scales_only] {
+        let plan = FlowPlanConfiguration::EquationOriented(options);
+        let storage = crate::flow_plan_actions::stored_flow_plan(&plan).unwrap_err();
+        assert_eq!(
+            storage.context().diagnostic_code(),
+            Some("workspace.plan.in_memory_only")
+        );
+    }
 }

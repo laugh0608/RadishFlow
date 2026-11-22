@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
 pub const EQUATION_ORIENTED_METHOD: &str = "radishflow.fixed-tp-material-eo";
+pub const PRODUCT_COMPOSITION_VERSION: u32 = 2;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StoredMaterialPort {
@@ -84,6 +85,11 @@ pub enum StoredEquationBinding {
         sink: StoredPortBinding,
         component_id: ComponentId,
     },
+    ProductMoleFraction {
+        stream_id: StreamId,
+        source: StoredPortBinding,
+        component_id: ComponentId,
+    },
     ProductTotal {
         stream_id: StreamId,
         source: StoredPortBinding,
@@ -124,6 +130,12 @@ pub enum StoredEquationSpecification {
         field: StoredEquationParameter,
         interval: StoredFractionInterval,
     },
+    ProductMoleFraction {
+        stream_id: StreamId,
+        source: StoredPortBinding,
+        component_id: ComponentId,
+        value_mol_mol: f64,
+    },
     ProductTotalMolarFlow {
         stream_id: StreamId,
         source: StoredPortBinding,
@@ -145,6 +157,14 @@ fn port_valid(p: &StoredPortBinding) -> bool {
             "inlet", "inlet_a", "inlet_b", "outlet", "outlet_a", "outlet_b",
         ]
         .contains(&p.port.as_str())
+}
+fn product_component_valid(
+    stream: &StreamId,
+    source: &StoredPortBinding,
+    component: &ComponentId,
+) -> bool {
+    nonblank(&[stream.as_str(), source.unit_id.as_str(), component.as_str()])
+        && matches!(source.port.as_str(), "outlet" | "outlet_a" | "outlet_b")
 }
 impl StoredEquationVariableBinding {
     fn valid(&self) -> bool {
@@ -190,6 +210,11 @@ impl StoredEquationBinding {
                     component_id.as_str(),
                 ]) && port_valid(sink)
             }
+            Self::ProductMoleFraction {
+                stream_id,
+                source,
+                component_id,
+            } => product_component_valid(stream_id, source, component_id),
             Self::ProductTotal { stream_id, source } => {
                 nonblank(&[stream_id.as_str()]) && port_valid(source)
             }
@@ -197,6 +222,20 @@ impl StoredEquationBinding {
     }
 }
 impl StoredEquationPlan {
+    /// Even an incomplete plan can refer to the new target row through its scales.
+    pub fn contract_version(&self) -> u32 {
+        let composition = self
+            .specifications
+            .iter()
+            .any(|s| matches!(s, StoredEquationSpecification::ProductMoleFraction { .. }))
+            || matches!(&self.scaling, StoredEquationScaling::ExplicitEquations {equations, ..}
+                if equations.iter().any(|s| matches!(s.binding, StoredEquationBinding::ProductMoleFraction { .. })));
+        if composition {
+            PRODUCT_COMPOSITION_VERSION
+        } else {
+            1
+        }
+    }
     pub fn validate(&self) -> RfResult<()> {
         let invalid = || {
             RfError::invalid_input(
@@ -226,6 +265,16 @@ impl StoredEquationPlan {
                         && interval.lower < interval.upper
                         && (1..=128).contains(&interval.max_iterations)
                 }
+                StoredEquationSpecification::ProductMoleFraction {
+                    stream_id,
+                    source,
+                    component_id,
+                    value_mol_mol,
+                } => {
+                    targets += 1;
+                    product_component_valid(stream_id, source, component_id)
+                        && (0.0..=1.0).contains(value_mol_mol)
+                }
                 StoredEquationSpecification::ProductTotalMolarFlow {
                     stream_id,
                     source,
@@ -248,7 +297,8 @@ impl StoredEquationPlan {
         let mut plan = self.clone();
         plan.specifications.sort_by_key(|s| match s {
             StoredEquationSpecification::ReleaseSplitFraction { .. } => 0,
-            StoredEquationSpecification::ProductTotalMolarFlow { .. } => 1,
+            StoredEquationSpecification::ProductTotalMolarFlow { .. }
+            | StoredEquationSpecification::ProductMoleFraction { .. } => 1,
         });
         if let StoredEquationScaling::ExplicitEquations {
             variables,

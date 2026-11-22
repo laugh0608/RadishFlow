@@ -43,6 +43,9 @@ impl ReadyAppState {
                     let response = ui
                         .add_enabled(current, egui::Button::new(&stream.label).frame(false))
                         .on_hover_text(&stream.stream_id);
+                    if current {
+                        self.focus_flow_path_result_row(&stream.stream_id, &response);
+                    }
                     if response.clicked()
                         && snapshot.result_guard.as_ref().is_some_and(|guard| {
                             guard.is_current(&self.platform_host.modeling_inputs().workspace)

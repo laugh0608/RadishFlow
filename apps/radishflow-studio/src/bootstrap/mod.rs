@@ -60,8 +60,10 @@ pub enum StudioBootstrapTrigger {
     WidgetAction(rf_ui::RunPanelActionId),
     WidgetRecoveryAction,
     DocumentLifecycle(crate::StudioDocumentLifecycleCommand),
+    VariableWatch(rf_ui::variable_browser::VariableWatchCommand),
     ProjectPresentation(rf_ui::ProjectPresentationCommand),
     NumericEdit(rf_ui::NumericEditCommand),
+    ApplyFeedMolarFlowBatch(rf_ui::CheckedFeedMolarFlowBatch),
     Equipment(rf_ui::engineering::editor::EquipmentEditorCommand),
     NewProjectDisplayUnits(rf_types::units::DisplayUnitSet),
     InspectorTarget(rf_ui::InspectorTarget),
@@ -150,6 +152,7 @@ pub enum StudioBootstrapDispatch {
     AppCommand(StudioAppCommandOutcome),
     RunPanelRecovery(RunPanelRecoveryOutcome),
     DocumentLifecycle(crate::DocumentLifecycleOutcome),
+    VariableWatch(rf_ui::variable_browser::VariableWatchOutcome),
     ProjectPresentation {
         changed: bool,
     },
@@ -158,6 +161,9 @@ pub enum StudioBootstrapDispatch {
         generation: Option<u64>,
         committed: Option<crate::flow_actions::FlowInputCommitSummary>,
     },
+    FeedMolarFlowBatchApplied(
+        Result<rf_ui::FeedMolarFlowBatchReceipt, rf_ui::FeedMolarFlowBatchError>,
+    ),
     InspectorTarget(crate::InspectorTargetFocusOutcome),
     ClearInspectorTarget(crate::InspectorTargetClearOutcome),
     InspectorDraftUpdate(crate::InspectorDraftUpdateOutcome),

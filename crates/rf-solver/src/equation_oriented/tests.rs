@@ -1,3 +1,4 @@
+mod composition;
 mod faults;
 mod numerical;
 use super::*;
@@ -51,14 +52,14 @@ pub(super) fn inverse_options() -> EquationOptions {
         upper: 0.95,
         max_iterations: 64,
     });
-    o.target = Some(ProductTotalTarget {
+    o.target = Some(ProductTarget::TotalMolarFlow(ProductTotalTarget {
         source: PortBinding {
             unit: "sa".into(),
             port: MaterialPort::OutletB,
             stream: "pa".into(),
         },
         value_mol_s: 1.5,
-    });
+    }));
     o
 }
 // Independent elimination of the two mixer balances, not a call to the
@@ -222,7 +223,13 @@ fn released_parameter_can_be_unspecified_and_all_explicit_scales_bind_exactly() 
 fn stale_target_wrong_model_unanchored_and_capacity_are_rejected_before_dense_allocation() {
     let flow = cross_recycle(0.6, 0.25);
     let mut o = inverse_options();
-    o.target.as_mut().unwrap().source.stream = "ab".into();
+    o.target
+        .as_mut()
+        .unwrap()
+        .total_flow_mut()
+        .unwrap()
+        .source
+        .stream = "ab".into();
     assert_eq!(
         assemble(&flow, &o).unwrap_err().kind,
         EquationFailureKind::InvalidBinding

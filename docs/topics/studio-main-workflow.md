@@ -1,6 +1,6 @@
 # Studio 主工作台与空白项目建模主路径
 
-更新时间：2026-11-05
+更新时间：2026-11-21
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -30,14 +30,16 @@
 
 已完成：
 
-- Home、独立 `物性` / `设备` 页、`流程图` 工作台、`运行`、`结果`、`工具`、`设置` 已形成顶层导航。首页已限制大图预览并区分单链箭头与单元概览；当前工程返回和最近项目打开沿用正式路径，具体数据 / 缓存边界见[应用架构](../architecture/app-architecture.md#studio-shell-ui-规范化边界)。
+- Home、独立 `物性` / `设备` 页、`流程图` 工作台、`流程运行`、`流程结果`、`工具`、`设置` 已形成顶层导航。流程运行与结果页标明当前流程，工程基础沿现有上下文入口。首页已限制大图预览并区分单链箭头与单元概览；当前工程返回和最近项目打开沿用正式路径。 [应用架构](../architecture/app-architecture.md#studio-shell-ui-规范化边界)
 - 普通空白项目创建后先进入 `物性`，物性 readiness 通过后才能进入流程图建模。
 - Workbench 已稳定为左侧 `模块 / 项目`、中央 Canvas、右侧 `检查器 / 模块设置 / 模块结果`、底部运行信息与状态汇总。
 - `Feed -> Flash Drum`、`Feed -> Heater/Cooler/Valve -> Flash Drum`、`Feed + Feed -> Mixer -> Flash Drum` 已有受控建模能力和 focused 回归。
 - `Cmd+Q` 与窗口关闭共用脏工作区确认路径。
 - 单元删除、显示名称编辑与导航修复已接通；macOS 普通空白来源的编辑、原生保存重开、文本 / 文档历史主路径已复核。Valve / Mixer / Cooler 的建模、参数、保存重跑与输出已逐项补验；删除 / 重命名的其余单元逐项实窗及跨平台新增路径仍按建模和生命周期专题保留待验证。
 
-- 当前问题页与 Run Panel 共享 A1 只读报告；问题详情、建议区和画布共用 A2 推荐会话，预览后显式接受，输入变化使旧预览失效，不自动求解。独立设备 UI、v3 保存、单行 / 矩阵校核与 CSV / JSON 输出已启用；[C1 采纳](../architecture/designs/studio-equipment-adoption-brief.md)预览 / 确认、固定证据 / 保存和证据输出已实现，流程关联未实现。
+- 当前问题页与 Run Panel 共享 A1 只读报告。问题详情、建议区和画布共用 A2 推荐会话，预览后显式接受，输入变化使旧预览失效。
+- 独立分离器支持 v3 保存、单行／矩阵校核、CSV／JSON 输出及 C1 固定采纳。 [C1 采纳](../architecture/designs/studio-equipment-adoption-brief.md)
+- 打开含已保存独立 H3 工况的 v3／v4 工程时，Studio 提供整份工程的只读复核，可显式计算单工况并定位诊断。带已保存流程关联的 v4 工程进入原文只读检查，关联复核入口待评审。 [H3 只读复核](equipment/heat-exchanger-design-and-rating.md#h3-studio-只读复核)
 
 - 工具菜单提供只读变量 / 动作浏览，可搜索输入与结果并定位正式 Inspector；应用内变量写入与受控动作、CLI 参数化运行已接通，范围见下文 B3-1 至 B3-5。
 
@@ -63,8 +65,10 @@
 3. 选择内置 `binary-hydrocarbon-lite-v1` package 和 methane / ethane 项目组分。
 4. 进入 `流程图`，从左侧 `模块` 放置 Feed、Heater / Cooler / Valve、Mixer、Flash Drum。
 5. 通过 Canvas suggestion、Inspector 和模块设置补齐连接、Feed source stream、composition 和单元参数。
-6. 运行求解，在右侧模块结果、底部结果表、状态汇总和诊断中审阅同一份当前 `SolveSnapshot`。
-7. 保存、重开、rerun，确认结果和旧快照状态一致。
+6. 在 `流程图` 或 `流程运行` 运行求解。诊断定位到字段、端口或对象后，可返回发起页面的原诊断列表。原项仍有效时恢复动作焦点，已失效时说明原因并可重新检查。
+7. 在 `流程结果`、右侧模块结果和底部结果表审阅同一份当前结果。切页保留对象选择、设备工况、未提交草稿及仍有资格的结果。保存写入已提交输入，重开后须重跑。 [R2 接线与验收](../architecture/designs/reviews/2026-11-15-studio-r1/README.md#r2-产品接线范围)
+
+已有 QS4 M2 工程可从首页或文件入口打开。在「稳态运行计划」检查或应用单撕裂配置，新增 M2 能力时确认保存。通过 Run／F5 显式运行，在结果区检查闭合残差、全局分量守恒和实际物性来源。重开恢复已保存计划，从 Missing 开始，显式重跑后才有新的 Current。 [M2 操作与验收](modeling/mixed-partition-execution.md#m2-studio-界面接入评审)
 
 ## 范围
 
@@ -92,7 +96,7 @@
 - 物性选择来自 `workspace_document.property_package_choices` 和 `project_component_choices`。
 - 建模输入缺口来自 shared modeling readiness。
 - 运行和失败状态来自 Run Panel / workspace control model。
-- 当前结果来自当前 revision 的 latest `SolveSnapshot`。
+- 当前结果来自工作区查询认定为 Current 的 `FlowResultRecord`。
 - Workbench 不维护第二套项目、物性、运行或结果状态。
 
 ### 命令与接口
@@ -142,10 +146,10 @@ B0 收口：受控 Feed–Flash 创建、参数提交、连接、目标端断开
 
 ## B3-1：变量与动作描述、只读浏览
 
-2026-09-15 经项目所有者确认进入本切片。Windows / Linux 原生路径累积到阶段节点集中验证；P1 未测项继续保留，不能据此宣称全平台收口。
+2026-09-15 经项目所有者确认进入本切片。下文记录 B3-1 的原始范围。VB1 已用展开 / 侧区工作区替换模态入口，并接入字段定位、稳定引用与工程关注清单，详见[浏览器专题](variable-and-object-browser.md)。Windows / Linux 原生路径按阶段集中验证。
 
 - 目标：普通用户在“工具 → 变量浏览器”按单元 / 流股查看已提交输入、已有求解结果和动作描述，搜索对象 / 变量 / SI 单位，并定位既有检查器。
-- 应用查询置于不依赖窗口库的 `rf-ui::variable_browser`，借用当前 `FlowsheetDocument` 与同一工作区的 current / stale `SolveSnapshot`；Studio 使用接管快捷键的模态浏览窗口，仅保存窗口开关、搜索词和所选身份，不保存第二份工程值。对象列表不预先展开全部变量，搜索按需扫描当前受控工程。
+- 应用查询置于不依赖窗口库的 `rf-ui::variable_browser`，借用当前 `FlowsheetDocument` 与同一工作区的 `SolveSnapshot`。首版模态窗口持有开关、搜索词和所选身份。对象列表按需展开，查询消费工作区里的工程值。
 - 身份由 DocumentId、UnitId / StreamId、输入 / 结果分区和类型化字段共同构成。显示名称不参与身份；跨项目引用、删除对象和消失字段分别返回结构化错误。该 Rust 内部契约不冻结公共 DTO / ABI 或序列化路径。
 - 单元覆盖六种现有类型实际支持的温压参数；流股覆盖 T/P/F、摩尔组成和已有快照中的相分率、相组成及摩尔焓。单元端口引用同一流股对象，不复制结果。未实现的 duty、自由度分析和任务动作不注册。
 - 值描述包含数值 / 文本类型、标量形状、SI 单位 / 摩尔基准、来源、单值有效性与写入入口；单值有效不等于组成归一化或整个模型已就绪。未显式指定参数保持未指定，不能用 Inspector 默认值冒充输入；草稿不进入查询；流股模板明确区别于求解结果。结果按快照 ID / revision / sequence 标识，过期值不作为当前数值返回，缺结果明确显示缺失。

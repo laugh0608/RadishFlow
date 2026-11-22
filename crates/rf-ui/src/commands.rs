@@ -83,6 +83,9 @@ pub enum DocumentCommand {
         parameter: String,
         value: CommandValue,
     },
+    ClearHeaterCoolerOutletTemperature {
+        unit_id: UnitId,
+    },
     SetStreamSpecification {
         stream_id: StreamId,
         field: String,
@@ -91,6 +94,9 @@ pub enum DocumentCommand {
     SetStreamSpecifications {
         stream_id: StreamId,
         values: Vec<StreamSpecificationValue>,
+    },
+    SetFeedMolarFlows {
+        values: Vec<(StreamId, f64)>,
     },
     RemoveStreamCompositionComponent {
         stream_id: StreamId,

@@ -7,6 +7,7 @@ use radishflow_studio::{
     modeling_actions::{MaterialConnectionTarget, MaterialPortTarget},
 };
 use rf_solver::partitioned::{FixedRecycleBoundary, RecycleSolveOptions, TearSpecification};
+use rf_solver::single_phase_recycle::SinglePhaseTearBinding;
 use rf_types::units::{ALL_UNITS, MeasurementUnit, from_canonical};
 use rf_types::{DiagnosticPortTarget, PortDirection, PortKind, StreamId};
 use rf_ui::flow_plan::*;
@@ -14,9 +15,11 @@ mod connection;
 mod equation_oriented;
 pub(super) mod equation_results;
 mod mixed;
+mod mixed_recycle;
 pub(super) mod mixed_results;
 mod results;
 mod simultaneous;
+mod single_phase;
 use simultaneous::PlanMethod;
 pub(super) mod modular_results;
 
@@ -46,6 +49,10 @@ impl ReadyAppState {
         }
     }
     pub(super) fn render_flow_plan(&mut self, ui: &mut egui::Ui) {
+        // egui resolves backward tab focus on the next pass, even in an idle window.
+        if ui.input(|input| input.key_pressed(egui::Key::Tab)) {
+            ui.ctx().request_repaint();
+        }
         let zh = self.locale == StudioShellLocale::ZhCn;
         ui.heading(tr(zh, "稳态运行计划", "Steady-state run plan"));
         let workspace = &self.platform_host.modeling_inputs().workspace;
@@ -65,20 +72,40 @@ impl ReadyAppState {
         let original = draft.clone();
         let mut candidate = draft.candidate().clone();
         let applied_method = PlanMethod::of(&current);
+        let applied_recycle =
+            matches!(&current, FlowPlanConfiguration::Mixed(options) if options.recycle.is_some());
+        let saved_recycle = workspace
+            .flow_plan
+            .saved_capabilities()
+            .contains_key(rf_store::project_v4::MIXED_RECYCLE_CAPABILITY);
+        let saved_composition = workspace
+            .flow_plan
+            .saved_capabilities()
+            .get(rf_store::project_v4::EQUATION_ORIENTED_CAPABILITY)
+            == Some(&rf_store::project_v4::PRODUCT_COMPOSITION_VERSION);
+        let applied_composition = matches!(&current,
+            FlowPlanConfiguration::EquationOriented(options) if options.requires_product_composition());
         ui.horizontal_wrapped(|ui| {
-            if ui
-                .add_enabled(
-                    editable && self.background_command_enabled("run_panel.run_manual"),
-                    egui::Button::new(tr(zh, "运行 F5", "Run F5")),
-                )
-                .clicked()
-            {
+            let run = ui.add_enabled(
+                editable && self.background_command_enabled("run_panel.run_manual"),
+                egui::Button::new(tr(zh, "运行 F5", "Run F5")),
+            );
+            reveal_plan_focus(&run);
+            if run.clicked() {
                 self.dispatch_ui_command("run_panel.run_manual");
             }
             ui.label(format!(
                 "{}: {}",
                 tr(zh, "已应用", "Applied"),
-                applied_method.label(zh)
+                if applied_recycle {
+                    tr(
+                        zh,
+                        "混合分区 · 单撕裂回流",
+                        "Mixed partition · Single tear recycle",
+                    )
+                } else {
+                    applied_method.label(zh)
+                }
             ));
             ui.label(
                 if self
@@ -94,10 +121,29 @@ impl ReadyAppState {
                 },
             );
         });
+        if applied_recycle {
+            ui.small(tr(
+                zh,
+                "仅显式运行。Active 下也须点击 Run 或按 F5。",
+                "Manual run only, including in Active mode. Select Run or press F5.",
+            ));
+        } else if saved_recycle {
+            ui.small(tr(
+                zh,
+                "使用另存为保存当前计划，保留原混合回流工程。",
+                "Use Save As for this plan to keep the original mixed-recycle project.",
+            ));
+        } else if saved_composition && !applied_composition {
+            ui.small(tr(
+                zh,
+                "使用另存为保存当前计划，保留原产品组成工程。",
+                "Use Save As for this plan to keep the original product composition project.",
+            ));
+        }
         let mut method = PlanMethod::of(&candidate);
         let numeric_pending = draft.has_modified_numbers();
         ui.add_enabled_ui(editable && !numeric_pending, |ui| {
-            egui::ComboBox::from_id_salt("flow-method")
+            let method_picker = egui::ComboBox::from_id_salt("flow-method")
                 .selected_text(method.label(zh))
                 .show_ui(ui, |ui| {
                     for choice in [
@@ -106,10 +152,13 @@ impl ReadyAppState {
                         PlanMethod::Simultaneous,
                         PlanMethod::EquationOriented,
                         PlanMethod::Mixed,
+                        PlanMethod::SinglePhase,
+                        PlanMethod::SinglePhaseRecycle,
                     ] {
                         ui.selectable_value(&mut method, choice, choice.label(zh));
                     }
                 });
+            reveal_plan_focus(&method_picker.response);
         });
         if numeric_pending {
             ui.small(tr(
@@ -119,7 +168,17 @@ impl ReadyAppState {
             ));
         }
         if method != PlanMethod::of(&candidate) {
-            candidate = method.default_configuration();
+            let mut next = method.default_configuration();
+            if let Some(properties) = candidate.single_phase_properties() {
+                match &mut next {
+                    FlowPlanConfiguration::SinglePhase(options) => *options = properties.clone(),
+                    FlowPlanConfiguration::SinglePhaseRecycle(options) => {
+                        options.properties = properties.clone()
+                    }
+                    _ => {}
+                }
+            }
+            candidate = next;
             draft.replace_candidate(candidate.clone());
         }
         let components: Vec<_> = self
@@ -172,6 +231,20 @@ impl ReadyAppState {
             })
             .collect();
         let mut apply_requested = false;
+        let sensible_tears: Vec<_> = bindings
+            .iter()
+            .filter(|tear| {
+                tear.source.port_name == "outlet_a"
+                    && flow.units[&tear.source.unit_id].kind == "splitter"
+                    && flow.units[&tear.sink.unit_id].kind == "mixer"
+                    && matches!(tear.sink.port_name.as_str(), "inlet_a" | "inlet_b")
+            })
+            .map(|tear| SinglePhaseTearBinding {
+                stream_id: tear.stream_id.clone(),
+                source: tear.source.clone(),
+                sink: tear.sink.clone(),
+            })
+            .collect();
         ui.add_enabled_ui(editable, |ui| {
             if let FlowPlanConfiguration::Partitioned(options) = &mut candidate {
                 egui::Frame::group(ui.style()).show(ui, |ui| {
@@ -179,7 +252,7 @@ impl ReadyAppState {
                         (FlowPlanNumericField::Temperature, tr(zh,"温度","Temperature"), options.boundary.temperature_k, MeasurementUnit::Kelvin),
                         (FlowPlanNumericField::Pressure, tr(zh,"压力","Pressure"), options.boundary.pressure_pa, MeasurementUnit::Pascal),
                         (FlowPlanNumericField::IterationBudget, tr(zh,"迭代预算","Iteration budget"), options.max_iteration_evaluations as f64, MeasurementUnit::One),
-                    ] { apply_requested |= number(ui, &mut draft, field, title, value, unit, &mut self.flow_plan.notice); }
+                    ] { apply_requested |= number(ui, &mut draft, field, title, value, unit, &mut self.flow_plan.notice).is_some(); }
                     ui.small(tr(zh,"独立最终复核另计 1 次；验收容差随方法固定。","One independent final verification; method acceptance tolerances are fixed."));
                 });
                 let mut remove = None;
@@ -201,7 +274,7 @@ impl ReadyAppState {
                         for (initial, values) in [(true, &tear.initial_component_flows_mol_s),(false, &tear.component_scales_mol_s)] {
                             if let Some(values) = values { for (component, value) in values {
                                 let field = if initial { FlowPlanNumericField::InitialComponent { stream: tear.stream_id.clone(), component: component.clone() } } else { FlowPlanNumericField::ResidualScale { stream: tear.stream_id.clone(), component: component.clone() } };
-                                apply_requested |= number(ui, &mut draft, field, &format!("{} {component}", if initial { tr(zh,"初值","Initial") } else { tr(zh,"尺度","Scale") }), *value, MeasurementUnit::MolePerSecond, &mut self.flow_plan.notice);
+                                apply_requested |= number(ui, &mut draft, field, &format!("{} {component}", if initial { tr(zh,"初值","Initial") } else { tr(zh,"尺度","Scale") }), *value, MeasurementUnit::MolePerSecond, &mut self.flow_plan.notice).is_some();
                             }}
                         }
                     });
@@ -219,15 +292,61 @@ impl ReadyAppState {
                 apply_requested |= self.render_simultaneous_plan(ui, &mut draft, options);
             });
         }
-        if let FlowPlanConfiguration::EquationOriented(options) = &mut candidate {
-            ui.add_enabled_ui(editable, |ui| {
-                apply_requested |= self.render_equation_plan(ui, &mut draft, options);
-            });
-        }
+        let equation_submission =
+            if let FlowPlanConfiguration::EquationOriented(options) = &mut candidate {
+                ui.add_enabled_ui(editable, |ui| {
+                    self.render_equation_plan(ui, &mut draft, options)
+                })
+                .inner
+            } else {
+                None
+            };
         if let FlowPlanConfiguration::Mixed(options) = &mut candidate {
             ui.add_enabled_ui(editable, |ui| {
-                apply_requested |= self.render_mixed_plan(ui, &mut draft, options);
+                apply_requested |= self.render_mixed_plan(ui, &mut draft, options, &bindings);
             });
+        }
+        if candidate.project_model_method().is_some() {
+            let thermal = self.single_phase_thermal_units();
+            let (submit, clear) = ui
+                .add_enabled_ui(editable, |ui| {
+                    let (properties, recycle_submit) = match &mut candidate {
+                        FlowPlanConfiguration::SinglePhase(options) => (options, false),
+                        FlowPlanConfiguration::SinglePhaseRecycle(options) => {
+                            let submit = self.render_single_phase_recycle_options(
+                                ui,
+                                &mut draft,
+                                &mut options.recycle,
+                                &components,
+                                &sensible_tears,
+                            );
+                            (&mut options.properties, submit)
+                        }
+                        _ => unreachable!("project property plan"),
+                    };
+                    let (submit, clear) = self.render_single_phase_plan(
+                        ui,
+                        &mut draft,
+                        properties,
+                        &components,
+                        &thermal,
+                        current.project_model_method().is_some(),
+                    );
+                    (submit || recycle_submit, clear)
+                })
+                .inner;
+            apply_requested |= submit;
+            if let Some(unit) = clear {
+                let expected =
+                    FlowEditContext::capture(&self.platform_host.modeling_inputs().workspace);
+                self.plan_action(Action::EditFlow {
+                    access,
+                    request: FlowActionRequest {
+                        expected,
+                        action: FlowAction::ClearHeaterCoolerOutletTemperature(unit),
+                    },
+                });
+            }
         }
         draft.replace_candidate(candidate);
         let configuration = draft.configuration();
@@ -238,11 +357,15 @@ impl ReadyAppState {
                 FlowPlanConfiguration::Simultaneous(_)
                     | FlowPlanConfiguration::EquationOriented(_)
                     | FlowPlanConfiguration::Mixed(_)
+                    | FlowPlanConfiguration::SinglePhase(_)
+                    | FlowPlanConfiguration::SinglePhaseRecycle(_)
             ) || matches!(
                 current,
                 FlowPlanConfiguration::Simultaneous(_)
                     | FlowPlanConfiguration::EquationOriented(_)
                     | FlowPlanConfiguration::Mixed(_)
+                    | FlowPlanConfiguration::SinglePhase(_)
+                    | FlowPlanConfiguration::SinglePhaseRecycle(_)
             ))
         {
             ui.label(tr(zh, "先应用或放弃草稿，才可 Run / F5 或输出当前结果；保存仅写正式配置。", "Apply or discard the draft before Run / F5 or current output. Save writes only formal configuration."));
@@ -259,21 +382,31 @@ impl ReadyAppState {
             });
         }
         ui.horizontal_wrapped(|ui| {
-            if ui
-                .add_enabled(
-                    editable && pending && configuration.is_ok(),
-                    egui::Button::new(tr(zh, "应用计划", "Apply plan")),
-                )
-                .clicked()
-                || (apply_requested && editable && pending && configuration.is_ok())
+            let can_apply = editable && pending && configuration.is_ok();
+            let apply = ui.add_enabled(
+                can_apply,
+                egui::Button::new(tr(zh, "应用计划", "Apply plan")),
+            );
+            reveal_plan_focus(&apply);
+            let rejected = if can_apply
+                && (apply.clicked() || apply_requested || equation_submission.is_some())
             {
-                self.plan_action(Action::ConfigureFlowPlan {
+                !self.plan_action(Action::ConfigureFlowPlan {
                     expected: draft.context().clone(),
                     access,
                     command: FlowPlanCommand::Apply(
                         configuration.clone().expect("enabled valid draft"),
                     ),
-                });
+                })
+            } else {
+                configuration.is_err()
+            };
+            if rejected && let Some(field) = equation_submission {
+                ui.memory_mut(|memory| memory.request_focus(field));
+                if let Some(response) = ui.ctx().read_response(field) {
+                    // Enter can restore the same ID without a focus-change event.
+                    response.scroll_to_me(None);
+                }
             }
             for (title, command) in [
                 (
@@ -299,7 +432,9 @@ impl ReadyAppState {
                             .can_redo(),
                         _ => true,
                     };
-                if ui.add_enabled(allowed, egui::Button::new(title)).clicked() {
+                let button = ui.add_enabled(allowed, egui::Button::new(title));
+                reveal_plan_focus(&button);
+                if button.clicked() {
                     self.plan_action(Action::ConfigureFlowPlan {
                         expected: expected.clone(),
                         access,
@@ -307,13 +442,12 @@ impl ReadyAppState {
                     });
                 }
             }
-            if ui
-                .add_enabled(
-                    editable && pending,
-                    egui::Button::new(tr(zh, "放弃草稿", "Discard draft")),
-                )
-                .clicked()
-            {
+            let discard = ui.add_enabled(
+                editable && pending,
+                egui::Button::new(tr(zh, "放弃草稿", "Discard draft")),
+            );
+            reveal_plan_focus(&discard);
+            if discard.clicked() {
                 self.plan_action(Action::FlowPlanDraft {
                     access,
                     draft: None,
@@ -321,7 +455,11 @@ impl ReadyAppState {
             }
         });
         let workspace = &self.platform_host.modeling_inputs().workspace;
-        match workspace.flow_plan.current().validate_for(workspace) {
+        match workspace
+            .flow_plan
+            .current()
+            .validate_for(&workspace.document.flowsheet)
+        {
             Ok(()) => {
                 ui.label(tr(zh,"计划拓扑与绑定已就绪；运行时继续检查输入与物性。","Plan topology and bindings ready; runtime also checks physical inputs and property package."));
             }
@@ -340,6 +478,12 @@ impl ReadyAppState {
         }
     }
 }
+fn reveal_plan_focus(response: &egui::Response) {
+    if response.gained_focus() {
+        response.scroll_to_me(None);
+    }
+}
+
 fn number(
     ui: &mut egui::Ui,
     draft: &mut FlowPlanDraft,
@@ -348,16 +492,16 @@ fn number(
     value: f64,
     unit: MeasurementUnit,
     notice: &mut Option<String>,
-) -> bool {
+) -> Option<egui::Id> {
     ui.push_id(&field, |ui| {
         ui.label(label);
-        let Ok(input) = draft.edit_number(field.clone(), value, unit) else {
-            return false;
-        };
+        let input = draft.edit_number(field.clone(), value, unit).ok()?;
         let response = ui.add(
             egui::TextEdit::singleline(&mut input.raw)
+                .id_salt("plan-number")
                 .desired_width(ui.available_width().min(260.0)),
         );
+        reveal_plan_focus(&response);
         let submitted = response.lost_focus()
             && ui.input(|i| {
                 i.key_pressed(egui::Key::Enter)
@@ -365,7 +509,7 @@ fn number(
             });
         let mut selected = input.unit;
         if let Some(quantity) = field.quantity() {
-            egui::ComboBox::from_id_salt("unit")
+            let unit_picker = egui::ComboBox::from_id_salt("unit")
                 .selected_text(selected.definition().symbol)
                 .show_ui(ui, |ui| {
                     for unit in ALL_UNITS
@@ -375,13 +519,14 @@ fn number(
                         ui.selectable_value(&mut selected, *unit, unit.definition().symbol);
                     }
                 });
+            reveal_plan_focus(&unit_picker.response);
             if selected != draft.numbers()[&field].unit
                 && let Err(error) = draft.change_input_unit(&field, selected)
             {
                 *notice = Some(error.to_string());
             }
         }
-        submitted
+        submitted.then_some(response.id)
     })
     .inner
 }

@@ -1,3 +1,4 @@
+use super::locale::tr;
 use super::*;
 
 /// Accepted light roles shared by numeric controls, settings and file-operation notices.
@@ -55,6 +56,12 @@ pub(super) fn render_project_save_state(
                 } else {
                     "Equipment and basis: unsaved changes"
                 },
+            );
+        }
+        if state.watch_list_dirty {
+            ui.colored_label(
+                StudioStateTokens::WARNING,
+                tr(locale, "关注清单：待保存", "Watch list: unsaved changes"),
             );
         }
         ui.colored_label(

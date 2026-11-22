@@ -1,6 +1,111 @@
 use super::*;
 
 #[test]
+fn composition_plan_uses_studio_save_review_and_reopens_for_explicit_run() {
+    use radishflow_studio::{StudioBackgroundRunAction as Action, flow_actions::FlowEditAccess};
+    use rf_solver::equation_oriented::ProductTarget;
+    use rf_ui::{
+        flow_plan::{FlowPlanCommand, FlowPlanConfiguration, FlowPlanDraft, FlowPlanNumericField},
+        result_query::{FlowResultView, ResultStatus},
+    };
+
+    let path = test_preferences_path("composition-save").with_extension("rfproj.json");
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(
+        &path,
+        include_bytes!(
+            "../../../../../examples/flowsheets/fixed-tp-material-eo-binary-hydrocarbon.rfproj.json"
+        ),
+    )
+    .unwrap();
+    let original = fs::read(&path).unwrap();
+    let config = StudioRuntimeConfig {
+        project_path: path.clone(),
+        ..synced_workspace_config()
+    };
+    let mut app = ready_app_state(&config);
+    let sample = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
+        "../../examples/flowsheets/fixed-tp-product-composition-binary-hydrocarbon.rfproj.json",
+    );
+    let radishflow_studio::StudioProjectOpen::Editable(composition) =
+        read_studio_gui_project(&sample).unwrap()
+    else {
+        panic!("Studio recognizes EO v2");
+    };
+    let plan = composition.workspace.flow_plan.current().clone();
+    let FlowPlanConfiguration::EquationOriented(options) = &plan else {
+        panic!("EO plan")
+    };
+    let Some(ProductTarget::MoleFraction(target)) = &options.target else {
+        panic!("composition target")
+    };
+    let workspace = &app.platform_host.modeling_inputs().workspace;
+    let mut draft = FlowPlanDraft::new(workspace, plan.clone());
+    draft
+        .edit_number(
+            FlowPlanNumericField::ProductMoleFraction {
+                source: target.source.clone(),
+                component: target.component.clone(),
+            },
+            0.5,
+            rf_types::units::MeasurementUnit::MolePercent,
+        )
+        .unwrap()
+        .raw = "35".into();
+    app.platform_host
+        .background_run_action(Action::ConfigureFlowPlan {
+            access: FlowEditAccess::Editable,
+            expected: draft.context().clone(),
+            command: FlowPlanCommand::Apply(draft.configuration().unwrap()),
+        })
+        .unwrap();
+
+    app.request_save_project_as(path.clone(), false);
+    assert!(matches!(
+        app.pending_format_upgrade.as_ref(),
+        Some(project_save::PendingFormatUpgrade::FlowPlan { prepared, .. })
+            if prepared.requires_product_composition()
+    ));
+    app.cancel_pending_save_as_overwrite();
+    assert_eq!(fs::read(&path).unwrap(), original);
+    app.request_save_project_as(path.clone(), false);
+    assert!(app.confirm_format_upgrade());
+
+    let mut app = ready_app_state(&config);
+    assert_eq!(
+        app.platform_host
+            .modeling_inputs()
+            .workspace
+            .flow_plan
+            .current(),
+        &plan
+    );
+    assert_eq!(
+        app.platform_host
+            .modeling_inputs()
+            .workspace
+            .flow_result()
+            .status(),
+        ResultStatus::Missing
+    );
+    app.dispatch_ui_command("run_panel.run_manual");
+    let FlowResultView::Current {
+        snapshot: rf_ui::FlowResultRecord::EquationOriented(snapshot),
+        ..
+    } = app.platform_host.modeling_inputs().workspace.flow_result()
+    else {
+        panic!("Current EO v2 result")
+    };
+    let evidence = snapshot.result.evidence.verified_target.as_ref().unwrap();
+    assert!(
+        matches!(evidence, rf_solver::equation_oriented::VerifiedTarget::MoleFraction(t)
+        if (t.composition.actual_mol_mol - 0.35).abs() <= 1e-10)
+    );
+    fs::remove_file(&path).unwrap();
+    let _ = fs::remove_file(studio_layout_path_for_project(&path));
+}
+
+#[test]
 fn open_example_project_rebuilds_runtime_for_selected_sample() {
     let mut app = ready_app_state(&synced_workspace_config());
     let target_project = app

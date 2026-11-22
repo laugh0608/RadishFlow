@@ -4,6 +4,8 @@ use rf_ui::flow_plan::*;
 use std::fs;
 mod equation_oriented;
 mod mixed;
+mod mixed_recycle;
+mod product_composition;
 mod simultaneous;
 const LEGACY: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -152,7 +154,7 @@ fn save_keeps_unapplied_draft_and_failed_save_keeps_every_baseline() {
 fn unknown_v4_capability_never_creates_an_editable_workspace_and_v3_cli_rejects_v4() {
     let mut app = app();
     select_partitioned(&mut app);
-    let text = project_v4::to_pretty_json(&project(&app)).unwrap();
+    let text = project_v4::to_pretty_json(&project(&app).unwrap()).unwrap();
     let unknown = text.replacen("\"version\": 1", "\"version\": 99", 1);
     let StudioProjectOpen::ReadOnly(read) =
         parse_studio_project(&unknown, Path::new("unknown.json")).unwrap()

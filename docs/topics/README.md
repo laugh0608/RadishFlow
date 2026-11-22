@@ -1,6 +1,6 @@
 # 开发专题索引
 
-更新时间：2026-11-04
+更新时间：2026-11-21
 
 ## 用途
 
@@ -26,11 +26,11 @@
 | [Studio 主工作台](studio-main-workflow.md) | 空白项目建模、运行、审阅、保存重开的用户路径 | 本文内基础功能切片；[变量与对象浏览器](variable-and-object-browser.md) |
 | [物性基础与组分](property-basis-and-components.md) | package、组分与物性上下文 | 本文内切片；模型装配为协同 |
 | [流程图建模与求解](flowsheet-modeling-and-solve.md) | 建模、连接、运行资格与求解 | 单元、物流股、模型装配、多策略求解 |
-| [结果审阅与恢复](results-review-diagnostics.md) | 结果有效性、诊断恢复与可视化 | 本文内切片；与运行诊断及物流股协同 |
+| [结果审阅与恢复](results-review-diagnostics.md) | 结果有效性、诊断恢复、检查覆盖与工程差异 | 本文内切片及 Q1—Q3；与工程基础、运行诊断及物流股协同 |
 | [运行、消息与诊断](runtime-messages-and-diagnostics.md) | N0—N5 的运行控制、消息与诊断边界 | 下列七项职责子专题 |
 | [项目生命周期与存储](project-lifecycle-storage.md) | 打开、保存、最近项目、脏改确认与工程容器 | 本文内切片；与控制面协同 |
-| [CAPE-OPEN PMC](capeopen-pmc-adapter.md) | .NET / COM PMC 生命周期、宿主与调用边界 | 本文及现有 PME 验收入口 |
-| [工程基础与工况](engineering-basis-and-cases.md) | 条件、来源、工况与工程证据 | 本文内 G0—G2 等切片；与设备工程协同 |
+| [CAPE-OPEN PMC](capeopen-pmc-adapter.md) | .NET / COM PMC 生命周期、物料边界与未来 COBIA 适配 | [物料治理](capeopen-pmc-adapter.md#物料边界与成功语义治理)、[COBIA 计划](capeopen-pmc-adapter.md#cobia-分阶段接入计划)及 PME 验收入口 |
+| [工程基础与工况](engineering-basis-and-cases.md) | 条件、来源、工况及变更影响 / 证据复核 | 本文内 G0—G3；分离器关联见 C2／C3，换热器关联见 H3，与设备工程和 Q1—Q3 协同 |
 | [单位系统](units-and-quantity-system.md) | 量目录、单位集、输入输出一致性 | 下列四项职责子专题与 UNIT / UA 追踪 |
 | [颜色与状态](color-and-state-system.md) | 语义、组合、消费者映射与迁移 | 下列四项职责子专题与 VIS / VA 追踪 |
 | [规格与建模辅助](modeling-assistance-and-specifications.md) | 规格检查、可解释辅助与固定工作流 | 本文内 A1 / A2 等切片 |
@@ -45,7 +45,7 @@ Control Plane 复用原文档作为大专题入口，原物性 / 生命周期关
 
 | 子专题 | 主要父专题 | 协同关系 / 状态来源 |
 | --- | --- | --- |
-| [变量与对象浏览器](variable-and-object-browser.md) | Studio 主工作台 | 物性、生命周期、结果与统一 API；AF4 / AF5a / VB 范围及证据在该专题 |
+| [变量与对象浏览器](variable-and-object-browser.md) | Studio 主工作台 | AF4 / AF5a / VB 范围及证据在该专题。VB1 已接通浏览、稳定引用与工程关注；VB2 已接通受控单值与进料流量批量首片 |
 
 ### 运行、消息与诊断
 
@@ -103,7 +103,7 @@ Control Plane 复用原文档作为大专题入口，原物性 / 生命周期关
 | QS2-A/B | [联立模块核心](modeling/simultaneous-modular-block.md) |
 | QS2-C | [联立模块工程与正式消费者](modeling/simultaneous-project-and-consumers.md) |
 | QS3 | [联立方程与规格反算](modeling/equation-oriented-block.md) |
-| QS4 | [首个混合分区执行方案](modeling/mixed-partition-execution.md)；首片 A—D 已批准并完成本机验证，后续组合另审 |
+| QS4 | [混合分区执行方案](modeling/mixed-partition-execution.md)，含 M1 DAG 首片 A—D 与 M2 单撕裂回流的算例、工程格式和正式消费者 |
 
 ### 平台与服务
 

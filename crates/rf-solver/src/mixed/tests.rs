@@ -10,6 +10,8 @@ use rf_unitops::{
 };
 use std::ops::ControlFlow;
 
+mod recycle;
+
 pub(super) fn case() -> (Flowsheet, MixedOptions) {
     let mut flow = cross_recycle(0.6, 0.25);
     flow.insert_stream(MaterialStreamState::from_tpzf(
@@ -44,6 +46,7 @@ pub(super) fn case() -> (Flowsheet, MixedOptions) {
     (
         flow,
         MixedOptions {
+            recycle: None,
             boundary: FixedRecycleBoundary {
                 temperature_k: 300.0,
                 pressure_pa: 650000.0,

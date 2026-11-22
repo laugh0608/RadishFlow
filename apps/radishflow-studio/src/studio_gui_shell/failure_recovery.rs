@@ -1,4 +1,5 @@
 use super::*;
+use flow_diagnostics::RunDiagnosticSurface;
 use radishflow_studio::{
     StudioGuiHostCommandOutcome, StudioGuiHostUiCommandDispatchResult, StudioRuntimeDispatch,
 };
@@ -31,7 +32,7 @@ impl ReadyAppState {
                 (StudioShellLocale::En, true) => "Repair model (undoable)",
                 (StudioShellLocale::En, false) => "Locate problem (no model changes)",
             });
-            let _ = self.render_small_command_action(ui, action);
+            self.render_run_diagnostic_action(ui, action, RunDiagnosticSurface::Toolbar, None);
         });
     }
 

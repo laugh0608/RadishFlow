@@ -4,6 +4,7 @@ use rf_model::UnitNode;
 use serde_json::{Value, json};
 use std::fs;
 mod simultaneous;
+mod single_phase;
 
 fn fixture() -> StoredProjectV4 {
     let mut file = crate::parse_project_file_json(include_str!(
@@ -23,6 +24,8 @@ fn fixture() -> StoredProjectV4 {
         display_units: file.presentation.display_units,
         engineering: None,
         steady_state_plan: StoredFlowPlan::Acyclic,
+        object_identities: None,
+        variable_watch_list: None,
     }
 }
 fn recycle() -> StoredFlowPlan {
@@ -287,6 +290,8 @@ fn v4_roundtrip_preserves_all_v3_rating_adoption_and_display_inputs() {
             display_units: old.display_units,
             engineering: old.engineering,
             steady_state_plan: recycle(),
+            object_identities: None,
+            variable_watch_list: None,
         }));
         let json = to_pretty_json(&project).unwrap();
         assert_eq!(parse(&json).unwrap(), project);
@@ -296,3 +301,152 @@ fn v4_roundtrip_preserves_all_v3_rating_adoption_and_display_inputs() {
 mod equation_oriented;
 
 mod mixed;
+mod mixed_recycle;
+
+#[test]
+fn watch_list_roundtrips_opaque_references_and_protects_saved_targets() {
+    let mut project = fixture();
+    project.document.flowsheet.units.clear();
+    project.document.flowsheet.streams.clear();
+    project.object_identities = Some(FlowObjectIdentities::default());
+    let entries = vec![
+        "rfvar:2/unknown syntax".to_owned(),
+        " unresolved text ".to_owned(),
+    ];
+    project.variable_watch_list = Some(entries.clone());
+    let original = json_project(project.clone());
+    assert_eq!(
+        parse(&original).unwrap(),
+        ProjectV4Read::Editable(Box::new(project.clone()))
+    );
+
+    let mut invalid: Value = serde_json::from_str(&original).unwrap();
+    for bad in [
+        Value::Null,
+        json!([2]),
+        json!([" "]),
+        json!(["same", "same"]),
+    ] {
+        invalid["variableWatchList"] = bad;
+        assert!(parse(&invalid.to_string()).is_err());
+    }
+    let mut invalid: Value = serde_json::from_str(&original).unwrap();
+    invalid.as_object_mut().unwrap().remove("variableWatchList");
+    assert!(parse(&invalid.to_string()).is_err());
+    invalid["variableWatchList"] = json!(entries);
+    invalid["requiredCapabilities"]
+        .as_array_mut()
+        .unwrap()
+        .pop();
+    assert!(parse(&invalid.to_string()).is_err());
+    let mut missing_identity = project.clone();
+    missing_identity.object_identities = None;
+    assert!(to_pretty_json(&ProjectV4Read::Editable(Box::new(missing_identity))).is_err());
+
+    let dir = Directory::new();
+    let target = dir.0.join("watched.json");
+    fs::write(&target, &original).unwrap();
+    project.variable_watch_list = None;
+    assert!(
+        prepare_write(
+            &target,
+            &ProjectV4Read::Editable(Box::new(project.clone())),
+            FileOverwritePolicy::Allow
+        )
+        .is_err()
+    );
+    assert_eq!(fs::read_to_string(&target).unwrap(), original);
+    project.variable_watch_list = Some(vec![]);
+    let current = ProjectV4Read::Editable(Box::new(project));
+    let prepared = prepare_write(&target, &current, FileOverwritePolicy::Allow).unwrap();
+    assert!(prepared.replaces_target_variable_watch_list());
+    assert!(!prepared.requires_upgrade());
+    write_prepared(&prepared, false).unwrap();
+    assert_eq!(read(target).unwrap(), current);
+}
+
+#[test]
+fn object_identities_roundtrip_and_protect_other_consumers_and_writers() {
+    let mut project = fixture();
+    project.object_identities = Some(FlowObjectIdentities {
+        units: [(
+            "unit".into(),
+            "b91c614d-4a7a-4d0e-82ba-09c82da255ba".parse().unwrap(),
+        )]
+        .into(),
+        streams: [(
+            "stream".into(),
+            "3a66ed8a-4f0b-4b12-90c7-8fb945d24602".parse().unwrap(),
+        )]
+        .into(),
+    });
+    let text = json_project(project.clone());
+    assert_eq!(
+        parse(&text).unwrap(),
+        ProjectV4Read::Editable(Box::new(project))
+    );
+    let ProjectV4Read::ReadOnly(old) = parse_for_consumer(
+        &text,
+        FlowPlanSupport::Mixed,
+        ObjectIdentitySupport::Unavailable,
+    )
+    .unwrap() else {
+        panic!("old consumer must see a read-only project")
+    };
+    assert_eq!(old.original_json(), text);
+    assert!(to_pretty_json(&ProjectV4Read::ReadOnly(old)).is_err());
+
+    let directory = Directory::new();
+    let path = directory.0.join("object-identities.rfproj.json");
+    fs::write(&path, &text).unwrap();
+    let without_ids = ProjectV4Read::Editable(Box::new(fixture()));
+    assert!(prepare_write(&path, &without_ids, FileOverwritePolicy::Allow).is_err());
+    let legacy = crate::parse_project_file_json(include_str!(
+        "../../tests/fixtures/project-v2-engineering.json"
+    ))
+    .unwrap();
+    assert!(crate::write_project_file(&path, &legacy).is_err());
+    assert_eq!(fs::read_to_string(&path).unwrap(), text);
+    fs::remove_file(path).unwrap();
+
+    let base: Value = serde_json::from_str(&text).unwrap();
+    for edit in [
+        "null",
+        "missing",
+        "undeclared",
+        "orphan",
+        "duplicate",
+        "bad-uuid",
+        "unknown-field",
+    ] {
+        let mut bad = base.clone();
+        match edit {
+            "null" => bad["objectIdentities"] = Value::Null,
+            "missing" => {
+                bad.as_object_mut().unwrap().remove("objectIdentities");
+            }
+            "undeclared" => {
+                bad["requiredCapabilities"].as_array_mut().unwrap().pop();
+            }
+            "orphan" => bad["objectIdentities"]["units"][0]["objectId"] = json!("other"),
+            "duplicate" => {
+                bad["objectIdentities"]["streams"][0]["creationId"] =
+                    base["objectIdentities"]["units"][0]["creationId"].clone()
+            }
+            "bad-uuid" => {
+                bad["objectIdentities"]["units"][0]["creationId"] =
+                    json!("B91C614D-4A7A-4D0E-82BA-09C82DA255BA")
+            }
+            "unknown-field" => bad["objectIdentities"]["units"][0]["extra"] = json!(true),
+            _ => unreachable!(),
+        }
+        assert!(parse(&bad.to_string()).is_err(), "accepted {edit}");
+    }
+    let mut future = base;
+    future["requiredCapabilities"][1]["version"] = json!(2);
+    future["objectIdentities"] = json!({"opaque": true});
+    assert!(matches!(
+        parse(&future.to_string()).unwrap(),
+        ProjectV4Read::ReadOnly(_)
+    ));
+}

@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-11-04
+更新时间：2026-11-21
 
 ## 目的
 
@@ -50,11 +50,15 @@
 
 ## 方法载荷与共同入口
 
-`FlowResultRecord` 包含 Acyclic(SolveSnapshot)、Partitioned(PartitionedFlowSnapshot)、Simultaneous(SimultaneousFlowSnapshot)、EquationOriented(EquationFlowSnapshot)、Mixed(MixedFlowSnapshot)。共同 `FlowSnapshotHeader` 保存来源、ID、输入 revision、sequence、状态、诊断和生产者流股；`unit_result()` 返回真实消费 / 产出。只有 Acyclic 提供 `StepSnapshot`，其他方法保留最终单元复核、块或方程证据，不能用空 steps 判断“没有单元结果”。
+`FlowResultRecord` 包含 Acyclic(SolveSnapshot)、Partitioned(PartitionedFlowSnapshot)、Simultaneous(SimultaneousFlowSnapshot)、EquationOriented(EquationFlowSnapshot)、Mixed(MixedFlowSnapshot) 和 SinglePhaseRecycle(SinglePhaseRecycleSnapshot)。共同 `FlowSnapshotHeader` 保存来源、ID、输入 revision、sequence、状态、诊断和生产者流股。`unit_result()` 返回真实消费／产出。无回路方法从 `StepSnapshot` 提取单元结果，有回路或分区方法按各自的最终单元复核提供结果。
+
+固定压力单气相显热回流使用 `SinglePhaseRecycleSnapshot`。正式流股取闭合后实际生产值，单元复核提供实际消费与产出，`result` 保留撕裂试值和返回值、残差轨迹及能量证据。CLI v12 与 Studio 走同一结果资格链。 [显热回流契约](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流)
 
 QS1 记录撕裂 / 迭代与最终复核；QS2 记录响应、耦合、LU / 条件 / 后向误差；QS3 记录变量 / 方程、规格 / 区间轨迹、条件系统与完整 Jacobian、原值 / 求得比例及实际 I/O。部分失败证据不能作为正式流股发布。方法边界分别见 [QS1-C](../topics/modeling/recycle-project-and-consumers.md)、[QS2-C](../topics/modeling/simultaneous-project-and-consumers.md)、[QS3](../topics/modeling/equation-oriented-block.md)。QS0 独立物料任务与设备结果不属于 FlowResultRecord。
 
-[QS4](../topics/modeling/mixed-partition-execution.md) 保留 Local / EO 分块、原身份的跨块边界、实际单元复核和全局衡算证据；全部通过后才形成 MixedFlowSnapshot。失败 / 取消中的已完成块只供诊断，不发布为本次运行的顶层 Current 或部分成功流股；符号布局也不证明实际边界下数值可解。
+QS4 的 M1 和 M2 都使用 `MixedFlowSnapshot`，保留 Local / EO 分块、原身份的跨块边界、实际单元复核和全局分量衡算。M2 另带实际撕裂尺度、候选与独立复核的残差轨迹，以及最后一轮汇端消费的假设值和源端的实际返回值。闭合和全局分量衡算通过后，正式流股取复核轮的实际生产值。 [QS4 验收契约](../topics/modeling/mixed-partition-execution.md#m2首个跨块回流算例与验收)
+
+预算耗尽或复核失败时，当次块进度、试值和已有残差只供失败诊断。取消先受理时拒收迟到载荷，沿用原结果资格。Studio 从 `FlowResultView` 的 Current 显示合格数值，CLI v9 在同一显式运行请求中投影 `execution_kind: mixed_recycle` 及实际物性包来源。重开工程从 Missing 开始。 [M2 CLI 结果投影](../topics/modeling/mixed-partition-execution.md#m2-cli-首片评审)
 
 ## `SolveSnapshot` 的稳定语义
 
@@ -83,6 +87,8 @@ QS1 记录撕裂 / 迭代与最终复核；QS2 记录响应、耦合、LU / 条�
 共同 `origin` 保留冻结的 `FlowResultOrigin`：输入与计划的会话 / revision / generation，以及可用的执行身份、solver、实际物性包与指纹。当前配置或包标签不得回填旧结果；准备失败可以没有实际包。应用层 `FlowResultReview` 是这一查询的拥有数据投影，不复制领域有效性规则。
 
 跨帧结果动作和待写输出携带 `FlowResultGuard`，激活 / 写入时重新查询当前工作区；定位还检查目标存在。设备使用独立 `EquipmentResultGuard` 和原计算 / 矩阵输出捕获机制，按相关工况资格重验，不用流程 revision 作为设备全局锁。RunId / CalculationId 不透明且不持久化，技术详情 / 文本只说明身份已记录、会话内使用，不输出内存地址或可恢复令牌。
+
+H3 流程关联复核从同一次无回路 `Current` 读取冷热侧入口，复核结果及其守卫归应用层会话。保存的流股引用在新会话中从 `Missing` 起步，须重新取得流程结果及校核。 [H3 关联契约](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联保存与重开)
 
 ## `StreamStateSnapshot` 的稳定语义
 

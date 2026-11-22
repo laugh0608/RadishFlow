@@ -2,11 +2,19 @@ pub mod catalog;
 pub mod component_balance;
 pub mod component_equations;
 pub mod component_response;
+pub mod heat_exchanger;
 pub mod separator_adoption;
 mod separator_evidence;
 mod separator_hydraulics;
 pub mod separator_rating;
 pub mod separator_sizing;
+mod single_phase;
+pub use single_phase::{
+    ENERGY_ABSOLUTE_TOLERANCE_W, ENERGY_SCALED_TOLERANCE,
+    enthalpy_flow_w as single_phase_enthalpy_flow_w,
+    materialize_vapor as materialize_single_phase_vapor,
+    verify_energy_balance as verify_single_phase_energy_balance,
+};
 pub mod specifications;
 mod splitter;
 pub use splitter::{SPLITTER_SPEC, Splitter, build_splitter_node};
@@ -413,9 +421,21 @@ impl UnitOperationInputs {
     }
 }
 
+/// Energy balance for one accepted unit evaluation. Positive duty heats the material.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct UnitEnergyBalance {
+    pub inlet_enthalpy_flow_w: f64,
+    pub outlet_enthalpy_flow_w: f64,
+    pub heat_duty_w: f64,
+    pub residual_w: f64,
+    pub residual_scale_w: f64,
+    pub scaled_residual: f64,
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct UnitOperationOutputs {
     material_streams: BTreeMap<String, MaterialStreamState>,
+    energy_balance: Option<UnitEnergyBalance>,
 }
 
 impl UnitOperationOutputs {
@@ -433,6 +453,10 @@ impl UnitOperationOutputs {
 
     pub fn stream(&self, port_name: &str) -> Option<&MaterialStreamState> {
         self.material_streams.get(port_name)
+    }
+
+    pub fn energy_balance(&self) -> Option<UnitEnergyBalance> {
+        self.energy_balance
     }
 }
 

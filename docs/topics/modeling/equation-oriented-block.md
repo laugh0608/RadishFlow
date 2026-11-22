@@ -1,6 +1,6 @@
 # QS3：多单元联立方程、规格反算与正式接入
 
-更新时间：2026-11-04
+更新时间：2026-11-18
 
 用途：定义 QS3 首批案例、模型方程能力、结构分析、数值方法、工程与消费者契约，以及具体批准项和阶段验收。
 读者：维护 unitops、solver、store、运行与结果、Studio 和自动化入口的协作者。
@@ -82,6 +82,44 @@ alpha = (C-q)/(C-beta*q) = 10/19
 | SB.b 产品 | 117/85；198/85，总量 63/17 | 137/110；124/55，总量 7/2 |
 
 E2 的 `dq/dalpha=-C*(1-beta)/(1-alpha*beta)^2`；解处为 `-361/132 mol/s`，在指定区间严格为负，且分母非零。因此该**案例**具有连续、唯一的可行根。区间两端的 q 分别为 `11/4`、`11/61 mol/s`；q=3 mol/s 在本案例区间不可达。这个解析证明用于独立验收，不把公式硬编码为通用产品求解路径，也不把对本例的唯一性推广到所有网络。
+
+### 终端产品摩尔分率反算（Rust Core）
+
+在固定 T/P 的 Feed、Mixer、非选择性 Splitter 工程中，`EquationOptions.target` 可选 `ProductTarget::MoleFraction`。目标绑定终端流股、生产者单元及出口、已注册组分和闭区间 [0, 1] 内的摩尔分率。释放一个 Splitter 的 `outlet_a_split_fraction`。Core 统一计划预检和执行入口均支持该规格。组成反算结果的方程与验收契约版本均为 2，既有正向和总量反算使用版本 1。v4 保存与重开、共享执行、CLI v10 和 Studio 已接通。
+
+令产品总量为 `F = Σ n_j`、目标组分为 i、目标值为 x。装配物料行 `g = n_i − xF`（mol/s），目标行在产品端口的解析偏导为 `δij − x`。目标为 0 或 1 时，恒零偏导从结构关联中剔除。两端与每次二分试点均须有有限正产品流量，用有符号组成误差 `n_i/F − x` 判断括区。固定关闭出口或试点产品流量为零时，返回 `UndefinedComposition`。
+
+候选须满足既有绝对与缩放物料残差、区间和完整 Jacobian 验收，还须满足 `|n_i/F − x| ≤ 1e-10 mol/mol`。实际单元重算后，从生产者流股读取总量与摩尔分率，再分别验收流量形式的残差和绝对组成误差。条件评价保留产品总量、目标组分流量、实际摩尔分率和两种有量纲的残差，最终证据另含缩放残差。该容差用于固定温压物料模型的数值验收。[完整工程与解析解](../flowsheet-modeling-and-solve.md#由产品组成反求分流比例)
+
+### 组成规格的工程 v4 保存与重开
+
+`simulation.steadyStatePlan` 保留 `radishflow.fixed-tp-material-eo/1` 方法及原有比例释放记录。新增 `kind: product_mole_fraction` 目标，持久化 `streamId`、生产者 `source.unitId` 与 `source.port`、`componentId` 和有限的 `valueMolMol`（[0, 1]）。产品总量与组成目标合计最多一项。显式尺度中的同类方程绑定保存相同的源和组分身份，尺度仍为 mol/s。目标或尺度引用组成行时，writer 将 EO 必需能力、方程契约及验收契约一并写为 2。正向及总流量计划使用原版本 1。已知内容与版本不符时报格式错误，未来版本触发整份只读。 [实际保存的工程](../../../examples/flowsheets/fixed-tp-product-composition-binary-hydrocarbon.rfproj.json)
+
+应用正式计划后，调用 `prepare_product_composition_save` 检查源和目标能力，确认后 `commit` 复核会话、计划代次、正式输入及目标原字节指纹。重复保存同能力工程沿用保存基线。切回版本 1 可另存新文件。通过 `read_studio_project_with_support(..., FlowPlanSupport::ProductComposition)` 重开恢复正式输入、计划和尺度，结果为 Missing。草稿与运行结果属于原会话。零流量或已失效的图绑定由运行就绪与数值层诊断。 [保存事务](../../../apps/radishflow-studio/src/document_lifecycle_driver/plan_save.rs) · [本机验收](../../devlogs/2026-11/2026-W47.md#2026-11-18-组成规格-v4-工程保存与重开)
+
+### 组成规格的共享运行与结果
+
+共享应用入口按正式计划冻结输入，接收回执时核对会话、输入、计划代次和运行身份。成功结果的方程与验收版本及装配配置须与冻结计划一致。结果来源记录规范配置 SHA-256、EO 能力及契约版本和实际 Core 后端。失败来源沿用同一冻结配置，数值证据只用于诊断。取消保留上一份有效结果，迟到回执按既有资格丢弃。
+
+内部结构化结果中的 `verified_target` 带产品、生产者出口、组分和目标值。生产者复算得到的总流量、组分流量、实际摩尔分率和组成残差记录于 `composition`，同一目标另有 `residual_mol_s` 及 `scaled_residual`。有定义的条件试算也记录其 `composition` 和流量形式的残差。已发布的反算比例可经 Current 结果显式采纳。正向及总量反算沿用版本 1 的结果结构。 [共享执行桥](../../../apps/radishflow-studio/src/solver_bridge/execution.rs) · [结果投影](../../../apps/radishflow-studio/src/equation_result_projection.rs)
+
+### 产品组成反算 CLI v10
+
+`schema_version: 10` 使用 `query` 和 `execute`。EO 方法仍为 `radishflow.fixed-tp-material-eo/1`。组成目标及其显式尺度行使用 `kind: product_mole_fraction`。两者均以 `stream`、生产者 `source` 和 `component_id` 定位，目标另有 `value_mol_mol`（有限的 [0, 1]）。对应的方程与验收契约均为 2，既有正向及总量反算使用 1。配置语法沿用 [CLI v6](../../reference/headless-cli.md#qs3-cli-v62026-10-31已实现) 的 IdentityRef 与 `scale_si`。
+
+`results(flow_plan)` 返回所需能力、就绪状态、规范配置和 `configuration_sha256`。`run_flow` 的 `result` 与 `results(flow)` 复用共享回执。组成证据位于 `evidence.verified_target` 与 `evidence.conditional_evaluations`，使用 `mol/s` 的物料残差和 `mol/mol` 的组成残差。 [共享结果契约](#组成规格的共享运行与结果)
+
+执行按工程 ID、文件 SHA-256、输入修订和计划修订校验资格。`adopt_eo_split_fraction` 只接受同一请求内的 Current 运行步骤，在内存中更新一个输入。确认类动作使用 `headless-v10-confirm-v1:` 命名空间。v4–v9 查询组成工程返回只读，支持执行的旧协议在步骤及资源加载前拒绝运行。
+
+- [查询请求](../../../examples/automation/query-product-composition-v10.request.json) 无需物性缓存，重开结果为 Missing。
+- [运行、审阅、采纳、切正向重算](../../../examples/automation/adopt-product-composition-v10.request.template.json) 使用同一工程。在模板中填写本机有效物性缓存及索引路径，工程字节变化时重新查询 SHA-256。首个运行步骤回执保留反算结果，最后的 `results(flow)` 返回正向结果。
+
+### 产品组成反算 Studio
+
+在「流程运行 → 稳态运行计划」选择释放的分流器及终端产品后，从「规格类型与组分」选目标组分。数值输入支持 `mol/mol` 和 `mol%`，本例用 `35 mol%` 与 `0.35 mol/mol` 得到相同的规范配置。草稿按目标类型、生产端口及组分绑定。原流股或组分绑定失效时提示重新选择，运行就绪检查随之阻止运行。
+
+应用后在首次保存 EO 能力 2 时确认 v4 兼容性。重开后按 Run／F5 执行。Current 结果展示原比例、求得比例、实际组成和两种残差，可预览并确认采纳。采纳只更新分流器比例，结果转为 Stale。切回正向需移除释放与产品目标，可另存为使用 EO 能力 1 的 v4 工程。 [本机验收](../../devlogs/2026-11/2026-W47.md#2026-11-19-组成反算-studio-实窗)
+
 
 ## D02：模型方程、身份与结构诊断
 
@@ -303,5 +341,8 @@ Feed 的负流量先按输入非法拒绝，不通过从总量求和中排除它
 - [x] 完成验收要求与直接测试 / 历史记录的映射；共同无环问题覆盖 QS0—QS3，单回流覆盖 QS1—QS3，保持独立 oracle、原算法及预算。正式 2,034 项门禁通过，原生 EO 未括区失败与保存取消后恢复代表路径通过。
 - [x] 同图、同物性 / 固定边界下记录局部 / thermo / flash 调用、失败类别及单样本耗时，明确 debug / arm64 / 单线程测量范围；不推导通用提速或总体成功率。
 - [x] 浮点不可缩区间已有真实工程数值直证；奇异中点用内部数值方程故障注入验证两端完成、第三次评价即停，不宣称新增工程模型。全局组分绝对 / 缩放及总量缩放检查分别注入独立失败，先证明全部局部和行残差通过。三项新增测试通过，门槛与产品算法保持；命令和构造见 W45。
-- [ ] 共享 worker 的 macOS 在途取消 / join 代表路径已补（真实回流迭代、采样与重跑），不是 EO 每个数值安全点的实窗证明；方法特定取消、窄区键盘、OS 倍率、Windows / Linux、I5、PME 与 AF1 仍按原节点补验。
+- [x] macOS 单比例反算实窗补验通过。取消的运行未接收，原 Current 保留，手动重跑收敛并产生新快照。窗口进程采到 EO 矩阵计算，重跑结束后采样无求解线程；共享 owner 在 join 后释放名额。见 [W46 实窗记录](../../devlogs/2026-11/2026-W46.md#2026-11-14qs3qs4-与-af3-macos-实窗补验)。
+- [x] macOS 中文 400 px / 20 px 窄区实窗通过。产品目标与二分预算 Enter 校验失败后恢复各自焦点，Tab 往返、草稿保留及修正重跑均通过。 [W46 修复与复验](../../devlogs/2026-11/2026-W46.md#2026-11-15-qs3-校验失败焦点修复与实窗复验)
+- [x] macOS 英文 400 px / 20 px 窄区复验通过。顶部与底部状态项整组换行，目标、预算、单位选择器与 Apply plan 可用键盘移入视野。Enter 拒绝后的回焦、草稿保留、键盘应用与 F5 重跑通过。 [W46 英文修复与复验](../../devlogs/2026-11/2026-W46.md#2026-11-15-qs3-英文窄区布局与键盘焦点复验)
+- [ ] EO 其他数值安全点的原生交互、OS 倍率、Windows / Linux、I5 和 PME 仍待对应验收。AF1 独立跟踪。
 - [x] [QS4 首片 A—D](mixed-partition-execution.md)已按批准的 D01—D05 与认可局部画板完成本机实现 / 验证。热 / 相平衡、多释放量、通用 Newton、动态与插件仍另审。

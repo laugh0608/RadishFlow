@@ -4,8 +4,13 @@
 use std::collections::BTreeMap;
 
 use rf_model::{MaterialStreamState, UnitNode};
+use rf_thermo::SensibleEnthalpyModel;
 use rf_types::{RfError, RfResult, StreamId};
 
+use crate::single_phase::{
+    AdiabaticMixer, HeatDutyDomain, HeatSpecification, SinglePhaseFeed, SinglePhaseHeaterCooler,
+    SinglePhaseSplitter,
+};
 use crate::specifications::{BuiltinInputSpecification, input_specification};
 use crate::{
     BuiltinUnitKind, COOLER_SPEC, FEED_OUTLET_PORT, FEED_SPEC, FLASH_DRUM_LIQUID_PORT,
@@ -137,6 +142,118 @@ pub fn instantiate_builtin(
         .with_related_unit_id(unit.id.clone())
     })?;
     (builtin_model(kind).construct)(unit, streams)
+}
+
+/// Construct a local operation for the explicitly selected single-phase model.
+pub fn instantiate_single_phase<'a>(
+    unit: &UnitNode,
+    streams: &BTreeMap<StreamId, MaterialStreamState>,
+    model: &'a SensibleEnthalpyModel,
+) -> RfResult<Box<dyn UnitOperation + 'a>> {
+    instantiate_single_phase_with_heat_duty(unit, streams, model, None)
+}
+
+/// Construct a local operation with an optional run-time heat duty supplied in watts.
+pub fn instantiate_single_phase_with_heat_duty<'a>(
+    unit: &UnitNode,
+    streams: &BTreeMap<StreamId, MaterialStreamState>,
+    model: &'a SensibleEnthalpyModel,
+    heat_duty_w: Option<f64>,
+) -> RfResult<Box<dyn UnitOperation + 'a>> {
+    single_phase_operation(unit, streams, model, heat_duty_w, HeatDutyDomain::Strict)
+}
+
+/// Validate the steady-state heat duty window on the actual fresh inflow before
+/// allowing nonselective recycle trials. Both checks account for mixer roundoff.
+pub fn instantiate_single_phase_recycle_heat_duty<'a>(
+    unit: &UnitNode,
+    streams: &BTreeMap<StreamId, MaterialStreamState>,
+    model: &'a SensibleEnthalpyModel,
+    duty_w: f64,
+    fresh: &MaterialStreamState,
+) -> RfResult<Box<dyn UnitOperation + 'a>> {
+    let operation = single_phase_operation(
+        unit,
+        streams,
+        model,
+        Some(duty_w),
+        HeatDutyDomain::RecycleRoundoff,
+    )?;
+    model
+        .validate_domain(fresh.temperature_k, fresh.pressure_pa)
+        .and_then(|()| {
+            HeatSpecification::HeatDutyW(duty_w)
+                .resolve(model, fresh, HeatDutyDomain::RecycleRoundoff)
+                .map(|_| ())
+        })
+        .map_err(|error| {
+            error
+                .with_related_unit_id(unit.id.clone())
+                .with_related_stream_id(fresh.id.clone())
+        })?;
+    Ok(operation)
+}
+
+fn single_phase_operation<'a>(
+    unit: &UnitNode,
+    streams: &BTreeMap<StreamId, MaterialStreamState>,
+    model: &'a SensibleEnthalpyModel,
+    heat_duty_w: Option<f64>,
+    heat_duty_domain: HeatDutyDomain,
+) -> RfResult<Box<dyn UnitOperation + 'a>> {
+    let kind = BuiltinUnitKind::parse(&unit.kind);
+    if heat_duty_w.is_some()
+        && !matches!(
+            kind,
+            Some(BuiltinUnitKind::Heater | BuiltinUnitKind::Cooler)
+        )
+    {
+        return Err(RfError::invalid_input(format!(
+            "{} does not accept a heat duty specification",
+            unit_context(unit),
+        ))
+        .with_diagnostic_code("solver.single_phase.unsupported_heat_duty_target")
+        .with_related_unit_id(unit.id.clone()));
+    }
+    match kind {
+        Some(BuiltinUnitKind::Feed) => Ok(Box::new(SinglePhaseFeed {
+            outlet: feed_outlet_template(unit, streams)?,
+            model,
+        })),
+        Some(BuiltinUnitKind::Mixer) => Ok(Box::new(AdiabaticMixer {
+            outlet: stream_target_for_port(unit, MIXER_OUTLET_PORT, streams)?,
+            outlet_pressure_pa: unit.parameters.outlet_pressure_pa,
+            model,
+        })),
+        Some(BuiltinUnitKind::Splitter) => Ok(Box::new(SinglePhaseSplitter {
+            splitter: splitter_from_node(unit, streams)?,
+            model,
+        })),
+        Some(kind @ (BuiltinUnitKind::Heater | BuiltinUnitKind::Cooler)) => {
+            let outlet = stream_target_for_port(unit, HEATER_COOLER_OUTLET_PORT, streams)?;
+            let specification =
+                HeatSpecification::from_inputs(unit.parameters.outlet_temperature_k, heat_duty_w)
+                    .map_err(|error| {
+                    error
+                        .with_related_unit_id(unit.id.clone())
+                        .with_related_stream_id(outlet.id.clone())
+                })?;
+            Ok(Box::new(SinglePhaseHeaterCooler {
+                kind,
+                outlet,
+                outlet_pressure_pa: unit.parameters.outlet_pressure_pa,
+                specification,
+                heat_duty_domain,
+                model,
+            }))
+        }
+        _ => Err(RfError::invalid_input(format!(
+            "{} has no single-phase sensible enthalpy model",
+            unit_context(unit),
+        ))
+        .with_diagnostic_code("solver.single_phase.unsupported_unit")
+        .with_related_unit_id(unit.id.clone())),
+    }
 }
 
 fn create_feed(
@@ -310,14 +427,21 @@ fn create_splitter(
     unit: &UnitNode,
     streams: &BTreeMap<StreamId, MaterialStreamState>,
 ) -> RfResult<Box<dyn UnitOperation>> {
+    Ok(Box::new(splitter_from_node(unit, streams)?))
+}
+
+fn splitter_from_node(
+    unit: &UnitNode,
+    streams: &BTreeMap<StreamId, MaterialStreamState>,
+) -> RfResult<crate::Splitter> {
     let fraction = unit.parameters.outlet_a_split_fraction.ok_or_else(|| {
         RfError::invalid_input("splitter requires outlet_a_split_fraction")
             .with_diagnostic_code("unitops.splitter.missing_fraction")
             .with_related_unit_id(unit.id.clone())
     })?;
-    Ok(Box::new(crate::Splitter::new(
+    Ok(crate::Splitter::new(
         stream_target_for_port(unit, crate::SPLITTER_OUTLET_A_PORT, streams)?,
         stream_target_for_port(unit, crate::SPLITTER_OUTLET_B_PORT, streams)?,
         fraction,
-    )))
+    ))
 }

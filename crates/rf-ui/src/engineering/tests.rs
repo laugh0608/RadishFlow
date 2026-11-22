@@ -667,7 +667,8 @@ fn equipment_history_and_calculation_are_isolated_from_flow_and_presentation() {
         },
         rf_model::Flowsheet::new("changed"),
         std::time::SystemTime::now(),
-    );
+    )
+    .unwrap();
     app.store_snapshot(SolveSnapshot::new(
         "new-snapshot",
         1,

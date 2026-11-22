@@ -154,7 +154,12 @@ fn rating_check_calculate_labels_and_geometry_confirmation_follow_application_st
     fs::remove_dir_all(project.parent().unwrap()).unwrap();
 }
 
-pub(super) fn fits(shape: &egui::epaint::Shape, clip: egui::Rect, values: &[String], case: &str) {
+pub(in crate::studio_gui_shell) fn fits(
+    shape: &egui::epaint::Shape,
+    clip: egui::Rect,
+    values: &[String],
+    case: &str,
+) {
     match shape {
         egui::epaint::Shape::Text(t) => {
             let rect = t.galley.rect.translate(t.pos.to_vec2());
@@ -307,14 +312,12 @@ fn rating_numeric_focus_source_return_and_f5_preserve_unsubmitted_input() {
     assert_eq!(tree.focus, input);
     frame(&mut app, vec![]);
     let tree = frame(&mut app, vec![]);
-    let source = tree
+    let (source_button, source) = tree
         .nodes
         .iter()
         .filter(|(_, n)| n.role() == Role::Button && n.label() == Some("Edit / view source"))
         .min_by(|(_, a), (_, b)| a.bounds().unwrap().y0.total_cmp(&b.bounds().unwrap().y0))
-        .unwrap()
-        .1
-        .bounds()
+        .map(|(id, node)| (*id, node.bounds().unwrap()))
         .unwrap();
     let pos = egui::pos2(
         ((source.x0 + source.x1) / 2.0) as f32,
@@ -357,7 +360,7 @@ fn rating_numeric_focus_source_return_and_f5_preserve_unsubmitted_input() {
         vec![key(egui::Key::Escape, egui::Modifiers::NONE)],
     );
     let tree = frame(&mut app, vec![]);
-    assert_eq!(tree.focus, input);
+    assert_eq!(tree.focus, source_button);
     let w = &app.platform_host.modeling_inputs().workspace;
     assert_eq!(w.equipment_editor.active(), Some(&geometry));
     let EquipmentDraft::RatingGeometry(d) = w.equipment_editor.draft(&geometry).unwrap().value()

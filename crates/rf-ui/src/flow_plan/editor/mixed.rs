@@ -10,6 +10,22 @@ pub(super) fn apply(
     match field {
         Temperature => o.boundary.temperature_k = value,
         Pressure => o.boundary.pressure_pa = value,
+        IterationBudget => {
+            o.recycle
+                .as_mut()
+                .ok_or_else(unavailable)?
+                .max_iteration_evaluations = iteration_budget(value)?;
+        }
+        InitialComponent { stream, component } => {
+            let number = o
+                .recycle
+                .as_mut()
+                .filter(|recycle| &recycle.tear.stream_id == stream)
+                .and_then(|recycle| recycle.tear.initial_component_flows_mol_s.as_mut())
+                .and_then(|values| values.get_mut(component))
+                .ok_or_else(unavailable)?;
+            *number = value;
+        }
         MixedVariableScale { block, binding } => {
             let b = o
                 .blocks

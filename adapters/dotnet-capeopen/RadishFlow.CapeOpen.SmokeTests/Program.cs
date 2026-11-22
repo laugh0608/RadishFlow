@@ -162,11 +162,11 @@ internal sealed class SmokeOptions
           --mode <adapter|unitop> Run direct Adapter smoke or UnitOp.Mvp smoke. Default: adapter
           --unitop-scenario <all|session|recovery|shutdown>
                                Filter unitop smoke to a single host scenario. Default: all
-          --project <path>        Project json path. Default: examples/flowsheets/feed-heater-flash-binary-hydrocarbon.rfproj.json
+          --project <path>        Project json path. Default: examples/flowsheets/capeopen-feed-heater-binary-hydrocarbon.rfproj.json
           --package <id>          Package id to solve with. Default: binary-hydrocarbon-lite-v1
           --manifest <path>       Optional property package manifest path
           --payload <path>        Optional property package payload path
-          --stream <id>           Optional stream id to export after solve. Default: stream-vapor
+          --stream <id>           Optional stream id to export after solve. Default: stream-heated
           --native-lib-dir <dir>  Optional directory that contains rf_ffi.dll
           --help                  Show this help text
         """;
@@ -213,7 +213,7 @@ internal sealed class SmokeOptions
                     repoRoot,
                     "examples",
                     "flowsheets",
-                    "feed-heater-flash-binary-hydrocarbon.rfproj.json"),
+                    "capeopen-feed-heater-binary-hydrocarbon.rfproj.json"),
             packageId: values.TryGetValue("--package", out var packageId)
                 ? packageId
                 : "binary-hydrocarbon-lite-v1",
@@ -237,7 +237,7 @@ internal sealed class SmokeOptions
                     "payload.rfpkg"),
             streamId: values.TryGetValue("--stream", out var streamId)
                 ? streamId
-                : "stream-vapor",
+                : "stream-heated",
             nativeLibraryDirectory: values.TryGetValue("--native-lib-dir", out var nativeLibDir)
                 ? Path.GetFullPath(nativeLibDir)
                 : Path.Combine(repoRoot, "target", "debug"));
@@ -277,18 +277,7 @@ internal enum SmokeMode
     UnitOperation,
 }
 
-internal sealed class SmokeConnectedObject : ICapeIdentification
-{
-    public SmokeConnectedObject(string componentName)
-    {
-        ComponentName = componentName;
-        ComponentDescription = "Smoke test placeholder connected object.";
-    }
-
-    public string ComponentName { get; set; }
-
-    public string ComponentDescription { get; set; }
-}
+internal sealed class SmokeConnectedObject(string name) : ContractThermoMaterial(name);
 
 internal sealed class InvalidSmokeConnectedObject : ICapeIdentification
 {

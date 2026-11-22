@@ -320,6 +320,9 @@ fn notice_from_dispatch(
                     crate::WorkspaceSolveSkipReason::NoPendingRequest => {
                         "workspace has no pending solve request".to_string()
                     }
+                    crate::WorkspaceSolveSkipReason::ExplicitRunRequired => {
+                        "mixed recycle requires an explicit run".to_string()
+                    }
                 },
             )),
             StudioWorkspaceRunOutcome::Blocked(blocked) => Some(RunPanelNotice::new(

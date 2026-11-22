@@ -5,6 +5,23 @@ pub(crate) struct InputCommandCommit {
     pub changed: bool,
 }
 
+impl AppState {
+    pub fn clear_heater_cooler_outlet_temperature(
+        &mut self,
+        unit_id: UnitId,
+        changed_at: DateTimeUtc,
+    ) -> RfResult<Option<DocumentCommand>> {
+        let command = DocumentCommand::ClearHeaterCoolerOutletTemperature { unit_id };
+        let commit = self
+            .workspace
+            .commit_input_document_command(command.clone(), changed_at)?;
+        if commit.changed {
+            self.refresh_run_panel_state();
+        }
+        Ok(commit.changed.then_some(command))
+    }
+}
+
 impl WorkspaceState {
     /// Prepare all values against a clone before committing one existing history transaction.
     /// Inspector callers own their drafts; non-UI callers must check draft/revision conflicts.
@@ -14,16 +31,25 @@ impl WorkspaceState {
         changed_at: DateTimeUtc,
     ) -> RfResult<InputCommandCommit> {
         let next = self.prepare_input_document_command(&command)?;
+        Ok(self.commit_prepared_input(command, next, changed_at))
+    }
+
+    pub(super) fn commit_prepared_input(
+        &mut self,
+        command: DocumentCommand,
+        next: Flowsheet,
+        changed_at: DateTimeUtc,
+    ) -> InputCommandCommit {
         if next == self.document.flowsheet {
-            return Ok(InputCommandCommit {
+            return InputCommandCommit {
                 revision: self.document.revision,
                 changed: false,
-            });
+            };
         }
-        Ok(InputCommandCommit {
+        InputCommandCommit {
             revision: self.commit_inspector_document_change(command, next, changed_at),
             changed: true,
-        })
+        }
     }
     pub(crate) fn prepare_input_document_command(
         &self,
@@ -47,6 +73,20 @@ impl WorkspaceState {
                 let field = UnitInspectorDraftField::from_static_key_segment(parameter)
                     .ok_or_else(|| RfError::invalid_input("unsupported unit input field"))?;
                 unit_inspector::apply_unit_parameter_value(&mut next, unit_id, &field, value)?;
+            }
+            DocumentCommand::ClearHeaterCoolerOutletTemperature { unit_id } => {
+                let unit = next
+                    .units
+                    .get_mut(unit_id)
+                    .ok_or_else(|| RfError::missing_entity("unit", unit_id))?;
+                if self.flow_plan.current().project_model_method().is_none()
+                    || !matches!(unit.kind.as_str(), "heater" | "cooler")
+                {
+                    return Err(RfError::invalid_input(
+                        "clearing outlet temperature requires a single-vapor Heater/Cooler",
+                    ));
+                }
+                unit.parameters.outlet_temperature_k = None;
             }
             DocumentCommand::SetStreamSpecification {
                 stream_id,

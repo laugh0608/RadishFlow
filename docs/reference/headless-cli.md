@@ -1,22 +1,30 @@
 # 本地无界面运行接口
 
-更新时间：2026-11-04
+更新时间：2026-11-21
 
-用途：说明 Studio 旧 v1 / v2、AF4c v3、QS1-C v4、QS2-C v5、QS3 v6 与 QS4 v7 命令、JSON 请求 / 响应和错误语义。
-
-读者：使用本地脚本执行参数化工况的用户及适配器开发者。
-
-不包含：公共网络 API、COM、录制脚本、后台任务与项目保存。
+面向本地脚本与适配器的 CLI v1–v13 参考。
 
 ## 版本与兼容边界
 
-2026-10-26 已确认 [AF4c 新版 CLI 契约](../topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)，AF4c-1—4 已完成。新版 query / execute 的查询、正式输入 / 确认、同步运行和采纳已接通，并通过真实进程与正式仓库基线。以下旧协议契约继续有效；新版参考见文末。
+v3–v7 使用 [`query` / `execute`](#新版-v3查询)。
 
-B3-5 已通过 v2 请求接通受控创建 / 连接和步骤身份引用，v1 请求与响应字段保持兼容。2026-09-16 确认的 [单位系统](../topics/units-and-quantity-system.md) 和 [建模辅助](../topics/modeling-assistance-and-specifications.md) 后续复用本接口的身份、修订、命令与诊断；本文 v1 的 SI 数值、路径与错误契约不变。U1 已让响应的 unit 标签从公共目录派生，v1 / v2 仍只读写 SI，不接收额外单位字段。未来带单位请求须显式版本化或定义兼容扩展，不受 GUI 显示偏好影响。
+v8 `query` 仅支持 `stable_variable`。`execute` 在工程 IO 前返回 `unsupported_version`。 [v8 契约](../topics/variable-browser/stable-references.md#vb3-cli-只读查询首片)
 
-U2-I1 已让本接口通过共享存储层读取项目文件 v1 / v2；工程集呈现配置不改变 CLI 的 SI 数值与标签，非法呈现配置会使装载失败，不能丢弃配置后继续运行。项目外层版本与 CLI 请求版本独立，文件兼容规则见 [单位存储接口](../topics/units/unit-sets-and-persistence.md#u2-存储接口)。读取与运行仍不改写原工程，尚未提供 U3 的输出单位选择。
+v9 查询并运行已保存的 M2 工程。 [v9 契约与示例](../topics/modeling/mixed-partition-execution.md#m2-cli-首片评审)
 
-Studio GUI 已支持已知设备项目 v3，旧 CLI 的 `inspect`、v1 `run` 与 v2 workflow 仍在任何建模 / 求解前拒绝所有外层 v3 文件，包括工程区缺省或为空的文件。设备计算、保存及 CSV / JSON 导出不属于旧 CLI 协议；不能删除工程区后伪装为旧版继续运行。详见 [v3 生命周期](../topics/project-lifecycle-storage.md#完整设备保存与最小-studio-生命周期2026-10-15)。
+v10 支持 [终端产品组成反算](../topics/modeling/equation-oriented-block.md#产品组成反算-cli-v10)。
+
+[v11 显热](../topics/unitops/heater-cooler.md#cli-v11) · [v12 显热回流](../topics/modeling/recycle-and-block-execution.md#显热回流-cli-v12)。
+
+v13 复核已保存的独立同心套管校核任务。 [v13 查询与复算](#h3-同心套管校核-cli-v13)
+
+v2 增加创建、连接和步骤引用。工程与请求独立版本化，v1／v2 按 SI 读写。 [单位存储](../topics/units/unit-sets-and-persistence.md#u2-存储接口)
+
+旧 `inspect`、v1 `run` 与 v2 workflow 在建模前拒绝工程 v3 及以上、缺失或空工程区。 [v3 生命周期](../topics/project-lifecycle-storage.md#完整设备保存与最小-studio-生命周期2026-10-15)
+
+流程 Run 使用[共享执行入口](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)。
+
+含 `radishflow.object-identity` 或 `radishflow.variable-watch-list` 的 v4 工程，v3 `query` / `execute` 拒绝装载。v4–v7 `query` 只返回安全元数据；`execute` 核对工程 ID 与指纹后返回 `read_only_project`，早于资源读取和步骤执行。 [VB-D02](../topics/variable-browser/identity-storage.md) · [VB-D03](../topics/variable-browser/watch-list.md)
 
 ## 旧协议命令
 
@@ -28,9 +36,9 @@ radishflow-studio --headless run request.json
 radishflow-studio --headless --help
 ```
 
-开发工作区可执行 `cargo build --locked -p radishflow-studio`，随后使用 `target/debug/radishflow-studio`（Windows 为 `.exe`）。无界面分支在 GUI 初始化前执行，不打开窗口、访问最近项目或写入偏好。当前仍构建和链接 Studio 的既有桌面依赖，不承诺图形依赖已从产物中移除。其他平台运行态按阶段集中验证。
+用 `cargo build --locked -p radishflow-studio` 构建 `target/debug/radishflow-studio`（Windows 带 `.exe`）。CLI 在 GUI 初始化前运行，跳过最近项目和偏好，构建仍链接桌面依赖。其他平台运行态按阶段验证。
 
-每次命令创建独立内存工作区，加载已有 `*.rfproj.json`，结束时丢弃本次修改。标准输出是一个 UTF-8 JSON 响应，帮助命令除外；输出故障信息写入标准错误。保存响应可由调用方重定向到独立文件，不能把目标设为输入项目或缓存文件。编译日志属于 Cargo 输出，不属于响应协议。
+每条命令加载已有 `*.rfproj.json`，退出时丢弃内存修改。stdout 只含 UTF-8 JSON 响应或帮助，输出故障写入 stderr。保存响应时重定向到独立文件，避开输入项目和缓存。Cargo 编译日志属于构建输出。
 
 ## 查询后运行
 
@@ -403,3 +411,57 @@ target/debug/radishflow-studio --headless execute examples/automation/adopt-mate
 
 
 新增协议：[QS4 CLI v7 契约](headless-cli-v7.md)。
+
+## H3 同心套管校核 CLI v13
+
+`--headless query`／`execute` 使用 `schema_version: 13` 复核 v3／v4 已保存的独立 H3 工况。工程相对路径以请求文件目录为基准。严格 JSON 拒绝未知或重复键、步骤引用及流程资源参数。工程、缓存、偏好、布局和结果文件保持原状。 [H3 数据与能力](../topics/equipment/heat-exchanger-design-and-rating.md#h3-cli-只读复核)
+
+### 发现与查询
+
+先用以下请求发现正式工况。响应 `project` 提供 `document_id`、`project_schema_version` 和原文件字节的 `file_sha256`。工况列表提供 `target`、方法 ID／版本及 `revisions` 中的 `task`、`geometry`、`case`。
+
+```json
+{
+  "schema_version": 13,
+  "project": "concentric-tube.rfproj.json",
+  "queries": [{"id": "cases", "query": {"kind": "objects"}}]
+}
+```
+
+| 查询 | 参数及返回值 |
+| --- | --- |
+| `objects` | 列出工程中已知方法的 H3 工况，按保存顺序返回 |
+| `record` | `target` 取发现返回的 `{"case":{"task":{"id":"…"},"case":{"id":"…"}}}`。返回 `object`、`geometry`、`case` 及被该工况引用的 `sources`。数值为字段名所示的 SI 单位，未填写项返回 `null` |
+| `results` | `scope` 为 `{"object": target}`，其中 `target` 是上行同一个 JSON 对象。返回该工况结果；新进程为 `{"status":"missing"}` |
+
+`queries` 必填，ID 唯一且非空白。`[]` 仅查工程元数据。含已保存 H3 流程关联或其他未支持能力／方法的工程标记 `read_only: true`。工况查询返回 `read_only_project`（退出码 3），`execute` 核对工程 ID 和指纹后返回同一错误。
+
+### 复算与结果
+
+使用 `--headless execute`，把下面示例中的项目身份、指纹、工况目标和修订替换为发现响应中的实际值。仅支持一个 `rate_concentric_tube` 步骤，`queries` 可同时读取本次结果。
+
+```json
+{
+  "schema_version": 13,
+  "project": "concentric-tube.rfproj.json",
+  "expected_project": {"document_id": "<document_id>", "file_sha256": "<file_sha256>"},
+  "steps": [{
+    "id": "rate",
+    "action": {
+      "kind": "rate_concentric_tube",
+      "target": {"case": {"task": {"id": "h3-rating"}, "case": {"id": "h3-water"}}},
+      "expected_revisions": {"task": 5, "geometry": 7, "case": 11}
+    }
+  }],
+  "queries": [{
+    "id": "performance",
+    "query": {"kind": "results", "scope": {"object": {
+      "case": {"task": {"id": "h3-rating"}, "case": {"id": "h3-water"}}
+    }}}
+  }]
+}
+```
+
+- **计算完成**使用退出码 0。步骤回执与同请求结果查询给出相同的 `current` 结果，包括 `heat_duty_w`、`ua_w_per_k`、LMTD、面积、两侧出口、传热与水力中间量和闭合残差。`checks` 中 `heat_duty`、`hot_pressure_drop`、`cold_pressure_drop` 各返回 `passed`、`failed` 或 `not_specified`。超限时完整数值仍可用。
+- **计算失败**使用退出码 4 和 `run_failed`。该工况结果状态为 `failed`，包含原 Core 的 `diagnostic.code` 与 `message`。步骤拒绝、项目字节变化及错误身份走独立处理。`different_document`、`project_conflict`、`record_conflict` 和 `object_missing` 使用退出码 2。
+- **来源**由 `origin` 给出，包括工程 ID 与文件指纹、步骤 ID、工况身份、三项修订、方法以及几何与两侧物性来源 ID。独立调用 `query` 会重新从 `Missing` 开始。v12 可查询含 H3 工程的安全元数据并禁止执行；已有协议的能力边界照旧。

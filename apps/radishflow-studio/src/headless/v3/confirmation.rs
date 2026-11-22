@@ -201,12 +201,10 @@ impl Aliases {
     }
 }
 fn case_exists(i: &EngineeringInputs, id: &str) -> bool {
-    i.tasks.iter().any(|t| match t {
-        rf_model::equipment::EquipmentTask::SeparatorSizing(t) => t.case.id.as_str() == id,
-        rf_model::equipment::EquipmentTask::SeparatorRating(t) => {
-            t.cases.iter().any(|c| c.id.as_str() == id)
-        }
-    })
+    i.tasks
+        .iter()
+        .flat_map(rf_model::equipment::EquipmentTask::case_ids)
+        .any(|case| case.as_str() == id)
 }
 fn sort_set(values: &mut [Value]) {
     values.sort_by_cached_key(Value::to_string);

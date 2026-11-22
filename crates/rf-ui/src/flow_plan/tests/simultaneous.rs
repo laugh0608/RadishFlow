@@ -35,7 +35,10 @@ fn modular_plan_keeps_invalid_graph_bindings_but_rejects_invalid_settings() {
     );
     let plan = FlowPlanConfiguration::Simultaneous(options.clone());
     assert!(plan.validate_configuration().is_ok());
-    assert!(plan.validate_for(&app.workspace).is_err());
+    assert!(
+        plan.validate_for(&app.workspace.document.flowsheet)
+            .is_err()
+    );
     let input = app.flow_run_qualification();
     apply(&mut app, FlowPlanCommand::Apply(plan.clone()));
     assert!(input.same_input(&app.flow_run_qualification()));

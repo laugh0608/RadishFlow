@@ -64,6 +64,135 @@ fn synced_config() -> StudioRuntimeConfig {
 }
 
 #[test]
+fn mixed_recycle_host_keeps_decoded_session_and_commits_the_reviewed_target() {
+    use crate::{
+        PropertyPackageCacheRoot, StudioDocumentLifecycleCommand, StudioProjectOpen,
+        StudioRuntimeTrigger, WorkspaceSolveService, WorkspaceSolveSkipReason,
+        WorkspaceSolveTrigger, prepare_mixed_recycle_save, read_studio_project_with_support,
+    };
+    use rf_store::project_v4::FlowPlanSupport;
+    use rf_ui::{SimulationMode, result_query::FlowResultView};
+
+    let dir = PropertyPackageCacheRoot::temporary("m2-studio-host").unwrap();
+    let path = dir.path().join("mixed-recycle.rfproj.json");
+    let mut app = crate::qs4_test_support::recycle_case(500);
+    prepare_mixed_recycle_save(&app, &path)
+        .unwrap()
+        .commit(&mut app, true)
+        .unwrap();
+    let StudioProjectOpen::Editable(app) =
+        read_studio_project_with_support(&path, FlowPlanSupport::MixedRecycle).unwrap()
+    else {
+        panic!("M2 must be editable for this consumer");
+    };
+    let mut app = *app;
+    app.set_simulation_mode(SimulationMode::Active);
+    assert_eq!(
+        WorkspaceSolveService::new().skip_reason(&app, WorkspaceSolveTrigger::Automatic),
+        Some(WorkspaceSolveSkipReason::ExplicitRunRequired)
+    );
+    assert_eq!(
+        WorkspaceSolveService::new().skip_reason(&app, WorkspaceSolveTrigger::Manual),
+        None
+    );
+    assert!(!crate::studio_run_owner::StudioRunOwner::default().should_attempt_automatic(&app));
+    let expected_session = app.flow_run_qualification();
+    let config = StudioRuntimeConfig {
+        project_path: path.clone(),
+        ..synced_config()
+    };
+    std::fs::write(&path, "changed after decode").unwrap();
+    let mut host = StudioGuiPlatformHost::from_project_app(&config, app).unwrap();
+    assert!(
+        host.modeling_inputs()
+            .flow_run_qualification()
+            .same_session(&expected_session)
+    );
+    assert!(matches!(
+        host.modeling_inputs().workspace.flow_result(),
+        FlowResultView::Missing { .. }
+    ));
+    let opened = host
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .unwrap();
+    let crate::StudioGuiDriverOutcome::HostCommand(
+        crate::StudioGuiHostCommandOutcome::WindowOpened(opened),
+    ) = opened.outcome
+    else {
+        panic!("editor window must open")
+    };
+    let window_id = opened.registration.window_id;
+    let copy = dir.path().join("copy.rfproj.json");
+    let prepared = host.prepare_mixed_recycle_save(&copy).unwrap();
+    assert!(!prepared.replaces_file());
+    assert!(prepared.compatibility().is_none());
+    let dispatch = |host: &mut StudioGuiPlatformHost, prepared| {
+        host.dispatch_event(StudioGuiEvent::WindowTriggerRequested {
+            window_id,
+            trigger: StudioRuntimeTrigger::DocumentLifecycle(
+                StudioDocumentLifecycleCommand::SaveMixedRecycle {
+                    prepared: Box::new(prepared),
+                    capability_confirmed: false,
+                },
+            ),
+        })
+    };
+    std::fs::write(&copy, "new target after preview").unwrap();
+    assert!(dispatch(&mut host, prepared).is_err());
+    assert_eq!(
+        std::fs::read_to_string(&copy).unwrap(),
+        "new target after preview"
+    );
+    assert_eq!(
+        host.modeling_inputs().workspace.document_path.as_deref(),
+        Some(path.as_path())
+    );
+    std::fs::remove_file(&copy).unwrap();
+    let prepared = host.prepare_mixed_recycle_save(&copy).unwrap();
+    dispatch(&mut host, prepared).unwrap();
+    assert_eq!(
+        host.modeling_inputs().workspace.document_path.as_deref(),
+        Some(copy.as_path())
+    );
+    let run = |host: &mut StudioGuiPlatformHost| {
+        host.dispatch_event(StudioGuiEvent::UiCommandRequested {
+            command_id: "run_panel.run_manual".into(),
+        })
+        .unwrap();
+        let FlowResultView::Current { origin, .. } = host.modeling_inputs().workspace.flow_result()
+        else {
+            panic!("an explicit M2 host run must be accepted");
+        };
+        origin.execution().unwrap().clone()
+    };
+    let first = run(&mut host);
+    let StudioProjectOpen::Editable(reopened) =
+        read_studio_project_with_support(&copy, FlowPlanSupport::MixedRecycle).unwrap()
+    else {
+        panic!("the saved copy must reopen as M2");
+    };
+    let config = StudioRuntimeConfig {
+        project_path: copy,
+        ..config
+    };
+    let mut reopened = StudioGuiPlatformHost::from_project_app(&config, *reopened).unwrap();
+    reopened
+        .dispatch_event(StudioGuiEvent::OpenWindowRequested)
+        .unwrap();
+    assert!(matches!(
+        reopened.modeling_inputs().workspace.flow_result(),
+        FlowResultView::Missing { .. }
+    ));
+    let second = run(&mut reopened);
+    assert_eq!(first.plan, second.plan);
+    assert_ne!(first.run_id, second.run_id);
+    assert_eq!(
+        std::fs::read_to_string(path).unwrap(),
+        "changed after decode"
+    );
+}
+
+#[test]
 fn platform_host_records_run_command_and_latest_app_log_activity() {
     let mut host = StudioGuiPlatformHost::new(&synced_config()).expect("expected platform host");
     host.dispatch_event(StudioGuiEvent::OpenWindowRequested)

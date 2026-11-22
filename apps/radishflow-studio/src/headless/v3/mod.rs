@@ -22,6 +22,7 @@ pub(super) mod strict;
 use crate::document_lifecycle_driver::parse_studio_project;
 use crate::document_lifecycle_driver::{StudioProjectOpen, parse_studio_project_with_support};
 use protocol::*;
+use rf_store::project_v4::{FlowPlanSupport, ObjectIdentitySupport};
 use std::{collections::BTreeSet, io::Write, path::Path};
 
 pub(super) fn query_args(
@@ -86,7 +87,7 @@ pub(super) fn output(response: &Response, stdout: &mut impl Write, stderr: &mut 
     }
 }
 
-fn request_bytes(path: &Path) -> Result<Vec<u8>, Failure> {
+fn read_request(path: &Path) -> Result<(u32, Vec<u8>), Failure> {
     let bytes = std::fs::read(path)
         .map_err(|e| Failure::new(Stage::Request, Code::InvalidRequest, e.to_string()))?;
     strict::validate(&bytes).map_err(invalid_request)?;
@@ -95,14 +96,7 @@ fn request_bytes(path: &Path) -> Result<Vec<u8>, Failure> {
         schema_version: u32,
     }
     let version: Version = serde_json::from_slice(&bytes).map_err(invalid_request)?;
-    if !matches!(version.schema_version, 3..=7) {
-        return Err(Failure::new(
-            Stage::Request,
-            Code::UnsupportedVersion,
-            "query/execute require schema_version 3 through 7",
-        ));
-    }
-    Ok(bytes)
+    Ok((version.schema_version, bytes))
 }
 pub(super) fn invalid_request(error: serde_json::Error) -> Failure {
     Failure::new(Stage::Request, Code::InvalidRequest, error.to_string())
@@ -127,14 +121,48 @@ pub(super) fn load_project_version(
     path: &Path,
     protocol_version: u32,
 ) -> Result<(StudioProjectOpen, ProjectSnapshot), Failure> {
-    let bytes = std::fs::read(path)
-        .map_err(|e| Failure::new(Stage::Project, Code::ProjectIo, e.to_string()))?;
-    let file_sha256 = rf_store::sha256_hex(&bytes);
-    let contents = std::str::from_utf8(&bytes)
-        .map_err(|e| Failure::new(Stage::Project, Code::InvalidProject, e.to_string()))?;
-    if rf_store::project_v3::probe_version(contents)
+    let plan_support = match protocol_version {
+        3 | 4 => FlowPlanSupport::Sequential,
+        5 => FlowPlanSupport::Simultaneous,
+        6 => FlowPlanSupport::EquationOriented,
+        super::v10::VERSION => FlowPlanSupport::ProductComposition,
+        super::v11::VERSION => FlowPlanSupport::SinglePhase,
+        super::v12::VERSION => FlowPlanSupport::SinglePhaseRecycle,
+        _ => FlowPlanSupport::Mixed,
+    };
+    load_project_with_support(
+        path,
+        protocol_version.min(rf_store::project_v4::VERSION),
+        plan_support,
+        if protocol_version >= super::v11::VERSION {
+            ObjectIdentitySupport::Supported
+        } else {
+            ObjectIdentitySupport::Unavailable
+        },
+    )
+}
+
+pub(super) fn load_stable_query_project(
+    path: &Path,
+) -> Result<(StudioProjectOpen, ProjectSnapshot), Failure> {
+    load_project_with_support(
+        path,
+        rf_store::project_v4::VERSION,
+        FlowPlanSupport::Mixed,
+        ObjectIdentitySupport::Supported,
+    )
+}
+
+pub(super) fn load_project_with_support(
+    path: &Path,
+    supported_project_version: u32,
+    plan_support: FlowPlanSupport,
+    identity_support: ObjectIdentitySupport,
+) -> Result<(StudioProjectOpen, ProjectSnapshot), Failure> {
+    let file = super::project_file::read_project_file(path)?;
+    if rf_store::project_v3::probe_version(&file.contents)
         .map_err(|e| Failure::new(Stage::Project, Code::InvalidProject, e.to_string()))?
-        > protocol_version.min(4)
+        > supported_project_version
     {
         return Err(Failure::new(
             Stage::Project,
@@ -142,17 +170,9 @@ pub(super) fn load_project_version(
             "project schema version is not supported by this CLI protocol",
         ));
     }
-    let support = if protocol_version <= 4 {
-        rf_store::project_v4::FlowPlanSupport::Sequential
-    } else if protocol_version == 5 {
-        rf_store::project_v4::FlowPlanSupport::Simultaneous
-    } else if protocol_version == 6 {
-        rf_store::project_v4::FlowPlanSupport::EquationOriented
-    } else {
-        rf_store::project_v4::FlowPlanSupport::Mixed
-    };
-    let opened = parse_studio_project_with_support(contents, path, support)
-        .map_err(|e| Failure::new(Stage::Project, Code::InvalidProject, e.to_string()))?;
+    let opened =
+        parse_studio_project_with_support(&file.contents, path, plan_support, identity_support)
+            .map_err(|e| Failure::new(Stage::Project, Code::InvalidProject, e.to_string()))?;
     let (document_id, flow_revision, project_schema_version, count, read_only) = match &opened {
         StudioProjectOpen::Editable(app) => (
             app.workspace.document.metadata.document_id.to_string(),
@@ -178,7 +198,7 @@ pub(super) fn load_project_version(
             document_id,
             project_schema_version,
             flow_revision,
-            file_sha256,
+            file_sha256: file.sha256,
             read_only,
             read_only_reason: read_only.then_some(Code::UnsupportedCapability),
             equipment_task_count: count,
@@ -188,32 +208,39 @@ pub(super) fn load_project_version(
     ))
 }
 fn query_file(path: &Path, response: &mut Response) -> Result<(), Failure> {
-    let bytes = request_bytes(path)?;
-    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(invalid_request)?["schema_version"]
-        == 7
-    {
-        response.schema_version = 7;
-        return super::planned::query_file::<super::v7::Plan>(path, &bytes, response);
+    let (version, bytes) = read_request(path)?;
+    if !matches!(version, 3..=super::v13::VERSION) {
+        return Err(Failure::new(
+            Stage::Request,
+            Code::UnsupportedVersion,
+            "query requires schema_version 3 through 13",
+        ));
     }
-    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(invalid_request)?["schema_version"]
-        == 6
-    {
-        response.schema_version = 6;
-        return super::planned::query_file::<super::v6::Plan>(path, &bytes, response);
+    response.schema_version = version;
+    match version {
+        3 => query_v3(path, &bytes, response),
+        4 => super::v4::query_file::<super::v4::protocol::Plan>(path, &bytes, response),
+        5 => super::planned::query_file::<super::v5::Plan>(path, &bytes, response),
+        6 => super::planned::query_file::<super::v6::Plan>(path, &bytes, response),
+        7 => super::planned::query_file::<super::v7::Plan>(path, &bytes, response),
+        super::v8::VERSION => super::v8::query_file(path, &bytes, response),
+        super::v9::VERSION => super::v9::query_file(path, &bytes, response),
+        super::v10::VERSION => {
+            super::planned::query_file::<super::v10::Plan>(path, &bytes, response)
+        }
+        super::v11::VERSION => {
+            super::planned::query_file::<super::v11::Plan>(path, &bytes, response)
+        }
+        super::v12::VERSION => {
+            super::planned::query_file::<super::v12::Plan>(path, &bytes, response)
+        }
+        super::v13::VERSION => super::v13::query_file(path, &bytes, response),
+        _ => unreachable!("validated query version"),
     }
-    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(invalid_request)?["schema_version"]
-        == 5
-    {
-        response.schema_version = 5;
-        return super::planned::query_file::<super::v5::Plan>(path, &bytes, response);
-    }
-    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(invalid_request)?["schema_version"]
-        == 4
-    {
-        response.schema_version = 4;
-        return super::v4::query_file::<super::v4::protocol::Plan>(path, &bytes, response);
-    }
-    let request: QueryRequest = serde_json::from_slice(&bytes).map_err(invalid_request)?;
+}
+
+fn query_v3(path: &Path, bytes: &[u8], response: &mut Response) -> Result<(), Failure> {
+    let request: QueryRequest = serde_json::from_slice(bytes).map_err(invalid_request)?;
     debug_assert_eq!(request.schema_version, 3);
     validate_ids(request.queries.iter().map(|q| q.id.as_str()))?;
     if request.project.as_os_str().is_empty() {

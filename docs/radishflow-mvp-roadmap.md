@@ -1,6 +1,6 @@
 # RadishFlow 开发路线图
 
-更新时间：2026-11-05
+更新时间：2026-11-21
 
 ## 用途
 
@@ -65,16 +65,18 @@ P2 的自动化按可交付切片展开：先做变量 / 动作描述和只读�
 | AF2 内建模型与物性装配 | AF0 后可独立设计；2026-10-24 已确认 AF2a 不受 AF1 故障跟踪阻塞。AF2a / AF2b 无强制串行依赖 | AF2a 对应 MC0 / MC1：以现有六类模型整理描述、能力与工厂，移出 solver 中的模型构造职责。AF2b 对应 MC2：分离资源加载 / 资格检查和数值求值，形成可冻结的单包上下文与可供界面发现的组分身份 / 能力描述；暂不引入新 EOS、插件 ABI 或多包系统 | 现有模型与输入结果回归；目录身份与包支持范围一致，缺包、缺模型、能力不足显式拒绝；计算服务不承担缓存 IO；模型 / 参数来源可追溯；旧工程选择语义不静默改变 |
 | AF3 运行任务与结果接收 | AF0 身份边界；使用 AF2 所需最小装配成果，不等待完整模型目录或第三方插件 | 先确定文档 / 会话 / 运行身份与不可变输入，再接后台执行、进度、取消请求和完成回传。复用设备 `CalculationRequest` / generation 的经验，保留各领域自己的资格规则 | 运行中编辑、切换 / 重开工程、取消后完成、旧任务晚到均不发布为当前结果；GUI 可响应；取消请求与停止完成可区分；失败和资源释放有明确终态，不把 Hold 当暂停 |
 | AF4 应用命令与跨端覆盖 | 编辑 / 查询部分在 AF0 后设计；模型发现依赖 AF2，运行消费依赖 AF3；与 AF5 可分部分交付 | 盘点并补齐 GUI / CLI 的同源查询和正式动作，优先解决 v3 工程 / 设备任务覆盖差距；扩展变量 / 动作描述。版本化协议先定兼容策略；保留旧 CLI 的磁盘只读契约。COM / 录制后续接同一入口 | 代表任务在 GUI 与受支持的无界面协议中有相同身份、输入、拒绝原因和结果；草稿 / revision 冲突不越权写入；旧协议 golden 保持；不声称已交付录制或 COM 自动化 |
-| AF5 结果、诊断与功能联动 | AF3 运行来源；AF2 方法来源；消费既有单位 / 设备结果，AF4 按入口逐项接入 | 在现有快照与设备资格之上补来源、Current / Stale / Missing / Failed 的一致查询和呈现、诊断对象定位及导出证据。保持流程与设备各自结果模型，不强行统一为一个巨大 DTO | 输入改变后界面、查询和导出同样拒绝旧结果；失败可定位到原工程对象；单位转换一致；打开 / 导出不暗算物性；工程关联不得绕过 C3 门禁 |
+| AF5 结果、诊断与功能联动 | AF3 运行来源；AF2 方法来源；消费既有单位 / 设备结果，AF4 按入口逐项接入 | 在现有快照与设备资格之上补来源、Current / Stale / Missing / Failed 的一致查询和呈现、诊断对象定位及导出证据。保持流程与设备各自结果模型，不强行统一为一个巨大 DTO | 输入改变后界面、查询和导出同样拒绝旧结果；失败可定位到原工程对象；单位转换一致；打开 / 导出不暗算物性；分离器关联沿用 C3 门禁 |
 | AF6 扩展边界复核 | 2026-10-31 审查完成；有限物料任务已按批准范围接入求解、正式运行与跨端结果 | 用现有 SM 链路检查装配与结果接口，并用一个小型 EO 和一个积存动态场景审查未知量 / 残差 / 时间状态 / 初始化归属。输出后续 QS / P5 / P6 的最小接入需求与缺项，不创建成功占位模式 | UI / 存储不直接依赖数值工作区；工程图、执行计划和数学问题可区分；不支持的导数、时间或残差能力明确；本切片通过不代表 EO、动态或瞬态已实现 |
 
 2026-10-24 已形成 [AF3 任务提案](topics/runtime-messages/run-control-and-watch-conditions.md#af3-任务身份取消与完成接收方案)与[验收边界](topics/runtime-messages/scenarios-and-acceptance.md#af3-专项验收边界)，按身份 / 接收 → 后台流程 / 取消 → 设备 / 生命周期接线推进。方案已确认，AF3a—c 已接通；正式与实窗证据及保留项以专项验收为准。AF1 继续独立跟踪，不代表已修复。
 
-2026-10-24 已实现 [AF4a 工程发现](topics/variable-and-object-browser.md#af4a-工程发现与上下文契约2026-10-24)＋[AF5a 结果查询](topics/results-review-diagnostics.md#af5a-结果资格与来源查询2026-10-24)。顺序为共享发现 → 结果资格 / 来源 → 正式动作 → 新版本 CLI → 界面 / 诊断 / 输出；AF4b / AF4c 已实现；[AF5b 具体方案](topics/results-review-diagnostics.md#af5b-来源详情诊断定位与输出2026-10-26)已完成来源投影、导航与输出、局部 UI 及代表验证，2026-10-31 AF6 审查及有限物料任务已完成，QS1-A/B 核心已完成，QS1-C 正式保存与消费者已按确认范围接通，见[接下来事项](topics/variable-and-object-browser.md#接下来事项2026-10-31)。首批不改工程格式或旧 CLI / FFI，不接 COM、录制及 C3。
+2026-10-24 已实现 [AF4a 工程发现](topics/variable-and-object-browser.md#af4a-工程发现与上下文契约2026-10-24)＋[AF5a 结果查询](topics/results-review-diagnostics.md#af5a-结果资格与来源查询2026-10-24)。顺序为共享发现 → 结果资格 / 来源 → 正式动作 → 新版本 CLI → 界面 / 诊断 / 输出；AF4b / AF4c 已实现；[AF5b](topics/results-review-diagnostics.md#af5b-来源详情诊断定位与输出2026-10-26)已完成来源、导航、输出及代表验证。2026-10-31 AF6 审查及有限物料任务已完成，QS1 核心、正式保存与消费者按 [QS1-C](topics/modeling/recycle-project-and-consumers.md) 接通。后续求解切片归[多策略专题](topics/modeling/solver-strategies-and-assembly.md)。
 
 AF4b [正式动作契约](topics/variable-and-object-browser.md#af4b-正式动作契约与实施切片2026-10-24)已确认，按流程动作 → 设备输入 / 检查 → 计算控制回执 → 消费者接线分片；AF4b-1—4 已完成；设备输入 / 检查、计算控制回执与 GUI 消费已接通，正式基线及 macOS 代表实窗通过，证据见 [W43](devlogs/2026-10/2026-W43.md)。
 
 2026-10-26 [AF4c 契约](topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)已获确认：新增协议 v3 的 query / execute，保持首版磁盘只读，覆盖共享查询、正式输入 / 检查、计算与既有 C1 采纳；按发现 / 协议 → 输入 / 确认 → 运行 / 结果 → 真实进程验收实施。AF4c-1—4 已完成，公开示例、macOS 真实进程磁盘边界和正式仓库基线通过，证据见 [W44](devlogs/2026-10/2026-W44.md)；保存 / 文件输出仍在批次外，未验平台和物理精度不变。
+
+2026-11-14 已接通 [Studio／CLI／FFI 共享稳态执行](topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)。本片承接 AF2 的物性装配、AF3 的任务边界及 AF6 的计划执行复核。工程格式、CLI 协议和 C ABI 保持原能力。
 
 原默认次序为 **AF1 → AF2 必要装配 → AF3 → AF4 / AF5 → AF6 收口**；2026-10-24 确认实施 AF2a / AF2b，AF1 保留独立故障跟踪。这表示优先级而非全部硬依赖：AF2a 与 AF2b、AF4 的只读发现与 AF5 的展示盘点可以分别推进；AF6 的领域边界审查从早期开始。AF1 是当前已知用户路径故障的首修项，不要求所有平台验收结束后才能设计其他切片。跨平台与 I5 仍按既定节点补验，不能因本排序取消。
 
@@ -104,7 +106,7 @@ AF4b [正式动作契约](topics/variable-and-object-browser.md#af4b-正式动�
 
 2026-10-11 [A1—A2 首批](topics/modeling-assistance-and-specifications.md#a2-i2--i3-实现与验收状态2026-10-11)已完成共享规格检查、当前问题闭环及推荐预览 / 接受；Pencil 静态、自动基线与 macOS 代表路径通过。N1 仅完成相关子集，I5 沿用既定补验与发布限制。下一步 [G0 + E0/S0 首批方案](topics/equipment-design-and-rating.md#首批方案审定入口2026-10-11)已认可；单位兼容、G0 数据及 v3 基础存储三批已完成。S0-B04 方法门禁已核销，Pencil 六图静态复核通过并获认可；2026-10-15 已完成 G1 / S1 数据与纯计算、正式事务 / 结果资格、完整设备保存与 Studio v3 生命周期，以及独立单工况设备 UI / 设备页 Undo / Redo。2026-10-20 [当前计算表 CSV / JSON 导出](topics/equipment/separator-sizing-and-rating.md#当前计算表导出契约2026-10-20)及自动 / macOS 代表验证已完成，[S2 / G2 方案](topics/equipment/separator-sizing-and-rating.md#s2--g2-实施方案2026-10-20已确认)已确认：S2-A1—A3 计算、事务 / 保存、单行 UI / 导出及代表验证完成；G2-B1—B3 有限矩阵、成员资格 / 草稿、保存 / 输出及代表验收完成；C-D01—06 已确认，C1 数据 / 事务 / 保存、采纳 UI / 证据输出及代表验收完成；C2 / C3 暂不实施，I5 与未验原生组合保持。
 
-[R0—R2 UI 重设计](architecture/studio-ui-topic-plan.md) 与上述顺序衔接：先整理任务与信息架构，优先评审单位输入 / 显示、规格检查、设备任务三类代表路径，再通过 Pencil 更新对应画板。影响用户入口、布局或字段交互的切片需先评审其相关设计；B3-5 和纯单位转换逻辑不等待整套 UI 完成。旧 `.pen` 的既有定稿仅保留历史范围，新功能分区尚未定稿，不据此直接进行全界面代码重写。
+[R0—R2 UI 重设计](architecture/studio-ui-topic-plan.md) 与上述顺序衔接：先整理任务与信息架构，优先评审单位输入 / 显示、规格检查、设备任务三类代表路径，再按 [当前设计工具安排](architecture/studio-ui-topic-plan.md#设计工具与文档规则)更新对应画板。影响用户入口、布局或字段交互的切片需先评审其相关设计；B3-5 和纯单位转换逻辑不等待整套 UI 完成。旧 `.pen` 的既有定稿仅保留历史范围，新功能分区尚未定稿，不据此直接进行全界面代码重写。
 
 设备能力是独立稳态工程主线，不排在 P5 / P6 之后；数值依赖按所用方法补齐。单位定义、规格规则与工程结果由领域拥有，UI、脚本和未来 Agent 均作消费者。当前不接入大模型，不为未来预建空模块、聊天占位页或通用框架。
 
@@ -112,7 +114,7 @@ AF4b [正式动作契约](topics/variable-and-object-browser.md#af4b-正式动�
 
 ### 变量与对象浏览器的配套切片
 
-2026-09-28 确认 [统一变量与对象浏览器](topics/variable-and-object-browser.md)：工程分类与变量树共用描述、身份、查询及正式命令。B3-1—B3-5 为已有基础；VB 编号管理新增能力，详细范围、待决策与验收由专题拥有，均未进入代码实现。
+2026-09-28 确认 [统一变量与对象浏览器](topics/variable-and-object-browser.md)。工程分类与变量树共用描述、身份、查询及正式命令。B3-1—B3-5 为基础，VB 编号管理后续增量；范围、待决策与验收由专题维护。
 
 | 切片 | 进入时机 | 核心退出依据 |
 | --- | --- | --- |
@@ -121,7 +123,9 @@ AF4b [正式动作契约](topics/variable-and-object-browser.md#af4b-正式动�
 | VB2 受控编辑 | 对应 VB1 呈现与 U2 编辑 / 保存闭环就绪 | 先单值，再组合 / 跨对象批量事务；草稿保护、单位转换、拒绝原子性、撤销与结果旧化一致 |
 | VB3 跨端与领域扩展 | P2 按消费者推进，领域数据按 G / N 及模型能力提供 | 先 CLI 路径适配；COM / 录制、多工况 / 任务及多维读取逐项验收，不捆绑一次交付 |
 
-U3 首批已在现有只读浏览器接入项目显示单位，完整 VB1 仍未实现；A1 / A2 与设备模型也不以完整浏览器为前置门禁。VB0 可先准备局部设计，具体接口、路径语法和存储按专题待决策审定，不由本次规划改变 CLI SI 契约、项目 schema 或依赖。
+U3 首批已接入项目显示单位。A1 / A2 与设备模型可按各自切片推进，完整 VB1 的覆盖与原生验证见浏览器专题。
+
+2026-11-11 按认可的 [VB0 首片方案与画板](architecture/designs/studio-variable-browser-brief.md)接通发现、资格 / 来源与定位。2026-11-12 [VB-D02](topics/variable-browser/stable-references.md)接通流程标量稳定引用、显式初始化与 v4 保存，[VB-D03](topics/variable-browser/watch-list.md)接通工程关注清单。[VB-D04](topics/variable-browser/single-value-editing.md)单值首片已接通。2026-11-14 完成 400 px 原生键盘补验，交付[关注清单进料流量批量首片](architecture/designs/reviews/2026-11-14-vb2-penpot/README.md)。完整 VB2 与平台残项保持。2026-11-15 [VB3 CLI 只读首片](topics/variable-browser/stable-references.md#vb3-cli-只读查询首片)接通，后续按实际调用方评审。
 
 ### 运行、消息与诊断的配套切片
 
@@ -142,12 +146,12 @@ U3 首批已在现有只读浏览器接入项目显示单位，完整 VB1 仍未
 
 ### 颜色与流程可视化的配套切片
 
-2026-09-17 确认新增方向；V0 已接通首批数值字段，其他消费者待续，V1—V4 尚未实现；不改变 U2→U3→规格 / 推荐→首个可信设备任务的主线。2026-09-23 颜色 / 状态建立为一级专题，V0 叠加、迁移与验收见 [VIS / VA / VD 追踪](topics/color-state/requirements-traceability.md)，V1—V4 仍由结果专题管理。
+V0 已接通首批数值字段。Studio 已接入 V1 和 V2 的摩尔流量、流股温度、流股绝对压力。V2 气相摩尔分率 R0 已有流股快照证据，接入范围待评审。V3／V4 按几何和时序结果能力推进。U2→U3→规格／推荐→首个可信设备任务的主线保持。 [V0 追踪](topics/color-state/requirements-traceability.md) · [可视化接下来事项](topics/results-review-diagnostics.md#可视化接下来事项)
 
 | 切片 | 进入时机 | 真相源与退出依据 |
 | --- | --- | --- |
 | V0 颜色与状态语义 | 立即纳入 U2 / R0—R1，消费者随 U2 / U3 迁移 | [颜色与状态一级专题](topics/color-and-state-system.md)：来源、可编辑性、草稿、时效与诊断独立组合，跨视图同义，可访问性验收 |
-| V1 二维流向与路径 | U3 后按画布切片推进，不阻塞规格基础 | [结果可视化](topics/results-review-diagnostics.md#流程可视化与回放规划尚未实现)：方向示意可关闭，静态模式可读，零流量 / 无效结果不伪装正常流动 |
+| V1 二维流向与路径 | U3 后按画布切片推进，不阻塞规格基础 | [结果可视化](topics/results-review-diagnostics.md#流程可视化与回放规划)：方向示意可关闭，静态模式可读，零流量 / 无效结果不伪装正常流动 |
 | V2 工程数据着色 | 统一单位、当前结果及所需变量就绪后 | 同上：图例、单位、范围和结果身份完整，物理色带与诊断分离 |
 | V3 设备参数驱动三维 | 随 E / S / H 的可信几何能力 | [设备三维](topics/equipment-design-and-rating.md#设备三维展示规划)：几何、候选 / 采纳和结果同源，不阻塞首个设备计算 |
 | V4 动态结果回放 | P5 / P6 时间序列与对应物理模型具备后 | 回放、求解和仿真时间分开；事件 / 缺口明确，不伪造液位或控制响应 |
@@ -169,6 +173,8 @@ U3 首批已在现有只读浏览器接入项目显示单位，完整 VB1 仍未
 | 最小可分发验证案例 | [物性验证](thermo/mvp-model.md#工程基准与数据可信度规划) / 各设备专题 | 首个可信模型同步建立；区分算法、实验、供应商和现场依据，记录许可、误差与复现条件 |
 
 G0 纳入 UI R0 的项目→设计基础→工况→设备→结果关系；Q1 和目标反算须有正常 / 失败 / 未支持状态。近期做来源和适用范围提示，后续再评估不确定度传播、数据协调与现场标定，不把这些高级能力变成基础编辑的前置门禁。
+
+2026-11-14 将工程变更影响和工程差异摘要并入既有切片。Q1 补规则覆盖与独立错误样本，分离器 C3 在 C2 物理资格通过并获准实施后验证关联失效，G3／Q3 承接持久记录和交付资料复核。换热器 H3 已在 v4 Rust 应用层独立验证关联失效及保存重开，后续消费者接入见换热器专题。全局优先级仍由当前状态维护。 [工程变更影响](topics/engineering-basis-and-cases.md#工程变更影响与证据复核) · [工程差异摘要](topics/results-review-diagnostics.md#工程差异摘要规划) · [H3 接下来事项](topics/equipment/heat-exchanger-design-and-rating.md#接下来事项)
 
 ### 装置工程与数字孪生的演进切片
 
@@ -198,7 +204,7 @@ G0 纳入 UI R0 的项目→设计基础→工况→设备→结果关系；Q1 �
 | QS1 分块 SM 与循环 | P3；[A/B 核心](topics/modeling/recycle-and-block-execution.md)已完成模型 / 写保护、分块与真实循环复核；[C01—C06](topics/modeling/recycle-project-and-consumers.md)已确认并接通 v4 保存、正式运行与 GUI / CLI | 撕裂及局部收敛满足残差和衡算，回路 / 规格失败可定位，不以循环结束冒充成功 |
 | [QS2 首个联立模块块](topics/modeling/simultaneous-modular-block.md) | P4，D01—D05 核心已实现；[QS2-C / D06](topics/modeling/simultaneous-project-and-consumers.md)D06 已批准，存储配置 / 运行结果、CLI v5 及 GUI 已实现 | 核心独立数值 / 故障与接入定向验证通过；GUI 画板已认可、接线和 macOS 代表验证完成 |
 | [QS3 多单元 EO](topics/modeling/equation-oriented-block.md) | P4，正向物料方程与单比例反算；D01—D08 核心及工程 / GUI / CLI v6 已实现 | 模型 / 结构、独立复核、采纳 / 资格及兼容验证通过；2,031 项正式基线与 macOS 代表实窗通过 |
-| [QS4 混合分区](topics/modeling/mixed-partition-execution.md) | P4，首片 Local＋正向物料 EO 的 DAG、v4 与 GUI / CLI v7 已完成本机接入及验证 | 首片边界 / 全局复核及独立对照，跨块环拒绝；完整混合回路与黑箱另审 |
+| [QS4 混合分区](topics/modeling/mixed-partition-execution.md) | P4，M1 的 DAG、v4 与 GUI / CLI v7 已接通。M2 单撕裂跨块回流已验证核心执行、独立 v4 保存、[CLI v9](topics/modeling/mixed-partition-execution.md#m2-cli-首片评审)与 [Studio 首片](topics/modeling/mixed-partition-execution.md#m2-studio-界面接入评审) | 两片均完成独立数值对照与本机接入验证。通用混合回路与黑箱另审 |
 
 QS2 与 QS3 不强制串行；首个 EO 块不等待全部设备支持 EO，也不要求所有问题先取得完整 SM 收敛解。MC1 / MC2 提供所需模型工厂和物性上下文，第三方加载只在实际案例需要时依赖 MC3；完整插件系统、动态和 SDK 不作为前置。DS 反算可先基于局部或 SM 路径实施。
 
@@ -218,6 +224,8 @@ QS2 与 QS3 不强制串行；首个 EO 块不等待全部设备支持 EO，也�
 工程可信度继续归 P3：按选定工况补焓参考态 / 潜热、PH 等所需 Flash 和单元能量衡算，以独立基准验证。现有 Mixer、Valve、Heater / Cooler 的简化行为见 [热力学模型](thermo/mvp-model.md#单元近似与能量解释)；这些改进不等待完整插件系统，目录 / COM 成功也不替代物理证据。循环块、EO 与动态仍按各自模型能力和退出标准推进。
 
 ### 插件与公共 API 的实施切片
+
+2026-11-13 归档 [COBIA 分阶段接入计划](topics/capeopen-pmc-adapter.md#cobia-分阶段接入计划)：Mac 为主开发，Windows x64 做真实 PME 验收；后续按接入条件、独立验证、有限 PMC 和产品化推进，当前暂不接入或安装 SDK。该计划不替换既有 COM 层，不是核心开发前置；第三方宿主仍归 MC3。
 
 2026-09-14 确认将插件系统、分层许可和公共 API 授权 / 配额纳入长期规划。以下按真实消费者和依赖进入 P2 / P7，不要求等到 P7 才能安装首个插件，也不作为 P1 基础编辑闭环的前置条件。
 

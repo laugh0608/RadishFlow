@@ -163,6 +163,12 @@ public sealed record UnitOperationCalculationReport(
             CreateDetailLine(UnitOperationCalculationReportDetailCatalog.HighestSeverity, result.Summary.HighestSeverity),
             CreateDetailLine(UnitOperationCalculationReportDetailCatalog.DiagnosticCount, result.Summary.DiagnosticCount.ToString()),
         };
+        if (result.DeliveredProduct is { } delivered)
+        {
+            details.Add(CreateDetailLine(UnitOperationCalculationReportDetailCatalog.DeliveredProductSource, $"host-equilibrium/{result.DeliveredProductThermoVersion}"));
+            details.Add(CreateDetailLine(UnitOperationCalculationReportDetailCatalog.DeliveredProductStream, delivered.Id));
+            details.Add(CreateDetailLine(UnitOperationCalculationReportDetailCatalog.ExecutionSource, "native-rf-ffi"));
+        }
         if (result.Summary.RelatedUnitIds.Count > 0)
         {
             details.Add(CreateDetailLine(

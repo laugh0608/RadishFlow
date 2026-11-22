@@ -20,6 +20,7 @@ pub enum WorkspaceSolveTrigger {
 pub enum WorkspaceSolveSkipReason {
     HoldMode,
     NoPendingRequest,
+    ExplicitRunRequired,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -162,6 +163,13 @@ fn should_skip_workspace_solve(
 ) -> Option<WorkspaceSolveSkipReason> {
     if matches!(trigger, WorkspaceSolveTrigger::Manual) {
         return None;
+    }
+
+    if matches!(
+        app_state.workspace.flow_plan.current(),
+        rf_ui::flow_plan::FlowPlanConfiguration::Mixed(options) if options.recycle.is_some()
+    ) {
+        return Some(WorkspaceSolveSkipReason::ExplicitRunRequired);
     }
 
     if !matches!(
@@ -362,14 +370,16 @@ mod tests {
         ));
 
         app_state.set_simulation_mode(rf_ui::SimulationMode::Active);
-        app_state.commit_document_change(
-            rf_ui::DocumentCommand::RenameUnit {
-                unit_id: rf_types::UnitId::new("heater-1"),
-                new_name: "Heater Updated".to_string(),
-            },
-            project.document.flowsheet,
-            timestamp(38),
-        );
+        app_state
+            .commit_document_change(
+                rf_ui::DocumentCommand::RenameUnit {
+                    unit_id: rf_types::UnitId::new("heater-1"),
+                    new_name: "Heater Updated".to_string(),
+                },
+                project.document.flowsheet,
+                timestamp(38),
+            )
+            .unwrap();
 
         let dispatch = service
             .dispatch_with_property_package(

@@ -7,7 +7,7 @@ impl EquationOptions {
             ids.insert(r.binding.unit.clone());
         }
         if let Some(t) = &self.target {
-            ids.insert(t.source.unit.clone());
+            ids.insert(t.source().unit.clone());
         }
         if let Some(scales) = &self.scales {
             for v in scales.variables.keys() {
@@ -35,7 +35,8 @@ impl EquationOptions {
                         ids.insert(source_unit.clone());
                         ids.insert(sink.unit.clone());
                     }
-                    EquationBinding::ProductTotal { source } => {
+                    EquationBinding::ProductTotal { source }
+                    | EquationBinding::ProductMoleFraction { source, .. } => {
                         ids.insert(source.unit.clone());
                     }
                 }
@@ -46,7 +47,7 @@ impl EquationOptions {
     pub fn referenced_stream_ids(&self) -> BTreeSet<StreamId> {
         let mut ids = BTreeSet::new();
         if let Some(t) = &self.target {
-            ids.insert(t.source.stream.clone());
+            ids.insert(t.source().stream.clone());
         }
         if let Some(scales) = &self.scales {
             for v in scales.variables.keys() {
@@ -60,7 +61,8 @@ impl EquationOptions {
                         ids.insert(source.stream.clone());
                         ids.insert(sink.stream.clone());
                     }
-                    EquationBinding::ProductTotal { source } => {
+                    EquationBinding::ProductTotal { source }
+                    | EquationBinding::ProductMoleFraction { source, .. } => {
                         ids.insert(source.stream.clone());
                     }
                     EquationBinding::Boundary { sink, .. } => {
@@ -81,14 +83,30 @@ impl EquationOptions {
                 .referenced_stream_ids()
                 .iter()
                 .any(|id| id.as_str().trim().is_empty());
+        let invalid_target = matches!(&self.target, Some(ProductTarget::MoleFraction(t)) if t.component.as_str().trim().is_empty());
         let mut invalid_component = false;
         if let Some(scales) = &self.scales {
-            invalid_component=scales.variables.keys().any(|v|matches!(v,VariableBinding::PortComponent {component,..} if component.as_str().trim().is_empty())) || scales.equations.keys().any(|e|matches!(e,EquationBinding::Unit {component,..}|EquationBinding::Connection {component,..}|EquationBinding::Boundary {component,..} if component.as_str().trim().is_empty()));
-            if scales.equations.keys().any(|e|matches!(e,EquationBinding::Connection {source,sink,..} if source.stream!=sink.stream)) {
-                return Err(error(EquationFailureKind::InvalidBinding,"connection_identity","connection endpoints must refer to the same stream"));
+            invalid_component = scales.variables.keys().any(|v| matches!(v,
+                VariableBinding::PortComponent { component, .. } if component.as_str().trim().is_empty()))
+                || scales.equations.keys().any(|row| match row {
+                    EquationBinding::Unit { component, .. }
+                    | EquationBinding::Connection { component, .. }
+                    | EquationBinding::Boundary { component, .. }
+                    | EquationBinding::ProductMoleFraction { component, .. } => component.as_str().trim().is_empty(),
+                    EquationBinding::ProductTotal { .. } => false,
+                });
+            if scales.equations.keys().any(|e| {
+                matches!(e,
+                EquationBinding::Connection {source, sink, ..} if source.stream != sink.stream)
+            }) {
+                return Err(error(
+                    EquationFailureKind::InvalidBinding,
+                    "connection_identity",
+                    "connection endpoints must refer to the same stream",
+                ));
             }
         }
-        if blank || invalid_component {
+        if blank || invalid_target || invalid_component {
             return Err(error(
                 EquationFailureKind::InvalidBinding,
                 "blank_identity",

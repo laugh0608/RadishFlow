@@ -44,6 +44,7 @@ fn cooperative_cancellation_at_every_numerical_and_local_stage_never_publishes()
 }
 #[derive(Clone, Copy)]
 enum Fault {
+    ProductComposition,
     Flow,
     Identity,
     Missing,
@@ -69,12 +70,23 @@ impl UnitOperation for Broken {
             Fault::Flow => a.total_molar_flow_mol_s += 0.01,
             Fault::Identity => a.id = "wrong".into(),
             Fault::NonFinite => a.total_molar_flow_mol_s = f64::NAN,
-            Fault::Missing => {}
+            Fault::ProductComposition | Fault::Missing => {}
         }
         if !matches!(self.fault, Fault::Missing) {
             out.insert_material_stream("outlet_a", a);
         }
-        out.insert_material_stream("outlet_b", original.stream("outlet_b").unwrap().clone());
+        let mut product = original.stream("outlet_b").unwrap().clone();
+        if matches!(self.fault, Fault::ProductComposition) {
+            *product
+                .overall_mole_fractions
+                .get_mut(&ComponentId::new("methane"))
+                .unwrap() += 3e-10;
+            *product
+                .overall_mole_fractions
+                .get_mut(&ComponentId::new("ethane"))
+                .unwrap() -= 3e-10;
+        }
+        out.insert_material_stream("outlet_b", product);
         Ok(out)
     }
 }
@@ -229,4 +241,40 @@ fn global_absolute_scaled_component_and_scaled_total_checks_have_direct_fault_ev
         }
         assert_eq!(flow, before);
     }
+}
+
+#[test]
+fn actual_terminal_fraction_must_pass_even_when_all_material_rows_pass() {
+    let failure = execution::solve(
+        &crate::SolverServices {
+            thermo: &binary_hydrocarbon_provider(),
+            flash_solver: &PlaceholderTpFlashSolver,
+        },
+        &cross_recycle(0.6, 0.99),
+        &super::composition::composition_options(0.35),
+        &mut Uninterrupted,
+        &mut |u, streams| {
+            let inner = rf_unitops::catalog::instantiate_builtin(u, streams)?;
+            Ok(if u.id == UnitId::new("sb") {
+                Box::new(Broken {
+                    inner,
+                    fault: Fault::ProductComposition,
+                }) as Box<dyn UnitOperation>
+            } else {
+                inner
+            })
+        },
+    )
+    .unwrap_err();
+    assert_eq!(
+        failure.error.context().diagnostic_code(),
+        Some("solver.equation_oriented.product_composition")
+    );
+    let Some(VerifiedTarget::MoleFraction(target)) = failure.evidence.verified_target else {
+        panic!("expected producer composition evidence")
+    };
+    assert!(target.residual_mol_s.abs() < ABSOLUTE_TOLERANCE_MOL_S);
+    assert!(target.scaled_residual.abs() < SCALED_TOLERANCE);
+    assert!(target.composition.residual_mol_mol > COMPOSITION_TOLERANCE_MOL_MOL);
+    assert!(failure.evidence.global_material.is_none());
 }

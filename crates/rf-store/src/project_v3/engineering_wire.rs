@@ -1,4 +1,8 @@
+use super::{EquipmentSupport, concentric_tube_wire, rating_wire, task_wire};
 use rf_model::engineering::*;
+use rf_model::equipment::{
+    CONCENTRIC_TUBE_RATING_METHOD_ID, CONCENTRIC_TUBE_RATING_METHOD_VERSION,
+};
 use rf_types::{
     BasisEntryId, RfError, RfResult, SourceId, SourceObservationId,
     units::{ALL_QUANTITIES, QuantityKind},
@@ -31,16 +35,27 @@ pub(super) struct TaskProbe {
     method: MethodProbe,
 }
 impl TaskProbe {
-    pub(super) fn supported(&self) -> bool {
-        (self.kind == super::task_wire::TASK_KIND
-            && self.method.id == super::task_wire::METHOD_ID
-            && self.method.version == u64::from(super::task_wire::METHOD_VERSION))
-            || (self.kind == super::rating_wire::TASK_KIND
-                && self.method.id == super::rating_wire::METHOD_ID
-                && (self.method.version == u64::from(super::rating_wire::METHOD_VERSION)
-                    || self.method.version == u64::from(super::rating_wire::MATRIX_METHOD_VERSION)
-                    || self.method.version
-                        == u64::from(super::rating_wire::ADOPTION_METHOD_VERSION)))
+    pub(super) fn supported(&self, support: EquipmentSupport) -> bool {
+        let (method, versions): (&str, &[u32]) = match self.kind.as_str() {
+            task_wire::TASK_KIND => (task_wire::METHOD_ID, &[task_wire::METHOD_VERSION]),
+            rating_wire::TASK_KIND => (
+                rating_wire::METHOD_ID,
+                &[
+                    rating_wire::METHOD_VERSION,
+                    rating_wire::MATRIX_METHOD_VERSION,
+                    rating_wire::ADOPTION_METHOD_VERSION,
+                ],
+            ),
+            concentric_tube_wire::TASK_KIND if support.supports_concentric_tube_rating() => (
+                CONCENTRIC_TUBE_RATING_METHOD_ID,
+                &[CONCENTRIC_TUBE_RATING_METHOD_VERSION],
+            ),
+            _ => return false,
+        };
+        self.method.id == method
+            && versions
+                .iter()
+                .any(|&version| self.method.version == u64::from(version))
     }
 }
 #[derive(Serialize, Deserialize)]

@@ -304,7 +304,8 @@ pub(super) fn solve_snapshot_model_from_ui(
         rf_ui::FlowResultRecord::Partitioned(_)
         | rf_ui::FlowResultRecord::Simultaneous(_)
         | rf_ui::FlowResultRecord::EquationOriented(_)
-        | rf_ui::FlowResultRecord::Mixed(_) => &[],
+        | rf_ui::FlowResultRecord::Mixed(_)
+        | rf_ui::FlowResultRecord::SinglePhaseRecycle(_) => &[],
     };
     let steps = acyclic_steps
         .iter()
@@ -376,6 +377,7 @@ pub(super) fn solve_snapshot_model_from_ui(
     let mut equation_oriented = None;
     let mut partitioned = None;
     let mut simultaneous = None;
+    let mut single_phase_recycle_units = None;
     let block_data = match snapshot {
         rf_ui::FlowResultRecord::Mixed(p) => Some((
             p.result
@@ -390,6 +392,16 @@ pub(super) fn solve_snapshot_model_from_ui(
             &p.final_units,
         )),
         rf_ui::FlowResultRecord::Acyclic(_) => None,
+        rf_ui::FlowResultRecord::SinglePhaseRecycle(p) => Some((
+            vec![
+                p.result
+                    .final_units
+                    .iter()
+                    .map(|u| u.unit_id.clone())
+                    .collect(),
+            ],
+            &p.final_units,
+        )),
         rf_ui::FlowResultRecord::Partitioned(p) => Some((
             p.result
                 .blocks
@@ -424,10 +436,14 @@ pub(super) fn solve_snapshot_model_from_ui(
                     .collect::<Vec<_>>();
                 unit_results.push(StudioGuiWindowUnitExecutionResultModel {
                     unit_id: unit_id.to_string(),
-                    location: if matches!(snapshot, rf_ui::FlowResultRecord::EquationOriented(_)) {
-                        ResultExecutionLocation::EquationVerification
-                    } else {
-                        ResultExecutionLocation::Block(block_index)
+                    location: match snapshot {
+                        rf_ui::FlowResultRecord::EquationOriented(_) => {
+                            ResultExecutionLocation::EquationVerification
+                        }
+                        rf_ui::FlowResultRecord::SinglePhaseRecycle(_) => {
+                            ResultExecutionLocation::RecycleVerification
+                        }
+                        _ => ResultExecutionLocation::Block(block_index),
                     },
                     status_label: "Converged",
                     summary: "Final local evaluation; actual consumed and produced states".into(),
@@ -530,6 +546,9 @@ pub(super) fn solve_snapshot_model_from_ui(
                     evidence_lines: evidence.lines,
                 });
             }
+            rf_ui::FlowResultRecord::SinglePhaseRecycle(_) => {
+                single_phase_recycle_units = Some(unit_results)
+            }
             rf_ui::FlowResultRecord::Acyclic(_) => unreachable!("block data"),
         }
     }
@@ -538,6 +557,7 @@ pub(super) fn solve_snapshot_model_from_ui(
         equation_oriented,
         partitioned,
         simultaneous,
+        single_phase_recycle_units,
         origin: snapshot.origin.clone(),
         result_guard: crate::FlowResultGuard::from_snapshot(snapshot),
         snapshot_id: snapshot.id.as_str().to_string(),

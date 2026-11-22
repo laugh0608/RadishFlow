@@ -8,7 +8,7 @@ use crate::test_support::{
 use rf_ui::engineering::{
     EngineeringInputs, EngineeringSession, EquipmentCaseKey, EquipmentResultStatus,
 };
-use rf_ui::{DocumentMetadata, FlowRunDisposition, FlowsheetDocument};
+use rf_ui::{DocumentMetadata, FlowRunDisposition, FlowsheetDocument, SimulationMode};
 use std::{
     thread,
     time::{Duration, Instant, UNIX_EPOCH},
@@ -304,7 +304,8 @@ fn automatic_latest_input_eligible_once_but_clear_results_and_detach_do_not_rest
         },
         flow,
         SystemTime::now(),
-    );
+    )
+    .unwrap();
     assert!(owner.should_attempt_automatic(&app));
     let (root, index) = cache();
     owner

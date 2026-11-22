@@ -45,6 +45,20 @@ impl EquationProblem {
                     }
                     components.iter().map(|i| values[*i]).sum::<f64>() - target
                 }
+                AssembledEquation::ProductMoleFraction {
+                    components,
+                    selected,
+                    target,
+                } => {
+                    for &i in components {
+                        derivatives[i] = if i == *selected {
+                            1.0 - target
+                        } else {
+                            -target
+                        };
+                    }
+                    values[*selected] - target * components.iter().map(|&i| values[i]).sum::<f64>()
+                }
             };
             if !residual.is_finite() || derivatives.iter().any(|v| !v.is_finite()) {
                 return Err(error(
@@ -83,6 +97,21 @@ impl EquationProblem {
                     AssembledEquation::Connection { source, sink } => vec![*source, *sink],
                     AssembledEquation::Boundary { sink, .. } => vec![*sink],
                     AssembledEquation::ProductTotal { components, .. } => components.clone(),
+                    AssembledEquation::ProductMoleFraction {
+                        components,
+                        selected,
+                        target,
+                    } => components
+                        .iter()
+                        .copied()
+                        .filter(|i| {
+                            if i == selected {
+                                *target != 1.0
+                            } else {
+                                *target != 0.0
+                            }
+                        })
+                        .collect(),
                 };
                 indices.sort_unstable();
                 indices.dedup();

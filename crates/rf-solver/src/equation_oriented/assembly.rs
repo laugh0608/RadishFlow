@@ -179,9 +179,9 @@ pub(super) fn assemble_scoped(
     if let Some(t) = &options.target
         && !connections.iter().any(|c| {
             c.sink.is_none()
-                && c.stream_id == t.source.stream
-                && c.source.unit_id == t.source.unit
-                && c.source.port_name == t.source.port.name()
+                && c.stream_id == t.source().stream
+                && c.source.unit_id == t.source().unit
+                && c.source.port_name == t.source().port.name()
         })
     {
         return Err(invalid(
@@ -331,20 +331,46 @@ pub(super) fn assemble_scoped(
             .iter()
             .map(|c| {
                 indices[&VariableBinding::PortComponent {
-                    port: t.source.clone(),
+                    port: t.source().clone(),
                     component: c.clone(),
                 }]
             })
             .collect();
-        assembled.insert(
-            EquationBinding::ProductTotal {
-                source: t.source.clone(),
-            },
-            AssembledEquation::ProductTotal {
-                components: columns,
-                target: t.value_mol_s,
-            },
-        );
+        let (binding, row) = match t {
+            ProductTarget::TotalMolarFlow(t) => (
+                EquationBinding::ProductTotal {
+                    source: t.source.clone(),
+                },
+                AssembledEquation::ProductTotal {
+                    components: columns,
+                    target: t.value_mol_s,
+                },
+            ),
+            ProductTarget::MoleFraction(t) => {
+                let variable = VariableBinding::PortComponent {
+                    port: t.source.clone(),
+                    component: t.component.clone(),
+                };
+                let selected = *indices.get(&variable).ok_or_else(|| {
+                    invalid(
+                        "target_component",
+                        "product target component must be registered",
+                    )
+                })?;
+                (
+                    EquationBinding::ProductMoleFraction {
+                        source: t.source.clone(),
+                        component: t.component.clone(),
+                    },
+                    AssembledEquation::ProductMoleFraction {
+                        components: columns,
+                        selected,
+                        target: t.value_mol_mol,
+                    },
+                )
+            }
+        };
+        assembled.insert(binding, row);
     }
     if assembled.len() > MAX_DIMENSION {
         return Err(error(

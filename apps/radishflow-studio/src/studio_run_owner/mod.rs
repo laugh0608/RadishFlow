@@ -12,7 +12,7 @@ use rf_store::StoredAuthCacheIndex;
 use rf_types::{RfError, RfResult};
 use rf_ui::engineering::CalculationId;
 use rf_ui::engineering::editor::EquipmentEditorCommand;
-use rf_ui::{AppState, FlowRunId, FlowRunQualification, SimulationMode};
+use rf_ui::{AppState, FlowRunId, FlowRunQualification};
 use std::{cell::RefCell, collections::VecDeque, rc::Rc, time::SystemTime};
 
 pub type SharedStudioRunOwner = Rc<RefCell<StudioRunOwner>>;
@@ -154,7 +154,7 @@ impl StudioRunOwner {
             return Ok(StudioRunSubmission::Closing);
         }
         if self.equipment.is_some() || self.material.is_some() {
-            match crate::app_facade::preflight_workspace_run(app, index, command) {
+            match crate::app_facade::preflight_workspace_run(app, Some(index), command) {
                 crate::app_facade::WorkspaceRunPreflight::Skipped(reason) => {
                     return Ok(StudioRunSubmission::Flow(WorkspaceRunSubmission::Skipped(
                         reason,
@@ -480,7 +480,9 @@ impl StudioRunOwner {
     pub fn should_attempt_automatic(&self, app: &AppState) -> bool {
         self.accepting
             && self.is_idle()
-            && app.workspace.solve_session.mode == SimulationMode::Active
+            && crate::WorkspaceSolveService::new()
+                .skip_reason(app, crate::WorkspaceSolveTrigger::Automatic)
+                .is_none()
             && matches!(
                 app.workspace.solve_session.pending_reason,
                 Some(

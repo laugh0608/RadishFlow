@@ -121,7 +121,8 @@ fn simultaneous_late_success_failure_and_wrong_payload_cannot_publish() {
 fn simultaneous_failure_preserves_partial_diagnostics_and_nonfinite_values() {
     let mut app = cross_case(1.0, 1.0);
     let mut done = execute(&mut app);
-    let SolveOutcome::SimultaneousFailed(f) = &mut done.outcome else {
+    let SolveOutcome::Executed(FlowExecutionOutcome::Simultaneous(Err(f))) = &mut done.outcome
+    else {
         panic!("singular failure")
     };
     assert_eq!(f.completed_blocks.len(), 2);

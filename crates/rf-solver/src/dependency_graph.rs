@@ -2,7 +2,9 @@
 use rf_types::UnitId;
 use std::collections::{BTreeMap, BTreeSet};
 pub(crate) type Graph = BTreeMap<UnitId, BTreeSet<UnitId>>;
-pub(crate) fn topological_order(graph: &Graph) -> Option<Vec<UnitId>> {
+pub(crate) fn topological_order<Id: Clone + Ord>(
+    graph: &BTreeMap<Id, BTreeSet<Id>>,
+) -> Option<Vec<Id>> {
     let mut counts: BTreeMap<_, usize> = graph.keys().cloned().map(|id| (id, 0)).collect();
     for children in graph.values() {
         for child in children {
@@ -29,7 +31,9 @@ pub(crate) fn topological_order(graph: &Graph) -> Option<Vec<UnitId>> {
 }
 
 // Iterative Kosaraju traversal avoids a recursion/stack limit on large acyclic inputs.
-pub(crate) fn strongly_connected_components(graph: &Graph) -> Vec<Vec<UnitId>> {
+pub(crate) fn strongly_connected_components<Id: Clone + Ord>(
+    graph: &BTreeMap<Id, BTreeSet<Id>>,
+) -> Vec<Vec<Id>> {
     let mut visited = BTreeSet::new();
     let mut finish = Vec::new();
     for root in graph.keys() {
@@ -46,7 +50,7 @@ pub(crate) fn strongly_connected_components(graph: &Graph) -> Vec<Vec<UnitId>> {
             stack.extend(graph[&id].iter().rev().cloned().map(|child| (child, false)));
         }
     }
-    let mut reverse: Graph = graph
+    let mut reverse: BTreeMap<_, BTreeSet<_>> = graph
         .keys()
         .cloned()
         .map(|id| (id, BTreeSet::new()))

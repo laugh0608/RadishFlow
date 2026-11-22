@@ -1,40 +1,209 @@
 use super::*;
+use rf_ui::engineering::EquipmentCaseKey;
+
+pub(super) struct SourceLink {
+    pub source: rf_types::SourceId,
+    pub button: egui::Id,
+}
+
+impl SourceLink {
+    pub(super) fn clicked(source: &rf_types::SourceId, response: &egui::Response) -> Option<Self> {
+        reveal_focused_action(response);
+        response.clicked().then(|| Self {
+            source: source.clone(),
+            button: response.id,
+        })
+    }
+}
+
+pub(super) fn reveal_focused_action(response: &egui::Response) {
+    if response.gained_focus() {
+        response.scroll_to_me(None);
+    }
+}
+
+pub(super) struct SourceReturn {
+    target: EquipmentEditorTarget,
+    member: Option<EquipmentCaseKey>,
+    section: EquipmentSection,
+    button: Option<egui::Id>,
+}
+
+pub(super) struct SourceOpen {
+    source: rf_types::SourceId,
+    origin: SourceReturn,
+    readonly: bool,
+}
+
+impl SourceReturn {
+    pub(super) fn from_editor(target: EquipmentEditorTarget, section: EquipmentSection) -> Self {
+        Self {
+            target,
+            member: None,
+            section,
+            button: None,
+        }
+    }
+}
+
+impl SourceOpen {
+    pub(super) fn from_link(
+        link: SourceLink,
+        target: EquipmentEditorTarget,
+        member: Option<EquipmentCaseKey>,
+        section: EquipmentSection,
+        readonly: bool,
+    ) -> Self {
+        Self {
+            source: link.source,
+            origin: SourceReturn {
+                target,
+                member,
+                section,
+                button: Some(link.button),
+            },
+            readonly,
+        }
+    }
+}
 
 impl ReadyAppState {
+    pub(super) fn open_equipment_source(&mut self, open: SourceOpen) {
+        let target = EquipmentEditorTarget::Source(open.source);
+        self.equipment_command(EquipmentEditorCommand::Select(target.clone()));
+        if self
+            .platform_host
+            .modeling_inputs()
+            .workspace
+            .equipment_editor
+            .active()
+            == Some(&target)
+        {
+            self.equipment.source_return = Some(open.origin);
+            self.equipment.source_readonly = open.readonly;
+        } else {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Warning,
+                title: tr(self.locale, "来源不可用", "Source unavailable").into(),
+                detail: tr(
+                    self.locale,
+                    "原来源记录已不可用。",
+                    "The original source record is unavailable.",
+                )
+                .into(),
+            });
+        }
+    }
+
+    pub(in crate::studio_gui_shell) fn return_from_equipment_source(&mut self) -> bool {
+        let Some(origin) = self.equipment.source_return.take() else {
+            return false;
+        };
+        let member_exists = origin.member.as_ref().is_none_or(|member| {
+            self.platform_host
+                .modeling_inputs()
+                .workspace
+                .engineering
+                .inputs()
+                .rating_task(&member.task_id)
+                .is_some_and(|task| task.cases.iter().any(|case| case.id == member.case_id))
+        });
+        if member_exists {
+            self.equipment_command(EquipmentEditorCommand::Select(origin.target.clone()));
+        }
+        if member_exists
+            && self
+                .platform_host
+                .modeling_inputs()
+                .workspace
+                .equipment_editor
+                .active()
+                == Some(&origin.target)
+        {
+            if let Some(member) = origin.member {
+                self.equipment
+                    .rating_selection
+                    .insert(member.task_id, member.case_id);
+            }
+            self.equipment.source_readonly = false;
+            self.equipment.section = origin.section;
+            self.equipment.focus_field = None;
+            self.equipment.source_button_focus = origin.button;
+            if origin.button.is_some() {
+                self.equipment.restore_rating_focus = None;
+            }
+        } else {
+            self.project_open.notice = Some(ProjectOpenNotice {
+                level: ProjectOpenNoticeLevel::Warning,
+                title: tr(
+                    self.locale,
+                    "无法返回原位置",
+                    "Cannot return to the original view",
+                )
+                .into(),
+                detail: tr(
+                    self.locale,
+                    "原设备或工况已不可用。",
+                    "The original equipment task or case is unavailable.",
+                )
+                .into(),
+            });
+        }
+        true
+    }
+
+    pub(super) fn render_equipment_source_return_button(
+        &self,
+        ui: &mut egui::Ui,
+        focus: bool,
+    ) -> bool {
+        self.equipment.source_return.as_ref().is_some_and(|origin| {
+            let label = match origin.section {
+                EquipmentSection::Inputs => {
+                    tr(self.locale, "返回输入字段", "Return to input field")
+                }
+                EquipmentSection::Results => tr(self.locale, "返回结果", "Return to results"),
+                EquipmentSection::Evidence => tr(self.locale, "返回依据", "Return to evidence"),
+            };
+            let response = ui.button(label);
+            if focus {
+                response.request_focus();
+            }
+            response.clicked()
+        })
+    }
+
     pub(super) fn render_equipment_source_snapshot(
         &mut self,
         ui: &mut egui::Ui,
-        target: &EquipmentEditorTarget,
+        id: &rf_types::SourceId,
         inputs: &EngineeringInputs,
         units: &DisplayUnitSet,
-        commands: &mut Vec<EquipmentEditorCommand>,
-    ) {
-        let EquipmentEditorTarget::Source(id) = target else {
-            return;
-        };
+    ) -> bool {
         ui.heading(tr(
             self.locale,
             "来源详情 · 正式记录",
             "Source details · committed record",
         ));
-        ui.horizontal_wrapped(|ui| {
-            if ui
-                .button(tr(self.locale, "返回输入字段", "Return to input field"))
-                .clicked()
-                && let Some((target, field)) = self.equipment.source_return.take()
-            {
-                self.equipment.source_readonly = false;
-                self.equipment.focus_field = field;
-                self.equipment.section = EquipmentSection::Inputs;
-                commands.push(EquipmentEditorCommand::Select(target));
-            }
-            if ui
-                .button(tr(self.locale, "编辑来源", "Edit source"))
-                .clicked()
-            {
-                self.equipment.source_readonly = false;
-            }
-        });
+        if let Some(notice) = &self.project_open.notice
+            && notice.level == ProjectOpenNoticeLevel::Warning
+        {
+            render_project_notice(ui, notice);
+        }
+        let focus = std::mem::take(&mut self.equipment.focus_source);
+        let return_requested = ui
+            .horizontal_wrapped(|ui| {
+                let return_requested = self.render_equipment_source_return_button(ui, focus);
+                if ui
+                    .button(tr(self.locale, "编辑来源", "Edit source"))
+                    .clicked()
+                {
+                    self.equipment.source_readonly = false;
+                    self.equipment.focus_source = true;
+                }
+                return_requested
+            })
+            .inner;
         if let Some(source) = inputs.basis.sources.iter().find(|s| s.id == *id) {
             egui::ScrollArea::vertical()
                 .id_salt(("rating-source", id))
@@ -47,8 +216,10 @@ impl ReadyAppState {
                     );
                 });
         }
+        return_requested
     }
 }
+
 use rf_model::engineering::*;
 
 pub(super) fn render(

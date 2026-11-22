@@ -8,7 +8,7 @@ pub(super) fn render(
     inputs: &EngineeringInputs,
     units: &DisplayUnitSet,
     focus: bool,
-) -> Option<rf_types::SourceId> {
+) -> Option<source::SourceLink> {
     let mut open_source = None;
     let frame = egui::Frame::group(ui.style()).show(ui, |ui| {
         ui.set_width(ui.available_width());
@@ -75,12 +75,8 @@ pub(super) fn render(
                             inputs
                         )
                     ));
-                    if ui
-                        .small_button(tr(l, "查看基础来源", "View basis source"))
-                        .clicked()
-                    {
-                        open_source = Some(basis.source_id.clone());
-                    }
+                    let response = ui.small_button(tr(l, "查看基础来源", "View basis source"));
+                    open_source = source::SourceLink::clicked(&basis.source_id, &response);
                 }
             }
             if !matches!(draft.mode, BindingMode::BasisRef) {
@@ -110,11 +106,10 @@ pub(super) fn render(
                                 source_review(l, source.review)
                             ));
                         }
-                        if ui
-                            .small_button(tr(l, "编辑 / 查看来源", "Edit / view source"))
-                            .clicked()
-                        {
-                            open_source = Some(id.clone());
+                        let response =
+                            ui.small_button(tr(l, "编辑 / 查看来源", "Edit / view source"));
+                        if let Some(source) = source::SourceLink::clicked(id, &response) {
+                            open_source = Some(source);
                         }
                     }
                 }

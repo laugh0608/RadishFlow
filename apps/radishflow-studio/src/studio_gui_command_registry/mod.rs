@@ -388,6 +388,21 @@ fn result_snapshot_command_entries(
 
     let mut seen_units = BTreeSet::new();
     let unit_commands = match snapshot {
+        rf_ui::FlowResultRecord::SinglePhaseRecycle(s) => s
+            .result
+            .final_units
+            .iter()
+            .enumerate()
+            .map(|(index, unit)| {
+                result_unit_command_entry(
+                    snapshot,
+                    &unit.unit_id,
+                    unit.summary.clone(),
+                    index,
+                    target_window_id,
+                )
+            })
+            .collect(),
         rf_ui::FlowResultRecord::Mixed(s) => s
             .final_units
             .keys()
@@ -539,6 +554,7 @@ fn result_unit_command_entry(
                 rf_ui::FlowResultRecord::Simultaneous(_) => "ModularResult",
                 rf_ui::FlowResultRecord::EquationOriented(_) => "EquationResult",
                 rf_ui::FlowResultRecord::Mixed(_) => "MixedResult",
+                rf_ui::FlowResultRecord::SinglePhaseRecycle(_) => "SinglePhaseRecycleResult",
             },
             snapshot.id.as_str(),
             detail

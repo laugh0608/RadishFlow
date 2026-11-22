@@ -48,10 +48,16 @@ pub fn validate_resources(request: &ExecuteRequest) -> Result<(), Failure> {
             "flow_resources is required exactly when steps contain run_flow",
         ));
     }
-    if let Some(r) = &request.flow_resources
-        && (r.cache_root.as_os_str().is_empty()
-            || r.auth_cache_index.as_os_str().is_empty()
-            || matches!(&r.package,PackageSelection::Explicit {package_id} if package_id.trim().is_empty()))
+    if let Some(resources) = &request.flow_resources {
+        validate_flow_resources(resources)?;
+    }
+    Ok(())
+}
+
+pub fn validate_flow_resources(resources: &FlowResources) -> Result<(), Failure> {
+    if resources.cache_root.as_os_str().is_empty()
+        || resources.auth_cache_index.as_os_str().is_empty()
+        || matches!(&resources.package, PackageSelection::Explicit { package_id } if package_id.trim().is_empty())
     {
         return Err(Failure::new(
             Stage::Request,
@@ -106,38 +112,21 @@ pub fn execute(
                 doc.metadata.document_id.as_str(),
                 doc.revision,
             )?;
-            let resources = resources.expect("validated flow resources");
-            let index = rf_store::read_auth_cache_index(base.join(&resources.auth_cache_index));
-            let reply = match index {
-                Ok(index) => {
-                    let root = base.join(&resources.cache_root);
-                    let cache = StudioAppAuthCacheContext::new(&root, &index);
-                    facade.execute_run_action(
-                        app,
-                        &cache,
-                        StudioRunAccess::Allowed,
-                        StudioRunRequest::Flow {
-                            expected: crate::flow_actions::FlowEditContext::capture(&app.workspace),
-                            command: WorkspaceRunCommand::new(
-                                WorkspaceSolveTrigger::Manual,
-                                match &resources.package {
-                                    PackageSelection::Preferred {} => {
-                                        WorkspaceRunPackageSelection::Preferred
-                                    }
-                                    PackageSelection::Explicit { package_id } => {
-                                        WorkspaceRunPackageSelection::Explicit(package_id.clone())
-                                    }
-                                },
-                            ),
-                        },
-                    )
-                }
-                Err(error) => StudioRunReply::StartFailed {
-                    id: None,
-                    error: StudioRunStartFailure::Infrastructure(error),
-                },
-            };
-            (reply, Scope::Flow)
+            let mut run = execute_flow(
+                app,
+                &step.id,
+                executions,
+                resources.expect("validated flow resources"),
+                base,
+            );
+            run.receipt["result"] = query::editable(
+                app,
+                &QueryKind::Results { scope: Scope::Flow },
+                refs,
+                executions,
+            )
+            .unwrap_or_else(|e| json!({"query_error":e}));
+            return Ok(run);
         }
         Action::Size {
             task,
@@ -226,16 +215,50 @@ pub fn execute(
     let (mut receipt, error) = reply_value(reply, &step.id, executions);
     receipt["result"] = query::editable(app, &QueryKind::Results { scope }, refs, executions)
         .unwrap_or_else(|e| json!({"query_error":e}));
-    if matches!(step.action, Action::RunFlow { .. }) {
-        receipt["diagnostic"] = app
-            .workspace
-            .solve_session
-            .latest_diagnostic
-            .as_ref()
-            .map(results::flow_diagnostic)
-            .unwrap_or(Value::Null);
-    }
     Ok(RunStep { receipt, error })
+}
+
+pub fn execute_flow(
+    app: &mut AppState,
+    step: &str,
+    executions: &mut Executions,
+    resources: &FlowResources,
+    base: &Path,
+) -> RunStep {
+    let reply = match rf_store::read_auth_cache_index(base.join(&resources.auth_cache_index)) {
+        Ok(index) => {
+            let root = base.join(&resources.cache_root);
+            let cache = StudioAppAuthCacheContext::new(&root, &index);
+            let package = match &resources.package {
+                PackageSelection::Preferred {} => WorkspaceRunPackageSelection::Preferred,
+                PackageSelection::Explicit { package_id } => {
+                    WorkspaceRunPackageSelection::Explicit(package_id.clone())
+                }
+            };
+            StudioAppFacade::new().execute_run_action(
+                app,
+                &cache,
+                StudioRunAccess::Allowed,
+                StudioRunRequest::Flow {
+                    expected: crate::flow_actions::FlowEditContext::capture(&app.workspace),
+                    command: WorkspaceRunCommand::new(WorkspaceSolveTrigger::Manual, package),
+                },
+            )
+        }
+        Err(error) => StudioRunReply::StartFailed {
+            id: None,
+            error: StudioRunStartFailure::Infrastructure(error),
+        },
+    };
+    let (mut receipt, error) = reply_value(reply, step, executions);
+    receipt["diagnostic"] = app
+        .workspace
+        .solve_session
+        .latest_diagnostic
+        .as_ref()
+        .map(results::flow_diagnostic)
+        .unwrap_or(Value::Null);
+    RunStep { receipt, error }
 }
 fn failed(code: Code, reason: Value, message: impl Into<String>) -> Failure {
     let mut e = Failure::new(Stage::Step, code, message);
@@ -243,7 +266,7 @@ fn failed(code: Code, reason: Value, message: impl Into<String>) -> Failure {
     e.details = Some(Box::new(reason));
     e
 }
-fn reply_value(
+pub(in crate::headless) fn reply_value(
     reply: StudioRunReply,
     step: &str,
     executions: &mut Executions,
@@ -299,6 +322,7 @@ fn reply_value(
             let reason = match reason {
                 crate::WorkspaceSolveSkipReason::HoldMode => "hold_mode",
                 crate::WorkspaceSolveSkipReason::NoPendingRequest => "no_pending_request",
+                crate::WorkspaceSolveSkipReason::ExplicitRunRequired => "explicit_run_required",
             };
             (
                 json!({"outcome":"skipped","reason":reason}),

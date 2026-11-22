@@ -52,6 +52,35 @@ pub(crate) fn validate_vector(
     Ok(())
 }
 
+pub(crate) fn tear_stream(
+    template: &MaterialStreamState,
+    fresh: &MaterialStreamState,
+    boundary: FixedRecycleBoundary,
+    values: &BTreeMap<ComponentId, f64>,
+) -> RfResult<MaterialStreamState> {
+    let total: f64 = values.values().sum();
+    if !total.is_finite() {
+        return Err(failure("flow_overflow", "tear component sum overflows")
+            .with_related_stream_id(template.id.clone()));
+    }
+    let composition = if total == 0.0 {
+        fresh.overall_mole_fractions.clone()
+    } else {
+        values
+            .iter()
+            .map(|(id, n)| (id.clone(), n / total))
+            .collect()
+    };
+    Ok(MaterialStreamState::from_tpzf(
+        template.id.clone(),
+        template.name.clone(),
+        boundary.temperature_k,
+        boundary.pressure_pa,
+        total,
+        composition,
+    ))
+}
+
 pub(crate) fn component_flows(
     components: &[ComponentId],
     stream: &MaterialStreamState,

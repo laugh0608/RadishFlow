@@ -1138,8 +1138,8 @@ mod tests {
             RfFfiStatus::Ok
         );
 
-        let package_id = package_id.as_bytes();
-        let status = flowsheet_solve(engine, package_id.as_ptr(), package_id.len());
+        let solve = || flowsheet_solve(engine, package_id.as_ptr(), package_id.len());
+        let status = solve();
         assert_eq!(status, RfFfiStatus::Thermo);
         assert!(call_last_error(engine).contains("missing `vapor` heat capacity"));
         let json = call_last_error_json(engine);
@@ -1158,7 +1158,123 @@ mod tests {
         );
         assert!(output.is_null());
 
+        write_runtime_package_files(&root, package_id);
+        let reload_package = || {
+            property_package_load_from_files(
+                engine,
+                manifest.as_ptr(),
+                manifest.len(),
+                payload.as_ptr(),
+                payload.len(),
+            )
+        };
+        assert_eq!(reload_package(), RfFfiStatus::Ok);
+        assert_eq!(solve(), RfFfiStatus::Ok);
+        let last_success = call_flowsheet_snapshot_json(engine);
+
+        write_runtime_package_files_with_missing_vapor_heat_capacity(&root, package_id);
+        assert_eq!(reload_package(), RfFfiStatus::Ok);
+        assert_eq!(solve(), RfFfiStatus::Thermo);
+        assert_eq!(call_flowsheet_snapshot_json(engine), last_success);
+        assert_eq!(
+            call_stream_snapshot_json(engine, b"stream-vapor"),
+            *snapshot_stream(&last_success, "stream-vapor"),
+        );
+
+        write_runtime_package_files_with_vapor_heat_capacity(&root, package_id, Some(170.0));
+        assert_eq!(reload_package(), RfFfiStatus::Ok);
+        assert_eq!(solve(), RfFfiStatus::Ok);
+        assert_eq!(call_last_error_json(engine), serde_json::Value::Null);
+        let recovered = call_flowsheet_snapshot_json(engine);
+        assert_ne!(
+            snapshot_stream(&recovered, "stream-vapor"),
+            snapshot_stream(&last_success, "stream-vapor"),
+        );
+
         std::fs::remove_dir_all(&root).ok();
+        engine_destroy(engine);
+    }
+
+    #[test]
+    fn legacy_ffi_rejects_new_project_capabilities_and_keeps_loaded_state() {
+        use serde_json::{Value, json};
+
+        let mut engine = ptr::null_mut::<Engine>();
+        assert_eq!(engine_create(&mut engine), RfFfiStatus::Ok);
+        let v1 = example_project_json().as_bytes();
+        let package = DEMO_PACKAGE_ID.as_bytes();
+        assert_eq!(
+            flowsheet_load_json(engine, v1.as_ptr(), v1.len()),
+            RfFfiStatus::Ok
+        );
+        assert_eq!(
+            flowsheet_solve(engine, package.as_ptr(), package.len()),
+            RfFfiStatus::Ok
+        );
+        let last_success = call_flowsheet_snapshot_json(engine);
+
+        let mut legacy_splitter: Value = serde_json::from_slice(v1).unwrap();
+        legacy_splitter["document"]["flowsheet"]["units"]["heater-1"]["kind"] = json!("splitter");
+        let legacy_splitter = serde_json::to_vec(&legacy_splitter).unwrap();
+        for (bytes, reason) in [
+            (
+                include_bytes!(
+                    "../../../examples/flowsheets/standalone-separator-basis.rfproj.json"
+                )
+                .as_slice(),
+                "schema version `3`",
+            ),
+            (
+                include_bytes!(
+                    "../../../examples/flowsheets/fixed-tp-recycle-binary-hydrocarbon.rfproj.json"
+                )
+                .as_slice(),
+                "schema version `4`",
+            ),
+            (&legacy_splitter, "cannot preserve Splitter capability"),
+        ] {
+            assert_eq!(
+                flowsheet_load_json(engine, bytes.as_ptr(), bytes.len()),
+                RfFfiStatus::InvalidInput
+            );
+            let error = call_last_error_json(engine);
+            assert_eq!(error["ffiStatus"], "invalid_input");
+            assert!(
+                error["message"].as_str().unwrap().contains(reason),
+                "{error}"
+            );
+            assert_eq!(call_flowsheet_snapshot_json(engine), last_success);
+        }
+        assert_eq!(
+            flowsheet_solve(engine, package.as_ptr(), package.len()),
+            RfFfiStatus::Ok
+        );
+        assert_eq!(call_flowsheet_snapshot_json(engine), last_success);
+
+        let mut legacy_v2 = rf_store::parse_project_file_json(example_project_json()).unwrap();
+        legacy_v2.schema_version = 2;
+        let v2 = rf_store::project_file_to_pretty_json(&legacy_v2).unwrap();
+        assert_eq!(
+            flowsheet_load_json(engine, v2.as_ptr(), v2.len()),
+            RfFfiStatus::Ok
+        );
+        let mut output = ptr::null_mut();
+        assert_eq!(
+            flowsheet_get_snapshot_json(engine, &mut output),
+            RfFfiStatus::InvalidEngineState
+        );
+        assert!(output.is_null());
+        let stream = b"stream-vapor";
+        assert_eq!(
+            stream_get_snapshot_json(engine, stream.as_ptr(), stream.len(), &mut output),
+            RfFfiStatus::InvalidEngineState
+        );
+        assert!(output.is_null());
+        assert_eq!(
+            flowsheet_solve(engine, package.as_ptr(), package.len()),
+            RfFfiStatus::Ok
+        );
+        assert_eq!(call_flowsheet_snapshot_json(engine), last_success);
         engine_destroy(engine);
     }
 

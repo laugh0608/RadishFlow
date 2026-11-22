@@ -1,3 +1,4 @@
+use super::super::{v9, v10, v11, v12, v13};
 use super::{
     actions::*,
     confirmation::Aliases,
@@ -12,40 +13,37 @@ use serde_json::{Value, json};
 use std::path::Path;
 
 pub fn file(path: &Path, response: &mut Response) -> Result<(), Failure> {
-    let bytes = super::request_bytes(path)?;
-    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(super::invalid_request)?["schema_version"]
-        == 7
-    {
-        response.schema_version = 7;
-        return super::super::planned::execute_file::<super::super::v7::Plan>(
-            path, &bytes, response,
-        );
+    let (version, bytes) = super::read_request(path)?;
+    if !matches!(
+        version,
+        3..=7 | v9::VERSION | v10::VERSION | v11::VERSION | v12::VERSION | v13::VERSION
+    ) {
+        return Err(Failure::new(
+            Stage::Request,
+            Code::UnsupportedVersion,
+            "execute requires schema_version 3 through 7 or 9 through 13",
+        ));
     }
-    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(super::invalid_request)?["schema_version"]
-        == 6
-    {
-        response.schema_version = 6;
-        return super::super::planned::execute_file::<super::super::v6::Plan>(
+    response.schema_version = version;
+    match version {
+        3 => execute_v3(path, &bytes, response),
+        4 => super::super::v4::execute_file::<super::super::v4::protocol::Plan>(
             path, &bytes, response,
-        );
+        ),
+        5 => super::super::planned::execute_file::<super::super::v5::Plan>(path, &bytes, response),
+        6 => super::super::planned::execute_file::<super::super::v6::Plan>(path, &bytes, response),
+        7 => super::super::planned::execute_file::<super::super::v7::Plan>(path, &bytes, response),
+        v9::VERSION => v9::execute_file(path, &bytes, response),
+        v10::VERSION => super::super::planned::execute_file::<v10::Plan>(path, &bytes, response),
+        v11::VERSION => super::super::planned::execute_file::<v11::Plan>(path, &bytes, response),
+        v12::VERSION => super::super::planned::execute_file::<v12::Plan>(path, &bytes, response),
+        v13::VERSION => v13::execute_file(path, &bytes, response),
+        _ => unreachable!("validated execute version"),
     }
-    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(super::invalid_request)?["schema_version"]
-        == 5
-    {
-        response.schema_version = 5;
-        return super::super::planned::execute_file::<super::super::v5::Plan>(
-            path, &bytes, response,
-        );
-    }
-    if serde_json::from_slice::<serde_json::Value>(&bytes).map_err(super::invalid_request)?["schema_version"]
-        == 4
-    {
-        response.schema_version = 4;
-        return super::super::v4::execute_file::<super::super::v4::protocol::Plan>(
-            path, &bytes, response,
-        );
-    }
-    let request: ExecuteRequest = serde_json::from_slice(&bytes).map_err(super::invalid_request)?;
+}
+
+fn execute_v3(path: &Path, bytes: &[u8], response: &mut Response) -> Result<(), Failure> {
+    let request: ExecuteRequest = serde_json::from_slice(bytes).map_err(super::invalid_request)?;
     debug_assert_eq!(request.schema_version, 3);
     super::runs::validate_resources(&request)?;
     super::validate_ids(request.steps.iter().map(|s| s.id.as_str()))?;
@@ -128,7 +126,7 @@ pub fn file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     );
     for q in &request.queries {
         query::push_reply(
-            q,
+            &q.id,
             query::editable(&app, &q.query, &refs, &executions),
             response,
         );

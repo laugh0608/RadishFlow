@@ -1,5 +1,6 @@
 //! Complete v3 equipment storage; legacy readers and CLI retain their v1/v2 contract.
 mod adoption_wire;
+mod concentric_tube_wire;
 mod engineering_wire;
 mod equipment_wire;
 mod file_io;
@@ -7,7 +8,9 @@ mod presentation_wire;
 mod rating_wire;
 pub(crate) mod shared;
 mod task_wire;
-pub use file_io::{read, write, write_upgraded};
+pub use file_io::{
+    read, read_with_equipment_support, write, write_upgraded, write_with_equipment_support,
+};
 
 use crate::{StoredProjectDocument, project::STORED_PROJECT_FILE_KIND};
 use engineering_wire::EngineeringWire;
@@ -17,6 +20,20 @@ use rf_types::{RfError, RfResult, units::DisplayUnitSet};
 use serde::{Deserialize, Deserializer, Serialize};
 
 pub const VERSION: u32 = 3;
+
+/// Equipment vocabulary explicitly accepted by the caller, independent of
+/// the project envelope or flowsheet plan version.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EquipmentSupport {
+    SeparatorOnly,
+    ConcentricTubeRating,
+    ConcentricTubeFlowAssociation,
+}
+impl EquipmentSupport {
+    pub(crate) fn supports_concentric_tube_rating(self) -> bool {
+        self != Self::SeparatorOnly
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct StoredEngineeringInputs {
@@ -33,6 +50,17 @@ impl StoredEngineeringInputs {
             .filter_map(|t| t.as_rating().map(|r| r.method.version))
             .max()
             .unwrap_or(0)
+    }
+    pub fn has_concentric_tube_rating(&self) -> bool {
+        self.tasks
+            .iter()
+            .any(|task| task.as_concentric_tube_rating().is_some())
+    }
+    pub(crate) fn has_concentric_tube_flow_association(&self) -> bool {
+        self.tasks
+            .iter()
+            .filter_map(|task| task.as_concentric_tube_rating())
+            .any(|task| task.case.flow_association.is_some())
     }
 }
 
@@ -54,6 +82,11 @@ impl StoredProjectV3 {
         self.engineering
             .as_ref()
             .is_some_and(StoredEngineeringInputs::has_rating)
+    }
+    fn has_concentric_tube_rating(&self) -> bool {
+        self.engineering
+            .as_ref()
+            .is_some_and(StoredEngineeringInputs::has_concentric_tube_rating)
     }
 }
 
@@ -135,6 +168,13 @@ fn engineering<'de, D: Deserializer<'de>, T: Deserialize<'de>>(
 /// Decode in stages from original text: the version probe never converts into Value,
 /// so strict body decoding still sees duplicate keys and unknown-task numbers.
 pub fn parse(contents: &str) -> RfResult<ProjectV3Read> {
+    parse_with_equipment_support(contents, EquipmentSupport::SeparatorOnly)
+}
+
+pub fn parse_with_equipment_support(
+    contents: &str,
+    equipment_support: EquipmentSupport,
+) -> RfResult<ProjectV3Read> {
     let header: Header = serde_json::from_str(contents).map_err(json_error)?;
     if header.kind != STORED_PROJECT_FILE_KIND {
         return Err(RfError::invalid_input(
@@ -154,7 +194,7 @@ pub fn parse(contents: &str) -> RfResult<ProjectV3Read> {
     let unsupported = wire
         .engineering
         .as_ref()
-        .is_some_and(|e| e.tasks.iter().any(|t| !t.supported()));
+        .is_some_and(|e| e.tasks.iter().any(|t| !t.supported(equipment_support)));
     let engineering = wire
         .engineering
         .map(EngineeringWire::into_basis)
@@ -170,6 +210,7 @@ pub fn parse(contents: &str) -> RfResult<ProjectV3Read> {
     let tasks = task_wire::decode(contents)?;
     let engineering = engineering.map(|basis| StoredEngineeringInputs { basis, tasks });
     if let Some(inputs) = &engineering {
+        require_v4_for_flow_association(inputs)?;
         validate_engineering(inputs)?;
     }
     Ok(ProjectV3Read::Editable(StoredProjectV3 {
@@ -182,6 +223,13 @@ pub fn parse(contents: &str) -> RfResult<ProjectV3Read> {
 /// Reject read-only documents rather than reserializing a partially understood file.
 /// Studio uses this API explicitly; legacy readers/writers remain separate.
 pub fn to_pretty_json(project: &ProjectV3Read) -> RfResult<String> {
+    to_pretty_json_with_equipment_support(project, EquipmentSupport::SeparatorOnly)
+}
+
+pub fn to_pretty_json_with_equipment_support(
+    project: &ProjectV3Read,
+    equipment_support: EquipmentSupport,
+) -> RfResult<String> {
     let ProjectV3Read::Editable(project) = project else {
         return Err(RfError::invalid_input(
             "engineering.tasks: unsupported equipment capability; entire project is read-only",
@@ -189,7 +237,8 @@ pub fn to_pretty_json(project: &ProjectV3Read) -> RfResult<String> {
     };
     project.document.validate()?;
     if let Some(inputs) = &project.engineering {
-        validate_engineering(inputs)?;
+        require_v4_for_flow_association(inputs)?;
+        shared::validate_for_write(inputs, equipment_support)?;
     }
     let wire = ProjectWire {
         kind: STORED_PROJECT_FILE_KIND.into(),
@@ -207,6 +256,15 @@ pub fn to_pretty_json(project: &ProjectV3Read) -> RfResult<String> {
         }),
     };
     serde_json::to_string_pretty(&wire).map_err(json_error)
+}
+
+fn require_v4_for_flow_association(inputs: &StoredEngineeringInputs) -> RfResult<()> {
+    if inputs.has_concentric_tube_flow_association() {
+        return Err(RfError::invalid_input(
+            "engineering.tasks: concentric-tube flow associations require v4",
+        ));
+    }
+    Ok(())
 }
 
 fn json_error(error: serde_json::Error) -> RfError {

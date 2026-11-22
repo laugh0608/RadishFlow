@@ -41,7 +41,7 @@ fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
     )
 }
 
-fn synced_workspace_config() -> StudioRuntimeConfig {
+pub(super) fn synced_workspace_config() -> StudioRuntimeConfig {
     StudioRuntimeConfig {
         entitlement_preflight: StudioRuntimeEntitlementPreflight::Skip,
         entitlement_seed: StudioRuntimeEntitlementSeed::Synced,
@@ -135,7 +135,12 @@ fn stored_unit_port_stream_id<'a>(
         .map(|stream_id| stream_id.as_str())
 }
 
-fn commit_unit_parameter(app: &mut ReadyAppState, unit_id: &str, draft_key: &str, raw_value: &str) {
+pub(super) fn commit_unit_parameter(
+    app: &mut ReadyAppState,
+    unit_id: &str,
+    draft_key: &str,
+    raw_value: &str,
+) {
     app.dispatch_ui_command(format!("inspector.focus_unit:{unit_id}"));
     app.dispatch_inspector_field_draft_update(
         radishflow_studio::inspector_draft_update_command_id(draft_key),
@@ -184,6 +189,7 @@ mod result_export;
 mod result_review;
 mod runtime;
 mod runtime_synthetic_flash_inlet_boundary;
+mod sidebar_width;
 mod unit_deletion;
 
 fn palette_commands_for_test(commands: &[(&str, bool)]) -> Vec<&'static StudioGuiCommandEntry> {
@@ -609,7 +615,7 @@ fn save_project_with_upgrade_consent(app: &mut ReadyAppState) {
     }
 }
 
-fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
+pub(super) fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
     ReadyAppState::from_config(config, test_preferences_path("default"))
         .expect("expected app state")
 }
@@ -762,6 +768,8 @@ mod formal_actions;
 mod equipment_export;
 mod equipment_matrix;
 mod equipment_rating_editor;
+mod equipment_return;
+pub(super) use equipment_rating_editor::fits as assert_text_fits;
 mod equipment_rating_export;
 
 mod result_provenance_ui;
@@ -773,6 +781,42 @@ fn assert_command_surface_window_equal(
     expected: &radishflow_studio::StudioGuiWindowModel,
 ) {
     let mut actual = command_surface_window(app);
+    // Numeric controls also carry a session guard. Validate each fixture's own
+    // authority before comparing its user-visible presentation across routes.
+    let normalize_numeric =
+        |actual: &mut [radishflow_studio::StudioGuiWindowInspectorTargetFieldModel],
+         expected: &[radishflow_studio::StudioGuiWindowInspectorTargetFieldModel]| {
+            assert_eq!(actual.len(), expected.len());
+            for (actual, expected) in actual.iter_mut().zip(expected) {
+                if let (Some(Ok(actual)), Some(Ok(expected))) =
+                    (&mut actual.numeric, &expected.numeric)
+                {
+                    assert!(
+                        actual.workspace.same_session(
+                            &app.platform_host
+                                .modeling_inputs()
+                                .workspace
+                                .flow_run_qualification()
+                        )
+                    );
+                    assert_eq!(
+                        actual.workspace.revision(),
+                        app.platform_host.document().revision
+                    );
+                    actual.workspace = expected.workspace.clone();
+                }
+            }
+        };
+    normalize_numeric(
+        &mut actual.module_settings.parameter_fields,
+        &expected.module_settings.parameter_fields,
+    );
+    if let (Some(actual), Some(expected)) = (
+        &mut actual.runtime.active_inspector_detail,
+        &expected.runtime.active_inspector_detail,
+    ) {
+        normalize_numeric(&mut actual.property_fields, &expected.property_fields);
+    }
     for (actual, expected) in [
         (
             &mut actual.runtime.result_review,
@@ -841,3 +885,5 @@ fn assert_command_surface_window_equal(
 }
 
 mod flow_plan;
+
+mod h3_review;

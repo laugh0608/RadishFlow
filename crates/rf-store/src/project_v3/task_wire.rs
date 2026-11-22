@@ -310,9 +310,22 @@ fn tasks<'de, D: Deserializer<'de>>(
 }
 pub(super) fn decode(contents: &str) -> rf_types::RfResult<Vec<EquipmentTask>> {
     let project: TaskProject = serde_json::from_str(contents).map_err(super::json_error)?;
-    Ok(project
-        .engineering
-        .map_or_else(Vec::new, |e| e.tasks.into_iter().map(Into::into).collect()))
+    let Some(engineering) = project.engineering else {
+        return Ok(Vec::new());
+    };
+    engineering
+        .tasks
+        .into_iter()
+        .enumerate()
+        .map(|(index, wire)| {
+            wire.decode().map_err(|e| {
+                rf_types::RfError::invalid_input(format!(
+                    "engineering.tasks[{index}].{}",
+                    e.message()
+                ))
+            })
+        })
+        .collect()
 }
 
 // Only inspect legacy payload shape after every method envelope is supported.
@@ -327,6 +340,7 @@ struct LegacyEngineering {
 }
 #[derive(Deserialize)]
 struct LegacyTask {
+    kind: String,
     case: Option<LegacyCase>,
 }
 #[derive(Deserialize)]
@@ -336,8 +350,9 @@ struct LegacyCase {
 pub(super) fn legacy_payload(contents: &str) -> rf_types::RfResult<bool> {
     let project: LegacyProject = serde_json::from_str(contents).map_err(super::json_error)?;
     Ok(project.engineering.is_some_and(|e| {
-        e.tasks
-            .iter()
-            .any(|t| t.case.as_ref().is_some_and(|c| c.configuration.is_some()))
+        e.tasks.iter().any(|t| {
+            matches!(t.kind.as_str(), TASK_KIND | super::rating_wire::TASK_KIND)
+                && t.case.as_ref().is_some_and(|c| c.configuration.is_some())
+        })
     }))
 }

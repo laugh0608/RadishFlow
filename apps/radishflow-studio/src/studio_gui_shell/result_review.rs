@@ -180,17 +180,18 @@ impl ReadyAppState {
 pub(super) struct EquipmentNavigation<T> {
     pub target: T,
     pub guard: radishflow_studio::EquipmentResultGuard,
+    pub button: egui::Id,
 }
 impl ReadyAppState {
     pub(super) fn current_equipment_navigation<T>(
         &mut self,
         navigation: EquipmentNavigation<T>,
-    ) -> Option<T> {
+    ) -> Option<(T, egui::Id)> {
         if navigation
             .guard
             .is_current(&self.platform_host.modeling_inputs().workspace.engineering)
         {
-            Some(navigation.target)
+            Some((navigation.target, navigation.button))
         } else {
             self.project_open.notice = Some(ProjectOpenNotice {
                 level: ProjectOpenNoticeLevel::Warning,

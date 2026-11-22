@@ -1,16 +1,10 @@
 # 当前状态
 
-更新时间：2026-11-05
+更新时间：2026-11-21
 
 ## 用途
 
-用途：恢复当前状态、优先级、临时门禁及范围。
-
-读者：仓库维护者、用户与 AI / Agent。
-
-不包含：完整历史流水、详细功能设计、长期协作规则、命令级测试日志和发布说明。
-
-先读本文档，再经[专题索引](../topics/README.md)进入活跃范围及唯一状态来源；长期规则见协作指南，历史证据见周志。
+供维护者、用户和 Agent 查当前顺位、门禁与范围。[专题索引](../topics/README.md)连接各项设计与验收，长期规则见协作指南，历史证据见周志。
 
 ## 当前结论
 
@@ -20,9 +14,9 @@
 - 长期覆盖稳态、动态、瞬态、间歇 / 半间歇，以及递归分块、序贯模块、联立模块和联立方程；统一 API 明确采用变量 / 动作浏览树，支持 COM 自动化和操作录制 / 回放。领域与术语边界见 [模拟平台长期规划](../architecture/simulation-platform.md)；目标不表示已实现或同时排期。
 - 插件、分层许可与公共 API 授权 / 配额已纳入 [规划](../radishflow-mvp-roadmap.md#插件与公共-api-的实施切片)；运行时、许可政策、接口和部署待切片决策。
 - [单位系统](../topics/units-and-quantity-system.md)、[规格与辅助](../topics/modeling-assistance-and-specifications.md)、[设备设计与校核](../topics/equipment-design-and-rating.md) 首批已有实现，进展见下文；设备工程不等待完整动态，未来 Agent 复用统一入口，当前不接入 AI。
-- [工程基础、工况与来源](../topics/engineering-basis-and-cases.md) 已支撑当前设备链路；目标反算、工程检查、压力 / 公用工程和交付按 [配套切片](../radishflow-mvp-roadmap.md#工程工作流的配套切片) 扩展，近期顺序服从 AF。
-- 旧 `.pen` 保留，新增分区按 [UI 计划](../architecture/studio-ui-topic-plan.md) 评审；U2 / V0 局部画板已获认可。
-- 当前尚未进入正式 tag / release 节点；历史 `v26.5.1-dev` 只作为内部 staging 草案和验证记录保留。
+- [工程基础与来源](../topics/engineering-basis-and-cases.md)已支撑独立设备；变更影响、差异与证据复核纳入[后续切片](../radishflow-mvp-roadmap.md#工程工作流的配套切片)，分离器关联待实施。
+- 新交互评审可选本机 Penpot；旧稿保留，Pencil 停用。见 [UI 计划](../architecture/studio-ui-topic-plan.md)。
+- 当前尚未进入正式 tag / release 节点；`v26.5.1-dev` 仅作历史 staging 记录。
 
 ## 当前开发范围与优先级
 
@@ -37,31 +31,34 @@
 
 1. 按 [代码链路审计](../architecture/overview.md#工程基础链路审计2026-10-23) 和 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 推进。AF0 已完成；AF2a 内建目录 / 工厂、AF2b 单包上下文已接通。AF1 未定因，独立跟踪。
 2. QS0—QS4 批准范围已完成本机接入与阶段验证；[QS3](../topics/modeling/equation-oriented-block.md)数值补验已完成，原生和平台残项保持。后续算法另审，发布门禁不变。
-3. C2-A 统一广义 Pcm 独立候选已按批准范围完成数值验证；结果与物理资格待审，原失败及来源 / VLE / 气相缺口保持。C2-B / C3 不实施。
+3. C2-A 统一广义 Pcm 候选技术审阅已完成，独立留出矩阵待冻结；结果采纳与物理资格待审。原失败及来源 / VLE / 气相缺口保持，C2-B / C3 不实施。
 4. 基础契约中提前审查 EO / 动态 / 瞬态的扩展边界，具体物性、单元、递归分块 / recycle 和高级算法按真实场景逐步填入；每项另做物理验证。
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
 
 
-### 最近进展（截至 2026-11-05）
+### 最近进展（截至 2026-11-21）
 
-- 大图两片、首页预览限幅和 C2-A 新候选已提交；workspace 正式 2,069 项及 macOS 原生代表验证通过。大图性能与本轮证据见 [W45](../devlogs/2026-11/2026-W45.md)，AF1 未定因。
-- [C2-A 新候选](../thermo/mvp-model.md#接下来事项)完成 15 项 Python 证据测试、47 点 / 552 行工程重放及边界 / 独立算术核对；未增加物理放行。QS4 首片 A—D 完成事实见对应专题。
+- [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
+- PR #18 已合入 `master` 并回灌 `dev`（`4772fbba`）。
+- AF3-V10 受控实窗已验证等待返回。
+- [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
+- [QS4 M2](../topics/modeling/mixed-partition-execution.md)已通过核心、v4 保存、CLI v9 与 Studio 本机代表验收。
 
 ### 下一步
 
-- [x] 大图两片原生观察及首页预览限幅已完成；后续性能范围按[应用架构](../architecture/app-architecture.md#接下来事项)另审，AF1 独立跟踪。
-- [ ] 按 [C2-A 后续事项](../thermo/mvp-model.md#接下来事项)先审阅新候选的数值 / 物理资格与工程翻转，再核对来源并冻结留出密度矩阵；原缺口保持，B / C3 不开工。
-- [ ] 按 [QS3 保留项](../topics/modeling/equation-oriented-block.md#接下来事项)补方法特定原生交互与平台项；共享取消 / join 代表及数值直证已补。
-- [x] [QS4 首片 A—D](../topics/modeling/mixed-partition-execution.md)已按批准方案及认可画板完成；跨块回路、更多策略与逆向规格另审。
+- [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
+- [ ] [H3](../topics/equipment/heat-exchanger-design-and-rating.md#接下来事项) v4 关联保存重开已验，建议先评审 CLI 只读复核。
+- [ ] [AF3-V10](../topics/runtime-messages/scenarios-and-acceptance.md) 11-21 原版等待返回仍待验。
+- [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
+- [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
+- [x] QS3／QS4 macOS 取消与重跑通过，QS3 英文窄区焦点可见性复验通过。见 [专题](../topics/modeling/equation-oriented-block.md#接下来事项)。
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)的设备数据 / 事务 / 保存 / UI / 输出及代表验证完成，流程关联未实现。
 - [ ] 按 [AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23) 捕获异常现场，定因后确认修复并验收；未复现不等于收口。
-- [x] AF2a / b 装配、AF3 后台运行、AF4a / AF5a 查询与 AF4b 正式动作 / GUI 已完成。
-- [x] [AF4c 契约](../topics/variable-and-object-browser.md#af4c-新版-cli-契约2026-10-26已确认)四片完成，v3 覆盖及磁盘边界已验证，旧协议保持。
-- [x] AF5b 来源、导航、输出及代表验证完成。
-- [x] AF6、QS0 独立物料任务和 QS1—QS3 有限回流 / 联立模块 / 物料 EO 已接通；QS4 首片已接通，后续混合策略、热 / 相平衡 EO 与动态另审。
-- [ ] 全局 R0 待评审；U / A / 设备局部稿通过不代表全局定稿。
-- [ ] [可视化 V1—V4](../radishflow-mvp-roadmap.md#颜色与流程可视化的配套切片)方向已确认、均未实现：二维流向 / 数据着色随结果基础，局部三维依赖设备几何，动态回放依赖真实时间结果；整厂三维另评估。
+- [x] AF2a / b 与 AF3—AF5 已接通批准范围，见[基础切片](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)。
+- [x] AF6 与 QS0—QS4 已接通。后续混合策略、热／相平衡 EO 与动态另审。
+- [x] Studio R2、V1 动效与 V2 三个流股图层通过 macOS 代表验证。 [UI 计划](../architecture/studio-ui-topic-plan.md)
+- [ ] [V2 气相摩尔分率](../topics/results-review-diagnostics.md#可视化接下来事项)已用六个工况核对流股快照，R0 待评审，当前建议暂缓图层。
 
 ### 相关规划
 
@@ -82,7 +79,7 @@
 ## 当前能力基线
 
 - 受控流程覆盖原无回路示例，以及固定温压 Feed / Mixer / Splitter 的分块回流、仿射联立和物料 EO 正向 / 单比例反算；正式计划、运行、采纳、保存重开与结果审阅已接通。方法能力按专题区分，不自动切换。
-- Studio 已形成 Home、独立物性页、独立设备页、流程图工作台、模块设置 / 结果和运行状态区域的主路径；设备计算与流程 Run 分离，支持尺寸、逐行校核及有限矩阵 CSV / JSON。
+- Studio 主路径覆盖 Home、物性、独立设备、流程图、流程运行和流程结果。独立设备支持尺寸、逐行校核及有限矩阵 CSV / JSON。
 - Rust Core 与 `.NET 10` 适配层保持隔离；CAPE-OPEN / COM 语义不进入 Rust Core。
 - 数值实现仍使用演示物性、常热容显热和简化单元行为；golden、结果透传与用户路径验收不等于独立物理准确性证明，见 [热力学模型](../thermo/mvp-model.md)。
 - 能力、命令和验收证据以 `docs/topics/`、`docs/mvp/`、`docs/reference/` 与历史周志为准。
@@ -115,9 +112,13 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-05：首页预览限幅正式 2,069 项及 macOS 原生代表验证通过；大图两片、C2-A 与共享取消 / join 证据见 [W45](../devlogs/2026-11/2026-W45.md)。C2-A 新包另有 15 项 Python 证据测试及 552 行工程重放，不计入 Rust 数量。AF1 及未验平台保持；PR #17 的 CI 不覆盖其后新增代码。
+- 2026-11-21：Rust 2,284 项通过，含 62 项 CLI 进程测试。显热、换热和实窗见 [W47](../devlogs/2026-11/2026-W47.md)，窄区与 .NET 见 [W46](../devlogs/2026-11/2026-W46.md)。
 
-- 既有功能与实窗证据见 [W38](../devlogs/2026-09/2026-W38.md)，跨平台、native 与 `.NET` 历史基线见 [W37](../devlogs/2026-09/2026-W37.md)，更早记录见 [W36](../devlogs/2026-09/2026-W36.md)；历史证据不替代新增路径或发布验收。
+- 2026-11-10：PR #18 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
+
+- 2026-11-05：正式 2,069 项 Rust 测试、大图和首页原生代表验证通过；C2-A 新包另有 15 项 Python 测试与 552 行工程重放。见 [W45](../devlogs/2026-11/2026-W45.md)。
+
+- 跨平台、实窗与 `.NET` 历史证据见各专题及周志；新增路径和发布按各自范围验收。
 
 ## 当前范围控制
 
@@ -142,7 +143,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 - 代码风格、命名和抽象判断：`docs/development/code-style.md`
 - 分支与 PR 治理：`docs/adr/0001-branch-and-pr-governance.md`
 - 单位 / 建模辅助 / 设备设计的详细规划见本文当前结论链接；分离器与换热器子专题从设备专题进入。UI 功能分区、旧稿状态和 R0—R2 见 UI 计划。
-- 最新周志：[W45](../devlogs/2026-11/2026-W45.md)；QS 实现 / 历史验证见 W44，AF 见 W43，设备见 W42，U / A 见 W41。
+- 最新周志：[W47](../devlogs/2026-11/2026-W47.md)。Studio R2／V1 接线与 QS3 实窗见 W46，QS、性能和 C2-A 见 W45，QS 实现 / 历史验证见 W44，AF 见 W43，设备见 W42，U / A 见 W41。
 
 ## 更新规则
 

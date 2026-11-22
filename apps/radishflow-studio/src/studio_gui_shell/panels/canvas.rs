@@ -1,5 +1,11 @@
 use super::super::*;
 
+mod streams;
+use streams::{
+    OpenPathEnd, canvas_stream_label_rect, paint_canvas_stream_label, paint_canvas_stream_line,
+    paint_canvas_stream_status_badges, paint_canvas_viewport_stream_focus, paint_flow_path_motion,
+};
+
 impl ReadyAppState {
     pub(in crate::studio_gui_shell) fn render_canvas_area(
         &mut self,
@@ -10,13 +16,21 @@ impl ReadyAppState {
         let widget = &window.canvas.widget;
         self.render_canvas_toolbar(ui, widget);
         ui.add_space(4.0);
-        self.render_canvas_stage_summary(ui, widget);
-        self.render_canvas_object_action_strip(ui, widget);
-        self.render_canvas_legend(ui, widget);
-        ui.separator();
-        self.render_canvas_drop_surface(ui);
-        ui.add_space(8.0);
-        self.render_canvas_suggestions(ui, widget, window, area_id);
+        egui::ScrollArea::vertical()
+            .id_salt("flowsheet-canvas-content")
+            .auto_shrink([false, false])
+            .drag_to_scroll(false)
+            .show(ui, |ui| {
+                let canvas_width = ui.available_width();
+                self.render_canvas_stage_summary(ui, widget);
+                self.render_canvas_object_action_strip(ui, widget);
+                self.render_canvas_legend(ui, widget);
+                self.render_flow_path(ui, window);
+                ui.separator();
+                self.render_canvas_drop_surface(ui, canvas_width);
+                ui.add_space(8.0);
+                self.render_canvas_suggestions(ui, widget, window, area_id);
+            });
     }
 
     fn render_canvas_toolbar(
@@ -39,6 +53,9 @@ impl ReadyAppState {
                 .clicked()
             {
                 self.request_canvas_viewport_fit_to_content();
+            }
+            if !widget.view().stream_lines.is_empty() {
+                self.canvas_stream_layer.render_choice(ui, self.locale);
             }
             if !widget.view().suggestions.is_empty() {
                 ui.separator();
@@ -115,19 +132,19 @@ impl ReadyAppState {
             ui.small(
                 egui::RichText::new(self.locale.runtime_label("Canvas status").as_ref()).strong(),
             );
-            render_status_chip(
+            render_canvas_chip(
                 ui,
                 &self
                     .locale
                     .count_label(object_list.unit_count, "unit", "units"),
                 egui::Color32::from_rgb(86, 118, 168),
             );
-            render_status_chip(
+            render_canvas_chip(
                 ui,
                 &compact_canvas_material_line_count(object_list.stream_count, self.locale),
                 egui::Color32::from_rgb(42, 142, 122),
             );
-            render_status_chip(
+            render_canvas_chip(
                 ui,
                 &self
                     .locale
@@ -135,7 +152,7 @@ impl ReadyAppState {
                 egui::Color32::from_rgb(86, 96, 108),
             );
             if object_list.attention_count > 0 {
-                render_status_chip(
+                render_canvas_chip(
                     ui,
                     &self
                         .locale
@@ -144,18 +161,18 @@ impl ReadyAppState {
                 );
             }
             if let Some(status) = view.run_status.as_ref() {
-                render_status_chip(
+                render_canvas_chip(
                     ui,
                     self.locale.runtime_label(status.status_label).as_ref(),
                     run_status_color(status.status_label),
                 );
             }
-            render_status_chip(
+            render_canvas_chip(
                 ui,
                 self.locale.runtime_label(viewport.mode_label).as_ref(),
                 egui::Color32::from_rgb(86, 118, 168),
             );
-            render_status_chip(
+            render_canvas_chip(
                 ui,
                 self.locale.runtime_label(viewport.layout_label).as_ref(),
                 egui::Color32::from_rgb(86, 96, 108),
@@ -404,7 +421,11 @@ impl ReadyAppState {
         });
     }
 
-    fn render_canvas_drop_surface(&mut self, ui: &mut egui::Ui) {
+    pub(in crate::studio_gui_shell) fn render_canvas_drop_surface(
+        &mut self,
+        ui: &mut egui::Ui,
+        canvas_width: f32,
+    ) {
         // Earlier controls can change selection or topology in this same egui frame.
         // Resolve navigation and paint geometry from the same current presentation.
         let mut window = self.platform_host.snapshot().window_model();
@@ -414,14 +435,43 @@ impl ReadyAppState {
         let focus_callout = view.focus_callout.as_ref();
         let unit_blocks = &view.unit_blocks;
         let stream_lines = &view.stream_lines;
-        self.reconcile_canvas_viewport_navigation(view);
-        let available_width = ui.available_width().max(320.0);
-        let desired_size = egui::vec2(available_width, 280.0);
-        let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click_and_drag());
-        let viewport_transform = if self.canvas_viewport_fit_to_content_requested {
-            CanvasViewportTransform {
-                offset: self.fit_canvas_viewport_to_content(rect, unit_blocks, stream_lines),
+        let flow_path = (self.screen == StudioShellScreen::Workbench)
+            .then(|| self.flow_path.selected())
+            .flatten()
+            .and_then(|id| {
+                stream_lines
+                    .iter()
+                    .find(|stream| stream.stream_id == id.as_str())
+            });
+        let unqualified_path_end = flow_path.and_then(|path| {
+            if path.source.is_some() == path.sink.is_some()
+                || self.flow_path_has_current_amount(&path.stream_id)
+            {
+                return None;
             }
+            Some(if path.source.is_none() {
+                OpenPathEnd::Source
+            } else {
+                OpenPathEnd::Sink
+            })
+        });
+        self.reconcile_canvas_viewport_navigation(view);
+        let stream_coloring = self
+            .canvas_stream_layer
+            .project(&self.platform_host.modeling_inputs().workspace);
+        let layer_legend = stream_coloring.as_ref().map(|layer| {
+            ui.scope(|ui| {
+                ui.set_max_width(canvas_width);
+                layer.render_legend(ui, self.locale, stream_lines, flow_path);
+            })
+            .response
+            .rect
+        });
+        let desired_size = egui::vec2(canvas_width.max(320.0), 280.0);
+        let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click_and_drag());
+        let fit_to_content = self.canvas_viewport_fit_to_content_requested;
+        let viewport_transform = if fit_to_content {
+            canvas_viewport_transform(rect, unit_blocks, stream_lines)
         } else {
             canvas_initial_viewport_transform(
                 &mut self.canvas_initial_viewport_fit,
@@ -449,7 +499,16 @@ impl ReadyAppState {
         let mut clicked_stream_command = None;
         let mut hovered_stream = false;
         for stream in stream_lines {
-            let geometry = canvas_stream_line_geometry(rect, &viewport_transform, stream);
+            let path_selected = flow_path.is_some_and(|path| path.line_id == stream.line_id);
+            let open_end = if path_selected {
+                unqualified_path_end
+            } else {
+                None
+            };
+            let mut geometry = canvas_stream_line_geometry(rect, &viewport_transform, stream);
+            if let Some(end) = open_end {
+                end.shorten(&mut geometry);
+            }
             let is_viewport_focus = self
                 .canvas_viewport_navigation
                 .is_active_anchor(&stream.line_id);
@@ -457,29 +516,78 @@ impl ReadyAppState {
                 .canvas_viewport_navigation
                 .take_pending_scroll_for_anchor(&stream.line_id)
             {
-                ui.scroll_to_rect(
+                scroll_to_canvas_target(
+                    ui,
                     canvas_stream_line_hit_rect(geometry).expand(42.0),
-                    Some(egui::Align::Center),
+                    layer_legend,
                 );
             }
             if is_viewport_focus {
                 paint_canvas_viewport_stream_focus(&painter, geometry);
             }
-            paint_canvas_stream_line(&painter, geometry, stream);
-            paint_canvas_stream_label(&painter, rect, geometry, stream);
-            paint_canvas_stream_status_badges(&painter, geometry, &stream.status_badges);
-            let stream_response = ui
-                .interact(
-                    canvas_stream_line_hit_rect(geometry),
-                    ui.make_persistent_id(format!("canvas-stream:{}", stream.line_id)),
-                    egui::Sense::click(),
+            let selected = flow_path.map_or(stream.is_active_inspector_target, |_| path_selected);
+            let line_hit = canvas_stream_line_hit_rect(geometry);
+            let layer_stroke = stream_coloring
+                .as_ref()
+                .map(|layer| layer.stroke(&stream.stream_id));
+            let readout = stream_coloring
+                .as_ref()
+                .filter(|_| ui.is_rect_visible(line_hit.expand(28.0)))
+                .and_then(|layer| layer.stream_readout(&stream.stream_id, self.locale));
+            paint_canvas_stream_line(&painter, geometry, selected, open_end, layer_stroke);
+            if path_selected
+                && geometry.start != geometry.end
+                && ui.is_rect_visible(canvas_stream_line_hit_rect(geometry))
+                && !ui.input(|input| input.viewport().minimized.unwrap_or(false))
+                && let Some(phase) = self.flow_path.phase(ui.input(|input| input.time))
+            {
+                paint_flow_path_motion(&painter, geometry, phase);
+                ui.ctx().request_repaint_after(Duration::from_millis(33));
+            }
+            let label_rect = if open_end.is_none() {
+                paint_canvas_stream_label(
+                    &painter,
+                    rect,
+                    geometry,
+                    stream,
+                    selected,
+                    readout.as_deref(),
                 )
-                .on_hover_text(&stream.hover_text)
-                .on_hover_cursor(egui::CursorIcon::PointingHand);
+            } else {
+                None
+            };
+            paint_canvas_stream_status_badges(&painter, geometry, &stream.status_badges);
+            let stream_response = ui.interact(
+                label_rect.map_or(line_hit, |label_rect| line_hit.union(label_rect)),
+                ui.make_persistent_id(format!("canvas-stream:{}", stream.line_id)),
+                egui::Sense::click(),
+            );
+            let stream_response = if let Some(readout) = &readout {
+                stream_response.on_hover_text(format!("{}\n{readout}", stream.hover_text))
+            } else {
+                stream_response.on_hover_text(&stream.hover_text)
+            }
+            .on_hover_cursor(egui::CursorIcon::PointingHand);
+            stream_response.widget_info(|| {
+                let label = readout.as_deref().map_or_else(
+                    || stream.name.clone(),
+                    |value| format!("{} · {value}", stream.name),
+                );
+                egui::WidgetInfo::selected(egui::WidgetType::Button, true, selected, label)
+            });
+            if stream_response.has_focus() {
+                paint_canvas_viewport_stream_focus(&painter, geometry);
+                if stream_response.gained_focus() {
+                    scroll_to_canvas_target(ui, line_hit, layer_legend);
+                }
+            }
             hovered_stream |= stream_response.hovered();
             if stream_response.clicked() {
                 clicked_stream_command = Some(stream.command_id.clone());
             }
+        }
+        if fit_to_content {
+            self.apply_canvas_viewport_fit(current_viewport_offset);
         }
 
         let mut clicked_unit = false;
@@ -507,12 +615,25 @@ impl ReadyAppState {
                 .canvas_viewport_navigation
                 .take_pending_scroll_for_anchor(&anchor_label)
             {
-                ui.scroll_to_rect(unit_rect.expand(42.0), Some(egui::Align::Center));
+                scroll_to_canvas_target(ui, unit_rect.expand(42.0), layer_legend);
             }
             if is_viewport_focus {
                 paint_canvas_viewport_unit_focus(&painter, unit_rect);
             }
             paint_canvas_unit_block(&painter, unit_rect, unit);
+            if flow_path.is_some_and(|path| {
+                [path.source.as_ref(), path.sink.as_ref()]
+                    .into_iter()
+                    .flatten()
+                    .any(|endpoint| endpoint.unit_id == unit.unit_id)
+            }) {
+                painter.rect_stroke(
+                    unit_rect.expand(2.0),
+                    6.0,
+                    egui::Stroke::new(2.0, egui::Color32::from_rgb(32, 102, 176)),
+                    egui::StrokeKind::Outside,
+                );
+            }
             paint_canvas_unit_status_badges(&painter, unit_rect, &unit.status_badges);
             for port in &unit.ports {
                 let port_anchor = canvas_unit_port_anchor_in_rect(
@@ -628,6 +749,9 @@ impl ReadyAppState {
         }
 
         if let Some(callout) = focus_callout
+            && !flow_path.is_some_and(|path| {
+                callout.kind_label == "Stream" && callout.target_id == path.stream_id
+            })
             && let Some(anchor) = canvas_focus_callout_anchor(
                 rect,
                 &viewport_transform,
@@ -645,7 +769,7 @@ impl ReadyAppState {
         let clicked_port = clicked_port_command.is_some();
         if let Some(command_id) = clicked_port_command {
             self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
-            self.dispatch_ui_command(command_id);
+            self.select_canvas_stream(&command_id);
         }
 
         let clicked_stream = clicked_stream_command.is_some();
@@ -653,7 +777,7 @@ impl ReadyAppState {
             && !clicked_port
             && let Some(command_id) = clicked_stream_command
         {
-            self.dispatch_ui_command(command_id);
+            self.select_canvas_stream(&command_id);
         }
 
         let hovered_port = hovered_port_callout.is_some();
@@ -707,25 +831,32 @@ impl ReadyAppState {
     }
 }
 
+fn scroll_to_canvas_target(
+    ui: &mut egui::Ui,
+    target: egui::Rect,
+    layer_legend: Option<egui::Rect>,
+) {
+    if let Some(legend) = layer_legend {
+        let with_legend = target.union(legend);
+        if with_legend.height() <= ui.clip_rect().height() {
+            ui.scroll_to_rect(with_legend, Some(egui::Align::Center));
+            return;
+        }
+    }
+    ui.scroll_to_rect(target, Some(egui::Align::Center));
+}
+
 impl ReadyAppState {
-    pub(in crate::studio_gui_shell) fn fit_canvas_viewport_to_content(
-        &mut self,
-        rect: egui::Rect,
-        unit_blocks: &[radishflow_studio::StudioGuiCanvasUnitBlockViewModel],
-        stream_lines: &[radishflow_studio::StudioGuiCanvasStreamLineViewModel],
-    ) -> egui::Vec2 {
-        let transform = canvas_viewport_transform(rect, unit_blocks, stream_lines);
+    fn apply_canvas_viewport_fit(&mut self, offset: egui::Vec2) {
         self.canvas_viewport_fit_to_content_requested = false;
-        self.update_canvas_viewport_offset(transform.offset);
+        self.update_canvas_viewport_offset(offset);
         let result =
             radishflow_studio::StudioGuiCanvasCommandResultViewModel::viewport_fit_to_content(
-                transform.offset.x,
-                transform.offset.y,
+                offset.x, offset.y,
             );
         self.platform_host
             .record_activity_line(result.activity_line.clone());
         self.canvas_command_result = Some(result);
-        transform.offset
     }
 }
 
@@ -1004,224 +1135,6 @@ fn canvas_stream_line_world_geometry(
 
 fn canvas_stream_line_hit_rect(geometry: CanvasStreamLineGeometry) -> egui::Rect {
     egui::Rect::from_two_pos(geometry.start, geometry.end).expand(8.0)
-}
-
-fn paint_canvas_stream_line(
-    painter: &egui::Painter,
-    geometry: CanvasStreamLineGeometry,
-    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
-) {
-    let color = if stream.is_active_inspector_target {
-        egui::Color32::from_rgb(32, 102, 176)
-    } else {
-        egui::Color32::from_rgb(42, 142, 122)
-    };
-    let stroke = egui::Stroke::new(
-        if stream.is_active_inspector_target {
-            2.4_f32
-        } else {
-            1.6_f32
-        },
-        color,
-    );
-    if stream.is_active_inspector_target {
-        painter.line_segment(
-            [geometry.start, geometry.end],
-            egui::Stroke::new(
-                6.0_f32,
-                egui::Color32::from_rgba_unmultiplied(48, 112, 188, 42),
-            ),
-        );
-    }
-    painter.line_segment(
-        [geometry.start, geometry.end],
-        egui::Stroke::new(
-            4.4_f32,
-            egui::Color32::from_rgba_unmultiplied(255, 255, 255, 210),
-        ),
-    );
-    painter.line_segment([geometry.start, geometry.end], stroke);
-    painter.circle_filled(geometry.start, 3.5, color);
-    paint_canvas_stream_arrow(painter, geometry, color);
-}
-
-fn paint_canvas_viewport_stream_focus(painter: &egui::Painter, geometry: CanvasStreamLineGeometry) {
-    painter.line_segment(
-        [geometry.start, geometry.end],
-        egui::Stroke::new(
-            8.0_f32,
-            egui::Color32::from_rgba_unmultiplied(210, 128, 38, 54),
-        ),
-    );
-    painter.circle_stroke(
-        geometry.start.lerp(geometry.end, 0.5),
-        13.0,
-        egui::Stroke::new(2.0_f32, egui::Color32::from_rgb(210, 128, 38)),
-    );
-}
-
-fn paint_canvas_stream_status_badges(
-    painter: &egui::Painter,
-    geometry: CanvasStreamLineGeometry,
-    badges: &[radishflow_studio::StudioGuiCanvasStatusBadgeViewModel],
-) {
-    if badges.is_empty() {
-        return;
-    }
-
-    let anchor = geometry.start.lerp(geometry.end, 0.5) + egui::vec2(0.0, -16.0);
-    paint_canvas_status_badges(painter, anchor, badges);
-}
-
-fn paint_canvas_stream_label(
-    painter: &egui::Painter,
-    canvas_rect: egui::Rect,
-    geometry: CanvasStreamLineGeometry,
-    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
-) {
-    let label = canvas_stream_label_text(stream);
-    let size = canvas_stream_label_size(&label);
-    let Some(label_rect) = canvas_stream_label_rect(geometry, stream) else {
-        return;
-    };
-    let mut min = label_rect.min;
-    min.x = min
-        .x
-        .clamp(canvas_rect.left() + 8.0, canvas_rect.right() - size.x - 8.0);
-    min.y = min
-        .y
-        .clamp(canvas_rect.top() + 8.0, canvas_rect.bottom() - size.y - 8.0);
-    let rect = egui::Rect::from_min_size(min, size);
-    let color = if stream.is_active_inspector_target {
-        egui::Color32::from_rgb(32, 102, 176)
-    } else {
-        egui::Color32::from_rgb(42, 142, 122)
-    };
-
-    painter.rect_filled(
-        rect.translate(egui::vec2(0.0, 1.5)),
-        4.0,
-        egui::Color32::from_rgba_unmultiplied(30, 42, 54, 24),
-    );
-    painter.rect_filled(
-        rect,
-        4.0,
-        egui::Color32::from_rgba_unmultiplied(255, 255, 255, 238),
-    );
-    paint_canvas_rect_border(
-        painter,
-        rect,
-        egui::Stroke::new(1.0_f32, color.gamma_multiply(0.7)),
-    );
-    painter.text(
-        rect.center(),
-        egui::Align2::CENTER_CENTER,
-        label,
-        egui::FontId::proportional(10.5),
-        color,
-    );
-}
-
-fn canvas_stream_label_rect(
-    geometry: CanvasStreamLineGeometry,
-    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
-) -> Option<egui::Rect> {
-    let label = canvas_stream_label_text(stream);
-    let size = canvas_stream_label_size(&label);
-    if stream.sink.is_none() {
-        let vertical_offset = canvas_terminal_stream_label_vertical_offset(stream);
-        let min = egui::pos2(
-            geometry.start.x + 14.0,
-            geometry.start.y - size.y * 0.5 + vertical_offset,
-        );
-        return Some(egui::Rect::from_min_size(min, size));
-    }
-
-    if !canvas_connected_stream_has_label_room(geometry, size) {
-        return None;
-    }
-
-    let center = canvas_stream_label_center(geometry);
-    Some(egui::Rect::from_center_size(center, size))
-}
-
-fn canvas_connected_stream_has_label_room(
-    geometry: CanvasStreamLineGeometry,
-    label_size: egui::Vec2,
-) -> bool {
-    let line_length = (geometry.end - geometry.start).length();
-    line_length >= (label_size.x + 24.0).max(86.0)
-}
-
-fn canvas_stream_label_center(geometry: CanvasStreamLineGeometry) -> egui::Pos2 {
-    let delta = geometry.end - geometry.start;
-    let normal = if delta.length() > 1.0 {
-        let direction = delta.normalized();
-        egui::vec2(-direction.y, direction.x)
-    } else {
-        egui::vec2(0.0, -1.0)
-    };
-    geometry.start.lerp(geometry.end, 0.5) + normal * 14.0
-}
-
-fn canvas_terminal_stream_label_vertical_offset(
-    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
-) -> f32 {
-    stream
-        .source
-        .as_ref()
-        .filter(|source| source.port_side_count > 1)
-        .map(|source| {
-            let middle = (source.port_side_count.saturating_sub(1)) as f32 * 0.5;
-            (source.port_side_index as f32 - middle) * 28.0
-        })
-        .unwrap_or(0.0)
-}
-
-fn canvas_stream_label_text(
-    stream: &radishflow_studio::StudioGuiCanvasStreamLineViewModel,
-) -> String {
-    if stream.sink.is_none() {
-        return truncate_canvas_label(&stream.name, 18);
-    }
-
-    let label = if stream.name == stream.stream_id {
-        stream.name.clone()
-    } else {
-        format!("{} ({})", stream.name, stream.stream_id)
-    };
-    truncate_canvas_label(&label, 26)
-}
-
-fn canvas_stream_label_size(label: &str) -> egui::Vec2 {
-    egui::vec2(
-        (26.0 + label.chars().count() as f32 * 6.2).clamp(54.0, 188.0),
-        20.0,
-    )
-}
-
-fn paint_canvas_stream_arrow(
-    painter: &egui::Painter,
-    geometry: CanvasStreamLineGeometry,
-    color: egui::Color32,
-) {
-    let delta = geometry.end - geometry.start;
-    let length = delta.length();
-    if length <= 1.0 {
-        return;
-    }
-
-    let direction = delta / length;
-    let normal = egui::vec2(-direction.y, direction.x);
-    let back = geometry.end - direction * 10.0;
-    painter.line_segment(
-        [geometry.end, back + normal * 4.5],
-        egui::Stroke::new(1.6_f32, color),
-    );
-    painter.line_segment(
-        [geometry.end, back - normal * 4.5],
-        egui::Stroke::new(1.6_f32, color),
-    );
 }
 
 fn canvas_unit_block_rect(
@@ -1676,16 +1589,15 @@ fn render_canvas_chip_with_hover(
     color: egui::Color32,
     hover_text: &str,
 ) {
-    let response = egui::Frame::new()
-        .fill(color.gamma_multiply(0.12))
-        .stroke(egui::Stroke::new(1.0_f32, color.gamma_multiply(0.8)))
-        .corner_radius(6.0)
-        .inner_margin(egui::Margin::symmetric(8, 3))
+    render_canvas_chip(ui, label, color).on_hover_text(hover_text);
+}
+
+fn render_canvas_chip(ui: &mut egui::Ui, label: &str, color: egui::Color32) -> egui::Response {
+    status_chip_frame(color)
         .show(ui, |ui| {
-            ui.label(egui::RichText::new(label).color(color).small());
+            ui.add(egui::Label::new(egui::RichText::new(label).color(color).small()).extend());
         })
-        .response;
-    response.on_hover_text(hover_text);
+        .response
 }
 
 fn canvas_status_badge_color(severity_label: &str) -> egui::Color32 {

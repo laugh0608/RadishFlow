@@ -198,6 +198,7 @@ pub enum ResultExecutionLocation {
     Step(usize),
     Block(usize),
     EquationVerification,
+    RecycleVerification,
     NotRun,
 }
 impl std::fmt::Display for ResultExecutionLocation {
@@ -207,6 +208,7 @@ impl std::fmt::Display for ResultExecutionLocation {
             Self::Block(i) => write!(f, "Block #{}", i + 1),
             Self::NotRun => f.write_str("Not run"),
             Self::EquationVerification => f.write_str("EO verification"),
+            Self::RecycleVerification => f.write_str("Recycle verification"),
         }
     }
 }
@@ -233,6 +235,7 @@ pub struct StudioGuiWindowSolveSnapshotModel {
     pub equation_oriented: Option<StudioGuiWindowEquationModel>,
     pub simultaneous: Option<StudioGuiWindowSimultaneousModel>,
     pub partitioned: Option<StudioGuiWindowPartitionedModel>,
+    pub single_phase_recycle_units: Option<Vec<StudioGuiWindowUnitExecutionResultModel>>,
     pub origin: Option<rf_ui::result_query::FlowResultOrigin>,
     pub result_guard: Option<crate::FlowResultGuard>,
     pub snapshot_id: String,
@@ -2506,6 +2509,7 @@ impl StudioGuiWindowSolveSnapshotModel {
             .map(|p| p.units.as_slice())
             .or_else(|| self.simultaneous.as_ref().map(|s| s.units.as_slice()))
             .or_else(|| self.equation_oriented.as_ref().map(|s| s.units.as_slice()))
+            .or(self.single_phase_recycle_units.as_deref())
             .or_else(|| self.mixed.as_ref().map(|s| s.units.as_slice()))
     }
     pub fn block_count(&self) -> Option<usize> {

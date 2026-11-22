@@ -218,14 +218,16 @@ fn commit_document_change_advances_revision_and_marks_solve_pending() {
     let mut app_state = AppState::new(sample_document());
     let next_flowsheet = Flowsheet::new("demo-updated");
 
-    let revision = app_state.commit_document_change(
-        DocumentCommand::MoveUnit {
-            unit_id: UnitId::new("heater-1"),
-            position: CanvasPoint::new(120.0, 80.0),
-        },
-        next_flowsheet,
-        timestamp(20),
-    );
+    let revision = app_state
+        .commit_document_change(
+            DocumentCommand::MoveUnit {
+                unit_id: UnitId::new("heater-1"),
+                position: CanvasPoint::new(120.0, 80.0),
+            },
+            next_flowsheet,
+            timestamp(20),
+        )
+        .unwrap();
 
     assert_eq!(revision, 1);
     assert_eq!(app_state.workspace.document.revision, 1);
@@ -284,14 +286,16 @@ fn commit_document_change_clears_stale_current_snapshot_summary() {
     );
     app_state.store_snapshot(snapshot);
 
-    app_state.commit_document_change(
-        DocumentCommand::MoveUnit {
-            unit_id: UnitId::new("heater-1"),
-            position: CanvasPoint::new(120.0, 80.0),
-        },
-        Flowsheet::new("demo-updated"),
-        timestamp(21),
-    );
+    app_state
+        .commit_document_change(
+            DocumentCommand::MoveUnit {
+                unit_id: UnitId::new("heater-1"),
+                position: CanvasPoint::new(120.0, 80.0),
+            },
+            Flowsheet::new("demo-updated"),
+            timestamp(21),
+        )
+        .unwrap();
 
     assert_eq!(app_state.workspace.snapshot_history.len(), 1);
     assert_eq!(app_state.workspace.solve_session.latest_snapshot, None);

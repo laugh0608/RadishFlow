@@ -55,7 +55,7 @@ fn variable_browser_observes_committed_edits_staleness_reopen_and_inspector_navi
     let revision = app.platform_host.document().revision;
     app.variable_browser.open = true;
     run_with_key_press(egui::Key::Delete, egui::Modifiers::NONE, |ctx| {
-        assert_eq!(app.focus_context(ctx), StudioGuiFocusContext::ModalDialog);
+        assert_ne!(app.focus_context(ctx), StudioGuiFocusContext::ModalDialog);
         app.render_variable_browser(ctx);
     });
     assert_eq!(app.platform_host.document().revision, revision);

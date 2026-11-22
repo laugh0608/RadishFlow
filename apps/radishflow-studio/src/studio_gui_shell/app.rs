@@ -169,6 +169,7 @@ impl ReadyAppState {
                 self.modeling_problems
                     .replace_document(self.platform_host.document());
                 self.pending_format_upgrade = None;
+                self.pending_identity_initialization = None;
                 self.unit_settings.draft = None;
                 self.unit_settings.view_draft = None;
                 self.unit_settings.closed_inspectors.clear();
@@ -311,18 +312,22 @@ impl ReadyAppState {
     }
 
     pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
-        match radishflow_studio::read_studio_project_with_support(
-            &project_path,
-            rf_store::project_v4::FlowPlanSupport::Mixed,
-        ) {
+        let project_app = match read_studio_gui_project(&project_path) {
             Ok(radishflow_studio::StudioProjectOpen::ReadOnly(project)) => {
+                if self.at_run_diagnostic_target() {
+                    self.modeling_problems.clear_destination();
+                }
+                self.run_diagnostic_navigation = None;
+                self.flow_path = Default::default();
+                self.canvas_stream_layer = Default::default();
                 self.background_action(radishflow_studio::StudioBackgroundRunAction::Detach);
-                self.read_only_project = Some(project_read_only::ReadOnlyProjectView {
-                    path: project_path,
+                self.read_only_project = Some(project_read_only::ReadOnlyProjectView::new(
+                    project_path,
                     project,
-                });
+                ));
                 self.command_palette.close();
                 self.pending_format_upgrade = None;
+                self.pending_identity_initialization = None;
                 self.project_open.pending_confirmation = None;
                 self.project_open.departure_checkpoint = None;
                 return;
@@ -341,17 +346,18 @@ impl ReadyAppState {
                 ));
                 return;
             }
-            Ok(radishflow_studio::StudioProjectOpen::Editable(_)) => {}
-        }
+            Ok(radishflow_studio::StudioProjectOpen::Editable(app)) => *app,
+        };
         let config = studio_shell_runtime_config(Some(project_path.clone()));
 
-        match StudioGuiPlatformHost::new(&config) {
+        match StudioGuiPlatformHost::from_project_app(&config, project_app) {
             Ok(platform_host) => {
                 self.replace_background_host(platform_host);
                 self.read_only_project = None;
                 self.modeling_problems
                     .replace_document(self.platform_host.document());
                 self.pending_format_upgrade = None;
+                self.pending_identity_initialization = None;
                 self.unit_settings.draft = None;
                 self.unit_settings.view_draft = None;
                 self.unit_settings.closed_inspectors.clear();
@@ -470,7 +476,9 @@ impl ReadyAppState {
     }
 
     pub(super) fn update(&mut self, ctx: &egui::Context) {
+        self.reconcile_browser_session();
         self.poll_background_runs(ctx);
+        self.reconcile_flow_path();
         if self.render_background_exit(ctx) {
             return;
         }
@@ -505,11 +513,12 @@ impl ReadyAppState {
             && !palette_keyboard_consumed
             && !self.unit_settings.is_open()
             && self.pending_format_upgrade.is_none()
+            && self.pending_identity_initialization.is_none()
         {
             self.dispatch_shortcuts(ctx);
         }
         let mut hovered_drop_target = false;
-        if self.screen == StudioShellScreen::Home {
+        if self.screen == StudioShellScreen::Home && !self.browser_expanded() {
             self.render_home_dashboard(ctx, &window);
             self.render_variable_browser(ctx);
             self.render_command_palette(ctx, &window.commands);
@@ -526,6 +535,17 @@ impl ReadyAppState {
             &mut hovered_drop_target,
         );
         self.render_background_activity(ctx);
+        if self.browser_expanded() {
+            self.render_bottom_status_bar(ctx, &window);
+            self.render_variable_browser(ctx);
+            self.render_command_palette(ctx, &window.commands);
+            self.render_pending_close_window_dialog(ctx);
+            self.render_unit_deletion_dialog(ctx);
+            self.render_input_action_dialog(ctx);
+            self.render_export_dialogs(ctx);
+            self.render_browser_navigation_dialog(ctx);
+            return;
+        }
         if self.background_run_details_open
             && matches!(
                 self.screen,
@@ -565,6 +585,7 @@ impl ReadyAppState {
         self.render_unit_deletion_dialog(ctx);
         self.render_input_action_dialog(ctx);
         self.render_export_dialogs(ctx);
+        self.render_browser_navigation_dialog(ctx);
         self.finish_drop_preview_cycle(
             ctx,
             window.layout_state.scope.window_id,
@@ -657,6 +678,10 @@ impl ReadyAppState {
 
     pub(super) fn dispatch_ui_command(&mut self, command_id: impl Into<String>) {
         let command_id = command_id.into();
+        if command_id == "view.variable_browser" {
+            self.open_variable_browser();
+            return;
+        }
         if self.dispatch_background_cancel_command(&command_id) {
             return;
         }

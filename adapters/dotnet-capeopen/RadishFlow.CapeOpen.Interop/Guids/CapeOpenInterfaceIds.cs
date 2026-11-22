@@ -2,6 +2,9 @@ namespace RadishFlow.CapeOpen.Interop.Guids;
 
 public static class CapeOpenInterfaceIds
 {
+    // Standard IID / method order: CAPE-OPEN Thermo 1.1; reference ThrmIDL.cs ICapeThermoPhasesCOM.
+    public const string ICapeThermoPhases = "678C0A9E-7D66-11D2-A67D-00105A42887F";
+
     // Source: adapters/reference/CapeOpenMixerExample_CSharp/CapeOpen/COGuids1.cs
     public const string ICapeIdentification = "678C0990-7D66-11D2-A67D-00105A42887F";
 

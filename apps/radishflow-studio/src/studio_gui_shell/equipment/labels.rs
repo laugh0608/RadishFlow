@@ -9,7 +9,10 @@ pub(super) fn tr<'a>(locale: StudioShellLocale, zh: &'a str, en: &'a str) -> &'a
         en
     }
 }
-pub(super) fn field_label(locale: StudioShellLocale, field: EquipmentField) -> &'static str {
+pub(in super::super) fn field_label(
+    locale: StudioShellLocale,
+    field: EquipmentField,
+) -> &'static str {
     let (zh, en) = match field {
         EquipmentField::Input(i) => match i {
             SeparatorInput::OperatingTemperature => ("操作温度", "Operating temperature"),
@@ -111,7 +114,7 @@ pub(super) fn task_label(locale: StudioShellLocale, task: &EquipmentTask) -> Str
         format!("{} · {name}", task.tag())
     }
 }
-pub(super) fn status_label(
+pub(in super::super) fn status_label(
     locale: StudioShellLocale,
     status: rf_ui::engineering::EquipmentResultStatus,
 ) -> &'static str {
@@ -366,7 +369,7 @@ pub(super) fn edit_error(locale: StudioShellLocale, error: &EquipmentEditError) 
     }
 }
 
-pub(super) fn geometry_field_label(
+pub(in super::super) fn geometry_field_label(
     locale: StudioShellLocale,
     field: SeparatorGeometryInput,
 ) -> &'static str {
@@ -379,7 +382,7 @@ pub(super) fn geometry_field_label(
         }
     }
 }
-pub(super) fn rating_field_label(
+pub(in super::super) fn rating_field_label(
     locale: StudioShellLocale,
     field: SeparatorRatingInput,
 ) -> &'static str {

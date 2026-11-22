@@ -1,16 +1,57 @@
 use super::*;
 use rf_solver::equation_oriented::*;
+use rf_types::ComponentId;
 use std::collections::BTreeSet;
+#[derive(Clone, PartialEq, Eq)]
+enum ProductBasis {
+    TotalFlow,
+    MoleFraction(ComponentId),
+}
+
+impl ProductBasis {
+    fn of(target: &ProductTarget) -> Self {
+        match target {
+            ProductTarget::TotalMolarFlow(_) => Self::TotalFlow,
+            ProductTarget::MoleFraction(t) => Self::MoleFraction(t.component.clone()),
+        }
+    }
+
+    fn target(self, source: PortBinding) -> ProductTarget {
+        match self {
+            Self::TotalFlow => ProductTarget::TotalMolarFlow(ProductTotalTarget {
+                source,
+                value_mol_s: 1.0,
+            }),
+            Self::MoleFraction(component) => {
+                ProductTarget::MoleFraction(Box::new(ProductMoleFractionTarget {
+                    source,
+                    component,
+                    value_mol_mol: 0.5,
+                }))
+            }
+        }
+    }
+
+    fn title(&self, zh: bool) -> String {
+        match self {
+            Self::TotalFlow => tr(zh, "总摩尔流量", "Total molar flow").into(),
+            Self::MoleFraction(component) => {
+                format!("{} · {component}", tr(zh, "组分摩尔分率", "Mole fraction"))
+            }
+        }
+    }
+}
+
 impl ReadyAppState {
     pub(super) fn render_equation_plan(
         &mut self,
         ui: &mut egui::Ui,
         draft: &mut FlowPlanDraft,
         o: &mut EquationOptions,
-    ) -> bool {
+    ) -> Option<egui::Id> {
         let zh = self.locale == StudioShellLocale::ZhCn;
-        ui.small(tr(zh,"Feed / Mixer / Splitter 固定温压物料方程；反算仅支持一个分流比例和一个终端产品总量。","Fixed-T/P Feed / Mixer / Splitter material equations; one released split fraction and one terminal product target."));
-        let mut apply = false;
+        ui.small(tr(zh,"Feed / Mixer / Splitter 固定温压物料方程；反算支持一个分流比例和一个终端产品规格。","Fixed-T/P Feed / Mixer / Splitter material equations; one released split fraction and one terminal product target."));
+        let mut submission = None;
         for (field, title, value, unit) in [
             (
                 FlowPlanNumericField::Temperature,
@@ -25,7 +66,7 @@ impl ReadyAppState {
                 MeasurementUnit::Pascal,
             ),
         ] {
-            apply |= number(
+            submission = number(
                 ui,
                 draft,
                 field,
@@ -33,7 +74,8 @@ impl ReadyAppState {
                 value,
                 unit,
                 &mut self.flow_plan.notice,
-            );
+            )
+            .or(submission);
         }
         let can_change = !draft.has_modified_numbers();
         let flow = &self.platform_host.document().flowsheet;
@@ -43,6 +85,7 @@ impl ReadyAppState {
             .filter(|u| u.kind == "splitter")
             .map(|u| u.id.clone())
             .collect();
+        let components: Vec<_> = flow.components.keys().cloned().collect();
         let mut products = Vec::new();
         let consumed: BTreeSet<_> = flow
             .units
@@ -79,26 +122,23 @@ impl ReadyAppState {
         let mut selected = o.released.as_ref().map(|r| r.binding.unit.clone());
         let before = selected.clone();
         ui.add_enabled_ui(can_change, |ui| {
-            egui::ComboBox::from_id_salt("eo-release")
-                .width(ui.available_width().min(300.0))
-                .selected_text(
-                    selected
-                        .as_ref()
-                        .map(ToString::to_string)
-                        .unwrap_or_else(|| {
-                            tr(zh, "不释放比例（正向）", "No released fraction (forward)").into()
-                        }),
-                )
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(
-                        &mut selected,
-                        None,
-                        tr(zh, "不释放比例", "No released fraction"),
-                    );
-                    for id in &splitters {
-                        ui.selectable_value(&mut selected, Some(id.clone()), id.to_string());
-                    }
-                });
+            let picker =
+                egui::ComboBox::from_id_salt("eo-release")
+                    .width(ui.available_width().min(300.0))
+                    .selected_text(selected.as_ref().map(ToString::to_string).unwrap_or_else(
+                        || tr(zh, "不释放比例（正向）", "No released fraction (forward)").into(),
+                    ))
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut selected,
+                            None,
+                            tr(zh, "不释放比例", "No released fraction"),
+                        );
+                        for id in &splitters {
+                            ui.selectable_value(&mut selected, Some(id.clone()), id.to_string());
+                        }
+                    });
+            reveal_plan_focus(&picker.response);
         });
         if selected != before {
             o.released = selected.map(|unit| ReleasedSplitFraction {
@@ -140,10 +180,9 @@ impl ReadyAppState {
                     ),
                 );
             }
-            if ui
-                .button(tr(zh, "定位释放字段", "Locate released field"))
-                .clicked()
-            {
+            let locate = ui.button(tr(zh, "定位释放字段", "Locate released field"));
+            reveal_plan_focus(&locate);
+            if locate.clicked() {
                 self.dispatch_ui_command(radishflow_studio::inspector_target_command_id(
                     &rf_ui::InspectorTarget::Unit(r.binding.unit.clone()),
                 ));
@@ -165,7 +204,7 @@ impl ReadyAppState {
                     r.max_iterations as f64,
                 ),
             ] {
-                apply |= number(
+                submission = number(
                     ui,
                     draft,
                     field,
@@ -173,62 +212,13 @@ impl ReadyAppState {
                     value,
                     MeasurementUnit::One,
                     &mut self.flow_plan.notice,
-                );
-            }
-        }
-        let mut target = o.target.as_ref().map(|t| t.source.clone());
-        let before = target.clone();
-        ui.add_enabled_ui(can_change, |ui| {
-            egui::ComboBox::from_id_salt("eo-product")
-                .width(ui.available_width().min(300.0))
-                .selected_text(
-                    target
-                        .as_ref()
-                        .map(|p| format!("{} / {}.{}", p.stream, p.unit, p.port.name()))
-                        .unwrap_or_else(|| tr(zh, "无产品目标", "No product target").into()),
                 )
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(
-                        &mut target,
-                        None,
-                        tr(zh, "无产品目标", "No product target"),
-                    );
-                    for p in &products {
-                        ui.selectable_value(
-                            &mut target,
-                            Some(p.clone()),
-                            format!("{} / {}.{}", p.stream, p.unit, p.port.name()),
-                        );
-                    }
-                });
-        });
-        if target != before {
-            o.target = target.map(|source| ProductTotalTarget {
-                source,
-                value_mol_s: 1.0,
-            });
-        }
-        if let Some(t) = &o.target {
-            if !products.contains(&t.source) {
-                ui.colored_label(
-                    egui::Color32::DARK_RED,
-                    tr(
-                        zh,
-                        "目标不是当前终端出口；未自动重绑。",
-                        "Target is not a current terminal outlet; no automatic rebinding.",
-                    ),
-                );
+                .or(submission);
             }
-            apply |= number(
-                ui,
-                draft,
-                FlowPlanNumericField::ProductTarget(t.source.clone()),
-                tr(zh, "产品总摩尔流量目标", "Product total molar flow target"),
-                t.value_mol_s,
-                MeasurementUnit::MolePerSecond,
-                &mut self.flow_plan.notice,
-            );
         }
+        submission = self
+            .render_product_target(ui, draft, &mut o.target, &products, &components)
+            .or(submission);
         // A draft preview is explicitly separate from the applied qualified query.
         let mut preview_draft = draft.clone();
         preview_draft.replace_candidate(FlowPlanConfiguration::EquationOriented(o.clone()));
@@ -268,7 +258,7 @@ impl ReadyAppState {
                         "Under/over-specified regions exist; running is blocked.",
                     )
                 });
-                ui.collapsing(
+                let unmatched = ui.collapsing(
                     tr(zh, "未匹配与关联区域", "Unmatched and associated regions"),
                     |ui| {
                         for (label, region) in [
@@ -285,7 +275,8 @@ impl ReadyAppState {
                         }
                     },
                 );
-                ui.collapsing(
+                reveal_plan_focus(&unmatched.header_response);
+                let variables = ui.collapsing(
                     tr(
                         zh,
                         "完整变量 / 方程（只读）",
@@ -301,6 +292,7 @@ impl ReadyAppState {
                         }
                     },
                 );
+                reveal_plan_focus(&variables.header_response);
             }
             Err(e) => {
                 ui.label(format!(
@@ -370,7 +362,7 @@ impl ReadyAppState {
                             } else {
                                 MeasurementUnit::MolePerSecond
                             };
-                            apply |= number(
+                            submission = number(
                                 ui,
                                 draft,
                                 FlowPlanNumericField::EquationVariableScale(b.clone()),
@@ -378,7 +370,8 @@ impl ReadyAppState {
                                 *v,
                                 unit,
                                 &mut self.flow_plan.notice,
-                            );
+                            )
+                            .or(submission);
                             if ui
                                 .add_enabled(
                                     can_change,
@@ -393,7 +386,7 @@ impl ReadyAppState {
                     for (b, v) in &scales.equations {
                         ui.push_id(b, |ui| {
                             ui.label(format!("{b:?}"));
-                            apply |= number(
+                            submission = number(
                                 ui,
                                 draft,
                                 FlowPlanNumericField::EquationResidualScale(b.clone()),
@@ -401,7 +394,8 @@ impl ReadyAppState {
                                 *v,
                                 MeasurementUnit::MolePerSecond,
                                 &mut self.flow_plan.notice,
-                            );
+                            )
+                            .or(submission);
                             if ui
                                 .add_enabled(
                                     can_change,
@@ -441,8 +435,124 @@ impl ReadyAppState {
                 },
             );
         }
-        apply
+        submission
     }
+    fn render_product_target(
+        &mut self,
+        ui: &mut egui::Ui,
+        draft: &mut FlowPlanDraft,
+        specification: &mut Option<ProductTarget>,
+        products: &[PortBinding],
+        components: &[ComponentId],
+    ) -> Option<egui::Id> {
+        let zh = self.locale == StudioShellLocale::ZhCn;
+        let can_change = !draft.has_modified_numbers();
+        ui.label(tr(zh, "终端产品", "Terminal product"));
+        let mut target = specification.as_ref().map(|t| t.source().clone());
+        let before = target.clone();
+        ui.add_enabled_ui(can_change, |ui| {
+            let picker = egui::ComboBox::from_id_salt("eo-product")
+                .width(ui.available_width().min(300.0))
+                .selected_text(
+                    target
+                        .as_ref()
+                        .map(|p| format!("{} / {}.{}", p.stream, p.unit, p.port.name()))
+                        .unwrap_or_else(|| tr(zh, "无产品目标", "No product target").into()),
+                )
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        &mut target,
+                        None,
+                        tr(zh, "无产品目标", "No product target"),
+                    );
+                    for p in products {
+                        ui.selectable_value(
+                            &mut target,
+                            Some(p.clone()),
+                            format!("{} / {}.{}", p.stream, p.unit, p.port.name()),
+                        );
+                    }
+                });
+            reveal_plan_focus(&picker.response);
+        });
+        if target != before {
+            let basis = specification
+                .as_ref()
+                .map_or(ProductBasis::TotalFlow, ProductBasis::of);
+            *specification = target.map(|source| basis.target(source));
+        }
+        let selected = specification.as_ref()?;
+        let source = selected.source().clone();
+        if !products.contains(&source) {
+            ui.colored_label(
+                egui::Color32::DARK_RED,
+                tr(
+                    zh,
+                    "原产品绑定失效，请重新选择终端出口。",
+                    "Select a terminal outlet to replace the unavailable product binding.",
+                ),
+            );
+        }
+        let before = ProductBasis::of(selected);
+        let mut basis = before.clone();
+        ui.label(tr(zh, "规格类型与组分", "Target type and component"));
+        ui.add_enabled_ui(can_change, |ui| {
+            let picker = egui::ComboBox::from_id_salt("eo-product-basis")
+                .width(ui.available_width().min(300.0))
+                .selected_text(basis.title(zh))
+                .show_ui(ui, |ui| {
+                    let total = ProductBasis::TotalFlow;
+                    ui.selectable_value(&mut basis, total.clone(), total.title(zh));
+                    for component in components {
+                        let choice = ProductBasis::MoleFraction(component.clone());
+                        ui.selectable_value(&mut basis, choice.clone(), choice.title(zh));
+                    }
+                });
+            reveal_plan_focus(&picker.response);
+        });
+        if basis != before {
+            *specification = Some(basis.target(source));
+        }
+        let (field, label, value, unit) = match specification.as_ref()? {
+            ProductTarget::TotalMolarFlow(t) => (
+                FlowPlanNumericField::ProductTarget(t.source.clone()),
+                tr(zh, "产品总摩尔流量目标", "Product total molar flow target"),
+                t.value_mol_s,
+                MeasurementUnit::MolePerSecond,
+            ),
+            ProductTarget::MoleFraction(t) => {
+                if !components.contains(&t.component) {
+                    ui.colored_label(
+                        egui::Color32::DARK_RED,
+                        tr(
+                            zh,
+                            "原组分绑定失效，请选择已注册组分。",
+                            "Select a registered component to replace the unavailable component.",
+                        ),
+                    );
+                }
+                (
+                    FlowPlanNumericField::ProductMoleFraction {
+                        source: t.source.clone(),
+                        component: t.component.clone(),
+                    },
+                    tr(zh, "产品摩尔分率目标", "Product mole fraction target"),
+                    t.value_mol_mol,
+                    MeasurementUnit::MolePerMole,
+                )
+            }
+        };
+        number(
+            ui,
+            draft,
+            field,
+            label,
+            value,
+            unit,
+            &mut self.flow_plan.notice,
+        )
+    }
+
     fn equation_variable_row(&mut self, ui: &mut egui::Ui, b: &VariableBinding, zh: bool) {
         ui.label(format!("{b:?}"));
         let unit = match b {

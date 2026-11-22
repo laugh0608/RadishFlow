@@ -174,14 +174,18 @@ impl StudioRuntimeHostPort {
     }
 
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
-        Ok(Self {
-            runtime: StudioRuntime::new(config)?,
+        Ok(Self::from_runtime(StudioRuntime::new(config)?))
+    }
+
+    pub(crate) fn from_runtime(runtime: StudioRuntime) -> Self {
+        Self {
+            runtime,
             next_window_id: 1,
             entitlement_timer_owner: None,
             parked_entitlement_timer: None,
             allocated_observer_layout_slots: BTreeMap::new(),
             windows: BTreeMap::new(),
-        })
+        }
     }
 
     pub fn runtime(&self) -> &StudioRuntime {

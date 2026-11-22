@@ -533,15 +533,36 @@ impl StudioGuiPlatformHost {
     }
 
     pub fn new(config: &crate::StudioRuntimeConfig) -> RfResult<Self> {
-        Ok(Self {
-            driver: StudioGuiDriver::new(config)?,
+        Ok(Self::from_driver(StudioGuiDriver::new(config)?))
+    }
+
+    /// Build the editor from the same decoded project that passed the open check.
+    pub fn from_project_app(
+        config: &crate::StudioRuntimeConfig,
+        app: rf_ui::AppState,
+    ) -> RfResult<Self> {
+        let runtime = crate::StudioRuntime::from_app_state(config, app)?;
+        let session = crate::StudioWindowSession::from_host_port(
+            crate::StudioRuntimeHostPort::from_runtime(runtime),
+        );
+        let manager = crate::StudioAppWindowHostManager::from_session(session);
+        let controller = crate::StudioAppHostController::from_app_host(
+            crate::StudioAppHost::from_manager(manager),
+        );
+        let host = crate::StudioGuiHost::from_controller(controller)?;
+        Ok(Self::from_driver(StudioGuiDriver::from_host(host)))
+    }
+
+    fn from_driver(driver: StudioGuiDriver) -> Self {
+        Self {
+            driver,
             platform_timer_driver: StudioGuiPlatformTimerDriverState::default(),
             platform_notice: None,
             platform_log_entries: Vec::new(),
             gui_activity_lines: Vec::new(),
             last_console_app_log: None,
             current_schedule: None,
-        })
+        }
     }
 
     pub fn accept_modeling_recommendation(
@@ -584,6 +605,23 @@ impl StudioGuiPlatformHost {
         path: &std::path::Path,
     ) -> RfResult<Option<crate::ProjectSaveCompatibility>> {
         crate::project_save_compatibility(self.driver.host().app_state(), path)
+    }
+
+    pub fn prepare_mixed_recycle_save(
+        &self,
+        path: &std::path::Path,
+    ) -> RfResult<crate::PreparedMixedRecycleSave> {
+        crate::prepare_mixed_recycle_save(self.driver.host().app_state(), path)
+    }
+
+    pub fn prepare_flow_plan_save(
+        &self,
+        path: &std::path::Path,
+    ) -> RfResult<Option<crate::PreparedFlowPlanSave>> {
+        crate::document_lifecycle_driver::prepare_studio_flow_plan_save(
+            self.driver.host().app_state(),
+            path,
+        )
     }
 
     /// Runtime identity for departure confirmation; not a presentation field.

@@ -489,9 +489,13 @@ impl StudioAppHost {
     }
 
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
-        Ok(Self {
-            window_host_manager: StudioAppWindowHostManager::new(config)?,
-        })
+        Ok(Self::from_manager(StudioAppWindowHostManager::new(config)?))
+    }
+
+    pub(crate) fn from_manager(window_host_manager: StudioAppWindowHostManager) -> Self {
+        Self {
+            window_host_manager,
+        }
     }
 
     pub fn window_host_manager(&self) -> &StudioAppWindowHostManager {
@@ -889,11 +893,14 @@ impl StudioAppHostController {
     }
 
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
-        let mut app_host = StudioAppHost::new(config)?;
+        Ok(Self::from_app_host(StudioAppHost::new(config)?))
+    }
+
+    pub(crate) fn from_app_host(mut app_host: StudioAppHost) -> Self {
         app_host.refresh_local_canvas_suggestions();
         let store = StudioAppHostStore::from_snapshot(&app_host.snapshot());
 
-        Ok(Self { app_host, store })
+        Self { app_host, store }
     }
 
     pub fn state(&self) -> &StudioAppHostState {

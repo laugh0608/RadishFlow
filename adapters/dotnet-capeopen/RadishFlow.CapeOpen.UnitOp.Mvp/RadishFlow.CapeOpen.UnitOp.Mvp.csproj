@@ -18,4 +18,7 @@
   <ItemGroup>
     <None Update="typelib\RadishFlow.CapeOpen.UnitOp.Mvp.tlb" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="RadishFlow.CapeOpen.UnitOp.Mvp.ContractTests" />
+  </ItemGroup>
 </Project>

@@ -59,6 +59,7 @@ U1 将单位基础放在已有 `rf-types::units` 模块，不新增 crate 或依
 
 - `resolve_unit(quantity, token)`：按量语义解析稳定 ID、符号或登记别名；大小写敏感，忽略两端空白，不猜缩写。歧义与不兼容量明确报错，支持菜单只使用 quantity.definition().units。
 - `convert(value, quantity, from, to)`、`to_canonical`、`from_canonical`：共享转换入口。拒绝非有限值及规范 SI 中间值 / 输出溢出；相同单位也先验证语义和有限性，然后原样返回，避免无意义往返引入精度损失。
+- `mol%` 输入除以 100 转为规范值，`35 mol%` 与直接输入 `0.35 mol/mol` 使用相同的浮点表示。
 - 转换不舍入显示位数，不读取或改变文档、历史、物性或快照。物理正值、组成范围等由正式变量约束 / 写入事务在转换后校验；负 K 可以被数学转换得到，但不能借转换绕过输入检查。
 - `VariableField::quantity` 拥有字段到量的映射，`VariableDescriptor::canonical_unit` / `unit_symbol` 从目录派生；名称字段没有物理量。原描述符的独立 unit 字符串已移除，内部消费者已迁移，CLI 仍输出原 unit 字符串，不新增协议字段。
 

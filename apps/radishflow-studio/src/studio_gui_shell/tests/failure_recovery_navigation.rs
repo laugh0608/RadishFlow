@@ -198,3 +198,307 @@ fn failure_recovery_keyboard_runs_switch_to_failure_or_current_results() {
     );
     fs::remove_file(path).unwrap();
 }
+
+fn diagnostic_frame(
+    app: &mut ReadyAppState,
+    ctx: &egui::Context,
+    width: f32,
+    events: Vec<egui::Event>,
+) -> egui::accesskit::TreeUpdate {
+    let output = ctx.run(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(width, 980.0),
+            )),
+            focused: true,
+            events,
+            ..Default::default()
+        },
+        |ctx| {
+            if width > 400.0 {
+                app.update(ctx);
+            } else {
+                let snapshot = app.platform_host.snapshot();
+                let window = snapshot.window_model();
+                app.render_top_bar(ctx, &snapshot.app_host_state.windows, &window, &mut false);
+                app.prepare_modeling_problem_field_layout(width, 20.0);
+                app.render_bottom_drawer(ctx, &window);
+            }
+        },
+    );
+    output.platform_output.accesskit_update.unwrap()
+}
+
+fn diagnostic_button(
+    tree: &egui::accesskit::TreeUpdate,
+    label: &str,
+    last: bool,
+) -> egui::accesskit::NodeId {
+    tree.nodes
+        .iter()
+        .filter(|(_, node)| {
+            node.role() == egui::accesskit::Role::Button && node.label() == Some(label)
+        })
+        .min_by(|(_, a), (_, b)| {
+            let order = a.bounds().unwrap().y0.total_cmp(&b.bounds().unwrap().y0);
+            if last { order.reverse() } else { order }
+        })
+        .unwrap_or_else(|| panic!("Missing diagnostic button: {label}"))
+        .0
+}
+
+fn activate_diagnostic_button(
+    app: &mut ReadyAppState,
+    ctx: &egui::Context,
+    width: f32,
+    target: egui::accesskit::NodeId,
+) {
+    use egui::accesskit::{Action, ActionRequest};
+
+    let focused = diagnostic_frame(
+        app,
+        ctx,
+        width,
+        vec![egui::Event::AccessKitActionRequest(ActionRequest {
+            target,
+            action: Action::Focus,
+            data: None,
+        })],
+    );
+    assert_eq!(focused.focus, target);
+    diagnostic_frame(
+        app,
+        ctx,
+        width,
+        [true, false]
+            .into_iter()
+            .map(|pressed| egui::Event::Key {
+                key: egui::Key::Enter,
+                physical_key: Some(egui::Key::Enter),
+                pressed,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            })
+            .collect(),
+    );
+}
+
+#[test]
+fn run_diagnostic_keyboard_return_restores_the_original_action_and_draft() {
+    for (screen, locale, width, drawer) in [
+        (
+            StudioShellScreen::Run,
+            StudioShellLocale::ZhCn,
+            1280.0,
+            false,
+        ),
+        (
+            StudioShellScreen::Results,
+            StudioShellLocale::En,
+            1280.0,
+            true,
+        ),
+        (
+            StudioShellScreen::Workbench,
+            StudioShellLocale::ZhCn,
+            400.0,
+            true,
+        ),
+        (StudioShellScreen::Run, StudioShellLocale::En, 400.0, true),
+    ] {
+        let (mut app, path) = failed_fixture("unbound-inlet-port");
+        app.screen = screen;
+        app.locale = locale;
+        if screen == StudioShellScreen::Workbench {
+            app.bottom_drawer_tab = StudioShellBottomDrawerTab::Diagnostics;
+            app.modeling_problems.set_runtime_details(true);
+        }
+        app.dispatch_ui_command("inspector.focus_unit:heater-1");
+        let mut draft = super::modeling_problems::numeric(&app, "unit:heater-1:outlet_pressure_pa");
+        assert!(app.edit_numeric_field(
+            &mut draft,
+            rf_ui::NumericEditEvent::ReplaceText("1e-".into())
+        ));
+        let before = app.platform_host.snapshot().runtime.workspace_document;
+        let ctx = egui::Context::default();
+        ctx.enable_accesskit();
+        fonts::configure_studio_fonts(&ctx);
+        if width == 400.0 {
+            ctx.style_mut(|style| {
+                style
+                    .text_styles
+                    .get_mut(&egui::TextStyle::Body)
+                    .unwrap()
+                    .size = 20.0;
+                style
+                    .text_styles
+                    .get_mut(&egui::TextStyle::Button)
+                    .unwrap()
+                    .size = 20.0;
+            });
+        }
+        diagnostic_frame(&mut app, &ctx, width, vec![]);
+        let mut tree = diagnostic_frame(&mut app, &ctx, width, vec![]);
+        if screen != StudioShellScreen::Workbench {
+            let shortcut = match locale {
+                StudioShellLocale::ZhCn => "运行诊断",
+                StudioShellLocale::En => "Run diagnostics",
+            };
+            let opener = diagnostic_button(&tree, shortcut, false);
+            activate_diagnostic_button(&mut app, &ctx, width, opener);
+            assert_eq!(app.screen, screen);
+            assert_eq!(
+                app.bottom_drawer_tab,
+                StudioShellBottomDrawerTab::Diagnostics
+            );
+            assert!(app.modeling_problems.runtime_details());
+            tree = diagnostic_frame(&mut app, &ctx, width, vec![]);
+        }
+        let origin = diagnostic_button(&tree, "Inspect inlet path", drawer);
+        let origin_bounds = tree
+            .nodes
+            .iter()
+            .find(|(id, _)| *id == origin)
+            .unwrap()
+            .1
+            .bounds()
+            .unwrap();
+        assert!(origin_bounds.x0 >= 0.0 && origin_bounds.x1 <= f64::from(width));
+        activate_diagnostic_button(&mut app, &ctx, width, origin);
+        assert!(app.at_run_diagnostic_target());
+        assert_eq!(app.screen, StudioShellScreen::Workbench);
+        assert_eq!(
+            app.platform_host
+                .snapshot()
+                .runtime
+                .workspace_document
+                .input_edits,
+            before.input_edits
+        );
+        let tree = diagnostic_frame(&mut app, &ctx, width, vec![]);
+        assert!(
+            tree.nodes
+                .iter()
+                .any(|(id, node)| *id == tree.focus && node.value() == Some("→ inlet")),
+            "focus must land on the structured port target for {screen:?}, {locale:?}, {width}"
+        );
+        let return_label = match locale {
+            StudioShellLocale::ZhCn => "← 返回原运行诊断",
+            StudioShellLocale::En => "← Back to originating run diagnostic",
+        };
+        let return_button = diagnostic_button(&tree, return_label, false);
+        activate_diagnostic_button(&mut app, &ctx, width, return_button);
+        assert_eq!(app.screen, screen);
+        assert_eq!(
+            app.bottom_drawer_tab,
+            StudioShellBottomDrawerTab::Diagnostics
+        );
+        assert!(app.modeling_problems.runtime_details());
+        let tree = diagnostic_frame(&mut app, &ctx, width, vec![]);
+        assert_eq!(tree.focus, origin);
+        assert_eq!(
+            app.platform_host.snapshot().runtime.workspace_document,
+            before
+        );
+        fs::remove_file(path).unwrap();
+    }
+}
+
+#[test]
+fn run_diagnostic_return_rejects_an_old_attempt_and_same_file_reopen() {
+    use crate::studio_gui_shell::flow_diagnostics::RunDiagnosticSurface;
+
+    let (mut app, path) = failed_fixture("unbound-inlet-port");
+    app.screen = StudioShellScreen::Run;
+    app.bottom_drawer_tab = StudioShellBottomDrawerTab::Diagnostics;
+    app.modeling_problems.set_runtime_details(true);
+    app.locale = StudioShellLocale::En;
+    let action = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .latest_failure
+        .unwrap()
+        .recovery_action
+        .unwrap();
+    app.activate_run_diagnostic(RunDiagnosticSurface::Drawer, egui::Id::NULL, &action, None);
+    assert!(app.at_run_diagnostic_target());
+    app.dispatch_ui_command("run_panel.run_manual");
+    assert!(!action.result_is_current(&app.platform_host.modeling_inputs().workspace));
+
+    let ctx = egui::Context::default();
+    ctx.enable_accesskit();
+    let tree = diagnostic_frame(&mut app, &ctx, 1280.0, vec![]);
+    let back = diagnostic_button(&tree, "← Back to originating run diagnostic", false);
+    activate_diagnostic_button(&mut app, &ctx, 1280.0, back);
+    let tree = diagnostic_frame(&mut app, &ctx, 1280.0, vec![]);
+    assert_eq!(app.screen, StudioShellScreen::Run);
+    assert_eq!(
+        app.bottom_drawer_tab,
+        StudioShellBottomDrawerTab::Diagnostics
+    );
+    assert!(tree.nodes.iter().any(|(id, node)| *id == tree.focus
+        && node.value()
+            == Some("The run or inputs changed. The original diagnostic is no longer current.")));
+
+    let current = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .latest_failure
+        .unwrap()
+        .recovery_action
+        .unwrap();
+    app.activate_run_diagnostic(RunDiagnosticSurface::Drawer, egui::Id::NULL, &current, None);
+    assert!(app.at_run_diagnostic_target());
+    app.open_project(path.clone(), "same file");
+    assert!(app.run_diagnostic_navigation.is_none());
+    fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn run_diagnostic_return_reports_a_removed_target_at_the_original_list() {
+    use crate::studio_gui_shell::flow_diagnostics::RunDiagnosticSurface;
+
+    let (mut app, path) = failed_fixture("unbound-inlet-port");
+    app.screen = StudioShellScreen::Results;
+    app.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
+    app.locale = StudioShellLocale::En;
+    let origin = app
+        .platform_host
+        .snapshot()
+        .window_model()
+        .runtime
+        .latest_failure
+        .unwrap();
+    let action = origin.recovery_target.unwrap().action;
+    app.activate_run_diagnostic(RunDiagnosticSurface::Drawer, egui::Id::NULL, &action, None);
+    assert!(app.at_run_diagnostic_target());
+    app.request_unit_deletion();
+    app.confirm_unit_deletion();
+    assert!(
+        !app.platform_host
+            .document()
+            .flowsheet
+            .units
+            .contains_key(&UnitId::new("heater-1"))
+    );
+
+    let ctx = egui::Context::default();
+    ctx.enable_accesskit();
+    let tree = diagnostic_frame(&mut app, &ctx, 1280.0, vec![]);
+    let back = diagnostic_button(&tree, "← Back to originating run diagnostic", false);
+    activate_diagnostic_button(&mut app, &ctx, 1280.0, back);
+    let tree = diagnostic_frame(&mut app, &ctx, 1280.0, vec![]);
+    assert_eq!(app.screen, StudioShellScreen::Results);
+    assert_eq!(
+        app.bottom_drawer_tab,
+        StudioShellBottomDrawerTab::ResultsTable
+    );
+    assert!(tree.nodes.iter().any(|(id, node)| *id == tree.focus
+        && node.value() == Some("The original diagnostic target was removed.")));
+    fs::remove_file(path).unwrap();
+}

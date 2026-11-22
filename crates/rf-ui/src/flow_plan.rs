@@ -1,89 +1,31 @@
 //! Project-owned steady-state configuration. Identity, history and drafts remain
 //! session local; a plan change is independent of the physical edit context.
 mod editor;
-mod simultaneous;
 use crate::{FlowRunQualification, RunStatus, SolvePendingReason, WorkspaceState};
 pub use editor::*;
-use rf_solver::partitioned::{RecycleSolveOptions, assemble_partitioned_plan};
-use rf_types::{RfError, RfResult, StreamId, UnitId};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-};
+pub use rf_solver::flow_plan::FlowPlanConfiguration;
+use rf_types::{RfError, RfResult};
+use std::{collections::BTreeMap, sync::Arc};
 
-#[derive(Debug, Clone, Default, PartialEq)]
-pub enum FlowPlanConfiguration {
-    #[default]
-    Acyclic,
-    Partitioned(RecycleSolveOptions),
-    Simultaneous(rf_solver::simultaneous::ModularOptions),
-    EquationOriented(rf_solver::equation_oriented::EquationOptions),
-    Mixed(rf_solver::mixed::MixedOptions),
+fn has_composition_scale(scales: &rf_solver::equation_oriented::ExplicitEquationScales) -> bool {
+    scales.equations.keys().any(|row| {
+        matches!(
+            row,
+            rf_solver::equation_oriented::EquationBinding::ProductMoleFraction { .. }
+        )
+    })
 }
-impl FlowPlanConfiguration {
-    pub fn validate_configuration(&self) -> RfResult<()> {
-        match self {
-            Self::Acyclic => Ok(()),
-            Self::Mixed(o) => o.validate_shape(),
-            Self::Partitioned(o) => o.validate_configuration(),
-            Self::Simultaneous(o) => simultaneous::validate_configuration(o),
-            Self::EquationOriented(o) => o.validate_shape().map_err(|e| e.error),
-        }
+
+/// A mixed block accepts only the forward material equation vocabulary.
+pub fn validate_workspace_plan(plan: &FlowPlanConfiguration) -> RfResult<()> {
+    if let FlowPlanConfiguration::Mixed(o) = plan
+        && o.blocks.iter().any(|b| matches!(&b.method, rf_solver::mixed::MixedBlockMethod::EquationOriented { scales: Some(s) } if has_composition_scale(s))) {
+        return Err(RfError::invalid_input("mixed blocks cannot use product composition specifications")
+            .with_diagnostic_code("workspace.plan.in_memory_only"));
     }
-    pub fn validate_for(&self, workspace: &WorkspaceState) -> RfResult<()> {
-        match self {
-            Self::Mixed(o) => {
-                rf_solver::mixed::assemble(&workspace.document.flowsheet, o).map(|_| ())
-            }
-            Self::EquationOriented(o) => {
-                rf_solver::equation_oriented::assemble(&workspace.document.flowsheet, o)
-                    .and_then(|p| p.require_ready())
-                    .map_err(|e| e.error)
-            }
-            Self::Acyclic => {
-                rf_solver::sequential_execution_order(&workspace.document.flowsheet).map(|_| ())
-            }
-            Self::Partitioned(o) => {
-                assemble_partitioned_plan(&workspace.document.flowsheet, o).map(|_| ())
-            }
-            Self::Simultaneous(o) => {
-                rf_solver::simultaneous::assemble(&workspace.document.flowsheet, o).map(|_| ())
-            }
-        }
-    }
-    pub fn referenced_unit_ids(&self) -> BTreeSet<UnitId> {
-        match self {
-            Self::Acyclic => BTreeSet::new(),
-            Self::EquationOriented(o) => o.referenced_unit_ids(),
-            Self::Mixed(o) => o.referenced_unit_ids(),
-            Self::Simultaneous(o) => o
-                .scales
-                .iter()
-                .flat_map(|s| s.keys())
-                .flat_map(|b| [b.source.unit_id.clone(), b.sink.unit_id.clone()])
-                .collect(),
-            Self::Partitioned(o) => o
-                .tears
-                .iter()
-                .flat_map(|t| [t.source.unit_id.clone(), t.sink.unit_id.clone()])
-                .collect(),
-        }
-    }
-    pub fn referenced_stream_ids(&self) -> BTreeSet<StreamId> {
-        match self {
-            Self::Acyclic => BTreeSet::new(),
-            Self::EquationOriented(o) => o.referenced_stream_ids(),
-            Self::Mixed(o) => o.referenced_stream_ids(),
-            Self::Simultaneous(o) => o
-                .scales
-                .iter()
-                .flat_map(|s| s.keys())
-                .map(|b| b.stream.clone())
-                .collect(),
-            Self::Partitioned(o) => o.tears.iter().map(|t| t.stream_id.clone()).collect(),
-        }
-    }
+    plan.validate_configuration()
 }
+
 #[derive(Debug, Clone)]
 pub struct FlowPlanGeneration(Arc<()>);
 impl FlowPlanGeneration {
@@ -177,6 +119,13 @@ impl FlowPlanState {
             d.is_pending(&self.current)
                 && (matches!(self.current, FlowPlanConfiguration::Simultaneous(_))
                     || matches!(d.candidate(), FlowPlanConfiguration::Simultaneous(_)))
+        })
+    }
+    pub fn has_pending_single_phase_draft(&self) -> bool {
+        self.draft.as_ref().is_some_and(|d| {
+            d.is_pending(&self.current)
+                && (self.current.project_model_method().is_some()
+                    || d.candidate().project_model_method().is_some())
         })
     }
     pub fn current(&self) -> &FlowPlanConfiguration {
@@ -274,7 +223,7 @@ impl WorkspaceState {
         if let FlowPlanConfiguration::Mixed(o) = &mut next {
             *o = o.canonicalized();
         }
-        next.validate_configuration()?;
+        validate_workspace_plan(&next)?;
         if next == self.flow_plan.current {
             return Ok(false);
         }

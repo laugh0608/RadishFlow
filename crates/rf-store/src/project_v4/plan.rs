@@ -1,8 +1,10 @@
 //! Versioned project configuration DTOs. They contain no solver workspace or UI identity.
 use super::{
-    EQUATION_ORIENTED_METHOD, SIMULTANEOUS_METHOD, StoredCouplingScale, StoredCouplingScaling,
-    StoredEquationBinding, StoredEquationPlan, StoredEquationScale, StoredEquationScaling,
-    StoredEquationSpecification, StoredEquationVariableBinding, StoredModularPlan,
+    EQUATION_ORIENTED_METHOD, SIMULTANEOUS_METHOD, SINGLE_PHASE_METHOD,
+    SINGLE_PHASE_RECYCLE_METHOD, StoredCouplingScale, StoredCouplingScaling, StoredEquationBinding,
+    StoredEquationPlan, StoredEquationScale, StoredEquationScaling, StoredEquationSpecification,
+    StoredEquationVariableBinding, StoredModularPlan, StoredSinglePhasePlan,
+    StoredSinglePhaseRecyclePlan,
 };
 use rf_types::{ComponentId, RfError, RfResult, StreamId, UnitId};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -18,6 +20,9 @@ pub enum StoredFlowPlan {
     Simultaneous(StoredModularPlan),
     EquationOriented(StoredEquationPlan),
     Mixed(super::StoredMixedPlan),
+    MixedRecycle(Box<super::StoredMixedRecyclePlan>),
+    SinglePhase(StoredSinglePhasePlan),
+    SinglePhaseRecycle(Box<StoredSinglePhaseRecyclePlan>),
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -63,6 +68,37 @@ pub struct StoredTear {
     pub sink: StoredPortBinding,
     pub initialization: StoredTearInitialization,
     pub residual_scaling: StoredResidualScaling,
+}
+
+impl StoredTear {
+    pub(super) fn validate(&self) -> RfResult<()> {
+        if self.stream_id.as_str().trim().is_empty() {
+            return Err(RfError::invalid_input(
+                "simulation.tears: blank stream identity",
+            ));
+        }
+        for port in [&self.source, &self.sink] {
+            if port.unit_id.as_str().trim().is_empty() || port.port.trim().is_empty() {
+                return Err(RfError::invalid_input(
+                    "simulation.tears: blank unit or port binding",
+                ));
+            }
+        }
+        if let StoredTearInitialization::ComponentFlows { values_mol_s } = &self.initialization {
+            validate_values(values_mol_s, false)?;
+        }
+        if let StoredResidualScaling::ComponentValues { values_mol_s } = &self.residual_scaling {
+            validate_values(values_mol_s, true)?;
+        }
+        Ok(())
+    }
+
+    fn canonicalize_initialization(&mut self) {
+        if let StoredTearInitialization::ComponentFlows { values_mol_s } = &mut self.initialization
+        {
+            values_mol_s.sort_by(|left, right| left.component_id.cmp(&right.component_id));
+        }
+    }
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct StoredRecyclePlan {
@@ -135,6 +171,18 @@ struct PlanWire {
         deserialize_with = "present"
     )]
     blocks: Option<Vec<super::StoredMixedBlock>>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present"
+    )]
+    single_phase: Option<StoredSinglePhasePlan>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present"
+    )]
+    single_phase_recycle: Option<StoredSinglePhaseRecyclePlan>,
 }
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -176,6 +224,10 @@ fn present<'de, D: Deserializer<'de>, T: Deserialize<'de>>(d: D) -> Result<Optio
     T::deserialize(d).map(Some)
 }
 impl StoredFlowPlan {
+    pub fn requires_product_composition(&self) -> bool {
+        matches!(self, Self::EquationOriented(o) if o.contract_version() == super::PRODUCT_COMPOSITION_VERSION)
+    }
+
     pub fn method(&self) -> StoredMethod {
         StoredMethod {
             id: match self {
@@ -184,12 +236,24 @@ impl StoredFlowPlan {
                 Self::Simultaneous(_) => SIMULTANEOUS_METHOD,
                 Self::EquationOriented(_) => EQUATION_ORIENTED_METHOD,
                 Self::Mixed(_) => super::MIXED_METHOD,
+                Self::MixedRecycle(_) => super::MIXED_RECYCLE_METHOD,
+                Self::SinglePhase(_) => SINGLE_PHASE_METHOD,
+                Self::SinglePhaseRecycle(_) => SINGLE_PHASE_RECYCLE_METHOD,
             }
             .into(),
             version: 1,
         }
     }
     pub fn validate(&self) -> RfResult<()> {
+        if let Self::SinglePhaseRecycle(p) = self {
+            return p.validate();
+        }
+        if let Self::SinglePhase(p) = self {
+            return p.validate();
+        }
+        if let Self::MixedRecycle(p) = self {
+            return p.validate();
+        }
         if let Self::Mixed(p) = self {
             return p.validate();
         }
@@ -219,21 +283,7 @@ impl StoredFlowPlan {
                     "simulation.tears: blank or duplicate stream identity",
                 ));
             }
-            for port in [&tear.source, &tear.sink] {
-                if port.unit_id.as_str().trim().is_empty() || port.port.trim().is_empty() {
-                    return Err(RfError::invalid_input(
-                        "simulation.tears: blank unit or port binding",
-                    ));
-                }
-            }
-            if let StoredTearInitialization::ComponentFlows { values_mol_s } = &tear.initialization
-            {
-                validate_values(values_mol_s, false)?;
-            }
-            if let StoredResidualScaling::ComponentValues { values_mol_s } = &tear.residual_scaling
-            {
-                validate_values(values_mol_s, true)?;
-            }
+            tear.validate()?;
         }
         Ok(())
     }
@@ -266,7 +316,15 @@ impl Serialize for StoredFlowPlan {
             equation_contract_version: None,
             specifications: None,
             blocks: None,
+            single_phase: None,
+            single_phase_recycle: None,
         };
+        if let Self::SinglePhase(plan) = self {
+            wire.single_phase = Some(plan.clone());
+        }
+        if let Self::SinglePhaseRecycle(plan) = self {
+            wire.single_phase_recycle = Some((**plan).clone());
+        }
         if let Self::Partitioned(plan) = self {
             wire.acceptance_contract_version = Some(1);
             wire.fixed_boundary = Some(plan.fixed_boundary.clone());
@@ -281,8 +339,8 @@ impl Serialize for StoredFlowPlan {
         }
         if let Self::EquationOriented(plan) = self {
             let plan = plan.canonicalized();
-            wire.acceptance_contract_version = Some(1);
-            wire.equation_contract_version = Some(1);
+            wire.acceptance_contract_version = Some(plan.contract_version());
+            wire.equation_contract_version = wire.acceptance_contract_version;
             wire.fixed_boundary = Some(plan.fixed_boundary);
             wire.specifications = Some(plan.specifications);
             wire.scaling = Some(plan.scaling.into());
@@ -291,6 +349,15 @@ impl Serialize for StoredFlowPlan {
             wire.acceptance_contract_version = Some(1);
             wire.fixed_boundary = Some(plan.fixed_boundary.clone());
             wire.blocks = Some(plan.canonicalized().blocks);
+        }
+        if let Self::MixedRecycle(plan) = self {
+            wire.acceptance_contract_version = Some(1);
+            wire.fixed_boundary = Some(plan.mixed.fixed_boundary.clone());
+            wire.blocks = Some(plan.mixed.canonicalized().blocks);
+            wire.max_iteration_evaluations = Some(plan.max_iteration_evaluations);
+            let mut tear = plan.tear.clone();
+            tear.canonicalize_initialization();
+            wire.tears = Some(vec![tear]);
         }
         wire.serialize(s)
     }
@@ -310,10 +377,46 @@ impl<'de> Deserialize<'de> for StoredFlowPlan {
                 "simulation: EO fields require EO method",
             ));
         }
-        if w.method.id != super::MIXED_METHOD && w.blocks.is_some() {
+        if !matches!(
+            w.method.id.as_str(),
+            super::MIXED_METHOD | super::MIXED_RECYCLE_METHOD
+        ) && w.blocks.is_some()
+        {
             return Err(serde::de::Error::custom("blocks require Mixed method"));
         }
+        if w.method.id != SINGLE_PHASE_METHOD && w.single_phase.is_some() {
+            return Err(serde::de::Error::custom(
+                "singlePhase requires the single-vapor method",
+            ));
+        }
+        if w.method.id != SINGLE_PHASE_RECYCLE_METHOD && w.single_phase_recycle.is_some() {
+            return Err(serde::de::Error::custom(
+                "singlePhaseRecycle requires the single-vapor recycle method",
+            ));
+        }
         let result = match (w.method.id.as_str(), w.method.version) {
+            (super::MIXED_RECYCLE_METHOD, 1)
+                if w.acceptance_contract_version == Some(1)
+                    && w.response_contract_version.is_none()
+                    && w.scaling.is_none() =>
+            {
+                let [mut tear]: [StoredTear; 1] =
+                    w.tears.ok_or_else(missing)?.try_into().map_err(|_| {
+                        serde::de::Error::custom(
+                            "simulation.tears: mixed recycle requires exactly one tear",
+                        )
+                    })?;
+                tear.canonicalize_initialization();
+                Self::MixedRecycle(Box::new(super::StoredMixedRecyclePlan {
+                    mixed: super::StoredMixedPlan {
+                        fixed_boundary: w.fixed_boundary.ok_or_else(missing)?,
+                        blocks: w.blocks.ok_or_else(missing)?,
+                    }
+                    .canonicalized(),
+                    max_iteration_evaluations: w.max_iteration_evaluations.ok_or_else(missing)?,
+                    tear,
+                }))
+            }
             (super::MIXED_METHOD, 1)
                 if w.acceptance_contract_version == Some(1)
                     && w.equation_contract_version.is_none()
@@ -331,7 +434,7 @@ impl<'de> Deserialize<'de> for StoredFlowPlan {
                     .canonicalized(),
                 )
             }
-            (ACYCLIC_METHOD, 1)
+            (ACYCLIC_METHOD | SINGLE_PHASE_METHOD | SINGLE_PHASE_RECYCLE_METHOD, 1)
                 if w.acceptance_contract_version.is_none()
                     && w.fixed_boundary.is_none()
                     && w.max_iteration_evaluations.is_none()
@@ -339,7 +442,17 @@ impl<'de> Deserialize<'de> for StoredFlowPlan {
                     && w.response_contract_version.is_none()
                     && w.scaling.is_none() =>
             {
-                Self::Acyclic
+                match w.method.id.as_str() {
+                    SINGLE_PHASE_METHOD => Self::SinglePhase(w.single_phase.ok_or_else(|| {
+                        serde::de::Error::custom("singlePhase settings required")
+                    })?),
+                    SINGLE_PHASE_RECYCLE_METHOD => {
+                        Self::SinglePhaseRecycle(Box::new(w.single_phase_recycle.ok_or_else(
+                            || serde::de::Error::custom("singlePhaseRecycle settings required"),
+                        )?))
+                    }
+                    _ => Self::Acyclic,
+                }
             }
             (PARTITIONED_METHOD, 1)
                 if w.acceptance_contract_version == Some(1)
@@ -376,36 +489,39 @@ impl<'de> Deserialize<'de> for StoredFlowPlan {
                 })
             }
             (EQUATION_ORIENTED_METHOD, 1)
-                if w.acceptance_contract_version == Some(1)
-                    && w.equation_contract_version == Some(1)
+                if w.acceptance_contract_version == w.equation_contract_version
                     && w.response_contract_version.is_none()
                     && w.tears.is_none()
                     && w.max_iteration_evaluations.is_none() =>
             {
-                Self::EquationOriented(
-                    StoredEquationPlan {
-                        fixed_boundary: w.fixed_boundary.ok_or_else(missing)?,
-                        specifications: w.specifications.ok_or_else(missing)?,
-                        scaling: match w.scaling.ok_or_else(missing)? {
-                            PlanScalingWire::EvaluatedFreshTotal => {
-                                StoredEquationScaling::EvaluatedFreshTotal
-                            }
-                            PlanScalingWire::ExplicitEquations {
-                                variables,
-                                equations,
-                            } => StoredEquationScaling::ExplicitEquations {
-                                variables,
-                                equations,
-                            },
-                            _ => {
-                                return Err(serde::de::Error::custom(
-                                    "simulation: coupling scaling cannot be used by EO method",
-                                ));
-                            }
+                let plan = StoredEquationPlan {
+                    fixed_boundary: w.fixed_boundary.ok_or_else(missing)?,
+                    specifications: w.specifications.ok_or_else(missing)?,
+                    scaling: match w.scaling.ok_or_else(missing)? {
+                        PlanScalingWire::EvaluatedFreshTotal => {
+                            StoredEquationScaling::EvaluatedFreshTotal
+                        }
+                        PlanScalingWire::ExplicitEquations {
+                            variables,
+                            equations,
+                        } => StoredEquationScaling::ExplicitEquations {
+                            variables,
+                            equations,
                         },
-                    }
-                    .canonicalized(),
-                )
+                        _ => {
+                            return Err(serde::de::Error::custom(
+                                "simulation: coupling scaling cannot be used by EO method",
+                            ));
+                        }
+                    },
+                }
+                .canonicalized();
+                if w.equation_contract_version != Some(plan.contract_version()) {
+                    return Err(serde::de::Error::custom(
+                        "simulation: EO specification and contract version differ",
+                    ));
+                }
+                Self::EquationOriented(plan)
             }
             _ => {
                 return Err(serde::de::Error::custom(

@@ -48,11 +48,15 @@ impl StudioWindowSession {
     }
 
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
-        Ok(Self {
-            host_port: StudioRuntimeHostPort::new(config)?,
+        Ok(Self::from_host_port(StudioRuntimeHostPort::new(config)?))
+    }
+
+    pub(crate) fn from_host_port(host_port: StudioRuntimeHostPort) -> Self {
+        Self {
+            host_port,
             timer_driver_state: StudioWindowTimerDriverState::default(),
             next_native_timer_handle_id: 1,
-        })
+        }
     }
 
     pub fn host_port(&self) -> &StudioRuntimeHostPort {

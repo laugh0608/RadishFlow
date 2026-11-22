@@ -7,9 +7,44 @@ impl ReadyAppState {
         ui.separator();
         ui.heading(tr(zh, "流程结果", "Flow results"));
         let mut adopt = false;
+        let mut locate = None;
         match workspace.flow_result() {
             FlowResultView::Current { snapshot, origin } => {
                 ui.strong("Current");
+                if let Some(snapshot) = snapshot.acyclic().filter(|s| !s.energy_balances.is_empty())
+                {
+                    ui.strong(tr(zh, "能量衡算", "Energy balance"));
+                    for (id, balance) in &snapshot.energy_balances {
+                        ui.label(format!(
+                            "{id} · {} {:+.6} W",
+                            tr(zh, "热负荷", "Heat duty"),
+                            balance.heat_duty_w
+                        ));
+                        for output in snapshot
+                            .steps
+                            .iter()
+                            .filter(|step| &step.unit_id == id)
+                            .flat_map(|step| &step.streams)
+                        {
+                            ui.label(format!(
+                                "{} {:.6} K",
+                                tr(zh, "出口温度", "Outlet temperature"),
+                                output.temperature_k
+                            ));
+                        }
+                        ui.label(format!(
+                            "Ḣin {:.6} W · Ḣout {:.6} W",
+                            balance.inlet_enthalpy_flow_w, balance.outlet_enthalpy_flow_w
+                        ));
+                        ui.label(format!(
+                            "{} {:.6e} W · {} {:.6e}",
+                            tr(zh, "能量残差", "Energy residual"),
+                            balance.residual_w,
+                            tr(zh, "缩放残差", "Scaled residual"),
+                            balance.scaled_residual
+                        ));
+                    }
+                }
                 if let rf_ui::FlowResultRecord::Partitioned(part) = snapshot {
                     ui.small(tr(
                         zh,
@@ -40,7 +75,10 @@ impl ReadyAppState {
                     ));
                 }
                 if let rf_ui::FlowResultRecord::Mixed(s) = snapshot {
-                    self.render_mixed_current(ui, &s.result);
+                    locate = self.render_mixed_current(ui, &s.result, origin);
+                }
+                if let rf_ui::FlowResultRecord::SinglePhaseRecycle(s) = snapshot {
+                    single_phase_recycle(ui, &s.result, zh);
                 }
                 if let rf_ui::FlowResultRecord::EquationOriented(s) = snapshot {
                     adopt = self.render_equation_current(ui, &s.result);
@@ -77,6 +115,30 @@ impl ReadyAppState {
                         "Failure diagnostics only; no partial results published.",
                     ));
                     ui.label(super::mixed_results::progress_text(&failure.progress, zh));
+                    if let Some(code) = failure.error.context().diagnostic_code() {
+                        ui.label(code);
+                    }
+                    if let Some(report) = &failure.recycle {
+                        let unit = workspace
+                            .project_presentation
+                            .display_units()
+                            .unit_for(rf_types::units::QuantityKind::MolarFlow);
+                        if super::mixed_results::render_recycle_report(ui, report, unit, zh, false)
+                        {
+                            locate = Some(report.tear.stream_id.clone());
+                        }
+                    } else {
+                        for id in failure.error.context().related_stream_ids() {
+                            let button = ui.add_enabled(
+                                workspace.document.flowsheet.streams.contains_key(id),
+                                egui::Button::new(format!("{} {id}", tr(zh, "定位", "Locate"))),
+                            );
+                            reveal_plan_focus(&button);
+                            if button.clicked() {
+                                locate = Some(id.clone());
+                            }
+                        }
+                    }
                     for line in radishflow_studio::mixed_evidence::failure_lines(
                         failure,
                         workspace.project_presentation.display_units(),
@@ -148,6 +210,11 @@ impl ReadyAppState {
                 }
             }
         }
+        if let Some(stream) = locate {
+            self.dispatch_ui_command(radishflow_studio::inspector_target_command_id(
+                &rf_ui::InspectorTarget::Stream(stream),
+            ));
+        }
         if adopt {
             let access = if self.read_only_project.is_some() {
                 FlowEditAccess::ReadOnly
@@ -168,6 +235,94 @@ impl ReadyAppState {
         }
     }
 }
+
+fn single_phase_recycle(
+    ui: &mut egui::Ui,
+    result: &rf_solver::single_phase_recycle::SinglePhaseRecycleResult,
+    zh: bool,
+) {
+    use rf_solver::single_phase_recycle::single_phase_enthalpy_flow_w;
+    let verification = &result.verification;
+    let tear = &result.tear;
+    let balance = result.overall_energy_balance;
+    ui.strong(tr(
+        zh,
+        "单相显热回流复核",
+        "Single-vapor recycle verification",
+    ));
+    ui.label(format!(
+        "{} · {}.{} → {}.{}",
+        tear.stream_id,
+        tear.source.unit_id,
+        tear.source.port_name,
+        tear.sink.unit_id,
+        tear.sink.port_name,
+    ));
+    let product = result
+        .final_units
+        .iter()
+        .find(|u| u.unit_id == tear.source.unit_id)
+        .and_then(|u| u.produced_streams.iter().find(|s| s.id != tear.stream_id));
+    for (label, stream) in [
+        (tr(zh, "产品", "Product"), product),
+        (tr(zh, "回流", "Recycle"), Some(&verification.returned)),
+    ] {
+        if let Some(stream) = stream
+            && let Ok(enthalpy) = single_phase_enthalpy_flow_w(stream)
+        {
+            ui.label(format!(
+                "{label} · {} · {:.6} mol/s · {:.6} K · {:.6} W",
+                stream.id, stream.total_molar_flow_mol_s, stream.temperature_k, enthalpy
+            ));
+        }
+    }
+    ui.label(format!(
+        "{} {:+.6} W · {} {:.6e} W · {} {:.6e}",
+        tr(zh, "热负荷", "Heat duty"),
+        balance.heat_duty_w,
+        tr(zh, "整体能量残差", "Overall energy residual"),
+        balance.residual_w,
+        tr(zh, "缩放残差", "Scaled residual"),
+        balance.scaled_residual
+    ));
+    ui.label(format!(
+        "{} {:.6e} mol/s · {} {:.6e} W",
+        tr(zh, "最大组分残差", "Maximum component residual"),
+        verification.residual.material.max_absolute_mol_s,
+        tr(zh, "撕裂焓流残差", "Tear enthalpy-flow residual"),
+        verification.residual.enthalpy_flow_residual_w
+    ));
+    ui.collapsing(
+        tr(zh, "撕裂试值与返回值", "Assumed and returned tear states"),
+        |ui| {
+            state(
+                ui,
+                tr(zh, "假设入口", "Assumed inlet"),
+                &verification.assumed,
+            );
+            state(
+                ui,
+                tr(zh, "返回出口", "Returned outlet"),
+                &verification.returned,
+            );
+            for (id, residual) in &verification.component_residuals_mol_s {
+                ui.label(format!("{id} · {residual:.6e} mol/s"));
+            }
+        },
+    );
+    ui.collapsing(tr(zh, "残差轨迹", "Residual trace"), |ui| {
+        for sample in &result.trace {
+            ui.label(format!(
+                "{:?} {} · {:.6e} mol/s · {:.6e} W",
+                sample.material.phase,
+                sample.material.evaluation,
+                sample.material.max_absolute_mol_s,
+                sample.enthalpy_flow_residual_w
+            ));
+        }
+    });
+}
+
 fn state(ui: &mut egui::Ui, title: &str, stream: &rf_model::MaterialStreamState) {
     ui.label(format!(
         "{title} {} · T {} K · P {} Pa · F {:.9e} mol/s",

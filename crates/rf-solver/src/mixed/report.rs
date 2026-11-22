@@ -2,7 +2,7 @@ use super::*;
 use crate::equation_oriented::{
     EquationFailure, EquationProgress, EquationResult, GlobalMaterialEvidence,
 };
-use crate::partitioned::LocalUnitEvaluation;
+use crate::partitioned::{EvaluationPhase, LocalUnitEvaluation, ResidualSample};
 use rf_flowsheet::MaterialConnection;
 use rf_model::MaterialStreamState;
 use rf_types::{ComponentId, StreamId};
@@ -48,11 +48,36 @@ pub struct MixedCosts {
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct MixedResult {
+    pub method: &'static str,
     pub streams: BTreeMap<StreamId, MaterialStreamState>,
     pub blocks: Vec<MixedBlockReport>,
     pub boundaries: Vec<MixedBoundaryEvidence>,
     pub global_material: GlobalMaterialEvidence,
     pub costs: MixedCosts,
+    pub recycle: Option<MixedRecycleReport>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MixedRecycleReport {
+    pub tear: TearSpecification,
+    pub fresh_stream: StreamId,
+    pub max_iteration_evaluations: usize,
+    pub component_scales_mol_s: BTreeMap<ComponentId, f64>,
+    pub residual_trace: Vec<ResidualSample>,
+    pub last_sweep: Option<MixedRecycleSweep>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MixedRecycleSweep {
+    pub assumed: MaterialStreamState,
+    pub returned: MaterialStreamState,
+    pub residuals_mol_s: BTreeMap<ComponentId, f64>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MixedRecycleProgress {
+    pub phase: EvaluationPhase,
+    pub evaluation: usize,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MixedStage {
@@ -70,6 +95,7 @@ pub struct MixedProgress {
     pub block: Option<MixedBlockId>,
     pub unit: Option<UnitId>,
     pub equation: Option<EquationProgress>,
+    pub recycle: Option<MixedRecycleProgress>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MixedFailureKind {
@@ -77,11 +103,14 @@ pub enum MixedFailureKind {
     LocalEvaluation,
     Equation,
     Boundary,
+    IterationLimit,
+    RecycleVerification,
     GlobalVerification,
     Cancelled,
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct MixedFailure {
+    pub method: &'static str,
     pub kind: MixedFailureKind,
     pub error: RfError,
     pub progress: MixedProgress,
@@ -90,6 +119,7 @@ pub struct MixedFailure {
     pub active_units: Vec<LocalUnitEvaluation>,
     pub equation_failure: Option<Box<EquationFailure>>,
     pub costs: MixedCosts,
+    pub recycle: Option<MixedRecycleReport>,
 }
 impl std::fmt::Display for MixedFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -186,3 +186,119 @@ fn equation_capability_upgrade_and_target_fingerprint_are_enforced_by_writer() {
     assert!(prepare_write(&path, &new, FileOverwritePolicy::Allow).is_err());
     fs::remove_file(&path).unwrap();
 }
+
+const COMPOSITION_PROJECT: &str = include_str!(
+    "../../../../../examples/flowsheets/fixed-tp-product-composition-binary-hydrocarbon.rfproj.json"
+);
+const COMPOSITION_READER: FlowPlanSupport = FlowPlanSupport::ProductComposition;
+
+#[test]
+fn composition_contract_is_derived_from_targets_and_scale_bindings() {
+    let parsed = parse_with_support(COMPOSITION_PROJECT, COMPOSITION_READER).unwrap();
+    assert_eq!(
+        to_pretty_json_with_support(&parsed, COMPOSITION_READER).unwrap(),
+        COMPOSITION_PROJECT.trim_end()
+    );
+    assert!(to_pretty_json_with_support(&parsed, FlowPlanSupport::MixedRecycle).is_err());
+    let ProjectV4Read::Editable(mut project) = parsed else {
+        panic!("expected editable composition case")
+    };
+    let StoredFlowPlan::EquationOriented(o) = &mut project.steady_state_plan else {
+        panic!("expected EO")
+    };
+    let Some(StoredEquationSpecification::ProductMoleFraction {
+        stream_id,
+        source,
+        component_id,
+        ..
+    }) = o.specifications.pop()
+    else {
+        panic!("expected product target")
+    };
+    // Missing target and stale scale identities are editable configurations. The row
+    // still requires v2, independently of whether this specific graph is ready.
+    o.scaling = StoredEquationScaling::ExplicitEquations {
+        variables: vec![],
+        equations: vec![StoredEquationScale {
+            binding: StoredEquationBinding::ProductMoleFraction {
+                stream_id,
+                source,
+                component_id,
+            },
+            scale_si: 0.125,
+        }],
+    };
+    assert_eq!(o.contract_version(), 2);
+    let edited = ProjectV4Read::Editable(project);
+    let text = to_pretty_json_with_support(&edited, COMPOSITION_READER).unwrap();
+    assert_eq!(
+        parse_with_support(&text, COMPOSITION_READER).unwrap(),
+        edited
+    );
+    assert!(matches!(
+        parse_with_support(&text, FlowPlanSupport::MixedRecycle).unwrap(),
+        ProjectV4Read::ReadOnly(_)
+    ));
+}
+
+#[test]
+fn known_composition_shape_and_versions_are_strict_future_versions_are_read_only() {
+    let original: Value = serde_json::from_str(COMPOSITION_PROJECT).unwrap();
+    let spec = "/simulation/steadyStatePlan/specifications/1";
+    let read = |v: &Value| parse_with_support(&v.to_string(), COMPOSITION_READER);
+    for (key, value) in [
+        ("valueMolMol", json!(-0.1)),
+        ("valueMolMol", json!(1.1)),
+        ("valueMolMol", Value::Null),
+        ("componentId", json!(" ")),
+        ("streamId", json!("")),
+        ("source/port", json!("inlet_a")),
+    ] {
+        let mut v = original.clone();
+        *v.pointer_mut(&format!("{spec}/{key}")).unwrap() = value;
+        assert!(read(&v).is_err(), "{key}");
+    }
+    for value in [0.0, 1.0] {
+        let mut v = original.clone();
+        v["simulation"]["steadyStatePlan"]["specifications"][1]["valueMolMol"] = json!(value);
+        assert!(matches!(read(&v).unwrap(), ProjectV4Read::Editable(_)));
+    }
+    let mut both = original.clone();
+    both["simulation"]["steadyStatePlan"]["specifications"].as_array_mut().unwrap().push(json!({
+        "kind":"product_total_molar_flow","streamId":"s-pa","source":{"unitId":"splitter-1","port":"outlet_b"},"valueMolS":1.5
+    }));
+    assert!(read(&both).is_err());
+    for field in ["equationContractVersion", "acceptanceContractVersion"] {
+        let mut v = original.clone();
+        v["simulation"]["steadyStatePlan"][field] = json!(1);
+        assert!(read(&v).is_err());
+        v["simulation"]["steadyStatePlan"][field] = json!(3);
+        assert!(matches!(read(&v).unwrap(), ProjectV4Read::ReadOnly(_)));
+    }
+    let mut hidden = original.clone();
+    hidden["requiredCapabilities"]
+        .as_array_mut()
+        .unwrap()
+        .retain(|cap| cap["id"] != EQUATION_ORIENTED_CAPABILITY);
+    assert!(read(&hidden).is_err());
+    let text = hidden.to_string();
+    let ProjectV4Read::ReadOnly(old) =
+        parse_with_support(&text, FlowPlanSupport::MixedRecycle).unwrap()
+    else {
+        panic!("legacy contract probe must protect undeclared v2")
+    };
+    assert_eq!(old.original_json(), text);
+    let mut forged = original;
+    let cap = forged["requiredCapabilities"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .find(|c| c["id"] == EQUATION_ORIENTED_CAPABILITY)
+        .unwrap();
+    cap["version"] = json!(1);
+    assert!(read(&forged).is_err());
+    for field in ["equationContractVersion", "acceptanceContractVersion"] {
+        forged["simulation"]["steadyStatePlan"][field] = json!(1);
+    }
+    assert!(read(&forged).is_err());
+}

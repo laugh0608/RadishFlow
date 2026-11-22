@@ -328,14 +328,16 @@ fn facade_mode_dispatch_hides_stale_snapshot_after_document_revision_advances() 
         RunStatus::Converged,
         DiagnosticSummary::new(0, DiagnosticSeverity::Info, "snapshot ok"),
     ));
-    app_state.commit_document_change(
-        rf_ui::DocumentCommand::MoveUnit {
-            unit_id: "heater-1".into(),
-            position: rf_ui::CanvasPoint::new(80.0, 40.0),
-        },
-        Flowsheet::new("demo-updated"),
-        timestamp(31),
-    );
+    app_state
+        .commit_document_change(
+            rf_ui::DocumentCommand::MoveUnit {
+                unit_id: "heater-1".into(),
+                position: rf_ui::CanvasPoint::new(80.0, 40.0),
+            },
+            Flowsheet::new("demo-updated"),
+            timestamp(31),
+        )
+        .unwrap();
     let cache_root = PathBuf::from("D:\\cache-root");
     let context = StudioAppAuthCacheContext::new(&cache_root, &auth_cache_index);
     let command = StudioAppCommand::set_workspace_simulation_mode(SimulationMode::Active);

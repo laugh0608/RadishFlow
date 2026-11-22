@@ -119,7 +119,7 @@ fn dangling_plan_identities_are_reserved_after_reopen_and_binding_history_is_exa
         app.workspace
             .flow_plan
             .current()
-            .validate_for(&app.workspace)
+            .validate_for(&app.workspace.document.flowsheet)
             .is_err()
     );
     assert_eq!(&plan, app.workspace.flow_plan.current());
@@ -128,7 +128,7 @@ fn dangling_plan_identities_are_reserved_after_reopen_and_binding_history_is_exa
         app.workspace
             .flow_plan
             .current()
-            .validate_for(&app.workspace)
+            .validate_for(&app.workspace.document.flowsheet)
             .is_ok()
     );
 }

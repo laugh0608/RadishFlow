@@ -67,7 +67,7 @@ internal sealed class ContractTestOptions
         return new ContractTestOptions(
             projectPath: values.TryGetValue("--project", out var projectPath)
                 ? Path.GetFullPath(projectPath)
-                : Path.Combine(repoRoot, "examples", "flowsheets", "feed-heater-flash-binary-hydrocarbon.rfproj.json"),
+                : Path.Combine(repoRoot, "examples", "flowsheets", "capeopen-feed-heater-binary-hydrocarbon.rfproj.json"),
             packageId: values.TryGetValue("--package", out var packageId)
                 ? packageId
                 : "binary-hydrocarbon-lite-v1",

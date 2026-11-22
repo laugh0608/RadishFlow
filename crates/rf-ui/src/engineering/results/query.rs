@@ -41,6 +41,7 @@ impl EquipmentResultOrigin {
                     .expect("qualified case");
                 (Some(c.revision), Some(t.geometry.revision), c.name.clone())
             }
+            EquipmentTask::ConcentricTubeRating(_) => unreachable!("validated engineering session"),
         };
         Self {
             document_id: key.document.clone(),

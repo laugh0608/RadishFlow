@@ -1,9 +1,10 @@
 mod equation_oriented;
 mod mixed;
+mod single_phase;
 use super::*;
 use crate::{InputUnitOrigin, NumericParseOutcome, parse_numeric_input};
 use rf_types::{
-    ComponentId,
+    ComponentId, StreamId, UnitId,
     units::{MeasurementUnit, QuantityKind, from_canonical},
 };
 use std::collections::BTreeMap;
@@ -12,11 +13,21 @@ use std::collections::BTreeMap;
 pub enum FlowPlanNumericField {
     Temperature,
     Pressure,
+    SinglePhaseMinimumTemperature,
+    SinglePhaseMaximumTemperature,
+    SinglePhasePressure,
+    VaporHeatCapacity(ComponentId),
+    HeatDuty(UnitId),
+    InitialEnthalpyFlow(StreamId),
     IterationBudget,
     ReleasedLower(rf_solver::equation_oriented::ParameterBinding),
     ReleasedUpper(rf_solver::equation_oriented::ParameterBinding),
     BisectionBudget(rf_solver::equation_oriented::ParameterBinding),
     ProductTarget(rf_solver::equation_oriented::PortBinding),
+    ProductMoleFraction {
+        source: rf_solver::equation_oriented::PortBinding,
+        component: ComponentId,
+    },
     EquationVariableScale(rf_solver::equation_oriented::VariableBinding),
     EquationResidualScale(rf_solver::equation_oriented::EquationBinding),
     MixedVariableScale {
@@ -41,13 +52,20 @@ pub enum FlowPlanNumericField {
 impl FlowPlanNumericField {
     pub fn quantity(&self) -> Option<QuantityKind> {
         match self {
-            Self::Temperature => Some(QuantityKind::AbsoluteTemperature),
-            Self::Pressure => Some(QuantityKind::AbsolutePressure),
-            Self::IterationBudget | Self::BisectionBudget(_) => None,
+            Self::Temperature
+            | Self::SinglePhaseMinimumTemperature
+            | Self::SinglePhaseMaximumTemperature => Some(QuantityKind::AbsoluteTemperature),
+            Self::Pressure | Self::SinglePhasePressure => Some(QuantityKind::AbsolutePressure),
+            Self::IterationBudget
+            | Self::BisectionBudget(_)
+            | Self::VaporHeatCapacity(_)
+            | Self::HeatDuty(_)
+            | Self::InitialEnthalpyFlow(_) => None,
             Self::ReleasedLower(_) | Self::ReleasedUpper(_) => {
                 Some(QuantityKind::DimensionlessRatio)
             }
             Self::EquationVariableScale(b) => Some(equation_oriented::variable_quantity(b)),
+            Self::ProductMoleFraction { .. } => Some(QuantityKind::MoleFraction),
             _ => Some(QuantityKind::MolarFlow),
         }
     }
@@ -58,6 +76,44 @@ pub struct FlowPlanNumericInput {
     pub unit: MeasurementUnit,
     original_si: f64,
     original_raw: String,
+}
+impl FlowPlanNumericInput {
+    fn value_si(&self, field: &FlowPlanNumericField) -> RfResult<f64> {
+        let invalid = || RfError::invalid_input("flow plan numeric draft is incomplete or invalid");
+        if self.raw == self.original_raw {
+            return Ok(self.original_si);
+        }
+        if let Some(quantity) = field.quantity() {
+            return match parse_numeric_input(
+                &self.raw,
+                quantity,
+                self.unit,
+                InputUnitOrigin::Explicit,
+            ) {
+                NumericParseOutcome::Value { si, .. } => Ok(si),
+                _ => Err(invalid()),
+            };
+        }
+        if matches!(
+            field,
+            FlowPlanNumericField::VaporHeatCapacity(_)
+                | FlowPlanNumericField::HeatDuty(_)
+                | FlowPlanNumericField::InitialEnthalpyFlow(_)
+        ) {
+            return self
+                .raw
+                .trim()
+                .parse::<f64>()
+                .ok()
+                .filter(|v| v.is_finite())
+                .ok_or_else(invalid);
+        }
+        self.raw
+            .trim()
+            .parse::<usize>()
+            .map(|v| v as f64)
+            .map_err(|_| RfError::invalid_input("iteration budget requires an integer"))
+    }
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct FlowPlanDraft {
@@ -77,8 +133,14 @@ impl FlowPlanDraft {
         &self.context
     }
     pub fn replace_candidate(&mut self, candidate: FlowPlanConfiguration) {
-        self.numbers
-            .retain(|field, _| equation_oriented::applies_to(field, &candidate));
+        self.numbers.retain(|field, _| match &candidate {
+            FlowPlanConfiguration::SinglePhase(options) => single_phase::applies_to(field, options),
+            FlowPlanConfiguration::SinglePhaseRecycle(options) => {
+                single_phase::applies_to(field, &options.properties)
+                    || single_phase::applies_to_recycle(field, &options.recycle)
+            }
+            _ => equation_oriented::applies_to(field, &candidate),
+        });
         self.candidate = candidate;
     }
     pub fn candidate(&self) -> &FlowPlanConfiguration {
@@ -103,7 +165,7 @@ impl FlowPlanDraft {
                     .map_err(|e| RfError::invalid_input(e.to_string()))?
             } else {
                 if unit != MeasurementUnit::One {
-                    return Err(RfError::invalid_input("iteration budget has no input unit"));
+                    return Err(RfError::invalid_input("field uses a fixed input unit"));
                 }
                 value_si
             };
@@ -167,32 +229,26 @@ impl FlowPlanDraft {
         self.candidate != *current || self.has_modified_numbers()
     }
     pub fn configuration(&self) -> RfResult<FlowPlanConfiguration> {
+        if let FlowPlanConfiguration::SinglePhase(options) = &self.candidate {
+            return single_phase::configuration(options, &self.numbers)
+                .map(FlowPlanConfiguration::SinglePhase);
+        }
+        if let FlowPlanConfiguration::SinglePhaseRecycle(options) = &self.candidate {
+            let mut options = (**options).clone();
+            options.properties = single_phase::configuration(
+                &options.properties,
+                self.numbers
+                    .iter()
+                    .filter(|(field, _)| single_phase::applies_to(field, &options.properties)),
+            )?;
+            single_phase::apply_recycle_numbers(&mut options.recycle, &self.numbers)?;
+            let configuration = FlowPlanConfiguration::SinglePhaseRecycle(Box::new(options));
+            configuration.validate_configuration()?;
+            return Ok(configuration);
+        }
         let mut candidate = self.candidate.clone();
         for (field, input) in &self.numbers {
-            let value = if input.raw == input.original_raw {
-                input.original_si
-            } else if let Some(quantity) = field.quantity() {
-                match parse_numeric_input(
-                    &input.raw,
-                    quantity,
-                    input.unit,
-                    InputUnitOrigin::Explicit,
-                ) {
-                    NumericParseOutcome::Value { si, .. } => si,
-                    _ => {
-                        return Err(RfError::invalid_input(
-                            "flow plan numeric draft is incomplete or invalid",
-                        ));
-                    }
-                }
-            } else {
-                input
-                    .raw
-                    .trim()
-                    .parse::<usize>()
-                    .map(|v| v as f64)
-                    .map_err(|_| RfError::invalid_input("iteration budget requires an integer"))?
-            };
+            let value = input.value_si(field)?;
             if let FlowPlanConfiguration::Mixed(options) = &mut candidate {
                 mixed::apply(options, field, value)?;
                 continue;
@@ -243,8 +299,15 @@ impl FlowPlanDraft {
                 | FlowPlanNumericField::ReleasedUpper(_)
                 | FlowPlanNumericField::BisectionBudget(_)
                 | FlowPlanNumericField::ProductTarget(_)
+                | FlowPlanNumericField::ProductMoleFraction { .. }
                 | FlowPlanNumericField::EquationVariableScale(_)
-                | FlowPlanNumericField::EquationResidualScale(_) => {
+                | FlowPlanNumericField::EquationResidualScale(_)
+                | FlowPlanNumericField::SinglePhaseMinimumTemperature
+                | FlowPlanNumericField::SinglePhaseMaximumTemperature
+                | FlowPlanNumericField::SinglePhasePressure
+                | FlowPlanNumericField::VaporHeatCapacity(_)
+                | FlowPlanNumericField::HeatDuty(_)
+                | FlowPlanNumericField::InitialEnthalpyFlow(_) => {
                     return Err(RfError::invalid_input(
                         "coupling scales are unavailable for a recycle plan",
                     ));
@@ -252,12 +315,7 @@ impl FlowPlanDraft {
                 FlowPlanNumericField::Temperature => options.boundary.temperature_k = value,
                 FlowPlanNumericField::Pressure => options.boundary.pressure_pa = value,
                 FlowPlanNumericField::IterationBudget => {
-                    if !(1.0..=500.0).contains(&value) || value.fract() != 0.0 {
-                        return Err(RfError::invalid_input(
-                            "iteration budget must be in 1..=500",
-                        ));
-                    }
-                    options.max_iteration_evaluations = value as usize;
+                    options.max_iteration_evaluations = iteration_budget(value)?;
                 }
                 FlowPlanNumericField::InitialComponent { stream, component }
                 | FlowPlanNumericField::ResidualScale { stream, component } => {
@@ -284,9 +342,18 @@ impl FlowPlanDraft {
                 }
             }
         }
-        candidate.validate_configuration()?;
+        validate_workspace_plan(&candidate)?;
         Ok(candidate)
     }
+}
+
+fn iteration_budget(value: f64) -> RfResult<usize> {
+    if !(1.0..=500.0).contains(&value) || value.fract() != 0.0 {
+        return Err(RfError::invalid_input(
+            "iteration budget must be in 1..=500",
+        ));
+    }
+    Ok(value as usize)
 }
 impl WorkspaceState {
     pub fn apply_flow_plan_draft(&mut self) -> RfResult<bool> {

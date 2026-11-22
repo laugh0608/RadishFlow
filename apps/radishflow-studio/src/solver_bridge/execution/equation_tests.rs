@@ -6,6 +6,9 @@ use crate::qs1_test_support::select;
 use crate::qs3_test_support::{case, explicit, options};
 use rf_ui::{FlowResultRecord, result_query::FlowResultView};
 use std::time::UNIX_EPOCH;
+
+mod product_composition;
+
 const EDIT: FlowEditAccess = FlowEditAccess::Editable;
 fn run(app: &mut AppState) {
     let mut done = execute(app);
@@ -54,6 +57,16 @@ fn equation_formal_result_projection_and_single_adoption_transaction() {
             Some(rf_solver::equation_oriented::INVERSE_BACKEND)
         );
         let v = crate::equation_result_projection::result(&s.result).unwrap();
+        assert_eq!(v["equation_contract_version"], 1);
+        assert_eq!(v["acceptance_contract_version"], 1);
+        let target = &v["evidence"]["verified_target"];
+        assert_eq!(target["target_mol_s"], 1.5);
+        assert!(target.get("kind").is_none());
+        assert!(
+            v["evidence"]["conditional_evaluations"][0]
+                .get("composition")
+                .is_none()
+        );
         assert_eq!(
             v["evidence"]["definition"]["structure"]["variable_count"],
             29
@@ -166,11 +179,17 @@ fn equation_structure_and_adoption_guards_reject_plan_aba_busy_readonly_and_draf
 fn equation_failure_evidence_and_late_completion_never_publish_values() {
     let mut app = case(true);
     let mut o = options(true);
-    o.target.as_mut().unwrap().value_mol_s = 3.0;
+    o.target
+        .as_mut()
+        .unwrap()
+        .total_flow_mut()
+        .unwrap()
+        .value_mol_s = 3.0;
     select(&mut app, FlowPlanConfiguration::EquationOriented(o));
     let mut done = execute(&mut app);
     assert_eq!(done.execution_outcome(), WorkspaceExecutionOutcome::Failed);
-    let SolveOutcome::EquationFailed(f) = &mut done.outcome else {
+    let SolveOutcome::Executed(FlowExecutionOutcome::EquationOriented(Err(f))) = &mut done.outcome
+    else {
         panic!()
     };
     f.evidence.conditional_evaluations[0].target_residual_mol_s = Some(f64::NAN);
@@ -214,7 +233,7 @@ fn equation_structure_incomplete_pairs_and_released_missing_input_are_distinct()
         app.workspace
             .flow_plan
             .current()
-            .validate_for(&app.workspace)
+            .validate_for(&app.workspace.document.flowsheet)
             .is_ok()
     );
     run(&mut app);
@@ -233,7 +252,7 @@ fn equation_structure_incomplete_pairs_and_released_missing_input_are_distinct()
             app.workspace
                 .flow_plan
                 .current()
-                .validate_for(&app.workspace)
+                .validate_for(&app.workspace.document.flowsheet)
                 .is_err()
         );
     }
@@ -277,6 +296,31 @@ impl WorkspaceSolveControl for StopAt {
         Ok(ControlFlow::Continue(()))
     }
 }
+fn cancel_at(
+    app: &mut AppState,
+    stage: rf_solver::equation_oriented::EquationStage,
+) -> CompletedWorkspaceSolve {
+    let request = crate::build_workspace_solve_request(
+        app,
+        crate::test_support::OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+    )
+    .unwrap();
+    let (receipt, job) = prepare_workspace_solve(app, &request).unwrap().into_job();
+    let provider = crate::test_support::build_official_binary_hydrocarbon_in_memory_provider(
+        crate::test_support::OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
+    );
+    let output = job.execute(
+        |id| {
+            provider
+                .load_package(id, SystemTime::now())
+                .and_then(prepare_local_context)
+                .map_err(WorkspacePackageLoadError::Package)
+        },
+        false,
+        &mut StopAt(stage),
+    );
+    CompletedWorkspaceSolve::from_output(receipt, output)
+}
 #[test]
 fn equation_cancellation_at_every_core_stage_preserves_current_result() {
     use rf_solver::equation_oriented::EquationStage::*;
@@ -296,28 +340,7 @@ fn equation_cancellation_at_every_core_stage_preserves_current_result() {
         let mut app = case(true);
         run(&mut app);
         let before = app.workspace.snapshot_history.clone();
-        let request = crate::build_workspace_solve_request(
-            &app,
-            crate::test_support::OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
-        )
-        .unwrap();
-        let (receipt, job) = prepare_workspace_solve(&mut app, &request)
-            .unwrap()
-            .into_job();
-        let provider = crate::test_support::build_official_binary_hydrocarbon_in_memory_provider(
-            crate::test_support::OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID,
-        );
-        let output = job.execute(
-            |id| {
-                provider
-                    .load_package(id, SystemTime::now())
-                    .and_then(prepare_local_context)
-                    .map_err(WorkspacePackageLoadError::Package)
-            },
-            false,
-            &mut StopAt(stage),
-        );
-        let mut done = CompletedWorkspaceSolve::from_output(receipt, output);
+        let mut done = cancel_at(&mut app, stage);
         assert_eq!(
             done.execution_outcome(),
             WorkspaceExecutionOutcome::Cancelled

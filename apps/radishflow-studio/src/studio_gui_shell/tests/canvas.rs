@@ -1762,18 +1762,14 @@ fn canvas_viewport_fit_to_content_resets_sidecar_offset_without_dirtying_project
     let project_before = fs::read_to_string(&project_path).expect("expected saved project file");
     app.update_canvas_viewport_offset(egui::vec2(42.0, -16.0));
 
-    let view = app
-        .platform_host
-        .snapshot()
-        .window_model()
-        .canvas
-        .widget
-        .view()
-        .clone();
-    let viewport_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(640.0, 280.0));
-
-    let fitted_offset =
-        app.fit_canvas_viewport_to_content(viewport_rect, &view.unit_blocks, &view.stream_lines);
+    app.request_canvas_viewport_fit_to_content();
+    let ctx = egui::Context::default();
+    let _ = ctx.run(egui::RawInput::default(), |ctx| {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            app.render_canvas_drop_surface(ui, ui.available_width());
+        });
+    });
+    let fitted_offset = app.canvas_initial_viewport_fit.offset;
 
     assert_ne!(fitted_offset, egui::vec2(42.0, -16.0));
     let fitted = app.platform_host.snapshot().window_model();

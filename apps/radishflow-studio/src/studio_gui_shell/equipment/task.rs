@@ -8,7 +8,7 @@ pub(super) fn render(
     inputs: &EngineeringInputs,
     units: &DisplayUnitSet,
     focus: Option<EquipmentInputField>,
-    open_source: &mut Option<(rf_types::SourceId, Option<EquipmentInputField>)>,
+    open_source: &mut Option<source::SourceLink>,
 ) {
     text_row(ui, tr(locale, "设备位号", "Equipment tag"), &mut draft.tag);
     text_row(
@@ -55,11 +55,9 @@ pub(super) fn render(
                     draft.applicability_sources.retain(|id| id != &source.id);
                 }
             }
-            if ui
-                .small_button(tr(locale, "查看来源", "View source"))
-                .clicked()
-            {
-                *open_source = Some((source.id.clone(), None));
+            let response = ui.small_button(tr(locale, "查看来源", "View source"));
+            if let Some(source) = source::SourceLink::clicked(&source.id, &response) {
+                *open_source = Some(source);
             }
         });
     }
@@ -80,7 +78,7 @@ pub(super) fn render(
             units,
             focus == Some(field.into()),
         ) {
-            *open_source = Some((source, Some(field.into())));
+            *open_source = Some(source);
         }
     }
     ui.separator();
@@ -99,7 +97,7 @@ pub(super) fn render(
             units,
             focus == Some(field.into()),
         ) {
-            *open_source = Some((source, Some(field.into())));
+            *open_source = Some(source);
         }
     }
 }

@@ -10,7 +10,10 @@ pub(crate) enum EngineeringRead {
     Unsupported(usize),
 }
 
-pub(crate) fn decode(contents: &str) -> RfResult<EngineeringRead> {
+pub(crate) fn decode(
+    contents: &str,
+    equipment_support: EquipmentSupport,
+) -> RfResult<EngineeringRead> {
     #[derive(Deserialize)]
     struct Envelope {
         #[serde(default, deserialize_with = "engineering")]
@@ -21,7 +24,7 @@ pub(crate) fn decode(contents: &str) -> RfResult<EngineeringRead> {
     let unsupported = envelope
         .engineering
         .as_ref()
-        .is_some_and(|e| e.tasks.iter().any(|t| !t.supported()));
+        .is_some_and(|e| e.tasks.iter().any(|t| !t.supported(equipment_support)));
     if unsupported || task_wire::legacy_payload(contents)? {
         return Ok(EngineeringRead::Unsupported(count));
     }
@@ -38,10 +41,11 @@ pub(crate) fn decode(contents: &str) -> RfResult<EngineeringRead> {
 }
 pub(crate) fn encode(
     inputs: Option<&StoredEngineeringInputs>,
+    equipment_support: EquipmentSupport,
 ) -> RfResult<Option<EngineeringSection>> {
     inputs
         .map(|inputs| {
-            validate_engineering(inputs)?;
+            validate_for_write(inputs, equipment_support)?;
             Ok(EngineeringSection(EngineeringWire::with_tasks(
                 &inputs.basis,
                 inputs
@@ -52,4 +56,23 @@ pub(crate) fn encode(
             )))
         })
         .transpose()
+}
+
+pub(super) fn validate_for_write(
+    inputs: &StoredEngineeringInputs,
+    equipment_support: EquipmentSupport,
+) -> RfResult<()> {
+    if !equipment_support.supports_concentric_tube_rating() && inputs.has_concentric_tube_rating() {
+        return Err(RfError::invalid_input(
+            "engineering.tasks: writer does not support concentric-tube rating",
+        ));
+    }
+    if inputs.has_concentric_tube_flow_association()
+        && equipment_support != EquipmentSupport::ConcentricTubeFlowAssociation
+    {
+        return Err(RfError::invalid_input(
+            "engineering.tasks: writer does not support concentric-tube flow associations",
+        ));
+    }
+    validate_engineering(inputs)
 }

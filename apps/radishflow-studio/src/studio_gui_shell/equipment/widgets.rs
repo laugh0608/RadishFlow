@@ -57,7 +57,7 @@ pub(super) fn quantity(
         .iter()
         .map(|u| (*u, u.definition().symbol))
         .collect::<Vec<_>>();
-    let selection = super::super::unit_selector::unit_selector(
+    let selection = super::super::choice_selector::choice_selector(
         ui,
         id.with("unit"),
         &format!("{label} {}", tr(locale, "输入单位", "input unit")),
@@ -107,7 +107,7 @@ pub(super) fn source_picker(
             }
         });
 }
-pub(super) fn source_kind(
+pub(in super::super) fn source_kind(
     locale: StudioShellLocale,
     kind: rf_model::engineering::SourceKind,
 ) -> &'static str {
@@ -121,7 +121,7 @@ pub(super) fn source_kind(
         Unknown => tr(locale, "未记录", "Unknown"),
     }
 }
-pub(super) fn source_review(
+pub(in super::super) fn source_review(
     locale: StudioShellLocale,
     review: rf_model::engineering::SourceReview,
 ) -> &'static str {

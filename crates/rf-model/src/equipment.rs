@@ -1,7 +1,9 @@
 //! Independent equipment input records. No calculation, transaction or storage policy.
 mod adoption;
+mod concentric_tube;
 mod rating;
 pub use adoption::*;
+pub use concentric_tube::*;
 mod task;
 pub use rating::*;
 #[cfg(test)]
@@ -168,6 +170,7 @@ pub struct SeparatorSizingTask {
 pub enum EquipmentTask {
     SeparatorSizing(SeparatorSizingTask),
     SeparatorRating(SeparatorRatingTask),
+    ConcentricTubeRating(Box<ConcentricTubeRatingTask>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -199,22 +202,16 @@ pub fn validate_equipment_identities(
     Ok(())
 }
 
-/// Validate project-wide identities across both supported record types, without
+/// Validate project-wide identities across equipment records, without
 /// imposing a method's case-count or numerical applicability policy on the model.
 pub fn validate_equipment_task_identities(
     tasks: &[EquipmentTask],
 ) -> Result<(), EquipmentIdentityError> {
     let mut identities = EquipmentIdentities::default();
     for (task_index, task) in tasks.iter().enumerate() {
-        let result = match task {
-            EquipmentTask::SeparatorSizing(task) => {
-                identities.check(&task.id, &task.tag, [&task.case.id])
-            }
-            EquipmentTask::SeparatorRating(task) => {
-                identities.check(&task.id, &task.tag, task.cases.iter().map(|c| &c.id))
-            }
-        };
-        result.map_err(|kind| EquipmentIdentityError { task_index, kind })?;
+        identities
+            .check(task.id(), task.tag(), task.case_ids())
+            .map_err(|kind| EquipmentIdentityError { task_index, kind })?;
     }
     Ok(())
 }

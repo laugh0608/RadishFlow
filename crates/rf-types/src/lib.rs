@@ -1,4 +1,6 @@
+mod object_identity;
 pub mod units;
+pub use object_identity::{FlowObjectIdentities, ObjectCreationId};
 
 use std::error::Error;
 use std::fmt;

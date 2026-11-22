@@ -2,7 +2,10 @@ use rf_solver::equation_oriented::*;
 use rf_store::project_v4::*;
 use rf_types::{RfError, RfResult, StreamId};
 
-pub(super) fn stored(o: &EquationOptions) -> StoredEquationPlan {
+pub(super) fn stored(
+    o: &EquationOptions,
+    support: FlowPlanSupport,
+) -> RfResult<StoredEquationPlan> {
     let mut specifications = Vec::new();
     if let Some(r) = &o.released {
         specifications.push(StoredEquationSpecification::ReleaseSplitFraction {
@@ -16,13 +19,23 @@ pub(super) fn stored(o: &EquationOptions) -> StoredEquationPlan {
         });
     }
     if let Some(t) = &o.target {
-        specifications.push(StoredEquationSpecification::ProductTotalMolarFlow {
-            stream_id: t.source.stream.clone(),
-            source: stored_port(&t.source),
-            value_mol_s: t.value_mol_s,
+        specifications.push(match t {
+            ProductTarget::TotalMolarFlow(t) => {
+                StoredEquationSpecification::ProductTotalMolarFlow {
+                    stream_id: t.source.stream.clone(),
+                    source: stored_port(&t.source),
+                    value_mol_s: t.value_mol_s,
+                }
+            }
+            ProductTarget::MoleFraction(t) => StoredEquationSpecification::ProductMoleFraction {
+                stream_id: t.source.stream.clone(),
+                source: stored_port(&t.source),
+                component_id: t.component.clone(),
+                value_mol_mol: t.value_mol_mol,
+            },
         });
     }
-    StoredEquationPlan {
+    let plan = StoredEquationPlan {
         fixed_boundary: StoredFixedBoundary {
             temperature_k: o.boundary.temperature_k,
             pressure_pa: o.boundary.pressure_pa,
@@ -50,7 +63,14 @@ pub(super) fn stored(o: &EquationOptions) -> StoredEquationPlan {
             },
         },
     }
-    .canonicalized()
+    .canonicalized();
+    if !support.supports_equation_version(plan.contract_version()) {
+        return Err(
+            RfError::invalid_input("consumer does not support this EO contract version")
+                .with_diagnostic_code("workspace.plan.in_memory_only"),
+        );
+    }
+    Ok(plan)
 }
 pub(super) fn configuration(plan: StoredEquationPlan) -> RfResult<EquationOptions> {
     plan.validate()?;
@@ -73,15 +93,29 @@ pub(super) fn configuration(plan: StoredEquationPlan) -> RfResult<EquationOption
                     max_iterations: interval.max_iterations,
                 })
             }
+            StoredEquationSpecification::ProductMoleFraction {
+                stream_id,
+                source,
+                component_id,
+                value_mol_mol,
+            } => {
+                o.target = Some(ProductTarget::MoleFraction(Box::new(
+                    ProductMoleFractionTarget {
+                        source: port(source, stream_id)?,
+                        component: component_id,
+                        value_mol_mol,
+                    },
+                )));
+            }
             StoredEquationSpecification::ProductTotalMolarFlow {
                 stream_id,
                 source,
                 value_mol_s,
             } => {
-                o.target = Some(ProductTotalTarget {
+                o.target = Some(ProductTarget::TotalMolarFlow(ProductTotalTarget {
                     source: port(source, stream_id)?,
                     value_mol_s,
-                })
+                }))
             }
         }
     }
@@ -165,8 +199,15 @@ pub(super) fn variable(b: StoredEquationVariableBinding) -> VariableBinding {
         }
     }
 }
-pub(super) fn stored_equation(b: &EquationBinding) -> StoredEquationBinding {
+fn stored_equation(b: &EquationBinding) -> StoredEquationBinding {
     match b {
+        EquationBinding::ProductMoleFraction { source, component } => {
+            StoredEquationBinding::ProductMoleFraction {
+                stream_id: source.stream.clone(),
+                source: stored_port(source),
+                component_id: component.clone(),
+            }
+        }
         EquationBinding::Unit {
             unit,
             role,
@@ -236,6 +277,14 @@ pub(super) fn equation(b: StoredEquationBinding) -> RfResult<EquationBinding> {
             source_unit: source.unit_id,
             source_port: source.port,
             sink: port(sink, stream_id)?,
+            component: component_id,
+        },
+        StoredEquationBinding::ProductMoleFraction {
+            stream_id,
+            source,
+            component_id,
+        } => EquationBinding::ProductMoleFraction {
+            source: port(source, stream_id)?,
             component: component_id,
         },
         StoredEquationBinding::ProductTotal { stream_id, source } => {

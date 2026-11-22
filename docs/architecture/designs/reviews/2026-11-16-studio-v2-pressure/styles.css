@@ -1,0 +1,16 @@
+#valve { inset-inline-start: 40%; }
+#valve .node-mark { border-radius: .05rem; transform: rotate(45deg); }
+.bounds[data-equal="true"] { justify-content: center; }
+.ramp[data-equal="true"] { background: #436592; }
+.legend-detail { margin-block-start: .38rem; color: var(--muted); font-size: .82rem; }
+.legend-detail:empty { display: none; }
+.result-value { text-align: end; }
+.result-value small { display: block; color: var(--muted); }
+.swatch[data-dashed="true"] { background: repeating-linear-gradient(to right, var(--stroke) 0 4px, transparent 4px 6px); }
+.line-label[data-dashed="true"] { border-style: dashed; }
+.review label { max-inline-size: 100%; }
+
+@media (max-width: 575px) {
+  #valve { inset-block-start: 39%; }
+  #flash { inset-block-start: 63%; }
+}

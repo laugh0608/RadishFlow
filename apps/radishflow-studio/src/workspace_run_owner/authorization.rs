@@ -16,7 +16,7 @@ pub(super) struct RunAuthorization {
     subject: Option<AuthenticatedUser>,
     authenticated_at: Option<SystemTime>,
     entitlement: Option<EntitlementSnapshot>,
-    package_id: String,
+    package_id: Option<String>,
 }
 
 impl RunAuthorization {
@@ -25,12 +25,18 @@ impl RunAuthorization {
         package_id: &str,
         now: SystemTime,
     ) -> Result<Self, RunAuthorizationRefusal> {
+        let uses_project_properties = app
+            .workspace
+            .flow_plan
+            .current()
+            .project_model_method()
+            .is_some();
         let authorization = Self {
             authority: app.auth_session.authority_url.clone(),
             subject: app.auth_session.current_user.clone(),
             authenticated_at: app.auth_session.last_authenticated_at,
             entitlement: app.entitlement.snapshot.clone(),
-            package_id: package_id.into(),
+            package_id: (!uses_project_properties).then(|| package_id.into()),
         };
         authorization.allow_start(app, now)?;
         Ok(authorization)
@@ -42,6 +48,9 @@ impl RunAuthorization {
         now: SystemTime,
     ) -> Result<(), RunAuthorizationRefusal> {
         self.check_revocation(app)?;
+        if self.package_id.is_none() {
+            return Ok(());
+        }
         for snapshot in [self.entitlement.as_ref(), app.entitlement.snapshot.as_ref()]
             .into_iter()
             .flatten()
@@ -66,15 +75,17 @@ impl RunAuthorization {
             }
             _ => false,
         };
-        let same_grant = match (&self.entitlement, &app.entitlement.snapshot) {
-            (None, None) => true,
-            (Some(old), Some(new)) => {
-                old.subject_id == new.subject_id
-                    && old.tenant_id == new.tenant_id
-                    && new.allowed_package_ids.contains(&self.package_id)
+        let same_grant = self.package_id.as_ref().is_none_or(|package_id| {
+            match (&self.entitlement, &app.entitlement.snapshot) {
+                (None, None) => true,
+                (Some(old), Some(new)) => {
+                    old.subject_id == new.subject_id
+                        && old.tenant_id == new.tenant_id
+                        && new.allowed_package_ids.contains(package_id)
+                }
+                _ => false,
             }
-            _ => false,
-        };
+        });
         if !same_subject
             || !same_grant
             || self.authority != app.auth_session.authority_url

@@ -263,6 +263,7 @@ impl ReadyAppState {
                         ui,
                         diagnostic,
                         format!("module-settings:diagnostic:{index}"),
+                        None,
                     );
                     ui.add_space(4.0);
                 }
@@ -289,7 +290,12 @@ impl ReadyAppState {
             );
             ui.small(&detail.target.target_id);
         });
-        render_wrapped_label(ui, &detail.title);
+        let title = ui.add(
+            egui::Label::new(&detail.title)
+                .wrap()
+                .sense(egui::Sense::focusable_noninteractive()),
+        );
+        self.focus_specification_inspector(&title, &detail.target.command_id);
 
         if !detail.summary_rows.is_empty() {
             egui::Grid::new(format!("inspector-summary:{}", detail.target.command_id))
@@ -532,6 +538,7 @@ impl ReadyAppState {
                             "active-inspector:{}:diagnostic:{index}",
                             detail.target.command_id
                         ),
+                        None,
                     );
                     ui.add_space(4.0);
                 }
@@ -545,6 +552,7 @@ impl ReadyAppState {
         field: &radishflow_studio::StudioGuiWindowInspectorTargetFieldModel,
         view: Option<rf_ui::DisplayUnitViewId>,
     ) {
+        self.render_browser_field_link(ui, field);
         if let Some(numeric) = &field.numeric {
             match numeric {
                 Ok(numeric) => {
@@ -590,6 +598,7 @@ impl ReadyAppState {
                     .id_salt(format!("inspector-property-field:{}", field.key)),
             );
             self.apply_specification_key_focus(&response, &field.key);
+            self.apply_browser_key_focus(&response, &field.key);
             if response.changed() {
                 self.dispatch_inspector_field_draft_update(
                     field.draft_update_command_id.clone(),

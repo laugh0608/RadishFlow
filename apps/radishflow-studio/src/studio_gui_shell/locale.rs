@@ -11,6 +11,14 @@ pub(super) enum StudioShellLocale {
     ZhCn,
 }
 
+pub(super) fn tr<'a>(locale: StudioShellLocale, zh: &'a str, en: &'a str) -> &'a str {
+    if locale == StudioShellLocale::ZhCn {
+        zh
+    } else {
+        en
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum ShellText {
     NewLogicalWindow,
@@ -40,6 +48,7 @@ pub(super) enum ShellText {
     NoPanelsInRegion,
     PanelIsCollapsed,
     Run,
+    FlowsheetRun,
     NoSolveSnapshot,
     Snapshot,
     LatestLog,
@@ -66,6 +75,7 @@ pub(super) enum ShellText {
     NoRecentProjects,
     ExampleProjects,
     Results,
+    FlowsheetResults,
     CopySnapshot,
     ExportSnapshot,
     ResultInspector,
@@ -549,6 +559,7 @@ impl ShellText {
             ShellText::NoPanelsInRegion => "No panels in this region.",
             ShellText::PanelIsCollapsed => "Panel is collapsed.",
             ShellText::Run => "Run",
+            ShellText::FlowsheetRun => "Flowsheet run",
             ShellText::NoSolveSnapshot => "No solve snapshot yet.",
             ShellText::Snapshot => "Snapshot",
             ShellText::LatestLog => "Latest log",
@@ -575,6 +586,7 @@ impl ShellText {
             ShellText::NoRecentProjects => "No recent projects yet.",
             ShellText::ExampleProjects => "Example projects",
             ShellText::Results => "Results",
+            ShellText::FlowsheetResults => "Flowsheet results",
             ShellText::CopySnapshot => "Copy current results",
             ShellText::ExportSnapshot => "Export current results...",
             ShellText::ResultInspector => "Result inspector",
@@ -706,6 +718,7 @@ impl ShellText {
             ShellText::NoPanelsInRegion => "此区域没有面板。",
             ShellText::PanelIsCollapsed => "面板已折叠。",
             ShellText::Run => "运行",
+            ShellText::FlowsheetRun => "流程运行",
             ShellText::NoSolveSnapshot => "还没有求解快照。",
             ShellText::Snapshot => "快照",
             ShellText::LatestLog => "最新日志",
@@ -732,6 +745,7 @@ impl ShellText {
             ShellText::NoRecentProjects => "还没有最近项目。",
             ShellText::ExampleProjects => "示例项目",
             ShellText::Results => "结果",
+            ShellText::FlowsheetResults => "流程结果",
             ShellText::CopySnapshot => "复制当前结果",
             ShellText::ExportSnapshot => "导出当前结果...",
             ShellText::ResultInspector => "结果检查器",

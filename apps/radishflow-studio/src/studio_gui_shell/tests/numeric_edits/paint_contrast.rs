@@ -96,7 +96,7 @@ fn selected_numeric_text_meets_contrast_on_its_actual_painted_selection() {
 }
 
 #[test]
-fn unit_selector_paints_a_distinguishable_boundary_in_each_interaction_state() {
+fn choice_selector_paints_a_distinguishable_boundary_in_each_interaction_state() {
     let ctx = egui::Context::default();
     ctx.set_visuals(egui::Visuals::light());
     let mut button: Option<egui::Response> = None;
@@ -122,7 +122,7 @@ fn unit_selector_paints_a_distinguishable_boundary_in_each_interaction_state() {
             |ctx| {
                 egui::CentralPanel::default().show(ctx, |ui| {
                     button = Some(
-                        crate::studio_gui_shell::unit_selector::unit_selector(
+                        crate::studio_gui_shell::choice_selector::choice_selector(
                             ui,
                             "test-pressure-unit",
                             "Pressure unit",

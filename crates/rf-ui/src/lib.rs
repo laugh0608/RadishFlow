@@ -13,7 +13,7 @@ pub mod flow_plan;
 mod flow_results;
 pub use flow_results::{
     EquationFlowSnapshot, FlowResultRecord, FlowSnapshotHeader, MixedFlowSnapshot,
-    PartitionedFlowSnapshot, SimultaneousFlowSnapshot, UnitResultView,
+    PartitionedFlowSnapshot, SimultaneousFlowSnapshot, SinglePhaseRecycleSnapshot, UnitResultView,
 };
 mod flow_run;
 mod ids;
@@ -101,8 +101,9 @@ pub use state::{
 mod tests;
 
 pub use state::{
-    InputUnitOrigin, NumericEditError, NumericEditEvent, NumericEditReceipt, NumericEditSession,
-    NumericParseError, NumericParseOutcome, NumericPrecisionSource, parse_numeric_input,
+    CheckedFeedMolarFlowBatch, FeedMolarFlowBatchError, FeedMolarFlowBatchReceipt, InputUnitOrigin,
+    NumericEditError, NumericEditEvent, NumericEditReceipt, NumericEditSession, NumericParseError,
+    NumericParseOutcome, NumericPrecisionSource, parse_numeric_input,
 };
 
 pub use state::{

@@ -2,6 +2,8 @@ use super::runtime::collect_shape_texts;
 use super::*;
 use radishflow_studio::{StudioBackgroundRunAction as Action, flow_actions::FlowEditAccess};
 use rf_ui::flow_plan::*;
+mod single_phase;
+mod single_phase_recycle;
 fn app() -> ReadyAppState {
     let mut config = synced_workspace_config();
     config.project_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -201,11 +203,19 @@ fn output(
     ctx: &egui::Context,
     events: Vec<egui::Event>,
 ) -> egui::FullOutput {
+    output_at_width(app, ctx, 900.0, events)
+}
+fn output_at_width(
+    app: &mut ReadyAppState,
+    ctx: &egui::Context,
+    width: f32,
+    events: Vec<egui::Event>,
+) -> egui::FullOutput {
     ctx.run(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
-                egui::vec2(900.0, 3000.0),
+                egui::vec2(width, 3000.0),
             )),
             modifiers: events
                 .iter()
@@ -241,9 +251,13 @@ fn text_position(shape: &egui::Shape, text: &str, positions: &mut Vec<egui::Pos2
     }
 }
 fn click_at(app: &mut ReadyAppState, ctx: &egui::Context, pos: egui::Pos2) {
-    output(
+    click_at_width(app, ctx, 900.0, pos);
+}
+fn click_at_width(app: &mut ReadyAppState, ctx: &egui::Context, width: f32, pos: egui::Pos2) {
+    output_at_width(
         app,
         ctx,
+        width,
         vec![
             egui::Event::PointerMoved(pos),
             egui::Event::PointerButton {
@@ -254,9 +268,10 @@ fn click_at(app: &mut ReadyAppState, ctx: &egui::Context, pos: egui::Pos2) {
             },
         ],
     );
-    output(
+    output_at_width(
         app,
         ctx,
+        width,
         vec![egui::Event::PointerButton {
             pos,
             button: egui::PointerButton::Primary,
@@ -313,7 +328,12 @@ fn gui_explicit_connection_button_builds_the_return_edge_before_running() {
     click_text(&mut app, &ctx, "Confirm connection", 0);
     assert_eq!(app.platform_host.document().revision, revision + 1);
     let w = &app.platform_host.modeling_inputs().workspace;
-    assert!(w.flow_plan.current().validate_for(w).is_ok());
+    assert!(
+        w.flow_plan
+            .current()
+            .validate_for(&w.document.flowsheet)
+            .is_ok()
+    );
     assert!(rf_solver::sequential_execution_order(&w.document.flowsheet).is_err());
     click_text(&mut app, &ctx, "Run F5", 0);
     drain(&mut app, &ctx);
@@ -331,3 +351,4 @@ mod simultaneous;
 mod equation_oriented;
 
 mod mixed;
+mod mixed_recycle;

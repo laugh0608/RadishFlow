@@ -98,6 +98,38 @@ pub fn builtin_project_component(component_id: &str) -> Option<StudioBuiltinProj
         .find(|component| component.component_id == component_id)
 }
 
+pub(crate) fn saved_single_phase_components(
+    app: &AppState,
+) -> impl Iterator<Item = crate::StudioGuiProjectComponentChoiceSnapshot> + '_ {
+    let workspace = &app.workspace;
+    let selected = workspace
+        .flow_plan
+        .current()
+        .project_model_method()
+        .is_some();
+    workspace
+        .document
+        .flowsheet
+        .components
+        .values()
+        .filter(move |component| {
+            selected && builtin_project_component(component.id.as_str()).is_none()
+        })
+        .map(|component| {
+            let id = component.id.as_str();
+            crate::StudioGuiProjectComponentChoiceSnapshot {
+                component_id: id.to_string(),
+                name: component.name.clone(),
+                formula: component.formula.clone(),
+                selected: true,
+                select_command_id: project_component_select_command_id(id),
+                remove_command_id: project_component_remove_command_id(id),
+                remove_enabled: false,
+                remove_detail: "This component was defined in the project file.".into(),
+            }
+        })
+}
+
 pub fn select_project_component(
     app_state: &mut AppState,
     command: StudioProjectComponentSelectionCommand,

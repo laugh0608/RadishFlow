@@ -1,4 +1,6 @@
+use super::recycle::MixedRecyclePlan;
 use super::*;
+use crate::dependency_graph::topological_order;
 use rf_flowsheet::{MaterialConnection, dependencies::material_dependencies};
 use rf_unitops::{BuiltinUnitKind, catalog::builtin_model, validate_unit_node};
 
@@ -9,6 +11,7 @@ pub struct MixedPlan {
     pub(super) connections: Vec<MaterialConnection>,
     pub(super) ordered: Vec<MixedBlock>,
     pub(super) membership: BTreeMap<UnitId, MixedBlockId>,
+    pub(super) recycle: Option<MixedRecyclePlan>,
 }
 impl MixedPlan {
     pub fn blocks(&self) -> &[MixedBlock] {
@@ -113,12 +116,29 @@ pub fn assemble(flow: &Flowsheet, options: &MixedOptions) -> RfResult<MixedPlan>
                 .collect(),
         ));
     }
+    let tear_fresh_feed = options
+        .recycle
+        .as_ref()
+        .map(|recycle| {
+            super::recycle::prepare_tear(
+                flow,
+                options,
+                recycle,
+                &dependencies.connections,
+                &membership,
+            )
+        })
+        .transpose()?;
+    let tear = options.recycle.as_ref().map(|r| &r.tear);
     let mut children: BTreeMap<_, BTreeSet<_>> = options
         .blocks
         .iter()
         .map(|b| (b.id.clone(), BTreeSet::new()))
         .collect();
     for c in &dependencies.connections {
+        if tear.is_some_and(|t| t.stream_id == c.stream_id) {
+            continue;
+        }
         if let Some(sink) = &c.sink {
             let a = &membership[&c.source.unit_id];
             let b = &membership[&sink.unit_id];
@@ -144,57 +164,47 @@ pub fn assemble(flow: &Flowsheet, options: &MixedOptions) -> RfResult<MixedPlan>
             }
         }
     }
-    let mut counts: BTreeMap<_, usize> = children.keys().cloned().map(|b| (b, 0)).collect();
-    for next in children.values().flatten() {
-        *counts.get_mut(next).expect("block") += 1;
-    }
-    let mut ready: BTreeSet<_> = counts
-        .iter()
-        .filter(|(_, n)| **n == 0)
-        .map(|(id, _)| id.clone())
-        .collect();
-    let mut ordered = Vec::new();
-    while let Some(id) = ready.pop_first() {
-        ordered.push(
-            options
-                .blocks
-                .iter()
-                .find(|b| b.id == id)
-                .expect("block")
-                .clone(),
-        );
-        for next in &children[&id] {
-            let n = counts.get_mut(next).expect("block");
-            *n -= 1;
-            if *n == 0 {
-                ready.insert(next.clone());
-            }
-        }
-    }
-    if ordered.len() != options.blocks.len() {
-        return Err(failure(
-            "cross_block_cycle",
-            "cross-block cycles are unsupported; keep each SCC inside a capable block",
-        )
-        .with_related_stream_ids(
+    let order = topological_order(&children).ok_or_else(|| {
+        let error = if let Some(tear) = tear {
+            super::recycle::tear_error(
+                tear,
+                "cross_block_cycle",
+                "cutting the declared tear leaves a cycle",
+            )
+        } else {
+            failure(
+                "cross_block_cycle",
+                "cross-block cycles require an explicit supported tear",
+            )
+        };
+        error.with_related_stream_ids(
             dependencies
                 .connections
                 .iter()
                 .filter(|c| {
-                    c.sink
-                        .as_ref()
-                        .is_some_and(|s| membership[&s.unit_id] != membership[&c.source.unit_id])
+                    c.sink.as_ref().is_some_and(|sink| {
+                        membership[&sink.unit_id] != membership[&c.source.unit_id]
+                    })
                 })
                 .map(|c| c.stream_id.clone())
                 .collect(),
-        ));
-    }
+        )
+    })?;
+    let blocks: BTreeMap<_, _> = options.blocks.iter().map(|b| (&b.id, b)).collect();
+    let mut ordered: Vec<_> = order.iter().map(|id| blocks[id].clone()).collect();
+    let recycle = tear
+        .zip(tear_fresh_feed)
+        .map(|(tear, fresh)| {
+            super::recycle::order_recycle(flow, tear, &children, &membership, &mut ordered, fresh)
+        })
+        .transpose()?;
     Ok(MixedPlan {
         flow: flow.clone(),
         options: options.canonicalized(),
         connections: dependencies.connections,
         ordered,
         membership,
+        recycle,
     })
 }
 

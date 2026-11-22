@@ -35,12 +35,13 @@
 - outlet pressure 高于两股 inlet pressure 较低值时停留在 invalid draft。
 - Mixer suggestion 只在 source-only stream 数量与未绑定 inlet 数量一致时生成。
 - `Feed + Feed -> Mixer -> Flash Drum` 已覆盖显式输入、保存 / 重开 / rerun 和结果审阅；B2-4 补齐不等流量编辑、两入口最低压力切换和 macOS 普通空白用户闭环。
+- Rust Core 已接入显式单相绝热 Mixer。基于实际 Feed 焓流求出口温度，重新物化出口并核对组分与能量收支。 [模型与验收线](../../thermo/mvp-model.md#单相稳态显热模型rust-core)
 
 已知缺口：
 
 - 当前不支持任意数量入口。
 - 不做反应、热损失或复杂压降网络。
-- 当前出口温度按摩尔流量加权入口温度，未通过总焓平衡求解；不能把两股流量与组成守恒、结果透传一致解释为绝热混合能量守恒。数值真相源见 [热力学模型](../../thermo/mvp-model.md#单元近似与能量解释)。
+- 既有工程的 Mixer 按摩尔流量加权入口温度。显式单相模型的工程保存与消费者接入待实施。 [热力学模型](../../thermo/mvp-model.md#单元近似与能量解释)
 
 ## 范围
 

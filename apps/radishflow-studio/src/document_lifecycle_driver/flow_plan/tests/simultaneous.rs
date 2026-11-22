@@ -69,7 +69,7 @@ fn modular_save_reopen_preserves_bound_scales_units_and_missing_results() {
             .workspace
             .flow_plan
             .current()
-            .validate_for(&reopened.workspace)
+            .validate_for(&reopened.workspace.document.flowsheet)
             .is_ok()
     );
     assert_eq!(
@@ -108,6 +108,7 @@ fn v4_save_as_checks_source_capabilities_and_keeps_all_baselines_on_failure() {
     let ProjectSaveCompatibility::FlowCapabilities {
         required,
         added_from_source,
+        ..
     } = compatibility
     else {
         panic!("same outer version must be a capability review")
@@ -193,7 +194,7 @@ fn incomplete_modular_scale_bindings_roundtrip_and_old_protocol_stays_readonly()
         app.workspace
             .flow_plan
             .current()
-            .validate_for(&app.workspace)
+            .validate_for(&app.workspace.document.flowsheet)
             .is_err()
     );
     dispatch_document_lifecycle(
@@ -224,7 +225,7 @@ fn incomplete_modular_scale_bindings_roundtrip_and_old_protocol_stays_readonly()
             .workspace
             .flow_plan
             .current()
-            .validate_for(&reopened.workspace)
+            .validate_for(&reopened.workspace.document.flowsheet)
             .is_err()
     );
     let StudioProjectOpen::ReadOnly(readonly) =

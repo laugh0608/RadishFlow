@@ -1,5 +1,8 @@
 use rf_types::{ComponentId, PhaseLabel, RfError, RfResult};
 
+mod sensible_enthalpy;
+pub use sensible_enthalpy::SensibleEnthalpyModel;
+
 const REFERENCE_TEMPERATURE_K: f64 = 298.15;
 const MOLE_FRACTION_SUM_TOLERANCE: f64 = 1e-9;
 const PRESSURE_ORDER_TOLERANCE_PA: f64 = 1e-6;

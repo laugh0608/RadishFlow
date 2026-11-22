@@ -965,16 +965,7 @@ fn parent_display(project_path: &Path) -> String {
 fn recent_case_tile_from_path(
     project_path: &Path,
 ) -> radishflow_studio::StudioGuiWindowHomeCaseTileModel {
-    let opened = project_path
-        .exists()
-        .then(|| {
-            radishflow_studio::read_studio_project_with_support(
-                project_path,
-                rf_store::project_v4::FlowPlanSupport::Mixed,
-            )
-            .ok()
-        })
-        .flatten();
+    let opened = super::read_studio_gui_project(project_path).ok();
     let document = match &opened {
         Some(radishflow_studio::StudioProjectOpen::Editable(app)) => Some(&app.workspace.document),
         _ => None,

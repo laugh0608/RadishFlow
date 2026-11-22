@@ -3,10 +3,38 @@ use super::*;
 use rf_types::EquipmentTaskId;
 use rf_ui::engineering::{CalculationId, EquipmentCaseKey};
 
-pub(super) enum EquipmentExportTarget {
-    Task(EquipmentTaskId),
-    Rating(EquipmentCaseKey),
-    Matrix(EquipmentTaskId),
+pub(super) enum EquipmentExportRequest {
+    Sizing {
+        task: EquipmentTaskId,
+        format: CalculationTableFormat,
+    },
+    Rating(RatingExportOrigin),
+    Matrix {
+        task: EquipmentTaskId,
+        format: CalculationTableFormat,
+    },
+}
+
+pub(super) struct RatingExportOrigin {
+    pub member: EquipmentCaseKey,
+    pub format: CalculationTableFormat,
+    pub target: EquipmentEditorTarget,
+    pub section: EquipmentSection,
+    pub window: Option<StudioWindowHostId>,
+}
+
+impl RatingExportOrigin {
+    pub(super) fn matches_view(
+        &self,
+        app: &ReadyAppState,
+        target: &EquipmentEditorTarget,
+        member: &EquipmentCaseKey,
+    ) -> bool {
+        &self.member == member
+            && &self.target == target
+            && self.section == app.equipment.section
+            && self.window == app.current_window_id()
+    }
 }
 enum EquipmentOutputKey {
     Sizing {
@@ -32,6 +60,7 @@ pub(in crate::studio_gui_shell) struct CapturedEquipmentOutput {
 pub(in crate::studio_gui_shell) struct PendingEquipmentExport {
     output: CapturedEquipmentOutput,
     path: PathBuf,
+    origin: Option<RatingExportOrigin>,
 }
 
 impl ReadyAppState {
@@ -185,22 +214,31 @@ impl ReadyAppState {
             }
         }
     }
+    #[cfg(test)]
     pub(in crate::studio_gui_shell) fn export_equipment_from_picker(
         &mut self,
         id: &EquipmentTaskId,
         format: CalculationTableFormat,
     ) {
-        self.export_target_from_picker(&EquipmentExportTarget::Task(id.clone()), format);
+        self.export_equipment_request(EquipmentExportRequest::Sizing {
+            task: id.clone(),
+            format,
+        });
     }
-    pub(super) fn export_target_from_picker(
-        &mut self,
-        target: &EquipmentExportTarget,
-        format: CalculationTableFormat,
-    ) {
-        let output = match target {
-            EquipmentExportTarget::Task(id) => self.capture_equipment_output(id, format),
-            EquipmentExportTarget::Rating(key) => self.capture_rating_output(key, format),
-            EquipmentExportTarget::Matrix(id) => self.capture_matrix_output(id, format),
+
+    pub(super) fn export_equipment_request(&mut self, request: EquipmentExportRequest) {
+        self.equipment.rating_export_return = None;
+        let (output, origin) = match request {
+            EquipmentExportRequest::Sizing { task, format } => {
+                (self.capture_equipment_output(&task, format), None)
+            }
+            EquipmentExportRequest::Rating(origin) => (
+                self.capture_rating_output(&origin.member, origin.format),
+                Some(origin),
+            ),
+            EquipmentExportRequest::Matrix { task, format } => {
+                (self.capture_matrix_output(&task, format), None)
+            }
         };
         let Some(output) = output else {
             return;
@@ -217,20 +255,37 @@ impl ReadyAppState {
             );
             return;
         }
-        let Some(path) = self.project_file_picker.pick_equipment_export_file(format) else {
-            self.cancel_equipment_export();
+        let Some(path) = self
+            .project_file_picker
+            .pick_equipment_export_file(output.format)
+        else {
+            self.finish_equipment_export_cancel(origin);
             return;
         };
-        self.export_equipment_to_path(output, path);
+        self.stage_equipment_export(output, path, origin);
     }
+    #[cfg(test)]
     pub(in crate::studio_gui_shell) fn export_equipment_to_path(
         &mut self,
         output: CapturedEquipmentOutput,
         path: PathBuf,
     ) {
+        self.stage_equipment_export(output, path, None);
+    }
+
+    fn stage_equipment_export(
+        &mut self,
+        output: CapturedEquipmentOutput,
+        path: PathBuf,
+        origin: Option<RatingExportOrigin>,
+    ) {
         let path = equipment_export_path(path, output.format);
         if path.is_file() {
-            self.equipment.pending_export = Some(PendingEquipmentExport { output, path });
+            self.equipment.pending_export = Some(PendingEquipmentExport {
+                output,
+                path,
+                origin,
+            });
         } else {
             self.write_equipment_export(output, path, rf_store::FileOverwritePolicy::Forbid);
         }
@@ -305,7 +360,16 @@ impl ReadyAppState {
         }
     }
     pub(in crate::studio_gui_shell) fn cancel_equipment_export(&mut self) {
-        self.equipment.pending_export = None;
+        let origin = self
+            .equipment
+            .pending_export
+            .take()
+            .and_then(|pending| pending.origin);
+        self.finish_equipment_export_cancel(origin);
+    }
+
+    fn finish_equipment_export_cancel(&mut self, origin: Option<RatingExportOrigin>) {
+        self.equipment.rating_export_return = origin;
         self.equipment_export_notice(
             ProjectOpenNoticeLevel::Info,
             tr(
@@ -320,6 +384,27 @@ impl ReadyAppState {
             ),
         );
     }
+    pub(super) fn restore_rating_export_button(
+        &mut self,
+        ui: &egui::Ui,
+        format: CalculationTableFormat,
+        response: &egui::Response,
+    ) {
+        if self
+            .equipment
+            .rating_export_return
+            .as_ref()
+            .is_some_and(|origin| origin.format == format)
+            && ui.input(|input| input.focused)
+        {
+            self.equipment.rating_export_return = None;
+            if response.enabled() {
+                response.scroll_to_me(None);
+                response.request_focus();
+            }
+        }
+    }
+
     fn equipment_export_unavailable(&mut self) {
         self.equipment_export_notice(ProjectOpenNoticeLevel::Warning,
             tr(self.locale, "当前计算表不可导出", "Current calculation table unavailable"),
@@ -376,6 +461,9 @@ impl ReadyAppState {
             });
         if response.should_close() && self.equipment.pending_export.is_some() {
             self.cancel_equipment_export();
+        }
+        if self.equipment.rating_export_return.is_some() {
+            ctx.request_repaint();
         }
     }
 }

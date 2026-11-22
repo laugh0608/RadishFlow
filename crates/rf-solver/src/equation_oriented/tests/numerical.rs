@@ -1,7 +1,10 @@
 use super::*;
 use crate::test_fixtures::binary_hydrocarbon_provider;
 use rf_flash::PlaceholderTpFlashSolver;
-fn solve(flow: &Flowsheet, o: &EquationOptions) -> Result<EquationResult, Box<EquationFailure>> {
+pub(super) fn solve(
+    flow: &Flowsheet,
+    o: &EquationOptions,
+) -> Result<EquationResult, Box<EquationFailure>> {
     EquationOrientedSolver.solve(
         &crate::SolverServices {
             thermo: &binary_hydrocarbon_provider(),
@@ -56,15 +59,11 @@ fn real_forward_and_inverse_match_fraction_oracles_and_keep_input_immutable() {
             let solved = result.evidence.solved_parameter.as_ref().unwrap();
             assert_eq!(solved.stored_value, Some(0.6));
             assert!((solved.value - 10.0 / 19.0).abs() < 1e-12);
-            assert!(
-                result
-                    .evidence
-                    .verified_target
-                    .unwrap()
-                    .residual_mol_s
-                    .abs()
-                    < 1e-10
-            );
+            let Some(VerifiedTarget::TotalMolarFlow(target)) = result.evidence.verified_target
+            else {
+                panic!("expected flow evidence")
+            };
+            assert!(target.residual_mol_s.abs() < 1e-10);
             assert_eq!(
                 result.costs.target_evaluations,
                 result.costs.conditional_linear_evaluations
@@ -112,13 +111,23 @@ fn bracket_endpoints_unbracketed_budget_and_nonisolated_candidate_are_distinct()
     let flow = cross_recycle(0.6, 0.25);
     for (target, expected) in [(11.0 / 4.0, 0.0), (11.0 / 61.0, 0.95)] {
         let mut o = inverse_options();
-        o.target.as_mut().unwrap().value_mol_s = target;
+        o.target
+            .as_mut()
+            .unwrap()
+            .total_flow_mut()
+            .unwrap()
+            .value_mol_s = target;
         let r = solve(&flow, &o).unwrap();
         assert_eq!(r.evidence.solved_parameter.unwrap().value, expected);
         assert_eq!(r.costs.conditional_linear_evaluations, 2);
     }
     let mut o = inverse_options();
-    o.target.as_mut().unwrap().value_mol_s = 3.0;
+    o.target
+        .as_mut()
+        .unwrap()
+        .total_flow_mut()
+        .unwrap()
+        .value_mol_s = 3.0;
     let e = solve(&flow, &o).unwrap_err();
     assert_eq!(e.kind, EquationFailureKind::TargetNotBracketed);
     assert_eq!(e.costs.local_unit_calls, 0);
@@ -130,7 +139,12 @@ fn bracket_endpoints_unbracketed_budget_and_nonisolated_candidate_are_distinct()
         EquationFailureKind::BudgetExceeded
     );
     let mut o = inverse_options();
-    o.target.as_mut().unwrap().value_mol_s = 5.0;
+    o.target
+        .as_mut()
+        .unwrap()
+        .total_flow_mut()
+        .unwrap()
+        .value_mol_s = 5.0;
     let e = solve(&cross_recycle(0.6, 1.0), &o).unwrap_err();
     assert_eq!(e.kind, EquationFailureKind::LinearSingular);
     assert_eq!(e.costs.full_jacobian_evaluations, 1);
@@ -257,7 +271,12 @@ fn adjacent_fraction_endpoints_report_stagnation_without_relaxing_si_tolerance()
     let r = o.released.as_mut().unwrap();
     r.lower = 0.75;
     r.upper = r.lower.next_up();
-    o.target.as_mut().unwrap().value_mol_s = 2.0_f64.powi(28) - 2.0_f64.powi(-24);
+    o.target
+        .as_mut()
+        .unwrap()
+        .total_flow_mut()
+        .unwrap()
+        .value_mol_s = 2.0_f64.powi(28) - 2.0_f64.powi(-24);
     let failure = solve(&flow, &o).unwrap_err();
     assert_eq!(failure.kind, EquationFailureKind::Stagnated);
     assert_eq!(failure.costs.conditional_linear_evaluations, 2);

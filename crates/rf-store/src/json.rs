@@ -37,7 +37,34 @@ pub fn write_project_file(
     project_file: &StoredProjectFile,
 ) -> RfResult<()> {
     project_file.validate()?;
-    write_json_file(path.as_ref(), project_file, "write stored project file")
+    let path = path.as_ref();
+    let action = "write stored project file";
+    let policy = match fs::read_to_string(path) {
+        Ok(contents) => {
+            if crate::project_v3::probe_version(&contents)
+                .is_ok_and(|target| target >= crate::project_v4::VERSION)
+            {
+                return Err(RfError::invalid_input(
+                    "legacy project writer cannot overwrite a v4 or newer project",
+                ));
+            }
+            FileOverwritePolicy::Allow
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => FileOverwritePolicy::Forbid,
+        Err(_) if path.is_dir() => {
+            return Err(RfError::invalid_input(format!(
+                "{action} `{}`: target path exists and is not a file",
+                path.display()
+            )));
+        }
+        Err(error) => return Err(map_io_error(action, path, &error)),
+    };
+    let contents = to_pretty_json(project_file, action)?;
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|error| map_io_error("create parent directories", parent, &error))?;
+    }
+    write_staged_file(path, contents.as_bytes(), action, policy)
 }
 
 pub fn parse_project_file_json(contents: &str) -> RfResult<StoredProjectFile> {

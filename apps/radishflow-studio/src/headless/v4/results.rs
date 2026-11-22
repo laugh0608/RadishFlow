@@ -8,6 +8,7 @@ pub fn flow(app: &AppState, executions: &Executions) -> Result<Value, Failure> {
         rf_ui::flow_plan::FlowPlanConfiguration::Simultaneous(_)
             | rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
             | rf_ui::flow_plan::FlowPlanConfiguration::Mixed(_)
+            | rf_ui::flow_plan::FlowPlanConfiguration::SinglePhaseRecycle(_)
     ) {
         return Err(Failure::new(
             Stage::Query,
@@ -21,7 +22,8 @@ pub fn flow(app: &AppState, executions: &Executions) -> Result<Value, Failure> {
             match snapshot {
                 rf_ui::FlowResultRecord::Simultaneous(_)
                 | rf_ui::FlowResultRecord::EquationOriented(_)
-                | rf_ui::FlowResultRecord::Mixed(_) => {
+                | rf_ui::FlowResultRecord::Mixed(_)
+                | rf_ui::FlowResultRecord::SinglePhaseRecycle(_) => {
                     return Err(Failure::new(
                         Stage::Query,
                         Code::UnsupportedCapability,
@@ -58,7 +60,7 @@ pub fn flow(app: &AppState, executions: &Executions) -> Result<Value, Failure> {
     }
     Ok(value)
 }
-fn evidence(v: &mut Value, origin: &rf_ui::result_query::FlowResultOrigin) {
+pub(in crate::headless) fn evidence(v: &mut Value, origin: &rf_ui::result_query::FlowResultOrigin) {
     if let Some(e) = origin.execution().and_then(|e| e.plan.as_ref()) {
         v["origin"]["execution"]["plan"] = json!({"method":e.method,"acceptance_contract_version":e.acceptance_contract_version,"configuration_sha256":e.configuration_sha256});
     }

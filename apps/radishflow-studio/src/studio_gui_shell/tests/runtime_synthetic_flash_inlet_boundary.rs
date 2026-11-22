@@ -263,7 +263,7 @@ fn render_result_inspector_texts(
 ) -> Vec<String> {
     let inspector = snapshot.result_inspector(Some(selected_stream_id));
     render_runtime_area_texts_with_open_sections(app, open_section_labels, |app, ui| {
-        app.render_result_inspector(ui, &inspector);
+        app.render_result_inspector(ui, &inspector, None);
     })
 }
 

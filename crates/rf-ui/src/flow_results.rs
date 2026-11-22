@@ -10,6 +10,7 @@ use crate::{
 pub use equation_oriented::EquationFlowSnapshot;
 pub use mixed::MixedFlowSnapshot;
 use rf_solver::partitioned::PartitionedSolveResult;
+use rf_solver::single_phase_recycle::SinglePhaseRecycleResult;
 use rf_types::UnitId;
 pub use simultaneous::SimultaneousFlowSnapshot;
 use std::{
@@ -93,6 +94,55 @@ impl DerefMut for PartitionedFlowSnapshot {
         &mut self.common
     }
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SinglePhaseRecycleSnapshot {
+    pub common: FlowSnapshotHeader,
+    pub result: Arc<SinglePhaseRecycleResult>,
+    pub final_units: BTreeMap<UnitId, UnitResultSnapshot>,
+}
+
+impl SinglePhaseRecycleSnapshot {
+    pub fn new(
+        id: impl Into<SolveSnapshotId>,
+        revision: u64,
+        sequence: u64,
+        result: SinglePhaseRecycleResult,
+    ) -> Self {
+        let snapshot = crate::run::stream_state_snapshot_from_model;
+        let final_units = result
+            .final_units
+            .iter()
+            .map(|unit| {
+                (
+                    unit.unit_id.clone(),
+                    UnitResultSnapshot {
+                        consumed_streams: unit.consumed_streams.iter().map(snapshot).collect(),
+                        produced_streams: unit.produced_streams.iter().map(snapshot).collect(),
+                    },
+                )
+            })
+            .collect();
+        Self {
+            common: FlowSnapshotHeader {
+                origin: None,
+                id: id.into(),
+                document_revision: revision,
+                sequence,
+                status: RunStatus::Converged,
+                summary: DiagnosticSummary::new(
+                    revision,
+                    DiagnosticSeverity::Info,
+                    "Verified single-vapor recycle closure",
+                ),
+                diagnostics: Vec::new(),
+                streams: result.streams.values().map(snapshot).collect(),
+            },
+            result: Arc::new(result),
+            final_units,
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq)]
 pub enum FlowResultRecord {
     Acyclic(SolveSnapshot),
@@ -100,6 +150,7 @@ pub enum FlowResultRecord {
     Simultaneous(SimultaneousFlowSnapshot),
     EquationOriented(EquationFlowSnapshot),
     Mixed(MixedFlowSnapshot),
+    SinglePhaseRecycle(SinglePhaseRecycleSnapshot),
 }
 impl From<MixedFlowSnapshot> for FlowResultRecord {
     fn from(v: MixedFlowSnapshot) -> Self {
@@ -135,6 +186,7 @@ impl Deref for FlowResultRecord {
             Self::Simultaneous(s) => &s.common,
             Self::EquationOriented(s) => &s.common,
             Self::Mixed(s) => &s.common,
+            Self::SinglePhaseRecycle(s) => &s.common,
         }
     }
 }
@@ -146,19 +198,40 @@ impl DerefMut for FlowResultRecord {
             Self::Simultaneous(s) => &mut s.common,
             Self::EquationOriented(s) => &mut s.common,
             Self::Mixed(s) => &mut s.common,
+            Self::SinglePhaseRecycle(s) => &mut s.common,
         }
     }
 }
 impl FlowResultRecord {
     pub fn matches_plan(&self, plan: &crate::flow_plan::FlowPlanConfiguration) -> bool {
+        if let (
+            Self::SinglePhaseRecycle(snapshot),
+            crate::flow_plan::FlowPlanConfiguration::SinglePhaseRecycle(options),
+        ) = (self, plan)
+        {
+            return snapshot.result.tear == options.recycle.tear;
+        }
+        if let Self::Acyclic(snapshot) = self {
+            let single_phase = snapshot
+                .origin
+                .as_ref()
+                .and_then(|o| o.execution())
+                .and_then(|e| e.plan.as_ref())
+                .is_some_and(|p| p.method == "radishflow.acyclic-single-vapor-sensible/1");
+            return if single_phase {
+                matches!(
+                    plan,
+                    crate::flow_plan::FlowPlanConfiguration::SinglePhase(_)
+                )
+            } else {
+                matches!(plan, crate::flow_plan::FlowPlanConfiguration::Acyclic)
+            };
+        }
         matches!(
             (self, plan),
             (
                 Self::Mixed(_),
                 crate::flow_plan::FlowPlanConfiguration::Mixed(_)
-            ) | (
-                Self::Acyclic(_),
-                crate::flow_plan::FlowPlanConfiguration::Acyclic
             ) | (
                 Self::Partitioned(_),
                 crate::flow_plan::FlowPlanConfiguration::Partitioned(_)
@@ -197,6 +270,10 @@ impl FlowResultRecord {
                 consumed_streams: &u.consumed_streams,
                 produced_streams: &u.produced_streams,
             }),
+            Self::SinglePhaseRecycle(s) => s.final_units.get(id).map(|u| UnitResultView {
+                consumed_streams: &u.consumed_streams,
+                produced_streams: &u.produced_streams,
+            }),
         }
     }
     pub fn acyclic(&self) -> Option<&SolveSnapshot> {
@@ -205,7 +282,8 @@ impl FlowResultRecord {
             Self::Partitioned(_)
             | Self::Simultaneous(_)
             | Self::EquationOriented(_)
-            | Self::Mixed(_) => None,
+            | Self::Mixed(_)
+            | Self::SinglePhaseRecycle(_) => None,
         }
     }
 }

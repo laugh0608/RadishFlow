@@ -199,20 +199,57 @@ impl Execution<'_> {
         self.evidence.verified_residuals_mol_s = Some(evaluated.residuals_mol_s.clone());
         verify_residuals(p, &evaluated.residuals_mol_s)?;
         if let Some(target) = &p.options.target {
-            let total = streams[&target.source.stream].total_molar_flow_mol_s;
-            let residual = total - target.value_mol_s;
+            let stream = &streams[&target.source().stream];
+            let total = stream.total_molar_flow_mol_s;
             let i = p
                 .equations
                 .iter()
-                .position(|e| matches!(e, EquationBinding::ProductTotal { .. }))
+                .position(EquationBinding::is_product_target)
                 .expect("target row");
-            self.evidence.verified_target = Some(VerifiedTarget {
-                target: target.clone(),
-                actual_mol_s: total,
-                residual_mol_s: residual,
-                scaled_residual: residual / p.residual_scales[i],
-            });
-            require_residual(residual, p.residual_scales[i])?;
+            let scale = p.residual_scales[i];
+            match target {
+                ProductTarget::TotalMolarFlow(t) => {
+                    let residual = total - t.value_mol_s;
+                    self.evidence.verified_target =
+                        Some(VerifiedTarget::TotalMolarFlow(VerifiedTotalTarget {
+                            target: t.clone(),
+                            actual_mol_s: total,
+                            residual_mol_s: residual,
+                            scaled_residual: residual / scale,
+                        }));
+                    require_residual(residual, scale)?;
+                }
+                ProductTarget::MoleFraction(t) => {
+                    let fraction = stream
+                        .overall_mole_fractions
+                        .get(&t.component)
+                        .copied()
+                        .unwrap_or(0.0);
+                    let component = fraction * total;
+                    let composition = ProductCompositionEvaluation::measure(
+                        total,
+                        component,
+                        fraction,
+                        t.value_mol_mol,
+                    )?;
+                    let residual = component - t.value_mol_mol * total;
+                    self.evidence.verified_target =
+                        Some(VerifiedTarget::MoleFraction(VerifiedCompositionTarget {
+                            target: t.as_ref().clone(),
+                            composition,
+                            residual_mol_s: residual,
+                            scaled_residual: residual / scale,
+                        }));
+                    require_residual(residual, scale)?;
+                    if !composition.accepted() {
+                        return Err(error(
+                            EquationFailureKind::LocalVerification,
+                            "product_composition",
+                            "actual product mole fraction exceeds the absolute composition tolerance",
+                        ));
+                    }
+                }
+            }
         }
         self.at(EquationStage::GlobalVerification, None)?;
         let fresh: Vec<_> = p

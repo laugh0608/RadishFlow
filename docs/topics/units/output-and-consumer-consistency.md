@@ -47,7 +47,7 @@
 
 ### 开工切片与接线核对（已接受）
 
-首批接线前的 [结果模型](../../../apps/radishflow-studio/src/studio_gui_window_model/mod.rs) 同时保留 SI 数值和格式化文本；[文本导出](../../../apps/radishflow-studio/src/studio_gui_window_model/snapshot_export.rs) 直接使用后者，[变量浏览](../../../apps/radishflow-studio/src/studio_gui_shell/variable_browser.rs) 直接字符串化数值。现已从 SI 数值生成共享呈现，不能解析已舍入的文本再换算，也不能仅替换单位标签。现有模型中的泡露点与相结果同步覆盖，缺失值保持缺失，不补零。
+首批接线前的 [结果模型](../../../apps/radishflow-studio/src/studio_gui_window_model/mod.rs) 同时保留 SI 数值和格式化文本；[文本导出](../../../apps/radishflow-studio/src/studio_gui_window_model/snapshot_export.rs) 直接使用后者，[变量浏览](../../../apps/radishflow-studio/src/studio_gui_shell/variable_browser/mod.rs) 直接字符串化数值。现已从 SI 数值生成共享呈现，不能解析已舍入的文本再换算，也不能仅替换单位标签。现有模型中的泡露点与相结果同步覆盖，缺失值保持缺失，不补零。
 
 | 顺序 | 实施范围 | 最小验收 |
 | --- | --- | --- |

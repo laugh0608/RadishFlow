@@ -1,0 +1,20 @@
+{
+  "schema_version": 10,
+  "project": "../flowsheets/fixed-tp-product-composition-binary-hydrocarbon.rfproj.json",
+  "queries": [
+    {
+      "id": "plan",
+      "query": {
+        "kind": "results",
+        "scope": "flow_plan"
+      }
+    },
+    {
+      "id": "result",
+      "query": {
+        "kind": "results",
+        "scope": "flow"
+      }
+    }
+  ]
+}

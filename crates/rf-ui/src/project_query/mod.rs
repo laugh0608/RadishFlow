@@ -162,6 +162,7 @@ impl<'a> ProjectQuery<'a> {
                             .iter()
                             .find(|c| c.id == member.case_id)
                             .map(ProjectRecord::RatingCase),
+                        EquipmentTask::ConcentricTubeRating(_) => None,
                     })
             }
             ProjectObjectId::Basis(id) => inputs
@@ -195,7 +196,9 @@ impl<'a> ProjectQuery<'a> {
             ProjectRecord::Equipment(t) => (
                 match t {
                     EquipmentTask::SeparatorSizing(_) => ProjectObjectKind::Sizing,
-                    EquipmentTask::SeparatorRating(_) => ProjectObjectKind::Rating,
+                    EquipmentTask::SeparatorRating(_) | EquipmentTask::ConcentricTubeRating(_) => {
+                        ProjectObjectKind::Rating
+                    }
                 },
                 format!("{} · {}", t.tag(), t.name()),
             ),

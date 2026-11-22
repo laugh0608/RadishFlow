@@ -68,7 +68,8 @@ fn wire_equation(e: StoredEquationBinding) -> Result<BlockEquation, Failure> {
             sink: eo::wire_port(&sink),
             component_id: component_id.to_string(),
         },
-        StoredEquationBinding::ProductTotal { .. } => {
+        StoredEquationBinding::ProductTotal { .. }
+        | StoredEquationBinding::ProductMoleFraction { .. } => {
             return Err(invalid(
                 "Mixed blocks do not support inverse specifications",
             ));
@@ -149,11 +150,23 @@ pub(super) fn configuration(p: &Plan, refs: &Bindings) -> Result<FlowPlanConfigu
     .map_err(domain)
 }
 pub(super) fn wire(p: &FlowPlanConfiguration) -> Result<Value, Failure> {
-    let StoredFlowPlan::Mixed(p) = crate::flow_plan_actions::stored_flow_plan(p) else {
+    let StoredFlowPlan::Mixed(p) = crate::flow_plan_actions::stored_flow_plan(p).map_err(domain)?
+    else {
         return <v6::Plan as PlanProtocol>::wire(p);
     };
-    let blocks = p
-        .blocks
+    serde_json::to_value(MixedPlan::Mixed {
+        acceptance_contract_version: 1,
+        temperature_k: p.fixed_boundary.temperature_k,
+        pressure_pa: p.fixed_boundary.pressure_pa,
+        blocks: wire_blocks(p.blocks)?,
+    })
+    .map_err(old::invalid_request)
+}
+
+pub(in crate::headless) fn wire_blocks(
+    blocks: Vec<StoredMixedBlock>,
+) -> Result<Vec<Block>, Failure> {
+    blocks
         .into_iter()
         .map(|b| {
             Ok(Block {
@@ -196,14 +209,7 @@ pub(super) fn wire(p: &FlowPlanConfiguration) -> Result<Value, Failure> {
                 },
             })
         })
-        .collect::<Result<_, Failure>>()?;
-    serde_json::to_value(MixedPlan::Mixed {
-        acceptance_contract_version: 1,
-        temperature_k: p.fixed_boundary.temperature_k,
-        pressure_pa: p.fixed_boundary.pressure_pa,
-        blocks,
-    })
-    .map_err(old::invalid_request)
+        .collect()
 }
 pub(super) fn query(app: &AppState) -> Result<Value, Failure> {
     if let FlowPlanConfiguration::Mixed(o) = app.workspace.flow_plan.current() {
@@ -226,7 +232,7 @@ pub(super) fn query(app: &AppState) -> Result<Value, Failure> {
             None
         };
         Ok(
-            json!({"plan_revision":app.workspace.flow_plan.revision(),"configuration":wire(app.workspace.flow_plan.current())?,"ready":plan.is_ok(),"not_ready":plan.err().map(|e|json!({"code":e.context().diagnostic_code(),"message":e.to_string()})),"blocks":blocks,"simulation_dirty":app.workspace.flow_plan.is_dirty(),"in_memory_required_capabilities":required_capabilities(app),"in_memory_required_project_schema_version":crate::project_save_version(app),"methods":["radishflow.acyclic-sm/1","radishflow.partitioned-sm/1","radishflow.fixed-tp-affine-modular-lu/1","radishflow.fixed-tp-material-eo/1","radishflow.fixed-tp-mixed-material/1"]}),
+            json!({"plan_revision":app.workspace.flow_plan.revision(),"configuration":wire(app.workspace.flow_plan.current())?,"ready":plan.is_ok(),"not_ready":plan.err().map(|e|json!({"code":e.context().diagnostic_code(),"message":e.to_string()})),"blocks":blocks,"simulation_dirty":app.workspace.flow_plan.is_dirty(),"in_memory_required_capabilities":required_capabilities(app)?,"in_memory_required_project_schema_version":crate::project_save_version(app),"methods":["radishflow.acyclic-sm/1","radishflow.partitioned-sm/1","radishflow.fixed-tp-affine-modular-lu/1","radishflow.fixed-tp-material-eo/1","radishflow.fixed-tp-mixed-material/1"]}),
         )
     } else {
         let mut v = <v6::Plan as PlanProtocol>::query(app)?;

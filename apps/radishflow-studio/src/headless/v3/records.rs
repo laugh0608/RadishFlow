@@ -437,6 +437,7 @@ pub fn task(v: &equipment::EquipmentTask) -> Value {
                 "cases": v.cases.iter().map(rating_case).collect::<Vec<_>>()
             })
         }
+        equipment::EquipmentTask::ConcentricTubeRating(_) => unreachable!("validated CLI project"),
     }
 }
 pub fn adoption(v: &equipment::SeparatorGeometryAdoption) -> Value {

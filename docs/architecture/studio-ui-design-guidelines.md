@@ -1,6 +1,6 @@
 # Studio UI Design Guidelines
 
-更新时间：2026-09-23
+更新时间：2026-11-15
 
 ## 用途
 
@@ -10,7 +10,7 @@
 
 ## 设计定位
 
-2026-09-16 起，[UI 专题计划](studio-ui-topic-plan.md) 和 [主稿 brief](designs/studio-client-main-brief.md) 管理新增功能分区重评。本文下方固定导航、四个 frame、左右栏及旧 MVP 范围用于已有工作台，不约束独立设备、单位集和规格辅助的新设计；新稿尚未定稿。长期视觉和单一状态 / 命令来源继续有效。
+UI 专题计划和主稿 brief 管理新增功能分区。全局导航及两条局部路径按已确认的 R0／R1 执行。已有工作台的视觉规范、分区和单一状态 / 命令来源继续适用。 [UI 专题计划](studio-ui-topic-plan.md) · [R0／R1 决策](designs/studio-client-main-brief.md#studio-r0-首轮信息架构评审2026-11-15)
 
 RadishFlow Studio 继续走轻量、清晰、工程化的浅色桌面应用风格。当前用户认可的是“干净、直接、带一点现代工具感”的基调，因此后续优化不应把界面改成传统厚重 ribbon 的复制品，也不应转向深色监控大屏或营销型产品页。
 
@@ -48,7 +48,7 @@ UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baselin
 
 ### 当前 RadishFlow
 
-当前 UI 的优势是浅色、克制、状态 chip 清晰，顶部导航已先收敛为 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`，打开 / 新建 / 保存 / 示例、运行、结果和命令面板不再作为同一排快速按钮平铺。问题仍集中在整体排版和分区：画布工具、suggestion、左侧对象扫读、运行面板、授权和调试信息还需要继续向成熟建模工作台结构收敛，避免用户难以判断“现在该看哪里、下一步点哪里、结果在哪里”。
+当前 UI 的优势是浅色、克制、状态 chip 清晰，顶部导航已先收敛为 `文件 / 主页 / 物性 / 设备 / 流程图 / 流程运行 / 流程结果 / 工具 / 设置`，打开 / 新建 / 保存 / 示例、运行、结果和命令面板不再作为同一排快速按钮平铺。问题仍集中在整体排版和分区：画布工具、suggestion、左侧对象扫读、运行面板、授权和调试信息还需要继续向成熟建模工作台结构收敛，避免用户难以判断“现在该看哪里、下一步点哪里、结果在哪里”。
 
 后续应保留当前风格基调，但把功能分区从“开发态信息平铺”重排为“建模工作台”。
 
@@ -126,7 +126,7 @@ UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baselin
 
 ## 后续 UI 专题与设计稿资产
 
-当前文档记录的是 MVP α / β 阶段已经形成的 Studio UI 规范、真实 UI 收口经验和下一轮主设计稿约束，不等同于完整产品 UI 设计系统。长期视觉定位、排版与控件结构见 `studio-visual-system.md`；状态映射、token 与迁移验收归 [颜色与状态专题](../topics/color-and-state-system.md)。Studio UI 专题阶段的端点边界、主工作流、状态模型和 `.pen` 设计稿规则见 `studio-ui-topic-plan.md`；保留的 Studio 主设计稿见 `docs/architecture/designs/studio-client-main.pen`（新增功能分区待重评），文字 brief 见 `docs/architecture/designs/studio-client-main-brief.md`。本文继续承担设计规范职责，不承载阶段推进流水。
+当前文档记录的是 MVP α / β 阶段已经形成的 Studio UI 规范、真实 UI 收口经验和下一轮主设计稿约束，不等同于完整产品 UI 设计系统。长期视觉定位、排版与控件结构见 `studio-visual-system.md`；状态映射、token 与迁移验收归 [颜色与状态专题](../topics/color-and-state-system.md)。Studio UI 专题阶段的端点边界、主工作流、状态模型和设计评审规则见 `studio-ui-topic-plan.md`；保留的 Studio 主设计稿见 `docs/architecture/designs/studio-client-main.pen`（新增功能分区待重评），文字 brief 见 `docs/architecture/designs/studio-client-main-brief.md`。本文继续承担设计规范职责，不承载阶段推进流水。
 
 旧版 P0 设计稿口径（保留历史范围，新增功能分区待重评）：
 
@@ -137,12 +137,12 @@ UI 素材当前保存在 `docs/architecture/assets/studio-ui/`。其中 `baselin
 
 设计流程应采用设计稿先行：
 
-- 优先使用 `pencil` 工具绘制 `.pen` 设计稿，再根据评审后的设计稿开发。
+- 先形成可编辑设计源稿并渲染评审图，再根据认可的设计开发。后续新交互可选用本机 Penpot，工具与选用范围见 [UI 专题计划](studio-ui-topic-plan.md#设计工具与文档规则)。
 - 设计稿必须随仓库保存和同步，不能只留在个人本地或聊天记录里。
 - 专题启动时应同时读取 `docs/architecture/ui-inspiration-reference.md`，明确每个设计稿借鉴了哪些设计原则，以及哪些视觉元素不得照抄。
-- 原则上每个明确端点或界面域维护一个独立 `*.pen` 文件，避免把客户端、服务端管理和移动端视图混在同一个设计稿里；但模块设置这类 Workbench 内部结构应先在主稿中统一，不为每个单元复制整套 Workbench。
-- `.pen` 文件目录固定为 `docs/architecture/designs/`；`.pen` 文件只通过 Pencil MCP 读取、生成、验证和导出。
-- 每次按设计稿实现 UI 时，应同步记录该实现对应的 `.pen` 文件、评审状态和偏离设计稿的原因。
+- 原则上每个明确端点或界面域维护一个独立设计包，避免把客户端、服务端管理和移动端视图混在同一个设计稿里；但模块设置这类 Workbench 内部结构应先在主稿中统一，不为每个单元复制整套 Workbench。
+- 设计包归 `docs/architecture/designs/`，包含可编辑源稿、渲染图及 brief。采用 Penpot 时按 [评审包与恢复验证](studio-ui-topic-plan.md#penpot-评审包与恢复验证)归档。
+- 每次按设计稿实现 UI 时，应同步记录该实现对应的源稿 / 版本、评审状态和偏离设计稿的原因。
 
 ## 信息架构
 
@@ -153,7 +153,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 | 区域 | 设计目标 |
 | --- | --- |
 | Window Title | 项目名称、窗口标题和平台窗口控制；不重复展示保存状态 |
-| Top Navigation | `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` |
+| Top Navigation | `文件 / 主页 / 物性 / 设备 / 流程图 / 流程运行 / 流程结果 / 工具 / 设置` |
 | Context Toolbar | 随当前导航显示保存、检查、运行、画布、结果或物性相关动作 |
 | Left Rail | `模块 / 项目`；模块页放流股和按分类折叠的单元操作，项目页放当前对象树 |
 | Canvas Stage | 类 IDE 的 flowsheet 标签页、画布状态概览、流程图画布和左上角浮动画布工具条 |
@@ -239,8 +239,8 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 
 进入工作台的规则：
 
-- 当前代码打开项目或示例后进入常规工作台；普通空白项目先进入 `物性` 页，选齐 package 和项目组分后再进入 `流程图` 建模。工作区内保持顶部 `文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置` 主导航、当前 screen 下的上下文工具栏、左侧 `模块 / 项目`、中央 Flowsheet Canvas、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表`。
-- 文件 / 示例入口进入 `文件` 或 Home，运行控制进入 `流程图` / `运行` 上下文工具栏，物性进入独立 `物性` 页面，结果审阅进入顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表`。
+- 当前代码打开项目或示例后进入常规工作台；普通空白项目先进入 `物性` 页，选齐 package 和项目组分后再进入 `流程图` 建模。工作区内保持顶部 `文件 / 主页 / 物性 / 设备 / 流程图 / 流程运行 / 流程结果 / 工具 / 设置` 主导航、当前 screen 下的上下文工具栏、左侧 `模块 / 项目`、中央 Flowsheet Canvas、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表`。
+- 文件 / 示例入口进入 `文件` 或 Home，运行控制进入 `流程图` / `流程运行` 上下文工具栏，物性进入独立 `物性` 页面，结果审阅进入顶部 `流程结果` screen、右侧 `模块结果` 和底部 `结果表`。
 - 工作台内仍可通过顶部或左侧返回 Home Dashboard，但 Home Dashboard 不直接承载流程图编辑。
 - 若启动时发现最近项目，可以先进入 Home Dashboard 并突出 `最近项目` 列表的首项，不要静默跳过首页，也不要在左侧重复生成继续入口按钮。
 
@@ -249,8 +249,8 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 当前已实现职责：
 
 - 应用和项目身份：项目名、脏状态、运行模式；当前核心为 SI，完整单位集尚未实现。
-- 顶部主导航：`文件 / 主页 / 物性 / 流程图 / 运行 / 结果 / 工具 / 设置`。
-- 上下文工具栏：`物性 / 流程图 / 运行 / 结果` screen 分别消费已有 property page、进入建模 readiness、command registry、Run Panel state、Module Results、结果表状态和 `SolveSnapshot` 状态。
+- 顶部主导航：`文件 / 主页 / 物性 / 设备 / 流程图 / 流程运行 / 流程结果 / 工具 / 设置`。
+- 上下文工具栏：`物性 / 流程图 / 流程运行 / 流程结果` screen 分别消费已有 property page、进入建模 readiness、command registry、Run Panel state、Module Results、结果表状态和流程结果资格。
 - 全局菜单：项目生命周期命令进入 `文件`；命令面板、Commands 面板和逻辑窗口进入 `工具`；语言进入 `设置`。
 - 全局状态：运行状态、pending work、授权 / 物性包摘要、最近错误入口。
 
@@ -335,7 +335,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 后续细化目标：
 
 - 继续细化 `检查器 / 模块设置 / 模块结果` 的密度、空状态、诊断目标和跨入口定位反馈。
-- 运行主按钮、Hold / Resume、检查输入和清理诊断保留在顶部 `运行` 上下文工具栏，详细日志进入底部运行信息区。
+- 运行主按钮、Hold / Resume、检查输入和清理诊断保留在顶部 `流程运行` 上下文工具栏，详细日志进入底部运行信息区。
 - 项目物性、组分、方法、交互参数、来源和分析保留在独立 `物性` 页面。
 - 左侧模块库不做松散文本列表；物料流、能量流、信号流使用 palette item，单元操作分类使用 category card，选中态、计数和简短描述保持稳定位置。
 - 右侧检查器不做松散 label/value 文本堆叠；当前对象用 summary card，关键字段用 metric card，端口用 connection card，状态用 chip。
@@ -470,7 +470,7 @@ Studio UI 设计需要同时区分“当前已实现壳”和“主设计稿目�
 后续实现应按以下顺序拆分，避免一次性重写 UI：
 
 1. 已落地：首屏 Home Dashboard 分区、顶部 App Bar、Start actions、Recent / Example / Environment / Messages。
-2. 已落地：Workbench 顶部八入口主导航、`物性 / 流程图 / 运行 / 结果` 上下文工具栏、左侧 Project / 示例入口、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` drawer。
+2. 已落地：Workbench 顶部九入口主导航、`物性 / 流程图 / 流程运行 / 流程结果` 上下文工具栏、左侧 Project / 示例入口、右侧 `检查器 / 模块设置 / 模块结果`、底部 `消息 / 运行日志 / 收敛 / 建议 / 诊断 / 结果表` drawer。
 3. 已落地：Canvas header / toolbar 第一轮压缩，Place / suggestion / selection / legend 不再以开发态长文本平铺。
 4. 已落地：Canvas viewport 初始 fit-to-content / center，让打开示例后的流程自然处于可视区域中央；该行为只属于 shell-local 呈现，不写项目、不进历史、不做视口持久化。
 5. 已落地：补齐首页高频中文文案和打开项目消息，避免 `打开 Case`、`Project opened` 等残留混入中文界面。

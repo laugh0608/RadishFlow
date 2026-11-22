@@ -158,10 +158,14 @@ impl StudioGuiDriver {
     }
 
     pub fn new(config: &StudioRuntimeConfig) -> RfResult<Self> {
-        Ok(Self {
-            host: StudioGuiHost::new(config)?,
+        Ok(Self::from_host(StudioGuiHost::new(config)?))
+    }
+
+    pub(crate) fn from_host(host: StudioGuiHost) -> Self {
+        Self {
+            host,
             native_timer_runtime: StudioGuiNativeTimerRuntime::default(),
-        })
+        }
     }
 
     pub fn accept_modeling_recommendation(

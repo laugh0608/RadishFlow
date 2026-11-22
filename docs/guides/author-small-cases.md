@@ -1,6 +1,6 @@
 # Author Small Cases
 
-更新时间：2026-10-11
+更新时间：2026-11-15
 
 > 本文用于运行与验证当前 MVP 用户路径。内置样例与历史 `official` 称谓表示仓库演示 / 回归案例，运行成功不构成工程精度验证；解释结果前请阅读 [模型与样例边界](../thermo/mvp-model.md)。
 
@@ -113,8 +113,8 @@ Flash Drum -> liquid / vapor
 
 如果单元检查器里已经显示 outlet stream 模板值或内置默认值，但对应 unit parameter 还没有显式写入项目，仍需要提交一次该字段；即使输入值和当前显示值相同，提交也会写入正式单元参数。字段来源与 readiness 关系见 `docs/reference/units-and-conventions.md`。
 
-10. 在 `流程图` 或 `运行` 上下文工具栏点击 `运行当前流程`。
-11. 在顶部 `结果` screen、右侧 `模块结果` 和底部 `结果表` 检查收敛结果；底部表应同时显示流股结果和单元最新步骤。
+10. 在 `流程图` 或 `流程运行` 上下文工具栏点击 `运行当前流程`。
+11. 在顶部 `流程结果` screen、右侧 `模块结果` 和底部 `结果表` 检查收敛结果；底部表应同时显示流股结果和单元最新步骤。
 12. 保存项目，重开后再次运行，确认结果仍可复现。
 13. 需要交付文本结果时，在结果审阅区复制当前 `SolveSnapshot` 或导出 `.txt`；先看 `Review` section，再看 `Streams / Units / Steps` 明细。
 
@@ -171,8 +171,8 @@ Flash Drum -> liquid / vapor
 
 如果单元检查器里已经显示 heater outlet stream 模板值或内置默认值，但对应 unit parameter 还没有显式写入项目，仍需要提交一次 `Heater` 的 outlet temperature / pressure；同值提交也会写入正式单元参数。字段来源与 readiness 关系见 `docs/reference/units-and-conventions.md`。
 
-10. 在 `流程图` 或 `运行` 上下文工具栏点击 `运行当前流程`。
-11. 在顶部 `结果` screen 或右侧 `模块结果` 中先看 heater outlet，再看 flash liquid / vapor outlet；底部 `结果表` 可同时核对 Heater 与 Flash Drum 的消费 / 产出流股。
+10. 在 `流程图` 或 `流程运行` 上下文工具栏点击 `运行当前流程`。
+11. 在顶部 `流程结果` screen 或右侧 `模块结果` 中先看 heater outlet，再看 flash liquid / vapor outlet；底部 `结果表` 可同时核对 Heater 与 Flash Drum 的消费 / 产出流股。
 12. 保存项目，重开后再次运行。
 
 当前可用的最小核对点：
