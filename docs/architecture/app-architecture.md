@@ -1,6 +1,6 @@
 # App Architecture
 
-更新时间：2026-11-17
+更新时间：2026-11-22
 
 > 本文定义应用契约与实现边界，后续迭代应保持命令、状态与 snapshot 的一致性；当前任务与优先级见 [当前状态](../status/current.md)。
 
@@ -730,7 +730,7 @@ Studio 的用户可触达运行入口在调用正式 Run Panel 求解命令前�
 - 数值焦点消费会话历史，其他文本沿用控件历史，非文本走工程历史；菜单 / IME 优先，确认状态阻断工程快捷键，见 [U2](../topics/units/input-drafts-and-interactions.md)。按键使用事件自身修饰键；`Primary` 与物理 `Ctrl` 分开，绑定及标签同源，平台键位和历史证据见 [B1-4](../topics/flowsheet-modeling-and-solve.md#b1-4平台快捷键展示与文档重做)。
 - Studio 源码按领域职责组织浅层模块；新增实现并入同域目录，避免继续扩大入口文件。
 
-headless 在 GUI 初始化前消费共享动作与查询，请求仅操作内存。v4—v7 依次支持分块回流、仿射联立、物料 EO、混合 DAG。v8 只读稳定引用，v9 查询并显式运行已保存的 M2。 [CLI 参考](../reference/headless-cli.md)
+headless 在 GUI 初始化前处理共享动作与查询，改动限本次请求内存。v15 经共享运行接收显式运行 v4 保存的 M3。 [各协议版本](../reference/headless-cli.md)
 
 Studio 打开工程时启用 `FlowPlanSupport::MixedRecycle`，并向宿主交付同一次解码的工程。M2 只由 Run／F5 提交。 [Studio 接入](../topics/modeling/mixed-partition-execution.md#m2-studio-界面接入评审)
 

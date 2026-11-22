@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-11-21
+更新时间：2026-11-22
 
 ## 用途
 
@@ -76,13 +76,13 @@ Studio 后台与 CLI 经应用桥接调用 `rf-solver::execution::execute_flow`�
 
 `rf-model::equipment` 拥有设备任务、输入与固定采纳证据。`rf-unitops::separator_sizing` 复用来源绑定并返回只读候选。`rf-ui::engineering` 管理独立分离器的正式事务、历史与结果资格，`editor` 管理草稿和影响确认。Studio 设备页消费同一应用状态，通过 `rf-store::project_v3` 保存正式输入。独立分离器可直接检查、计算和导出，C1 固定采纳及其证据已各自接通。 [分离器专题](../topics/equipment/separator-sizing-and-rating.md)
 
-`rf-unitops::heat_exchanger` 负责双侧热工、初步面积及同心套管校核。CLI v13 和 Studio 只读复核使用 `rf-ui::engineering::concentric_tube` 计算已保存的独立工况。Rust 应用层的 `H3FlowReview` 对同一份 v4 工程的 Current 流程快照核对两侧创建身份与物性资格，临时解析入口并复用该校核。v4 保存正式流股引用，重开后重新运行和复算。 [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联保存与重开)
+`rf-unitops::heat_exchanger` 负责双侧热工、初步面积及同心套管校核。CLI v13 和 Studio 只读复核使用 `rf-ui::engineering::concentric_tube` 计算已保存的独立工况。Rust 应用层的 `H3FlowReview` 对同一份 v4 工程的 Current 流程快照核对两侧创建身份与物性资格，临时解析入口并复用该校核。CLI v14 复用该路径。Studio 支持已保存关联的复核、首次建立和更换；v4 保存正式流股引用，新会话须显式重跑并复核。 [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联保存与重开)
 
 AF4a 的 `rf-ui::project_query` 从单一工作区只读发现流程、设备、基础和来源，分别校验流程身份与设备 checkpoint。AF5a 保留两类结果载荷，Current 才提供数值；执行来源随已接收结果保留，不由当前选包补填。AF4b 已接通流程 / 设备正式动作及运行回执；AF4c 已通过独立 v3 协议覆盖查询、正式编辑 / 确认、同步计算和 C1 采纳，旧 CLI 适配保持。AF5b 的 `FlowResultReview` 将共享查询投影到 GUI，结果动作与输出以领域身份重验；设备历史独立折叠，计算表输出冻结执行来源。
 
 Studio 的 `modeling_specifications` 提供只读 A1 报告与会话身份；`modeling_recommendations` 持有同一检查会话，负责候选、预览、忽略和正式接受，GUI 共用该状态。接受经 `rf-ui` 输入 / 连接事务写回，检查与推荐不自动求解、不持久化，也不新增 CLI 协议。共享规则在 UI、预检与 solver 各自阶段消费，保留既有外部失败分类。
 
-多策略沿“同一工程 → 计算任务 → 能力 / 规格检查 → 问题装配 → 执行 → 有资格的结果”组织。QS0 为独立会话任务。QS1—QS4 与无回路方法共用正式 `FlowPlanConfiguration`、工程 v4、运行拥有者和结果守卫。QS4 的 M1（混合 DAG）与 M2（固定温压单撕裂跨块回流）共用 `Mixed` 计划类型，各有独立的存储能力。Studio 支持两者，CLI 分别经 v7 和 v9 消费。通用 EO、自动策略选择及更一般的跨块回路另审。 [多策略专题](../topics/modeling/solver-strategies-and-assembly.md) · [QS4](../topics/modeling/mixed-partition-execution.md)
+多策略沿“同一工程 → 计算任务 → 能力 / 规格检查 → 问题装配 → 执行 → 有资格的结果”组织。QS0 为独立会话任务。QS1—QS4 与无回路方法共用正式 `FlowPlanConfiguration`、工程 v4、运行拥有者和结果守卫。QS4 的 M1（混合 DAG）与 M2（固定温压单撕裂跨块回流）共用 `Mixed` 计划类型，各有独立的存储能力。Studio 支持两者，CLI 经 v7 和 v9 消费。M3 经独立 v4 能力保存两区计划，CLI v15 复用共享运行接收。通用 EO、自动策略选择及更一般的跨块回路另审。 [多策略专题](../topics/modeling/solver-strategies-and-assembly.md) · [QS4](../topics/modeling/mixed-partition-execution.md)
 
 ## 模型发现与装配现状
 

@@ -41,10 +41,11 @@
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
 - PR #19 已合入 `master` 并回灌 `dev`（`39a35703`）。
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
-- [QS4 M2](../topics/modeling/mixed-partition-execution.md)已通过核心、v4 保存、CLI v9 与 Studio 本机代表验收。
+- [QS4 M2](../topics/modeling/mixed-partition-execution.md)已验。M3 核心、v4、CLI v15 已验。
 
 ### 下一步
 
+- [ ] 先评审 [QS4 M3 Studio](../topics/modeling/mixed-serial-recycle.md#接下来的事项) 接入，再做 macOS 原生验收。
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
 - [x] [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存)已接通 CLI v14、Studio 只读与编辑。macOS 通过 40／50 mol/s、重跑失效、迟到回执、保存冲突与新会话复算验收。
 - [x] [AF3-V10 macOS 原版等待中返回](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24) 已在同一窗口验证草稿保留、取消回执拒收、旧 Current 保留和显式重跑接收。
@@ -55,7 +56,6 @@
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)已通过代表验证，分离器关联另审。
 - [ ] [AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23) 历史源码重建与当前原版的四步同序对照各三轮，均未复现；原故障二进制未找回，根因待定。
 - [x] AF2a / b 与 AF3—AF6 已接通批准范围，见[基础切片](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)。
-- [x] [QS4 M3 串联回流区](../topics/modeling/mixed-serial-recycle.md)v4、CLI v15 已验，待接 Studio。
 - [x] Studio R2、V1 动效与 V2 三个流股图层通过 macOS 代表验证。 [UI 计划](../architecture/studio-ui-topic-plan.md)
 - [ ] [V2 气相摩尔分率](../topics/results-review-diagnostics.md#可视化接下来事项)已用六个工况核对流股快照，R0 待评审，当前建议暂缓图层。
 
@@ -111,7 +111,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-22 Rust 2,315 项通过，含 68 项 CLI 进程测试。见 [W47](../devlogs/2026-11/2026-W47.md#2026-11-22-qs4-m3-v4-工程保存实现与验收)。
+- 2026-11-22 Rust 2,321 项通过，含 72 项 CLI 进程测试。见 [W47](../devlogs/2026-11/2026-W47.md#2026-11-22-qs4-m3-cli-v15-实现与验收)。
 
 - 2026-11-22：PR #19 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 

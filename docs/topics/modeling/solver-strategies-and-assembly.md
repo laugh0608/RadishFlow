@@ -361,4 +361,4 @@ QS3 的浮点不可缩区间、数值层奇异中点与三类全局故障注入�
 
 [QS4 首片方案](mixed-partition-execution.md)已形成：Local Feed → 交叉回流正向 EO 组 → 局部 Heater，整图 QS2 与独立分数对照，首批只支持 DAG。外部边界装配、混合结果、正式计划、v4 新能力与 CLI v7 的 D01—D05 已批准，A—D 及六图认可后的接线完成；2,051 项、历史读写器和 macOS 代表路径通过，详见专题及 W45。
 
-2026-11-17 完成 [QS4 M2](mixed-partition-execution.md#m2首个跨块回流算例与验收)。显式撕裂后按块拓扑前扫，直接代入更新假设值，候选收敛后独立复核。物性和单元能力仍限于批准算例。[M3 串联回流区](mixed-serial-recycle.md)已验证先复核再向下游交付、共享运行接收及 v4 保存重开，消费者接入另审。
+2026-11-17 完成 [QS4 M2](mixed-partition-execution.md#m2首个跨块回流算例与验收)。显式撕裂后按块拓扑前扫，直接代入更新假设值，候选收敛后独立复核。物性和单元能力仍限于批准算例。[M3 串联回流区](mixed-serial-recycle.md)已验证先复核再向下游实际交付、共享运行接收、v4 保存及 CLI v15。下一批先评审 [Studio 接入](mixed-serial-recycle.md#接下来的事项)。
