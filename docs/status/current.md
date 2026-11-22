@@ -40,7 +40,6 @@
 
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
 - PR #19 已合入 `master` 并回灌 `dev`（`39a35703`）。
-- AF3-V10 受控实窗已验证等待返回。
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
 - [QS4 M2](../topics/modeling/mixed-partition-execution.md)已通过核心、v4 保存、CLI v9 与 Studio 本机代表验收。
 
@@ -48,7 +47,7 @@
 
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
 - [x] [H3 CLI v14](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联-cli-v14) 与 [Studio 关联只读复核](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联-studio-只读复核) 两档通过，macOS 实窗验证重跑失效、取消和关闭重开后的回执拒收。
-- [ ] [AF3-V10](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24) 11-22 原版以 2,048 个回流块核对在途草稿与旧 Current，等待中返回仍待同会话验收。
+- [x] [AF3-V10 macOS 原版等待中返回](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24) 已在同一窗口验证草稿保留、取消回执拒收、旧 Current 保留和显式重跑接收。
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
 - [x] QS3／QS4 macOS 取消与重跑通过，QS3 英文窄区焦点可见性复验通过。见 [专题](../topics/modeling/equation-oriented-block.md#接下来事项)。
