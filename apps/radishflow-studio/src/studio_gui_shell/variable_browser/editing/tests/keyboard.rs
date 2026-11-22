@@ -279,15 +279,17 @@ fn browser_enter_applies_once_and_history_shortcuts_route_by_focus() {
             .outlet_temperature_k,
         Some(345.0)
     );
-    frame(
-        &mut app,
-        &ctx,
-        400.0,
-        vec![key(
-            egui::Key::Z,
-            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
-        )],
-    );
+    let redo = radishflow_studio::StudioGuiShortcutPlatform::current().redo_shortcut();
+    let redo_key = match redo.key {
+        StudioGuiShortcutKey::Z => egui::Key::Z,
+        StudioGuiShortcutKey::Y => egui::Key::Y,
+        other => panic!("unexpected document redo key: {other:?}"),
+    };
+    let redo_modifiers = egui::Modifiers {
+        shift: redo.modifiers.contains(&StudioGuiShortcutModifier::Shift),
+        ..egui::Modifiers::COMMAND
+    };
+    frame(&mut app, &ctx, 400.0, vec![key(redo_key, redo_modifiers)]);
     assert_eq!(
         app.platform_host.document().flowsheet.units[&"heater-1".into()]
             .parameters
