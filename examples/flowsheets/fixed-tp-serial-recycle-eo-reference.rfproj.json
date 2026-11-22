@@ -1,0 +1,518 @@
+{
+  "kind": "radishflow.project-file",
+  "schemaVersion": 4,
+  "document": {
+    "revision": 0,
+    "flowsheet": {
+      "name": "fixed-tp-serial-recycle-eo-reference",
+      "thermo": {
+        "property_package_id": "binary-hydrocarbon-lite-v1"
+      },
+      "components": {
+        "methane": {
+          "id": "methane",
+          "name": "Methane",
+          "formula": "CH4"
+        },
+        "ethane": {
+          "id": "ethane",
+          "name": "Ethane",
+          "formula": "C2H6"
+        }
+      },
+      "streams": {
+        "s-ab": {
+          "id": "s-ab",
+          "name": "A transfer to B",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 84.0,
+          "overall_mole_fractions": {
+            "methane": 0.75,
+            "ethane": 0.25
+          },
+          "phases": []
+        },
+        "s-bf": {
+          "id": "s-bf",
+          "name": "B combined inlet",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 85.0,
+          "overall_mole_fractions": {
+            "methane": 0.75,
+            "ethane": 0.25
+          },
+          "phases": []
+        },
+        "s-fa": {
+          "id": "s-fa",
+          "name": "Fresh feed A",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "methane": 0.6,
+            "ethane": 0.4
+          },
+          "phases": []
+        },
+        "s-fb": {
+          "id": "s-fb",
+          "name": "Makeup B",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 5.0,
+          "overall_mole_fractions": {
+            "methane": 0.2,
+            "ethane": 0.8
+          },
+          "phases": []
+        },
+        "s-ma": {
+          "id": "s-ma",
+          "name": "A mixer outlet",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 80.0,
+          "overall_mole_fractions": {
+            "methane": 0.75,
+            "ethane": 0.25
+          },
+          "phases": []
+        },
+        "s-mb": {
+          "id": "s-mb",
+          "name": "B mixer outlet",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 86.0,
+          "overall_mole_fractions": {
+            "methane": 0.75,
+            "ethane": 0.25
+          },
+          "phases": []
+        },
+        "s-pa": {
+          "id": "s-pa",
+          "name": "A purge",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 83.0,
+          "overall_mole_fractions": {
+            "methane": 0.75,
+            "ethane": 0.25
+          },
+          "phases": []
+        },
+        "s-pb": {
+          "id": "s-pb",
+          "name": "B primary product",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 89.0,
+          "overall_mole_fractions": {
+            "methane": 0.75,
+            "ethane": 0.25
+          },
+          "phases": []
+        },
+        "s-qb": {
+          "id": "s-qb",
+          "name": "B secondary product",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 90.0,
+          "overall_mole_fractions": {
+            "methane": 0.75,
+            "ethane": 0.25
+          },
+          "phases": []
+        },
+        "s-ra": {
+          "id": "s-ra",
+          "name": "A recycle",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 82.0,
+          "overall_mole_fractions": {
+            "methane": 0.75,
+            "ethane": 0.25
+          },
+          "phases": []
+        },
+        "s-rb": {
+          "id": "s-rb",
+          "name": "B recycle",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 88.0,
+          "overall_mole_fractions": {
+            "methane": 0.75,
+            "ethane": 0.25
+          },
+          "phases": []
+        },
+        "s-sa": {
+          "id": "s-sa",
+          "name": "A primary split to recycle splitter",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 81.0,
+          "overall_mole_fractions": {
+            "methane": 0.75,
+            "ethane": 0.25
+          },
+          "phases": []
+        },
+        "s-sb": {
+          "id": "s-sb",
+          "name": "B primary split to recycle splitter",
+          "temperature_k": 300.0,
+          "pressure_pa": 650000.0,
+          "total_molar_flow_mol_s": 87.0,
+          "overall_mole_fractions": {
+            "methane": 0.75,
+            "ethane": 0.25
+          },
+          "phases": []
+        }
+      },
+      "units": {
+        "feed-a": {
+          "id": "feed-a",
+          "name": "Fresh feed A",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-fa"
+            }
+          ],
+          "parameters": {
+            "outlet_temperature_k": 300.0,
+            "outlet_pressure_pa": 650000.0
+          }
+        },
+        "feed-b": {
+          "id": "feed-b",
+          "name": "Makeup B",
+          "kind": "feed",
+          "ports": [
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-fb"
+            }
+          ],
+          "parameters": {
+            "outlet_temperature_k": 300.0,
+            "outlet_pressure_pa": 650000.0
+          }
+        },
+        "mixer-a": {
+          "id": "mixer-a",
+          "name": "A recycle mixer",
+          "kind": "mixer",
+          "ports": [
+            {
+              "name": "inlet_a",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-fa"
+            },
+            {
+              "name": "inlet_b",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-ra"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-ma"
+            }
+          ],
+          "parameters": {
+            "outlet_pressure_pa": 650000.0
+          }
+        },
+        "mixer-b": {
+          "id": "mixer-b",
+          "name": "B recycle mixer",
+          "kind": "mixer",
+          "ports": [
+            {
+              "name": "inlet_a",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-bf"
+            },
+            {
+              "name": "inlet_b",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-rb"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-mb"
+            }
+          ],
+          "parameters": {
+            "outlet_pressure_pa": 650000.0
+          }
+        },
+        "mixer-makeup-b": {
+          "id": "mixer-makeup-b",
+          "name": "B makeup mixer",
+          "kind": "mixer",
+          "ports": [
+            {
+              "name": "inlet_a",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-ab"
+            },
+            {
+              "name": "inlet_b",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-fb"
+            },
+            {
+              "name": "outlet",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-bf"
+            }
+          ],
+          "parameters": {
+            "outlet_pressure_pa": 650000.0
+          }
+        },
+        "splitter-primary-a": {
+          "id": "splitter-primary-a",
+          "name": "A primary splitter",
+          "kind": "splitter",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-ma"
+            },
+            {
+              "name": "outlet_a",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-sa"
+            },
+            {
+              "name": "outlet_b",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-pa"
+            }
+          ],
+          "parameters": {
+            "outlet_a_split_fraction": 0.5
+          }
+        },
+        "splitter-primary-b": {
+          "id": "splitter-primary-b",
+          "name": "B primary splitter",
+          "kind": "splitter",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-mb"
+            },
+            {
+              "name": "outlet_a",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-sb"
+            },
+            {
+              "name": "outlet_b",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-pb"
+            }
+          ],
+          "parameters": {
+            "outlet_a_split_fraction": 0.6666666666666666
+          }
+        },
+        "splitter-recycle-a": {
+          "id": "splitter-recycle-a",
+          "name": "A recycle splitter",
+          "kind": "splitter",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-sa"
+            },
+            {
+              "name": "outlet_a",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-ra"
+            },
+            {
+              "name": "outlet_b",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-ab"
+            }
+          ],
+          "parameters": {
+            "outlet_a_split_fraction": 0.3333333333333333
+          }
+        },
+        "splitter-recycle-b": {
+          "id": "splitter-recycle-b",
+          "name": "B recycle splitter",
+          "kind": "splitter",
+          "ports": [
+            {
+              "name": "inlet",
+              "direction": "inlet",
+              "kind": "material",
+              "stream_id": "s-sb"
+            },
+            {
+              "name": "outlet_a",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-rb"
+            },
+            {
+              "name": "outlet_b",
+              "direction": "outlet",
+              "kind": "material",
+              "stream_id": "s-qb"
+            }
+          ],
+          "parameters": {
+            "outlet_a_split_fraction": 0.75
+          }
+        }
+      }
+    },
+    "metadata": {
+      "documentId": "example-qs4-serial-recycle-eo-reference",
+      "title": "Two serial fixed-T/P recycle sections — whole-flow EO reference",
+      "schemaVersion": 1,
+      "createdAt": "2026-11-22T00:00:00Z",
+      "updatedAt": "2026-11-22T00:00:00Z"
+    }
+  },
+  "requiredCapabilities": [
+    {
+      "id": "radishflow.flow-plan",
+      "version": 1
+    },
+    {
+      "id": "radishflow.solver.fixed-tp-material-eo",
+      "version": 1
+    },
+    {
+      "id": "radishflow.unit.splitter",
+      "version": 1
+    }
+  ],
+  "presentation": {
+    "displayUnits": [
+      {
+        "quantityId": "absolute_temperature",
+        "unitId": "kelvin"
+      },
+      {
+        "quantityId": "temperature_difference",
+        "unitId": "kelvin_difference"
+      },
+      {
+        "quantityId": "absolute_pressure",
+        "unitId": "pascal"
+      },
+      {
+        "quantityId": "molar_flow",
+        "unitId": "mole_per_second"
+      },
+      {
+        "quantityId": "mole_fraction",
+        "unitId": "mole_per_mole"
+      },
+      {
+        "quantityId": "molar_phase_fraction",
+        "unitId": "mole_per_mole"
+      },
+      {
+        "quantityId": "molar_enthalpy",
+        "unitId": "joule_per_mole"
+      },
+      {
+        "quantityId": "actual_volume_flow",
+        "unitId": "cubic_metre_per_second"
+      },
+      {
+        "quantityId": "mass_density",
+        "unitId": "kilogram_per_cubic_metre"
+      },
+      {
+        "quantityId": "velocity",
+        "unitId": "metre_per_second"
+      },
+      {
+        "quantityId": "duration",
+        "unitId": "second"
+      },
+      {
+        "quantityId": "length",
+        "unitId": "metre"
+      },
+      {
+        "quantityId": "area",
+        "unitId": "square_metre"
+      },
+      {
+        "quantityId": "volume",
+        "unitId": "cubic_metre"
+      },
+      {
+        "quantityId": "dimensionless_ratio",
+        "unitId": "one"
+      }
+    ]
+  },
+  "simulation": {
+    "steadyStatePlan": {
+      "method": {
+        "id": "radishflow.fixed-tp-material-eo",
+        "version": 1
+      },
+      "acceptanceContractVersion": 1,
+      "equationContractVersion": 1,
+      "fixedBoundary": {
+        "temperatureK": 300.0,
+        "pressurePa": 650000.0
+      },
+      "specifications": [],
+      "scaling": {
+        "kind": "evaluated_fresh_total"
+      }
+    }
+  }
+}

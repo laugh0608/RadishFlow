@@ -49,6 +49,7 @@ fn stage(s: MixedStage) -> &'static str {
         MixedStage::Equation => "equation",
         MixedStage::Boundary => "boundary",
         MixedStage::BlockCompleted => "block_completed",
+        MixedStage::RegionVerification => "region_verification",
         MixedStage::GlobalVerification => "global_verification",
         MixedStage::Completing => "completing",
     }

@@ -3,6 +3,7 @@ mod execution;
 mod layout;
 mod plan;
 mod recycle;
+mod serial_recycle;
 pub use layout::EquationBlockLayout;
 mod report;
 #[cfg(test)]
@@ -17,6 +18,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub const METHOD: &str = "radishflow.fixed-tp-mixed-material/1";
 pub const RECYCLE_METHOD: &str = "radishflow.fixed-tp-mixed-recycle/1";
+pub const SERIAL_RECYCLE_METHOD: &str = "radishflow.fixed-tp-mixed-serial-recycle/1";
 pub const ACCEPTANCE_CONTRACT_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -63,8 +65,22 @@ impl MixedBlock {
 pub struct MixedOptions {
     pub boundary: FixedRecycleBoundary,
     pub blocks: Vec<MixedBlock>,
-    /// In-memory single cross-block recycle. The DAG project contract excludes it.
-    pub recycle: Option<Box<MixedRecycleOptions>>,
+    pub recycle: Option<Box<MixedRecycleConfiguration>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum MixedRecycleConfiguration {
+    Single(MixedRecycleOptions),
+    Serial([MixedRecycleOptions; 2]),
+}
+
+impl MixedRecycleConfiguration {
+    fn regions(&self) -> &[MixedRecycleOptions] {
+        match self {
+            Self::Single(options) => std::slice::from_ref(options),
+            Self::Serial(options) => options,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -84,24 +100,62 @@ impl MixedRecycleOptions {
 
 impl MixedOptions {
     pub fn method(&self) -> &'static str {
-        if self.recycle.is_some() {
-            RECYCLE_METHOD
-        } else {
-            METHOD
+        match self.recycle.as_deref() {
+            None => METHOD,
+            Some(MixedRecycleConfiguration::Single(_)) => RECYCLE_METHOD,
+            Some(MixedRecycleConfiguration::Serial(_)) => SERIAL_RECYCLE_METHOD,
         }
+    }
+
+    pub fn single_recycle(&self) -> Option<&MixedRecycleOptions> {
+        match self.recycle.as_deref() {
+            Some(MixedRecycleConfiguration::Single(options)) => Some(options),
+            _ => None,
+        }
+    }
+
+    pub fn single_recycle_mut(&mut self) -> Option<&mut MixedRecycleOptions> {
+        match self.recycle.as_deref_mut() {
+            Some(MixedRecycleConfiguration::Single(options)) => Some(options),
+            _ => None,
+        }
+    }
+
+    pub fn serial_recycle(&self) -> Option<&[MixedRecycleOptions; 2]> {
+        match self.recycle.as_deref() {
+            Some(MixedRecycleConfiguration::Serial(regions)) => Some(regions),
+            _ => None,
+        }
+    }
+
+    fn recycle_regions(&self) -> &[MixedRecycleOptions] {
+        self.recycle
+            .as_deref()
+            .map_or(&[], MixedRecycleConfiguration::regions)
     }
 
     pub fn canonicalized(&self) -> Self {
         let mut result = self.clone();
         result.blocks.sort_by(|a, b| a.id.cmp(&b.id));
+        if let Some(MixedRecycleConfiguration::Serial(regions)) = result.recycle.as_deref_mut() {
+            regions.sort_by(|a, b| a.tear.stream_id.cmp(&b.tear.stream_id));
+        }
         result
     }
     pub fn validate_shape(&self) -> RfResult<()> {
         EquationOptions::new(self.boundary)
             .validate_shape()
             .map_err(|e| e.error)?;
-        if let Some(recycle) = &self.recycle {
+        let mut tear_streams = BTreeSet::new();
+        for recycle in self.recycle_regions() {
             let tear = &recycle.tear;
+            if !tear_streams.insert(&tear.stream_id) {
+                return Err(recycle::tear_error(
+                    tear,
+                    "duplicate_tear",
+                    "tear stream is repeated",
+                ));
+            }
             if !(1..=MAX_ITERATION_EVALUATIONS).contains(&recycle.max_iteration_evaluations)
                 || tear.stream_id.as_str().trim().is_empty()
                 || [&tear.source, &tear.sink]
@@ -157,7 +211,7 @@ impl MixedOptions {
                         .flat_map(|o| o.referenced_unit_ids()),
                 )
             })
-            .chain(self.recycle.iter().flat_map(|recycle| {
+            .chain(self.recycle_regions().iter().flat_map(|recycle| {
                 [
                     recycle.tear.source.unit_id.clone(),
                     recycle.tear.sink.unit_id.clone(),
@@ -170,7 +224,11 @@ impl MixedOptions {
             .iter()
             .filter_map(|b| b.equation_options(self.boundary))
             .flat_map(|o| o.referenced_stream_ids())
-            .chain(self.recycle.iter().map(|r| r.tear.stream_id.clone()))
+            .chain(
+                self.recycle_regions()
+                    .iter()
+                    .map(|r| r.tear.stream_id.clone()),
+            )
             .collect()
     }
 }

@@ -8,7 +8,7 @@
 
 ## 当前结论
 
-- 自 2026-09-12 起恢复正常开发和迭代，取消此前业务停更限制；模拟核心、物性、单元、Studio、生命周期、互操作和发布准备按规划推进，外部贡献按贡献流程评审。
+- 2026-09-12 恢复正常开发。外部贡献沿用贡献流程。
 - MVP 第一阶段 M1-M5、MVP α / β 与通用小流程建模 v1 已阶段性收口，后续迭代以现有能力与验证证据为起点。
 - 2026-10-23 再次确认基础架构优先：先贯通工程生命周期、模型装配、运行任务、应用命令与结果链路，再逐步充实物性、单元和算法；延续 2026-09-13 的基础闭环安排。独立数值研究不作为基础功能的统一前置门禁，物理能力仍独立验收。
 - 长期覆盖稳态、动态、瞬态、间歇 / 半间歇，以及递归分块、序贯模块、联立模块和联立方程；统一 API 明确采用变量 / 动作浏览树，支持 COM 自动化和操作录制 / 回放。领域与术语边界见 [模拟平台长期规划](../architecture/simulation-platform.md)；目标不表示已实现或同时排期。
@@ -46,8 +46,7 @@
 ### 下一步
 
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
-- [x] [H3 CLI v14](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联-cli-v14) 与 [Studio 关联只读复核](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联-studio-只读复核) 两档通过，macOS 实窗验证重跑失效、取消和关闭重开后的回执拒收。
-- [x] [H3 Studio 关联编辑](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存) 已实现首次关联、更换、保存与另存，macOS 实窗核对同一工程 40／50 mol/s、源与目标冲突及新会话复算。
+- [x] [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存)已接通 CLI v14、Studio 只读与编辑。macOS 通过 40／50 mol/s、重跑失效、迟到回执、保存冲突与新会话复算验收。
 - [x] [AF3-V10 macOS 原版等待中返回](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24) 已在同一窗口验证草稿保留、取消回执拒收、旧 Current 保留和显式重跑接收。
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
@@ -55,8 +54,8 @@
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)已通过代表验证，分离器关联另审。
 - [ ] [AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23) 历史源码重建与当前原版的四步同序对照各三轮，均未复现；原故障二进制未找回，根因待定。
-- [x] AF2a / b 与 AF3—AF5 已接通批准范围，见[基础切片](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)。
-- [x] AF6 与 QS0—QS4 已接通。后续混合策略、热／相平衡 EO 与动态另审。
+- [x] AF2a / b 与 AF3—AF6 已接通批准范围，见[基础切片](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)。
+- [x] [QS4 M3 串联回流区](../topics/modeling/mixed-serial-recycle.md)核心与共享接收已验，消费者另审。
 - [x] Studio R2、V1 动效与 V2 三个流股图层通过 macOS 代表验证。 [UI 计划](../architecture/studio-ui-topic-plan.md)
 - [ ] [V2 气相摩尔分率](../topics/results-review-diagnostics.md#可视化接下来事项)已用六个工况核对流股快照，R0 待评审，当前建议暂缓图层。
 
@@ -73,7 +72,7 @@
 ### 后续事项
 
 - [ ] 按项目所有者 2026-09-15 要求，Windows / Linux 原生键盘、保存 / 输出等路径累积到后续阶段节点集中验证；远距离视口按实际缺口推进。未测项保留，P1 不宣称全平台收口。
-- 真实窗口前先告知，UTM 串行且最多一台运行；未测平台保持待验证。
+- 实窗先告知。UTM 同时最多运行一台。
 - 插件运行时、具体许可政策、公共 API 与完整报告继续按独立规划推进。
 
 ## 当前能力基线
@@ -112,7 +111,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-22：Rust 2,297 项通过，含 68 项 CLI 进程测试。见 [W47](../devlogs/2026-11/2026-W47.md#2026-11-22-h3-studio-流程关联编辑与验收)。
+- 2026-11-22：Rust 2,308 项通过，含 68 项 CLI 进程测试。见 [W47](../devlogs/2026-11/2026-W47.md#2026-11-22-qs4-m3-核心与共享运行验收)。
 
 - 2026-11-22：PR #19 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 
@@ -124,7 +123,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 - 有限物料方程任务已接入；完整多策略流程、动态与瞬态仍按后续切片审定；历史 MVP 非目标不构成永久排除。第三方 CAPE-OPEN、完整 Thermodynamics PMC 与通用 CFD 耦合按相应专题和需求评估。
 - 控制面、账户登录、完整报表和安装器按实际需求与前置条件安排，不同时作为默认开发主线。设备工程已进入独立规划，尺寸 / 设计 / 校核不等于机械规范或制造认证；当前模型无对应工业精度承诺。
-- 业务开发恢复不等于创建 tag、发布产物或部署服务；这些操作按相应验收与发布流程推进。
+- Tag、发布和部署按各自验收与发布流程推进。
 - Rust Core 不承载 COM 语义；新增抽象需服务真实领域职责与维护收益。
 
 ## 按需阅读

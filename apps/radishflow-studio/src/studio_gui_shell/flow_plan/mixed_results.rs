@@ -12,6 +12,9 @@ pub(in crate::studio_gui_shell) fn progress_text(p: &MixedProgress, zh: bool) ->
             tr(zh, "块完成（仅诊断）", "Block completed (diagnostic only)")
         }
         MixedStage::GlobalVerification => tr(zh, "总体物料复核", "Global material verification"),
+        MixedStage::RegionVerification => {
+            tr(zh, "回流区物料复核", "Recycle region material verification")
+        }
         MixedStage::Completing => tr(
             zh,
             "准备接收整体结果",

@@ -204,6 +204,11 @@ impl DerefMut for FlowResultRecord {
 }
 impl FlowResultRecord {
     pub fn matches_plan(&self, plan: &crate::flow_plan::FlowPlanConfiguration) -> bool {
+        if let (Self::Mixed(snapshot), crate::flow_plan::FlowPlanConfiguration::Mixed(options)) =
+            (self, plan)
+        {
+            return snapshot.result.method == options.method();
+        }
         if let (
             Self::SinglePhaseRecycle(snapshot),
             crate::flow_plan::FlowPlanConfiguration::SinglePhaseRecycle(options),
@@ -230,9 +235,6 @@ impl FlowResultRecord {
         matches!(
             (self, plan),
             (
-                Self::Mixed(_),
-                crate::flow_plan::FlowPlanConfiguration::Mixed(_)
-            ) | (
                 Self::Partitioned(_),
                 crate::flow_plan::FlowPlanConfiguration::Partitioned(_)
             ) | (

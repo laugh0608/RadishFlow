@@ -1,7 +1,7 @@
 use super::*;
 use rf_model::Flowsheet;
 use rf_solver::{
-    mixed::{MixedBlockMethod, MixedOptions, MixedRecycleOptions},
+    mixed::{MixedBlockMethod, MixedOptions, MixedRecycleConfiguration, MixedRecycleOptions},
     partitioned::MAX_ITERATION_EVALUATIONS,
 };
 
@@ -16,7 +16,10 @@ impl ReadyAppState {
     ) -> bool {
         let zh = self.locale == StudioShellLocale::ZhCn;
         let can_change = !draft.has_modified_numbers();
-        let mut enabled = options.recycle.is_some();
+        if options.serial_recycle().is_some() {
+            return false;
+        }
+        let mut enabled = options.single_recycle().is_some();
         ui.label(tr(zh, "块间连接", "Block connections"));
         ui.add_enabled_ui(can_change, |ui| {
             let mode = egui::ComboBox::from_id_salt("mixed-block-connections")
@@ -43,8 +46,8 @@ impl ReadyAppState {
             .iter()
             .filter(|tear| tear_role_matches(flow, options, tear))
             .collect::<Vec<_>>();
-        let recycle = options.recycle.get_or_insert_with(|| {
-            Box::new(MixedRecycleOptions {
+        options.recycle.get_or_insert_with(|| {
+            Box::new(MixedRecycleConfiguration::Single(MixedRecycleOptions {
                 // An unselected binding can exist in the draft only. Apply checks its shape.
                 tear: TearSpecification {
                     stream_id: "".into(),
@@ -54,8 +57,9 @@ impl ReadyAppState {
                     component_scales_mol_s: None,
                 },
                 max_iteration_evaluations: MAX_ITERATION_EVALUATIONS,
-            })
+            }))
         });
+        let recycle = options.single_recycle_mut().expect("single recycle editor");
         let tear = &mut recycle.tear;
         let mut apply = false;
         ui.label(tr(zh, "撕裂流股", "Tear stream"));

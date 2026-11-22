@@ -156,7 +156,21 @@ impl FlowExecutionOutcome {
                 Ok(result) => result.method,
                 Err(failure) => failure.method,
             };
-            return method == options.method();
+            if method != options.method() {
+                return false;
+            }
+            if let (Some(regions), Ok(result)) = (options.serial_recycle(), outcome) {
+                return result.serial_recycles.len() == regions.len()
+                    && regions.iter().all(|region| {
+                        result.serial_recycles.iter().any(|report| {
+                            report.recycle.tear == region.tear
+                                && report.recycle.max_iteration_evaluations
+                                    == region.max_iteration_evaluations
+                                && report.balance.is_some()
+                        })
+                    });
+            }
+            return true;
         }
         if let (
             Self::SinglePhaseRecycle(outcome),

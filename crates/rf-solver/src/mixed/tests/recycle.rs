@@ -17,13 +17,15 @@ fn recycle_case() -> (Flowsheet, MixedOptions) {
             method: MixedBlockMethod::Local,
         });
     }
-    options.recycle = Some(Box::new(MixedRecycleOptions::new(TearSpecification {
-        stream_id: "ba".into(),
-        source: DiagnosticPortTarget::new("sb", "outlet_a"),
-        sink: DiagnosticPortTarget::new("ma", "inlet_b"),
-        initial_component_flows_mol_s: None,
-        component_scales_mol_s: None,
-    })));
+    options.recycle = Some(Box::new(MixedRecycleConfiguration::Single(
+        MixedRecycleOptions::new(TearSpecification {
+            stream_id: "ba".into(),
+            source: DiagnosticPortTarget::new("sb", "outlet_a"),
+            sink: DiagnosticPortTarget::new("ma", "inlet_b"),
+            initial_component_flows_mol_s: None,
+            component_scales_mol_s: None,
+        }),
+    )));
     (flow, options)
 }
 
@@ -77,7 +79,7 @@ fn explicit_tear_preserves_the_engineering_graph_and_enforces_supported_bindings
         ),
     ] {
         let mut invalid = options.clone();
-        let tear = &mut invalid.recycle.as_mut().unwrap().tear;
+        let tear = &mut invalid.single_recycle_mut().unwrap().tear;
         tear.stream_id = stream.into();
         tear.source = DiagnosticPortTarget::new(source.0, source.1);
         tear.sink = DiagnosticPortTarget::new(sink.0, sink.1);
@@ -118,16 +120,14 @@ fn explicit_tear_preserves_the_engineering_graph_and_enforces_supported_bindings
 
     let mut invalid = options;
     let init = &mut invalid
-        .recycle
-        .as_mut()
+        .single_recycle_mut()
         .unwrap()
         .tear
         .initial_component_flows_mol_s;
     *init = Some([("methane".into(), 1.0)].into());
     assert!(assemble(&flow, &invalid).is_err());
     *invalid
-        .recycle
-        .as_mut()
+        .single_recycle_mut()
         .unwrap()
         .tear
         .initial_component_flows_mol_s
@@ -154,8 +154,7 @@ fn both_initial_vectors_match_fraction_references_and_real_qs2() {
         .unwrap();
     for (initial, evaluations) in [(None, 13), (Some([10.0, 1.0]), 15)] {
         options
-            .recycle
-            .as_mut()
+            .single_recycle_mut()
             .unwrap()
             .tear
             .initial_component_flows_mol_s =
@@ -235,7 +234,10 @@ fn both_initial_vectors_match_fraction_references_and_real_qs2() {
 #[test]
 fn iteration_limit_returns_last_real_residual_without_running_downstream() {
     let (flow, mut options) = recycle_case();
-    options.recycle.as_mut().unwrap().max_iteration_evaluations = 1;
+    options
+        .single_recycle_mut()
+        .unwrap()
+        .max_iteration_evaluations = 1;
     let failure = solve(&flow, &options).unwrap_err();
     assert_eq!(failure.kind, MixedFailureKind::IterationLimit);
     assert!(!failure.costs.calls_by_unit.contains_key(&"h1".into()));

@@ -94,6 +94,7 @@ pub(super) fn plan_diagnostic(error: &RfError) -> Value {
 }
 
 pub(in crate::headless) fn flow(app: &AppState, executions: &Executions) -> Result<Value, Failure> {
+    super::require_m2(app)?;
     let mut response = old::results::flow(app, executions);
     let origin = match app.workspace.flow_result() {
         FlowResultView::Current {

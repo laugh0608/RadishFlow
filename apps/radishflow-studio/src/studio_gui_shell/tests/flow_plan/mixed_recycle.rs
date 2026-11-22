@@ -41,18 +41,20 @@ fn make_recycle(dag: &FlowPlanConfiguration) -> FlowPlanConfiguration {
             method: MixedBlockMethod::Local,
         });
     }
-    options.recycle = Some(Box::new(MixedRecycleOptions {
-        tear: TearSpecification {
-            stream_id: "s-rba".into(),
-            source: DiagnosticPortTarget::new("splitter-2", "outlet_a"),
-            sink: DiagnosticPortTarget::new("mixer-1", "inlet_b"),
-            initial_component_flows_mol_s: Some(
-                [("methane".into(), 10.0), ("ethane".into(), 1.0)].into(),
-            ),
-            component_scales_mol_s: None,
-        },
-        max_iteration_evaluations: 500,
-    }));
+    options.recycle = Some(Box::new(
+        rf_solver::mixed::MixedRecycleConfiguration::Single(MixedRecycleOptions {
+            tear: TearSpecification {
+                stream_id: "s-rba".into(),
+                source: DiagnosticPortTarget::new("splitter-2", "outlet_a"),
+                sink: DiagnosticPortTarget::new("mixer-1", "inlet_b"),
+                initial_component_flows_mol_s: Some(
+                    [("methane".into(), 10.0), ("ethane".into(), 1.0)].into(),
+                ),
+                component_scales_mol_s: None,
+            },
+            max_iteration_evaluations: 500,
+        }),
+    ));
     FlowPlanConfiguration::Mixed(options)
 }
 
@@ -259,7 +261,10 @@ fn mixed_recycle_shell_cold_open_preserves_read_only_protection_and_reports_fail
     let FlowPlanConfiguration::Mixed(options) = &mut plan else {
         unreachable!()
     };
-    options.recycle.as_mut().unwrap().max_iteration_evaluations = 1;
+    options
+        .single_recycle_mut()
+        .unwrap()
+        .max_iteration_evaluations = 1;
     apply(&mut first, plan.clone());
     let path = temp.path().join("budget-one.rfproj.json");
     first.request_save_project_as(path.clone(), true);

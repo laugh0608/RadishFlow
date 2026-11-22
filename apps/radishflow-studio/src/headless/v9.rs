@@ -202,7 +202,7 @@ fn open(
 }
 
 fn require_m2(app: &AppState) -> Result<(), Failure> {
-    if matches!(app.workspace.flow_plan.current(), FlowPlanConfiguration::Mixed(p) if p.recycle.is_some())
+    if matches!(app.workspace.flow_plan.current(), FlowPlanConfiguration::Mixed(p) if p.single_recycle().is_some())
     {
         Ok(())
     } else {

@@ -55,6 +55,14 @@ pub struct MixedResult {
     pub global_material: GlobalMaterialEvidence,
     pub costs: MixedCosts,
     pub recycle: Option<MixedRecycleReport>,
+    pub serial_recycles: Vec<MixedRecycleRegionReport>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct MixedRecycleRegionReport {
+    pub equation_block: MixedBlockId,
+    pub recycle: MixedRecycleReport,
+    pub balance: Option<GlobalMaterialEvidence>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -86,6 +94,7 @@ pub enum MixedStage {
     Equation,
     Boundary,
     BlockCompleted,
+    RegionVerification,
     GlobalVerification,
     Completing,
 }
@@ -96,6 +105,7 @@ pub struct MixedProgress {
     pub unit: Option<UnitId>,
     pub equation: Option<EquationProgress>,
     pub recycle: Option<MixedRecycleProgress>,
+    pub recycle_region: Option<MixedBlockId>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MixedFailureKind {
@@ -120,6 +130,7 @@ pub struct MixedFailure {
     pub equation_failure: Option<Box<EquationFailure>>,
     pub costs: MixedCosts,
     pub recycle: Option<MixedRecycleReport>,
+    pub serial_recycles: Vec<MixedRecycleRegionReport>,
 }
 impl std::fmt::Display for MixedFailure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
