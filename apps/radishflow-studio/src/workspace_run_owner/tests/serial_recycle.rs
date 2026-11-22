@@ -3,6 +3,96 @@ use crate::{flow_plan_actions, qs1_test_support::select, qs4_test_support::seria
 use rf_solver::mixed::{MixedFailureKind, MixedRecycleConfiguration, SERIAL_RECYCLE_METHOD};
 use rf_ui::{FlowResultRecord, flow_plan::FlowPlanConfiguration, result_query::FlowResultView};
 
+#[test]
+fn reopened_m3_save_discards_pre_save_receipts_and_publishes_only_from_the_new_run() {
+    use crate::{
+        StudioProjectOpen, prepare_mixed_serial_recycle_save, read_studio_project_with_support,
+    };
+    use rf_store::project_v4::FlowPlanSupport;
+
+    let root = PropertyPackageCacheRoot::temporary("m3-v4-worker").unwrap();
+    for (budget, expected) in [
+        (500, WorkspaceExecutionOutcome::Succeeded),
+        (1, WorkspaceExecutionOutcome::Failed),
+    ] {
+        let mut original = serial_case(budget);
+        let mut owner = WorkspaceRunOwner::new();
+        let (old, release) = finish_without_accepting(&mut owner, &mut original);
+        let path = root.path().join(format!("serial-{budget}.rfproj.json"));
+        prepare_mixed_serial_recycle_save(&original, &path)
+            .unwrap()
+            .commit(&mut original, true)
+            .unwrap();
+        owner.detach(&mut original);
+        let StudioProjectOpen::Editable(mut reopened) =
+            read_studio_project_with_support(&path, FlowPlanSupport::MixedSerialRecycle).unwrap()
+        else {
+            panic!("saved project")
+        };
+        assert!(matches!(
+            reopened.workspace.flow_result(),
+            FlowResultView::Missing { .. }
+        ));
+        release.send(()).unwrap();
+        let summary = drain(&mut owner, &mut reopened);
+        assert_eq!(summary.run_id, old);
+        assert_eq!(summary.outcome, expected);
+        assert_eq!(
+            summary.disposition,
+            FlowRunDisposition::Discarded(FlowRunDiscardReason::DifferentSession)
+        );
+        assert!(matches!(
+            reopened.workspace.flow_result(),
+            FlowResultView::Missing { .. }
+        ));
+
+        if budget == 500 {
+            let (cancelled, release) = finish_without_accepting(&mut owner, &mut reopened);
+            assert_eq!(
+                owner.cancel(&mut reopened, &cancelled),
+                WorkspaceRunCancelReply::Requested
+            );
+            release.send(()).unwrap();
+            let summary = drain(&mut owner, &mut reopened);
+            assert_eq!(summary.outcome, WorkspaceExecutionOutcome::Succeeded);
+            assert_eq!(
+                summary.disposition,
+                FlowRunDisposition::Discarded(FlowRunDiscardReason::AcceptanceRevoked)
+            );
+            assert!(matches!(
+                reopened.workspace.flow_result(),
+                FlowResultView::Missing { .. }
+            ));
+        }
+
+        let next = spawn(&mut owner, &mut reopened, load(), &ThreadSpawner);
+        assert_ne!(next, old);
+        let summary = drain(&mut owner, &mut reopened);
+        assert_eq!(summary.outcome, expected);
+        assert_eq!(summary.disposition, FlowRunDisposition::Applied);
+        if budget == 500 {
+            let FlowResultView::Current {
+                snapshot: FlowResultRecord::Mixed(snapshot),
+                ..
+            } = reopened.workspace.flow_result()
+            else {
+                panic!("qualified M3 result")
+            };
+            assert_eq!(snapshot.result.serial_recycles.len(), 2);
+            assert_eq!(snapshot.result.streams.len(), 13);
+        } else {
+            assert!(matches!(
+                reopened.workspace.flow_result(),
+                FlowResultView::Failed { .. }
+            ));
+            assert!(reopened.workspace.snapshot_history.is_empty());
+            let failure = reopened.workspace.mixed_failure_evidence().unwrap();
+            assert_eq!(failure.kind, MixedFailureKind::IterationLimit);
+            assert!(!failure.costs.calls_by_unit.contains_key(&"mixer-b".into()));
+        }
+    }
+}
+
 fn finish_without_accepting(
     owner: &mut WorkspaceRunOwner,
     app: &mut AppState,
@@ -202,7 +292,7 @@ fn serial_recycle_plan_and_input_aba_and_reopen_reject_completed_payloads() {
 }
 
 #[test]
-fn serial_configuration_has_its_own_stable_runtime_digest_and_is_memory_only() {
+fn serial_configuration_has_its_own_stable_runtime_digest_and_requires_v4_opt_in() {
     let mut plan = serial_case(500).workspace.flow_plan.current().clone();
     let digest = flow_plan_actions::runtime_configuration_sha256(&plan);
     let FlowPlanConfiguration::Mixed(options) = &mut plan else {

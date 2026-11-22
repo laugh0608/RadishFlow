@@ -55,7 +55,7 @@
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)已通过代表验证，分离器关联另审。
 - [ ] [AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23) 历史源码重建与当前原版的四步同序对照各三轮，均未复现；原故障二进制未找回，根因待定。
 - [x] AF2a / b 与 AF3—AF6 已接通批准范围，见[基础切片](../radishflow-mvp-roadmap.md#基础架构优先的实施切片)。
-- [x] [QS4 M3 串联回流区](../topics/modeling/mixed-serial-recycle.md)核心与共享接收已验，消费者另审。
+- [x] [QS4 M3 串联回流区](../topics/modeling/mixed-serial-recycle.md)核心、共享接收及 v4 保存已验。
 - [x] Studio R2、V1 动效与 V2 三个流股图层通过 macOS 代表验证。 [UI 计划](../architecture/studio-ui-topic-plan.md)
 - [ ] [V2 气相摩尔分率](../topics/results-review-diagnostics.md#可视化接下来事项)已用六个工况核对流股快照，R0 待评审，当前建议暂缓图层。
 
@@ -111,7 +111,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-22：Rust 2,308 项通过，含 68 项 CLI 进程测试。见 [W47](../devlogs/2026-11/2026-W47.md#2026-11-22-qs4-m3-核心与共享运行验收)。
+- 2026-11-22 Rust 2,315 项通过，含 68 项 CLI 进程测试。见 [W47](../devlogs/2026-11/2026-W47.md#2026-11-22-qs4-m3-v4-工程保存实现与验收)。
 
 - 2026-11-22：PR #19 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 

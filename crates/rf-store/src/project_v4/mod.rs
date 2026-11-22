@@ -34,6 +34,7 @@ pub const SPLITTER_CAPABILITY: &str = "radishflow.unit.splitter";
 pub const PARTITIONED_CAPABILITY: &str = "radishflow.solver.partitioned-sm";
 pub const MIXED_CAPABILITY: &str = "radishflow.solver.fixed-tp-mixed-material";
 pub const MIXED_RECYCLE_CAPABILITY: &str = "radishflow.solver.fixed-tp-mixed-recycle";
+pub const MIXED_SERIAL_RECYCLE_CAPABILITY: &str = "radishflow.solver.fixed-tp-mixed-serial-recycle";
 pub const EQUATION_ORIENTED_CAPABILITY: &str = "radishflow.solver.fixed-tp-material-eo";
 pub const SIMULTANEOUS_CAPABILITY: &str = "radishflow.solver.fixed-tp-affine-modular-lu";
 pub const OBJECT_IDENTITY_CAPABILITY: &str = "radishflow.object-identity";
@@ -59,6 +60,7 @@ pub enum FlowPlanSupport {
     ProductComposition,
     SinglePhase,
     SinglePhaseRecycle,
+    MixedSerialRecycle,
 }
 
 impl FlowPlanSupport {
@@ -69,6 +71,7 @@ impl FlowPlanSupport {
             EQUATION_ORIENTED_METHOD => self >= Self::EquationOriented,
             MIXED_METHOD => self >= Self::Mixed,
             MIXED_RECYCLE_METHOD => self >= Self::MixedRecycle,
+            MIXED_SERIAL_RECYCLE_METHOD => self == Self::MixedSerialRecycle,
             SINGLE_PHASE_METHOD => self >= Self::SinglePhase,
             SINGLE_PHASE_RECYCLE_METHOD => self >= Self::SinglePhaseRecycle,
             _ => false,
@@ -100,6 +103,7 @@ impl FlowPlanSupport {
             SIMULTANEOUS_CAPABILITY => self.supports_method(SIMULTANEOUS_METHOD),
             MIXED_CAPABILITY => self.supports_method(MIXED_METHOD),
             MIXED_RECYCLE_CAPABILITY => self.supports_method(MIXED_RECYCLE_METHOD),
+            MIXED_SERIAL_RECYCLE_CAPABILITY => self.supports_method(MIXED_SERIAL_RECYCLE_METHOD),
             SINGLE_PHASE_CAPABILITY => self.supports_method(SINGLE_PHASE_METHOD),
             SINGLE_PHASE_RECYCLE_CAPABILITY => self.supports_method(SINGLE_PHASE_RECYCLE_METHOD),
             OBJECT_IDENTITY_CAPABILITY | VARIABLE_WATCH_LIST_CAPABILITY => {
@@ -248,6 +252,12 @@ pub fn required_capabilities(project: &StoredProjectV4) -> Vec<RequiredCapabilit
     if matches!(project.steady_state_plan, StoredFlowPlan::MixedRecycle(_)) {
         ids.push((MIXED_RECYCLE_CAPABILITY, 1));
     }
+    if matches!(
+        project.steady_state_plan,
+        StoredFlowPlan::MixedSerialRecycle(_)
+    ) {
+        ids.push((MIXED_SERIAL_RECYCLE_CAPABILITY, 1));
+    }
     if matches!(project.steady_state_plan, StoredFlowPlan::SinglePhase(_)) {
         ids.push((SINGLE_PHASE_CAPABILITY, 1));
     }
@@ -335,7 +345,7 @@ fn parse_with_consumer_support(
     let eo = probe.steady_state_plan.method.id == EQUATION_ORIENTED_METHOD;
     let mixed = matches!(
         probe.steady_state_plan.method.id.as_str(),
-        MIXED_METHOD | MIXED_RECYCLE_METHOD
+        MIXED_METHOD | MIXED_RECYCLE_METHOD | MIXED_SERIAL_RECYCLE_METHOD
     );
     if (modular
         || eo

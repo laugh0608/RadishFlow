@@ -47,25 +47,30 @@ pub(crate) fn stored_flow_plan_with_support(
     if let FlowPlanConfiguration::Mixed(options) = plan
         && let Some(configuration) = options.recycle.as_deref()
     {
-        let MixedRecycleConfiguration::Single(recycle) = configuration else {
-            return Err(
-                RfError::invalid_input("mixed serial recycle is available only in memory")
-                    .with_diagnostic_code("workspace.plan.in_memory_only"),
-            );
+        return match configuration {
+            MixedRecycleConfiguration::Single(recycle)
+                if support >= FlowPlanSupport::MixedRecycle =>
+            {
+                Ok(StoredFlowPlan::MixedRecycle(Box::new(
+                    StoredMixedRecyclePlan {
+                        mixed: mixed::stored(options)?,
+                        max_iteration_evaluations: recycle.max_iteration_evaluations,
+                        tear: stored_tear(&recycle.tear),
+                    },
+                )))
+            }
+            MixedRecycleConfiguration::Serial(regions)
+                if support == FlowPlanSupport::MixedSerialRecycle =>
+            {
+                Ok(StoredFlowPlan::MixedSerialRecycle(Box::new(
+                    mixed::stored_serial(options, regions)?,
+                )))
+            }
+            _ => Err(RfError::invalid_input(
+                "the project consumer does not support the selected mixed recycle method",
+            )
+            .with_diagnostic_code("workspace.plan.in_memory_only")),
         };
-        if support >= FlowPlanSupport::MixedRecycle {
-            return Ok(StoredFlowPlan::MixedRecycle(Box::new(
-                StoredMixedRecyclePlan {
-                    mixed: mixed::stored(options)?,
-                    max_iteration_evaluations: recycle.max_iteration_evaluations,
-                    tear: stored_tear(&recycle.tear),
-                },
-            )));
-        }
-        return Err(RfError::invalid_input(
-            "the project consumer does not support mixed cross-block recycle",
-        )
-        .with_diagnostic_code("workspace.plan.in_memory_only"));
     }
     Ok(match plan {
         FlowPlanConfiguration::Acyclic => StoredFlowPlan::Acyclic,
@@ -156,7 +161,7 @@ pub(crate) fn runtime_configuration_sha256(plan: &FlowPlanConfiguration) -> Stri
                 .each_ref()
                 .map(|region| (stored_tear(&region.tear), region.max_iteration_evaluations));
             tears.sort_by(|(a, _), (b, _)| a.stream_id.cmp(&b.stream_id));
-            // A runtime identity without a project or CLI capability.
+            // Keep the execution fingerprint independent of the v4 wire shape.
             serde_json::to_vec(&(
                 options.method(),
                 mixed::stored(options).expect("validated workspace block scales"),
@@ -193,6 +198,9 @@ pub fn flow_plan_configuration(plan: StoredFlowPlan) -> RfResult<FlowPlanConfigu
                 },
             )));
             FlowPlanConfiguration::Mixed(options)
+        }
+        StoredFlowPlan::MixedSerialRecycle(plan) => {
+            FlowPlanConfiguration::Mixed(mixed::serial_configuration(*plan)?)
         }
         StoredFlowPlan::EquationOriented(p) => {
             FlowPlanConfiguration::EquationOriented(equation_oriented::configuration(p)?)

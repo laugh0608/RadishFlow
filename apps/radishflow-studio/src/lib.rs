@@ -122,9 +122,10 @@ pub use document_lifecycle_driver::{
     StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand, StudioH3AssociationEditor,
     StudioH3FlowReview, StudioH3Review, StudioProjectOpen, StudioReadOnlyProject,
     dispatch_document_lifecycle, load_project_app_state, prepare_mixed_recycle_save,
-    prepare_object_identity_initialization, prepare_product_composition_save,
-    project_save_compatibility, project_save_requires_upgrade, project_save_version,
-    read_studio_project, read_studio_project_for_review, read_studio_project_with_support,
+    prepare_mixed_serial_recycle_save, prepare_object_identity_initialization,
+    prepare_product_composition_save, project_save_compatibility, project_save_requires_upgrade,
+    project_save_version, read_studio_project, read_studio_project_for_review,
+    read_studio_project_with_support,
 };
 pub use entitlement_control::{
     StudioEntitlementAction, StudioEntitlementActionOutcome, StudioEntitlementFailure,

@@ -19,7 +19,7 @@ pub use object_identities::{
 };
 pub use plan_save::{
     PreparedFlowPlanSave, PreparedMixedRecycleSave, prepare_mixed_recycle_save,
-    prepare_product_composition_save,
+    prepare_mixed_serial_recycle_save, prepare_product_composition_save,
 };
 use rf_store::project_v3::EquipmentSupport;
 use std::path::{Path, PathBuf};

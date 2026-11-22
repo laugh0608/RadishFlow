@@ -82,6 +82,23 @@ pub fn prepare_mixed_recycle_save(
     prepare_plan_save(app, path, support, project).map(PreparedMixedRecycleSave)
 }
 
+/// Prepare a v4 save of an applied M3 plan through the explicit application entry.
+pub fn prepare_mixed_serial_recycle_save(
+    app: &AppState,
+    path: &Path,
+) -> RfResult<PreparedFlowPlanSave> {
+    let support = FlowPlanSupport::MixedSerialRecycle;
+    let project = flow_plan::project_with_support(app, support)?;
+    if !matches!(&project, ProjectV4Read::Editable(p) if matches!(p.steady_state_plan, StoredFlowPlan::MixedSerialRecycle(_)))
+    {
+        return Err(
+            RfError::invalid_input("the applied project plan is not mixed serial recycle")
+                .with_diagnostic_code("workspace.plan.mixed_serial_recycle_required"),
+        );
+    }
+    prepare_plan_save(app, path, support, project)
+}
+
 /// Prepare a save of the applied EO composition specification, including partial configurations.
 pub fn prepare_product_composition_save(
     app: &AppState,

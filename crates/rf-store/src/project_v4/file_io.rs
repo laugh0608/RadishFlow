@@ -128,6 +128,15 @@ pub fn prepare_write_with_equipment_support(
                         unreachable!("validated editable write");
                     };
                     h3_flow_association::check_overwrite(&existing, new)?;
+                    if matches!(
+                        existing.steady_state_plan,
+                        StoredFlowPlan::MixedSerialRecycle(_)
+                    ) && !matches!(new.steady_state_plan, StoredFlowPlan::MixedSerialRecycle(_))
+                    {
+                        return Err(RfError::invalid_input(
+                            "save the different plan to a new file; the target contains a mixed serial recycle plan",
+                        ).with_diagnostic_code("store.project.mixed_serial_recycle_target"));
+                    }
                     if existing.steady_state_plan.requires_product_composition()
                         && !new.steady_state_plan.requires_product_composition()
                     {

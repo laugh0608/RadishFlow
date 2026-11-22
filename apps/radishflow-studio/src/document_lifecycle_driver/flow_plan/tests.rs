@@ -5,6 +5,7 @@ use std::fs;
 mod equation_oriented;
 mod mixed;
 mod mixed_recycle;
+mod mixed_serial_recycle;
 mod product_composition;
 mod simultaneous;
 const LEGACY: &str = include_str!(concat!(
