@@ -165,7 +165,7 @@ impl ReadyAppState {
         match StudioGuiPlatformHost::new(&config) {
             Ok(platform_host) => {
                 self.replace_background_host(platform_host);
-                self.read_only_project = None;
+                self.close_read_only_project();
                 self.modeling_problems
                     .replace_document(self.platform_host.document());
                 self.pending_format_upgrade = None;
@@ -314,13 +314,19 @@ impl ReadyAppState {
     pub(super) fn open_project(&mut self, project_path: PathBuf, source_label: &str) {
         let project_app = match read_studio_gui_project(&project_path) {
             Ok(radishflow_studio::StudioProjectOpen::ReadOnly(project)) => {
-                if self.at_run_diagnostic_target() {
-                    self.modeling_problems.clear_destination();
+                self.close_read_only_project();
+                if !matches!(
+                    project.as_ref(),
+                    radishflow_studio::StudioReadOnlyProject::H3Flow(_)
+                ) {
+                    if self.at_run_diagnostic_target() {
+                        self.modeling_problems.clear_destination();
+                    }
+                    self.run_diagnostic_navigation = None;
+                    self.flow_path = Default::default();
+                    self.canvas_stream_layer = Default::default();
+                    self.background_action(radishflow_studio::StudioBackgroundRunAction::Detach);
                 }
-                self.run_diagnostic_navigation = None;
-                self.flow_path = Default::default();
-                self.canvas_stream_layer = Default::default();
-                self.background_action(radishflow_studio::StudioBackgroundRunAction::Detach);
                 self.read_only_project = Some(project_read_only::ReadOnlyProjectView::new(
                     project_path,
                     project,
@@ -353,7 +359,7 @@ impl ReadyAppState {
         match StudioGuiPlatformHost::from_project_app(&config, project_app) {
             Ok(platform_host) => {
                 self.replace_background_host(platform_host);
-                self.read_only_project = None;
+                self.close_read_only_project();
                 self.modeling_problems
                     .replace_document(self.platform_host.document());
                 self.pending_format_upgrade = None;

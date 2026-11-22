@@ -18,8 +18,8 @@ use rf_store::{parse_property_package_manifest_json, parse_property_package_payl
 use rf_types::RfResult;
 use std::time::UNIX_EPOCH;
 
-const QUALIFICATION_ID: &str = "h3-pure-water";
-const QUALIFICATION_REVISION: u64 = 1;
+pub(crate) const QUALIFICATION_ID: &str = "h3-pure-water";
+pub(crate) const QUALIFICATION_REVISION: u64 = 1;
 const PACKAGE_ID: &str = "h3-pure-water-lite-v1";
 const PACKAGE_VERSION: &str = "1";
 const PAYLOAD_SHA256: &str =
@@ -46,11 +46,15 @@ pub(crate) fn qualification(id: &str, revision: u64) -> RfResult<H3PureWaterQual
             "no bundled H3 qualification has the requested ID and revision",
         ));
     }
+    Ok(reviewed_qualification())
+}
+
+pub(super) fn reviewed_qualification() -> H3PureWaterQualification {
     let source = H3WaterPropertySource {
         id: "nist-water-table-8".into(),
         revision: 3,
     };
-    Ok(H3PureWaterQualification {
+    H3PureWaterQualification {
         component_id: "water".into(),
         package_id: PACKAGE_ID.into(),
         package_version: PACKAGE_VERSION.into(),
@@ -59,7 +63,7 @@ pub(crate) fn qualification(id: &str, revision: u64) -> RfResult<H3PureWaterQual
         phase_domain: LIQUID_DOMAIN,
         hot_properties: source.clone(),
         cold_properties: source,
-    })
+    }
 }
 
 pub(crate) fn check_case(

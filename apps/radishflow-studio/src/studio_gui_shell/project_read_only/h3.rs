@@ -12,7 +12,7 @@ use std::{
 };
 
 mod inputs;
-mod results;
+pub(super) mod results;
 
 type RatingOutcome = Result<ConcentricTubeRating, SavedRatingError>;
 
@@ -288,7 +288,7 @@ impl ReviewState {
     }
 }
 
-fn case_title(task: &ConcentricTubeRatingTask) -> String {
+pub(super) fn case_title(task: &ConcentricTubeRatingTask) -> String {
     let tag = if task.tag.trim().is_empty() {
         task.id.as_str()
     } else {
@@ -302,7 +302,7 @@ fn case_title(task: &ConcentricTubeRatingTask) -> String {
     format!("{tag} · {name}")
 }
 
-fn member(task: &ConcentricTubeRatingTask) -> EquipmentCaseKey {
+pub(super) fn member(task: &ConcentricTubeRatingTask) -> EquipmentCaseKey {
     EquipmentCaseKey {
         task_id: task.id.clone(),
         case_id: task.case.id.clone(),
@@ -326,25 +326,25 @@ fn cold_flow(
     )
 }
 
-fn quantity(value: f64, kind: QuantityKind, units: &DisplayUnitSet) -> String {
+pub(super) fn quantity(value: f64, kind: QuantityKind, units: &DisplayUnitSet) -> String {
     rf_ui::format_quantity(value, kind, units.unit_for(kind))
         .unwrap_or_else(|error| error.to_string())
 }
 
-fn reveal_focus(response: &egui::Response) {
+pub(super) fn reveal_focus(response: &egui::Response) {
     if response.gained_focus() {
         response.scroll_to_me(None);
     }
 }
 
-fn panel(ui: &egui::Ui) -> egui::Frame {
+pub(super) fn panel(ui: &egui::Ui) -> egui::Frame {
     egui::Frame::group(ui.style())
         .inner_margin(9)
         .corner_radius(6)
         .fill(ui.visuals().extreme_bg_color)
 }
 
-fn button(ui: &mut egui::Ui, label: &str) -> egui::Response {
+pub(super) fn button(ui: &mut egui::Ui, label: &str) -> egui::Response {
     let response = ui.add(egui::Button::new(label).wrap());
     reveal_focus(&response);
     response

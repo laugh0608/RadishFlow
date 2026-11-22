@@ -312,6 +312,68 @@ fn narrow_context() -> egui::Context {
 }
 
 #[test]
+fn linked_h3_review_supports_narrow_keyboard_recalculation_in_both_languages() {
+    let fixture = Fixture::new();
+    let path = fixture.0.join("linked.rfproj.json");
+    let original =
+        include_str!("../../../../../examples/flowsheets/h3-linked-water-50.rfproj.json");
+    fs::write(&path, original).unwrap();
+    for locale in [StudioShellLocale::ZhCn, StudioShellLocale::En] {
+        let ctx = narrow_context();
+        let mut app = ready_app_state(&synced_workspace_config());
+        app.locale = locale;
+        let original_document = app.platform_host.document().metadata.document_id.clone();
+        app.open_project(path.clone(), "linked review test");
+        frame(&mut app, &ctx, vec![]);
+        let opened = frame(&mut app, &ctx, vec![]);
+        assert!(texts(&opened).contains(&tr(locale, "待运行", "Ready to run")));
+        let run = button_node(
+            &opened,
+            tr(locale, "运行并复核当前工况", "Run and review this case"),
+        );
+        frame(&mut app, &ctx, vec![focus(run)]);
+        let tree = frame(
+            &mut app,
+            &ctx,
+            vec![press(egui::Key::Enter, egui::Modifiers::NONE)],
+        );
+        assert_eq!(
+            tree.focus,
+            button_node(&tree, tr(locale, "取消复核", "Cancel review"))
+        );
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        loop {
+            let tree = frame(&mut app, &ctx, vec![]);
+            let text = texts(&tree);
+            if text.contains(&"5877.49 W") {
+                assert!(text.contains(&tr(locale, "1 项超限", "1 limit exceeded")));
+                assert_eq!(tree.focus, run);
+                break;
+            }
+            assert!(std::time::Instant::now() < deadline, "{text:?}");
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        assert!(
+            app.check_project_event_access(&StudioGuiEvent::UiCommandRequested {
+                command_id: "file.save".into(),
+            })
+            .is_err()
+        );
+        frame(
+            &mut app,
+            &ctx,
+            vec![press(egui::Key::Escape, egui::Modifiers::NONE)],
+        );
+        assert!(app.read_only_project.is_none());
+        assert_eq!(
+            app.platform_host.document().metadata.document_id,
+            original_document
+        );
+    }
+    assert_eq!(fs::read_to_string(path).unwrap(), original);
+}
+
+#[test]
 fn h3_review_narrow_keyboard_selects_rates_and_reopens_in_both_languages() {
     let fixture = Fixture::new();
     let path = fixture.project(4, |_| {});

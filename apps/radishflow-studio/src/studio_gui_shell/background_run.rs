@@ -163,9 +163,11 @@ impl ReadyAppState {
         self.platform_host.record_activity_line(message);
     }
     pub(super) fn background_busy(&self) -> bool {
-        self.background_runs
-            .as_ref()
-            .is_some_and(|owner| !owner.borrow().is_idle())
+        !self.h3_flow_run.is_idle()
+            || self
+                .background_runs
+                .as_ref()
+                .is_some_and(|owner| !owner.borrow().is_idle())
     }
     pub(super) fn replace_background_host(&mut self, host: StudioGuiPlatformHost) {
         self.background_action(Action::Detach);
@@ -178,12 +180,18 @@ impl ReadyAppState {
         }
     }
     pub(super) fn poll_background_runs(&mut self, ctx: &egui::Context) {
-        if self.background_runs.is_none() {
-            return;
+        let linked_review = self
+            .read_only_project
+            .as_ref()
+            .is_some_and(|view| view.is_h3_flow());
+        if !linked_review && self.h3_flow_run.poll_detached(SystemTime::now()).is_some() {
+            ctx.request_repaint();
         }
-        self.background_action(Action::Poll {
-            attached: self.read_only_project.is_none(),
-        });
+        if self.background_runs.is_some() {
+            self.background_action(Action::Poll {
+                attached: self.read_only_project.is_none() || linked_review,
+            });
+        }
         if self.background_busy() {
             ctx.request_repaint_after(std::time::Duration::from_millis(50));
         }
@@ -640,6 +648,7 @@ impl ReadyAppState {
         if self.pending_run_exit.is_some() {
             return;
         }
+        self.close_read_only_project();
         self.background_action(Action::BeginShutdown);
         self.pending_run_exit = Some(PendingRunExit {
             window_id,

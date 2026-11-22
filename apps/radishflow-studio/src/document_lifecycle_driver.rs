@@ -8,8 +8,9 @@ pub(crate) use plan_save::prepare_studio_flow_plan_save;
 mod watch_list_tests;
 pub use flow_plan::StudioReadOnlyProject;
 pub use h3_flow_review::{
-    H3FlowPreview, H3FlowRating, H3FlowReview, H3FlowStream, H3PureWaterQualification,
-    H3WaterPropertySource, PreparedH3FlowAssociationSave,
+    H3FlowPreview, H3FlowRating, H3FlowReview, H3FlowReviewPhase, H3FlowReviewResult, H3FlowStream,
+    H3PureWaterQualification, H3WaterPropertySource, PreparedH3FlowAssociationSave,
+    StudioH3FlowReview,
 };
 pub use h3_review::StudioH3Review;
 pub use object_identities::{
@@ -88,7 +89,7 @@ pub fn read_studio_project_for_review(project_path: &Path) -> RfResult<StudioPro
     read_studio_project_for_consumer(
         project_path,
         rf_store::project_v4::FlowPlanSupport::SinglePhaseRecycle,
-        EquipmentSupport::ConcentricTubeRating,
+        EquipmentSupport::ConcentricTubeFlowAssociation,
     )
 }
 

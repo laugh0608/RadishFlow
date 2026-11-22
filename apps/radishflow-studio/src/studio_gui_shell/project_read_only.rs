@@ -1,6 +1,8 @@
 use super::locale::tr;
 use super::*;
+use radishflow_studio::StudioReadOnlyProject;
 mod h3;
+mod h3_flow;
 
 /// Unsupported projects are inspected separately, never partially loaded into
 /// the editable host. The existing workspace is retained until the view closes.
@@ -8,6 +10,7 @@ pub(super) struct ReadOnlyProjectView {
     pub(super) path: PathBuf,
     pub(super) project: Box<radishflow_studio::StudioReadOnlyProject>,
     h3: h3::ReviewState,
+    h3_flow: h3_flow::ReviewState,
 }
 impl ReadOnlyProjectView {
     pub(super) fn new(
@@ -18,10 +21,23 @@ impl ReadOnlyProjectView {
             path,
             project,
             h3: h3::ReviewState::default(),
+            h3_flow: h3_flow::ReviewState::default(),
         }
+    }
+
+    pub(super) fn is_h3_flow(&self) -> bool {
+        matches!(self.project.as_ref(), StudioReadOnlyProject::H3Flow(_))
     }
 }
 impl ReadyAppState {
+    pub(super) fn close_read_only_project(&mut self) {
+        if let Some(mut view) = self.read_only_project.take()
+            && let StudioReadOnlyProject::H3Flow(review) = view.project.as_mut()
+        {
+            review.detach(&mut self.h3_flow_run);
+        }
+    }
+
     pub(super) fn render_read_only_project(&mut self, ctx: &egui::Context) -> bool {
         if self.read_only_project.is_some() {
             self.render_background_activity(ctx);
@@ -39,12 +55,34 @@ impl ReadyAppState {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
         let escape = ctx.input(|i| i.key_pressed(egui::Key::Escape));
-        if let radishflow_studio::StudioReadOnlyProject::H3(project) = view.project.as_ref() {
+        if let StudioReadOnlyProject::H3Flow(project) = view.project.as_mut() {
+            let close = close_requested
+                || view.h3_flow.render(
+                    ctx,
+                    project,
+                    &mut self.h3_flow_run,
+                    &view.path,
+                    self.locale,
+                    escape,
+                );
+            if close {
+                self.close_read_only_project();
+                ctx.request_repaint();
+            } else {
+                let changed = project.poll(&mut self.h3_flow_run, SystemTime::now());
+                if changed {
+                    view.h3_flow.run_changed(project, &self.h3_flow_run);
+                    ctx.request_repaint();
+                }
+            }
+            return true;
+        }
+        if let StudioReadOnlyProject::H3(project) = view.project.as_ref() {
             let close = view
                 .h3
                 .render(ctx, project, &view.path, self.locale, escape);
             if close || close_requested {
-                self.read_only_project = None;
+                self.close_read_only_project();
             }
             return true;
         }
@@ -90,7 +128,7 @@ impl ReadyAppState {
             });
         });
         if close {
-            self.read_only_project = None;
+            self.close_read_only_project();
         }
         true
     }
@@ -99,6 +137,17 @@ impl ReadyAppState {
 impl ReadyAppState {
     pub(super) fn check_project_event_access(&self, event: &StudioGuiEvent) -> RfResult<()> {
         if self.read_only_project.is_some() && event_requires_editable_workspace(event) {
+            if self
+                .read_only_project
+                .as_ref()
+                .is_some_and(ReadOnlyProjectView::is_h3_flow)
+            {
+                return Err(rf_types::RfError::invalid_input(tr(
+                    self.locale,
+                    "工程只读。可在复核页运行并复核当前工况。",
+                    "This project is read-only. Run and review the selected case in the review pane.",
+                )));
+            }
             if self.read_only_project.as_ref().is_some_and(|view| {
                 matches!(
                     view.project.as_ref(),

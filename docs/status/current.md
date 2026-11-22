@@ -47,7 +47,7 @@
 ### 下一步
 
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
-- [x] [H3 CLI v14](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联-cli-v14) 只读关联复核已通过两档验收，Studio 关联另审。
+- [x] [H3 CLI v14](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联-cli-v14) 与 [Studio 关联只读复核](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联-studio-只读复核) 两档通过，macOS 实窗验证重跑失效、取消和关闭重开后的回执拒收。
 - [ ] [AF3-V10](../topics/runtime-messages/scenarios-and-acceptance.md) 11-21 原版等待返回仍待验。
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。

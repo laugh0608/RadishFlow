@@ -10,6 +10,7 @@ pub enum StudioReadOnlyProject {
     V3(rf_store::project_v3::ReadOnlyProjectV3),
     V4(project_v4::ReadOnlyProjectV4),
     H3(Box<StudioH3Review>),
+    H3Flow(Box<StudioH3FlowReview>),
 }
 impl StudioReadOnlyProject {
     pub fn original_json(&self) -> &str {
@@ -17,6 +18,7 @@ impl StudioReadOnlyProject {
             Self::V3(p) => p.original_json(),
             Self::V4(p) => p.original_json(),
             Self::H3(p) => &p.original_json,
+            Self::H3Flow(p) => p.original_json(),
         }
     }
     pub fn metadata(&self) -> &rf_store::StoredDocumentMetadata {
@@ -24,6 +26,7 @@ impl StudioReadOnlyProject {
             Self::V3(p) => &p.document().metadata,
             Self::V4(p) => p.metadata(),
             Self::H3(p) => p.metadata(),
+            Self::H3Flow(p) => p.metadata(),
         }
     }
     pub fn revision(&self) -> u64 {
@@ -31,6 +34,7 @@ impl StudioReadOnlyProject {
             Self::V3(p) => p.document().revision,
             Self::V4(p) => p.revision(),
             Self::H3(p) => p.revision,
+            Self::H3Flow(p) => p.revision(),
         }
     }
     pub fn schema_version(&self) -> u32 {
@@ -38,6 +42,7 @@ impl StudioReadOnlyProject {
             Self::V3(_) => 3,
             Self::V4(_) => 4,
             Self::H3(p) => p.schema_version,
+            Self::H3Flow(_) => 4,
         }
     }
     pub fn task_count(&self) -> Option<usize> {
@@ -45,12 +50,13 @@ impl StudioReadOnlyProject {
             Self::V3(p) => Some(p.task_count()),
             Self::V4(_) => None,
             Self::H3(p) => Some(p.task_count()),
+            Self::H3Flow(p) => Some(p.cases().count()),
         }
     }
     pub fn legacy_document(&self) -> Option<&rf_store::StoredProjectDocument> {
         match self {
             Self::V3(p) => Some(p.document()),
-            Self::V4(_) | Self::H3(_) => None,
+            Self::V4(_) | Self::H3(_) | Self::H3Flow(_) => None,
         }
     }
     pub fn reason_summary(&self) -> String {
@@ -61,6 +67,7 @@ impl StudioReadOnlyProject {
             ),
             Self::V4(p) => p.reasons().join(", "),
             Self::H3(_) => "saved concentric-tube rating review".into(),
+            Self::H3Flow(_) => "saved concentric-tube flow association review".into(),
         }
     }
 }
@@ -85,6 +92,15 @@ pub(super) fn parse_v4(
             StudioReadOnlyProject::V4(p),
         ))),
         ProjectV4Read::Editable(mut p) => {
+            if p.engineering
+                .as_ref()
+                .is_some_and(|inputs| inputs.has_concentric_tube_flow_association())
+            {
+                let review = StudioH3FlowReview::open(path, *p, contents)?;
+                return Ok(StudioProjectOpen::ReadOnly(Box::new(
+                    StudioReadOnlyProject::H3Flow(Box::new(review)),
+                )));
+            }
             if let Some(review) = h3_review::open(
                 &p.document,
                 &p.display_units,

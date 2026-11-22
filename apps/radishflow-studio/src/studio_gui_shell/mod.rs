@@ -141,6 +141,7 @@ mod background_run;
 
 struct ReadyAppState {
     background_runs: Option<radishflow_studio::SharedStudioRunOwner>,
+    h3_flow_run: radishflow_studio::WorkspaceRunOwner,
     pending_run_exit: Option<background_run::PendingRunExit>,
     background_run_details_open: bool,
     platform_host: StudioGuiPlatformHost,
@@ -502,6 +503,7 @@ impl ReadyAppState {
             modeling_problems::ModelingProblemsState::new(platform_host.document());
         let mut ready = ReadyAppState {
             background_runs: None,
+            h3_flow_run: radishflow_studio::WorkspaceRunOwner::new(),
             pending_run_exit: None,
             background_run_details_open: false,
             material: material_balance::MaterialPanelState::default(),

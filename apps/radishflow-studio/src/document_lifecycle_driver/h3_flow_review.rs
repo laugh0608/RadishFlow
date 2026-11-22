@@ -3,6 +3,7 @@
 pub(crate) mod bundled_water;
 mod qualification;
 mod save;
+mod studio;
 #[cfg(test)]
 mod tests;
 
@@ -29,6 +30,7 @@ use rf_ui::{
 };
 pub use save::PreparedH3FlowAssociationSave;
 use std::path::Path;
+pub use studio::{H3FlowReviewPhase, H3FlowReviewResult, StudioH3FlowReview};
 
 pub(crate) const FLOW_SUPPORT: FlowPlanSupport = FlowPlanSupport::Sequential;
 pub(crate) const EQUIPMENT_SUPPORT: EquipmentSupport =
@@ -168,14 +170,18 @@ impl H3FlowReview {
     }
 
     pub fn solve_flow(&mut self, provider: &impl PropertyPackageProvider) -> RfResult<()> {
+        let request = self.solve_request()?;
+        solve_workspace_with_property_package(&mut self.flow, provider, &request)
+    }
+
+    fn solve_request(&self) -> RfResult<crate::StudioSolveRequest> {
         let package = self
             .workspace()
             .document
             .flowsheet
             .property_package_id()
             .ok_or_else(|| rejected("package_unqualified", "no flowsheet property package"))?;
-        let request = build_workspace_solve_request(&self.flow, package)?;
-        solve_workspace_with_property_package(&mut self.flow, provider, &request)
+        build_workspace_solve_request(&self.flow, package)
     }
 
     pub fn preview(
