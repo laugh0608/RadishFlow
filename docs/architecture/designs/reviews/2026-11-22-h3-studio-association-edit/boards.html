@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RadishFlow Studio · H3 关联编辑评审</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../2026-11-21-h3-studio-review/styles.css">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="evidence.js"></script>
+  <script defer src="boards.js"></script>
+</head>
+<body>
+  <aside id="review-controls" class="review-controls" aria-label="Review">
+    <strong data-zh="交互评审稿" data-en="Interaction review"></strong>
+    <label><span data-zh="场景" data-en="Scenario"></span><select id="scene"></select></label>
+    <label><span data-zh="语言" data-en="Language"></span><select id="language">
+      <option value="zh">简体中文</option><option value="en">English</option>
+    </select></label>
+    <label><span data-zh="字号" data-en="Text size"></span><select id="size">
+      <option value="14">14 px</option><option value="20">20 px</option>
+    </select></label>
+  </aside>
+  <header class="shell">
+    <div class="shell-inner">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">R</span>RadishFlow Studio</div>
+      <span id="project-name" class="small project-name">H3 Association Trial.rfproj.json</span>
+    </div>
+  </header>
+  <main class="board h3-edit" id="board">
+    <header class="page-head">
+      <p class="small"><span data-zh="设备 / 同心套管换热器 /" data-en="Equipment / Concentric tube exchanger /"></span> <span class="tag">E-301</span></p>
+      <h1 id="view-title" tabindex="-1"></h1>
+    </header>
+    <p id="notice" class="notice panel" role="status" tabindex="-1" hidden></p>
+    <section id="review-view" class="workspace">
+      <section class="panel card" aria-labelledby="saved-review-title">
+        <h2 id="saved-review-title" data-zh="已保存的入口来源" data-en="Saved inlet sources"></h2>
+        <div id="review-pair" class="pair"></div>
+        <button id="edit" class="button secondary"></button>
+      </section>
+      <section class="panel card" aria-labelledby="results-title">
+        <div class="lineup">
+          <h2 id="results-title" data-zh="校核结果" data-en="Rating result"></h2>
+          <span id="review-status" class="pill"></span>
+        </div>
+        <div id="result-details"></div>
+        <button id="rate" class="button primary" data-zh="运行并复核当前工况" data-en="Run and review this case"></button>
+      </section>
+    </section>
+    <section id="edit-view" class="workspace" hidden>
+      <div class="columns">
+        <section class="panel card" aria-labelledby="saved-title">
+          <div class="lineup">
+            <h2 id="saved-title" data-zh="已保存的入口来源" data-en="Saved inlet sources"></h2>
+            <span class="pill" data-tone="neutral" data-zh="已保存" data-en="Saved"></span>
+          </div>
+          <div id="saved-pair" class="pair"></div>
+        </section>
+        <section class="panel card" aria-labelledby="draft-title">
+          <div class="lineup">
+            <h2 id="draft-title" data-zh="候选关联" data-en="Proposed association"></h2>
+            <span class="pill" data-tone="caution" data-zh="草稿" data-en="Draft"></span>
+          </div>
+          <div class="fields">
+            <label><span data-zh="热侧流股" data-en="Hot-side stream"></span><select id="hot"></select></label>
+            <label><span data-zh="冷侧流股" data-en="Cold-side stream"></span><select id="cold"></select></label>
+          </div>
+          <p id="hint" class="small"></p>
+        </section>
+      </div>
+      <section class="panel card" id="preview-panel" aria-labelledby="preview-title">
+        <div class="lineup">
+          <h2 id="preview-title" data-zh="入口资格和预览" data-en="Inlet qualification and preview"></h2>
+          <span id="preview-status" class="pill"></span>
+        </div>
+        <div class="pair" id="preview-inlets" hidden></div>
+        <p id="preview-evidence" class="small"></p>
+        <div class="command-row">
+          <button id="reload-source" class="button secondary" hidden data-zh="重新载入源工程" data-en="Reload source project"></button>
+          <button id="preview" class="button primary" data-zh="运行流程并预览" data-en="Run flowsheet and preview"></button>
+        </div>
+      </section>
+      <div class="command-row bottom-row">
+        <button id="leave" class="button secondary" data-zh="返回工况" data-en="Back to case"></button>
+        <button id="reset" class="button secondary" data-zh="重置草稿" data-en="Reset draft"></button>
+        <button id="save-as" class="button secondary" data-zh="另存关联…" data-en="Save association as…"></button>
+        <button id="save" class="button primary" data-zh="保存关联…" data-en="Save association…"></button>
+      </div>
+    </section>
+  </main>
+  <dialog id="confirm" aria-labelledby="confirm-title" aria-describedby="confirm-note" class="panel card">
+    <h2 id="confirm-title"></h2>
+    <p id="confirm-note"></p>
+    <dl id="confirm-detail" class="details"></dl>
+    <div class="command-row">
+      <button id="confirm-cancel" class="button secondary"></button>
+      <button id="confirm-apply" class="button primary"></button>
+    </div>
+  </dialog>
+</body>
+</html>

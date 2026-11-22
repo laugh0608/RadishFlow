@@ -1,0 +1,56 @@
+.h3-edit { width: min(100%, 1110px); }
+.h3-edit .page-head { margin-bottom: 14px; }
+.h3-edit .tag { white-space: nowrap; }
+.project-name { font-weight: 520; }
+.workspace, .card, .pair, .fields, .details { display: grid; gap: 12px; min-width: 0; }
+.columns, .pair, .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.card { align-content: start; padding: 16px; }
+.card > .button { justify-self: start; }
+.lineup, .command-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.lineup { justify-content: space-between; }
+.command-row { justify-content: flex-end; }
+.fields label, .pair-cell { display: grid; gap: 5px; min-width: 0; }
+.fields label span, .pair-cell .small { font-weight: 550; }
+.fields select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  padding: 5px 8px;
+  background: var(--paper);
+}
+.pair-cell {
+  align-content: start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--wash);
+}
+.h3-edit button:disabled { color: var(--dim); background: var(--wash); border-color: var(--line); cursor: default; }
+.h3-edit .notice { padding: 12px 16px; margin-bottom: 12px; border-color: var(--line-strong); }
+.h3-edit .notice[data-tone="caution"] { color: var(--amber); background: var(--amber-wash); }
+.h3-edit .notice[data-tone="good"] { color: var(--green); background: var(--green-wash); }
+.bottom-row { margin-top: 2px; }
+#confirm {
+  position: fixed;
+  width: min(calc(100% - 32px), 550px);
+  max-height: calc(100% - 24px);
+  overflow: auto;
+  color: inherit;
+  font: inherit;
+}
+#confirm:not([open]) { display: none; }
+#confirm::backdrop { background: #17283880; }
+.details > div { display: grid; gap: 3px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.details dt { color: var(--dim); }
+.details dd { margin: 0; }
+#result-details .details { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; }
+@media (max-width: 740px) {
+  .h3-edit .columns, .h3-edit .pair, .h3-edit .fields, #result-details .details { grid-template-columns: minmax(0, 1fr); }
+  .command-row { justify-content: flex-start; }
+}
+@media (max-width: 480px) {
+  .h3-edit, .shell-inner { padding-inline: 14px; }
+  .card { padding: 12px; }
+  .bottom-row > .button, #confirm .button { flex: 1 1 100%; text-align: start; min-height: 44px; }
+}

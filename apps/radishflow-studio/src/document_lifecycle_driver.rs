@@ -8,8 +8,9 @@ pub(crate) use plan_save::prepare_studio_flow_plan_save;
 mod watch_list_tests;
 pub use flow_plan::StudioReadOnlyProject;
 pub use h3_flow_review::{
-    H3FlowPreview, H3FlowRating, H3FlowReview, H3FlowReviewPhase, H3FlowReviewResult, H3FlowStream,
-    H3PureWaterQualification, H3WaterPropertySource, PreparedH3FlowAssociationSave,
+    H3AssociationPreviewState, H3AssociationSaveTarget, H3FlowPreview, H3FlowRating, H3FlowReview,
+    H3FlowReviewPhase, H3FlowReviewResult, H3FlowStream, H3PureWaterQualification,
+    H3WaterPropertySource, PreparedH3FlowAssociationSave, StudioH3AssociationEditor,
     StudioH3FlowReview,
 };
 pub use h3_review::StudioH3Review;

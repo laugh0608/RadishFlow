@@ -47,6 +47,7 @@
 
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
 - [x] [H3 CLI v14](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联-cli-v14) 与 [Studio 关联只读复核](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联-studio-只读复核) 两档通过，macOS 实窗验证重跑失效、取消和关闭重开后的回执拒收。
+- [x] [H3 Studio 关联编辑](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存) 已实现首次关联、更换、保存与另存，macOS 实窗核对同一工程 40／50 mol/s、源与目标冲突及新会话复算。
 - [x] [AF3-V10 macOS 原版等待中返回](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24) 已在同一窗口验证草稿保留、取消回执拒收、旧 Current 保留和显式重跑接收。
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。公开 ThermoML 归档无新增二元液体留出点，待 Parrish 原表和复用依据。
@@ -111,7 +112,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-22：Rust 2,290 项通过，含 68 项 CLI 进程测试。见 [W47](../devlogs/2026-11/2026-W47.md#2026-11-22-h3-流程关联-cli-v14)。
+- 2026-11-22：Rust 2,297 项通过，含 68 项 CLI 进程测试。见 [W47](../devlogs/2026-11/2026-W47.md#2026-11-22-h3-studio-流程关联编辑与验收)。
 
 - 2026-11-22：PR #19 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 

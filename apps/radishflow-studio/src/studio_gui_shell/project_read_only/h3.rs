@@ -54,9 +54,9 @@ impl ReviewState {
         project: &StudioH3Review,
         path: &std::path::Path,
         l: StudioShellLocale,
-        escape: bool,
+        controls: &mut super::ReviewControls,
     ) -> bool {
-        if escape && !self.return_to_diagnostic() {
+        if controls.escape && !self.return_to_diagnostic() {
             return true;
         }
         if self.selected.is_none() {
@@ -70,6 +70,7 @@ impl ReviewState {
                     if button(ui, tr(l, "返回工作区", "Back to workspace")).clicked() {
                         close = true;
                     }
+                    controls.association_button(ui, self.selected.as_ref(), l, false);
                 });
                 ui.separator();
                 egui::ScrollArea::vertical()

@@ -184,7 +184,14 @@ impl ReadyAppState {
             .read_only_project
             .as_ref()
             .is_some_and(|view| view.is_h3_flow());
-        if !linked_review && self.h3_flow_run.poll_detached(SystemTime::now()).is_some() {
+        let has_association_editor = self
+            .read_only_project
+            .as_ref()
+            .is_some_and(|view| view.has_association_editor());
+        if !linked_review
+            && !has_association_editor
+            && self.h3_flow_run.poll_detached(SystemTime::now()).is_some()
+        {
             ctx.request_repaint();
         }
         if self.background_runs.is_some() {

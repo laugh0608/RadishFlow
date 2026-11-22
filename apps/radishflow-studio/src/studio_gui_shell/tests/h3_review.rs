@@ -312,6 +312,55 @@ fn narrow_context() -> egui::Context {
 }
 
 #[test]
+fn h3_association_editor_is_reached_from_known_v4_review_and_returns_focus() {
+    let fixture = Fixture::new();
+    let path = fixture.0.join("linked.rfproj.json");
+    let content = include_str!("../../../../../examples/flowsheets/h3-linked-water-40.rfproj.json");
+    fs::write(&path, content).unwrap();
+    for locale in [StudioShellLocale::ZhCn, StudioShellLocale::En] {
+        let ctx = narrow_context();
+        let mut app = ready_app_state(&synced_workspace_config());
+        app.locale = locale;
+        let retained = app.platform_host.document().metadata.document_id.clone();
+        app.open_project(path.clone(), "association editor test");
+        frame(&mut app, &ctx, vec![]);
+        let tree = frame(&mut app, &ctx, vec![]);
+        let edit = button_node(&tree, tr(locale, "编辑流股关联", "Edit stream association"));
+        frame(&mut app, &ctx, vec![focus(edit)]);
+        frame(
+            &mut app,
+            &ctx,
+            vec![press(egui::Key::Enter, egui::Modifiers::NONE)],
+        );
+        let opened = frame(&mut app, &ctx, vec![]);
+        let labels = texts(&opened);
+        assert!(labels.contains(&tr(locale, "候选关联", "Proposed association")));
+        assert!(labels.contains(&tr(locale, "待预览", "Preview needed")));
+        assert!(!labels.contains(&tr(locale, "当前结果", "Current result")));
+
+        frame(
+            &mut app,
+            &ctx,
+            vec![press(egui::Key::S, egui::Modifiers::COMMAND)],
+        );
+        let returned = frame(
+            &mut app,
+            &ctx,
+            vec![press(egui::Key::Escape, egui::Modifiers::NONE)],
+        );
+        let updated = frame(&mut app, &ctx, vec![]);
+        assert_eq!(updated.focus, edit);
+        assert!(!texts(&returned).contains(&tr(
+            locale,
+            "确认保存关联",
+            "Confirm association save"
+        )));
+        assert_eq!(fs::read_to_string(&path).unwrap(), content);
+        assert_eq!(app.platform_host.document().metadata.document_id, retained);
+    }
+}
+
+#[test]
 fn linked_h3_review_supports_narrow_keyboard_recalculation_in_both_languages() {
     let fixture = Fixture::new();
     let path = fixture.0.join("linked.rfproj.json");

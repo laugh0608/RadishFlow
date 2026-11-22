@@ -285,7 +285,7 @@ impl StudioH3FlowReview {
                     let record = if cancelled {
                         ReviewRecord::Cancelled
                     } else {
-                        ReviewRecord::Failed(self.flow_failure(&summary))
+                        ReviewRecord::Failed(self.review.flow_failure(&summary))
                     };
                     self.records.insert(pending.member, record);
                 }
@@ -313,9 +313,11 @@ impl StudioH3FlowReview {
             }
         }
     }
+}
 
-    fn flow_failure(&self, summary: &WorkspaceRunSummary) -> RfError {
-        if let FlowResultView::Failed { diagnostic, .. } = self.review.workspace().flow_result() {
+impl H3FlowReview {
+    pub(super) fn flow_failure(&self, summary: &WorkspaceRunSummary) -> RfError {
+        if let FlowResultView::Failed { diagnostic, .. } = self.workspace().flow_result() {
             let mut error = RfError::invalid_input(&diagnostic.primary_message);
             if let Some(code) = &diagnostic.primary_code {
                 error = error.with_diagnostic_code(code);

@@ -1,6 +1,7 @@
 //! Session-local H3 review of two streams from one accepted flow solve.
 
 pub(crate) mod bundled_water;
+mod editor;
 mod qualification;
 mod save;
 mod studio;
@@ -11,9 +12,12 @@ use super::{StudioH3Review, flow_plan::app_state_from_v4};
 use crate::{
     FlowResultGuard, build_workspace_solve_request, solve_workspace_with_property_package,
 };
+pub use editor::{H3AssociationPreviewState, StudioH3AssociationEditor};
 pub use qualification::{H3PureWaterQualification, H3WaterPropertySource};
 pub use rf_model::equipment::ConcentricTubeFlowStream as H3FlowStream;
-use rf_model::equipment::{ConcentricTubeLiquidInlet, ConcentricTubeRatingTask};
+use rf_model::equipment::{
+    ConcentricTubeFlowAssociation, ConcentricTubeLiquidInlet, ConcentricTubeRatingTask,
+};
 use rf_property_package::PropertyPackageProvider;
 use rf_store::project_v4::{
     self, EquipmentSupport, FlowPlanSupport, ProjectV4Read, StoredFlowPlan, StoredProjectV4,
@@ -28,7 +32,7 @@ use rf_ui::{
     result_query::{FlowResultOrigin, FlowResultView},
     variable_browser::ObjectId,
 };
-pub use save::PreparedH3FlowAssociationSave;
+pub use save::{H3AssociationPreview, H3AssociationSaveTarget, PreparedH3FlowAssociationSave};
 use std::path::Path;
 pub use studio::{H3FlowReviewPhase, H3FlowReviewResult, StudioH3FlowReview};
 
@@ -36,7 +40,7 @@ pub(crate) const FLOW_SUPPORT: FlowPlanSupport = FlowPlanSupport::Sequential;
 pub(crate) const EQUIPMENT_SUPPORT: EquipmentSupport =
     EquipmentSupport::ConcentricTubeFlowAssociation;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct H3FlowPreview {
     guard: FlowResultGuard,
     origin: FlowResultOrigin,
@@ -205,6 +209,16 @@ impl H3FlowReview {
                 "the selected streams differ from the saved association",
             ));
         }
+        self.preview_pair(task, member, ConcentricTubeFlowAssociation { hot, cold })
+    }
+
+    fn preview_pair(
+        &self,
+        task: &ConcentricTubeRatingTask,
+        member: EquipmentCaseKey,
+        pair: ConcentricTubeFlowAssociation,
+    ) -> RfResult<H3FlowPreview> {
+        let ConcentricTubeFlowAssociation { hot, cold } = pair;
         if hot.id == cold.id {
             return Err(
                 rejected("same_stream", "hot and cold require distinct streams")

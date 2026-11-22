@@ -8,7 +8,8 @@ use rf_model::{
         EngineeringBasis, SourceKind, SourceOperatingConditions, SourcePhase, SourceReview,
     },
     equipment::{
-        ConcentricTubeLiquidDomain, ConcentricTubeLiquidProperties, ConcentricTubeRatingCase,
+        ConcentricTubeFlowAssociation, ConcentricTubeLiquidDomain, ConcentricTubeLiquidProperties,
+        ConcentricTubeRatingCase,
     },
 };
 use rf_property_package::{
@@ -66,11 +67,31 @@ pub(super) fn reviewed_qualification() -> H3PureWaterQualification {
     }
 }
 
+pub(super) fn supports_package(package_id: Option<&str>) -> bool {
+    package_id == Some(PACKAGE_ID)
+}
+
 pub(crate) fn check_case(
     qualification: &H3PureWaterQualification,
     package_id: Option<&str>,
     basis: &EngineeringBasis,
     case: &ConcentricTubeRatingCase,
+) -> RfResult<()> {
+    check_association(
+        qualification,
+        package_id,
+        basis,
+        case,
+        case.flow_association.as_ref(),
+    )
+}
+
+pub(super) fn check_association(
+    qualification: &H3PureWaterQualification,
+    package_id: Option<&str>,
+    basis: &EngineeringBasis,
+    case: &ConcentricTubeRatingCase,
+    association: Option<&ConcentricTubeFlowAssociation>,
 ) -> RfResult<()> {
     if package_id != Some(qualification.package_id.as_str()) {
         return Err(rejected(
@@ -78,7 +99,7 @@ pub(crate) fn check_case(
             "the saved flowsheet must select the package bound to the H3 qualification",
         ));
     }
-    let association = case.flow_association.as_ref().ok_or_else(|| {
+    let association = association.ok_or_else(|| {
         rejected(
             "association_missing",
             "the H3 case has no saved flow association",

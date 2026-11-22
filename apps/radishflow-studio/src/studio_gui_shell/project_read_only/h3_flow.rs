@@ -79,9 +79,9 @@ impl ReviewState {
         owner: &mut WorkspaceRunOwner,
         path: &Path,
         l: StudioShellLocale,
-        escape: bool,
+        controls: &mut super::ReviewControls,
     ) -> bool {
-        if escape && !self.return_to_diagnostic() {
+        if controls.escape && !self.return_to_diagnostic() {
             return true;
         }
         if self.selected.is_none() {
@@ -93,6 +93,7 @@ impl ReviewState {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(tr(l, "工程只读", "Read-only project"));
                     close = h3::button(ui, tr(l, "返回工作区", "Back to workspace")).clicked();
+                    controls.association_button(ui, self.selected.as_ref(), l, true);
                 });
                 if close {
                     return;
@@ -139,6 +140,11 @@ impl ReviewState {
             });
         });
         close
+    }
+
+    pub(super) fn select_saved_case(&mut self, member: EquipmentCaseKey) {
+        self.selected = Some(member);
+        self.focus = Some(Focus::Run);
     }
 
     fn cases(
