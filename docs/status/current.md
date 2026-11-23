@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-11-22
+更新时间：2026-11-23
 
 ## 用途
 
@@ -36,16 +36,16 @@
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
 
 
-### 最近进展（截至 2026-11-22）
+### 最近进展（截至 2026-11-23）
 
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
 - PR #19 已合入 `master` 并回灌 `dev`（`39a35703`）。
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
-- [QS4 M2](../topics/modeling/mixed-partition-execution.md)已验。M3 核心、v4、CLI v15 已验。
+- [QS4 M2](../topics/modeling/mixed-partition-execution.md)已验。[M3 串联回流](../topics/modeling/mixed-serial-recycle.md)已通过核心、v4、CLI v15 和 macOS Studio 验收。
 
 ### 下一步
 
-- [ ] 先评审 [QS4 M3 Studio](../topics/modeling/mixed-serial-recycle.md#接下来的事项) 接入，再做 macOS 原生验收。
+- [x] [QS4 M3 Studio](../topics/modeling/mixed-serial-recycle.md#studio-工作台接入评审) 已完成 macOS 两区计划往返、13 股 CLI 对照、分区失败与迟到回执验收。
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
 - [x] [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存)已接通 CLI v14、Studio 只读与编辑。macOS 通过 40／50 mol/s、重跑失效、迟到回执、保存冲突与新会话复算验收。
 - [x] [AF3-V10 macOS 原版等待中返回](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24) 已在同一窗口验证草稿保留、取消回执拒收、旧 Current 保留和显式重跑接收。
@@ -111,7 +111,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-22 Rust 2,321 项通过，含 72 项 CLI 进程测试。见 [W47](../devlogs/2026-11/2026-W47.md#2026-11-22-qs4-m3-cli-v15-实现与验收)。
+- 2026-11-23 Rust 2,325 项通过，含 72 项 CLI 进程测试。见 [W48](../devlogs/2026-11/2026-W48.md)。
 
 - 2026-11-22：PR #19 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 
@@ -142,7 +142,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 - 代码风格、命名和抽象判断：`docs/development/code-style.md`
 - 分支与 PR 治理：`docs/adr/0001-branch-and-pr-governance.md`
 - 单位 / 建模辅助 / 设备设计的详细规划见本文当前结论链接；分离器与换热器子专题从设备专题进入。UI 功能分区、旧稿状态和 R0—R2 见 UI 计划。
-- 最新周志：[W47](../devlogs/2026-11/2026-W47.md)。Studio R2／V1 接线与 QS3 实窗见 W46，QS、性能和 C2-A 见 W45，QS 实现 / 历史验证见 W44，AF 见 W43，设备见 W42，U / A 见 W41。
+- 最新周志：[W48](../devlogs/2026-11/2026-W48.md)。M3 核心、保存与 CLI 见 [W47](../devlogs/2026-11/2026-W47.md)。Studio R2／V1 接线与 QS3 实窗见 W46，QS、性能和 C2-A 见 W45，QS 实现 / 历史验证见 W44，AF 见 W43，设备见 W42，U / A 见 W41。
 
 ## 更新规则
 

@@ -89,7 +89,7 @@ pub fn read_studio_project_with_support(
 pub fn read_studio_project_for_review(project_path: &Path) -> RfResult<StudioProjectOpen> {
     read_studio_project_for_consumer(
         project_path,
-        rf_store::project_v4::FlowPlanSupport::SinglePhaseRecycle,
+        rf_store::project_v4::FlowPlanSupport::MixedSerialRecycle,
         EquipmentSupport::ConcentricTubeFlowAssociation,
     )
 }

@@ -138,7 +138,10 @@ pub(crate) fn prepare_studio_flow_plan_save(
         {
             prepare_product_composition_save(app, path).map(Some)
         }
-        FlowPlanConfiguration::Mixed(options) if options.recycle.is_some() => {
+        FlowPlanConfiguration::Mixed(options) if options.serial_recycle().is_some() => {
+            prepare_mixed_serial_recycle_save(app, path).map(Some)
+        }
+        FlowPlanConfiguration::Mixed(options) if options.single_recycle().is_some() => {
             prepare_mixed_recycle_save(app, path).map(|p| Some(p.0))
         }
         _ => Ok(None),
@@ -175,6 +178,9 @@ fn prepare_plan_save(
 }
 
 impl PreparedFlowPlanSave {
+    pub fn support(&self) -> FlowPlanSupport {
+        self.support
+    }
     pub fn single_phase_capability(&self) -> Option<&'static str> {
         match self.support {
             FlowPlanSupport::SinglePhase => Some(project_v4::SINGLE_PHASE_CAPABILITY),

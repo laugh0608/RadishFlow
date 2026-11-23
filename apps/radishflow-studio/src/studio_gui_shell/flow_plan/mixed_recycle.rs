@@ -1,9 +1,35 @@
 use super::*;
 use rf_model::Flowsheet;
-use rf_solver::{
-    mixed::{MixedBlockMethod, MixedOptions, MixedRecycleConfiguration, MixedRecycleOptions},
-    partitioned::MAX_ITERATION_EVALUATIONS,
+use rf_solver::mixed::{
+    MixedBlockMethod, MixedOptions, MixedRecycleConfiguration, MixedRecycleOptions,
 };
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Connections {
+    Acyclic,
+    Single,
+    Serial,
+}
+
+impl Connections {
+    fn label(self, zh: bool) -> &'static str {
+        match self {
+            Self::Acyclic => tr(zh, "块间无环", "Acyclic blocks"),
+            Self::Single => tr(zh, "单撕裂回流", "Single tear recycle"),
+            Self::Serial => tr(zh, "两区串联回流", "Two serial recycle regions"),
+        }
+    }
+}
+
+fn unbound_region() -> MixedRecycleOptions {
+    MixedRecycleOptions::new(TearSpecification {
+        stream_id: "".into(),
+        source: DiagnosticPortTarget::new("", ""),
+        sink: DiagnosticPortTarget::new("", ""),
+        initial_component_flows_mol_s: None,
+        component_scales_mol_s: None,
+    })
+}
 
 impl ReadyAppState {
     pub(super) fn render_mixed_recycle_options(
@@ -16,50 +42,98 @@ impl ReadyAppState {
     ) -> bool {
         let zh = self.locale == StudioShellLocale::ZhCn;
         let can_change = !draft.has_modified_numbers();
-        if options.serial_recycle().is_some() {
-            return false;
-        }
-        let mut enabled = options.single_recycle().is_some();
+        let current = match options.recycle.as_deref() {
+            None => Connections::Acyclic,
+            Some(MixedRecycleConfiguration::Single(_)) => Connections::Single,
+            Some(MixedRecycleConfiguration::Serial(_)) => Connections::Serial,
+        };
+        let mut selected = current;
         ui.label(tr(zh, "块间连接", "Block connections"));
         ui.add_enabled_ui(can_change, |ui| {
-            let mode = egui::ComboBox::from_id_salt("mixed-block-connections")
-                .selected_text(if enabled {
-                    tr(zh, "单撕裂回流", "Single tear recycle")
-                } else {
-                    tr(zh, "块间无环", "Acyclic blocks")
-                })
+            let picker = egui::ComboBox::from_id_salt("mixed-block-connections")
+                .selected_text(current.label(zh))
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut enabled, false, tr(zh, "块间无环", "Acyclic blocks"));
-                    ui.selectable_value(
-                        &mut enabled,
-                        true,
-                        tr(zh, "单撕裂回流", "Single tear recycle"),
-                    );
+                    for mode in [
+                        Connections::Acyclic,
+                        Connections::Single,
+                        Connections::Serial,
+                    ] {
+                        ui.selectable_value(&mut selected, mode, mode.label(zh));
+                    }
                 });
-            reveal_plan_focus(&mode.response);
+            reveal_plan_focus(&picker.response);
         });
-        if !enabled {
-            options.recycle = None;
+        if selected != current {
+            options.recycle = match selected {
+                Connections::Acyclic => None,
+                Connections::Single => Some(Box::new(MixedRecycleConfiguration::Single(
+                    unbound_region(),
+                ))),
+                Connections::Serial => Some(Box::new(MixedRecycleConfiguration::Serial([
+                    options
+                        .single_recycle()
+                        .cloned()
+                        .unwrap_or_else(unbound_region),
+                    unbound_region(),
+                ]))),
+            };
+        }
+        if selected == Connections::Acyclic {
             return false;
         }
         let eligible = bindings
             .iter()
             .filter(|tear| tear_role_matches(flow, options, tear))
             .collect::<Vec<_>>();
-        options.recycle.get_or_insert_with(|| {
-            Box::new(MixedRecycleConfiguration::Single(MixedRecycleOptions {
-                // An unselected binding can exist in the draft only. Apply checks its shape.
-                tear: TearSpecification {
-                    stream_id: "".into(),
-                    source: DiagnosticPortTarget::new("", ""),
-                    sink: DiagnosticPortTarget::new("", ""),
-                    initial_component_flows_mol_s: None,
-                    component_scales_mol_s: None,
-                },
-                max_iteration_evaluations: MAX_ITERATION_EVALUATIONS,
-            }))
+        let serial = selected == Connections::Serial;
+        let mut apply = false;
+        let regions = options.recycle_regions_mut();
+        for index in 0..regions.len() {
+            let other = serial.then(|| regions[1 - index].tear.stream_id.clone());
+            let choices = eligible
+                .iter()
+                .copied()
+                .filter(|tear| Some(&tear.stream_id) != other.as_ref())
+                .collect::<Vec<_>>();
+            apply |= ui
+                .push_id(("mixed-recycle-region", index), |ui| {
+                    if serial {
+                        ui.strong(format!(
+                            "{} · {}",
+                            tr(zh, "回流区", "Recycle region"),
+                            index + 1
+                        ));
+                    }
+                    self.render_recycle_region(
+                        ui,
+                        draft,
+                        &mut regions[index],
+                        flow,
+                        &choices,
+                        serial,
+                    )
+                })
+                .inner;
+        }
+        ui.small(if serial {
+            tr(zh, "各区按实际入口缩放，整图按外部进料缩放。运行顺序由流股连接决定。", "Each region scales by its evaluated inlet. The whole flow uses external feeds. Connections determine the execution order.")
+        } else {
+            tr(zh, "尺度使用本次实际新鲜料总量，独立复核另计。", "Scaling uses the evaluated fresh feed total. Verification is counted separately.")
         });
-        let recycle = options.single_recycle_mut().expect("single recycle editor");
+        apply
+    }
+
+    fn render_recycle_region(
+        &mut self,
+        ui: &mut egui::Ui,
+        draft: &mut FlowPlanDraft,
+        recycle: &mut MixedRecycleOptions,
+        flow: &Flowsheet,
+        eligible: &[&TearSpecification],
+        serial: bool,
+    ) -> bool {
+        let zh = self.locale == StudioShellLocale::ZhCn;
+        let can_change = !draft.has_modified_numbers();
         let tear = &mut recycle.tear;
         let mut apply = false;
         ui.label(tr(zh, "撕裂流股", "Tear stream"));
@@ -78,7 +152,7 @@ impl ReadyAppState {
                             "Connect a Local Splitter outlet_a to an EO Mixer inlet_b.",
                         ));
                     }
-                    for candidate in &eligible {
+                    for &candidate in eligible {
                         let selected = same_binding(candidate, tear);
                         let label = format!(
                             "{} · {} → {}",
@@ -87,7 +161,7 @@ impl ReadyAppState {
                             port_label(&candidate.sink)
                         );
                         if ui.selectable_label(selected, label).clicked() && !selected {
-                            *tear = (*candidate).clone();
+                            *tear = candidate.clone();
                         }
                     }
                 });
@@ -197,18 +271,17 @@ impl ReadyAppState {
         apply |= number(
             ui,
             draft,
-            FlowPlanNumericField::IterationBudget,
+            if serial {
+                FlowPlanNumericField::RegionIterationBudget(tear.stream_id.clone())
+            } else {
+                FlowPlanNumericField::IterationBudget
+            },
             tr(zh, "候选评价上限", "Candidate evaluation limit"),
             recycle.max_iteration_evaluations as f64,
             MeasurementUnit::One,
             &mut self.flow_plan.notice,
         )
         .is_some();
-        ui.small(tr(
-            zh,
-            "尺度使用本次实际新鲜料总量，独立复核另计。",
-            "Scaling uses the evaluated fresh feed total. Verification is counted separately.",
-        ));
         apply
     }
 }

@@ -74,6 +74,11 @@ impl ReadyAppState {
         let applied_method = PlanMethod::of(&current);
         let applied_recycle =
             matches!(&current, FlowPlanConfiguration::Mixed(options) if options.recycle.is_some());
+        let applied_serial = matches!(&current, FlowPlanConfiguration::Mixed(options) if options.serial_recycle().is_some());
+        let saved_serial = workspace
+            .flow_plan
+            .saved_capabilities()
+            .contains_key(rf_store::project_v4::MIXED_SERIAL_RECYCLE_CAPABILITY);
         let saved_recycle = workspace
             .flow_plan
             .saved_capabilities()
@@ -97,7 +102,13 @@ impl ReadyAppState {
             ui.label(format!(
                 "{}: {}",
                 tr(zh, "已应用", "Applied"),
-                if applied_recycle {
+                if applied_serial {
+                    tr(
+                        zh,
+                        "混合分区 · 两区串联回流",
+                        "Mixed partition · Two serial recycle regions",
+                    )
+                } else if applied_recycle {
                     tr(
                         zh,
                         "混合分区 · 单撕裂回流",
@@ -127,7 +138,14 @@ impl ReadyAppState {
                 "仅显式运行。Active 下也须点击 Run 或按 F5。",
                 "Manual run only, including in Active mode. Select Run or press F5.",
             ));
-        } else if saved_recycle {
+        }
+        if saved_serial && !applied_serial {
+            ui.small(tr(
+                zh,
+                "将当前计划另存到新路径以保留原串联回流工程。",
+                "Save this plan to a new path to preserve the original serial recycle project.",
+            ));
+        } else if saved_recycle && !applied_recycle {
             ui.small(tr(
                 zh,
                 "使用另存为保存当前计划，保留原混合回流工程。",

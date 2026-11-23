@@ -352,3 +352,4 @@ mod equation_oriented;
 
 mod mixed;
 mod mixed_recycle;
+mod mixed_serial_recycle;

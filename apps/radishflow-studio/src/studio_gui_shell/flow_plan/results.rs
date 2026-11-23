@@ -118,11 +118,17 @@ impl ReadyAppState {
                     if let Some(code) = failure.error.context().diagnostic_code() {
                         ui.label(code);
                     }
+                    let unit = workspace
+                        .project_presentation
+                        .display_units()
+                        .unit_for(rf_types::units::QuantityKind::MolarFlow);
+                    locate = super::mixed_results::render_serial_regions(
+                        ui,
+                        &failure.serial_recycles,
+                        unit,
+                        zh,
+                    );
                     if let Some(report) = &failure.recycle {
-                        let unit = workspace
-                            .project_presentation
-                            .display_units()
-                            .unit_for(rf_types::units::QuantityKind::MolarFlow);
                         if super::mixed_results::render_recycle_report(ui, report, unit, zh, false)
                         {
                             locate = Some(report.tear.stream_id.clone());

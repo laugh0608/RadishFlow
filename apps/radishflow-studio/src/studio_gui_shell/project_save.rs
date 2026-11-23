@@ -298,8 +298,7 @@ impl ReadyAppState {
                     prepared.path().display().to_string(),
                     prepared.compatibility().cloned(),
                     *overwrite,
-                    prepared.requires_product_composition(),
-                    prepared.single_phase_capability(),
+                    prepared.support(),
                 );
                 return true;
             }
@@ -419,36 +418,64 @@ impl ReadyAppState {
         path: String,
         compatibility: Option<ProjectSaveCompatibility>,
         overwrite: bool,
-        composition: bool,
-        single_phase_capability: Option<&'static str>,
+        support: rf_store::project_v4::FlowPlanSupport,
     ) {
+        use rf_store::project_v4::*;
         let locale = self.locale;
+        let (title, capability, version) = match support {
+            FlowPlanSupport::SinglePhaseRecycle => (
+                tr(
+                    locale,
+                    "确认保存单相显热回流",
+                    "Confirm single-vapor recycle save",
+                ),
+                SINGLE_PHASE_RECYCLE_CAPABILITY,
+                1,
+            ),
+            FlowPlanSupport::SinglePhase => (
+                tr(
+                    locale,
+                    "确认保存单相显热计划",
+                    "Confirm single-vapor plan save",
+                ),
+                SINGLE_PHASE_CAPABILITY,
+                1,
+            ),
+            FlowPlanSupport::ProductComposition => (
+                tr(
+                    locale,
+                    "确认保存产品组成规格",
+                    "Confirm product composition save",
+                ),
+                EQUATION_ORIENTED_CAPABILITY,
+                PRODUCT_COMPOSITION_VERSION,
+            ),
+            FlowPlanSupport::MixedSerialRecycle => (
+                tr(
+                    locale,
+                    "确认保存串联回流计划",
+                    "Confirm serial recycle save",
+                ),
+                MIXED_SERIAL_RECYCLE_CAPABILITY,
+                1,
+            ),
+            FlowPlanSupport::MixedRecycle => (
+                tr(locale, "确认保存混合回流计划", "Confirm mixed recycle save"),
+                MIXED_RECYCLE_CAPABILITY,
+                1,
+            ),
+            _ => unreachable!("only capability-specific saves use this review"),
+        };
         let response = egui::Modal::new(egui::Id::new("mixed-recycle-save")).show(ctx, |ui| {
             ui.set_width((ctx.screen_rect().width() - 48.0).clamp(220.0, 500.0));
-            ui.heading(if single_phase_capability == Some(rf_store::project_v4::SINGLE_PHASE_RECYCLE_CAPABILITY) {
-                tr(locale, "确认保存单相显热回流", "Confirm single-vapor recycle save")
-            } else if single_phase_capability.is_some() {
-                tr(locale, "确认保存单相显热计划", "Confirm single-vapor plan save")
-            } else if composition {
-                tr(locale, "确认保存产品组成规格", "Confirm product composition save")
-            } else {
-                tr(locale, "确认保存混合回流计划", "Confirm mixed recycle save")
-            });
+            ui.heading(title);
             egui::ScrollArea::vertical().max_height((ctx.screen_rect().height() * 0.45).max(70.0)).show(ui, |ui| {
                 ui.label(path);
                 if overwrite {
                     ui.strong(tr(locale, "将覆盖已有目标文件。", "This replaces the existing destination file."));
                 }
                 if let Some(compatibility) = compatibility {
-                    ui.label(if single_phase_capability == Some(rf_store::project_v4::SINGLE_PHASE_RECYCLE_CAPABILITY) {
-                        tr(locale, "保存为 v4，声明显热回流能力。旧版 Studio 将整份只读打开。", "Save as v4 with the sensible recycle capability. Older Studio versions open the entire file read-only.")
-                    } else if single_phase_capability.is_some() {
-                        tr(locale, "保存为 v4，声明单相显热能力。旧版 Studio 将整份只读打开。", "Save as v4 with the single-vapor capability. Older Studio versions open the entire file read-only.")
-                    } else if composition {
-                        tr(locale, "工程将保存为 v4，声明产品组成规格能力。旧版 Studio 将整份只读打开。", "Save as v4 with the product composition capability. Older Studio versions open the entire file read-only.")
-                    } else {
-                        tr(locale, "保存为 v4，声明混合回流能力。不支持该能力的旧版本会整份只读打开。", "Save as v4 with the mixed recycle capability. Older versions without it open the entire file read-only.")
-                    });
+                    ui.label(tr(locale, "保存为 v4。不支持所需能力的旧版本将整份只读打开。", "Save as v4. Older versions without the required capabilities open the entire file read-only."));
                     if let ProjectSaveCompatibility::FlowCapabilities { required, replaces_target_object_identities, replaces_target_variable_watch_list, .. } = compatibility {
                         if replaces_target_object_identities {
                             ui.strong(tr(locale, "覆盖可能使目标工程的旧变量引用失效。", "Overwriting can invalidate old variable references."));
@@ -460,14 +487,7 @@ impl ReadyAppState {
                             ui.label(format!("{} / {}", capability.id, capability.version));
                         }
                     } else {
-                        let (id, version) = if let Some(capability) = single_phase_capability {
-                            (capability, 1)
-                        } else if composition {
-                            (rf_store::project_v4::EQUATION_ORIENTED_CAPABILITY, rf_store::project_v4::PRODUCT_COMPOSITION_VERSION)
-                        } else {
-                            (rf_store::project_v4::MIXED_RECYCLE_CAPABILITY, 1)
-                        };
-                        ui.label(format!("{id} / {version}"));
+                        ui.label(format!("{capability} / {version}"));
                     }
                 }
             });

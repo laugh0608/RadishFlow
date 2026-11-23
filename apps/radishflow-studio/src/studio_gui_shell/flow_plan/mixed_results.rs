@@ -22,6 +22,13 @@ pub(in crate::studio_gui_shell) fn progress_text(p: &MixedProgress, zh: bool) ->
         ),
     };
     let mut text = stage.to_owned();
+    if let Some(region) = &p.recycle_region {
+        text.push_str(&format!(
+            " · {} {}",
+            tr(zh, "回流区", "Recycle region"),
+            region.as_str()
+        ));
+    }
     if let Some(recycle) = &p.recycle {
         text.push_str(&format!(
             " · {} {}",
@@ -119,6 +126,45 @@ impl ReadyAppState {
             if rendered {
                 locate = Some(report.tear.stream_id.clone());
             }
+        } else if !r.serial_recycles.is_empty() {
+            ui.strong(tr(
+                zh,
+                "混合分区 · 两区串联回流",
+                "Mixed partition · Two serial recycle regions",
+            ));
+            let unit = units.unit_for(QuantityKind::MolarFlow);
+            locate = render_serial_regions(ui, &r.serial_recycles, unit, zh);
+            ui.label(format!(
+                "{} · {}",
+                tr(zh, "整图总流量残差", "Global total flow residual"),
+                displayed_molar(r.global_material.total_residual_mol_s, unit)
+            ));
+            ui.collapsing(
+                format!(
+                    "{} ({})",
+                    tr(zh, "已接收流股", "Accepted streams"),
+                    r.streams.len()
+                ),
+                |ui| {
+                    for (id, stream) in &r.streams {
+                        ui.push_id(id, |ui| {
+                            ui.label(format!(
+                                "{id} · {}",
+                                displayed_molar(stream.total_molar_flow_mol_s, unit)
+                            ));
+                            for (component, fraction) in &stream.overall_mole_fractions {
+                                ui.label(format!(
+                                    "{component} · {}",
+                                    displayed_molar(stream.total_molar_flow_mol_s * fraction, unit)
+                                ));
+                            }
+                            if locate_stream(ui, id, zh) {
+                                locate = Some(id.clone());
+                            }
+                        });
+                    }
+                },
+            );
         } else {
             ui.strong(tr(
                 zh,
@@ -172,6 +218,87 @@ impl ReadyAppState {
     }
 }
 
+fn locate_stream(ui: &mut egui::Ui, stream: &StreamId, zh: bool) -> bool {
+    let button = ui.button(format!("{} {stream}", tr(zh, "定位", "Locate")));
+    reveal_plan_focus(&button);
+    button.clicked()
+}
+
+pub(super) fn render_serial_regions(
+    ui: &mut egui::Ui,
+    regions: &[MixedRecycleRegionReport],
+    unit: MeasurementUnit,
+    zh: bool,
+) -> Option<StreamId> {
+    let mut locate = None;
+    for region in regions {
+        ui.push_id(("region-evidence", region.equation_block.as_str()), |ui| {
+            let report = &region.recycle;
+            ui.strong(format!(
+                "{} · {}",
+                tr(zh, "回流区", "Recycle region"),
+                region.equation_block.as_str()
+            ));
+            let candidates = report
+                .residual_trace
+                .iter()
+                .filter(|s| s.phase == EvaluationPhase::Iteration)
+                .count();
+            let verifications = report
+                .residual_trace
+                .iter()
+                .filter(|s| s.phase == EvaluationPhase::Verification)
+                .count();
+            ui.label(format!(
+                "{} {candidates}/{} · {} {verifications}",
+                tr(zh, "候选评价", "Candidate evaluations"),
+                report.max_iteration_evaluations,
+                tr(zh, "独立复核", "Independent verifications")
+            ));
+            ui.label(format!(
+                "{} · {}",
+                tr(zh, "实际入口", "Evaluated inlet"),
+                report.fresh_stream
+            ));
+            if locate_stream(ui, &report.fresh_stream, zh) {
+                locate = Some(report.fresh_stream.clone());
+            }
+            if render_recycle_report(ui, report, unit, zh, region.balance.is_some()) {
+                locate = Some(report.tear.stream_id.clone());
+            }
+            if let Some(balance) = &region.balance {
+                ui.collapsing(
+                    tr(zh, "区域物料衡算", "Region material balance"),
+                    |ui| {
+                        for (component, residual) in &balance.component_residuals_mol_s {
+                            ui.strong(component.as_str());
+                            for (label, value) in [
+                                (
+                                    tr(zh, "入口", "Inlet"),
+                                    balance.fresh_components_mol_s.get(component),
+                                ),
+                                (
+                                    tr(zh, "出口", "Outlet"),
+                                    balance.product_components_mol_s.get(component),
+                                ),
+                                (tr(zh, "残差", "Residual"), Some(residual)),
+                            ] {
+                                if let Some(value) = value {
+                                    ui.label(format!(
+                                        "{label} · {}",
+                                        displayed_molar(*value, unit)
+                                    ));
+                                }
+                            }
+                        }
+                    },
+                );
+            }
+        });
+    }
+    locate
+}
+
 pub(super) fn render_recycle_report(
     ui: &mut egui::Ui,
     report: &MixedRecycleReport,
@@ -188,8 +315,7 @@ pub(super) fn render_recycle_report(
         tear.sink.unit_id,
         tear.sink.port_name
     ));
-    let locate = ui.button(format!("{} {}", tr(zh, "定位", "Locate"), tear.stream_id));
-    reveal_plan_focus(&locate);
+    let locate = locate_stream(ui, &tear.stream_id, zh);
     if let Some(last) = &report.last_sweep {
         ui.collapsing(
             if verified {
@@ -245,7 +371,7 @@ pub(super) fn render_recycle_report(
             }
         },
     );
-    locate.clicked()
+    locate
 }
 
 fn phase_label(phase: EvaluationPhase, zh: bool) -> &'static str {

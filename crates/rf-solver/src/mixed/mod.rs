@@ -128,7 +128,15 @@ impl MixedOptions {
         }
     }
 
-    fn recycle_regions(&self) -> &[MixedRecycleOptions] {
+    pub fn recycle_regions_mut(&mut self) -> &mut [MixedRecycleOptions] {
+        match self.recycle.as_deref_mut() {
+            None => &mut [],
+            Some(MixedRecycleConfiguration::Single(region)) => std::slice::from_mut(region),
+            Some(MixedRecycleConfiguration::Serial(regions)) => regions,
+        }
+    }
+
+    pub fn recycle_regions(&self) -> &[MixedRecycleOptions] {
         self.recycle
             .as_deref()
             .map_or(&[], MixedRecycleConfiguration::regions)
