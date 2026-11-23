@@ -1,6 +1,6 @@
 # Architecture Overview
 
-更新时间：2026-11-22
+更新时间：2026-11-23
 
 ## 用途
 
@@ -16,7 +16,7 @@
 
 | 部分 | 已有实现 | 能力边界 |
 | --- | --- | --- |
-| Rust Core | 对象模型、简化物性 / TP Flash、图校验、顺序模块及有限回流 / 联立模块 / 物料 EO、混合 DAG 与单撕裂跨块回流 | QS1—QS3 限定固定温压 Feed / Mixer / Splitter；QS4 组合 Local 与正向物料 EO，数值验证限于专题定义的案例和适用域 |
+| Rust Core | 对象模型、简化物性 / TP Flash、图校验、顺序模块及有限回流 / 联立模块 / 物料 EO、混合 DAG、单撕裂跨块回流与两区串联回流 | QS1—QS3 限定固定温压 Feed / Mixer / Splitter；QS4 组合 Local 与正向物料 EO，数值验证限于专题定义的案例和适用域 |
 | Rust Studio | `eframe/egui` 桌面壳、草稿与命令、运行控制、结果审阅、项目生命周期 | 受控建模路径，尚非完整自由连线或通用流程编辑器 |
 | .NET 10 CAPE-OPEN Bridge | C ABI 调用、PMC、注册工具、contract / smoke 与 SampleHost | 自有 Unit Operation PMC；PME 兼容结论限于已记录的宿主和场景 |
 | 外部 Control Plane | 本仓库已有客户端 DTO、HTTP transport、缓存与租约编排 | 服务端未在本仓库落地；客户端测试不代表 OIDC、部署和真实授权闭环已完成 |
@@ -61,7 +61,7 @@ flowchart TD
 | `rf-flash` | TP Flash、Rachford-Rice、相分率与相组成 | 数值假设与验证边界见 [热力学模型](../thermo/mvp-model.md) |
 | `rf-unitops` | 七类内建单元 / 工厂、规格规则、组分衡算 / 响应 / 方程能力，以及独立设备计算 | 各模型分别声明支持的能力；Mixer、Valve 和焓模型仍有简化假设 |
 | `rf-flowsheet` | 端口、流股引用、一源一汇校验及文档侧有来源的入口压力上下文 | 终端产品流可没有 sink；不借用未运行模板伪造压力依据 |
-| `rf-solver` | 稳态计划与共享执行分派。QS0 独立物料任务，QS1 分块回流，QS2 仿射联立，QS3 物料 EO，QS4 混合 DAG 与固定温压单撕裂混合回流，单气相显热无回路与单撕裂回流 | 按显式计划执行并验收各方法的适用域 |
+| `rf-solver` | 稳态计划与共享执行分派。QS0 独立物料任务，QS1 分块回流，QS2 仿射联立，QS3 物料 EO，QS4 混合 DAG 及固定温压的单撕裂与两区串联回流，单气相显热无回路与单撕裂回流 | 按显式计划执行并验收各方法的适用域 |
 | `rf-store` | 项目 v1—v4、sidecar、偏好、授权缓存、物性包与设备 / 正式流程计划编解码 | 按消费者声明识别能力，未支持的能力整份只读。工程与 CLI 独立版本化，见 [存储专题](../topics/project-lifecycle-storage.md) |
 | `rf-ffi` | engine 句柄、JSON 输入输出、错误映射与字符串释放 | 对外只暴露窄 C ABI，不向内核引入 COM |
 | `rf-ui` | AppState、草稿、共享输入事务、工程查询、来源与结果 presentation | 只读消费求解结果，不另算热力学 |
@@ -82,7 +82,7 @@ AF4a 的 `rf-ui::project_query` 从单一工作区只读发现流程、设备、
 
 Studio 的 `modeling_specifications` 提供只读 A1 报告与会话身份；`modeling_recommendations` 持有同一检查会话，负责候选、预览、忽略和正式接受，GUI 共用该状态。接受经 `rf-ui` 输入 / 连接事务写回，检查与推荐不自动求解、不持久化，也不新增 CLI 协议。共享规则在 UI、预检与 solver 各自阶段消费，保留既有外部失败分类。
 
-多策略沿“同一工程 → 计算任务 → 能力 / 规格检查 → 问题装配 → 执行 → 有资格的结果”组织。QS0 为独立会话任务。QS1—QS4 与无回路方法共用正式 `FlowPlanConfiguration`、工程 v4、运行拥有者和结果守卫。QS4 的 M1（混合 DAG）与 M2（固定温压单撕裂跨块回流）共用 `Mixed` 计划类型，各有独立的存储能力。Studio 支持两者，CLI 经 v7 和 v9 消费。M3 经独立 v4 能力保存两区计划，CLI v15 复用共享运行接收。通用 EO、自动策略选择及更一般的跨块回路另审。 [多策略专题](../topics/modeling/solver-strategies-and-assembly.md) · [QS4](../topics/modeling/mixed-partition-execution.md)
+多策略沿“同一工程 → 计算任务 → 能力 / 规格检查 → 问题装配 → 执行 → 有资格的结果”组织。QS0 为独立会话任务。QS1—QS4 与无回路方法共用正式 `FlowPlanConfiguration`、工程 v4、运行拥有者和结果守卫。QS4 的 M1（混合 DAG）、M2（固定温压单撕裂跨块回流）和 M3（固定温压两区串联回流）共用 `Mixed` 计划类型，各有独立的 v4 存储能力。Studio 可编辑、保存和运行三种计划，CLI 分别从 v7、v9、v15 接入。通用 EO、自动策略选择及更一般的跨块回路另审。 [多策略专题](../topics/modeling/solver-strategies-and-assembly.md) · [QS4](../topics/modeling/mixed-partition-execution.md) · [M3 工作台验收](../topics/modeling/mixed-serial-recycle.md#studio-工作台接入评审)
 
 ## 模型发现与装配现状
 

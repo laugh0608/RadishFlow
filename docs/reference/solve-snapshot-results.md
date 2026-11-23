@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-11-22
+更新时间：2026-11-23
 
 ## 目的
 
@@ -58,7 +58,7 @@ QS1 记录撕裂 / 迭代与最终复核；QS2 记录响应、耦合、LU / 条�
 
 QS4 的 M1、M2、M3 均使用 `MixedFlowSnapshot`，保留 Local / EO 分块、原身份的跨块边界、实际单元复核和全局分量衡算。M2 另带实际撕裂尺度、候选与独立复核的残差轨迹，以及最后一轮汇端消费的假设值和源端的实际返回值。闭合和全局分量衡算通过后，正式流股取复核轮的实际生产值。 [QS4 验收契约](../topics/modeling/mixed-partition-execution.md#m2首个跨块回流算例与验收)
 
-M3 的复核报告按实际 A→B 运行顺序记录各区入口、尺度、候选与独立复核轨迹、最后实际消费与返回值及区域衡算。A 区通过后才传递实际产出供 B 使用。两区及全局通过后，正式生产流股才一并发布。失败时，已取得的区域证据归本次诊断。v15 只在本次显式运行的回执与查询返回 `Current`，新文件会话从 `Missing` 开始。 [M3 结果契约](../topics/modeling/mixed-serial-recycle.md#查询和结果资格)
+M3 的复核报告按实际 A→B 运行顺序记录各区入口、尺度、候选与独立复核轨迹、最后实际消费与返回值及区域衡算。A 区通过后才传递实际产出供 B 使用。两区及全局通过后，正式生产流股才一并发布。失败时，已取得的区域证据归本次诊断。Studio 与 CLI v15 均从 `Missing` 打开工程，显式运行并接收合格结果后才显示 `Current`。 [M3 结果契约](../topics/modeling/mixed-serial-recycle.md#查询和结果资格) · [Studio 验收](../topics/modeling/mixed-serial-recycle.md#studio-工作台接入评审)
 
 预算耗尽或复核失败时，当次块进度、试值和已有残差只供失败诊断。取消先受理时拒收迟到载荷，沿用原结果资格。Studio 从 `FlowResultView` 的 Current 显示合格数值，CLI v9 在同一显式运行请求中投影 `execution_kind: mixed_recycle` 及实际物性包来源。重开工程从 Missing 开始。 [M2 CLI 结果投影](../topics/modeling/mixed-partition-execution.md#m2-cli-首片评审)
 
@@ -248,9 +248,11 @@ case-level `review_summary` 是 Studio window-model 从同一份 Current `FlowRe
 
 底部结果表的定位行为也必须复用正式 focus command：点击 stream 行应派发 `inspector.focus_stream:*` 并进入右侧 `检查器`，点击 unit 行应派发 `inspector.focus_unit:*` 并进入右侧 `模块结果`，底部仍停留在 `结果表`。这保证底部结果表、Canvas 当前选择、右侧 `画布选择` 和 Inspector / Module Results 消费同一条定位语义。
 
+选中流股时，检查器首屏同时列出工程中已提交的温度、压力、摩尔流量（SI）及该流股的求解状态。只有当前快照包含同一流股 ID 时才按检查器显示单位列出求解值。尚无结果、结果过期、求解失败或当前快照缺少该流股时，检查器保留工程输入并提示相应原因。 [流股检查器](../topics/modeling/material-stream.md#当前实现快照)
+
 ### diagnostic target / focus action
 
-当前 `inspector.focus_stream:*` 与 `inspector.focus_unit:*` 的正式语义只是“定位到某个当前已有结果对象”。
+项目树和结果页共用 `inspector.focus_stream:*` 与 `inspector.focus_unit:*` 按 ID 定位工程对象。项目树以当前工程对象为准，结果页的定位动作还须核对其来源快照和目标。 [画布导航契约](../architecture/canvas-interaction-contract.md)
 
 它们通常来自：
 
