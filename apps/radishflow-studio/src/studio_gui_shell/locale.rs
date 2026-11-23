@@ -379,6 +379,7 @@ impl StudioShellLocale {
             }
             "Name cannot be blank." => Cow::Borrowed("名称不能为空白。"),
             "Delete unit" => Cow::Borrowed("删除单元"),
+            "No connected ports" => Cow::Borrowed("未连接任何端口"),
             "Disconnect stream" => Cow::Borrowed("断开流股"),
             "Disconnect source" => Cow::Borrowed("断开源端"),
             "Disconnect sink" => Cow::Borrowed("断开目标端"),

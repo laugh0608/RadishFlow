@@ -427,7 +427,7 @@ pub struct StudioGuiCanvasObjectListItemViewModel {
     pub label: String,
     pub detail: String,
     pub attention_summary: Option<String>,
-    pub viewport_anchor_label: String,
+    pub viewport_anchor_label: Option<String>,
     pub command_id: String,
     pub related_stream_ids: Vec<String>,
     pub status_badges: Vec<StudioGuiCanvasStatusBadgeViewModel>,
@@ -440,7 +440,7 @@ impl StudioGuiCanvasObjectListItemViewModel {
             kind_label: self.kind_label,
             target_id: self.target_id.clone(),
             label: self.label.clone(),
-            viewport_anchor_label: Some(self.viewport_anchor_label.clone()),
+            viewport_anchor_label: self.viewport_anchor_label.clone(),
             command_id: self.command_id.clone(),
         }
     }

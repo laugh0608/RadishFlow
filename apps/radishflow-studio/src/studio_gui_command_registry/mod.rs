@@ -893,12 +893,40 @@ fn canvas_object_navigation_command_entry(
 ) -> StudioGuiCommandEntry {
     let target = item.command_target();
     let sort_order = 400u16.saturating_add(index.min(u16::MAX as usize - 400) as u16);
-    let label = format!("Locate {} {}", target.kind_label, target.label);
-    let anchor = target.viewport_anchor_label.as_deref().unwrap_or("none");
-    let detail = format!(
-        "Open the {} Inspector for `{}` and request Canvas viewport focus at `{}`. {}",
-        target.kind_label, target.target_id, anchor, item.detail
-    );
+    let mut search_terms = vec![
+        "canvas".to_string(),
+        "object".to_string(),
+        "objects".to_string(),
+    ];
+    let (label, detail) = match target.viewport_anchor_label.as_deref() {
+        Some(anchor) => {
+            search_terms.extend(["locate", "focus", "viewport"].map(str::to_string));
+            (
+                format!("Locate {} {}", target.kind_label, target.label),
+                format!(
+                    "Open the {} Inspector for `{}` and request Canvas viewport focus at `{}`. {}",
+                    target.kind_label, target.target_id, anchor, item.detail
+                ),
+            )
+        }
+        None => {
+            search_terms.extend(["inspect", "focus"].map(str::to_string));
+            (
+                format!("Inspect {} {}", target.kind_label, target.label),
+                format!(
+                    "Open the {} Inspector for `{}`. {}",
+                    target.kind_label, target.target_id, item.detail
+                ),
+            )
+        }
+    };
+    search_terms.extend([
+        target.kind_label.to_string(),
+        target.target_id,
+        target.label.clone(),
+        item.detail.clone(),
+    ]);
+    search_terms.extend(target.viewport_anchor_label);
 
     StudioGuiCommandEntry {
         command_id: target.command_id,
@@ -913,19 +941,7 @@ fn canvas_object_navigation_command_entry(
             target.kind_label.to_string(),
             target.label.clone(),
         ],
-        search_terms: vec![
-            "canvas".to_string(),
-            "object".to_string(),
-            "objects".to_string(),
-            "locate".to_string(),
-            "focus".to_string(),
-            "viewport".to_string(),
-            target.kind_label.to_string(),
-            target.target_id,
-            target.label,
-            item.detail.clone(),
-            anchor.to_string(),
-        ],
+        search_terms,
         shortcut: None,
         shortcut_aliases: Vec::new(),
     }

@@ -157,7 +157,7 @@ DS0 / DS1 在 P3 随模型能力进入，不等待完整 EO 或通用优化。�
 | Feed、Flash 创建：已验证可用 | [Canvas 创建与六种单元矩阵](../../crates/rf-ui/src/tests/canvas.rs)、[空白项目 shell 测试](../../apps/radishflow-studio/src/studio_gui_shell/tests/canvas.rs) | Palette 进入放置态，点击画布提交；得到 `feed-1`、`flash-1`，端口和选择同步。Heater / Cooler / Valve / Mixer 创建矩阵测试通过，四种单元本轮实窗待验证 |
 | 参数编辑：部分可用 | [Inspector 测试](../../crates/rf-ui/src/tests/inspector.rs)、上述空白项目测试 | Feed 温度 `-1 K` 草稿显示错误且无应用入口；修正为 `250 K` 后关联流股同步。Flash `200 K / 100000 Pa` 提交后进入求解。Feed F/z、其他单元参数有测试，本轮未逐字段实窗提交；不能称所有参数均已 GUI 验收 |
 | 受控连接：已验证可用 | [连接应用与唯一端点规则](../../crates/rf-ui/src/state/actions.rs)、[恢复测试](../../crates/rf-ui/src/tests/recovery.rs) | 建议创建 Feed source stream，连接 Flash inlet，再创建 liquid / vapor 两出口。完整连接时重连禁用；无自由端口选择器，不能将受控建议等同任意连线 |
-| 单端断开与唯一目标重连：已验证可用 | 上述恢复测试、[GUI 消费测试](../../apps/radishflow-studio/src/studio_gui_host/interaction_tests.rs) | 实窗断开目标端保留源端与 T/P/F/z；重连恢复同一流股和目标。源端断开、整股断开由定向测试验证，本轮实窗待验证 |
+| 单端断开与唯一目标重连：已验证可用 | 上述恢复测试、[GUI 消费测试](../../apps/radishflow-studio/src/studio_gui_host/interaction_tests.rs) | 实窗断开目标端保留源端与 T/P/F/z，重连恢复同一流股和目标。源端与整股断开的后续实窗结果见[补充验收](#流股源端与整股断开2026-11-23) |
 | 无效 / 歧义连接保护：部分可用 | 恢复测试覆盖缺端无操作、无端整股断开无操作、歧义 source 和形成环的 sink 不提交 | 唯一候选才允许重连；相关测试通过。多候选、自环及占用端口的逐项实窗拒绝路径待验证，未登记为缺陷 |
 | 流股删除及关联清理：已验证可用 | `apply_delete_stream_and_disconnect_ports_mutation`、恢复与 GUI 消费测试 | 删除已连接 Feed 流股，两单元保留、两端绑定清除、流股从 3 条变 2 条、选择清空；一次 Undo 恢复同一流股与两端绑定，rerun 通过 |
 | 单元删除 / 重命名：缺失 | [DocumentCommand](../../crates/rf-ui/src/commands.rs) 只有对应类型；`DeleteUnit` 仅被历史容器测试使用，`RenameUnit` 另见自动运行测试标签 | 未找到模型删除方法、领域动作或 Studio 用户命令消费；实窗单元操作只有聚焦和移动等，没有删除 / 重命名。历史中记录一个命令标签不证明该动作可执行 |
@@ -166,6 +166,12 @@ DS0 / DS1 在 P3 随模型能力进入，不等待完整 EO 或通用优化。�
 | 流股导航反馈：部分可用 | [Canvas 导航与 presentation](../../apps/radishflow-studio/src/studio_gui_canvas_presentation/mod.rs) | Inspector 能选中并操作真实存在的 Feed 流股，但 Canvas 显示 `Canvas navigation anchor expired`；记录为反馈不一致，根因与其他流股范围待定位，不等同流股已丢失 |
 
 保存 / 重开能力分层结果见 [生命周期 B0 复核](project-lifecycle-storage.md#b0-保存与重开复核2026-09-13)。本轮证据使用演示物性验证软件行为，流量有限、非负、组成归一及出口总摩尔流量一致；不作为真实物性精度或独立能量模型认证。
+
+### 流股源端与整股断开（2026-11-23）
+
+macOS Studio 已验证 Feed–Valve–Flash 中间流股的三个状态。断开源端保留 Flash 入口，唯一可用的 Valve 出口可重连到原流股。整股断开清空两端绑定，项目树仍可按原 ID 打开检查器，显示“未连接任何端口”和原工程规格。此时画布没有对应连线，重连按钮禁用。
+
+一次撤销可恢复整股断开前的两个绑定，重做可再次断开。重连或撤销后需显式运行才会生成当前快照。保存重开后，两种断开状态均可诊断到具体缺失端口，恢复版复算后四股物流的结果与基准一致。 [W48 实窗记录](../devlogs/2026-11/2026-W48.md#2026-11-23-流股断开与唯一源端重连)
 
 ### B1-1 单元删除与关联清理（2026-09-13）
 
@@ -282,4 +288,4 @@ shell 的待新建、待打开、保存覆盖、关闭及单元删除确认优�
 
 - 当前状态：Active
 - 2026-11-23，六类内建单元均完成 macOS 删除、撤销、重做和保存重开实窗验收。逐类证据见 B1-1，导航和重命名分别见 B1-2、B1-3。
-- B1-4 已完成 macOS 验收。结果输出见 [B2-1](results-review-diagnostics.md#b2-1轻量结果输出闭环)。流股源端及整股断开、其余五类单元的重命名、远距离视口与跨平台新增路径仍待实窗验证。
+- B1-4 已完成 macOS 验收。结果输出见 [B2-1](results-review-diagnostics.md#b2-1轻量结果输出闭环)。多候选、自环与已占用端口的重连保护、其余五类单元的重命名、远距离视口与跨平台新增路径仍待实窗验证。

@@ -964,7 +964,7 @@ impl ReadyAppState {
                     .selected(item.is_active)
                     .frame(false),
             )
-            .on_hover_text(&item.detail);
+            .on_hover_text(self.locale.runtime_label(&item.detail).as_ref());
         if response.clicked() {
             self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
             self.select_canvas_stream(&item.command_id);

@@ -129,9 +129,6 @@ impl StudioGuiHost {
                     .cloned()
                     .unwrap_or_default();
                 let is_active_inspector_target = active_stream_id.as_ref() == Some(&stream.id);
-                if endpoint.source.is_none() && endpoint.sinks.is_empty() {
-                    return Vec::new();
-                }
                 if endpoint.sinks.is_empty() {
                     return vec![StudioGuiCanvasStreamState {
                         stream_id: stream.id.clone(),

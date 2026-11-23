@@ -123,7 +123,7 @@ impl ReadyAppState {
 
         match selection {
             Some(selection) => {
-                render_wrapped_small(ui, &selection.summary);
+                render_wrapped_small(ui, self.locale.runtime_label(&selection.summary).as_ref());
                 if let (Some(source), Some(detail)) = (
                     selection.layout_source_label,
                     selection.layout_detail.as_ref(),

@@ -42,7 +42,7 @@
 - PR #19 已合入 `master` 并回灌 `dev`（`39a35703`）。
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
 - [QS4 M2](../topics/modeling/mixed-partition-execution.md)已验。[M3 串联回流](../topics/modeling/mixed-serial-recycle.md)已通过核心、v4、CLI v15 和 macOS Studio 验收。
-- macOS Studio 已完成六类内建单元的[删除、恢复与保存重开验收](../topics/flowsheet-modeling-and-solve.md)。
+- macOS 已验收[六类单元删除恢复、流股断开与重连](../topics/flowsheet-modeling-and-solve.md)。
 
 ### 下一步
 
@@ -112,7 +112,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-23 Rust 2,327 项通过，含 72 项 CLI 进程测试。见 [W48](../devlogs/2026-11/2026-W48.md)。
+- 2026-11-23 Rust 2,328 项通过，含 72 项 CLI 进程测试。见 [W48](../devlogs/2026-11/2026-W48.md)。
 
 - 2026-11-22：PR #19 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 

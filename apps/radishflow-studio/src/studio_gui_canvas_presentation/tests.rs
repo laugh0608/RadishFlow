@@ -77,7 +77,7 @@ fn canvas_presentation_reports_empty_canvas_state() {
                 crate::StudioGuiCanvasObjectListFilterOptionViewModel {
                     filter_id: "streams",
                     label: "Streams",
-                    detail: "Material stream lines",
+                    detail: "Material streams in the document",
                     count: 0,
                     enabled: false,
                 },
@@ -622,9 +622,10 @@ fn canvas_presentation_consumes_driver_dispatch_canvas_state() {
     );
     assert_eq!(presentation.view.suggestion_count, 1);
     assert_eq!(presentation.view.object_list.unit_count, 3);
-    assert_eq!(presentation.view.object_list.stream_count, 2);
+    assert_eq!(presentation.view.stream_lines.len(), 2);
+    assert_eq!(presentation.view.object_list.stream_count, 4);
     assert_eq!(presentation.view.object_list.attention_count, 0);
-    assert_eq!(presentation.view.object_list.items.len(), 5);
+    assert_eq!(presentation.view.object_list.items.len(), 7);
     assert_eq!(
         presentation
             .view
@@ -634,10 +635,10 @@ fn canvas_presentation_consumes_driver_dispatch_canvas_state() {
             .map(|option| (option.filter_id, option.count, option.enabled))
             .collect::<Vec<_>>(),
         vec![
-            ("all", 5, true),
+            ("all", 7, true),
             ("attention", 0, false),
             ("units", 3, true),
-            ("streams", 2, true),
+            ("streams", 4, true),
         ]
     );
     assert!(
@@ -686,7 +687,7 @@ fn canvas_presentation_consumes_driver_dispatch_canvas_state() {
                 .to_string(),
             "unit count: 3".to_string(),
             "stream line count: 2".to_string(),
-            "object list count: units=3 streams=2 attention=0 items=5".to_string(),
+            "object list count: units=3 streams=4 attention=0 items=7".to_string(),
             "legend: Canvas legend items=5".to_string(),
             "suggestion count: 1".to_string(),
             "- unit feed-1 kind=feed ports=1/1 badges=none command=inspector.focus_unit:feed-1".to_string(),
