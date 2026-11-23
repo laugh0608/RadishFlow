@@ -660,7 +660,8 @@ fn stream_reconnect_availability(
         .iter()
         .find(|stream| stream.stream_id == stream_id)
     else {
-        return crate::studio_stream_reconnect_presentation::stream_reconnect_missing_stream();
+        // A selected document stream without a canvas line has no material endpoint.
+        return stream_reconnect_missing_endpoint();
     };
     match (stream.source.as_ref(), stream.sink.as_ref()) {
         (Some(source), None) => {

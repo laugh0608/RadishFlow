@@ -615,6 +615,28 @@ fn save_project_with_upgrade_consent(app: &mut ReadyAppState) {
     }
 }
 
+fn rendered_text_rects(output: &egui::FullOutput) -> Vec<(String, egui::Rect)> {
+    fn collect(shape: &egui::epaint::Shape, text: &mut Vec<(String, egui::Rect)>) {
+        match shape {
+            egui::epaint::Shape::Vec(shapes) => {
+                for shape in shapes {
+                    collect(shape, text);
+                }
+            }
+            egui::epaint::Shape::Text(shape) => text.push((
+                shape.galley.job.text.clone(),
+                shape.galley.rect.translate(shape.pos.to_vec2()),
+            )),
+            _ => {}
+        }
+    }
+    let mut text = Vec::new();
+    for shape in &output.shapes {
+        collect(&shape.shape, &mut text);
+    }
+    text
+}
+
 pub(super) fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
     ReadyAppState::from_config(config, test_preferences_path("default"))
         .expect("expected app state")

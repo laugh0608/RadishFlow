@@ -358,16 +358,20 @@ impl ReadyAppState {
                         radishflow_studio::StudioGuiCanvasActionId::ReconnectSelectedStream,
                         radishflow_studio::StudioGuiCanvasActionId::DeleteSelectedStream,
                     ] {
-                        if let Some(action) = widget.action(action_id)
-                            && ui
-                                .add_enabled(
-                                    action.enabled,
-                                    egui::Button::new(
-                                        self.locale.runtime_label(&action.label).as_ref(),
-                                    ),
-                                )
-                                .on_hover_text(self.locale.runtime_label(&action.detail).as_ref())
-                                .clicked()
+                        let Some(action) = widget.action(action_id) else {
+                            continue;
+                        };
+                        let hint = self.locale.runtime_label(&action.detail);
+                        if ui
+                            .add_enabled(
+                                action.enabled,
+                                egui::Button::new(
+                                    self.locale.runtime_label(&action.label).as_ref(),
+                                ),
+                            )
+                            .on_hover_text(hint.as_ref())
+                            .on_disabled_hover_text(hint.as_ref())
+                            .clicked()
                         {
                             self.dispatch_ui_command(&action.command_id);
                         }

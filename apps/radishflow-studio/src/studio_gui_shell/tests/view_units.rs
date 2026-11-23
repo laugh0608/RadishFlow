@@ -38,28 +38,6 @@ fn view_settings_output(
     )
 }
 
-fn view_settings_text(output: &egui::FullOutput) -> Vec<(String, egui::Rect)> {
-    fn collect(shape: &egui::epaint::Shape, text: &mut Vec<(String, egui::Rect)>) {
-        match shape {
-            egui::epaint::Shape::Vec(shapes) => {
-                for shape in shapes {
-                    collect(shape, text);
-                }
-            }
-            egui::epaint::Shape::Text(shape) => text.push((
-                shape.galley.job.text.clone(),
-                shape.galley.rect.translate(shape.pos.to_vec2()),
-            )),
-            _ => {}
-        }
-    }
-    let mut text = Vec::new();
-    for shape in &output.shapes {
-        collect(&shape.shape, &mut text);
-    }
-    text
-}
-
 #[test]
 fn view_settings_undo_and_redo_refresh_notice_in_the_clicked_frame_without_changing_input_drafts() {
     let mut app = ready_app_state(&synced_workspace_config());
@@ -88,7 +66,7 @@ fn view_settings_undo_and_redo_refresh_notice_in_the_clicked_frame_without_chang
     {
         let _ = view_settings_output(&mut app, &ctx, vec![]);
         let output = view_settings_output(&mut app, &ctx, vec![]);
-        let pos = view_settings_text(&output)
+        let pos = rendered_text_rects(&output)
             .iter()
             .find(|(text, _)| text == button)
             .expect("history button")
@@ -116,7 +94,7 @@ fn view_settings_undo_and_redo_refresh_notice_in_the_clicked_frame_without_chang
             expected
         );
         assert!(
-            !view_settings_text(&clicked)
+            !rendered_text_rects(&clicked)
                 .iter()
                 .any(|(text, _)| text.contains("本视图选择尚未应用")),
             "notice must use the post-command presentation"

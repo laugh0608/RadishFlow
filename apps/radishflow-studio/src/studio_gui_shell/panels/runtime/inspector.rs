@@ -352,6 +352,7 @@ impl ReadyAppState {
             ui.horizontal_wrapped(|ui| {
                 ui.small(egui::RichText::new("Connections").strong());
                 for action in &detail.connection_actions {
+                    let hint = self.locale.runtime_label(&action.hover_text);
                     if ui
                         .add_enabled(
                             action.enabled,
@@ -362,7 +363,8 @@ impl ReadyAppState {
                                 .small(),
                             ),
                         )
-                        .on_hover_text(self.locale.runtime_label(&action.hover_text).as_ref())
+                        .on_hover_text(hint.as_ref())
+                        .on_disabled_hover_text(hint.as_ref())
                         .clicked()
                     {
                         self.dispatch_ui_command(&action.command_id);
