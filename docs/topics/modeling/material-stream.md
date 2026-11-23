@@ -1,6 +1,6 @@
 # Material Stream 物流股专题
 
-更新时间：2026-09-29
+更新时间：2026-11-23
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../../status/current.md) 为准。
 
@@ -35,6 +35,7 @@
 - Stream Inspector 支持字段级 draft、commit、batch commit、受控添加 / 删除组成条目。
 - `inspector.focus_stream:*` 是正式 stream 定位入口。
 - 结果表和 Result Inspector 可审阅当前 snapshot stream result。
+- 从结果表定位流股后，Stream Inspector 在编辑字段前列出「工程输入（SI）」和「当前求解结果」。前者读取工程内已提交的 T/P/F，后者按流股 ID 读取当前快照，并沿用检查器的显示单位。组成、相态和焓仍可按原流股审阅。
 
 已知缺口：
 
@@ -99,6 +100,7 @@
 - intermediate stream 和 downstream consumed stream 数值一致。
 - terminal stream 可作为最终结果审阅。
 - 编辑文档后旧 stream result 不再冒充当前结果。
+- 修改运行计划使结果过期、求解失败或重开工程时，检查器保留工程输入并显示对应状态。当前快照缺少该流股时显示原因。各状态下只有当前快照中匹配的流股显示求解数值。
 
 ## 验证计划
 
@@ -108,5 +110,5 @@
 ## 状态记录
 
 - 当前状态：Active
-- 最近更新：2026-09-12，恢复开发状态并对齐当前迭代入口；既有能力仍以实现快照和验收记录为准。
+- 最近更新：2026-11-23，AF5 流股检查器通过 M3 两区转供示例的 macOS 实窗验证。见 [W48](../../devlogs/2026-11/2026-W48.md)。
 - 下一步：完善 material stream 的输入、连接与结果契约，并覆盖当前用户路径的诊断和回归。

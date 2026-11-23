@@ -160,6 +160,7 @@ pub(crate) fn stream_target_detail_model(
 ) -> StudioGuiWindowInspectorTargetDetailModel {
     inspector_target_detail_model_from_snapshot(
         &stream_target_detail_snapshot(stream_id, title),
+        rf_ui::result_query::ResultStatus::Current,
         Some(snapshot),
         None,
     )
@@ -172,6 +173,7 @@ pub(crate) fn unit_target_detail_model(
 ) -> StudioGuiWindowInspectorTargetDetailModel {
     inspector_target_detail_model_from_snapshot(
         &unit_target_detail_snapshot(unit_id, title),
+        rf_ui::result_query::ResultStatus::Current,
         Some(snapshot),
         None,
     )

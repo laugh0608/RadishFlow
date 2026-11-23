@@ -69,6 +69,68 @@ fn results(app: &mut ReadyAppState, ctx: &egui::Context) -> String {
 }
 
 #[test]
+fn located_stream_distinguishes_project_inputs_from_qualified_results() {
+    let temp = PropertyPackageCacheRoot::temporary("m3-stream-inspector").unwrap();
+    let path = temp.path().join("serial.rfproj.json");
+    fs::write(&path, SAVED).unwrap();
+    let mut app = shell(&path);
+    let ctx = egui::Context::default();
+    let inspector = |app: &mut ReadyAppState, stream: &str| {
+        app.dispatch_ui_command(format!("inspector.focus_stream:{stream}"));
+        let window = app.platform_host.snapshot().window_model();
+        super::super::runtime::render_runtime_inspector_tab_texts(app, &window)
+    };
+    let unavailable = |texts: &[String], reason: &str| {
+        assert!(texts.iter().any(|s| s == reason), "{texts:?}");
+        assert!(texts.iter().any(|s| s == "84.000000 mol/s"));
+        assert!(texts.iter().all(|s| s != "Current solve result"
+            && s != "F · Molar flow"
+            && s != "Stream result details"));
+    };
+    unavailable(&inspector(&mut app, "s-ab"), "No solve result yet");
+    app.dispatch_ui_command("run_panel.run_manual");
+    drain(&mut app, &ctx);
+    for (id, input, result) in [
+        ("s-ab", "84.000000 mol/s", "2 mol/s"),
+        ("s-bf", "85.000000 mol/s", "7 mol/s"),
+    ] {
+        let texts = inspector(&mut app, id);
+        let index = |label: &str| {
+            texts
+                .iter()
+                .position(|s| s == label)
+                .unwrap_or_else(|| panic!("missing {label} in {texts:?}"))
+        };
+        assert!(index("Project inputs (SI)") < index(input));
+        assert!(index(input) < index("Current solve result"));
+        assert!(index("Current solve result") < index(result));
+        assert!(index(result) < index("Properties"));
+    }
+    app.apply_presentation_command(rf_ui::ProjectPresentationCommand::Apply(
+        rf_types::units::DisplayUnitSet::engineering(),
+    ))
+    .unwrap();
+    let texts = inspector(&mut app, "s-ab");
+    assert!(texts.iter().any(|s| s == "84.000000 mol/s"));
+    assert!(texts.iter().any(|s| s == "7.2 kmol/h"), "{texts:?}");
+
+    edit(&mut app, "s-ra", "1");
+    click_text(&mut app, &ctx, "Apply plan", 0);
+    unavailable(
+        &inspector(&mut app, "s-ab"),
+        "Solve result is stale. Run again.",
+    );
+    app.dispatch_ui_command("run_panel.run_manual");
+    drain(&mut app, &ctx);
+    unavailable(
+        &inspector(&mut app, "s-ab"),
+        "Solve failed. No result for this stream.",
+    );
+    app.open_project(path, "reopen serial project");
+    unavailable(&inspector(&mut app, "s-ab"), "No solve result yet");
+}
+
+#[test]
 fn serial_recycle_shell_edits_regions_saves_reopens_and_reviews_actual_handoff() {
     let temp = PropertyPackageCacheRoot::temporary("m3-shell-review").unwrap();
     let path = temp.path().join("serial.rfproj.json");

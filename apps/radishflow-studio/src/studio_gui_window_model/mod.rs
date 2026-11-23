@@ -368,6 +368,7 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub connection_actions: Vec<StudioGuiWindowInspectorConnectionActionModel>,
     pub unit_ports: Vec<StudioGuiWindowInspectorTargetPortModel>,
     pub latest_unit_result: Option<StudioGuiWindowUnitExecutionResultModel>,
+    pub stream_result_status: Option<rf_ui::result_query::ResultStatus>,
     pub latest_stream_result: Option<StudioGuiWindowStreamResultModel>,
     pub related_steps: Vec<StudioGuiWindowSolveStepModel>,
     pub related_diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
@@ -1542,6 +1543,7 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
                 .flatten();
             inspector_target_detail_model_from_snapshot(
                 detail,
+                snapshot.runtime.result_review.status,
                 inspector_result.as_ref().or(latest_solve_snapshot.as_ref()),
                 latest_diagnostic_for_document,
             )
@@ -1839,6 +1841,7 @@ fn inspector_target_model_from_ui(
 
 fn inspector_target_detail_model_from_snapshot(
     detail: &crate::StudioGuiInspectorTargetDetailSnapshot,
+    result_status: rf_ui::result_query::ResultStatus,
     latest_solve_snapshot: Option<&StudioGuiWindowSolveSnapshotModel>,
     latest_diagnostic: Option<&rf_ui::DiagnosticSummary>,
 ) -> StudioGuiWindowInspectorTargetDetailModel {
@@ -1875,6 +1878,8 @@ fn inspector_target_detail_model_from_snapshot(
         );
     }
     StudioGuiWindowInspectorTargetDetailModel {
+        stream_result_status: matches!(&detail.target, rf_ui::InspectorTarget::Stream(_))
+            .then_some(result_status),
         target,
         title: detail.title.clone(),
         summary_rows: detail

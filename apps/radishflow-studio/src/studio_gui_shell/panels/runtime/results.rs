@@ -10,6 +10,15 @@ impl ReadyAppState {
         render_wrapped_small(ui, &stream.label);
 
         ui.small(egui::RichText::new(self.locale.text(ShellText::StreamSummary)).strong());
+        self.render_stream_result_summary(ui, stream);
+        self.render_stream_result_details(ui, stream);
+    }
+
+    pub(super) fn render_stream_result_summary(
+        &self,
+        ui: &mut egui::Ui,
+        stream: &radishflow_studio::StudioGuiWindowStreamResultModel,
+    ) {
         egui::Grid::new(format!("stream-summary:{}", stream.stream_id))
             .num_columns(2)
             .striped(true)
@@ -24,7 +33,13 @@ impl ReadyAppState {
                     ui.end_row();
                 }
             });
+    }
 
+    pub(super) fn render_stream_result_details(
+        &self,
+        ui: &mut egui::Ui,
+        stream: &radishflow_studio::StudioGuiWindowStreamResultModel,
+    ) {
         if let Some(window) = stream.bubble_dew_window.as_ref() {
             ui.collapsing(self.locale.text(ShellText::BubbleDewWindow), |ui| {
                 egui::Grid::new(format!("stream-bubble-dew-window:{}", stream.stream_id))

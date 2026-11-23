@@ -1,4 +1,6 @@
 use super::*;
+use crate::studio_gui_shell::locale::tr;
+use rf_ui::result_query::ResultStatus;
 
 impl ReadyAppState {
     pub(super) fn render_module_settings_panel(
@@ -298,6 +300,12 @@ impl ReadyAppState {
         self.focus_specification_inspector(&title, &detail.target.command_id);
 
         if !detail.summary_rows.is_empty() {
+            if detail.stream_result_status.is_some() {
+                ui.small(
+                    egui::RichText::new(tr(self.locale, "工程输入（SI）", "Project inputs (SI)"))
+                        .strong(),
+                );
+            }
             egui::Grid::new(format!("inspector-summary:{}", detail.target.command_id))
                 .num_columns(2)
                 .spacing([8.0, 3.0])
@@ -308,6 +316,35 @@ impl ReadyAppState {
                         ui.end_row();
                     }
                 });
+        }
+
+        if let Some(status) = detail.stream_result_status {
+            ui.add_space(4.0);
+            let heading = match status {
+                ResultStatus::Current if detail.latest_stream_result.is_some() => {
+                    tr(self.locale, "当前求解结果", "Current solve result")
+                }
+                ResultStatus::Current => tr(
+                    self.locale,
+                    "当前结果未包含此流股",
+                    "Stream absent from current result",
+                ),
+                ResultStatus::Missing => tr(self.locale, "尚无求解结果", "No solve result yet"),
+                ResultStatus::Stale => tr(
+                    self.locale,
+                    "求解结果已过期，请重新运行",
+                    "Solve result is stale. Run again.",
+                ),
+                ResultStatus::Failed => tr(
+                    self.locale,
+                    "求解失败，当前流股无结果",
+                    "Solve failed. No result for this stream.",
+                ),
+            };
+            ui.small(egui::RichText::new(heading).strong());
+            if let Some(stream) = &detail.latest_stream_result {
+                self.render_stream_result_summary(ui, stream);
+            }
         }
 
         if !detail.connection_actions.is_empty() {
@@ -500,14 +537,15 @@ impl ReadyAppState {
         if let Some(stream) = detail.latest_stream_result.as_ref() {
             ui.add_space(4.0);
             ui.small(
-                egui::RichText::new(self.locale.text(ShellText::InspectorLatestResult)).strong(),
+                egui::RichText::new(tr(self.locale, "流股结果详情", "Stream result details"))
+                    .strong(),
             );
             ui.push_id(
                 format!(
                     "active-inspector-latest-stream:{}",
                     detail.target.command_id
                 ),
-                |ui| self.render_stream_result_inspector(ui, stream),
+                |ui| self.render_stream_result_details(ui, stream),
             );
         }
 
