@@ -42,6 +42,7 @@
 - PR #19 已合入 `master` 并回灌 `dev`（`39a35703`）。
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
 - [QS4 M2](../topics/modeling/mixed-partition-execution.md)已验。[M3 串联回流](../topics/modeling/mixed-serial-recycle.md)已通过核心、v4、CLI v15 和 macOS Studio 验收。
+- [双入口 Mixer](../topics/unitops/mixer.md) 已通过 macOS 删除、撤销、重做和保存重开验收。
 
 ### 下一步
 
@@ -111,13 +112,11 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-23 Rust 2,326 项通过，含 72 项 CLI 进程测试。见 [W48](../devlogs/2026-11/2026-W48.md)。
+- 2026-11-23 Rust 2,327 项通过，含 72 项 CLI 进程测试。见 [W48](../devlogs/2026-11/2026-W48.md)。
 
 - 2026-11-22：PR #19 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 
-- 2026-11-05：正式 2,069 项 Rust 测试、大图和首页原生代表验证通过；C2-A 新包另有 15 项 Python 测试与 552 行工程重放。见 [W45](../devlogs/2026-11/2026-W45.md)。
-
-- 跨平台、实窗与 `.NET` 历史证据见各专题及周志；新增路径和发布按各自范围验收。
+- 大图、首页与 C2-A 工程重放见 [W45](../devlogs/2026-11/2026-W45.md)。
 
 ## 当前范围控制
 
@@ -141,8 +140,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 - CAPE-OPEN / COM 边界：`docs/capeopen/boundary.md`
 - 代码风格、命名和抽象判断：`docs/development/code-style.md`
 - 分支与 PR 治理：`docs/adr/0001-branch-and-pr-governance.md`
-- 单位 / 建模辅助 / 设备设计的详细规划见本文当前结论链接；分离器与换热器子专题从设备专题进入。UI 功能分区、旧稿状态和 R0—R2 见 UI 计划。
-- 最新周志：[W48](../devlogs/2026-11/2026-W48.md)。M3 核心、保存与 CLI 见 [W47](../devlogs/2026-11/2026-W47.md)。Studio R2／V1 接线与 QS3 实窗见 W46，QS、性能和 C2-A 见 W45，QS 实现 / 历史验证见 W44，AF 见 W43，设备见 W42，U / A 见 W41。
+- 最新周志：[W48](../devlogs/2026-11/2026-W48.md)。M3 核心、保存与 CLI 见 [W47](../devlogs/2026-11/2026-W47.md)。
 
 ## 更新规则
 

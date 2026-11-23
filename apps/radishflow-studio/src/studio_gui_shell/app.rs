@@ -482,6 +482,15 @@ impl ReadyAppState {
     }
 
     pub(super) fn update(&mut self, ctx: &egui::Context) {
+        // Keep the accessible parent stable when a confirmation opens or closes.
+        let workspace = egui::Id::new("studio-workspace");
+        ctx.accesskit_node_builder(workspace, |node| {
+            node.set_role(egui::accesskit::Role::GenericContainer)
+        });
+        ctx.with_accessibility_parent(workspace, || self.update_window_contents(ctx, workspace));
+    }
+
+    fn update_window_contents(&mut self, ctx: &egui::Context, workspace: egui::Id) {
         self.reconcile_browser_session();
         self.poll_background_runs(ctx);
         self.reconcile_flow_path();
@@ -492,13 +501,38 @@ impl ReadyAppState {
         if self.render_read_only_project(ctx) {
             return;
         }
+        let confirming =
+            self.pending_unit_deletion.is_some() || self.pending_format_upgrade.is_some();
+        let actions = if confirming {
+            ctx.accesskit_node_builder(workspace, |node| node.set_hidden());
+            // AccessKit clicks in egui 0.31 target IDs even below a modal backdrop.
+            ctx.input_mut(|input| {
+                input
+                    .events
+                    .extract_if(.., |event| {
+                        matches!(event, egui::Event::AccessKitActionRequest(_))
+                    })
+                    .collect()
+            })
+        } else {
+            Vec::new()
+        };
+        self.update_workspace(ctx, actions);
+        if confirming
+            != (self.pending_unit_deletion.is_some() || self.pending_format_upgrade.is_some())
+        {
+            ctx.request_repaint();
+        }
+    }
+
+    fn update_workspace(&mut self, ctx: &egui::Context, modal_actions: Vec<egui::Event>) {
         self.refresh_modeling_problems();
         let close_frame_snapshot = ctx
             .input(|input| input.viewport().close_requested())
             .then(|| self.platform_host.snapshot());
         if self.sync_viewport_close(ctx) {
             if let Some(snapshot) = close_frame_snapshot.as_ref() {
-                self.render_viewport_close_frame(ctx, snapshot);
+                self.render_viewport_close_frame(ctx, snapshot, modal_actions);
             }
             return;
         }
@@ -528,8 +562,7 @@ impl ReadyAppState {
             self.render_home_dashboard(ctx, &window);
             self.render_variable_browser(ctx);
             self.render_command_palette(ctx, &window.commands);
-            self.render_pending_close_window_dialog(ctx);
-            self.render_unit_deletion_dialog(ctx);
+            self.render_project_confirmations(ctx, modal_actions);
             self.render_input_action_dialog(ctx);
             self.render_export_dialogs(ctx);
             return;
@@ -545,8 +578,7 @@ impl ReadyAppState {
             self.render_bottom_status_bar(ctx, &window);
             self.render_variable_browser(ctx);
             self.render_command_palette(ctx, &window.commands);
-            self.render_pending_close_window_dialog(ctx);
-            self.render_unit_deletion_dialog(ctx);
+            self.render_project_confirmations(ctx, modal_actions);
             self.render_input_action_dialog(ctx);
             self.render_export_dialogs(ctx);
             self.render_browser_navigation_dialog(ctx);
@@ -563,7 +595,7 @@ impl ReadyAppState {
         if self.screen == StudioShellScreen::Equipment {
             self.render_equipment_page(ctx);
             self.render_command_palette(ctx, &window.commands);
-            self.render_pending_close_window_dialog(ctx);
+            self.render_project_confirmations(ctx, modal_actions);
             self.render_input_action_dialog(ctx);
             self.render_export_dialogs(ctx);
             return;
@@ -573,8 +605,7 @@ impl ReadyAppState {
             self.render_property_page(ctx, &window);
             self.render_variable_browser(ctx);
             self.render_command_palette(ctx, &window.commands);
-            self.render_pending_close_window_dialog(ctx);
-            self.render_unit_deletion_dialog(ctx);
+            self.render_project_confirmations(ctx, modal_actions);
             self.render_input_action_dialog(ctx);
             self.render_export_dialogs(ctx);
             return;
@@ -587,8 +618,7 @@ impl ReadyAppState {
         self.render_variable_browser(ctx);
         self.render_command_palette(ctx, &window.commands);
         self.render_floating_drop_preview_overlay(ctx, &window);
-        self.render_pending_close_window_dialog(ctx);
-        self.render_unit_deletion_dialog(ctx);
+        self.render_project_confirmations(ctx, modal_actions);
         self.render_input_action_dialog(ctx);
         self.render_export_dialogs(ctx);
         self.render_browser_navigation_dialog(ctx);
@@ -603,14 +633,14 @@ impl ReadyAppState {
         &mut self,
         ctx: &egui::Context,
         snapshot: &radishflow_studio::StudioGuiSnapshot,
+        modal_actions: Vec<egui::Event>,
     ) {
         let window = self.window_model_with_shell_home(snapshot);
         let mut hovered_drop_target = false;
         if self.screen == StudioShellScreen::Home {
             self.render_home_dashboard(ctx, &window);
             self.render_command_palette(ctx, &window.commands);
-            self.render_pending_close_window_dialog(ctx);
-            self.render_unit_deletion_dialog(ctx);
+            self.render_project_confirmations(ctx, modal_actions);
             self.render_input_action_dialog(ctx);
             self.render_export_dialogs(ctx);
             return;
@@ -634,7 +664,7 @@ impl ReadyAppState {
         if self.screen == StudioShellScreen::Equipment {
             self.render_equipment_page(ctx);
             self.render_command_palette(ctx, &window.commands);
-            self.render_pending_close_window_dialog(ctx);
+            self.render_project_confirmations(ctx, modal_actions);
             self.render_input_action_dialog(ctx);
             self.render_export_dialogs(ctx);
             return;
@@ -643,8 +673,7 @@ impl ReadyAppState {
             self.render_bottom_status_bar(ctx, &window);
             self.render_property_page(ctx, &window);
             self.render_command_palette(ctx, &window.commands);
-            self.render_pending_close_window_dialog(ctx);
-            self.render_unit_deletion_dialog(ctx);
+            self.render_project_confirmations(ctx, modal_actions);
             self.render_input_action_dialog(ctx);
             self.render_export_dialogs(ctx);
             return;
@@ -656,8 +685,7 @@ impl ReadyAppState {
         self.render_center_stage(ctx, &window, &mut hovered_drop_target);
         self.render_command_palette(ctx, &window.commands);
         self.render_floating_drop_preview_overlay(ctx, &window);
-        self.render_pending_close_window_dialog(ctx);
-        self.render_unit_deletion_dialog(ctx);
+        self.render_project_confirmations(ctx, modal_actions);
         self.render_input_action_dialog(ctx);
         self.render_export_dialogs(ctx);
     }

@@ -62,6 +62,28 @@ impl ReadyAppState {
             .record_activity_line("close blocked by unsaved workspace changes".to_string());
     }
 
+    pub(super) fn render_project_confirmations(
+        &mut self,
+        ctx: &egui::Context,
+        actions: Vec<egui::Event>,
+    ) {
+        let scoped = !actions.is_empty();
+        if scoped {
+            ctx.input_mut(|input| input.events.extend(actions));
+        }
+        ctx.with_accessibility_parent(egui::accesskit_root_id(), || {
+            self.render_pending_close_window_dialog(ctx);
+            self.render_unit_deletion_dialog(ctx);
+        });
+        if scoped {
+            ctx.input_mut(|input| {
+                input
+                    .events
+                    .retain(|event| !matches!(event, egui::Event::AccessKitActionRequest(_)))
+            });
+        }
+    }
+
     pub(super) fn render_pending_close_window_dialog(&mut self, ctx: &egui::Context) {
         if self.render_identity_initialization(ctx)
             || self.render_format_upgrade(ctx)

@@ -1,6 +1,6 @@
 # 流程图建模与求解闭环
 
-更新时间：2026-11-18
+更新时间：2026-11-23
 
 > 本文定义该专题的能力、开发范围与验收要求；具体迭代切片和优先级以 [当前状态](../status/current.md) 为准。
 
@@ -195,7 +195,8 @@ DS0 / DS1 在 P3 随模型能力进入，不等待完整 EO 或通用优化。�
 | --- | --- |
 | 六类单元及事务边界 | 已验证可用：[rf-ui 删除测试](../../crates/rf-ui/src/tests/unit_deletion.rs) 与 [shell 删除测试](../../apps/radishflow-studio/src/studio_gui_shell/tests/unit_deletion.rs) 覆盖六类空白创建 / 删除、全部端口关联保留、取消 / 失效确认、草稿清理、历史分支、ID 和布局恢复 |
 | 中间设备 GUI 删除闭环 | 已验证可用：macOS 普通空白 Feed–Heater–Flash，影响确认 / 取消、删除、Undo / Redo、旧化、保存删除版与恢复版、原生重开 / rerun；删除版报告 `solver.connection_validation.missing_upstream_source`，不静默补线 |
-| 其余五类单元逐项实窗 | 待验证；自动化矩阵通过不等同全部 GUI 路径验收 |
+| 双入口 Mixer 删除与恢复 | macOS 已验证取消、确认、撤销、重做以及两份工程的原生另存 / 重开。三股物流的 ID、规格和外侧端口保留。恢复版重开后复现原画布位置与混合结果。 [W48](../devlogs/2026-11/2026-W48.md#2026-11-23-mixer-删除与恢复) |
+| 其余四类单元逐项删除实窗 | Feed、Cooler、Valve 和 Flash Drum 待验证 |
 | 原生持久化 | macOS 本轮主路径已验证，扩展边界见 [生命周期 B1](project-lifecycle-storage.md#b1-macos-原生项目文件选择器2026-09-13)；Windows / Linux 本轮待验证 |
 
 B0 表保留当时基线：“删除缺失”由本节覆盖，“重命名缺失”由 B1-3 覆盖；导航误报与快捷键待验证结论分别由后续导航修复、焦点复核更新。
