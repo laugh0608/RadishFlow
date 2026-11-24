@@ -1,5 +1,6 @@
 use super::super::*;
 
+mod reconnect;
 mod streams;
 use streams::{
     OpenPathEnd, canvas_stream_label_rect, paint_canvas_stream_label, paint_canvas_stream_line,
@@ -507,9 +508,28 @@ impl ReadyAppState {
             paint_canvas_surface_labels(&painter, rect, title, subtitle);
         }
 
+        let reconnect_overlay = self.reconnect_picker.as_ref().and_then(|picker| {
+            let ports = picker.canvas_ports(
+                ui.ctx().cumulative_pass_nr(),
+                &self.platform_host.modeling_inputs().workspace,
+            )?;
+            reconnect::ReconnectOverlay::project(
+                rect,
+                &viewport_transform,
+                unit_blocks,
+                self.canvas_unit_drag.as_ref(),
+                ports,
+            )
+        });
+
         let mut clicked_stream_command = None;
         let mut hovered_stream = false;
         for stream in stream_lines {
+            // The picker marks the real fixed port. Its old open-end stub and navigation
+            // badge would otherwise cover the preview arrow between adjacent devices.
+            if reconnect_overlay.is_some() && stream.is_active_inspector_target {
+                continue;
+            }
             let path_selected = flow_path.is_some_and(|path| path.line_id == stream.line_id);
             let open_end = if path_selected {
                 unqualified_path_end
@@ -607,16 +627,11 @@ impl ReadyAppState {
         let mut hovered_port_callout = None;
         let mut completed_unit_drag = None;
         for unit in unit_blocks {
-            let drag_preview_position = self
-                .canvas_unit_drag
-                .as_ref()
-                .filter(|drag| drag.unit_id == unit.unit_id)
-                .map(|drag| drag.current_position);
-            let unit_rect = canvas_unit_block_rect(
+            let unit_rect = canvas_displayed_unit_rect(
                 rect,
                 &viewport_transform,
-                unit.layout_slot,
-                drag_preview_position.or(unit.layout_position),
+                unit,
+                self.canvas_unit_drag.as_ref(),
             );
             let anchor_label = canvas_unit_viewport_anchor_label(unit.layout_slot);
             let is_viewport_focus = self
@@ -759,7 +774,9 @@ impl ReadyAppState {
             }
         }
 
-        if let Some(callout) = focus_callout
+        if let Some(overlay) = reconnect_overlay {
+            overlay.paint(&painter);
+        } else if let Some(callout) = focus_callout
             && !flow_path.is_some_and(|path| {
                 callout.kind_label == "Stream" && callout.target_id == path.stream_id
             })
@@ -1146,6 +1163,19 @@ fn canvas_stream_line_world_geometry(
 
 fn canvas_stream_line_hit_rect(geometry: CanvasStreamLineGeometry) -> egui::Rect {
     egui::Rect::from_two_pos(geometry.start, geometry.end).expand(8.0)
+}
+
+fn canvas_displayed_unit_rect(
+    rect: egui::Rect,
+    transform: &CanvasViewportTransform,
+    unit: &radishflow_studio::StudioGuiCanvasUnitBlockViewModel,
+    drag: Option<&CanvasUnitDragState>,
+) -> egui::Rect {
+    let position = drag
+        .filter(|drag| drag.unit_id == unit.unit_id)
+        .map(|drag| drag.current_position)
+        .or(unit.layout_position);
+    canvas_unit_block_rect(rect, transform, unit.layout_slot, position)
 }
 
 fn canvas_unit_block_rect(

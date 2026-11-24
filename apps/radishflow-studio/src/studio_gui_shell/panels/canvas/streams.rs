@@ -86,7 +86,7 @@ fn topology_color(selected: bool) -> egui::Color32 {
 
 // Subdivide only the visible portion. Stream endpoints can be arbitrarily far
 // from the viewport on a large manually arranged flowsheet.
-fn clip_stream_segment(
+pub(super) fn clip_stream_segment(
     geometry: CanvasStreamLineGeometry,
     clip: egui::Rect,
 ) -> Option<[egui::Pos2; 2]> {
@@ -307,7 +307,7 @@ fn canvas_stream_label_size(label: &str) -> egui::Vec2 {
     )
 }
 
-fn paint_canvas_stream_arrow(
+pub(super) fn paint_canvas_stream_arrow(
     painter: &egui::Painter,
     geometry: CanvasStreamLineGeometry,
     color: egui::Color32,

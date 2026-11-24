@@ -99,7 +99,7 @@
 
 ### 双流股端口对照与缺值回归
 
-**后续计划。** 画布重连候选联动验收后，扩展已有的同快照双流股比较。表头并排给出流股名、ID、源设备及出口、目标设备及入口，再按相同单位对齐流量、组成和相态。端口取自与当前结果相符的工程输入。编辑接线导致快照过期时，界面提示重新运行，避免把新接线标在旧读数上。[比较契约](../reference/solve-snapshot-results.md#comparison) · [ChemFlow 工作表观察](../architecture/simulation-platform.md#chemflow-v191-交互参考)
+**下一项，待实现。** 扩展已有的同快照双流股比较。表头并排给出流股名、ID、源设备及出口、目标设备及入口，再按相同单位对齐流量、组成和相态。端口取自与当前结果相符的工程输入。编辑接线导致快照过期时，界面提示重新运行，避免把新接线标在旧读数上。[比较契约](../reference/solve-snapshot-results.md#comparison) · [ChemFlow 工作表观察](../architecture/simulation-platform.md#chemflow-v191-交互参考)
 
 验收采用两份完整可求解的双进料 Mixer 工程，一份按原接线，另一份对调两个入口。分别复算，在各自的当前快照内比较进料 A 和 B。两份工程的混合出口都是 5 mol/s，比较表应能按端口名辨认 A 的实际去向。
 

@@ -42,11 +42,11 @@
 - PR #19 已合入 `master` 并回灌 `dev`（`39a35703`）。
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
 - [QS4 M2](../topics/modeling/mixed-partition-execution.md)已验。[M3 串联回流](../topics/modeling/mixed-serial-recycle.md)已通过核心、v4、CLI v15 和 macOS Studio 验收。
-- macOS 已验收六类单元的重命名、删除与恢复，以及流股断开、唯一与多候选重连。Mixer 双向第二项均已保存重开核对。[建模专题](../topics/flowsheet-modeling-and-solve.md)
+- macOS 已验收六类单元的重命名、删除与恢复，以及流股断开、唯一与多候选重连。Mixer 双向第二项的画布预览与重开绑定一致。[建模专题](../topics/flowsheet-modeling-and-solve.md)
 
 ### 下一步
 
-- [ ] 建模主线先做[重连候选与画布端口联动](../topics/flowsheet-modeling-and-solve.md#重连候选与画布端口联动)，再推进双流股结果对照。
+- [ ] 推进[双流股端口对照与缺值回归](../topics/results-review-diagnostics.md#双流股端口对照与缺值回归)。
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
 - [x] [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存)已接通 CLI v14、Studio 只读与编辑。macOS 通过 40／50 mol/s、重跑失效、迟到回执、保存冲突与新会话复算验收。
 - [x] [AF3-V10 macOS 原版等待中返回](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24) 已在同一窗口验证草稿保留、取消回执拒收、旧 Current 保留和显式重跑接收。

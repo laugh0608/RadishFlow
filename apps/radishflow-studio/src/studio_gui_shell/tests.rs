@@ -185,6 +185,7 @@ mod failure_recovery_lifecycle;
 mod failure_recovery_navigation;
 mod platform_shortcuts;
 mod project_lifecycle;
+pub(super) mod reconnect_picker;
 mod result_export;
 mod result_review;
 mod runtime;

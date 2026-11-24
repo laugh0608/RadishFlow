@@ -15,9 +15,43 @@ pub(super) struct ReconnectPicker {
     expected: FlowEditContext,
     options: StreamReconnectOptions,
     chosen: Option<StreamPortBinding>,
+    highlighted: Option<usize>,
+    pointer_highlight: bool,
+    rendered_pass: Option<u64>,
     error: Option<String>,
     origin: egui::Id,
     focus_first: bool,
+}
+
+pub(super) struct ReconnectCanvasPorts<'a> {
+    pub options: &'a StreamReconnectOptions,
+    pub chosen: Option<&'a StreamPortBinding>,
+    pub highlighted: Option<&'a StreamPortBinding>,
+}
+
+impl ReconnectPicker {
+    pub(super) fn canvas_ports(
+        &self,
+        pass: u64,
+        workspace: &rf_ui::WorkspaceState,
+    ) -> Option<ReconnectCanvasPorts<'_>> {
+        // Only paint a picker displayed for this input in the current window pass.
+        if self.rendered_pass != Some(pass)
+            || self.error.is_some()
+            || self.expected.validate(workspace).is_err()
+            || workspace.drafts.active_target.as_ref()
+                != Some(&InspectorTarget::Stream(self.stream.clone()))
+        {
+            return None;
+        }
+        Some(ReconnectCanvasPorts {
+            options: &self.options,
+            chosen: self.chosen.as_ref(),
+            highlighted: self
+                .highlighted
+                .and_then(|i| self.options.candidates.get(i)),
+        })
+    }
 }
 
 fn endpoint(port: &StreamPortBinding) -> String {
@@ -113,6 +147,9 @@ impl ReadyAppState {
                 expected: FlowEditContext::capture(workspace),
                 options,
                 chosen: None,
+                highlighted: None,
+                pointer_highlight: false,
+                rendered_pass: None,
                 error: None,
                 origin: entry,
                 focus_first: true,
@@ -164,6 +201,30 @@ impl ReadyAppState {
                         refresh = true;
                     }
                 } else {
+                    p.rendered_pass = Some(ui.ctx().cumulative_pass_nr());
+                    ui.small(tr(
+                        locale,
+                        "菱形标出固定端，虚线表示待确认的连接。",
+                        "The diamond marks the fixed port. A dashed line previews the connection.",
+                    ));
+                    // A stationary pointer must not mask keyboard navigation among the rows.
+                    ui.input(|i| {
+                        for event in &i.events {
+                            match event {
+                                egui::Event::PointerMoved(_)
+                                | egui::Event::PointerButton { pressed: true, .. } => {
+                                    p.pointer_highlight = true
+                                }
+                                egui::Event::Key { pressed: true, .. }
+                                | egui::Event::AccessKitActionRequest(_) => {
+                                    p.pointer_highlight = false
+                                }
+                                _ => {}
+                            }
+                        }
+                    });
+                    let mut hovered = None;
+                    let mut focused = None;
                     for (idx, port) in p.options.candidates.iter().enumerate() {
                         let label = match flow.units.get(&port.unit_id) {
                             Some(unit) => format!("{} · {}", unit.name, endpoint(port)),
@@ -175,10 +236,21 @@ impl ReadyAppState {
                             row.scroll_to_me(Some(egui::Align::Center));
                             p.focus_first = false;
                         }
+                        if row.hovered() {
+                            hovered = Some(idx);
+                        }
+                        if row.has_focus() {
+                            focused = Some(idx);
+                        }
                         if row.clicked() {
                             p.chosen = Some(port.clone());
                         }
                     }
+                    p.highlighted = if p.pointer_highlight {
+                        hovered.or(focused)
+                    } else {
+                        focused
+                    };
                     if let Some(chosen) = &p.chosen {
                         let (source, sink) = match p.options.missing {
                             PortDirection::Inlet => (&p.options.fixed, chosen),
@@ -204,6 +276,8 @@ impl ReadyAppState {
                     p.expected = FlowEditContext::capture(workspace);
                     p.error = None;
                     p.chosen = None;
+                    p.highlighted = None;
+                    p.rendered_pass = None;
                     p.focus_first = true;
                 }
                 _ => self.close_reconnect_picker(ui.ctx()),

@@ -127,66 +127,15 @@ fn disconnected_stream_can_be_reselected_without_a_canvas_line() {
 
 #[test]
 fn reconnect_picker_returns_native_focus_and_rechecks_an_occupied_second_choice() {
-    use egui::accesskit::{Action, ActionRequest, NodeId, TreeUpdate};
+    use crate::studio_gui_shell::tests::reconnect_picker::{
+        click, frame, mixer_with_two_open_ports, node,
+    };
     use radishflow_studio::{
         StudioBackgroundRunAction,
         flow_actions::{FlowAction, FlowActionRequest, FlowEditAccess, FlowEditContext},
         modeling_actions::{MaterialConnectionTarget, MaterialPortTarget},
     };
-    fn node(tree: &TreeUpdate, label: &str) -> NodeId {
-        tree.nodes
-            .iter()
-            .find(|(_, node)| node.label() == Some(label))
-            .unwrap_or_else(|| panic!("missing {label}"))
-            .0
-    }
-    fn click(id: NodeId) -> egui::Event {
-        egui::Event::AccessKitActionRequest(ActionRequest {
-            target: id,
-            action: Action::Click,
-            data: None,
-        })
-    }
-    fn frame(
-        app: &mut ReadyAppState,
-        ctx: &egui::Context,
-        event: Option<egui::Event>,
-    ) -> TreeUpdate {
-        let window = app.platform_host.snapshot().window_model();
-        let output = ctx.run(
-            egui::RawInput {
-                screen_rect: Some(egui::Rect::from_min_size(
-                    egui::Pos2::ZERO,
-                    egui::vec2(1440.0, 1200.0),
-                )),
-                focused: true,
-                events: event.into_iter().collect(),
-                ..Default::default()
-            },
-            |ctx| {
-                app.render_right_sidebar(ctx, &window, &mut false);
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    app.render_canvas_area(ui, &window, StudioGuiWindowAreaId::Canvas)
-                });
-            },
-        );
-        let tree = output.platform_output.accesskit_update.unwrap();
-        assert!(
-            tree.nodes.iter().any(|(id, _)| *id == tree.focus),
-            "native focus must exist in this frame"
-        );
-        tree
-    }
-    let mut config = synced_workspace_config();
-    config.project_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json");
-    let mut app = ready_app_state(&config);
-    app.locale = StudioShellLocale::En;
-    for id in ["stream-feed-a", "stream-feed-b"] {
-        app.dispatch_ui_command(format!("inspector.focus_stream:{id}"));
-        app.dispatch_ui_command("canvas.disconnect_selected_stream_sink");
-    }
-    app.dispatch_ui_command("inspector.focus_stream:stream-feed-a");
+    let mut app = mixer_with_two_open_ports("sink");
     let before = app.platform_host.modeling_inputs().clone();
     let ctx = egui::Context::default();
     ctx.enable_accesskit();
