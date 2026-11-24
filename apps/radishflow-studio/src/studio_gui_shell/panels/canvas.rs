@@ -361,6 +361,13 @@ impl ReadyAppState {
                         let Some(action) = widget.action(action_id) else {
                             continue;
                         };
+                        if action_id
+                            == radishflow_studio::StudioGuiCanvasActionId::ReconnectSelectedStream
+                            && !action.enabled
+                            && self.render_reconnect_entry(ui, &selection.target_id, "canvas")
+                        {
+                            continue;
+                        }
                         let hint = self.locale.runtime_label(&action.detail);
                         if ui
                             .add_enabled(

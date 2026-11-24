@@ -42,7 +42,7 @@
 - PR #19 已合入 `master` 并回灌 `dev`（`39a35703`）。
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
 - [QS4 M2](../topics/modeling/mixed-partition-execution.md)已验。[M3 串联回流](../topics/modeling/mixed-serial-recycle.md)已通过核心、v4、CLI v15 和 macOS Studio 验收。
-- macOS 已验收六类内建单元的重命名、删除与恢复，以及流股断开与重连保护。[建模专题](../topics/flowsheet-modeling-and-solve.md)
+- macOS 已验收六类内建单元的重命名、删除与恢复，以及流股断开、唯一端口重连和双进料 Mixer 的多候选重连。缺源、缺目标均已核对第二项绑定的保存重开及恢复后复算。[建模专题](../topics/flowsheet-modeling-and-solve.md)
 
 ### 下一步
 

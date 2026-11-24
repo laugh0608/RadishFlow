@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>双进料 Mixer · 选择重连端口</title>
+  <link rel="stylesheet" href="../2026-11-15-studio-r1/styles.css">
+  <style>
+    body { padding: 24px; }
+    main { max-width: 1232px; margin: 0 auto; }
+    header { margin-bottom: 18px; }
+    header p, .state { color: var(--muted); }
+    .boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 16px; }
+    .panel { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); display: flex; flex-direction: column; gap: 14px; }
+    .state { padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+    .fixed, .preview, .conflict { padding: 9px 12px; background: var(--wash); border-left: 3px solid var(--line); }
+    .preview { background: var(--blue-wash); border-color: var(--blue); }
+    .conflict { color: var(--amber); background: var(--amber-wash); border-color: var(--amber); }
+    fieldset { padding: 0; border: 0; margin: 0; min-width: 0; }
+    legend { padding: 0; margin-bottom: 6px; font-weight: 600; }
+    label { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); padding: 8px 10px; margin-bottom: 5px; border-radius: 4px; }
+    label.selected { background: var(--blue-wash); border-color: var(--blue); }
+    input[type="radio"] { margin: 0; accent-color: var(--blue); }
+    code { font: inherit; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .controls { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: auto; }
+    @media (max-width: 440px) { body { padding: 10px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>双进料 Mixer · 选择重连端口</h1>
+      <p>Studio 检查器局部评审稿 v1 · 2026-11-24 已确认</p>
+    </header>
+    <div class="boards">
+      <section class="panel" aria-labelledby="sink">
+        <p class="state">缺目标端 · 待选择</p>
+        <div><h2 id="sink">选择目标端口</h2><p>Feed A · <code>stream-feed-a</code></p></div>
+        <div class="fixed"><strong>已连接的源端</strong><p>Feed A · <code>feed-a:outlet</code></p></div>
+        <fieldset><legend>可用的物料入口</legend>
+          <label><input type="radio" name="sink"><span>Mixer · <code>mixer-1:inlet_a</code></span></label>
+          <label><input type="radio" name="sink"><span>Mixer · <code>mixer-1:inlet_b</code></span></label>
+        </fieldset>
+        <div class="controls"><button type="button">取消</button><button type="button" class="primary" disabled>确认重连</button></div>
+      </section>
+      <section class="panel" aria-labelledby="source">
+        <p class="state">缺源端 · 已选择</p>
+        <div><h2 id="source">选择源端口</h2><p>Feed A · <code>stream-feed-a</code></p></div>
+        <div class="fixed"><strong>已连接的目标端</strong><p>Mixer · <code>mixer-1:inlet_a</code></p></div>
+        <fieldset><legend>可用的物料出口</legend>
+          <label><input type="radio" name="source"><span>Feed A · <code>feed-a:outlet</code></span></label>
+          <label class="selected"><input type="radio" name="source" checked><span>Feed B · <code>feed-b:outlet</code></span></label>
+        </fieldset>
+        <div class="preview"><strong>连接预览</strong><p><code>feed-b:outlet → mixer-1:inlet_a</code></p></div>
+        <div class="controls"><button type="button">取消</button><button type="button" class="primary">确认重连</button></div>
+      </section>
+      <section class="panel" aria-labelledby="conflict">
+        <p class="state">缺目标端 · 确认时端口已被占用</p>
+        <div><h2 id="conflict">选择目标端口</h2><p>Feed A · <code>stream-feed-a</code></p></div>
+        <div class="fixed"><strong>已连接的源端</strong><p>Feed A · <code>feed-a:outlet</code></p></div>
+        <div class="conflict"><strong>重连未提交</strong><p><code>mixer-1:inlet_b</code> 已连接到 <code>stream-feed-b</code>。请重新查看可用入口。</p></div>
+        <div class="controls"><button type="button">取消</button><button type="button">重新查看端口</button></div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

@@ -299,6 +299,10 @@ impl ReadyAppState {
         );
         self.focus_specification_inspector(&title, &detail.target.command_id);
 
+        if detail.target.kind_label == "Stream" {
+            self.render_reconnect_picker(ui, &detail.target.target_id);
+        }
+
         if !detail.summary_rows.is_empty() {
             if detail.stream_result_status.is_some() {
                 ui.small(
@@ -352,6 +356,12 @@ impl ReadyAppState {
             ui.horizontal_wrapped(|ui| {
                 ui.small(egui::RichText::new("Connections").strong());
                 for action in &detail.connection_actions {
+                    if action.command_id == "canvas.reconnect_selected_stream"
+                        && !action.enabled
+                        && self.render_reconnect_entry(ui, &detail.target.target_id, "inspector")
+                    {
+                        continue;
+                    }
                     let hint = self.locale.runtime_label(&action.hover_text);
                     if ui
                         .add_enabled(

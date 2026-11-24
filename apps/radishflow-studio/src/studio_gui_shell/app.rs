@@ -491,6 +491,7 @@ impl ReadyAppState {
     }
 
     fn update_window_contents(&mut self, ctx: &egui::Context, workspace: egui::Id) {
+        self.reconcile_reconnect_picker();
         self.reconcile_browser_session();
         self.poll_background_runs(ctx);
         self.reconcile_flow_path();

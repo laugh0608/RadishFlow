@@ -31,6 +31,9 @@ impl FlowEditContext {
     pub fn document_id(&self) -> &DocumentId {
         self.0.document_id()
     }
+    pub fn belongs_to_session(&self, workspace: &WorkspaceState) -> bool {
+        self.0.same_session(&workspace.flow_run_qualification())
+    }
     pub fn revision(&self) -> u64 {
         self.0.revision()
     }
@@ -95,6 +98,12 @@ pub enum FlowAction {
     CreateUnit(BuiltinUnitKind),
     Connect(MaterialConnectionTarget),
     ConnectExact(MaterialConnectionTarget),
+    Reconnect {
+        stream: StreamId,
+        fixed: MaterialPortTarget,
+        missing: PortDirection,
+        chosen: MaterialPortTarget,
+    },
     Disconnect(MaterialPortTarget),
     /// The existing GUI stream operation stays one history transaction, even
     /// when both endpoints (or malformed duplicate bindings) are disconnected.
@@ -110,7 +119,9 @@ impl FlowAction {
                 FlowActionKind::Write
             }
             Self::CreateUnit(_) => FlowActionKind::CreateUnit,
-            Self::Connect(_) | Self::ConnectExact(_) => FlowActionKind::Connect,
+            Self::Connect(_) | Self::ConnectExact(_) | Self::Reconnect { .. } => {
+                FlowActionKind::Connect
+            }
             Self::Disconnect(_) | Self::DisconnectStream { .. } => FlowActionKind::Disconnect,
         }
     }
@@ -296,6 +307,24 @@ fn stage_flow_edit(
             (
                 FlowActionEffect::Created(receipt.unit_id),
                 Some(receipt.command),
+            )
+        }
+        FlowAction::Reconnect {
+            stream,
+            fixed,
+            missing,
+            chosen,
+        } => {
+            let result = next
+                .reconnect_stream_to_selected_endpoint(stream, fixed, *missing, chosen, changed_at)
+                .map_err(FlowActionError::Rejected)?;
+            (
+                FlowActionEffect::Connected(MaterialConnectionTarget {
+                    stream_id: result.stream_id,
+                    source: result.source_port,
+                    sink: Some(result.sink_port),
+                }),
+                Some(result.command),
             )
         }
         FlowAction::ConnectExact(target) => {

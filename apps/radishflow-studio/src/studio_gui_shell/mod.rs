@@ -61,6 +61,7 @@ mod result_export;
 mod result_review;
 mod result_table;
 mod state_presentation;
+mod stream_reconnect;
 mod unit_deletion;
 mod unit_settings;
 mod utils;
@@ -166,6 +167,7 @@ struct ReadyAppState {
     material: material_balance::MaterialPanelState,
     flow_plan: flow_plan::FlowPlanPanelState,
     left_sidebar_tab: StudioShellLeftSidebarTab,
+    reconnect_picker: Option<stream_reconnect::ReconnectPicker>,
     right_sidebar_tab: StudioShellRightSidebarTab,
     bottom_drawer_tab: StudioShellBottomDrawerTab,
     module_palette_filter: String,
@@ -531,6 +533,7 @@ impl ReadyAppState {
             screen: StudioShellScreen::default(),
             equipment: equipment::EquipmentPageState::default(),
             left_sidebar_tab: StudioShellLeftSidebarTab::default(),
+            reconnect_picker: None,
             right_sidebar_tab: StudioShellRightSidebarTab::default(),
             bottom_drawer_tab: StudioShellBottomDrawerTab::default(),
             module_palette_filter: String::new(),

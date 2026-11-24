@@ -48,59 +48,61 @@ impl StudioStreamReconnectMissingSide {
     }
 }
 
-pub(crate) fn stream_reconnect_from_candidates(
+pub(crate) fn stream_reconnect_availability(
     stream_id: &str,
-    missing_side: StudioStreamReconnectMissingSide,
-    candidate_count: usize,
-    cycle_blocked_count: usize,
-    available_targets: Vec<String>,
+    status: &rf_ui::StreamReconnect,
 ) -> StudioStreamReconnectAvailability {
-    match available_targets.len() {
-        1 => StudioStreamReconnectAvailability::Available {
-            detail: format!(
-                "Reconnect selected {} stream `{}` to the only available {} `{}`.",
-                missing_side.stream_shape(),
-                stream_id,
-                missing_side.endpoint_kind(),
-                available_targets[0]
-            ),
-        },
-        0 if candidate_count == 0 => StudioStreamReconnectAvailability::Unavailable {
-            reason: format!("there is no available {}", missing_side.endpoint_kind()),
-        },
-        0 => StudioStreamReconnectAvailability::Unavailable {
-            reason: cycle_blocked_reason(missing_side, cycle_blocked_count),
-        },
-        count => StudioStreamReconnectAvailability::Unavailable {
-            reason: format!(
-                "there are {count} available {}; use suggestions or resolve the ambiguous target first",
-                missing_side.endpoint_kind_plural()
-            ),
-        },
-    }
-}
-
-pub(crate) fn stream_reconnect_already_connected(
-    sink_endpoint_label: impl AsRef<str>,
-) -> StudioStreamReconnectAvailability {
-    StudioStreamReconnectAvailability::Unavailable {
-        reason: format!(
-            "it already has both material endpoints; disconnect source or sink before reconnecting (current sink `{}`)",
-            sink_endpoint_label.as_ref()
+    use rf_ui::StreamReconnect;
+    let reason = match status {
+        StreamReconnect::Missing => {
+            "the selected stream is no longer present in the current document".into()
+        }
+        StreamReconnect::Unbound => "the stream has no material endpoint to reconnect".into(),
+        StreamReconnect::InvalidBindings => {
+            "the stream has duplicate material endpoint bindings".into()
+        }
+        StreamReconnect::Connected { sink } => format!(
+            "it already has both material endpoints; disconnect source or sink before reconnecting (current sink `{}:{}`)",
+            sink.unit_id, sink.port
         ),
-    }
-}
-
-pub(crate) fn stream_reconnect_missing_endpoint() -> StudioStreamReconnectAvailability {
-    StudioStreamReconnectAvailability::Unavailable {
-        reason: "the stream has no material endpoint to reconnect".to_string(),
-    }
-}
-
-pub(crate) fn stream_reconnect_missing_stream() -> StudioStreamReconnectAvailability {
-    StudioStreamReconnectAvailability::Unavailable {
-        reason: "the selected stream is no longer present in the current document".to_string(),
-    }
+        StreamReconnect::Open(options) => {
+            let side = match options.missing {
+                rf_types::PortDirection::Outlet => StudioStreamReconnectMissingSide::Source,
+                rf_types::PortDirection::Inlet => StudioStreamReconnectMissingSide::Sink,
+            };
+            match options.candidates.as_slice() {
+                [port] => {
+                    return StudioStreamReconnectAvailability::Available {
+                        detail: format!(
+                            "Reconnect selected {} stream `{}` to the only available {} `{}:{}`.",
+                            side.stream_shape(),
+                            stream_id,
+                            side.endpoint_kind(),
+                            port.unit_id,
+                            port.port
+                        ),
+                    };
+                }
+                [] => {
+                    let mut reason = if options.cycle_blocked > 0 {
+                        cycle_blocked_reason(side, options.cycle_blocked)
+                    } else {
+                        format!("there is no available {}", side.endpoint_kind())
+                    };
+                    if options.occupied > 0 {
+                        reason.push_str(&format!(" ({} occupied)", options.occupied));
+                    }
+                    reason
+                }
+                ports => format!(
+                    "there are {} available {}; choose a port in the stream inspector",
+                    ports.len(),
+                    side.endpoint_kind_plural()
+                ),
+            }
+        }
+    };
+    StudioStreamReconnectAvailability::Unavailable { reason }
 }
 
 fn cycle_blocked_reason(

@@ -42,8 +42,7 @@ impl AppState {
         }
         apply_material_connection_acceptance(flowsheet, connection)?;
         if let Some(sink) = &connection.sink_unit_id {
-            // The shared reachability check assumes one source per stream. Never
-            // choose an arbitrary source from malformed topology to prove safety.
+            // Recommendation targets require unambiguous stream sources.
             let mut sources = BTreeSet::new();
             for port in flowsheet.units.values().flat_map(|unit| &unit.ports) {
                 if port.kind == PortKind::Material
@@ -56,7 +55,9 @@ impl AppState {
                     ));
                 }
             }
-            if would_create_unit_dependency_cycle(flowsheet, &connection.source_unit_id, sink) {
+            if reachable_material_units(flowsheet, sink, PortDirection::Outlet)
+                .contains(&connection.source_unit_id)
+            {
                 return Err(RfError::invalid_connection(
                     "connection would introduce a unit dependency cycle",
                 ));
