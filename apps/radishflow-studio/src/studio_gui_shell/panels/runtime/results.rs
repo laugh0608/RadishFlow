@@ -255,26 +255,7 @@ impl ReadyAppState {
         surface: Option<RunDiagnosticSurface>,
     ) {
         ui.label(egui::RichText::new(self.locale.text(ShellText::ResultInspector)).strong());
-        ui.small(self.locale.text(ShellText::SelectStream));
-        ui.horizontal_wrapped(|ui| {
-            for option in &inspector.stream_options {
-                let label = if option.label.is_empty() {
-                    option.stream_id.as_str()
-                } else {
-                    option.label.as_str()
-                };
-                let response = ui
-                    .add(egui::Button::new(label).selected(option.is_selected))
-                    .on_hover_text(&option.summary);
-                if response.clicked() {
-                    self.result_inspector
-                        .select_stream(&inspector.snapshot_id, option.stream_id.clone());
-                }
-            }
-        });
-        if inspector.has_stale_selection {
-            render_wrapped_small(ui, self.locale.text(ShellText::StaleStreamSelection));
-        }
+        self.render_comparison_base_picker(ui, inspector);
         ui.separator();
 
         if let Some(stream) = inspector.selected_stream.as_ref() {
@@ -359,33 +340,7 @@ impl ReadyAppState {
 
         if !inspector.comparison_options.is_empty() {
             ui.collapsing(self.locale.text(ShellText::StreamComparison), |ui| {
-                ui.small(self.locale.text(ShellText::CompareWith));
-                ui.horizontal_wrapped(|ui| {
-                    for option in &inspector.comparison_options {
-                        let label = if option.label.is_empty() {
-                            option.stream_id.as_str()
-                        } else {
-                            option.label.as_str()
-                        };
-                        let response = ui
-                            .add(egui::Button::new(label).selected(option.is_selected))
-                            .on_hover_text(&option.summary);
-                        if response.clicked() {
-                            self.result_inspector.select_comparison_stream(
-                                &inspector.snapshot_id,
-                                option.stream_id.clone(),
-                            );
-                        }
-                    }
-                });
-                if inspector.has_stale_comparison {
-                    render_wrapped_small(ui, self.locale.text(ShellText::StaleStreamSelection));
-                }
-                if let Some(comparison) = inspector.comparison.as_ref() {
-                    self.render_result_inspector_comparison(ui, comparison);
-                } else {
-                    ui.small(self.locale.text(ShellText::NoComparison));
-                }
+                self.render_comparison_picker(ui, inspector);
             });
         }
 
@@ -426,37 +381,161 @@ impl ReadyAppState {
         });
     }
 
+    pub(in crate::studio_gui_shell) fn render_results_comparison(
+        &mut self,
+        ui: &mut egui::Ui,
+        window: &StudioGuiWindowModel,
+    ) -> bool {
+        let section = egui::CollapsingHeader::new(self.locale.text(ShellText::StreamComparison))
+            .id_salt("results-stream-comparison")
+            .show(ui, |ui| {
+                let Some(snapshot) = window.runtime.latest_solve_snapshot.as_ref() else {
+                    if let Some(stale) = &window.runtime.stale_solve_snapshot {
+                        self.render_stale_solve_snapshot_notice(ui, stale);
+                    } else {
+                        ui.small(self.locale.text(ShellText::NoVisibleSolveResults));
+                    }
+                    return;
+                };
+                if !snapshot.result_guard.as_ref().is_some_and(|guard| {
+                    guard.is_current(&self.platform_host.modeling_inputs().workspace)
+                }) {
+                    ui.small(locale::tr(
+                        self.locale,
+                        "结果已变化，请重新运行后比较。",
+                        "Results changed. Run again to compare streams.",
+                    ));
+                    return;
+                }
+                egui::ScrollArea::vertical()
+                    .id_salt("results-comparison-scroll")
+                    .show(ui, |ui| {
+                        let base = self
+                            .result_inspector
+                            .selected_stream_id_for_snapshot(snapshot);
+                        let inspector = snapshot.result_inspector_with_comparison(
+                            base.as_deref(),
+                            self.result_inspector.comparison_stream_id.as_deref(),
+                        );
+                        self.render_comparison_base_picker(ui, &inspector);
+                        self.render_comparison_picker(ui, &inspector);
+                    });
+            });
+        section.body_returned.is_some()
+    }
+
+    pub(in crate::studio_gui_shell) fn render_comparison_base_picker(
+        &mut self,
+        ui: &mut egui::Ui,
+        inspector: &radishflow_studio::StudioGuiWindowResultInspectorModel,
+    ) {
+        ui.small(self.locale.text(ShellText::SelectStream));
+        ui.horizontal_wrapped(|ui| {
+            for option in &inspector.stream_options {
+                let label = if option.label.is_empty() {
+                    option.stream_id.as_str()
+                } else {
+                    option.label.as_str()
+                };
+                let response = ui
+                    .add(egui::Button::new(label).selected(option.is_selected))
+                    .on_hover_text(&option.summary);
+                if response.clicked() {
+                    self.result_inspector
+                        .select_stream(&inspector.snapshot_id, option.stream_id.clone());
+                }
+            }
+        });
+        if inspector.has_stale_selection {
+            render_wrapped_small(ui, self.locale.text(ShellText::StaleStreamSelection));
+        }
+    }
+
+    pub(in crate::studio_gui_shell) fn render_comparison_picker(
+        &mut self,
+        ui: &mut egui::Ui,
+        inspector: &radishflow_studio::StudioGuiWindowResultInspectorModel,
+    ) {
+        ui.small(self.locale.text(ShellText::CompareWith));
+        ui.horizontal_wrapped(|ui| {
+            for option in &inspector.comparison_options {
+                let label = if option.label.is_empty() {
+                    option.stream_id.as_str()
+                } else {
+                    option.label.as_str()
+                };
+                let response = ui
+                    .add(egui::Button::new(label).selected(option.is_selected))
+                    .on_hover_text(&option.summary);
+                if response.clicked() {
+                    self.result_inspector
+                        .select_comparison_stream(&inspector.snapshot_id, option.stream_id.clone());
+                }
+            }
+        });
+        if inspector.has_stale_comparison {
+            render_wrapped_small(ui, self.locale.text(ShellText::StaleStreamSelection));
+        }
+        if let Some(comparison) = inspector.comparison.as_ref() {
+            self.render_result_inspector_comparison(ui, comparison);
+        } else {
+            ui.small(self.locale.text(ShellText::NoComparison));
+        }
+    }
+
     pub(in crate::studio_gui_shell) fn render_result_inspector_comparison(
         &mut self,
         ui: &mut egui::Ui,
         comparison: &radishflow_studio::StudioGuiWindowResultInspectorComparisonModel,
     ) {
         ui.add_space(4.0);
-        ui.horizontal_wrapped(|ui| {
-            ui.small(format!(
-                "{}: {}",
-                self.locale.text(ShellText::BaseStream),
-                comparison.base_stream_id
-            ));
-            let _ = self.render_small_command_action(ui, &comparison.base_stream_focus_action);
-            ui.small(format!(
-                "{}: {}",
-                self.locale.text(ShellText::ComparedStream),
-                comparison.compared_stream_id
-            ));
-            let _ = self.render_small_command_action(ui, &comparison.compared_stream_focus_action);
-        });
+        let column_width = ((ui.available_width() - 100.0) / 3.0).clamp(85.0, 200.0);
         egui::Grid::new(format!(
             "result-comparison-summary:{}:{}",
             comparison.base_stream_id, comparison.compared_stream_id
         ))
         .num_columns(4)
+        .max_col_width(column_width)
         .striped(true)
         .show(ui, |ui| {
             ui.small(self.locale.text(ShellText::StreamSummary));
             ui.small(self.locale.text(ShellText::BaseStream));
             ui.small(self.locale.text(ShellText::ComparedStream));
             ui.small(self.locale.text(ShellText::Delta));
+            ui.end_row();
+            let cell = |ui: &mut egui::Ui, text: &str| {
+                ui.add(egui::Label::new(egui::RichText::new(text).small()).wrap());
+            };
+            for (field, base, compared) in [
+                (
+                    locale::tr(self.locale, "流股", "Stream"),
+                    comparison.base_label.as_str(),
+                    comparison.compared_label.as_str(),
+                ),
+                (
+                    "ID",
+                    &comparison.base_stream_id,
+                    &comparison.compared_stream_id,
+                ),
+                (
+                    locale::tr(self.locale, "源设备／出口", "Source / outlet"),
+                    comparison.base_ports.source.as_deref().unwrap_or("—"),
+                    comparison.compared_ports.source.as_deref().unwrap_or("—"),
+                ),
+                (
+                    locale::tr(self.locale, "目标设备／入口", "Target / inlet"),
+                    &comparison.base_ports.sinks.join("\n"),
+                    &comparison.compared_ports.sinks.join("\n"),
+                ),
+            ] {
+                ui.small(field);
+                cell(ui, if base.is_empty() { "—" } else { base });
+                cell(ui, if compared.is_empty() { "—" } else { compared });
+                ui.end_row();
+            }
+            ui.label("");
+            let _ = self.render_small_command_action(ui, &comparison.base_stream_focus_action);
+            let _ = self.render_small_command_action(ui, &comparison.compared_stream_focus_action);
             ui.end_row();
             for row in &comparison.summary_rows {
                 ui.small(format!(

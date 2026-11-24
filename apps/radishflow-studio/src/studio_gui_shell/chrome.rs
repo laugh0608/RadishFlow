@@ -1696,6 +1696,11 @@ impl ReadyAppState {
                     });
                 return;
             }
+            if self.screen == StudioShellScreen::Results
+                && self.render_results_comparison(ui, window)
+            {
+                return;
+            }
             self.render_region(
                 ui,
                 window,

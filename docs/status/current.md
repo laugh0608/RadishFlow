@@ -46,7 +46,7 @@
 
 ### 下一步
 
-- [ ] 推进[双流股端口对照与缺值回归](../topics/results-review-diagnostics.md#双流股端口对照与缺值回归)。
+- [x] [双流股端口对照与缺值回归](../topics/results-review-diagnostics.md#双流股端口对照与缺值回归)通过 macOS 验收。
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
 - [x] [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存)已接通 CLI v14、Studio 只读与编辑。macOS 通过 40／50 mol/s、重跑失效、迟到回执、保存冲突与新会话复算验收。
 - [x] [AF3-V10 macOS 原版等待中返回](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24) 已在同一窗口验证草稿保留、取消回执拒收、旧 Current 保留和显式重跑接收。
@@ -112,7 +112,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-24 Rust 2,330 项通过，含 72 项 CLI 进程测试。见 [W48](../devlogs/2026-11/2026-W48.md)。
+- 2026-11-24 Rust 2,341 项通过，含 72 项 CLI 进程测试。见 [W48](../devlogs/2026-11/2026-W48.md)。
 
 - 2026-11-22：PR #19 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 

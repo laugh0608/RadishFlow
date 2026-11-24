@@ -231,6 +231,7 @@ pub struct StudioGuiWindowEquationModel {
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowSolveSnapshotModel {
+    stream_ports: std::collections::BTreeMap<String, StreamComparisonPorts>,
     pub mixed: Option<mixed::StudioGuiWindowMixedModel>,
     pub equation_oriented: Option<StudioGuiWindowEquationModel>,
     pub simultaneous: Option<StudioGuiWindowSimultaneousModel>,
@@ -598,8 +599,18 @@ pub struct StudioGuiWindowResultInspectorUnitOptionModel {
     pub focus_action: StudioGuiWindowCommandActionModel,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StreamComparisonPorts {
+    pub source: Option<String>,
+    pub sinks: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowResultInspectorComparisonModel {
+    pub base_label: String,
+    pub compared_label: String,
+    pub base_ports: StreamComparisonPorts,
+    pub compared_ports: StreamComparisonPorts,
     pub base_stream_id: String,
     pub compared_stream_id: String,
     pub base_stream_focus_action: StudioGuiWindowCommandActionModel,
@@ -1474,14 +1485,16 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
         .latest_solve_snapshot
         .as_ref()
         .map(|result| {
-            solve_snapshot_model_from_ui(
+            let mut model = solve_snapshot_model_from_ui(
                 result,
                 snapshot
                     .runtime
                     .workspace_document
                     .presentation
                     .display_units(),
-            )
+            );
+            model.capture_comparison_ports(snapshot);
+            model
         });
     let stale_solve_snapshot =
         snapshot

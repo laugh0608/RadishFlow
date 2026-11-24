@@ -191,7 +191,8 @@ step 输入/输出当前的职责是表达“这一步执行时实际看到的�
 当前 comparison 的正式边界是：
 
 - 只比较当前同一份 `SolveSnapshot` 内已经存在的两股 `StreamStateSnapshot`
-- 只消费已有 summary / composition / phase rows
+- 同次工作区读取提供流股名、ID 与物料端口身份；仅在当前结果来源与修订吻合时并排展示源设备／出口、目标设备／入口
+- 数值来自已有 summary / composition / phase rows，按项目单位展示；差值为对比股减基准股。任一侧缺值则差值显示 `-`，真实零值带单位显示
 - 只暴露定位到这两股流的 focus action
 
 因此 comparison 不应：
