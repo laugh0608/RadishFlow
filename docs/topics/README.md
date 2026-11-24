@@ -1,6 +1,6 @@
 # 开发专题索引
 
-更新时间：2026-11-21
+更新时间：2026-11-24
 
 ## 用途
 
@@ -24,7 +24,7 @@
 | 大专题 / 正式入口 | 能力边界 | 子专题或执行入口 |
 | --- | --- | --- |
 | [Studio 主工作台](studio-main-workflow.md) | 空白项目建模、运行、审阅、保存重开的用户路径 | 本文内基础功能切片；[变量与对象浏览器](variable-and-object-browser.md) |
-| [物性基础与组分](property-basis-and-components.md) | package、组分与物性上下文 | 本文内切片；模型装配为协同 |
+| [物性系统](property-basis-and-components.md) | 工程组分、数据与方法、相平衡、运行上下文和验证资格 | [二级职责与实施条件](property-basis-and-components.md#子专题关系)；模型装配、工程基础和设备工程协同 |
 | [流程图建模与求解](flowsheet-modeling-and-solve.md) | 建模、连接、运行资格与求解 | 单元、物流股、模型装配、多策略求解 |
 | [结果审阅与恢复](results-review-diagnostics.md) | 结果有效性、诊断恢复、检查覆盖与工程差异 | 本文内切片及 Q1—Q3；与工程基础、运行诊断及物流股协同 |
 | [运行、消息与诊断](runtime-messages-and-diagnostics.md) | N0—N5 的运行控制、消息与诊断边界 | 下列七项职责子专题 |
@@ -46,6 +46,10 @@ Control Plane 复用原文档作为大专题入口，原物性 / 生命周期关
 | 子专题 | 主要父专题 | 协同关系 / 状态来源 |
 | --- | --- | --- |
 | [变量与对象浏览器](variable-and-object-browser.md) | Studio 主工作台 | AF4 / AF5a / VB 范围及证据在该专题。VB1 已接通浏览、稳定引用与工程关注；VB2 已接通受控单值与进料流量批量首片 |
+
+### 物性系统
+
+[组分目录与工程选择](property/component-catalog-and-selection.md)维护 Studio 查询、工程输入和引用保护的验收。数据、热力学、闪蒸、运行装配与物理验证分别路由到[父专题的职责表](property-basis-and-components.md#子专题关系)，各自的实现与研究状态由表中指定的文档维护。
 
 ### 运行、消息与诊断
 

@@ -363,6 +363,12 @@ impl StudioShellLocale {
             "Select Ethane" => Cow::Borrowed("选择 Ethane"),
             "Remove Methane" => Cow::Borrowed("移除 Methane"),
             "Remove Ethane" => Cow::Borrowed("移除 Ethane"),
+            "Remove this component from stream compositions before removing it from the project." => {
+                Cow::Borrowed("以下流股的组成仍引用此组分，无法移除")
+            }
+            "This component was defined in the project file." => {
+                Cow::Borrowed("此组分由工程文件定义，只读。")
+            }
             "Cancel canvas edit" => Cow::Borrowed("取消画布编辑"),
             "Accept suggestion (Tab)" => Cow::Borrowed("接受建议 (Tab)"),
             "Reject suggestion (Escape)" => Cow::Borrowed("拒绝建议 (Escape)"),

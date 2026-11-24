@@ -248,7 +248,7 @@ fn render_left_sidebar_texts(app: &mut ReadyAppState) -> Vec<String> {
     texts
 }
 
-fn render_property_page_texts(app: &mut ReadyAppState) -> Vec<String> {
+pub(super) fn render_property_page_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
     let window = snapshot.window_model();
     let ctx = egui::Context::default();

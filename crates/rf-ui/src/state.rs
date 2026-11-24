@@ -903,9 +903,8 @@ impl AppState {
             .workspace
             .document
             .flowsheet
-            .streams
-            .values()
-            .find(|stream| stream.overall_mole_fractions.contains_key(&component_id))
+            .streams_with_overall_component(&component_id)
+            .next()
         {
             return Err(RfError::invalid_input(format!(
                 "component `{}` is still referenced by stream `{}` composition",

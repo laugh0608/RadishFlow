@@ -107,17 +107,28 @@ impl ReadyAppState {
                 &components,
                 radishflow_studio::modeling_specifications::SpecificationTarget::ProjectComponents,
             );
-            render_wrapped_small(
-                ui,
-                match self.locale {
-                    StudioShellLocale::En => {
-                        "Select project components from the controlled built-in catalog."
-                    }
-                    StudioShellLocale::ZhCn => "从受控内置目录选择项目组分。",
-                },
-            );
+            let label = ui.small(locale::tr(self.locale, "查找组分", "Find a component"));
+            ui.add(
+                egui::TextEdit::singleline(&mut self.component_filter)
+                    .id_salt("property-component-filter")
+                    .desired_width(f32::INFINITY)
+                    .hint_text(locale::tr(
+                        self.locale,
+                        "名称、分子式或 ID",
+                        "Name, formula or ID",
+                    )),
+            )
+            .labelled_by(label.id);
             ui.add_space(6.0);
-            for component in &property_page.component_choices {
+            let query = self.component_filter.trim().to_lowercase();
+            let matching = matching_components(&property_page.component_choices, &query);
+            if matching.is_empty() && !query.is_empty() {
+                render_wrapped_small(
+                    ui,
+                    locale::tr(self.locale, "没有匹配的组分", "No matching components"),
+                );
+            }
+            for component in matching {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(egui::RichText::new(&component.name).strong());
                     if let Some(formula) = component.formula.as_ref() {
@@ -156,6 +167,9 @@ impl ReadyAppState {
                     {
                         self.dispatch_ui_command(&component.remove_command_id);
                     }
+                    if !component.remove_enabled {
+                        self.render_component_removal_reason(ui, component);
+                    }
                 } else {
                     let select_label = match self.locale {
                         StudioShellLocale::En => "Select",
@@ -173,6 +187,44 @@ impl ReadyAppState {
                 ui.add_space(6.0);
             }
         });
+    }
+
+    fn render_component_removal_reason(
+        &self,
+        ui: &mut egui::Ui,
+        component: &radishflow_studio::StudioGuiWindowPropertyComponentModel,
+    ) {
+        let component_id = rf_types::ComponentId::new(component.component_id.as_str());
+        let mut streams = self
+            .platform_host
+            .document()
+            .flowsheet
+            .streams_with_overall_component(&component_id)
+            .peekable();
+        render_wrapped_small(ui, self.locale.runtime_label(&component.remove_detail));
+        let row = |ui: &mut egui::Ui, stream: &rf_model::MaterialStreamState| {
+            if stream.name.is_empty() || stream.name == stream.id.as_str() {
+                render_wrapped_small(ui, stream.id.as_str());
+            } else {
+                render_wrapped_small(ui, format!("{} ({})", stream.name, stream.id));
+            }
+        };
+        for stream in streams.by_ref().take(5) {
+            row(ui, stream);
+        }
+        if streams.peek().is_some() {
+            egui::CollapsingHeader::new(locale::tr(
+                self.locale,
+                "其他引用流股",
+                "More referencing streams",
+            ))
+            .id_salt(("component-references", &component.component_id))
+            .show(ui, |ui| {
+                for stream in streams {
+                    row(ui, stream);
+                }
+            });
+        }
     }
 
     fn render_property_workspace_summary(
@@ -325,6 +377,33 @@ fn property_platform_notice_message(
         }
         _ => locale.runtime_label(&notice.message).into_owned(),
     }
+}
+
+fn matching_components<'a>(
+    choices: &'a [radishflow_studio::StudioGuiWindowPropertyComponentModel],
+    query: &str,
+) -> Vec<&'a radishflow_studio::StudioGuiWindowPropertyComponentModel> {
+    if query.is_empty() {
+        return choices.iter().collect();
+    }
+    let mut exact = Vec::new();
+    let mut partial = Vec::new();
+    for component in choices {
+        let mut fields = [
+            Some(component.name.as_str()),
+            Some(component.component_id.as_str()),
+            component.formula.as_deref(),
+        ]
+        .into_iter()
+        .flatten();
+        if fields.clone().any(|field| field.to_lowercase() == query) {
+            exact.push(component);
+        } else if fields.any(|field| field.to_lowercase().contains(query)) {
+            partial.push(component);
+        }
+    }
+    exact.extend(partial);
+    exact
 }
 
 fn property_modeling_status_color(status_label: &str) -> egui::Color32 {

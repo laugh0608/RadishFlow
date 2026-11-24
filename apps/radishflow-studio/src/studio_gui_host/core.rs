@@ -1398,7 +1398,7 @@ fn workspace_document_snapshot_from_controller(
             .map(|component| {
                 let component_id = rf_types::ComponentId::new(component.component_id);
                 let selected = document.flowsheet.components.contains_key(&component_id);
-                let referenced = flowsheet_component_is_referenced(&document.flowsheet, &component_id);
+                let referenced = document.flowsheet.streams_with_overall_component(&component_id).next().is_some();
                 crate::StudioGuiProjectComponentChoiceSnapshot {
                     component_id: component.component_id.to_string(),
                     name: component.name.to_string(),
@@ -1425,14 +1425,4 @@ fn workspace_document_snapshot_from_controller(
         stream_count: document.flowsheet.streams.len(),
         snapshot_history_count: controller.snapshot_history_count(),
     }
-}
-
-fn flowsheet_component_is_referenced(
-    flowsheet: &rf_model::Flowsheet,
-    component_id: &rf_types::ComponentId,
-) -> bool {
-    flowsheet
-        .streams
-        .values()
-        .any(|stream| stream.overall_mole_fractions.contains_key(component_id))
 }

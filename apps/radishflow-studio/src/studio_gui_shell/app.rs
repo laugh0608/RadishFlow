@@ -191,6 +191,7 @@ impl ReadyAppState {
                 self.canvas_unit_drag = None;
                 self.canvas_command_result = None;
                 self.result_inspector.reset();
+                self.component_filter.clear();
                 self.project_open.path_input.clear();
                 self.project_open.pending_confirmation = None;
                 self.project_open.pending_blank_project_confirmation = false;
@@ -385,6 +386,7 @@ impl ReadyAppState {
                 self.canvas_unit_drag = None;
                 self.canvas_command_result = None;
                 self.result_inspector.reset();
+                self.component_filter.clear();
                 self.project_open.path_input = project_path.display().to_string();
                 let recent_projects_notice =
                     self.record_and_persist_recent_project(project_path.clone());
