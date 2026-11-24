@@ -51,7 +51,7 @@
 - [x] [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存)已接通 CLI v14、Studio 只读与编辑。macOS 通过 40／50 mol/s、重跑失效、迟到回执、保存冲突与新会话复算验收。
 - [x] [AF3-V10 macOS 原版等待中返回](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24) 已在同一窗口验证草稿保留、取消回执拒收、旧 Current 保留和显式重跑接收。
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
-- [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 已补 10 个纯组分饱和液点。Parrish 二元压缩液定位至 TP-12 表 A-2，待原页与复用依据。
+- [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 调阅 Parrish 表 A-2 和误差分析原页，核实公开复用依据，再冻结二元留出矩阵。
 - [x] QS3／QS4 macOS 取消与重跑通过，QS3 英文窄区焦点可见性复验通过。见 [专题](../topics/modeling/equation-oriented-block.md#接下来事项)。
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)已通过代表验证，分离器关联另审。
@@ -112,7 +112,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-24 Rust 2,341 项通过，含 72 项 CLI 进程测试。见 [W48](../devlogs/2026-11/2026-W48.md)。
+- 2026-11-24 `5191bdf6` 全仓 Rust 2,341 项通过，含 72 项 CLI 进程测试。后续定向验证见 [W48](../devlogs/2026-11/2026-W48.md)。
 
 - 2026-11-22：PR #19 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 
