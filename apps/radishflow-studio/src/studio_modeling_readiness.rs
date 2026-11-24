@@ -134,6 +134,7 @@ fn blocker_from_problem(problem: &SpecificationProblem) -> StudioModelingRunBloc
             StudioModelingFocusTarget::Unit(unit_id.to_string()),
         ),
         SpecificationProblem::Topology(_)
+        | SpecificationProblem::FeedPackageCompositionMismatch { .. }
         | SpecificationProblem::InvalidParameter { .. }
         | SpecificationProblem::OutletPressureAboveInlet { .. } => {
             unreachable!("execution problems do not enter authoring readiness")

@@ -166,6 +166,11 @@ pub(super) fn problem_title(
         SpecificationProblem::ComponentOutsideProject { .. } => {
             tr(locale, "引用了工程外组分", "Component outside project")
         }
+        SpecificationProblem::FeedPackageCompositionMismatch { .. } => tr(
+            locale,
+            "进料组成与物性包不一致",
+            "Feed composition differs from package",
+        ),
         SpecificationProblem::InvalidFeedInput { .. } => {
             tr(locale, "源输入非法", "Invalid feed input")
         }
@@ -219,6 +224,24 @@ pub(super) fn problem_evidence(
         SpecificationProblem::MissingProjectComponents => tr(locale, "在物性页选择工程组分；检查不会替你添加组分。", "Select project components on the Property page; checking does not add them.").into(),
         SpecificationProblem::ComponentOutsideProject { component_id, .. } => if zh { format!("组成引用 {component_id}，但工程未选择该组分。请检查组成或工程组分。") } else { format!("Composition references {component_id}, which is not selected in the project. Review composition or project components.") },
         SpecificationProblem::MissingFeedComposition { .. } => tr(locale, "源流股组成为空；需要明确各组分摩尔分数。", "Feed composition is empty; specify component mole fractions.").into(),
+        SpecificationProblem::FeedPackageCompositionMismatch { package_id, required, missing, unexpected, .. } => {
+            let list = |ids: &[rf_types::ComponentId]| ids.iter().map(|id| id.as_str()).collect::<Vec<_>>().join(", ");
+            let mut lines = vec![if zh {
+                format!("物性包 {package_id} 要求的进料组分为 {}。", list(required))
+            } else {
+                format!("Package {package_id} requires these feed components: {}.", list(required))
+            }];
+            if !missing.is_empty() {
+                lines.push(format!("{} {}", tr(locale, "进料缺少", "Missing from feed:"), list(missing)));
+            }
+            if !unexpected.is_empty() {
+                lines.push(format!("{} {}", tr(locale, "请从本股组成中移除包外组分", "Remove these components outside the package from this feed:"), list(unexpected)));
+            }
+            if !missing.is_empty() {
+                lines.push(tr(locale, "在工程组分中选择所需组分，再到这股进料填写摩尔分数。含量为零时可显式填 0。", "Select the required project components, then enter their mole fractions in this feed. Enter 0 for an absent constituent.").into());
+            }
+            lines.join("\n")
+        }
         SpecificationProblem::MissingParameter { .. } => tr(locale, "需要显式指定此参数；界面默认显示和未提交草稿不能补齐规格。", "Specify this parameter explicitly; displayed defaults and uncommitted drafts do not complete the specification.").into(),
         SpecificationProblem::InvalidParameter { parameter, value, .. } => {
             let kind = parameter.quantity_kind();
@@ -284,6 +307,11 @@ pub(super) fn coverage_label(
             "未检查：拓扑前置条件未满足",
             "Not checked: topology prerequisite unmet",
         ),
+        SpecificationCoverage::NotCheckedPackageComponents => tr(
+            locale,
+            "未取得所选包的组分清单",
+            "Component list unavailable for selected package",
+        ),
         SpecificationCoverage::NotCheckedMissingOrInvalidParameter => tr(
             locale,
             "未检查：出口参数缺失或非法",
@@ -309,6 +337,9 @@ pub(super) fn coverage_label(
         SpecificationCheckScope::Topology => tr(locale, "拓扑", "Topology").into(),
         SpecificationCheckScope::ProjectComponents => {
             tr(locale, "工程组分", "Project components").into()
+        }
+        SpecificationCheckScope::FeedPackageComposition(id) => {
+            format!("{} · {id}", tr(locale, "进料组成", "Feed composition"))
         }
         SpecificationCheckScope::FeedInputs => tr(locale, "源输入", "Feed inputs").into(),
         SpecificationCheckScope::StreamCompositions => {

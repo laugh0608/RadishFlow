@@ -132,6 +132,7 @@ impl ReadyAppState {
                 },
             );
         });
+        self.render_feed_package_problem_entry(ui);
         if applied_recycle {
             ui.small(tr(
                 zh,

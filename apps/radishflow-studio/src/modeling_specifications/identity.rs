@@ -57,6 +57,7 @@ pub enum SpecificationProblemReason {
     ComponentOutsideProject(ComponentId),
     InvalidFeedInput,
     MissingFeedComposition,
+    FeedPackageCompositionMismatch,
     InvalidMoleFraction,
     InvalidCompositionTotal,
     UnnormalizedComposition,
@@ -86,6 +87,9 @@ impl SpecificationProblem {
                 S::ProjectComponents
             }
             Self::InvalidFeedInput { .. } | Self::MissingFeedComposition { .. } => S::FeedInputs,
+            Self::FeedPackageCompositionMismatch { package_id, .. } => {
+                S::FeedPackageComposition(package_id.clone())
+            }
             Self::InvalidMoleFraction { .. }
             | Self::InvalidCompositionTotal { .. }
             | Self::UnnormalizedComposition { .. } => S::StreamCompositions,
@@ -150,6 +154,9 @@ impl SpecificationProblem {
                     FeedInputField::MolarFlow => VariableField::MolarFlow,
                 },
             )],
+            Self::FeedPackageCompositionMismatch { stream_id, .. } => {
+                vec![T::Composition(stream_id.clone()), T::ProjectComponents]
+            }
             Self::MissingFeedComposition { stream_id, .. }
             | Self::InvalidCompositionTotal { stream_id, .. }
             | Self::UnnormalizedComposition { stream_id, .. } => {
@@ -190,6 +197,7 @@ impl SpecificationProblem {
             }
             Self::InvalidFeedInput { .. } => R::InvalidFeedInput,
             Self::MissingFeedComposition { .. } => R::MissingFeedComposition,
+            Self::FeedPackageCompositionMismatch { .. } => R::FeedPackageCompositionMismatch,
             Self::InvalidMoleFraction { .. } => R::InvalidMoleFraction,
             Self::InvalidCompositionTotal { .. } => R::InvalidCompositionTotal,
             Self::UnnormalizedComposition { .. } => R::UnnormalizedComposition,

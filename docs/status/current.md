@@ -46,7 +46,7 @@
 
 ### 下一步
 
-- [x] macOS 已验双流股端口对照及[组分查询、引用保护和单组分重开](../topics/property/component-catalog-and-selection.md)。
+- [x] macOS 已验双流股端口对照及[组分查询、引用保护、重开与进料组分核对](../topics/property/component-catalog-and-selection.md)。
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
 - [x] [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存)已接通 CLI v14、Studio 只读与编辑。macOS 通过 40／50 mol/s、重跑失效、迟到回执、保存冲突与新会话复算验收。
 - [x] [AF3-V10 macOS 原版等待中返回](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24) 已在同一窗口验证草稿保留、取消回执拒收、旧 Current 保留和显式重跑接收。

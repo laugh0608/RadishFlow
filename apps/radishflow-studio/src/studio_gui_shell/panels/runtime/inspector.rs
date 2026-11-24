@@ -457,13 +457,26 @@ impl ReadyAppState {
             if !detail.property_composition_component_actions.is_empty() {
                 ui.add_space(4.0);
                 ui.horizontal_wrapped(|ui| {
-                    ui.small(egui::RichText::new("Add component").strong());
+                    let zh = self.locale == StudioShellLocale::ZhCn;
+                    ui.small(
+                        egui::RichText::new(if zh { "添加组分" } else { "Add component" }).strong(),
+                    );
                     for component_action in &detail.property_composition_component_actions {
-                        if ui
-                            .small_button(&component_action.action.label)
-                            .on_hover_text(&component_action.action.hover_text)
-                            .clicked()
-                        {
+                        let (label, hint) = if zh {
+                            (
+                                format!("添加 {}", component_action.component_name),
+                                format!(
+                                    "将 {} 添加到本股组成，初始摩尔分数为 0。",
+                                    component_action.component_id
+                                ),
+                            )
+                        } else {
+                            (
+                                component_action.action.label.clone(),
+                                component_action.action.hover_text.clone(),
+                            )
+                        };
+                        if ui.small_button(label).on_hover_text(hint).clicked() {
                             self.dispatch_inspector_composition_component_add(
                                 component_action.action.command_id.clone(),
                             );

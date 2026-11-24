@@ -245,7 +245,7 @@ QS2 与 QS3 不强制串行；首个 EO 块不等待全部设备支持 EO，也�
 - 流程图基础编辑与连接管理已通过 B0 形成分层台账，并完成单元删除、重命名、导航修复和 macOS 原生项目保存切片；这不表示 P1 全部验收完成。后续切片与待补证路径见建模专题和当前状态；扩展端口选择或连接规则前先明确边界，不将自动布线和完整多文档同时并入。
 - 双进料 Mixer 的双向多候选重连与[画布端口联动](topics/flowsheet-modeling-and-solve.md#重连候选与画布端口联动)已通过 macOS Studio 验收，两个方向均已核对第二项的画布预览、另存和新进程重开。
 - [双流股端口对照与缺值回归](topics/results-review-diagnostics.md#双流股端口对照与缺值回归)已通过 macOS Studio 验收，覆盖 Mixer 入口对调及 Flash 空出口在两套单位下的结果审阅与输出。[物性参数来源试查](thermo/mvp-model.md#物性参数来源试查)归 C2-A 独立数据冻结后的评估。[ChemFlow V191 交互参考](architecture/simulation-platform.md#chemflow-v191-交互参考)
-- [物性系统](topics/property-basis-and-components.md#子专题关系)按组分、数据、方法、闪蒸、装配与验证分工。[组分查询与引用保护](topics/property/component-catalog-and-selection.md)已通过 macOS 验收。运行反馈可接续本次单组分案例，先设计如何在求解前说明物性包与进料组成的差异。
+- [物性系统](topics/property-basis-and-components.md#子专题关系)按组分、数据、方法、闪蒸、装配与验证分工。[组分查询、引用保护与求解前核对进料组成](topics/property/component-catalog-and-selection.md)已通过 macOS 双进料 Mixer 验收。物性数据与参数来源的后续工作按 C2-A 独立证据推进。
 - 新增基础动作时明确稳定对象身份、变量单位 / 读写条件、命令事务和失败语义，为变量浏览器与录制器复用；不要求先完成全量自动化系统才能交付基础编辑功能。
 - P1 可继续使用明确标注的演示物性验证软件行为；真实工况、物性来源与独立误差要求，在对应数值模型切片实施前确定。既有 golden 和跨层回归继续保留，限制见 [热力学模型](thermo/mvp-model.md)。
 - 每个切片包含目标、非目标、输入与状态所有权、接口影响、兼容性、成功 / 失败路径和退出标准。完成一次可独立验证的闭环后再扩展。

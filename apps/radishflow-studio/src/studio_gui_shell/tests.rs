@@ -50,12 +50,16 @@ pub(super) fn synced_workspace_config() -> StudioRuntimeConfig {
 }
 
 fn blank_workspace_config() -> (StudioRuntimeConfig, PathBuf) {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let sequence = NEXT.fetch_add(1, Ordering::Relaxed);
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("expected current timestamp")
         .as_nanos();
     let project_path = std::env::temp_dir().join(format!(
-        "radishflow-studio-shell-blank-project-{timestamp}.rfproj.json"
+        "radishflow-studio-shell-blank-project-{}-{timestamp}-{sequence}.rfproj.json",
+        std::process::id()
     ));
     let project = StoredProjectFile::new(
         rf_model::Flowsheet::new("Blank Project"),

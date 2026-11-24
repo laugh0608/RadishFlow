@@ -1,5 +1,6 @@
 use super::basic::render_property_page_texts;
 use super::*;
+use radishflow_studio::modeling_specifications::SpecificationProblem;
 
 #[test]
 fn component_catalog_partial_binary_projects_reopen_but_still_require_the_full_thermo_composition_to_solve()
@@ -14,6 +15,29 @@ fn component_catalog_partial_binary_projects_reopen_but_still_require_the_full_t
         }
         write_project_file(&path, &project).unwrap();
         let mut app = ready_app_state(&config);
+        assert_eq!(
+            app.platform_host.document().flowsheet,
+            project.document.flowsheet
+        );
+        let checks = app.modeling_problems.checks();
+        assert_eq!(checks.current_count(), Some(1));
+        let problem = &checks.entries()[0].problem;
+        let SpecificationProblem::FeedPackageCompositionMismatch {
+            missing, stream_id, ..
+        } = problem
+        else {
+            panic!("expected a feed-specific package diagnostic: {problem:?}");
+        };
+        assert_eq!(
+            missing,
+            &[rf_types::ComponentId::new(if kept == "methane" {
+                "ethane"
+            } else {
+                "methane"
+            })]
+        );
+        assert_eq!(stream_id.as_str(), "stream-feed");
+        assert!(app.locate_specification_target(problem.targets()[0].clone()));
         assert_eq!(
             app.platform_host.document().flowsheet,
             project.document.flowsheet

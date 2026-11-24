@@ -9,12 +9,17 @@ use rf_ui::BuiltinUnitKind;
 use super::*;
 
 pub(super) fn check_inputs(flowsheet: &Flowsheet) -> InputChecks {
-    check_inputs_with_plan(flowsheet, &rf_ui::flow_plan::FlowPlanConfiguration::Acyclic)
+    check_inputs_with_plan(
+        flowsheet,
+        &rf_ui::flow_plan::FlowPlanConfiguration::Acyclic,
+        None,
+    )
 }
 
 pub(super) fn check_inputs_with_plan(
     flowsheet: &Flowsheet,
     plan: &rf_ui::flow_plan::FlowPlanConfiguration,
+    package_components: Option<&[ComponentId]>,
 ) -> InputChecks {
     let mut checks = InputChecks::default();
     if flowsheet.units.is_empty() {
@@ -79,10 +84,28 @@ pub(super) fn check_inputs_with_plan(
         SpecificationCoverage::Evaluated,
     );
 
+    // The sequential package-backed Feed passes its own committed composition to thermo.
+    let feed_package = flowsheet
+        .property_package_id()
+        .filter(|_| matches!(plan, rf_ui::flow_plan::FlowPlanConfiguration::Acyclic));
+    if let Some(package_id) = feed_package {
+        let coverage = if !topology_valid {
+            SpecificationCoverage::NotCheckedTopology
+        } else if package_components.is_none() {
+            SpecificationCoverage::NotCheckedPackageComponents
+        } else {
+            SpecificationCoverage::Evaluated
+        };
+        checks.coverage(
+            SpecificationCheckScope::FeedPackageComposition(package_id.into()),
+            coverage,
+        );
+    }
     if topology_valid {
         check_feed_inputs(
             flowsheet,
             &mut checks,
+            feed_package.zip(package_components),
             matches!(
                 plan,
                 rf_ui::flow_plan::FlowPlanConfiguration::EquationOriented(_)
@@ -236,7 +259,12 @@ pub(super) fn check_inputs_with_plan(
     checks
 }
 
-fn check_feed_inputs(flowsheet: &Flowsheet, checks: &mut InputChecks, allow_zero_flow: bool) {
+fn check_feed_inputs(
+    flowsheet: &Flowsheet,
+    checks: &mut InputChecks,
+    package: Option<(&str, &[ComponentId])>,
+    allow_zero_flow: bool,
+) {
     let mut missing_compositions = Vec::new();
     for unit in flowsheet
         .units
@@ -274,6 +302,30 @@ fn check_feed_inputs(flowsheet: &Flowsheet, checks: &mut InputChecks, allow_zero
                         stream_id: stream_id.clone(),
                         field,
                         value: input.value,
+                    });
+            }
+        }
+        if let Some((package_id, required)) = package {
+            let composition = &stream.overall_mole_fractions;
+            let missing: Vec<_> = required
+                .iter()
+                .filter(|id| !composition.contains_key(*id))
+                .cloned()
+                .collect();
+            let unexpected: Vec<_> = composition
+                .keys()
+                .filter(|id| !required.contains(id))
+                .cloned()
+                .collect();
+            if !missing.is_empty() || !unexpected.is_empty() {
+                checks
+                    .problems
+                    .push(SpecificationProblem::FeedPackageCompositionMismatch {
+                        stream_id: stream_id.clone(),
+                        package_id: package_id.into(),
+                        required: required.to_vec(),
+                        missing,
+                        unexpected,
                     });
             }
         }
