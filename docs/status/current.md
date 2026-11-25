@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-11-24
+更新时间：2026-11-25
 
 ## 用途
 
@@ -29,17 +29,17 @@
 
 ### 当前优先级
 
-1. 按 [代码链路审计](../architecture/overview.md#工程基础链路审计2026-10-23) 和 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 推进。AF0 已完成；AF2a 内建目录 / 工厂、AF2b 单包上下文已接通。AF1 未定因，独立跟踪。
+1. 按 [AF0—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 推进。AF0 已完成，AF2a / b 已接通，AF1 未定因并独立跟踪。AF4 / AF5 已复现 C ABI 进料错误缺结构化流股 ID，修复待审。
 2. QS0—QS4 批准范围已完成本机接入与阶段验证；[QS3](../topics/modeling/equation-oriented-block.md)数值补验已完成，原生和平台残项保持。后续算法另审，发布门禁不变。
 3. C2-A 统一广义 Pcm 候选技术审阅已完成，独立留出矩阵待冻结；结果采纳与物理资格待审。原失败及来源 / VLE / 气相缺口保持，C2-B / C3 不实施。
 4. 基础契约中提前审查 EO / 动态 / 瞬态的扩展边界，具体物性、单元、递归分块 / recycle 和高级算法按真实场景逐步填入；每项另做物理验证。
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
 
 
-### 最近进展（截至 2026-11-24）
+### 最近进展（截至 2026-11-25）
 
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
-- PR #19 已合入 `master` 并回灌 `dev`（`39a35703`）。
+- PR #20 已合入 `master` 并回灌 `dev`（`a26de5b2`）。
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
 - [QS4 M2](../topics/modeling/mixed-partition-execution.md)已验。[M3 串联回流](../topics/modeling/mixed-serial-recycle.md)已通过核心、v4、CLI v15 和 macOS Studio 验收。
 - macOS 已验收六类单元的重命名、删除与恢复，以及流股断开、唯一与多候选重连。Mixer 双向第二项的画布预览与重开绑定一致。[建模专题](../topics/flowsheet-modeling-and-solve.md)
@@ -51,7 +51,7 @@
 - [x] [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存)已接通 CLI v14、Studio 只读与编辑。macOS 通过 40／50 mol/s、重跑失效、迟到回执、保存冲突与新会话复算验收。
 - [x] [AF3-V10 macOS 原版等待中返回](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24) 已在同一窗口验证草稿保留、取消回执拒收、旧 Current 保留和显式重跑接收。
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
-- [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 调阅 Parrish 表 A-2 和误差分析原页，核实公开复用依据，再冻结二元留出矩阵。
+- [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 待取得 Parrish 原页和公开复用依据，再冻结二元留出矩阵。
 - [x] QS3／QS4 macOS 取消与重跑通过，QS3 英文窄区焦点可见性复验通过。见 [专题](../topics/modeling/equation-oriented-block.md#接下来事项)。
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)已通过代表验证，分离器关联另审。
