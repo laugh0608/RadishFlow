@@ -1,0 +1,77 @@
+@font-face {
+  font-family: Studio Inter;
+  src: url("../../../../../apps/radishflow-studio/assets/fonts/InterVariable.ttf") format("truetype");
+  font-weight: 100 900;
+}
+@font-face {
+  font-family: Studio Han;
+  src: url("../../../../../apps/radishflow-studio/assets/fonts/SourceHanSansSC-Regular.otf") format("opentype");
+}
+:root {
+  font: 14px/1.5 "Studio Inter", "Studio Han", system-ui, sans-serif;
+  color-scheme: light;
+  color: #203239;
+  background: #e9eef0;
+  --ink-sub: #485e65;
+  --line: #c4d1d3;
+  --teal: #146960;
+}
+* { box-sizing: border-box; }
+body, h1, h2, p { margin: 0; }
+button, select, input {
+  font: inherit; color: inherit; max-width: 100%; min-width: 0; padding: .45rem .7rem;
+  border: 1px solid #9dadb1; border-radius: .32rem; background: #fff;
+}
+button:enabled, select { cursor: pointer; }
+button:enabled:hover { border-color: var(--teal); background: #edf6f3; }
+button:disabled { color: #58686b; background: #e9eded; }
+:focus-visible { outline: 3px solid #1965a6; outline-offset: 2px; }
+button.primary { color: #fff; background: var(--teal); border-color: var(--teal); font-weight: 600; }
+button.primary:enabled:hover { background: #0e564f; }
+button.primary:disabled { background: #e9eded; color: #58686b; border-color: #bbc7c8; }
+aside, aside label, header, .page-title, .section-head, .actions, .result, .brand { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
+aside { padding: .7rem max(1rem, calc((100% - 1100px)/2)); border-bottom: 1px solid var(--line); background: #f5f7f7; }
+aside label { gap: .35rem; }
+main { max-width: 1100px; margin: 1.4rem auto; border: 1px solid var(--line); background: #f7f9f8; }
+header { justify-content: space-between; padding: .8rem 1.5rem; background: #233e44; color: #fff; }
+.brand { gap: .6rem; font-weight: 650; }
+.brandmark { background: #bde6d1; color: #214744; border-radius: .25rem; padding: .08rem .43rem; font-weight: 750; }
+.project { color: #d3e3df; }
+.workspace { padding: 1.25rem 1.5rem 1.5rem; display: grid; gap: 1rem; }
+.page-title, .section-head, .result { justify-content: space-between; }
+h1 { font-size: 1.8rem; line-height: 1.25; }
+h2 { font-size: 1.07rem; }
+.method, .field-note, .sub, #position, #empty-record, #result-source { color: var(--ink-sub); }
+.method { font-size: .9rem; }
+kbd, .run-id { font: .88em/1.45 ui-monospace, monospace; }
+kbd { margin-left: .35rem; }
+section { min-width: 0; border: 1px solid var(--line); border-radius: .4rem; padding: 1rem 1.2rem; background: #fff; overflow-wrap: anywhere; }
+.columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+#activity { border-inline-start: 4px solid #688384; }
+#activity[data-phase="pending"], #activity[data-phase="paused"] { border-inline-start-color: #ac700e; }
+#activity[data-phase="unavailable"], #activity[data-phase="failed"] { border-inline-start-color: #a14639; }
+#status { font-weight: 650; font-size: 1.24rem; margin: .38rem 0 .1rem; }
+#trigger-note { margin-top: .35rem; color: #654919; font-variant-numeric: tabular-nums; }
+.actions:has(button:not([hidden])) { margin-top: .8rem; }
+.rule form { margin-top: 1rem; }
+.rule form > label { display: block; margin: .65rem 0 .3rem; font-weight: 600; }
+.rule form > select { width: 100%; }
+.field-note { margin-top: .3rem; font-size: .92rem; }
+.quantity { display: grid; gap: .45rem; grid-template-columns: minmax(4rem, 1fr) minmax(5rem, auto); }
+input, #reading, #comparison, #result-value { font-variant-numeric: tabular-nums; }
+input[aria-invalid="true"], select[aria-invalid="true"] { border-color: #a83e31; }
+.error { color: #912f23; margin-top: .25rem; }
+.primary { margin-top: 1rem; }
+#record, #empty-record { margin-top: 1rem; }
+.target { font-weight: 600; }
+#reading { font-size: 1.95rem; letter-spacing: -.035em; font-weight: 630; margin: .5rem 0; }
+#comparison { color: #624619; }
+.result { border-top: 2px solid #8ca99c; }
+#result-value { font-weight: 600; }
+[hidden], p:empty, .field-note:empty { display: none !important; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@media (max-width: 780px) {
+  main { margin: 0; }
+  .columns { grid-template-columns: minmax(0, 1fr); }
+  .workspace, header { padding: 1rem; }
+}

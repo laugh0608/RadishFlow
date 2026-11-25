@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Studio · N4 出口温度监视评审</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="boards.js"></script>
+</head>
+<body>
+  <aside aria-label="Review controls">
+    <b data-en="Interaction review">交互评审</b>
+    <label><span data-en="Case">工况</span><select id="scenario">
+      <option value="above" data-en="Just above threshold">略高于阈值</option>
+      <option value="equal" data-en="Equal to threshold">等于阈值</option>
+      <option value="below" data-en="Just below threshold">略低于阈值</option>
+      <option value="base" data-en="Both feeds at 300 K">两股进料 300 K</option>
+      <option value="missing" data-en="Missing observation">运行中缺值</option>
+      <option value="failure" data-en="Feed B fails">上游进料失败</option>
+      <option value="fresh" data-en="No previous result">尚无历史结果</option>
+      <option value="rebind" data-en="Outlet reconnected">出口已重连</option>
+    </select></label>
+    <label><span data-en="Language">语言</span><select id="language"><option value="zh">中文</option><option value="en">English</option></select></label>
+    <label><span data-en="Text">字号</span><select id="size"><option>14 px</option><option>20 px</option></select></label>
+    <button id="advance" data-en="Deliver worker response">演示执行器回执</button>
+    <button id="reset" data-en="Reset case">重置工况</button>
+  </aside>
+  <main>
+    <header><div class="brand"><span class="brandmark" aria-hidden="true">R</span>RadishFlow Studio</div>
+      <span class="project">Feed A + Feed B → Mixer → Flash</span></header>
+    <div class="workspace">
+      <div class="page-title"><div><div class="method" data-en="Acyclic steady state">无回路稳态</div><h1 data-en="Flowsheet run">流程运行</h1></div>
+        <button id="ordinary"><span data-en="Run flowsheet">运行当前流程</span> <kbd>F5</kbd></button></div>
+      <section id="activity" aria-labelledby="activity-heading">
+        <div class="section-head"><h2 id="activity-heading" data-en="Run activity">运行状态</h2><span class="run-id" id="run-id"></span></div>
+        <div id="status" role="status" tabindex="-1"></div><p id="position"></p><p id="trigger-note"></p>
+        <div class="actions"><button id="review-rule" data-en="Review condition">检查条件</button><button id="step" data-en="Step one unit">单步（一个单元）</button><button id="resume" data-en="Continue this run">继续本次运行</button><button id="cancel" data-en="Cancel this run">取消本次运行</button></div>
+      </section>
+      <div class="columns">
+        <section class="rule" aria-labelledby="rule-heading">
+          <h2 id="rule-heading" data-en="Outlet temperature condition">出口温度条件</h2>
+          <p class="sub" data-en="Applies to the next run started with this condition.">仅用于下一次「按此条件运行」。</p>
+          <form id="rule-form" novalidate>
+            <label for="outlet" data-en="Material outlet">物料出口</label><select id="outlet" aria-describedby="binding outlet-error"></select>
+            <div class="field-note" id="binding"></div><p class="error" id="outlet-error" role="alert"></p>
+            <label for="threshold" data-en="Pause when outlet temperature exceeds">出口温度高于以下阈值时暂停</label>
+            <div class="quantity"><input id="threshold" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" aria-describedby="conversion value-error"><label class="sr" for="unit" data-en="Threshold unit">阈值输入单位</label>
+              <select id="unit"><option>°C</option><option>K</option></select></div>
+            <div class="field-note" id="conversion"></div><p class="error" id="value-error" role="alert"></p>
+            <button class="primary" id="watch" type="submit" data-en="Run with this condition">按此条件运行</button>
+          </form>
+        </section>
+        <section aria-labelledby="evidence-heading" class="evidence">
+          <div class="section-head"><h2 id="evidence-heading" data-en="Condition observation">条件求值记录</h2><span class="run-id" id="evidence-id"></span></div>
+          <p id="empty-record"></p>
+          <div id="record"><p class="target" id="observed-outlet"></p>
+            <div id="reading"></div><div id="comparison"></div><div class="field-note" id="source-step"></div>
+          </div>
+        </section>
+      </div>
+      <section class="result" aria-labelledby="result-heading"><div><h2 id="result-heading" data-en="Accepted result">已接收结果</h2><p id="result-source"></p></div><div id="result-value"></div></section>
+    </div>
+  </main>
+</body>
+</html>

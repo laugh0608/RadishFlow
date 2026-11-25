@@ -76,7 +76,7 @@ D-04 首批针对 Studio 可编辑工程的无回路稳态计划。双进料 Mix
 
 ### N4 出口温度监视首批验收
 
-以下是 [D-05 提案](run-control-and-watch-conditions.md#d-05-无回路稳态出口温度监视提案)的实施判据。使用仓库的[双进料 Mixer → Flash 工程](../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json)，监视 `mixer-1.outlet` 对应的 `stream-mix-out`。两股流量为 2、3 mol/s，第一股为 300 K。本例 Mixer 按流量加权，独立预期为 `(2 × 300 + 3 × T_B) / 5`。工程模板始终为 300 K。下表的出口数值已经普通 CLI 求解复核，暂停行为待产品实现后验证。[工况记录](../../devlogs/2026-11/2026-W48.md#2026-11-25-n4-出口温度监视设计核对)
+以下是[已确认 D-05](run-control-and-watch-conditions.md#d-05-无回路稳态出口温度监视提案)的实施判据。使用仓库的[双进料 Mixer → Flash 工程](../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json)，监视 `mixer-1.outlet` 对应的 `stream-mix-out`。两股流量为 2、3 mol/s，第一股为 300 K。本例 Mixer 按流量加权，独立预期为 `(2 × 300 + 3 × T_B) / 5`。工程模板始终为 300 K。下表的出口数值已经普通 CLI 求解复核，暂停行为待产品实现后验证。[工况记录](../../devlogs/2026-11/2026-W48.md#2026-11-25-n4-出口温度监视设计核对)
 
 | 第二股温度 K | 出口求解值 K | 按「出口 > 38.85 °C」运行的预期 |
 | ---: | ---: | --- |
