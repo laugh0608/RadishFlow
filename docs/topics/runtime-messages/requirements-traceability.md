@@ -36,9 +36,9 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 | MSG-11 | [安全暂停与能力](run-control-and-watch-conditions.md) | N3 | S-11 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
 | MSG-12 | [单步、继续与取消](run-control-and-watch-conditions.md) | N3 | S-12 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
 | MSG-13 | [编辑、退出与迟到隔离](run-control-and-watch-conditions.md) | N3 | S-13 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
-| MSG-14 | [条件量与单位](run-control-and-watch-conditions.md) | N4 | S-14 | 待实现 / 待验证；— |
-| MSG-15 | [无效条件与缺值](run-control-and-watch-conditions.md) | N4 | S-15 | 待实现 / 待验证；— |
-| MSG-16 | [求值、重新武装与采样](run-control-and-watch-conditions.md) | N4 | S-16 | 待实现 / 待验证；— |
+| MSG-14 | [条件量与单位](run-control-and-watch-conditions.md) | N4 | S-14 | [出口温度首批判据](scenarios-and-acceptance.md#n4-出口温度监视首批验收)待评审，产品待实现 / 待验证 |
+| MSG-15 | [无效条件与缺值](run-control-and-watch-conditions.md) | N4 | S-15 | [出口温度首批判据](scenarios-and-acceptance.md#n4-出口温度监视首批验收)待评审，产品待实现 / 待验证 |
+| MSG-16 | [求值、重新武装与采样](run-control-and-watch-conditions.md) | N4 | S-16 | [出口温度首批判据](scenarios-and-acceptance.md#n4-出口温度监视首批验收)待评审，产品待实现 / 待验证 |
 | MSG-17 | [动态、回放与检查点](run-control-and-watch-conditions.md) | N5 | S-17 | 待实现 / 待验证；— |
 | MSG-18 | [双区与多处联动](diagnostic-workbench-and-navigation.md) | N0 / N1 / N2 | S-18 | 待实现 / 待验证；— |
 | MSG-19 | [定位、修复与草稿](diagnostic-workbench-and-navigation.md) | N1 | S-19 | 部分实现 / 部分通过；字段 / 端口定位与草稿返回，见下方 A1 证据；A2-I1—I3 首批动作、预览 / 草稿保护与共享入口已接通，自动 / macOS 代表验收通过，完整 N1 与 I5 未核销 |
@@ -69,7 +69,7 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 | D-02 | [事件协议、顺序、采集及容量](execution-trace-and-convergence.md#切片待决策与最小验证) | MSG-07—10 | N2 前 / 求解执行与运行记录 |
 | D-03 | [残差及收敛观察判据](execution-trace-and-convergence.md#切片待决策与最小验证) | MSG-08—09、16 | N4 前 / 数值求解 |
 | D-04 | [无回路稳态运行控制提案](run-control-and-watch-conditions.md#d-04-无回路稳态运行控制提案) | MSG-11—13 | N3 无回路稳态已接入 Studio / 应用任务与执行者；[首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
-| D-05 | [条件有效性、精度与触发](run-control-and-watch-conditions.md#切片待决策与最小验证) | MSG-14—16 | N4 前 / 运行控制与单位 |
+| D-05 | [无回路稳态出口温度监视提案](run-control-and-watch-conditions.md#d-05-无回路稳态出口温度监视提案) | MSG-14—16 | N4 首批待评审 / 运行控制与单位 |
 | D-06 | [时间、回放和检查点](run-control-and-watch-conditions.md#切片待决策与最小验证) | MSG-17 | N5 前 / 动态与运行恢复 |
 | D-07 | [布局、空状态和操作路径](diagnostic-workbench-and-navigation.md#切片待决策与最小验证) | MSG-18—22 | N0 局部画板实施前 / Studio 设计；后续实现再复核 |
 | D-08 | [记录持久化与规则兼容](records-storage-and-consumers.md#切片待决策与最小验证) | MSG-23—25、27 | N2 持久化前，N3 / N4 规则保存前 / 存储与运行记录 |
