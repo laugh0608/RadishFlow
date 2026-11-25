@@ -182,6 +182,7 @@ Rust 与 `.NET 10` 之间的正式边界应保持简单稳定：
 - `flowsheet_solve` 按显式 `package_id` 选包，以无回路计划调用 [共享执行入口](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)。求解成功替换快照。
 - `flowsheet_get_snapshot_json` 与 `stream_get_snapshot_json` 分别导出已加载工程最近成功的整份快照与单股结果。后续求解失败时，该快照仍可读取。本次求解是否成功以 `flowsheet_solve` 返回状态为准。
 - 返回状态码当前分为两层：FFI 前置错误（如空指针、非法 UTF-8、未加载 flowsheet / 未生成 snapshot）与 `rf_types::ErrorCode` 映射的内核错误；结构化错误 JSON 当前会额外带出 `ffiStatus`、`code`、`diagnosticCode`、`relatedUnitIds`、`relatedStreamIds` 与 `relatedPortTargets`
+- 无回路求解的组分校验错误携带出错流股身份。求解步骤合并被消费与明确关联的流股并去重，Feed 无入口时仍在 `relatedStreamIds` 返回出错的出口流股。
 - 物性包文件加载验证 manifest / payload 的注册资格。求解所需热力学数据缺失时，`flowsheet_solve` 返回对应内核状态，例如 `RfFfiStatus::Thermo` 与 `ffiStatus=thermo`。
 
 当前这版运行时仍是最小实现，额外明确以下暂时约束：

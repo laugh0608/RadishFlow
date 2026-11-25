@@ -2107,11 +2107,15 @@ fn solver_step_error_uses_stable_template() {
 #[test]
 fn solver_step_execution_error_uses_stable_code_and_template() {
     let unit = build_valve_node("valve-1", "Valve", "stream-feed", "stream-throttled");
+    let outlet = DiagnosticPortTarget::new("valve-1", "outlet");
     let error = solver_step_execution_error(
         2,
         &unit,
         &[StreamId::new("stream-feed")],
-        RfError::invalid_input("valve outlet pressure cannot exceed inlet pressure"),
+        RfError::invalid_input("valve outlet pressure cannot exceed inlet pressure")
+            .with_related_stream_id("stream-feed")
+            .with_related_stream_id("stream-throttled")
+            .with_related_port_target(outlet.clone()),
     );
 
     assert_eq!(error.code().as_str(), "invalid_input");
@@ -2121,8 +2125,12 @@ fn solver_step_execution_error_uses_stable_code_and_template() {
     );
     assert_eq!(
         error.context().related_stream_ids(),
-        &[StreamId::new("stream-feed")]
+        &[
+            StreamId::new("stream-feed"),
+            StreamId::new("stream-throttled")
+        ]
     );
+    assert_eq!(error.context().related_port_targets(), &[outlet]);
 }
 
 #[test]

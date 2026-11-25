@@ -413,6 +413,81 @@ fn studio_cli_and_c_abi_preserve_connection_failure_targets() {
 }
 
 #[test]
+fn studio_cli_and_c_abi_preserve_feed_composition_failure_stream() {
+    let f = Fixture::new();
+    let mut project = rf_store::parse_project_file_json(include_str!(
+        "../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .unwrap();
+    let composition = &mut project
+        .document
+        .flowsheet
+        .streams
+        .get_mut(&"stream-feed-b".into())
+        .unwrap()
+        .overall_mole_fractions;
+    composition.remove(&"ethane".into());
+    composition.insert("methane".into(), 1.0);
+    let path = f.root.join(PROJECT);
+    rf_store::write_project_file(&path, &project).unwrap();
+    let project_bytes = fs::read(&path).unwrap();
+
+    let expected_code = "solver.step.execution";
+    let expected_unit_ids = json!(["feed-b"]);
+    let expected_stream_ids = json!(["stream-feed-b"]);
+
+    let native = NativeEngine::new();
+    let (manifest, payload, _) = package_paths(&f);
+    assert_eq!(
+        native.register_package(&manifest, &payload),
+        RfFfiStatus::Ok
+    );
+    native.load(&project_bytes);
+    assert_eq!(native.solve(PACKAGE), RfFfiStatus::InvalidInput);
+    let native_error = native.error();
+    assert_eq!(native_error["diagnosticCode"], expected_code);
+    assert_eq!(native_error["relatedUnitIds"], expected_unit_ids);
+    assert_eq!(native_error["relatedStreamIds"], expected_stream_ids);
+
+    let app = run_studio(&f);
+    assert!(latest_snapshot(&app.workspace).is_none());
+    let studio = app.workspace.solve_session.latest_diagnostic.unwrap();
+    assert_eq!(studio.primary_code.as_deref(), Some(expected_code));
+    assert_eq!(json!(studio.related_unit_ids), expected_unit_ids);
+    assert_eq!(json!(studio.related_stream_ids), expected_stream_ids);
+
+    let request = json!({
+        "schema_version": 3,
+        "project": PROJECT,
+        "expected_project": {
+            "document_id": project.document.metadata.document_id,
+            "file_sha256": rf_store::sha256_hex(&project_bytes),
+        },
+        "flow_resources": {
+            "cache_root": "cache",
+            "auth_cache_index": "index.json",
+            "package": {"kind": "explicit", "package_id": PACKAGE},
+        },
+        "steps": [{"id": "solve", "action": {
+            "kind": "run_flow", "expected_revision": project.document.revision,
+        }}],
+        "queries": [{"id": "results", "query": {"kind": "results", "scope": "flow"}}],
+    });
+    let request_path = f.root.join("feed composition v3.json");
+    fs::write(&request_path, serde_json::to_vec(&request).unwrap()).unwrap();
+    let (code, cli) = f.command("execute", &request_path);
+    assert_eq!(code, 4, "{cli}");
+    let result = &cli["queries"][0]["value"];
+    assert_eq!(result["status"], "failed");
+    assert!(result.get("fields").is_none());
+    let diagnostic = &result["diagnostic"];
+    assert_eq!(diagnostic["code"], expected_code);
+    assert_eq!(diagnostic["unit_ids"], expected_unit_ids);
+    assert_eq!(diagnostic["stream_ids"], expected_stream_ids);
+    assert_eq!(fs::read(path).unwrap(), project_bytes);
+}
+
+#[test]
 fn studio_cli_and_c_abi_keep_missing_thermal_data_at_solve_time() {
     let f = Fixture::new();
     let (manifest_path, payload_path, _) = package_paths(&f);

@@ -886,6 +886,12 @@ fn solver_step_execution_error(
     consumed_stream_ids: &[StreamId],
     error: RfError,
 ) -> RfError {
+    let context = error.context();
+    let related_stream_ids = consumed_stream_ids
+        .iter()
+        .chain(context.related_stream_ids())
+        .cloned()
+        .collect();
     RfError::new(
         error.code(),
         format!(
@@ -900,7 +906,8 @@ fn solver_step_execution_error(
     )
     .with_diagnostic_code(SolverDiagnosticCode::StepExecution.as_str())
     .with_related_unit_id(unit.id.clone())
-    .with_related_stream_ids(consumed_stream_ids.to_vec())
+    .with_related_stream_ids(related_stream_ids)
+    .with_related_port_targets(context.related_port_targets().to_vec())
 }
 
 fn validate_step_stream_inputs(

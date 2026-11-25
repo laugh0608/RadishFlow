@@ -86,10 +86,10 @@ pub(crate) fn normalized_composition(stream: &MaterialStreamState) -> RfResult<C
         CompositionCheck::Valid { .. } => None,
     };
     if let Some(message) = message {
-        return Err(RfError::invalid_input(format!(
-            "stream `{}` {message}",
-            stream.id
-        )));
+        return Err(
+            RfError::invalid_input(format!("stream `{}` {message}", stream.id))
+                .with_related_stream_id(stream.id.clone()),
+        );
     }
     let CompositionCheck::Valid { sum } = check else {
         unreachable!("invalid composition returned its error");
