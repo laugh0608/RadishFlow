@@ -40,6 +40,7 @@ pub enum StudioRunOutcome {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StudioRunActivity {
+    pub unit_control: Option<crate::UnitRunControl>,
     pub id: StudioRunId,
     pub number: u64,
     pub target: String,
@@ -121,7 +122,9 @@ impl StudioRunOwner {
                 WorkspaceRunPhase::Preparing
             }
         } else {
-            self.flow.state()?.phase
+            let run = self.flow.state()?;
+            activity.unit_control = run.unit_control;
+            run.phase
         };
         Some(activity)
     }
@@ -140,6 +143,7 @@ impl StudioRunOwner {
             .checked_add(1)
             .expect("run display counter exhausted");
         self.activity = Some(StudioRunActivity {
+            unit_control: None,
             id,
             number: self.next_number,
             target,
@@ -321,6 +325,18 @@ impl StudioRunOwner {
             }
         }
         Ok(StudioRunSubmission::Accepted(id))
+    }
+    pub(crate) fn control_units(
+        &mut self,
+        app: &mut AppState,
+        id: &StudioRunId,
+        command: crate::UnitRunCommand,
+        now: SystemTime,
+    ) -> crate::UnitControlReply {
+        match id {
+            StudioRunId::Flow(id) => self.flow.control_units(app, id, command, now),
+            _ => crate::UnitControlReply::Unsupported,
+        }
     }
     pub fn cancel(
         &mut self,
@@ -627,6 +643,14 @@ pub enum StudioBackgroundRunAction {
     Poll {
         attached: bool,
     },
+    StartAtFirstUnit {
+        expected: crate::flow_actions::FlowEditContext,
+        access: crate::run_actions::StudioRunAccess,
+    },
+    ControlUnits {
+        id: StudioRunId,
+        command: crate::UnitRunCommand,
+    },
     Cancel(StudioRunId),
     Detach,
     BeginShutdown,
@@ -639,6 +663,7 @@ mod tests;
 /// State refresh and a control receipt travel independently through host adapters.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct StudioBackgroundRunReply {
+    pub unit_control: Option<crate::UnitControlReply>,
     pub changed: bool,
     pub cancellation: Option<crate::WorkspaceRunCancelReply>,
     pub submission: Option<crate::run_actions::StudioRunReply>,

@@ -687,3 +687,223 @@ fn background_result_projection_and_export_share_executed_origin() {
         );
     }
 }
+
+fn wait_for_unit(app: &mut ReadyAppState, step: usize) -> radishflow_studio::StudioRunActivity {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let ctx = egui::Context::default();
+    loop {
+        app.poll_background_runs(&ctx);
+        let activity = app
+            .background_runs
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .activity()
+            .expect("active flow");
+        if matches!(&activity.unit_control, Some(c) if matches!(c.phase, radishflow_studio::UnitRunPhase::Paused { step: s, .. } if s == step))
+        {
+            return activity;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "did not reach stop {step}: {activity:?}"
+        );
+        thread::yield_now();
+    }
+}
+
+#[test]
+fn stale_palette_step_cannot_release_the_next_stop_or_a_new_run() {
+    use crate::studio_gui_shell::background_run::START_PAUSED;
+    let mut app = flow_app();
+    app.dispatch_ui_command(START_PAUSED);
+    let first = wait_for_unit(&mut app, 1);
+    app.command_palette.open();
+    app.capture_background_palette_target();
+    let mut items = Vec::new();
+    app.command_palette.query = "step".into();
+    let ctx = egui::Context::default();
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(400.0, 900.0));
+    let window = app.platform_host.snapshot().window_model();
+    for _ in 0..3 {
+        let _ = ctx.run(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ctx| app.render_command_palette(ctx, &window.commands),
+        );
+    }
+    let palette = ctx
+        .memory(|m| m.area_rect(egui::Id::new("studio.command_palette")))
+        .unwrap();
+    assert!(
+        screen.contains_rect(palette),
+        "palette {palette:?} exceeds {screen:?}"
+    );
+    app.append_background_palette_items(&mut items, "step");
+    let command = items.iter().find(|i| i.enabled).unwrap().command_id.clone();
+    app.dispatch_ui_command(&command);
+    wait_for_unit(&mut app, 2);
+    items.clear();
+    app.append_background_palette_items(&mut items, "step");
+    assert!(items.iter().any(|i| i.command_id == command && !i.enabled));
+    app.dispatch_ui_command(&command);
+    assert_eq!(wait_for_unit(&mut app, 2).id, first.id);
+    app.background_action(Action::Cancel(first.id.clone()));
+    drain(&mut app);
+    app.dispatch_ui_command(START_PAUSED);
+    let new = wait_for_unit(&mut app, 1);
+    assert_ne!(new.id, first.id);
+    app.dispatch_ui_command(command);
+    assert_eq!(wait_for_unit(&mut app, 1).id, new.id);
+    app.background_action(Action::Cancel(new.id));
+    drain(&mut app);
+}
+
+#[test]
+fn duplicate_first_stop_does_not_change_an_ordinary_run_and_readonly_cannot_submit() {
+    use radishflow_studio::{
+        flow_actions::FlowEditContext,
+        run_actions::{StudioRunAccess, StudioRunReply},
+    };
+    let mut app = flow_app();
+    let expected = FlowEditContext::capture(&app.platform_host.modeling_inputs().workspace);
+    let submit = |app: &mut ReadyAppState, access| {
+        app.platform_host
+            .background_run_action(Action::StartAtFirstUnit {
+                expected: expected.clone(),
+                access,
+            })
+            .unwrap()
+    };
+    let denied = submit(&mut app, StudioRunAccess::ReadOnly);
+    assert!(matches!(
+        denied.submission,
+        Some(StudioRunReply::Blocked(_))
+    ));
+    assert!(!app.background_busy());
+    let run = start_flow(&mut app);
+    let duplicate = submit(&mut app, StudioRunAccess::Allowed);
+    assert_eq!(duplicate.unit_control, None);
+    assert!(
+        matches!(duplicate.submission, Some(StudioRunReply::AlreadyRunning(id)) if id == run.id)
+    );
+    drain(&mut app);
+    assert!(
+        app.background_runs
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .history()
+            .back()
+            .unwrap()
+            .applied
+    );
+}
+
+#[test]
+fn stopped_activity_fits_400_points_and_keyboard_steps_exactly_one_unit() {
+    use super::runtime::{assert_horizontal_fit, collect_shape_texts};
+    use crate::studio_gui_shell::background_run::START_PAUSED;
+    for locale in [StudioShellLocale::ZhCn, StudioShellLocale::En] {
+        for scale in [1.0, 2.0] {
+            let mut app = flow_app();
+            app.locale = locale;
+            app.dispatch_ui_command(START_PAUSED);
+            let first = wait_for_unit(&mut app, 1);
+            let ctx = egui::Context::default();
+            fonts::configure_studio_fonts(&ctx);
+            ctx.style_mut(|style| {
+                for font in style.text_styles.values_mut() {
+                    font.size *= scale;
+                }
+            });
+            let frame = |app: &mut ReadyAppState, key: Option<egui::Key>| {
+                let mut input = egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(400.0, 1100.0),
+                    )),
+                    ..Default::default()
+                };
+                if let Some(key) = key {
+                    input.events.push(egui::Event::Key {
+                        key,
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers: egui::Modifiers::NONE,
+                    });
+                }
+                ctx.run(input, |ctx| app.render_background_activity(ctx))
+            };
+            let mut texts = Vec::new();
+            frame(&mut app, None);
+            for shape in frame(&mut app, None).shapes {
+                assert_horizontal_fit(&shape.shape, shape.clip_rect, "stopped activity");
+                collect_shape_texts(&shape.shape, &mut texts);
+            }
+            let joined = texts.join(" ");
+            let labels = if locale == StudioShellLocale::ZhCn {
+                ["已暂停", "单步（一个单元）", "继续本次运行", "取消本次运行"]
+            } else {
+                [
+                    "Paused",
+                    "Step one unit",
+                    "Continue this run",
+                    "Cancel this run",
+                ]
+            };
+            for label in labels {
+                assert!(joined.contains(label), "{label} missing from {joined}");
+            }
+            frame(&mut app, Some(egui::Key::Tab));
+            let status = ctx.memory(|m| m.focused()).expect("focusable stop status");
+            frame(&mut app, Some(egui::Key::Tab));
+            assert_ne!(ctx.memory(|m| m.focused()), Some(status));
+            frame(&mut app, Some(egui::Key::Enter));
+            assert_eq!(wait_for_unit(&mut app, 2).id, first.id);
+            frame(&mut app, None);
+            assert_eq!(ctx.memory(|m| m.focused()), Some(status));
+            app.background_action(Action::Cancel(first.id));
+            drain(&mut app);
+        }
+    }
+}
+
+#[test]
+fn single_phase_rejects_first_stop_and_its_normal_run_has_no_unit_controls() {
+    use radishflow_studio::{
+        UnitControlReply, flow_actions::FlowEditContext, run_actions::StudioRunAccess,
+    };
+    let mut app = flow_app();
+    app.open_project(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../examples/flowsheets/two-feed-single-vapor-sensible.rfproj.json"),
+        "test",
+    );
+    let expected = FlowEditContext::capture(&app.platform_host.modeling_inputs().workspace);
+    let reply = app
+        .platform_host
+        .background_run_action(Action::StartAtFirstUnit {
+            expected,
+            access: StudioRunAccess::Allowed,
+        })
+        .unwrap();
+    assert_eq!(reply.unit_control, Some(UnitControlReply::Unsupported));
+    assert!(!app.background_busy());
+    let activity = start_flow(&mut app);
+    assert!(activity.unit_control.is_none());
+    drain(&mut app);
+    assert!(
+        app.background_runs
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .history()
+            .back()
+            .unwrap()
+            .applied
+    );
+}

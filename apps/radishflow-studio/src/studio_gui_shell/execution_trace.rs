@@ -245,9 +245,9 @@ impl ReadyAppState {
             let active = owner
                 .as_ref()
                 .and_then(|owner| owner.activity())
-                .is_some_and(|activity| {
-                    matches!(activity.id, StudioRunId::Flow(id)
-                    if workspace.pending_flow_run() == Some(&id))
+                .filter(|activity| {
+                    matches!(&activity.id, StudioRunId::Flow(id)
+                    if workspace.pending_flow_run() == Some(id))
                 });
             (runs, active, current_result_run(workspace).cloned())
         };
@@ -312,15 +312,19 @@ impl ReadyAppState {
                 self.show_background_run_details();
             }
         });
-        if active {
-            ui.small(tr(
-                locale,
-                "正在计算，结束后可审阅记录。",
-                "Calculation in progress. The trace is available after it ends.",
-            ));
+        if let Some(activity) = &active {
+            if let Some(status) = self.unit_control_status(activity) {
+                ui.small(format!("#{} · {status}", activity.number));
+            } else {
+                ui.small(tr(
+                    locale,
+                    "正在计算，结束后可审阅记录。",
+                    "Calculation in progress. The trace is available after it ends.",
+                ));
+            }
         }
         let Some((display_number, run)) = runs.get(active_selection) else {
-            if !active {
+            if active.is_none() {
                 ui.label(tr(locale, "本会话尚无运行。", "No runs in this session."));
             }
             return;

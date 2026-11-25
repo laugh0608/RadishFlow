@@ -2188,3 +2188,22 @@ fn inspector_view_units_render_separately_from_module_settings_and_retire_on_clo
     assert!(closed.iter().any(|text| text == "重新打开检查器"));
     assert!(!closed.iter().any(|text| text == "°C"));
 }
+
+pub(super) fn assert_horizontal_fit(shape: &egui::Shape, clip: egui::Rect, case: &str) {
+    match shape {
+        egui::Shape::Text(t) => {
+            let r = t.galley.rect.translate(t.pos.to_vec2());
+            assert!(
+                r.left() >= clip.left() - 1.0 && r.right() <= clip.right() + 1.0,
+                "{case}: {:?} outside {clip:?}: {r:?}",
+                t.galley.text()
+            );
+        }
+        egui::Shape::Vec(v) => {
+            for s in v {
+                assert_horizontal_fit(s, clip, case);
+            }
+        }
+        _ => {}
+    }
+}

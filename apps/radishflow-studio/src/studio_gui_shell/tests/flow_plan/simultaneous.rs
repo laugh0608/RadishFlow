@@ -1,3 +1,4 @@
+use super::super::runtime::assert_horizontal_fit;
 use super::*;
 use rf_solver::simultaneous::*;
 use rf_types::units::MeasurementUnit;
@@ -386,24 +387,6 @@ fn modular_unknown_capability_stays_entirely_read_only_and_recent_metadata_is_sa
     fs::remove_file(path).unwrap();
 }
 
-fn assert_horizontal_fit(shape: &egui::Shape, clip: egui::Rect, case: &str) {
-    match shape {
-        egui::Shape::Text(t) => {
-            let r = t.galley.rect.translate(t.pos.to_vec2());
-            assert!(
-                r.left() >= clip.left() - 1.0 && r.right() <= clip.right() + 1.0,
-                "{case}: {:?} outside {clip:?}: {r:?}",
-                t.galley.text()
-            );
-        }
-        egui::Shape::Vec(v) => {
-            for s in v {
-                assert_horizontal_fit(s, clip, case);
-            }
-        }
-        _ => {}
-    }
-}
 #[test]
 fn modular_400px_bilingual_large_font_layouts_keep_text_within_horizontal_bounds() {
     for locale in [StudioShellLocale::ZhCn, StudioShellLocale::En] {

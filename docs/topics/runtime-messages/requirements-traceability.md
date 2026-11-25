@@ -33,9 +33,9 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 | MSG-08 | [层级、顺序与能力](execution-trace-and-convergence.md) | N2 / N4 | S-08 | 待实现 / 待验证；— |
 | MSG-09 | [残差与观察值解释](execution-trace-and-convergence.md) | N4 | S-09 | 待实现 / 待验证；— |
 | MSG-10 | [采集、容量与性能](execution-trace-and-convergence.md) | N2 | S-10 | 待实现 / 待验证；— |
-| MSG-11 | [安全暂停与能力](run-control-and-watch-conditions.md) | N3 | S-11 | 待实现 / 待验证；— |
-| MSG-12 | [单步、继续与取消](run-control-and-watch-conditions.md) | N3 | S-12 | 待实现 / 待验证；— |
-| MSG-13 | [编辑、退出与迟到隔离](run-control-and-watch-conditions.md) | N3 | S-13 | 待实现 / 待验证；— |
+| MSG-11 | [安全暂停与能力](run-control-and-watch-conditions.md) | N3 | S-11 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
+| MSG-12 | [单步、继续与取消](run-control-and-watch-conditions.md) | N3 | S-12 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
+| MSG-13 | [编辑、退出与迟到隔离](run-control-and-watch-conditions.md) | N3 | S-13 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
 | MSG-14 | [条件量与单位](run-control-and-watch-conditions.md) | N4 | S-14 | 待实现 / 待验证；— |
 | MSG-15 | [无效条件与缺值](run-control-and-watch-conditions.md) | N4 | S-15 | 待实现 / 待验证；— |
 | MSG-16 | [求值、重新武装与采样](run-control-and-watch-conditions.md) | N4 | S-16 | 待实现 / 待验证；— |
@@ -68,7 +68,7 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 | D-01 | [问题键、失效、重检与阻断](message-model-and-lifecycle.md#切片待决策与最小验证) | MSG-01—06 | N1 前 / 检查与应用状态 |
 | D-02 | [事件协议、顺序、采集及容量](execution-trace-and-convergence.md#切片待决策与最小验证) | MSG-07—10 | N2 前 / 求解执行与运行记录 |
 | D-03 | [残差及收敛观察判据](execution-trace-and-convergence.md#切片待决策与最小验证) | MSG-08—09、16 | N4 前 / 数值求解 |
-| D-04 | [无回路稳态运行控制提案](run-control-and-watch-conditions.md#d-04-无回路稳态运行控制提案) | MSG-11—13 | N3 首批待评审 / 应用任务与执行者；[首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
+| D-04 | [无回路稳态运行控制提案](run-control-and-watch-conditions.md#d-04-无回路稳态运行控制提案) | MSG-11—13 | N3 无回路稳态已接入 Studio / 应用任务与执行者；[首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
 | D-05 | [条件有效性、精度与触发](run-control-and-watch-conditions.md#切片待决策与最小验证) | MSG-14—16 | N4 前 / 运行控制与单位 |
 | D-06 | [时间、回放和检查点](run-control-and-watch-conditions.md#切片待决策与最小验证) | MSG-17 | N5 前 / 动态与运行恢复 |
 | D-07 | [布局、空状态和操作路径](diagnostic-workbench-and-navigation.md#切片待决策与最小验证) | MSG-18—22 | N0 局部画板实施前 / Studio 设计；后续实现再复核 |

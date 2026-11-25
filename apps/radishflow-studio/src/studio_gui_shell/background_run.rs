@@ -1,5 +1,7 @@
 use super::*;
 use radishflow_studio::{StudioBackgroundRunAction as Action, StudioRunId, WorkspaceRunPhase};
+mod unit_controls;
+pub(super) use unit_controls::START_PAUSED;
 
 pub(super) struct PendingRunExit {
     window_id: StudioWindowHostId,
@@ -25,6 +27,12 @@ impl ReadyAppState {
                     self.record_run_reply(&submission);
                 }
                 let zh = self.locale == StudioShellLocale::ZhCn;
+                if let Some(message) = reply
+                    .unit_control
+                    .and_then(|r| unit_controls::control_feedback(r, zh))
+                {
+                    self.platform_host.record_activity_line(message);
+                }
                 let message = match reply.cancellation {
                     Some(radishflow_studio::WorkspaceRunCancelReply::AlreadyFinished) => {
                         Some(if zh {
@@ -260,18 +268,30 @@ impl ReadyAppState {
                 }
             }
         };
+        let control_status = self.unit_control_status(&activity);
+        let paused = matches!(&activity.unit_control, Some(c) if matches!(c.phase, radishflow_studio::UnitRunPhase::Paused { .. }))
+            && !cancelling;
         egui::TopBottomPanel::top("background-run-activity").show(ctx, |ui| {
-            ui.horizontal_wrapped(|ui| {
-                ui.spinner();
-                ui.label(format!("{kind} #{} · {} · {phase}", activity.number, activity.target));
+            let phase = control_status.as_deref().unwrap_or(phase);
+            let status = ui.push_id(("activity-status", activity.number), |ui| {
+                ui.add(egui::Label::new(format!("{kind} #{} · {} · {phase}", activity.number, activity.target))
+                    .wrap()
+                    .sense(egui::Sense::focusable_noninteractive()))
+            }).inner;
+            let position = activity.unit_control.as_ref().map(|c| c.last_released);
+            ui.push_id(("activity-actions", activity.number, position, paused), |ui| ui.horizontal_wrapped(|ui| {
+                if !paused {
+                    ui.spinner();
+                }
+                self.render_unit_control_buttons(ui, &activity, &status);
                 if ui.add_enabled(!cancelling, egui::Button::new(if zh { "取消本次运行" } else { "Cancel this run" })).clicked() {
                     self.background_action(Action::Cancel(activity.id.clone()));
                 }
                 if ui.button(if zh { "运行日志" } else { "Run log" }).clicked() {
                     self.show_background_run_details();
                 }
-            });
-            if let Some(owner) = &self.background_runs
+            }));
+            if !paused && let Some(owner) = &self.background_runs
                 && let Some(progress) = owner.borrow().flow_progress() {
                 match progress.progress {
                     radishflow_studio::WorkspaceSolveProgress::Solving(progress) => {
@@ -350,6 +370,28 @@ impl ReadyAppState {
         };
         let current = matches!(&activity.id, StudioRunId::Flow(id)
             if self.platform_host.modeling_inputs().workspace.pending_flow_run() == Some(id));
+        if current
+            && let Some(control) = &activity.unit_control
+            && activity.phase != WorkspaceRunPhase::CancelRequested
+        {
+            let zh = self.locale == StudioShellLocale::ZhCn;
+            match control.phase {
+                radishflow_studio::UnitRunPhase::Paused { .. } => {
+                    return if zh { "已暂停" } else { "Paused" };
+                }
+                radishflow_studio::UnitRunPhase::PauseRequested => {
+                    return if zh {
+                        "正在暂停"
+                    } else {
+                        "Pause requested"
+                    };
+                }
+                radishflow_studio::UnitRunPhase::Stepping => {
+                    return if zh { "单步执行中" } else { "Stepping" };
+                }
+                _ => {}
+            }
+        }
         match (self.locale, current, activity.phase) {
             (StudioShellLocale::ZhCn, _, WorkspaceRunPhase::CancelRequested) => "等待计算结束",
             (StudioShellLocale::En, _, WorkspaceRunPhase::CancelRequested) => {
@@ -417,6 +459,7 @@ impl ReadyAppState {
         let Some(target) = &self.command_palette.background_target else {
             return;
         };
+        self.append_unit_commands(items, target, query);
         let zh = self.locale == StudioShellLocale::ZhCn;
         let label = if zh {
             format!("取消运行 #{} · {}", target.number, target.target)

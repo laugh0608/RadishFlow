@@ -15,6 +15,7 @@ use rf_types::{RfError, RfResult};
 use rf_ui::FlowRunId;
 
 use super::trace::{TraceRecorder, WorkspaceTracePhase};
+use super::unit_control::UnitControlGate;
 use crate::{
     WorkspaceSolveProgress,
     solver_bridge::execution::{
@@ -57,6 +58,7 @@ impl WorkerSpawner for ThreadSpawner {
 }
 
 pub(super) struct WorkerChannels {
+    pub units: Option<Arc<UnitControlGate>>,
     pub cancel: Arc<AtomicBool>,
     pub progress: Arc<Mutex<Option<WorkspaceRunProgress>>>,
     pub ready: Receiver<()>,
@@ -65,6 +67,7 @@ pub(super) struct WorkerChannels {
 }
 
 pub(super) struct WorkerControl {
+    units: Option<Arc<UnitControlGate>>,
     id: FlowRunId,
     cancel: Arc<AtomicBool>,
     progress: Arc<Mutex<Option<WorkspaceRunProgress>>>,
@@ -78,14 +81,17 @@ impl WorkerChannels {
     pub fn new(
         id: FlowRunId,
         record_trace: bool,
+        unit_control: bool,
     ) -> (Self, WorkerControl, SyncSender<WorkerTerminal>) {
         let cancel = Arc::new(AtomicBool::new(false));
         let progress = Arc::new(Mutex::new(None));
         let (ready_tx, ready) = mpsc::sync_channel(1);
         let (start, start_rx) = mpsc::sync_channel(1);
         let (result_tx, result) = mpsc::sync_channel(1);
+        let units = unit_control.then(|| Arc::new(UnitControlGate::new()));
         (
             Self {
+                units: units.clone(),
                 cancel: cancel.clone(),
                 progress: progress.clone(),
                 ready,
@@ -93,6 +99,7 @@ impl WorkerChannels {
                 result,
             },
             WorkerControl {
+                units,
                 id,
                 cancel,
                 progress,
@@ -107,8 +114,18 @@ impl WorkerChannels {
 
     pub fn request_cancel(&self) {
         self.cancel.store(true, Ordering::Release);
+        if let Some(units) = &self.units {
+            units.cancel();
+        }
         // Wakes a worker waiting at Ready, including a grant/cancel race.
         let _ = self.start.try_send(false);
+    }
+}
+
+impl Drop for WorkerChannels {
+    fn drop(&mut self) {
+        // A disappearing owner cannot leave a suspended worker waiting for a command.
+        self.request_cancel();
     }
 }
 
@@ -132,6 +149,18 @@ impl WorkerControl {
 
 impl SolverControl for WorkerControl {
     fn checkpoint(&mut self, progress: SolveProgress) -> ControlFlow<()> {
+        if progress.stage == rf_solver::SolveStage::UnitStarted
+            && let Some(gate) = &self.units
+        {
+            gate.before_unit(
+                progress.completed_units + 1,
+                progress.total_units.expect("unit entry has a plan"),
+                progress
+                    .current_unit
+                    .as_ref()
+                    .expect("unit entry has a target"),
+            )?;
+        }
         self.emit(WorkspaceSolveProgress::Solving(progress))
     }
 
@@ -218,6 +247,9 @@ pub(super) fn spawn_worker(
                 Ok(output) => WorkerResult::Completed(Box::new(output)),
                 Err(_) => WorkerResult::Panicked,
             };
+        if let Some(units) = &control.units {
+            units.finish();
+        }
         // Exactly one terminal payload; progress uses a separate replaceable slot.
         let _ = result.send(WorkerTerminal {
             result: outcome,

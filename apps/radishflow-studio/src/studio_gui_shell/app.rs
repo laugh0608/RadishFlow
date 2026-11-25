@@ -719,7 +719,9 @@ impl ReadyAppState {
             self.open_variable_browser();
             return;
         }
-        if self.dispatch_background_cancel_command(&command_id) {
+        if self.dispatch_unit_command(&command_id)
+            || self.dispatch_background_cancel_command(&command_id)
+        {
             return;
         }
         if self.intercept_recommendation_command(&command_id) {
@@ -755,7 +757,10 @@ impl ReadyAppState {
     pub(super) fn dispatch_confirmed_ui_command(&mut self, command_id: String) {
         if matches!(
             command_id.as_str(),
-            "run_panel.run_manual" | "run_panel.resume_workspace" | "run_panel.set_active"
+            "run_panel.run_manual"
+                | background_run::START_PAUSED
+                | "run_panel.resume_workspace"
+                | "run_panel.set_active"
         ) && self.modular_plan_draft_pending()
         {
             self.screen = StudioShellScreen::Run;
@@ -766,6 +771,10 @@ impl ReadyAppState {
             return;
         }
         if self.intercept_modeling_readiness_run_if_needed(&command_id) {
+            return;
+        }
+        if command_id == background_run::START_PAUSED {
+            self.start_flow_paused();
             return;
         }
 

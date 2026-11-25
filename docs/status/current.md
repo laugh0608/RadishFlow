@@ -68,7 +68,7 @@
 
 - [装置工程与数字孪生](../architecture/simulation-platform.md#装置工程与数字孪生愿景) 按 DT0—DT4 分期，未因本轮架构梳理启动实施。
 
-- N2 已接通无回路稳态运行后审阅。N3 暂停与单步的 [D-04 提案](../topics/runtime-messages/run-control-and-watch-conditions.md#d-04-无回路稳态运行控制提案)待评审。
+- 无回路稳态已支持 N2 运行后审阅与 [N3 暂停、单步和继续](../topics/runtime-messages/scenarios-and-acceptance.md#n3-无回路稳态首批验收)，已通过 macOS 双进料 Mixer 验收。
 
 ### 后续事项
 

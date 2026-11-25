@@ -469,11 +469,12 @@ pub use workspace_solve_service::{
 pub use property_package_cache_root::PropertyPackageCacheRoot;
 
 pub use workspace_run_owner::{
-    RunAuthorizationRefusal, WorkspaceExecutionTrace, WorkspaceRunBlock, WorkspaceRunCancelReason,
-    WorkspaceRunCancelReply, WorkspaceRunOwner, WorkspaceRunPhase, WorkspaceRunProgress,
-    WorkspaceRunState, WorkspaceRunSubmission, WorkspaceRunSummary, WorkspaceTraceCoverage,
-    WorkspaceTraceDiagnostic, WorkspaceTracePackage, WorkspaceTracePhase, WorkspaceTraceRecord,
-    WorkspaceTraceStep, WorkspaceTraceStop, WorkspaceTraceStreams,
+    RunAuthorizationRefusal, UnitControlReply, UnitRunCommand, UnitRunControl, UnitRunPhase,
+    WorkspaceExecutionTrace, WorkspaceRunBlock, WorkspaceRunCancelReason, WorkspaceRunCancelReply,
+    WorkspaceRunOwner, WorkspaceRunPhase, WorkspaceRunProgress, WorkspaceRunState,
+    WorkspaceRunSubmission, WorkspaceRunSummary, WorkspaceTraceCoverage, WorkspaceTraceDiagnostic,
+    WorkspaceTracePackage, WorkspaceTracePhase, WorkspaceTraceRecord, WorkspaceTraceStep,
+    WorkspaceTraceStop, WorkspaceTraceStreams,
 };
 
 #[cfg(test)]

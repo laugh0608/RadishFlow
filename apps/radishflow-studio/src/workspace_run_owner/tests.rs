@@ -185,8 +185,7 @@ fn real_cached_background_matches_sync_without_executing_on_the_submitter() {
     assert!(owner.try_close().is_ok());
 }
 
-#[test]
-fn failed_second_feed_retains_actual_steps_and_composition_target() {
+fn mixer_flow() -> rf_model::Flowsheet {
     let project = rf_store::parse_project_file_json(include_str!(
         "../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
     ))
@@ -195,6 +194,12 @@ fn failed_second_feed_retains_actual_steps_and_composition_target() {
     flow.units.remove(&"flash-1".into());
     flow.streams.remove(&"stream-liquid".into());
     flow.streams.remove(&"stream-vapor".into());
+    flow
+}
+
+#[test]
+fn failed_second_feed_retains_actual_steps_and_composition_target() {
+    let mut flow = mixer_flow();
     flow.streams
         .get_mut(&"stream-feed-b".into())
         .unwrap()
@@ -872,7 +877,7 @@ fn ten_thousand_progress_updates_coalesce_without_blocking_terminal_delivery() {
     use rf_solver::{SolveProgress, SolveStage, SolverControl};
     let mut app = app();
     let id = app.prepare_flow_run().receipt().run_id().clone();
-    let (channels, mut control, terminal) = WorkerChannels::new(id.clone(), false);
+    let (channels, mut control, terminal) = WorkerChannels::new(id.clone(), false, false);
     for completed_units in 0..10_000 {
         assert!(
             control
@@ -1180,3 +1185,5 @@ mod equation_oriented;
 mod mixed_recycle;
 mod serial_recycle;
 mod simultaneous;
+
+mod unit_control;

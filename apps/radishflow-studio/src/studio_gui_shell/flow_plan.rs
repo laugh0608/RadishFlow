@@ -99,6 +99,7 @@ impl ReadyAppState {
             if run.clicked() {
                 self.dispatch_ui_command("run_panel.run_manual");
             }
+            self.start_paused_button(ui);
             ui.label(format!(
                 "{}: {}",
                 tr(zh, "已应用", "Applied"),

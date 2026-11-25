@@ -166,7 +166,7 @@ impl ReadyAppState {
             .resizable(false)
             .open(&mut open)
             .show(ctx, |ui| {
-                ui.set_min_width(560.0);
+                ui.set_width((ctx.screen_rect().width() - 40.0).clamp(220.0, 560.0));
                 let palette_items =
                     self.command_palette_items(commands, &self.command_palette.query);
                 let canvas_result = self

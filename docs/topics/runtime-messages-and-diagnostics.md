@@ -1,6 +1,6 @@
 # 运行、消息与诊断
 
-更新时间：2026-10-24
+更新时间：2026-11-25
 
 ## 用途与状态
 
@@ -9,7 +9,7 @@
 不包含：完整调试器、具体持久化 schema、任意脚本执行、工程算法、完整报告及远端审计服务。
 
 - 层级：一级轨道；上位为 [平台规划](../architecture/simulation-platform.md)，阶段顺序见 [路线图](../radishflow-mvp-roadmap.md#运行消息与诊断的配套切片)。
-- 状态：Draft / 2026-09-23 方案已确认；N0 设计衔接 U2 / V0 / R0—R1；N1 的 A1 / A2 子集、AF3 后台 / 取消与 AF4b 运行回执已实现；完整 N1、暂停 / 单步及条件监视待续。
+- 状态：Draft / 2026-09-23 方案已确认；N0 设计衔接 U2 / V0 / R0—R1；N1 的 A1 / A2 子集、AF3 后台 / 取消与 AF4b 运行回执已实现；Studio 无回路稳态已接通 N2 步骤审阅和 [N3 暂停／单步](runtime-messages/scenarios-and-acceptance.md#n3-无回路稳态首批验收)。完整 N1 与条件监视待续。
 - 本专题拥有消息生命周期、执行追踪、停止语义与跨消费者一致性；[结果专题](results-review-diagnostics.md) 拥有结果有效性、工程检查与输出，[辅助专题](modeling-assistance-and-specifications.md) 拥有规则 / 建议，[颜色与状态专题](color-and-state-system.md) 拥有呈现映射，[UI 计划](../architecture/studio-ui-topic-plan.md) 拥有布局与画板。
 
 ## 目标与当前基础
@@ -53,7 +53,7 @@
 
 开发者诊断与工程视图共享事实；按任务展开模型、数值及技术详情，不因隐藏详情解除工程阻断。独立模型 / 物性实验和调用证据可先于后台调试，参数对照与导数检查随模型能力建设；MSG-28—33 的字段与载荷由 D-11 / D-12 衔接既有采集、数值及存储决策。
 
-2026-10-24 已基于 AF2b 完成 [AF3 现状盘点与提案](runtime-messages/run-control-and-watch-conditions.md#af3-任务身份取消与完成接收方案)，包含会话 / 输入 / RunId、单 worker、取消竞争、迟到成功 / 失败、资源与退出收尾；[专项验收矩阵](runtime-messages/scenarios-and-acceptance.md#af3-专项验收边界)单列确定性竞争、真实后台、UI 与跨端门槛。方案已确认，AF3a / AF3b 与 AF3c GUI、设备及产品生命周期已接通；具体覆盖与未验项以验收矩阵为准。AF1 独立跟踪，暂停 / 单步与完整 N 轨道仍未实现。
+2026-10-24 已基于 AF2b 完成 [AF3 现状盘点与提案](runtime-messages/run-control-and-watch-conditions.md#af3-任务身份取消与完成接收方案)，包含会话 / 输入 / RunId、单 worker、取消竞争、迟到成功 / 失败、资源与退出收尾；[专项验收矩阵](runtime-messages/scenarios-and-acceptance.md#af3-专项验收边界)单列确定性竞争、真实后台、UI 与跨端门槛。方案已确认，AF3a / AF3b 与 AF3c GUI、设备及产品生命周期已接通；具体覆盖与未验项以验收矩阵为准。AF1 独立跟踪。AF3 的范围限于后台与取消。
 
 
 AF4b 已补 [类型化运行回执](variable-and-object-browser.md#af4b-2—4-批次契约2026-10-24)：流程 / 设备共用受理、重复、Busy、Closing、跳过 / 拒绝、启动失败及终态投影；同步完成与后台受理分开，取消返回精确目标的请求 / 重复 / 已结束 / 未知状态。GUI / runtime 保留这些事实，结果当前资格仍独立查询，不因此扩展暂停或单步。
@@ -62,7 +62,7 @@ AF4b 已补 [类型化运行回执](variable-and-object-browser.md#af4b-2—4-�
 
 ## 实施与验收入口
 
-切片启动先完成追踪表中适用的 D 决策、范围和独立预期，实施后回填代码 / 测试位置与证据。新增方向均未获得运行态验收；原有能力作为复用基础。文档组织完成不等于 N0 UI 评审通过，实施优先级以当前状态和 AF 依赖为准。
+切片启动先完成追踪表中适用的 D 决策、范围和独立预期，实施后回填代码 / 测试位置与证据。各方向按追踪表所列的实际运行范围验收。文档组织完成不等于 N0 UI 评审通过，实施优先级以当前状态和 AF 依赖为准。
 
 ## 参考与适用范围
 

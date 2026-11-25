@@ -5,6 +5,8 @@ mod authorization;
 #[cfg(test)]
 mod tests;
 mod trace;
+mod unit_control;
+pub use unit_control::{UnitControlReply, UnitRunCommand, UnitRunControl, UnitRunPhase};
 mod worker;
 
 use std::{collections::VecDeque, sync::mpsc::TryRecvError, thread::JoinHandle, time::SystemTime};
@@ -86,6 +88,7 @@ pub enum WorkspaceRunCancelReply {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceRunState {
+    pub unit_control: Option<UnitRunControl>,
     pub run_id: FlowRunId,
     pub phase: WorkspaceRunPhase,
     pub submitted_at: SystemTime,
@@ -126,6 +129,32 @@ struct ActiveRun {
     received: Option<WorkerTerminal>,
     progress: Option<WorkspaceRunProgress>,
     progress_sequence: u64,
+}
+
+impl ActiveRun {
+    fn invalidation(
+        &self,
+        app: Option<&AppState>,
+        now: SystemTime,
+    ) -> Option<WorkspaceRunCancelReason> {
+        match app {
+            None => Some(WorkspaceRunCancelReason::Detached),
+            Some(app)
+                if self.receipt.execution_qualification()
+                    != app.workspace.flow_execution_qualification()
+                    || app.workspace.pending_flow_run() != Some(self.receipt.run_id()) =>
+            {
+                Some(WorkspaceRunCancelReason::QualificationChanged)
+            }
+            Some(app) => (if self.started_at.is_none() {
+                self.authorization.allow_start(app, now)
+            } else {
+                self.authorization.check_revocation(app)
+            })
+            .err()
+            .map(WorkspaceRunCancelReason::Authorization),
+        }
+    }
 }
 
 /// Owns at most one worker and no queue. `begin_shutdown` rejects new work;
@@ -172,6 +201,7 @@ impl WorkspaceRunOwner {
 
     pub fn state(&self) -> Option<WorkspaceRunState> {
         self.active.as_ref().map(|active| WorkspaceRunState {
+            unit_control: active.channels.units.as_ref().map(|gate| gate.snapshot()),
             run_id: active.receipt.run_id().clone(),
             phase: if active.cancel_reason.is_some() {
                 WorkspaceRunPhase::CancelRequested
@@ -301,7 +331,8 @@ impl WorkspaceRunOwner {
         let (receipt, job) = prepared.into_job();
         let id = receipt.run_id().clone();
         let collect_trace = plan == FlowPlanConfiguration::Acyclic;
-        let (channels, control, result) = WorkerChannels::new(id.clone(), collect_trace);
+        let (channels, control, result) =
+            WorkerChannels::new(id.clone(), collect_trace, cached && collect_trace);
         let handle = match spawn_worker(spawner, job, load, cached, control, result) {
             Ok(handle) => handle,
             Err(error) => {
@@ -358,6 +389,36 @@ impl WorkspaceRunOwner {
             progress_sequence: 0,
         }));
         Ok(WorkspaceRunSubmission::Accepted(id))
+    }
+
+    pub fn control_units(
+        &mut self,
+        app: &mut AppState,
+        id: &FlowRunId,
+        command: UnitRunCommand,
+        now: SystemTime,
+    ) -> UnitControlReply {
+        let Some(active) = self.active.as_mut().filter(|a| a.receipt.run_id() == id) else {
+            return if self.history.iter().any(|run| &run.run_id == id) {
+                UnitControlReply::Finished
+            } else {
+                UnitControlReply::UnknownRun
+            };
+        };
+        let Some(gate) = active.channels.units.as_ref() else {
+            return UnitControlReply::Unsupported;
+        };
+        if active.cancel_reason.is_some() {
+            return UnitControlReply::Cancelling;
+        }
+        if let Some(reason) = active.invalidation(Some(app), now) {
+            Self::cancel_active(active, Some(app), reason);
+            return UnitControlReply::Cancelling;
+        }
+        if active.handle.is_finished() || active.received.is_some() {
+            return UnitControlReply::Finished;
+        }
+        gate.request(command)
     }
 
     pub fn cancel(&mut self, app: &mut AppState, id: &FlowRunId) -> WorkspaceRunCancelReply {
@@ -448,23 +509,7 @@ impl WorkspaceRunOwner {
     ) -> Option<WorkspaceRunSummary> {
         let active = self.active.as_mut()?;
         if active.cancel_reason.is_none() {
-            let reason = match app.as_deref() {
-                None => Some(WorkspaceRunCancelReason::Detached),
-                Some(app)
-                    if active.receipt.execution_qualification()
-                        != app.workspace.flow_execution_qualification()
-                        || app.workspace.pending_flow_run() != Some(active.receipt.run_id()) =>
-                {
-                    Some(WorkspaceRunCancelReason::QualificationChanged)
-                }
-                Some(app) => (if active.started_at.is_none() {
-                    active.authorization.allow_start(app, now)
-                } else {
-                    active.authorization.check_revocation(app)
-                })
-                .err()
-                .map(WorkspaceRunCancelReason::Authorization),
-            };
+            let reason = active.invalidation(app.as_deref(), now);
             if let Some(reason) = reason {
                 Self::cancel_active(active, app.as_deref_mut(), reason);
             }

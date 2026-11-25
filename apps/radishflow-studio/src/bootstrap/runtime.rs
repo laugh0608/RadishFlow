@@ -483,6 +483,55 @@ impl BootstrapSession {
     ) -> RfResult<crate::StudioBackgroundRunReply> {
         use crate::StudioBackgroundRunAction;
         match action {
+            StudioBackgroundRunAction::StartAtFirstUnit { expected, access } => {
+                let Some(background) = self.facade.background.as_ref() else {
+                    return Ok(crate::StudioBackgroundRunReply {
+                        unit_control: Some(crate::UnitControlReply::Unsupported),
+                        ..Default::default()
+                    });
+                };
+                if self.app_state.workspace.flow_plan.current()
+                    != &rf_ui::flow_plan::FlowPlanConfiguration::Acyclic
+                {
+                    return Ok(crate::StudioBackgroundRunReply {
+                        unit_control: Some(crate::UnitControlReply::Unsupported),
+                        ..Default::default()
+                    });
+                }
+                let context =
+                    StudioAppAuthCacheContext::new(self.cache_root.path(), &self.auth_cache_index);
+                let submission = self.facade.execute_run_action(
+                    &mut self.app_state,
+                    &context,
+                    access,
+                    crate::run_actions::StudioRunRequest::Flow {
+                        expected,
+                        command: crate::WorkspaceRunCommand::new(
+                            crate::WorkspaceSolveTrigger::Manual,
+                            crate::WorkspaceRunPackageSelection::Preferred,
+                        ),
+                    },
+                );
+                // Only this UI thread can grant Ready. Arm the new run before returning
+                // to the event loop; duplicate submissions never change the active run.
+                let unit_control =
+                    if let crate::run_actions::StudioRunReply::Accepted(id) = &submission {
+                        Some(background.owner.borrow_mut().control_units(
+                            &mut self.app_state,
+                            id,
+                            crate::UnitRunCommand::Pause { last_released: 0 },
+                            SystemTime::now(),
+                        ))
+                    } else {
+                        None
+                    };
+                return Ok(crate::StudioBackgroundRunReply {
+                    changed: true,
+                    submission: Some(submission),
+                    unit_control,
+                    ..Default::default()
+                });
+            }
             StudioBackgroundRunAction::AdoptEquationCandidate { access, preview } => {
                 let busy = self
                     .facade
@@ -594,6 +643,8 @@ impl BootstrapSession {
         }
         let Some(background) = &self.facade.background else {
             return Ok(crate::StudioBackgroundRunReply {
+                unit_control: matches!(action, StudioBackgroundRunAction::ControlUnits { .. })
+                    .then_some(crate::UnitControlReply::UnknownRun),
                 cancellation: matches!(action, StudioBackgroundRunAction::Cancel(_))
                     .then_some(crate::WorkspaceRunCancelReply::UnknownRun),
                 ..Default::default()
@@ -602,6 +653,15 @@ impl BootstrapSession {
         let mut owner = background.owner.borrow_mut();
         let mut reply = crate::StudioBackgroundRunReply::default();
         let changed = match action {
+            StudioBackgroundRunAction::ControlUnits { id, command } => {
+                let result =
+                    owner.control_units(&mut self.app_state, &id, command, SystemTime::now());
+                reply.unit_control = Some(result);
+                matches!(
+                    result,
+                    crate::UnitControlReply::Accepted | crate::UnitControlReply::Cancelling
+                )
+            }
             StudioBackgroundRunAction::Poll { attached } => {
                 let changed = owner.poll(
                     if attached {
@@ -656,6 +716,7 @@ impl BootstrapSession {
                 false
             }
             StudioBackgroundRunAction::AdoptEquationCandidate { .. }
+            | StudioBackgroundRunAction::StartAtFirstUnit { .. }
             | StudioBackgroundRunAction::ConfigureFlowPlan { .. }
             | StudioBackgroundRunAction::FlowPlanDraft { .. }
             | StudioBackgroundRunAction::EditFlow { .. }
