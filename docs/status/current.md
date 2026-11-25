@@ -68,7 +68,7 @@
 
 - [装置工程与数字孪生](../architecture/simulation-platform.md#装置工程与数字孪生愿景) 按 DT0—DT4 分期，未因本轮架构梳理启动实施。
 
-- [运行与诊断](../topics/runtime-messages-and-diagnostics.md) 已接通 N2 的无回路稳态运行后审阅。GUI 后台取消沿用现有机制，暂停按 N3 推进。
+- N2 已接通无回路稳态运行后审阅。N3 暂停与单步的 [D-04 提案](../topics/runtime-messages/run-control-and-watch-conditions.md#d-04-无回路稳态运行控制提案)待评审。
 
 ### 后续事项
 

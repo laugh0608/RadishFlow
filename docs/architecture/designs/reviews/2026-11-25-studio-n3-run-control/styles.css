@@ -1,0 +1,35 @@
+@font-face {
+  font-family: Studio Inter;
+  src: url("../../../../../apps/radishflow-studio/assets/fonts/InterVariable.ttf") format("truetype");
+  font-weight: 100 900;
+}
+@font-face {
+  font-family: Studio Han;
+  src: url("../../../../../apps/radishflow-studio/assets/fonts/SourceHanSansSC-Regular.otf") format("opentype");
+}
+:root { font: 14px/1.5 "Studio Inter", "Studio Han", sans-serif; color: #202c38; background: #edf0f4; }
+* { box-sizing: border-box; }
+body, p { margin: 0; }
+button, select { font: inherit; color: inherit; padding: .42rem .72rem; border: 1px solid #a8b6c4; border-radius: 4px; background: white; max-width: 100%; }
+button:enabled:hover { background: #e8f0fa; cursor: pointer; }
+button:disabled { color: #59636d; background: #f1f3f5; }
+:focus-visible { outline: 3px solid #215a9c; outline-offset: 2px; }
+aside, header, .line, .actions, label { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem 1rem; }
+aside { padding: .8rem max(1rem, calc((100vw - 1100px)/2)); border-bottom: 1px solid #bac7d5; background: #f5f7fa; }
+label { gap: .35rem; }
+main { width: min(100%, 1100px); margin: 1.1rem auto; box-shadow: 0 1px 4px #15263818; }
+header, section { padding: 1rem 1.5rem; background: white; border-bottom: 1px solid #ccd5de; }
+header { justify-content: space-between; background: #334557; color: white; }
+h1, h2 { margin: 0 0 .7rem; font-size: 1.22rem; }
+.line, #source, p { color: #435365; }
+.actions:has(button:not([hidden])) { margin-top: .8rem; }
+.status { font-weight: 650; width: fit-content; }
+.status[data-state="paused"], .status[data-state="pending"] { color: #805318; }
+.status[data-state="failed"] { color: #9b3437; }
+#position, #outlet { margin-top: .25rem; }
+#outlet:empty, p:empty { display: none; }
+button[hidden] { display: none; }
+@media (max-width: 600px) {
+  main { margin: 0; }
+  header, section, aside { padding: .85rem 1rem; }
+}
