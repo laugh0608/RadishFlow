@@ -96,6 +96,7 @@ pub use state::{
     unit_inspector_draft_key_parts, unit_inspector_parameter_is_explicit,
     unit_inspector_parameter_value,
 };
+pub use state::{StreamReconnect, StreamReconnectOptions, stream_reconnect_options};
 
 #[cfg(test)]
 mod tests;

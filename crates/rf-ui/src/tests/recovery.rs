@@ -1111,6 +1111,38 @@ fn reconnecting_sink_only_stream_ignores_ambiguous_available_sources() {
 }
 
 #[test]
+fn reconnecting_a_stream_preserves_another_streams_occupied_port() {
+    let mut document = sample_feed_flash_document();
+    let inlet_stream = StreamId::new("stream-inlet");
+    document
+        .flowsheet
+        .insert_stream(MaterialStreamState::new(inlet_stream.clone(), "Inlet"))
+        .unwrap();
+    let flash = document
+        .flowsheet
+        .units
+        .get_mut(&UnitId::new("flash-1"))
+        .unwrap();
+    flash
+        .ports
+        .iter_mut()
+        .find(|port| port.name == "inlet")
+        .unwrap()
+        .stream_id = Some(inlet_stream.clone());
+    let mut app = AppState::new(document.clone());
+
+    // The Feed outlet and the Flash inlet each belong to a different half-connected stream.
+    for stream in [StreamId::new("stream-feed"), inlet_stream] {
+        let result = app
+            .reconnect_stream_to_unique_available_endpoint(&stream, timestamp(50))
+            .unwrap();
+        assert_eq!(result, None);
+        assert_eq!(app.workspace.document, document);
+        assert!(app.workspace.command_history.is_empty());
+    }
+}
+
+#[test]
 fn deleting_stream_and_connections_unbinds_ports_removes_stream_and_is_undoable() {
     let mut document = sample_feed_flash_document();
     let stream_id = StreamId::new("stream-feed");

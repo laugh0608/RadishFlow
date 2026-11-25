@@ -61,6 +61,7 @@ mod result_export;
 mod result_review;
 mod result_table;
 mod state_presentation;
+mod stream_reconnect;
 mod unit_deletion;
 mod unit_settings;
 mod utils;
@@ -141,6 +142,7 @@ mod background_run;
 
 struct ReadyAppState {
     background_runs: Option<radishflow_studio::SharedStudioRunOwner>,
+    h3_flow_run: radishflow_studio::WorkspaceRunOwner,
     pending_run_exit: Option<background_run::PendingRunExit>,
     background_run_details_open: bool,
     platform_host: StudioGuiPlatformHost,
@@ -165,9 +167,11 @@ struct ReadyAppState {
     material: material_balance::MaterialPanelState,
     flow_plan: flow_plan::FlowPlanPanelState,
     left_sidebar_tab: StudioShellLeftSidebarTab,
+    reconnect_picker: Option<stream_reconnect::ReconnectPicker>,
     right_sidebar_tab: StudioShellRightSidebarTab,
     bottom_drawer_tab: StudioShellBottomDrawerTab,
     module_palette_filter: String,
+    component_filter: String,
     variable_browser: variable_browser::VariableBrowserState,
     modeling_problems: modeling_problems::ModelingProblemsState,
     run_diagnostic_navigation: Option<flow_diagnostics::RunDiagnosticNavigation>,
@@ -502,6 +506,7 @@ impl ReadyAppState {
             modeling_problems::ModelingProblemsState::new(platform_host.document());
         let mut ready = ReadyAppState {
             background_runs: None,
+            h3_flow_run: radishflow_studio::WorkspaceRunOwner::new(),
             pending_run_exit: None,
             background_run_details_open: false,
             material: material_balance::MaterialPanelState::default(),
@@ -529,9 +534,11 @@ impl ReadyAppState {
             screen: StudioShellScreen::default(),
             equipment: equipment::EquipmentPageState::default(),
             left_sidebar_tab: StudioShellLeftSidebarTab::default(),
+            reconnect_picker: None,
             right_sidebar_tab: StudioShellRightSidebarTab::default(),
             bottom_drawer_tab: StudioShellBottomDrawerTab::default(),
             module_palette_filter: String::new(),
+            component_filter: String::new(),
             variable_browser: variable_browser::VariableBrowserState::default(),
             modeling_problems,
             run_diagnostic_navigation: None,

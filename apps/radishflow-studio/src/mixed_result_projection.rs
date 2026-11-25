@@ -49,6 +49,7 @@ fn stage(s: MixedStage) -> &'static str {
         MixedStage::Equation => "equation",
         MixedStage::Boundary => "boundary",
         MixedStage::BlockCompleted => "block_completed",
+        MixedStage::RegionVerification => "region_verification",
         MixedStage::GlobalVerification => "global_verification",
         MixedStage::Completing => "completing",
     }
@@ -81,7 +82,7 @@ pub(crate) fn recycle_result(r: &MixedResult) -> RfResult<Value> {
                 .with_diagnostic_code("workspace.result.missing_recycle_report")
         })?;
     let mut value = result_payload(r, "mixed_recycle")?;
-    value["recycle"] = recycle(report, Numbers::Current)?;
+    value["recycle"] = recycle(report, Numbers::Current, "fresh_stream_id")?;
     Ok(value)
 }
 
@@ -94,9 +95,68 @@ pub(crate) fn recycle_failure(f: &MixedFailure) -> RfResult<Value> {
     }
     let mut value = failure_payload(f)?;
     if let Some(report) = &f.recycle {
-        value["recycle"] = recycle(report, Numbers::Diagnostic)?;
+        value["recycle"] = recycle(report, Numbers::Diagnostic, "fresh_stream_id")?;
     }
     Ok(value)
+}
+
+pub(crate) fn serial_recycle_result(r: &MixedResult) -> RfResult<serde_json::Map<String, Value>> {
+    if r.method != SERIAL_RECYCLE_METHOD
+        || r.serial_recycles.len() != 2
+        || r.serial_recycles.iter().any(|region| {
+            region.balance.is_none()
+                || region.recycle.last_sweep.is_none()
+                || region
+                    .recycle
+                    .residual_trace
+                    .last()
+                    .map(|sample| sample.phase)
+                    != Some(EvaluationPhase::Verification)
+        })
+    {
+        return Err(RfError::invalid_input(
+            "serial recycle result requires two verified region reports",
+        )
+        .with_diagnostic_code("workspace.result.missing_recycle_report"));
+    }
+    let mut value = result_payload(r, "mixed_serial_recycle")?;
+    value["recycle_regions"] = serial_regions(&r.serial_recycles, Numbers::Current)?;
+    let Value::Object(value) = value else {
+        unreachable!("mixed result object");
+    };
+    Ok(value)
+}
+
+pub(crate) fn serial_recycle_failure(f: &MixedFailure) -> RfResult<Value> {
+    if f.method != SERIAL_RECYCLE_METHOD {
+        return Err(
+            RfError::invalid_input("failure method does not match serial recycle")
+                .with_diagnostic_code("workspace.result.method_mismatch"),
+        );
+    }
+    let mut value = failure_payload(f)?;
+    if let Some(region) = &f.progress.recycle_region {
+        value["recycle_region_id"] = json!(region.as_str());
+    }
+    value["recycle_regions"] = serial_regions(&f.serial_recycles, Numbers::Diagnostic)?;
+    Ok(value)
+}
+
+fn serial_regions(regions: &[MixedRecycleRegionReport], numbers: Numbers) -> RfResult<Value> {
+    let regions = regions.iter().map(|region| {
+        let mut value = recycle(&region.recycle, numbers, "inlet_stream_id")?;
+        value["equation_block_id"] = json!(region.equation_block.as_str());
+        if let Some(balance) = &region.balance {
+            value["region_material"] = json!({
+                "inlet_components_mol_s": component_values(&balance.fresh_components_mol_s, numbers)?,
+                "outlet_components_mol_s": component_values(&balance.product_components_mol_s, numbers)?,
+                "component_residuals_mol_s": component_values(&balance.component_residuals_mol_s, numbers)?,
+                "total_residual_mol_s": numbers.value(balance.total_residual_mol_s)?,
+            });
+        }
+        Ok(value)
+    }).collect::<RfResult<Vec<_>>>()?;
+    Ok(Value::Array(regions))
 }
 
 fn result_payload(r: &MixedResult, kind: &str) -> RfResult<Value> {
@@ -123,7 +183,7 @@ fn failure_payload(f: &MixedFailure) -> RfResult<Value> {
     )
 }
 
-fn recycle(report: &MixedRecycleReport, numbers: Numbers) -> RfResult<Value> {
+fn recycle(report: &MixedRecycleReport, numbers: Numbers, inlet_id_key: &str) -> RfResult<Value> {
     let residual_trace = report
         .residual_trace
         .iter()
@@ -152,10 +212,115 @@ fn recycle(report: &MixedRecycleReport, numbers: Numbers) -> RfResult<Value> {
         .transpose()?;
     Ok(json!({
         "stream_id": report.tear.stream_id,
-        "fresh_stream_id": report.fresh_stream,
+        (inlet_id_key): report.fresh_stream,
         "max_iteration_evaluations": report.max_iteration_evaluations,
         "component_scales_mol_s": component_values(&report.component_scales_mol_s, numbers)?,
         "residual_trace": residual_trace,
         "last_sweep": last_sweep,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        WorkspaceSolveService, WorkspaceSolveTrigger,
+        qs4_test_support::serial_case,
+        test_support::{
+            OFFICIAL_BINARY_HYDROCARBON_PACKAGE_ID as PACKAGE,
+            build_official_binary_hydrocarbon_in_memory_provider,
+        },
+    };
+    use rf_ui::{FlowResultRecord, result_query::FlowResultView};
+
+    fn verified_serial_result() -> MixedResult {
+        let mut app = serial_case(100);
+        let provider = build_official_binary_hydrocarbon_in_memory_provider(PACKAGE);
+        WorkspaceSolveService::new()
+            .dispatch_with_property_package(
+                &mut app,
+                &provider,
+                PACKAGE,
+                WorkspaceSolveTrigger::Manual,
+            )
+            .unwrap();
+        let FlowResultView::Current {
+            snapshot: FlowResultRecord::Mixed(snapshot),
+            ..
+        } = app.workspace.flow_result()
+        else {
+            panic!("fixture must produce verified serial recycle evidence");
+        };
+        snapshot.result.as_ref().clone()
+    }
+
+    #[test]
+    fn serial_result_projection_requires_both_verified_regions_and_finite_evidence() {
+        let mut result = verified_serial_result();
+        assert!(serial_recycle_result(&result).is_ok());
+        result.serial_recycles[1]
+            .recycle
+            .residual_trace
+            .last_mut()
+            .unwrap()
+            .max_scaled = f64::NAN;
+        let error = serial_recycle_result(&result).unwrap_err();
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("workspace.result.nonfinite")
+        );
+        result.serial_recycles[1].balance = None;
+        let error = serial_recycle_result(&result).unwrap_err();
+        assert_eq!(
+            error.context().diagnostic_code(),
+            Some("workspace.result.missing_recycle_report")
+        );
+        result.serial_recycles.pop();
+        assert!(serial_recycle_result(&result).is_err());
+    }
+
+    #[test]
+    fn serial_global_failure_projection_keeps_region_proof_and_labels_nonfinite_diagnostics() {
+        let result = verified_serial_result();
+        let mut failure = MixedFailure {
+            method: SERIAL_RECYCLE_METHOD,
+            kind: MixedFailureKind::GlobalVerification,
+            error: RfError::invalid_input("global material verification failed")
+                .with_diagnostic_code("solver.partitioned.component_balance"),
+            progress: MixedProgress {
+                stage: MixedStage::GlobalVerification,
+                block: None,
+                unit: None,
+                equation: None,
+                recycle: None,
+                recycle_region: None,
+            },
+            completed_blocks: result.blocks,
+            boundaries: result.boundaries,
+            active_units: Vec::new(),
+            equation_failure: None,
+            costs: result.costs,
+            recycle: None,
+            serial_recycles: result.serial_recycles,
+        };
+        let trace = &mut failure.serial_recycles[1].recycle.residual_trace;
+        trace.first_mut().unwrap().max_absolute_mol_s = f64::INFINITY;
+        let view = serial_recycle_failure(&failure).unwrap();
+        assert_eq!(view["failure_kind"], "global_verification");
+        assert_eq!(view["stage"], "global_verification");
+        assert!(view.get("streams").is_none());
+        assert!(view.get("global_material").is_none());
+        assert_eq!(view["recycle_regions"].as_array().unwrap().len(), 2);
+        for region in view["recycle_regions"].as_array().unwrap() {
+            assert!(region["region_material"].is_object());
+            assert_eq!(
+                region["residual_trace"].as_array().unwrap().last().unwrap()["phase"],
+                "verification"
+            );
+        }
+        assert_eq!(
+            view["recycle_regions"][1]["residual_trace"][0]["max_absolute_mol_s"],
+            json!({"non_finite":"positive_infinity"})
+        );
+    }
 }

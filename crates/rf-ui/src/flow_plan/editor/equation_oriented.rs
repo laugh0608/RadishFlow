@@ -6,11 +6,11 @@ pub(super) fn applies_to(field: &FlowPlanNumericField, plan: &FlowPlanConfigurat
         (FlowPlanConfiguration::Acyclic, _) => false,
         (_, Temperature | Pressure) => true,
         (FlowPlanConfiguration::Partitioned(_), IterationBudget) => true,
-        (FlowPlanConfiguration::Mixed(o), IterationBudget) => o.recycle.is_some(),
+        (FlowPlanConfiguration::Mixed(o), IterationBudget) => o.single_recycle().is_some(),
+        (FlowPlanConfiguration::Mixed(o), RegionIterationBudget(stream)) => o.serial_recycle()
+            .is_some_and(|regions| regions.iter().any(|r| &r.tear.stream_id == stream)),
         (FlowPlanConfiguration::Mixed(o), InitialComponent { stream, component }) => o
-            .recycle
-            .as_ref()
-            .is_some_and(|recycle| {
+            .recycle_regions().iter().any(|recycle| {
                 &recycle.tear.stream_id == stream
                     && recycle.tear.initial_component_flows_mol_s.as_ref()
                         .is_some_and(|values| values.contains_key(component))

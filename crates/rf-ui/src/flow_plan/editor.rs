@@ -20,6 +20,7 @@ pub enum FlowPlanNumericField {
     HeatDuty(UnitId),
     InitialEnthalpyFlow(StreamId),
     IterationBudget,
+    RegionIterationBudget(StreamId),
     ReleasedLower(rf_solver::equation_oriented::ParameterBinding),
     ReleasedUpper(rf_solver::equation_oriented::ParameterBinding),
     BisectionBudget(rf_solver::equation_oriented::ParameterBinding),
@@ -57,6 +58,7 @@ impl FlowPlanNumericField {
             | Self::SinglePhaseMaximumTemperature => Some(QuantityKind::AbsoluteTemperature),
             Self::Pressure | Self::SinglePhasePressure => Some(QuantityKind::AbsolutePressure),
             Self::IterationBudget
+            | Self::RegionIterationBudget(_)
             | Self::BisectionBudget(_)
             | Self::VaporHeatCapacity(_)
             | Self::HeatDuty(_)
@@ -291,7 +293,8 @@ impl FlowPlanDraft {
                 ));
             };
             match field {
-                FlowPlanNumericField::MixedVariableScale { .. }
+                FlowPlanNumericField::RegionIterationBudget(_)
+                | FlowPlanNumericField::MixedVariableScale { .. }
                 | FlowPlanNumericField::MixedResidualScale { .. }
                 | FlowPlanNumericField::CouplingVariableScale(_)
                 | FlowPlanNumericField::CouplingResidualScale(_)

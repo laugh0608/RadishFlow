@@ -314,44 +314,43 @@ fn build_bootstrap_payload(
     flowsheet: &Flowsheet,
     package_id: &str,
 ) -> RfResult<StoredPropertyPackagePayload> {
-    let flowsheet_components = flowsheet.components.values().collect::<Vec<_>>();
     let mut payload = crate::builtin_property_package_data::payload().clone();
-    if flowsheet_components.is_empty() {
-        payload.package_id = package_id.to_string();
-        payload.validate()?;
-        return Ok(payload);
-    }
-
-    let preserves_official_component_ids = payload
+    payload.package_id = package_id.to_string();
+    let project_uses_only_bundled_ids = flowsheet.components.keys().all(|id| {
+        payload
+            .components
+            .iter()
+            .any(|component| &component.id == id)
+    });
+    let all_bundled_ids_present = payload
         .components
         .iter()
-        .all(|payload_component| flowsheet.components.contains_key(&payload_component.id));
+        .all(|component| flowsheet.components.contains_key(&component.id));
 
-    if !preserves_official_component_ids && flowsheet_components.len() != payload.components.len() {
-        return Err(RfError::invalid_input(format!(
-            "studio bootstrap sample package `{}` expects exactly {} flowsheet components, got {}",
-            package_id,
-            payload.components.len(),
-            flowsheet_components.len()
-        )));
-    }
-
-    payload.package_id = package_id.to_string();
-
-    if preserves_official_component_ids {
-        for payload_component in &mut payload.components {
-            let flowsheet_component = flowsheet
-                .components
-                .get(&payload_component.id)
-                .expect("expected flowsheet component by official payload id");
-            payload_component.name = flowsheet_component.name.clone();
+    if project_uses_only_bundled_ids || all_bundled_ids_present {
+        // Seeding the editor always keeps the whole package, including components not yet selected.
+        for component in &mut payload.components {
+            if let Some(project_component) = flowsheet.components.get(&component.id) {
+                component.name.clone_from(&project_component.name);
+            }
         }
     } else {
-        for (payload_component, flowsheet_component) in
-            payload.components.iter_mut().zip(flowsheet_components)
+        // Legacy demonstration projects map their full set of synthetic IDs in project order.
+        if flowsheet.components.len() != payload.components.len() {
+            return Err(RfError::invalid_input(format!(
+                "studio bootstrap sample package `{}` expects exactly {} flowsheet components, got {}",
+                package_id,
+                payload.components.len(),
+                flowsheet.components.len()
+            )));
+        }
+        for (component, project_component) in payload
+            .components
+            .iter_mut()
+            .zip(flowsheet.components.values())
         {
-            payload_component.id = flowsheet_component.id.clone();
-            payload_component.name = flowsheet_component.name.clone();
+            component.id.clone_from(&project_component.id);
+            component.name.clone_from(&project_component.name);
         }
     }
 

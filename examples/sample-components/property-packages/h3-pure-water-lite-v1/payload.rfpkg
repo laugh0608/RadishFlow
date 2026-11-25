@@ -1,0 +1,23 @@
+{
+  "kind": "radishflow.property-package-payload",
+  "schemaVersion": 1,
+  "packageId": "h3-pure-water-lite-v1",
+  "version": "1",
+  "components": [
+    {
+      "id": "water",
+      "name": "Water",
+      "antoine": {
+        "a": 18.90337165699671,
+        "b": 5421.968498610963,
+        "c": 7.559
+      },
+      "liquidHeatCapacityJPerMolK": 75.3299237376304,
+      "vaporHeatCapacityJPerMolK": 33.6
+    }
+  ],
+  "method": {
+    "liquidPhaseModel": "ideal-solution",
+    "vaporPhaseModel": "ideal-gas"
+  }
+}

@@ -1,7 +1,4 @@
-use super::super::{
-    project_file::read_project_file,
-    v3::{actions::ExpectedProject, protocol::*},
-};
+use super::super::{project_file::read_project_file, v3::protocol::*};
 use rf_store::{
     StoredProjectDocument,
     project_v3::{self, EquipmentSupport, ProjectV3Read, StoredEngineeringInputs},
@@ -92,35 +89,4 @@ pub(super) fn load_project(
             "CLI v13 requires project schema version 3 or 4",
         )),
     }
-}
-
-pub(super) fn check_expected(
-    project: &ProjectSnapshot,
-    expected: &ExpectedProject,
-) -> Result<(), Failure> {
-    if expected.document_id != project.document_id {
-        return Err(Failure::new(
-            Stage::Project,
-            Code::DifferentDocument,
-            "document id differs",
-        ));
-    }
-    if expected.file_sha256 != project.file_sha256 {
-        return Err(Failure::new(
-            Stage::Project,
-            Code::ProjectConflict,
-            "project file snapshot differs",
-        ));
-    }
-    Ok(())
-}
-
-pub(super) fn read_only(stage: Stage) -> Failure {
-    let mut error = Failure::new(
-        stage,
-        Code::ReadOnlyProject,
-        "unsupported capability protects the whole project",
-    );
-    error.status = Status::Blocked;
-    error
 }

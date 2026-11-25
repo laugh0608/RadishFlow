@@ -302,6 +302,7 @@ mod equation_oriented;
 
 mod mixed;
 mod mixed_recycle;
+mod mixed_serial_recycle;
 
 #[test]
 fn watch_list_roundtrips_opaque_references_and_protects_saved_targets() {

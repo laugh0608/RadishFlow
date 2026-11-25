@@ -13,6 +13,7 @@ use std::ops::Range;
 pub(super) struct MixedRecyclePlan {
     pub(super) cycle: Range<usize>,
     pub(super) fresh_stream: StreamId,
+    pub(super) options: MixedRecycleOptions,
 }
 
 pub(super) fn tear_error(tear: &TearSpecification, code: &str, message: &str) -> RfError {
@@ -29,6 +30,43 @@ pub(super) fn prepare_tear(
     connections: &[MaterialConnection],
     membership: &BTreeMap<UnitId, MixedBlockId>,
 ) -> RfResult<StreamId> {
+    let tear = &recycle.tear;
+    let inlet = validate_tear(flow, options, recycle, connections, membership)?;
+    if flow.units[&inlet.source.unit_id].kind != "feed"
+        || !matches!(
+            block_method(options, membership, &inlet.source.unit_id),
+            MixedBlockMethod::Local
+        )
+    {
+        return Err(tear_error(
+            tear,
+            "tear_fresh_feed",
+            "the EO tear consumer requires a Local Feed at inlet_a",
+        ));
+    }
+    Ok(inlet.stream_id.clone())
+}
+
+fn block_method<'a>(
+    options: &'a MixedOptions,
+    membership: &BTreeMap<UnitId, MixedBlockId>,
+    unit: &UnitId,
+) -> &'a MixedBlockMethod {
+    &options
+        .blocks
+        .iter()
+        .find(|b| b.id == membership[unit])
+        .expect("validated membership")
+        .method
+}
+
+pub(super) fn validate_tear<'a>(
+    flow: &Flowsheet,
+    options: &MixedOptions,
+    recycle: &MixedRecycleOptions,
+    connections: &'a [MaterialConnection],
+    membership: &BTreeMap<UnitId, MixedBlockId>,
+) -> RfResult<&'a MaterialConnection> {
     let tear = &recycle.tear;
     let connection = connections
         .iter()
@@ -48,17 +86,11 @@ pub(super) fn prepare_tear(
     }
     let source = &flow.units[&tear.source.unit_id];
     let sink = &flow.units[&tear.sink.unit_id];
-    let block = |unit: &UnitId| {
-        options
-            .blocks
-            .iter()
-            .find(|b| b.id == membership[unit])
-            .expect("validated membership")
-    };
+    let method = |unit| block_method(options, membership, unit);
     if let Some(feed) = flow
         .units
         .values()
-        .find(|u| u.kind == "feed" && !matches!(block(&u.id).method, MixedBlockMethod::Local))
+        .find(|u| u.kind == "feed" && !matches!(method(&u.id), MixedBlockMethod::Local))
     {
         return Err(tear_error(
             tear,
@@ -69,13 +101,10 @@ pub(super) fn prepare_tear(
     }
     if source.kind != "splitter"
         || tear.source.port_name != SPLITTER_OUTLET_A_PORT
-        || !matches!(block(&source.id).method, MixedBlockMethod::Local)
+        || !matches!(method(&source.id), MixedBlockMethod::Local)
         || sink.kind != "mixer"
         || tear.sink.port_name != MIXER_INLET_B_PORT
-        || !matches!(
-            block(&sink.id).method,
-            MixedBlockMethod::EquationOriented { .. }
-        )
+        || !matches!(method(&sink.id), MixedBlockMethod::EquationOriented { .. })
     {
         return Err(tear_error(
             tear,
@@ -104,10 +133,7 @@ pub(super) fn prepare_tear(
             c.sink
                 .as_ref()
                 .is_some_and(|p| p.unit_id == sink.id && p.port_name == MIXER_INLET_A_PORT)
-                && flow.units[&c.source.unit_id].kind == "feed"
-                && matches!(block(&c.source.unit_id).method, MixedBlockMethod::Local)
         })
-        .map(|c| c.stream_id.clone())
         .ok_or_else(|| {
             tear_error(
                 tear,
@@ -119,12 +145,13 @@ pub(super) fn prepare_tear(
 
 pub(super) fn order_recycle(
     flow: &Flowsheet,
-    tear: &TearSpecification,
+    options: &MixedRecycleOptions,
     cut: &BTreeMap<MixedBlockId, BTreeSet<MixedBlockId>>,
     membership: &BTreeMap<UnitId, MixedBlockId>,
     ordered: &mut [MixedBlock],
     fresh_stream: StreamId,
 ) -> RfResult<MixedRecyclePlan> {
+    let tear = &options.tear;
     let source = &membership[&tear.source.unit_id];
     let sink = &membership[&tear.sink.unit_id];
     let mut graph = cut.clone();
@@ -192,6 +219,7 @@ pub(super) fn order_recycle(
     Ok(MixedRecyclePlan {
         cycle: start..start + cycle.len(),
         fresh_stream,
+        options: options.clone(),
     })
 }
 

@@ -248,7 +248,7 @@ fn render_left_sidebar_texts(app: &mut ReadyAppState) -> Vec<String> {
     texts
 }
 
-fn render_property_page_texts(app: &mut ReadyAppState) -> Vec<String> {
+pub(super) fn render_property_page_texts(app: &mut ReadyAppState) -> Vec<String> {
     let snapshot = app.platform_host.snapshot();
     let window = snapshot.window_model();
     let ctx = egui::Context::default();
@@ -3685,7 +3685,7 @@ fn canvas_object_list_filter_matches_expected_object_groups() {
         attention_summary: Some(
             "attention: 1 error(s); ports flash-1:inlet; codes solver.step.execution".to_string(),
         ),
-        viewport_anchor_label: "unit-slot-1".to_string(),
+        viewport_anchor_label: Some("unit-slot-1".to_string()),
         command_id: "inspector.focus_unit:flash-1".to_string(),
         related_stream_ids: Vec::new(),
         status_badges: vec![radishflow_studio::StudioGuiCanvasStatusBadgeViewModel {
@@ -3701,7 +3701,7 @@ fn canvas_object_list_filter_matches_expected_object_groups() {
         label: "Feed".to_string(),
         detail: "feed-1:outlet -> flash-1:inlet".to_string(),
         attention_summary: None,
-        viewport_anchor_label: "stream-feed:0".to_string(),
+        viewport_anchor_label: Some("stream-feed:0".to_string()),
         command_id: "inspector.focus_stream:stream-feed".to_string(),
         related_stream_ids: vec!["stream-feed".to_string()],
         status_badges: Vec::new(),

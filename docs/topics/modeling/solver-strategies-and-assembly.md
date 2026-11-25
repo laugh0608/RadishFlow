@@ -1,6 +1,6 @@
 # 多策略求解与问题装配
 
-更新时间：2026-11-21
+更新时间：2026-11-22
 
 ## 用途与状态
 
@@ -323,7 +323,7 @@ QS1 的[真实回流案例、分块 / 撕裂](recycle-and-block-execution.md)已
 | [QS1 分块 SM 与循环](recycle-and-block-execution.md) | A/B 与 C 已按确认范围实现；依赖分块、显式撕裂、局部复核和版本化正式消费者 | 已知回流解、残差 / 衡算、边界与失败传播正确；不以达到迭代次数作为成功 |
 | [QS2 首个联立模块块](simultaneous-modular-block.md) | D01—D05 已实现四成员 / 二成员装配、模块响应、缩放主元 LU 与独立复核；[D06](simultaneous-project-and-consumers.md)已批准并接通保存 / 运行、CLI v5 与 GUI | 核心与接入定向验证、本机代表实窗通过；未验平台保持 |
 | [QS3 多单元 EO](equation-oriented-block.md) | 固定温压物料方程、结构分析、正向与单比例反算、保存 / 运行及正式消费者；D01—D08 方案已批准 | 独立分数基准、结构 / 数值分层、局部复核、采纳 / 资格与兼容验证；核心、工程 / 运行、GUI / CLI v6 已实现并完成本机验证 |
-| [QS4 混合分区](mixed-partition-execution.md) | M1 的 Local＋正向 EO DAG 与 M2 的固定温压单撕裂跨块回流，均已接入 v4 和 Studio，CLI 分别为 v7 与 v9 | M1 核对跨块边界和全局复核。M2 核对切后 DAG、闭合残差、分量守恒、失败／取消接收及重开重跑，已完成本机阶段验证 |
+| [QS4 混合分区](mixed-partition-execution.md) | M1 的 Local＋正向 EO DAG、M2 的单撕裂跨块回流与 [M3 两区串联回流](mixed-serial-recycle.md)均已接入 v4 和 Studio，CLI 分别为 v7、v9、v15 | M1 核对跨块边界和全局复核。M2 核对切后 DAG、闭合、守恒与接收资格。M3 核对两区复核、实际转供、整图守恒及失败隔离 |
 
 QS1 归 P3；QS2 / QS3 归 P4，可在各自前置能力具备后分别实施，不要求先完成全部设备或全部联立模块。QS4 只组合已验证的能力。QS0 按案例重复细化；MC0—MC2 提供必要模型和物性装配，完整动态、插件市场和通用 SDK 不作为前置。
 
@@ -361,4 +361,4 @@ QS3 的浮点不可缩区间、数值层奇异中点与三类全局故障注入�
 
 [QS4 首片方案](mixed-partition-execution.md)已形成：Local Feed → 交叉回流正向 EO 组 → 局部 Heater，整图 QS2 与独立分数对照，首批只支持 DAG。外部边界装配、混合结果、正式计划、v4 新能力与 CLI v7 的 D01—D05 已批准，A—D 及六图认可后的接线完成；2,051 项、历史读写器和 macOS 代表路径通过，详见专题及 W45。
 
-2026-11-17 完成 [QS4 M2](mixed-partition-execution.md#m2首个跨块回流算例与验收)。显式撕裂后按块拓扑前扫，直接代入更新假设值，候选收敛后独立复核。物性和单元能力仍限于批准算例。下一混合切片从独立算例和验收标准启动。
+2026-11-17 完成 [QS4 M2](mixed-partition-execution.md#m2首个跨块回流算例与验收)。显式撕裂后按块拓扑前扫，直接代入更新假设值，候选收敛后独立复核。物性和单元能力仍限于批准算例。[M3 串联回流区](mixed-serial-recycle.md)已验证先复核再向下游实际交付、共享运行接收、v4 保存及 CLI v15。[Studio 工作台](mixed-serial-recycle.md#studio-工作台接入评审)已接入两区计划与结果审阅。

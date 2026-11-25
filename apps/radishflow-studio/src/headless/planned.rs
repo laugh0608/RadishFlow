@@ -502,3 +502,46 @@ pub(super) fn required_capabilities(app: &AppState) -> Result<Value, Failure> {
     .map(|caps| json!(caps))
     .map_err(domain)
 }
+
+pub(super) fn validate_saved_flow_run(
+    app: &AppState,
+    refs: &Bindings,
+    expected_revision: u64,
+    expected_plan_revision: u64,
+) -> Result<(), Failure> {
+    let workspace = &app.workspace;
+    refs.revision(
+        &old::actions::RevisionRef::Number(expected_revision),
+        Output::Document,
+        workspace.document.metadata.document_id.as_str(),
+        workspace.document.revision,
+    )?;
+    let actual = workspace.flow_plan.revision();
+    if expected_plan_revision != actual {
+        let mut error = Failure::new(Stage::Step, Code::RecordConflict, "plan revision differs");
+        error.details = Some(Box::new(json!({
+            "owner": "plan", "expected": expected_plan_revision, "actual": actual,
+        })));
+        return Err(error);
+    }
+    workspace
+        .flow_plan
+        .current()
+        .validate_for(&workspace.document.flowsheet)
+        .map_err(|error| old::errors::blocked(plan_diagnostic(&error), error.to_string()))
+}
+
+pub(super) fn plan_diagnostic(error: &rf_types::RfError) -> Value {
+    let context = error.context();
+    json!({
+        "code": context.diagnostic_code(),
+        "message": error.to_string(),
+        "unit_ids": context.related_unit_ids(),
+        "stream_ids": context.related_stream_ids(),
+        "component_ids": context.related_component_ids(),
+        "ports": context.related_port_targets().iter().map(|port| json!({
+            "unit_id": port.unit_id,
+            "port": port.port_name,
+        })).collect::<Vec<_>>(),
+    })
+}

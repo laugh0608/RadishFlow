@@ -231,6 +231,7 @@ pub struct StudioGuiWindowEquationModel {
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowSolveSnapshotModel {
+    stream_ports: std::collections::BTreeMap<String, StreamComparisonPorts>,
     pub mixed: Option<mixed::StudioGuiWindowMixedModel>,
     pub equation_oriented: Option<StudioGuiWindowEquationModel>,
     pub simultaneous: Option<StudioGuiWindowSimultaneousModel>,
@@ -368,6 +369,7 @@ pub struct StudioGuiWindowInspectorTargetDetailModel {
     pub connection_actions: Vec<StudioGuiWindowInspectorConnectionActionModel>,
     pub unit_ports: Vec<StudioGuiWindowInspectorTargetPortModel>,
     pub latest_unit_result: Option<StudioGuiWindowUnitExecutionResultModel>,
+    pub stream_result_status: Option<rf_ui::result_query::ResultStatus>,
     pub latest_stream_result: Option<StudioGuiWindowStreamResultModel>,
     pub related_steps: Vec<StudioGuiWindowSolveStepModel>,
     pub related_diagnostics: Vec<StudioGuiWindowDiagnosticModel>,
@@ -597,8 +599,18 @@ pub struct StudioGuiWindowResultInspectorUnitOptionModel {
     pub focus_action: StudioGuiWindowCommandActionModel,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StreamComparisonPorts {
+    pub source: Option<String>,
+    pub sinks: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct StudioGuiWindowResultInspectorComparisonModel {
+    pub base_label: String,
+    pub compared_label: String,
+    pub base_ports: StreamComparisonPorts,
+    pub compared_ports: StreamComparisonPorts,
     pub base_stream_id: String,
     pub compared_stream_id: String,
     pub base_stream_focus_action: StudioGuiWindowCommandActionModel,
@@ -1473,14 +1485,16 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
         .latest_solve_snapshot
         .as_ref()
         .map(|result| {
-            solve_snapshot_model_from_ui(
+            let mut model = solve_snapshot_model_from_ui(
                 result,
                 snapshot
                     .runtime
                     .workspace_document
                     .presentation
                     .display_units(),
-            )
+            );
+            model.capture_comparison_ports(snapshot);
+            model
         });
     let stale_solve_snapshot =
         snapshot
@@ -1542,6 +1556,7 @@ fn runtime_from_snapshot(snapshot: &StudioGuiSnapshot) -> StudioGuiWindowRuntime
                 .flatten();
             inspector_target_detail_model_from_snapshot(
                 detail,
+                snapshot.runtime.result_review.status,
                 inspector_result.as_ref().or(latest_solve_snapshot.as_ref()),
                 latest_diagnostic_for_document,
             )
@@ -1839,6 +1854,7 @@ fn inspector_target_model_from_ui(
 
 fn inspector_target_detail_model_from_snapshot(
     detail: &crate::StudioGuiInspectorTargetDetailSnapshot,
+    result_status: rf_ui::result_query::ResultStatus,
     latest_solve_snapshot: Option<&StudioGuiWindowSolveSnapshotModel>,
     latest_diagnostic: Option<&rf_ui::DiagnosticSummary>,
 ) -> StudioGuiWindowInspectorTargetDetailModel {
@@ -1875,6 +1891,8 @@ fn inspector_target_detail_model_from_snapshot(
         );
     }
     StudioGuiWindowInspectorTargetDetailModel {
+        stream_result_status: matches!(&detail.target, rf_ui::InspectorTarget::Stream(_))
+            .then_some(result_status),
         target,
         title: detail.title.clone(),
         summary_rows: detail

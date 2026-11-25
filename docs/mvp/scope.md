@@ -57,7 +57,7 @@ M1-M5、MVP α / β 和通用小流程建模的收口指上述范围内的契约
 - Inspector 草稿只有经语义提交才进入文档；显示的 outlet 默认值不等同于已提交 unit parameter。
 - 文档变更通过正式命令进入 revision 和 undo history；当前 undo / redo 使用 before / after flowsheet 快照。
 - 结果按 document revision 失效；审阅、复制和轻量 `.txt` 导出使用当前快照，不在 UI 重算数值。
-- 受控 suggestion 必须由用户显式接受；断开、删除和唯一合法候选重连继续走命令边界，不等于自由连线。
+- 用户显式接受连接建议。流股断开、删除和单端重连通过正式命令提交。重连只有一个合法候选时可一键提交，有多个时须选择端口并确认。
 - 单元位置与 viewport offset 保存在 `<project>.rfstudio-layout.json`，不写入项目语义或文档历史。
 - `Save / Save As`、覆盖确认、脏改关闭和退出共用项目生命周期；staged write 的平台恢复限制见 [存储专题](../topics/project-lifecycle-storage.md)。
 - 项目格式是单文件 `*.rfproj.json`；授权缓存、token、snapshot history 和窗口布局不混入项目文件。

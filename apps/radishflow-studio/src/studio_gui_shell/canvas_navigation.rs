@@ -56,22 +56,22 @@ impl ReadyAppState {
             );
             return;
         };
-        let selected = view.viewport.focus.as_ref().is_some_and(|focus| {
+        let focus = view.viewport.focus.as_ref().filter(|focus| {
             focus.kind_label == target.kind_label && focus.target_id == target.target_id
         });
-        if !selected {
+        let Some(focus) = focus else {
             // A selection change is not evidence that the previous object disappeared.
             self.canvas_viewport_navigation.active_anchor = None;
             self.canvas_command_result = None;
             return;
-        }
-        if previous_anchor != &current.viewport_anchor_label
+        };
+        if previous_anchor != &focus.anchor_label
             || self.canvas_viewport_navigation.active_anchor.is_none()
         {
             let target = current.command_target();
             let anchor = self
                 .canvas_viewport_navigation
-                .request_anchor(&current.viewport_anchor_label);
+                .request_anchor(&focus.anchor_label);
             self.canvas_command_result = Some(
                 radishflow_studio::StudioGuiCanvasCommandResultViewModel::located(target, anchor),
             );
@@ -132,6 +132,11 @@ impl ReadyAppState {
                     request.clone(),
                     error_message,
                 )
+            }
+            None if request.viewport_anchor_label.is_none() => {
+                // Inspector-only objects have no position to scroll to.
+                self.canvas_command_result = None;
+                return;
             }
             None => radishflow_studio::StudioGuiCanvasCommandResultViewModel::anchor_unavailable(
                 request.clone(),

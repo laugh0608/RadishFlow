@@ -11,16 +11,27 @@ pub(super) fn apply(
         Temperature => o.boundary.temperature_k = value,
         Pressure => o.boundary.pressure_pa = value,
         IterationBudget => {
-            o.recycle
-                .as_mut()
+            o.single_recycle_mut()
+                .ok_or_else(unavailable)?
+                .max_iteration_evaluations = iteration_budget(value)?;
+        }
+        RegionIterationBudget(stream) => {
+            let Some(rf_solver::mixed::MixedRecycleConfiguration::Serial(regions)) =
+                o.recycle.as_deref_mut()
+            else {
+                return Err(unavailable());
+            };
+            regions
+                .iter_mut()
+                .find(|r| &r.tear.stream_id == stream)
                 .ok_or_else(unavailable)?
                 .max_iteration_evaluations = iteration_budget(value)?;
         }
         InitialComponent { stream, component } => {
             let number = o
-                .recycle
-                .as_mut()
-                .filter(|recycle| &recycle.tear.stream_id == stream)
+                .recycle_regions_mut()
+                .iter_mut()
+                .find(|recycle| &recycle.tear.stream_id == stream)
                 .and_then(|recycle| recycle.tear.initial_component_flows_mol_s.as_mut())
                 .and_then(|values| values.get_mut(component))
                 .ok_or_else(unavailable)?;

@@ -11,6 +11,7 @@ use rf_unitops::{
 use std::ops::ControlFlow;
 
 mod recycle;
+mod serial_recycle;
 
 pub(super) fn case() -> (Flowsheet, MixedOptions) {
     let mut flow = cross_recycle(0.6, 0.25);

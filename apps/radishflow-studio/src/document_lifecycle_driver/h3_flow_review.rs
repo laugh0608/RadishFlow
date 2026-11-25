@@ -1,7 +1,10 @@
 //! Session-local H3 review of two streams from one accepted flow solve.
 
+pub(crate) mod bundled_water;
+mod editor;
 mod qualification;
 mod save;
+mod studio;
 #[cfg(test)]
 mod tests;
 
@@ -9,9 +12,12 @@ use super::{StudioH3Review, flow_plan::app_state_from_v4};
 use crate::{
     FlowResultGuard, build_workspace_solve_request, solve_workspace_with_property_package,
 };
+pub use editor::{H3AssociationPreviewState, StudioH3AssociationEditor};
 pub use qualification::{H3PureWaterQualification, H3WaterPropertySource};
 pub use rf_model::equipment::ConcentricTubeFlowStream as H3FlowStream;
-use rf_model::equipment::{ConcentricTubeLiquidInlet, ConcentricTubeRatingTask};
+use rf_model::equipment::{
+    ConcentricTubeFlowAssociation, ConcentricTubeLiquidInlet, ConcentricTubeRatingTask,
+};
 use rf_property_package::PropertyPackageProvider;
 use rf_store::project_v4::{
     self, EquipmentSupport, FlowPlanSupport, ProjectV4Read, StoredFlowPlan, StoredProjectV4,
@@ -26,13 +32,15 @@ use rf_ui::{
     result_query::{FlowResultOrigin, FlowResultView},
     variable_browser::ObjectId,
 };
-pub use save::PreparedH3FlowAssociationSave;
+pub use save::{H3AssociationPreview, H3AssociationSaveTarget, PreparedH3FlowAssociationSave};
 use std::path::Path;
+pub use studio::{H3FlowReviewPhase, H3FlowReviewResult, StudioH3FlowReview};
 
-const FLOW_SUPPORT: FlowPlanSupport = FlowPlanSupport::Sequential;
-const EQUIPMENT_SUPPORT: EquipmentSupport = EquipmentSupport::ConcentricTubeFlowAssociation;
+pub(crate) const FLOW_SUPPORT: FlowPlanSupport = FlowPlanSupport::Sequential;
+pub(crate) const EQUIPMENT_SUPPORT: EquipmentSupport =
+    EquipmentSupport::ConcentricTubeFlowAssociation;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct H3FlowPreview {
     guard: FlowResultGuard,
     origin: FlowResultOrigin,
@@ -108,7 +116,29 @@ impl H3FlowReview {
                 "H3 flow review requires a v4 project",
             ));
         }
-        let mut project = parse_project(&contents)?;
+        let project = parse_project(&contents)?;
+        Self::assemble(&path, *project, &contents, qualification)
+    }
+
+    /// Assemble a previously parsed project with the same bytes used for its fingerprint.
+    pub(crate) fn from_saved_project(
+        path: &Path,
+        project: StoredProjectV4,
+        contents: &str,
+        qualification: H3PureWaterQualification,
+    ) -> RfResult<Self> {
+        qualification.validate()?;
+        let path = std::path::absolute(path)
+            .map_err(|error| RfError::invalid_input(format!("resolve project path: {error}")))?;
+        Self::assemble(&path, project, contents, qualification)
+    }
+
+    fn assemble(
+        path: &Path,
+        mut project: StoredProjectV4,
+        contents: &str,
+        qualification: H3PureWaterQualification,
+    ) -> RfResult<Self> {
         if !matches!(project.steady_state_plan, StoredFlowPlan::Acyclic)
             || project.object_identities.is_none()
         {
@@ -122,10 +152,10 @@ impl H3FlowReview {
             &project.display_units,
             project_v4::VERSION,
             &mut project.engineering,
-            &contents,
+            contents,
         )
         .ok_or_else(|| rejected("case_missing", "no saved concentric-tube rating case"))?;
-        let flow = app_state_from_v4(*project, &path)?;
+        let flow = app_state_from_v4(project, path)?;
         let saved_flow_input = flow.workspace.flow_execution_qualification();
         Ok(Self {
             saved,
@@ -144,14 +174,18 @@ impl H3FlowReview {
     }
 
     pub fn solve_flow(&mut self, provider: &impl PropertyPackageProvider) -> RfResult<()> {
+        let request = self.solve_request()?;
+        solve_workspace_with_property_package(&mut self.flow, provider, &request)
+    }
+
+    fn solve_request(&self) -> RfResult<crate::StudioSolveRequest> {
         let package = self
             .workspace()
             .document
             .flowsheet
             .property_package_id()
             .ok_or_else(|| rejected("package_unqualified", "no flowsheet property package"))?;
-        let request = build_workspace_solve_request(&self.flow, package)?;
-        solve_workspace_with_property_package(&mut self.flow, provider, &request)
+        build_workspace_solve_request(&self.flow, package)
     }
 
     pub fn preview(
@@ -175,6 +209,16 @@ impl H3FlowReview {
                 "the selected streams differ from the saved association",
             ));
         }
+        self.preview_pair(task, member, ConcentricTubeFlowAssociation { hot, cold })
+    }
+
+    fn preview_pair(
+        &self,
+        task: &ConcentricTubeRatingTask,
+        member: EquipmentCaseKey,
+        pair: ConcentricTubeFlowAssociation,
+    ) -> RfResult<H3FlowPreview> {
+        let ConcentricTubeFlowAssociation { hot, cold } = pair;
         if hot.id == cold.id {
             return Err(
                 rejected("same_stream", "hot and cold require distinct streams")

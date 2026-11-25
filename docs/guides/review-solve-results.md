@@ -105,12 +105,11 @@ official hydrocarbon demo 的稳定数值口径详见 `docs/guides/author-small-
 稳定阅读方式是：
 
 1. 先定一个 base stream
-2. 再决定是否加 comparison
+2. 需要比较时，在「流程结果」中央的「流股对比」选择另一股流，先核对两侧的名称、稳定 ID 和端口，再读数值差异。例如双进料 Mixer 的两个目标端可能同属一台设备，要看清各自的 `inlet_a` 或 `inlet_b`。
 3. 最后再切 unit-centric 视图核对 step 输入/输出
 
-有两条当前应视为正式行为的规则：
-
-- `comparison` 只比较当前同一份有资格的流程结果里已经存在的两股流，不会触发第二次求解
+- 切换流股时直接读取同一次求解的结果，端口取自对应工作区的绑定。改动接线后需显式重跑，才能在对比表查看新绑定与数值。差值按对比股减基准股计算。
+- Flash 空出口的零流量会显示为零。任一侧缺少摩尔焓时，该侧焓值和两股焓差显示为 `-`。结果表、复制和导出同样保留零流量与缺焓的区别。[双流股端口对照与缺值回归](../topics/results-review-diagnostics.md#双流股端口对照与缺值回归)
 - 如果把 base stream 切成当前 compared stream，comparison 会被清空；这表示 selector state 复位，不表示结果丢失
 
 `selected unit` 也只是切换“看哪一个单元的结果面”。当前 Studio 会从同一份 Current `FlowResultRecord` 派生 `StudioGuiWindowModuleResultsModel`，不应该改变任何 stream result 本身的数值语义。

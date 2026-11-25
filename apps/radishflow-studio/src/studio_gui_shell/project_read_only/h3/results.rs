@@ -7,7 +7,7 @@ const ERROR: egui::Color32 = egui::Color32::from_rgb(160, 48, 60);
 const WARNING: egui::Color32 = egui::Color32::from_rgb(148, 85, 24);
 const PASS: egui::Color32 = egui::Color32::from_rgb(39, 112, 75);
 
-pub(super) fn render(
+pub(in crate::studio_gui_shell::project_read_only) fn render(
     ui: &mut egui::Ui,
     l: StudioShellLocale,
     result: &ConcentricTubeRating,

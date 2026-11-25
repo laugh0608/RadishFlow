@@ -1080,4 +1080,5 @@ mod partitioned;
 
 mod equation_oriented;
 mod mixed_recycle;
+mod serial_recycle;
 mod simultaneous;

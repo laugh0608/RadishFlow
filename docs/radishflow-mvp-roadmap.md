@@ -1,6 +1,6 @@
 # RadishFlow 开发路线图
 
-更新时间：2026-11-21
+更新时间：2026-11-24
 
 ## 用途
 
@@ -204,7 +204,7 @@ G0 纳入 UI R0 的项目→设计基础→工况→设备→结果关系；Q1 �
 | QS1 分块 SM 与循环 | P3；[A/B 核心](topics/modeling/recycle-and-block-execution.md)已完成模型 / 写保护、分块与真实循环复核；[C01—C06](topics/modeling/recycle-project-and-consumers.md)已确认并接通 v4 保存、正式运行与 GUI / CLI | 撕裂及局部收敛满足残差和衡算，回路 / 规格失败可定位，不以循环结束冒充成功 |
 | [QS2 首个联立模块块](topics/modeling/simultaneous-modular-block.md) | P4，D01—D05 核心已实现；[QS2-C / D06](topics/modeling/simultaneous-project-and-consumers.md)D06 已批准，存储配置 / 运行结果、CLI v5 及 GUI 已实现 | 核心独立数值 / 故障与接入定向验证通过；GUI 画板已认可、接线和 macOS 代表验证完成 |
 | [QS3 多单元 EO](topics/modeling/equation-oriented-block.md) | P4，正向物料方程与单比例反算；D01—D08 核心及工程 / GUI / CLI v6 已实现 | 模型 / 结构、独立复核、采纳 / 资格及兼容验证通过；2,031 项正式基线与 macOS 代表实窗通过 |
-| [QS4 混合分区](topics/modeling/mixed-partition-execution.md) | P4，M1 的 DAG、v4 与 GUI / CLI v7 已接通。M2 单撕裂跨块回流已验证核心执行、独立 v4 保存、[CLI v9](topics/modeling/mixed-partition-execution.md#m2-cli-首片评审)与 [Studio 首片](topics/modeling/mixed-partition-execution.md#m2-studio-界面接入评审) | 两片均完成独立数值对照与本机接入验证。通用混合回路与黑箱另审 |
+| [QS4 混合分区](topics/modeling/mixed-partition-execution.md) | P4，M1 的 DAG、v4 与 GUI / CLI v7 已接通。M2 单撕裂跨块回流已验证核心执行、独立 v4 保存、[CLI v9](topics/modeling/mixed-partition-execution.md#m2-cli-首片评审)与 [Studio 首片](topics/modeling/mixed-partition-execution.md#m2-studio-界面接入评审)。[M3](topics/modeling/mixed-serial-recycle.md) 两区串联回流已接通 v4、CLI v15 与 Studio | M1—M3 已完成各自的数值对照与本机接入验证。通用混合回路与黑箱另审 |
 
 QS2 与 QS3 不强制串行；首个 EO 块不等待全部设备支持 EO，也不要求所有问题先取得完整 SM 收敛解。MC1 / MC2 提供所需模型工厂和物性上下文，第三方加载只在实际案例需要时依赖 MC3；完整插件系统、动态和 SDK 不作为前置。DS 反算可先基于局部或 SM 路径实施。
 
@@ -243,7 +243,9 @@ QS2 与 QS3 不强制串行；首个 EO 块不等待全部设备支持 EO，也�
 
 - P1 从 [Studio 主路径的基础功能清单](topics/studio-main-workflow.md#基础功能完善切片) 开始，用代码入口、focused test 与 GUI 证据区分已实现、部分可用、待验证和缺失；不重复建设已有功能。
 - 流程图基础编辑与连接管理已通过 B0 形成分层台账，并完成单元删除、重命名、导航修复和 macOS 原生项目保存切片；这不表示 P1 全部验收完成。后续切片与待补证路径见建模专题和当前状态；扩展端口选择或连接规则前先明确边界，不将自动布线和完整多文档同时并入。
-- 组分查询添加、基础结果输出和运行反馈按主路径依赖顺序推进；组件拆分服务真实调用边界，不为了长期功能表立即重构全仓库。
+- 双进料 Mixer 的双向多候选重连与[画布端口联动](topics/flowsheet-modeling-and-solve.md#重连候选与画布端口联动)已通过 macOS Studio 验收，两个方向均已核对第二项的画布预览、另存和新进程重开。
+- [双流股端口对照与缺值回归](topics/results-review-diagnostics.md#双流股端口对照与缺值回归)已通过 macOS Studio 验收，覆盖 Mixer 入口对调及 Flash 空出口在两套单位下的结果审阅与输出。[物性参数来源试查](thermo/mvp-model.md#物性参数来源试查)归 C2-A 独立数据冻结后的评估。[ChemFlow V191 交互参考](architecture/simulation-platform.md#chemflow-v191-交互参考)
+- [物性系统](topics/property-basis-and-components.md#子专题关系)按组分、数据、方法、闪蒸、装配与验证分工。[组分查询、引用保护与求解前核对进料组成](topics/property/component-catalog-and-selection.md)已通过 macOS 双进料 Mixer 验收。物性数据与参数来源的后续工作按 C2-A 独立证据推进。
 - 新增基础动作时明确稳定对象身份、变量单位 / 读写条件、命令事务和失败语义，为变量浏览器与录制器复用；不要求先完成全量自动化系统才能交付基础编辑功能。
 - P1 可继续使用明确标注的演示物性验证软件行为；真实工况、物性来源与独立误差要求，在对应数值模型切片实施前确定。既有 golden 和跨层回归继续保留，限制见 [热力学模型](thermo/mvp-model.md)。
 - 每个切片包含目标、非目标、输入与状态所有权、接口影响、兼容性、成功 / 失败路径和退出标准。完成一次可独立验证的闭环后再扩展。

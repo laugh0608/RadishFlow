@@ -13,11 +13,7 @@ use rf_ui::{
     CanvasSuggestionAcceptance, DateTimeUtc, DocumentCommand, DocumentId,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MaterialPortTarget {
-    pub unit_id: UnitId,
-    pub port: String,
-}
+pub use rf_ui::StreamPortBinding as MaterialPortTarget;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MaterialConnectionTarget {

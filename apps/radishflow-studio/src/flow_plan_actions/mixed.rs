@@ -76,3 +76,56 @@ pub(super) fn configuration(p: StoredMixedPlan) -> RfResult<MixedOptions> {
     o.validate_shape()?;
     Ok(o.canonicalized())
 }
+
+pub(super) fn stored_serial(
+    options: &MixedOptions,
+    regions: &[MixedRecycleOptions; 2],
+) -> RfResult<StoredMixedSerialRecyclePlan> {
+    options.validate_shape()?;
+    Ok(StoredMixedSerialRecyclePlan {
+        mixed: stored(options)?,
+        recycle_regions: regions.each_ref().map(|region| {
+            let StoredTear {
+                stream_id,
+                source,
+                sink,
+                initialization,
+                ..
+            } = stored_tear(&region.tear);
+            StoredMixedRecycleRegion {
+                tear: StoredMixedSerialRecycleTear {
+                    stream_id,
+                    source,
+                    sink,
+                    initialization,
+                },
+                max_iteration_evaluations: region.max_iteration_evaluations,
+            }
+        }),
+    })
+}
+
+pub(super) fn serial_configuration(plan: StoredMixedSerialRecyclePlan) -> RfResult<MixedOptions> {
+    let mut options = configuration(plan.mixed)?;
+    options.recycle = Some(Box::new(MixedRecycleConfiguration::Serial(
+        plan.recycle_regions.map(|region| {
+            let StoredMixedSerialRecycleTear {
+                stream_id,
+                source,
+                sink,
+                initialization,
+            } = region.tear;
+            MixedRecycleOptions {
+                tear: tear_configuration(StoredTear {
+                    stream_id,
+                    source,
+                    sink,
+                    initialization,
+                    residual_scaling: StoredResidualScaling::EvaluatedFreshTotal,
+                }),
+                max_iteration_evaluations: region.max_iteration_evaluations,
+            }
+        }),
+    )));
+    Ok(options.canonicalized())
+}

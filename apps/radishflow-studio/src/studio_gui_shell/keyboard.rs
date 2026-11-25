@@ -80,6 +80,10 @@ impl ReadyAppState {
             return;
         }
 
+        if self.reconnect_picker_shortcut(ctx) {
+            return;
+        }
+
         if self.variable_browser.owns_shortcuts(ctx) {
             // Keep navigation local, but retain the shared save/history routes.
             // Text focus and open unit menus retain their own input history.

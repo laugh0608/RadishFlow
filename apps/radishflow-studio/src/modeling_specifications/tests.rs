@@ -769,3 +769,182 @@ fn missing_upstream_pressure_is_unchecked_even_when_a_template_is_available() {
         )));
     assert!(report.problems.iter().any(|problem| matches!(problem, SpecificationProblem::MissingParameter { unit_id, parameter: UnitParameter::OutletPressure } if unit_id.as_str() == "unit")));
 }
+
+fn mixer_with_package_manifest() -> AppState {
+    let mut document = document(BuiltinUnitKind::Mixer);
+    document
+        .flowsheet
+        .set_property_package_id(Some("test-binary".into()))
+        .unwrap();
+    let mut app = AppState::new(document);
+    let mut manifest = rf_ui::PropertyPackageManifest::new(
+        "test-binary",
+        "1",
+        rf_ui::PropertyPackageSource::LocalBundled,
+    );
+    manifest.component_ids = vec!["b".into(), "a".into()];
+    app.entitlement
+        .package_manifests
+        .insert(manifest.package_id.clone(), manifest);
+    app
+}
+
+#[test]
+fn feed_package_check_reports_each_source_by_id_and_resolves_an_explicit_zero() {
+    let mut app = mixer_with_package_manifest();
+    let flow = &mut app.workspace.document.flowsheet;
+    flow.insert_component(Component::new("extra", "Extra"))
+        .unwrap();
+    for stream in flow.streams.values_mut() {
+        stream.overall_mole_fractions = [("a".into(), 1.0)].into();
+    }
+    flow.streams
+        .get_mut(&"in".into())
+        .unwrap()
+        .overall_mole_fractions
+        .insert("extra".into(), 0.0);
+    let before = app.clone();
+    let mut checks = ModelingCheckSession::new(&app.workspace.document);
+    checks.refresh_app(&app);
+    assert_eq!(app, before);
+    assert_eq!(checks.current_count(), Some(2));
+    assert!(
+        checks
+            .current_report()
+            .unwrap()
+            .first_readiness_problem()
+            .is_none()
+    );
+    for (entry, stream, extra) in [
+        (&checks.entries()[0], "in", vec![ComponentId::from("extra")]),
+        (&checks.entries()[1], "second", vec![]),
+    ] {
+        assert_eq!(
+            entry.problem,
+            SpecificationProblem::FeedPackageCompositionMismatch {
+                stream_id: stream.into(),
+                package_id: "test-binary".into(),
+                required: vec!["b".into(), "a".into()],
+                missing: vec!["b".into()],
+                unexpected: extra,
+            }
+        );
+        assert_eq!(
+            entry.key.targets,
+            [
+                SpecificationTarget::Composition(stream.into()),
+                SpecificationTarget::ProjectComponents
+            ]
+        );
+    }
+    let first_key = checks.entries()[0].key.clone();
+    let second_key = checks.entries()[1].key.clone();
+    let document = &mut app.workspace.document;
+    document
+        .flowsheet
+        .streams
+        .get_mut(&"second".into())
+        .unwrap()
+        .overall_mole_fractions
+        .insert("b".into(), 0.0);
+    document.revision += 1;
+    checks.refresh_app(&app);
+    assert_eq!(checks.current_count(), Some(1));
+    assert_eq!(checks.entries()[0].key, first_key);
+    assert_eq!(checks.changes()[0].key, second_key);
+    assert_eq!(checks.changes()[0].state, SpecificationEntryState::Resolved);
+}
+
+#[test]
+fn feed_package_check_tracks_manifest_changes_without_an_input_edit() {
+    let mut app = mixer_with_package_manifest();
+    let mut checks = ModelingCheckSession::new(&app.workspace.document);
+    checks.refresh_app(&app);
+    assert_eq!(checks.current_count(), Some(0));
+    let revision = app.workspace.document.revision;
+    let scope = SpecificationCheckScope::FeedPackageComposition("test-binary".into());
+    app.entitlement
+        .package_manifests
+        .get_mut("test-binary")
+        .unwrap()
+        .component_ids
+        .push("c".into());
+    checks.refresh_app(&app);
+    assert_eq!(checks.current_count(), Some(2));
+    let manifest = app
+        .entitlement
+        .package_manifests
+        .remove("test-binary")
+        .unwrap();
+    checks.refresh_app(&app);
+    assert_eq!(checks.current_count(), Some(0));
+    assert!(
+        checks
+            .entries()
+            .iter()
+            .all(|e| e.state == SpecificationEntryState::Unconfirmed)
+    );
+    assert!(
+        checks
+            .current_report()
+            .unwrap()
+            .coverage
+            .contains(&SpecificationCheckCoverage {
+                scope: scope.clone(),
+                coverage: SpecificationCoverage::NotCheckedPackageComponents,
+            })
+    );
+    app.entitlement
+        .package_manifests
+        .insert(manifest.package_id.clone(), manifest);
+    checks.refresh_app(&app);
+    assert_eq!(checks.current_count(), Some(2));
+    assert_eq!(app.workspace.document.revision, revision);
+    app.workspace
+        .document
+        .flowsheet
+        .units
+        .get_mut(&"feed".into())
+        .unwrap()
+        .ports[0]
+        .stream_id = None;
+    app.workspace.document.revision += 1;
+    checks.refresh_app(&app);
+    assert!(
+        checks
+            .current_report()
+            .unwrap()
+            .coverage
+            .contains(&SpecificationCheckCoverage {
+                scope,
+                coverage: SpecificationCoverage::NotCheckedTopology,
+            })
+    );
+}
+
+#[test]
+fn single_phase_uses_the_project_model_even_with_an_explicit_package_and_manifest() {
+    let app = mixer_with_package_manifest();
+    let model = rf_solver::flow_plan::SinglePhaseOptions::new(
+        [("a".into(), 30.0), ("b".into(), 50.0)].into(),
+        200.0..=550.0,
+        100_000.0,
+        Default::default(),
+    )
+    .unwrap();
+    let checks = checks::check_inputs_with_plan(
+        &app.workspace.document.flowsheet,
+        &rf_ui::flow_plan::FlowPlanConfiguration::SinglePhase(model),
+        Some(&["different".into()]),
+    );
+    assert!(!checks.problems.iter().any(|p| matches!(
+        p,
+        SpecificationProblem::FeedPackageCompositionMismatch { .. }
+    )));
+    assert!(
+        !checks
+            .coverage
+            .iter()
+            .any(|c| matches!(c.scope, SpecificationCheckScope::FeedPackageComposition(_)))
+    );
+}

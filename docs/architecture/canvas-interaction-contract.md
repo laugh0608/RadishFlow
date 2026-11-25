@@ -1,6 +1,6 @@
 # Canvas Interaction Contract
 
-更新时间：2026-11-16
+更新时间：2026-11-23
 
 ## 文档目的
 
@@ -126,8 +126,9 @@
 - Canvas 空白区域可允许拖拽平移 viewport，并把 offset 保存到同一个 `<project>.rfstudio-layout.json` sidecar；Canvas 也可提供 `Fit to content` 把当前内容重新居中并覆盖该 offset。该状态只影响 shell 初始呈现，不写 `FlowsheetDocument`，不进入 `CommandHistory`，也不代表完整视图持久化系统。
 - 已绑定端口可通过点击或对象选择聚焦对应流股 / 单元检查器；运行成功后切至右侧 `模块结果` 和底部 `结果表`，失败后切至右侧 `检查器` 和底部 `消息`；运行反馈本身不切换顶部 screen。恢复定位读取实际应用目标，目标被修复动作删除时清理旧导航反馈。
 - 选中物料流股后，Canvas / Inspector 可暴露受控恢复动作：`Disconnect stream` 仅在流股仍有材料端口绑定时解除全部绑定并保留流股规格，`Disconnect source` / `Disconnect sink` 仅解除唯一 source 或 sink 端点绑定，`Delete stream` 先解除材料端口绑定再删除该流股；这些动作都通过正式 `DocumentCommand` 写回并进入 undo history。
-- 选中单端 material stream 时，Canvas 可启用窄口径 `Reconnect stream`：source-only 流股只允许接到唯一未绑定且不会形成 unit dependency cycle 的 material inlet；sink-only 流股只允许接到唯一未绑定且不会形成 unit dependency cycle 的 material outlet。该动作只补齐当前流股唯一缺失端点，写回为正式 `DocumentCommand::ConnectPorts` 并进入 undo history；不可用时 Canvas、Inspector 和 shell 应复用同一套原因说明，例如已双端连接、缺 source / sink、没有可用端点、候选不唯一或唯一候选会形成 cycle。
-- 上述恢复 / 重连动作只覆盖当前 MVP 物料流股和现有最短建模路径，用于修正错连、漏连或误建流股；它不是自由连线编辑器，不提供任意端口选择、任意端口重连、自动布线、批量重排或完整拖拽布局编辑。
+- 物料流股恰有一个绑定端时，画布与检查器共用工程拓扑筛选空闲、方向匹配的端口，排除同一设备与会形成依赖回路的连接。零候选可悬停查看原因。唯一候选点击「重连流股」即提交。多个候选从「选择源端口…」或「选择目标端口…」进入该流股的检查器，按单元 ID、端口名排序，初始无选中项。用户核对源端到目标端的预览后确认。命令面板的一键动作仅在候选唯一时可执行。[建模专题](../topics/flowsheet-modeling-and-solve.md#缺一端的流股选择重连端口2026-11-24)
+- 画布用菱形标出固定端，用空心圆标出候选。悬停或键盘聚焦检查器候选行只高亮对应端口。选中后显示从源端到目标端的虚线，切换候选即更新预览。[重连候选与画布端口联动](../topics/flowsheet-modeling-and-solve.md#重连候选与画布端口联动)
+- 确认时复核工程会话、输入修订、编辑权限、待处理编辑及两端绑定。成功后以一次 `DocumentCommand::ConnectPorts` 写入。取消回到原入口，切换流股或工程会清除选择。若所选端口已被占用，显示占用流股，用户刷新并重新选择。
 - 非空画布不应常驻空状态提示、开发态计数摘要或对象树副本；画布 header 只保留用户理解当前状态所需的短标签、legend 和可行动工具。
 
 ## 视图模式契约
@@ -422,17 +423,17 @@ pub struct GhostElement {
 1. `Planar` 继续是默认编辑视图，`Perspective` 仍只是后续增强展示预留。
 2. MVP 单元放置、对象选择、suggestion focus / accept / reject、离散 layout nudge 都应通过正式 command surface 或 shell-local UI state 进入，不保留长期并行的 widget 私有状态改写分支。
 3. suggestion 转成正式文档命令后的实际文档变更才进入 `CommandHistory`；suggestion focus、reject、viewport、面板切换和 hover 不进入文档历史。
-4. 受控流股恢复动作可进入 `CommandHistory`：整股断开保留流股规格，source / sink 端点级断开只解除唯一对应端点，删除流股会先解除材料端口绑定；单端重连只补齐唯一候选端点。后续继续细化时必须显式处理端口合法性、已有绑定冲突、失败恢复和 undo；不得扩展成任意自由拉线编辑器。
+4. 整股断开保留流股规格，单端断开解除对应绑定，删除流股会先解除物料端口绑定。重连保留已有端点与原流股 ID。选择和预览只修改本地界面状态，成功补端才进入工程历史，撤销 / 重做以一次连接为单位。
 5. Layout sidecar 只保存 shell / layout 相关状态；缺少 sidecar 时可以用 transient grid slot pin 出初始位置，但必须在 presentation 中保持可解释，不反向污染 flowsheet 语义。当前已允许单元块直接拖动位置，拖动 active 时应避免同时触发 viewport pan，释放后仍只写 sidecar，不写 `FlowsheetDocument`、不递增 revision、不进入 `CommandHistory`。
 6. viewport 初始居中、`Fit to content` 和 sidecar 级 offset 记忆已落地；后续若继续扩展 viewport，只允许在明确 shell-local / sidecar 边界内做单能力增量，不得把 viewport 混入项目语义、求解输入或文档历史。短线段标签后续若继续优化，应作为 Canvas presentation 专题处理，不引入自动布线。
 
-单元删除与重命名的领域事务见 [建模专题](../topics/flowsheet-modeling-and-solve.md)。导航按对象种类 / ID 在当前 presentation 重新解析锚点，绘制与校验读取同一份当前视图；布局序号变化或选择切换不等于对象消失，真实删除仍报告失效，Undo 恢复后可重新定位。
+导航按对象种类和 ID 核对当前工程对象。有画布位置时，绘制和定位从同一份当前视图解析锚点。整股断开后，流股仍可从项目树或命令面板选回检查器，此时画布没有连线或可滚动到的锚点。撤销断开后可再次定位到连线。只有对象确已删除时才报告对象失效。 [流股断开与恢复](../topics/flowsheet-modeling-and-solve.md#流股源端与整股断开2026-11-23) · [单元删除与重命名](../topics/flowsheet-modeling-and-solve.md)
 
 ## 当前仍待后续细化的问题
 
 1. `Energy` / `Signal` 在核心语义未接通前，是否允许先以纯 UI 占位对象存在
 2. `Perspective` 视图是否需要单独的深度排序策略和遮挡规则
-3. selected stream 恢复动作是否要扩展到非唯一候选、任意端口选择或跨类型重连；当前答案是否，除非先补新的专题边界
+3. 任意端口选择或跨类型重连是否有独立建模需求，进入开发前需明确对应端口与拓扑契约
 4. suggestion 是否需要批量接受，还是严格先从单条接受开始
 5. 后续快捷键扩展继续保持属性 / 文本焦点隔离；当前 Tab 先预览及不透传接受已随 A2 验证
 6. `RadishMind` suggestion schema 是否与本地 `LocalRules` 输出完全同构，还是允许额外解释字段

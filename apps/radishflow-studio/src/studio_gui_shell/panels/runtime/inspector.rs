@@ -1,4 +1,6 @@
 use super::*;
+use crate::studio_gui_shell::locale::tr;
+use rf_ui::result_query::ResultStatus;
 
 impl ReadyAppState {
     pub(super) fn render_module_settings_panel(
@@ -297,7 +299,17 @@ impl ReadyAppState {
         );
         self.focus_specification_inspector(&title, &detail.target.command_id);
 
+        if detail.target.kind_label == "Stream" {
+            self.render_reconnect_picker(ui, &detail.target.target_id);
+        }
+
         if !detail.summary_rows.is_empty() {
+            if detail.stream_result_status.is_some() {
+                ui.small(
+                    egui::RichText::new(tr(self.locale, "工程输入（SI）", "Project inputs (SI)"))
+                        .strong(),
+                );
+            }
             egui::Grid::new(format!("inspector-summary:{}", detail.target.command_id))
                 .num_columns(2)
                 .spacing([8.0, 3.0])
@@ -310,11 +322,47 @@ impl ReadyAppState {
                 });
         }
 
+        if let Some(status) = detail.stream_result_status {
+            ui.add_space(4.0);
+            let heading = match status {
+                ResultStatus::Current if detail.latest_stream_result.is_some() => {
+                    tr(self.locale, "当前求解结果", "Current solve result")
+                }
+                ResultStatus::Current => tr(
+                    self.locale,
+                    "当前结果未包含此流股",
+                    "Stream absent from current result",
+                ),
+                ResultStatus::Missing => tr(self.locale, "尚无求解结果", "No solve result yet"),
+                ResultStatus::Stale => tr(
+                    self.locale,
+                    "求解结果已过期，请重新运行",
+                    "Solve result is stale. Run again.",
+                ),
+                ResultStatus::Failed => tr(
+                    self.locale,
+                    "求解失败，当前流股无结果",
+                    "Solve failed. No result for this stream.",
+                ),
+            };
+            ui.small(egui::RichText::new(heading).strong());
+            if let Some(stream) = &detail.latest_stream_result {
+                self.render_stream_result_summary(ui, stream);
+            }
+        }
+
         if !detail.connection_actions.is_empty() {
             ui.add_space(4.0);
             ui.horizontal_wrapped(|ui| {
                 ui.small(egui::RichText::new("Connections").strong());
                 for action in &detail.connection_actions {
+                    if action.command_id == "canvas.reconnect_selected_stream"
+                        && !action.enabled
+                        && self.render_reconnect_entry(ui, &detail.target.target_id, "inspector")
+                    {
+                        continue;
+                    }
+                    let hint = self.locale.runtime_label(&action.hover_text);
                     if ui
                         .add_enabled(
                             action.enabled,
@@ -325,7 +373,8 @@ impl ReadyAppState {
                                 .small(),
                             ),
                         )
-                        .on_hover_text(self.locale.runtime_label(&action.hover_text).as_ref())
+                        .on_hover_text(hint.as_ref())
+                        .on_disabled_hover_text(hint.as_ref())
                         .clicked()
                     {
                         self.dispatch_ui_command(&action.command_id);
@@ -408,13 +457,26 @@ impl ReadyAppState {
             if !detail.property_composition_component_actions.is_empty() {
                 ui.add_space(4.0);
                 ui.horizontal_wrapped(|ui| {
-                    ui.small(egui::RichText::new("Add component").strong());
+                    let zh = self.locale == StudioShellLocale::ZhCn;
+                    ui.small(
+                        egui::RichText::new(if zh { "添加组分" } else { "Add component" }).strong(),
+                    );
                     for component_action in &detail.property_composition_component_actions {
-                        if ui
-                            .small_button(&component_action.action.label)
-                            .on_hover_text(&component_action.action.hover_text)
-                            .clicked()
-                        {
+                        let (label, hint) = if zh {
+                            (
+                                format!("添加 {}", component_action.component_name),
+                                format!(
+                                    "将 {} 添加到本股组成，初始摩尔分数为 0。",
+                                    component_action.component_id
+                                ),
+                            )
+                        } else {
+                            (
+                                component_action.action.label.clone(),
+                                component_action.action.hover_text.clone(),
+                            )
+                        };
+                        if ui.small_button(label).on_hover_text(hint).clicked() {
                             self.dispatch_inspector_composition_component_add(
                                 component_action.action.command_id.clone(),
                             );
@@ -500,14 +562,15 @@ impl ReadyAppState {
         if let Some(stream) = detail.latest_stream_result.as_ref() {
             ui.add_space(4.0);
             ui.small(
-                egui::RichText::new(self.locale.text(ShellText::InspectorLatestResult)).strong(),
+                egui::RichText::new(tr(self.locale, "流股结果详情", "Stream result details"))
+                    .strong(),
             );
             ui.push_id(
                 format!(
                     "active-inspector-latest-stream:{}",
                     detail.target.command_id
                 ),
-                |ui| self.render_stream_result_inspector(ui, stream),
+                |ui| self.render_stream_result_details(ui, stream),
             );
         }
 

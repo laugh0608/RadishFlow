@@ -1,7 +1,8 @@
 use super::*;
-use rf_types::UnitId;
+use rf_types::{StreamId, UnitId};
 pub const MIXED_METHOD: &str = "radishflow.fixed-tp-mixed-material";
 pub const MIXED_RECYCLE_METHOD: &str = "radishflow.fixed-tp-mixed-recycle";
+pub const MIXED_SERIAL_RECYCLE_METHOD: &str = "radishflow.fixed-tp-mixed-serial-recycle";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StoredMixedRecyclePlan {
@@ -21,6 +22,73 @@ impl StoredMixedRecyclePlan {
             ));
         }
         self.tear.validate()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct StoredMixedSerialRecyclePlan {
+    pub mixed: StoredMixedPlan,
+    pub recycle_regions: [StoredMixedRecycleRegion; 2],
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StoredMixedRecycleRegion {
+    pub tear: StoredMixedSerialRecycleTear,
+    pub max_iteration_evaluations: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StoredMixedSerialRecycleTear {
+    pub stream_id: StreamId,
+    pub source: StoredPortBinding,
+    pub sink: StoredPortBinding,
+    pub initialization: StoredTearInitialization,
+}
+
+impl StoredMixedSerialRecyclePlan {
+    pub(super) fn validate(&self) -> RfResult<()> {
+        self.mixed.validate()?;
+        for region in &self.recycle_regions {
+            let tear = &region.tear;
+            if !(1..=500).contains(&region.max_iteration_evaluations) {
+                return Err(RfError::invalid_input(
+                    "simulation.recycleRegions: iteration budget must be in 1..=500",
+                )
+                .with_related_stream_id(tear.stream_id.clone()));
+            }
+            plan::validate_tear_inputs(
+                &tear.stream_id,
+                &tear.source,
+                &tear.sink,
+                &tear.initialization,
+            )?;
+        }
+        let [first, second] = self.recycle_regions.each_ref().map(|region| &region.tear);
+        if first.stream_id == second.stream_id
+            || first.source == second.source
+            || first.sink == second.sink
+        {
+            return Err(RfError::invalid_input(
+                "simulation.recycleRegions: repeated tear stream or port binding",
+            )
+            .with_related_stream_id(first.stream_id.clone())
+            .with_related_stream_id(second.stream_id.clone()));
+        }
+        Ok(())
+    }
+
+    pub(super) fn canonicalized(&self) -> Self {
+        let mut recycle_regions = self.recycle_regions.clone();
+        recycle_regions.sort_by(|a, b| a.tear.stream_id.cmp(&b.tear.stream_id));
+        for region in &mut recycle_regions {
+            region.tear.initialization.canonicalize();
+        }
+        Self {
+            mixed: self.mixed.canonicalized(),
+            recycle_regions,
+        }
     }
 }
 

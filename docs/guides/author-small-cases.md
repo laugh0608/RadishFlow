@@ -45,13 +45,15 @@ Home 左侧 `开始` 区当前提供两个小案例作者入口：
 
 空白项目不会预写默认物性包或默认组分。开始放置单元前，先完成项目级输入选择：
 
-- 顶部 `物性` 页提供正式的受控组分选择入口、内置 package 选择入口和 `进入流程图建模` readiness。
+- 在顶部「物性」页选择内置包，在「项目组分」按名称、分子式或 ID 搜索。例如输入 `CH4` 可找到甲烷。选择包和至少一个工程组分后可进入流程图建模。
 - 左侧 `项目` 面板显示当前物性包 label 和 `项目组分` 摘要，供建模时扫读；项目级输入编辑仍以独立 `物性` 页和同一 command surface 为准。
 - 界面中选择 `二元烃 Lite` 会写入稳定 id `Flowsheet.thermo.property_package_id = "binary-hydrocarbon-lite-v1"`。
-- 选择 methane / ethane 会写入 `Flowsheet.components`；Stream Inspector 中的 composition 添加动作只从这份项目组分列表派生。
+- 所选组分写入 `Flowsheet.components`，供流股检查器添加组成条目。移除工程组分前，可在物性页查看仍引用它的流股。已提交的零摩尔分数也算引用。
 - Feed composition 的数值修改仍在选中对应 stream 后，通过右侧 `检查器` 的字段草稿、`Normalize composition` 和提交命令完成。
 
 小案例作者入口会直接进入 Workbench 并打开左侧 `模块` 清单；如果尚未选 package / 项目组分，先从顶部 `物性` 返回独立物性页完成选择，再通过 `进入流程图建模` 或顶部 `流程图` 回到建模工作台。
+
+只选甲烷的工程可以保存、重开并继续编辑。使用「二元烃 Lite」运行无回路序贯流程时，每股 Feed 的出口组成都需要甲烷和乙烷两项。若拓扑有效且包清单可用，「流程运行」会显示有差异的进料股数。点击后可定位到具体流股。对于纯甲烷进料，先在工程中选入乙烷，再逐股显式添加零分数乙烷。修正后手动运行即可核对结果。[求解前核对进料组成](../topics/property/component-catalog-and-selection.md#求解前核对进料组成)
 
 ## β 第二刀验收口径
 

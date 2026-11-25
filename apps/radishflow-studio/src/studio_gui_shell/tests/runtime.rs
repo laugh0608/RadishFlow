@@ -86,7 +86,7 @@ fn render_runtime_module_results_tab_texts(
     })
 }
 
-fn render_runtime_inspector_tab_texts(
+pub(super) fn render_runtime_inspector_tab_texts(
     app: &mut ReadyAppState,
     window: &radishflow_studio::StudioGuiWindowModel,
 ) -> Vec<String> {

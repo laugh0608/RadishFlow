@@ -312,6 +312,117 @@ fn narrow_context() -> egui::Context {
 }
 
 #[test]
+fn h3_association_editor_is_reached_from_known_v4_review_and_returns_focus() {
+    let fixture = Fixture::new();
+    let path = fixture.0.join("linked.rfproj.json");
+    let content = include_str!("../../../../../examples/flowsheets/h3-linked-water-40.rfproj.json");
+    fs::write(&path, content).unwrap();
+    for locale in [StudioShellLocale::ZhCn, StudioShellLocale::En] {
+        let ctx = narrow_context();
+        let mut app = ready_app_state(&synced_workspace_config());
+        app.locale = locale;
+        let retained = app.platform_host.document().metadata.document_id.clone();
+        app.open_project(path.clone(), "association editor test");
+        frame(&mut app, &ctx, vec![]);
+        let tree = frame(&mut app, &ctx, vec![]);
+        let edit = button_node(&tree, tr(locale, "编辑流股关联", "Edit stream association"));
+        frame(&mut app, &ctx, vec![focus(edit)]);
+        frame(
+            &mut app,
+            &ctx,
+            vec![press(egui::Key::Enter, egui::Modifiers::NONE)],
+        );
+        let opened = frame(&mut app, &ctx, vec![]);
+        let labels = texts(&opened);
+        assert!(labels.contains(&tr(locale, "候选关联", "Proposed association")));
+        assert!(labels.contains(&tr(locale, "待预览", "Preview needed")));
+        assert!(!labels.contains(&tr(locale, "当前结果", "Current result")));
+
+        frame(
+            &mut app,
+            &ctx,
+            vec![press(egui::Key::S, egui::Modifiers::COMMAND)],
+        );
+        let returned = frame(
+            &mut app,
+            &ctx,
+            vec![press(egui::Key::Escape, egui::Modifiers::NONE)],
+        );
+        let updated = frame(&mut app, &ctx, vec![]);
+        assert_eq!(updated.focus, edit);
+        assert!(!texts(&returned).contains(&tr(
+            locale,
+            "确认保存关联",
+            "Confirm association save"
+        )));
+        assert_eq!(fs::read_to_string(&path).unwrap(), content);
+        assert_eq!(app.platform_host.document().metadata.document_id, retained);
+    }
+}
+
+#[test]
+fn linked_h3_review_supports_narrow_keyboard_recalculation_in_both_languages() {
+    let fixture = Fixture::new();
+    let path = fixture.0.join("linked.rfproj.json");
+    let original =
+        include_str!("../../../../../examples/flowsheets/h3-linked-water-50.rfproj.json");
+    fs::write(&path, original).unwrap();
+    for locale in [StudioShellLocale::ZhCn, StudioShellLocale::En] {
+        let ctx = narrow_context();
+        let mut app = ready_app_state(&synced_workspace_config());
+        app.locale = locale;
+        let original_document = app.platform_host.document().metadata.document_id.clone();
+        app.open_project(path.clone(), "linked review test");
+        frame(&mut app, &ctx, vec![]);
+        let opened = frame(&mut app, &ctx, vec![]);
+        assert!(texts(&opened).contains(&tr(locale, "待运行", "Ready to run")));
+        let run = button_node(
+            &opened,
+            tr(locale, "运行并复核当前工况", "Run and review this case"),
+        );
+        frame(&mut app, &ctx, vec![focus(run)]);
+        let tree = frame(
+            &mut app,
+            &ctx,
+            vec![press(egui::Key::Enter, egui::Modifiers::NONE)],
+        );
+        assert_eq!(
+            tree.focus,
+            button_node(&tree, tr(locale, "取消复核", "Cancel review"))
+        );
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        loop {
+            let tree = frame(&mut app, &ctx, vec![]);
+            let text = texts(&tree);
+            if text.contains(&"5877.49 W") {
+                assert!(text.contains(&tr(locale, "1 项超限", "1 limit exceeded")));
+                assert_eq!(tree.focus, run);
+                break;
+            }
+            assert!(std::time::Instant::now() < deadline, "{text:?}");
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        assert!(
+            app.check_project_event_access(&StudioGuiEvent::UiCommandRequested {
+                command_id: "file.save".into(),
+            })
+            .is_err()
+        );
+        frame(
+            &mut app,
+            &ctx,
+            vec![press(egui::Key::Escape, egui::Modifiers::NONE)],
+        );
+        assert!(app.read_only_project.is_none());
+        assert_eq!(
+            app.platform_host.document().metadata.document_id,
+            original_document
+        );
+    }
+    assert_eq!(fs::read_to_string(path).unwrap(), original);
+}
+
+#[test]
 fn h3_review_narrow_keyboard_selects_rates_and_reopens_in_both_languages() {
     let fixture = Fixture::new();
     let path = fixture.project(4, |_| {});

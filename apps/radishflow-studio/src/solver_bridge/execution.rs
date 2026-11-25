@@ -263,12 +263,7 @@ impl PreparedWorkspaceSolve {
     ) -> CompletedWorkspaceSolve {
         let (receipt, job) = self.into_job();
         let output = job.execute(
-            |id| {
-                provider
-                    .load_package(id, SystemTime::now())
-                    .and_then(prepare_local_context)
-                    .map_err(WorkspacePackageLoadError::Package)
-            },
+            |id| load_local_context(provider, id),
             false,
             &mut UncontrolledSolve,
         );
@@ -288,6 +283,16 @@ impl PreparedWorkspaceSolve {
         );
         CompletedWorkspaceSolve::from_output(receipt, output)
     }
+}
+
+pub(crate) fn load_local_context<P: PropertyPackageProvider>(
+    provider: &P,
+    id: &str,
+) -> Result<LocalThermoContext, WorkspacePackageLoadError> {
+    provider
+        .load_package(id, SystemTime::now())
+        .and_then(prepare_local_context)
+        .map_err(WorkspacePackageLoadError::Package)
 }
 
 pub(crate) fn load_cached_context(

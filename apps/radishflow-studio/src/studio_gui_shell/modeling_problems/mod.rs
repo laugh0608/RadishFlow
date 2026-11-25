@@ -137,6 +137,33 @@ impl ReadyAppState {
         }
     }
 
+    pub(super) fn render_feed_package_problem_entry(&mut self, ui: &mut egui::Ui) {
+        let checks = self.modeling_problems.checks();
+        if checks.phase() != &ModelingCheckPhase::Current {
+            return;
+        }
+        let mut mismatches = checks.entries().iter().filter(|entry| {
+            entry.state == SpecificationEntryState::Current
+                && matches!(
+                    entry.problem,
+                    SpecificationProblem::FeedPackageCompositionMismatch { .. }
+                )
+        });
+        if let Some(first) = mismatches.next() {
+            let count = 1 + mismatches.count();
+            let label = if self.locale == StudioShellLocale::ZhCn {
+                format!("{count} 股进料的组成与物性包不一致，查看差异")
+            } else {
+                format!("Review feed compositions that differ from the package ({count})")
+            };
+            if ui.button(label).clicked() {
+                self.modeling_problems
+                    .select_problem(Some(first.key.clone()));
+                self.open_modeling_problems();
+            }
+        }
+    }
+
     pub(super) fn render_modeling_problem_return(&mut self, ui: &mut egui::Ui) {
         if !self.at_run_diagnostic_target()
             && self.modeling_problems.destination.is_some()

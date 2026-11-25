@@ -95,92 +95,86 @@ impl StudioGuiCanvasViewModel {
                 })
             })
             .collect::<BTreeMap<_, _>>();
-        let stream_lines = state
-            .streams
-            .iter()
-            .enumerate()
-            .filter_map(|(line_index, stream)| {
-                let source = stream.source.as_ref().and_then(|endpoint| {
-                    unit_port_layouts
-                        .get(&(
-                            endpoint.unit_id.as_str().to_string(),
-                            endpoint.port_name.clone(),
-                        ))
-                        .copied()
-                        .map(
-                            |(layout_slot, layout_position, port_side_index, port_side_count)| {
-                                StudioGuiCanvasStreamLineEndpointViewModel {
-                                    unit_id: endpoint.unit_id.as_str().to_string(),
-                                    port_name: endpoint.port_name.clone(),
-                                    layout_slot,
-                                    layout_position,
-                                    port_side_index,
-                                    port_side_count,
-                                }
-                            },
-                        )
-                });
-                let sink = stream.sink.as_ref().and_then(|endpoint| {
-                    unit_port_layouts
-                        .get(&(
-                            endpoint.unit_id.as_str().to_string(),
-                            endpoint.port_name.clone(),
-                        ))
-                        .copied()
-                        .map(
-                            |(layout_slot, layout_position, port_side_index, port_side_count)| {
-                                StudioGuiCanvasStreamLineEndpointViewModel {
-                                    unit_id: endpoint.unit_id.as_str().to_string(),
-                                    port_name: endpoint.port_name.clone(),
-                                    layout_slot,
-                                    layout_position,
-                                    port_side_index,
-                                    port_side_count,
-                                }
-                            },
-                        )
-                });
-                if source.is_none() && sink.is_none() {
-                    return None;
-                }
-
-                let target = rf_ui::InspectorTarget::Stream(stream.stream_id.clone());
-                let command_id = crate::inspector_target_command_id(&target);
-                let status_badges =
-                    canvas_stream_status_badges(stream.stream_id.as_str(), &state.diagnostics);
-                let attention_summary =
-                    canvas_stream_attention_summary(stream.stream_id.as_str(), &state.diagnostics);
-                let source_label = source
-                    .as_ref()
-                    .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
-                    .unwrap_or_else(|| "unbound-source".to_string());
-                let sink_label = sink
-                    .as_ref()
-                    .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
-                    .unwrap_or_else(|| "terminal".to_string());
-                Some(StudioGuiCanvasStreamLineViewModel {
-                    line_id: format!("{}:{line_index}", stream.stream_id.as_str()),
-                    stream_id: stream.stream_id.as_str().to_string(),
-                    name: stream.name.clone(),
-                    source,
-                    sink,
-                    status_badges,
-                    action_label: format!("Stream {}", stream.stream_id.as_str()),
-                    hover_text: append_canvas_hover_attention(
-                        format!(
-                            "Focus stream inspector for `{}` ({} -> {})",
-                            stream.stream_id.as_str(),
-                            source_label,
-                            sink_label
-                        ),
-                        attention_summary.as_deref(),
-                    ),
-                    attention_summary,
-                    command_id,
-                    is_active_inspector_target: stream.is_active_inspector_target,
-                })
+        let mut stream_items = BTreeMap::new();
+        let mut stream_lines = Vec::new();
+        let line_endpoint = |endpoint: &crate::StudioGuiCanvasStreamEndpointState| {
+            let key = (
+                endpoint.unit_id.as_str().to_owned(),
+                endpoint.port_name.clone(),
+            );
+            let &(layout_slot, layout_position, port_side_index, port_side_count) =
+                unit_port_layouts.get(&key)?;
+            Some(StudioGuiCanvasStreamLineEndpointViewModel {
+                unit_id: key.0,
+                port_name: key.1,
+                layout_slot,
+                layout_position,
+                port_side_index,
+                port_side_count,
             })
-            .collect::<Vec<_>>();
+        };
+        for stream in &state.streams {
+            let source = stream.source.as_ref().and_then(line_endpoint);
+            let sink = stream.sink.as_ref().and_then(line_endpoint);
+            let target = rf_ui::InspectorTarget::Stream(stream.stream_id.clone());
+            let command_id = crate::inspector_target_command_id(&target);
+            let status_badges =
+                canvas_stream_status_badges(stream.stream_id.as_str(), &state.diagnostics);
+            let attention_summary =
+                canvas_stream_attention_summary(stream.stream_id.as_str(), &state.diagnostics);
+            let source_label = source
+                .as_ref()
+                .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
+                .unwrap_or_else(|| "unbound-source".to_string());
+            let sink_label = sink
+                .as_ref()
+                .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
+                .unwrap_or_else(|| "terminal".to_string());
+            let id = stream.stream_id.as_str();
+            let anchor = (source.is_some() || sink.is_some())
+                .then(|| format!("{id}:{}", stream_lines.len()));
+            stream_items.entry(id.to_owned()).or_insert_with(|| {
+                StudioGuiCanvasObjectListItemViewModel {
+                    kind_label: "Stream",
+                    target_id: id.to_owned(),
+                    label: stream.name.clone(),
+                    detail: if anchor.is_some() {
+                        format!("{source_label} -> {sink_label}")
+                    } else {
+                        "No connected ports".to_owned()
+                    },
+                    attention_summary: attention_summary.clone(),
+                    viewport_anchor_label: anchor.clone(),
+                    command_id: command_id.clone(),
+                    related_stream_ids: vec![id.to_owned()],
+                    status_badges: status_badges.clone(),
+                    is_active: stream.is_active_inspector_target,
+                }
+            });
+            let Some(line_id) = anchor else { continue };
+            stream_lines.push(StudioGuiCanvasStreamLineViewModel {
+                line_id,
+                stream_id: stream.stream_id.as_str().to_string(),
+                name: stream.name.clone(),
+                source,
+                sink,
+                status_badges,
+                action_label: format!("Stream {}", stream.stream_id.as_str()),
+                hover_text: append_canvas_hover_attention(
+                    format!(
+                        "Focus stream inspector for `{}` ({} -> {})",
+                        stream.stream_id.as_str(),
+                        source_label,
+                        sink_label
+                    ),
+                    attention_summary.as_deref(),
+                ),
+                attention_summary,
+                command_id,
+                is_active_inspector_target: stream.is_active_inspector_target,
+            });
+        }
+        let object_list = canvas_object_list(&unit_blocks, stream_items);
         let current_selection = unit_blocks
             .iter()
             .find(|unit| unit.is_active_inspector_target)
@@ -196,32 +190,24 @@ impl StudioGuiCanvasViewModel {
                 layout_detail: Some(canvas_unit_layout_detail(unit)),
             })
             .or_else(|| {
-                stream_lines
+                object_list
+                    .items
                     .iter()
-                    .find(|stream| stream.is_active_inspector_target)
-                    .map(|stream| {
-                        let source = stream
-                            .source
-                            .as_ref()
-                            .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
-                            .unwrap_or_else(|| "unbound-source".to_string());
-                        let sink = stream
-                            .sink
-                            .as_ref()
-                            .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
-                            .unwrap_or_else(|| "terminal".to_string());
-                        StudioGuiCanvasSelectionViewModel {
-                            kind_label: "Stream",
-                            target_id: stream.stream_id.clone(),
-                            summary: format!("{} {} -> {}", stream.name, source, sink),
-                            command_id: stream.command_id.clone(),
-                            layout_source_label: None,
-                            layout_detail: None,
-                        }
+                    .find(|item| item.kind_label == "Stream" && item.is_active)
+                    .map(|item| StudioGuiCanvasSelectionViewModel {
+                        kind_label: item.kind_label,
+                        target_id: item.target_id.clone(),
+                        summary: if item.viewport_anchor_label.is_some() {
+                            format!("{} {}", item.label, item.detail)
+                        } else {
+                            item.detail.clone()
+                        },
+                        command_id: item.command_id.clone(),
+                        layout_source_label: None,
+                        layout_detail: None,
                     })
             });
         let focus_callout = canvas_focus_callout(&unit_blocks, &stream_lines);
-        let object_list = canvas_object_list(&unit_blocks, &stream_lines);
         let viewport = canvas_viewport(
             state.view_mode,
             &unit_blocks,
@@ -744,7 +730,7 @@ fn canvas_viewport_focus_for_selection(
 
 fn canvas_object_list(
     units: &[StudioGuiCanvasUnitBlockViewModel],
-    stream_lines: &[StudioGuiCanvasStreamLineViewModel],
+    stream_items: BTreeMap<String, StudioGuiCanvasObjectListItemViewModel>,
 ) -> StudioGuiCanvasObjectListViewModel {
     let mut items = units
         .iter()
@@ -757,7 +743,7 @@ fn canvas_object_list(
                 unit.kind, unit.connected_port_count, unit.port_count
             ),
             attention_summary: unit.attention_summary.clone(),
-            viewport_anchor_label: format!("unit-slot-{}", unit.layout_slot),
+            viewport_anchor_label: Some(format!("unit-slot-{}", unit.layout_slot)),
             command_id: unit.command_id.clone(),
             related_stream_ids: unit
                 .ports
@@ -769,35 +755,6 @@ fn canvas_object_list(
         })
         .collect::<Vec<_>>();
 
-    let mut stream_items = BTreeMap::<String, StudioGuiCanvasObjectListItemViewModel>::new();
-    for stream in stream_lines {
-        stream_items
-            .entry(stream.stream_id.clone())
-            .or_insert_with(|| {
-                let source = stream
-                    .source
-                    .as_ref()
-                    .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
-                    .unwrap_or_else(|| "unbound-source".to_string());
-                let sink = stream
-                    .sink
-                    .as_ref()
-                    .map(|endpoint| format!("{}:{}", endpoint.unit_id, endpoint.port_name))
-                    .unwrap_or_else(|| "terminal".to_string());
-                StudioGuiCanvasObjectListItemViewModel {
-                    kind_label: "Stream",
-                    target_id: stream.stream_id.clone(),
-                    label: stream.name.clone(),
-                    detail: format!("{source} -> {sink}"),
-                    attention_summary: stream.attention_summary.clone(),
-                    viewport_anchor_label: stream.line_id.clone(),
-                    command_id: stream.command_id.clone(),
-                    related_stream_ids: vec![stream.stream_id.clone()],
-                    status_badges: stream.status_badges.clone(),
-                    is_active: stream.is_active_inspector_target,
-                }
-            });
-    }
     let stream_count = stream_items.len();
     items.extend(stream_items.into_values());
     items.sort_by_key(|item| {
@@ -842,7 +799,7 @@ fn canvas_object_list(
             StudioGuiCanvasObjectListFilterOptionViewModel {
                 filter_id: "streams",
                 label: "Streams",
-                detail: "Material stream lines",
+                detail: "Material streams in the document",
                 count: stream_count,
                 enabled: stream_count > 0,
             },

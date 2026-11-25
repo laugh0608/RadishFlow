@@ -8,6 +8,7 @@ mod worker;
 
 use std::{collections::VecDeque, sync::mpsc::TryRecvError, thread::JoinHandle, time::SystemTime};
 
+use rf_property_package::PropertyPackageProvider;
 use rf_store::StoredAuthCacheIndex;
 use rf_types::RfResult;
 use rf_ui::{
@@ -20,7 +21,9 @@ use crate::{
     WorkspaceSolveSkipReason, WorkspaceSolveTrigger,
     app_facade::{WorkspaceRunPreflight, preflight_workspace_run},
     build_workspace_solve_request, prepare_workspace_solve,
-    solver_bridge::execution::{complete_background_workspace_solve, load_cached_context},
+    solver_bridge::execution::{
+        complete_background_workspace_solve, load_cached_context, load_local_context,
+    },
 };
 use authorization::RunAuthorization;
 pub use authorization::RunAuthorizationRefusal;
@@ -144,6 +147,16 @@ impl WorkspaceRunOwner {
         &self.history
     }
 
+    #[cfg(test)]
+    pub(crate) fn wait_for_unaccepted_worker_result(&mut self, now: SystemTime) {
+        let run = self.active.as_mut().expect("active run");
+        let timeout = std::time::Duration::from_secs(5);
+        run.channels.ready.recv_timeout(timeout).unwrap();
+        run.channels.start.try_send(true).unwrap();
+        run.started_at = Some(now);
+        run.received = Some(run.channels.result.recv_timeout(timeout).unwrap());
+    }
+
     pub fn state(&self) -> Option<WorkspaceRunState> {
         self.active.as_ref().map(|active| WorkspaceRunState {
             run_id: active.receipt.run_id().clone(),
@@ -206,6 +219,40 @@ impl WorkspaceRunOwner {
             app.request_manual_run();
         }
         self.spawn(app, request, authorization, load, true, now, &ThreadSpawner)
+    }
+
+    pub(crate) fn submit_local(
+        &mut self,
+        app: &mut AppState,
+        request: StudioSolveRequest,
+        provider: impl PropertyPackageProvider + Send + 'static,
+        now: SystemTime,
+    ) -> RfResult<WorkspaceRunSubmission> {
+        if !self.accepting {
+            return Ok(WorkspaceRunSubmission::Blocked(WorkspaceRunBlock::Closing));
+        }
+        let authorization = match RunAuthorization::capture(app, &request.package_id, now) {
+            Ok(authorization) => authorization,
+            Err(reason) => {
+                return Ok(WorkspaceRunSubmission::Blocked(
+                    WorkspaceRunBlock::Authorization(reason),
+                ));
+            }
+        };
+        if let Some(reply) = self.existing_submission(app, &request.package_id) {
+            return Ok(reply);
+        }
+        let load: PackageLoader = Box::new(move |id| load_local_context(&provider, id));
+        app.request_manual_run();
+        self.spawn(
+            app,
+            request,
+            authorization,
+            load,
+            false,
+            now,
+            &ThreadSpawner,
+        )
     }
 
     fn existing_submission(&self, app: &AppState, package: &str) -> Option<WorkspaceRunSubmission> {

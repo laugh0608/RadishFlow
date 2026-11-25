@@ -42,6 +42,7 @@ pub struct SpecificationEntry {
 /// Replacing the workspace advances its session even for the same persisted ID.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModelingCheckSession {
+    package_components: Option<Vec<ComponentId>>,
     plan_generation: Option<rf_ui::flow_plan::FlowPlanGeneration>,
     identity: SpecificationReportIdentity,
     generation: u64,
@@ -54,6 +55,7 @@ pub struct ModelingCheckSession {
 impl ModelingCheckSession {
     pub fn new(document: &FlowsheetDocument) -> Self {
         Self {
+            package_components: None,
             plan_generation: None,
             identity: SpecificationReportIdentity {
                 document_id: document.metadata.document_id.clone(),
@@ -151,6 +153,8 @@ impl ModelingCheckSession {
         {
             return false;
         }
+        // An explicitly supplied report has no session-owned package metadata.
+        self.package_components = None;
         let report = match result {
             Ok(report)
                 if report.identity == ticket.identity
@@ -232,16 +236,30 @@ impl ModelingCheckSession {
 }
 
 impl ModelingCheckSession {
+    pub(crate) fn refresh_app(&mut self, app: &rf_ui::AppState) {
+        self.refresh_workspace_for_package(&app.workspace, selected_package_components(app));
+    }
+    pub(crate) fn recheck_app(&mut self, app: &rf_ui::AppState) {
+        self.recheck_workspace_for_package(&app.workspace, selected_package_components(app));
+    }
     pub fn refresh_workspace(&mut self, workspace: &rf_ui::WorkspaceState) {
+        self.refresh_workspace_for_package(workspace, None);
+    }
+    fn refresh_workspace_for_package(
+        &mut self,
+        workspace: &rf_ui::WorkspaceState,
+        components: Option<&[ComponentId]>,
+    ) {
         let changed = self.plan_generation.as_ref() != Some(workspace.flow_plan.generation());
         self.observe_document(&workspace.document);
         if changed
+            || self.package_components.as_deref() != components
             || matches!(
                 self.phase,
                 ModelingCheckPhase::NotChecked | ModelingCheckPhase::Stale
             )
         {
-            self.recheck_workspace(workspace);
+            self.recheck_workspace_for_package(workspace, components);
         }
     }
     pub fn begin_workspace(
@@ -278,16 +296,41 @@ impl ModelingCheckSession {
         accepted
     }
     pub fn recheck_workspace(&mut self, workspace: &rf_ui::WorkspaceState) {
+        self.recheck_workspace_for_package(workspace, None);
+    }
+    fn recheck_workspace_for_package(
+        &mut self,
+        workspace: &rf_ui::WorkspaceState,
+        components: Option<&[ComponentId]>,
+    ) {
         let ticket = self.begin_workspace(workspace);
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            check_workspace_modeling_specifications(workspace, ticket.ticket.identity.session)
+            workspace_report(workspace, ticket.ticket.identity.session, components)
         }))
         .map_err(|_| ModelingCheckFailure::Panicked);
-        self.finish_workspace(&ticket, result, workspace);
+        if self.finish_workspace(&ticket, result, workspace) {
+            self.package_components = components.map(<[_]>::to_vec);
+        }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkspaceModelingCheckTicket {
     ticket: ModelingCheckTicket,
     plan: rf_ui::flow_plan::FlowPlanEditContext,
+}
+
+// Bootstrap also publishes remapped component IDs for legacy projects. Read the
+// current manifest so neither a catalog label nor the project selection defines the package.
+fn selected_package_components(app: &rf_ui::AppState) -> Option<&[ComponentId]> {
+    if !matches!(
+        app.workspace.flow_plan.current(),
+        rf_ui::flow_plan::FlowPlanConfiguration::Acyclic
+    ) {
+        return None;
+    }
+    let id = app.workspace.document.flowsheet.property_package_id()?;
+    let manifest = app.entitlement.package_manifests.get(id)?;
+    (manifest.source != rf_ui::PropertyPackageSource::RemoteEvaluationService
+        && !manifest.component_ids.is_empty())
+    .then_some(&manifest.component_ids)
 }

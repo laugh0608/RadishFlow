@@ -81,7 +81,7 @@ impl ModelingRecommendationSession {
 
     /// Refreshes ephemeral state only; the application is immutable throughout.
     pub fn refresh(&mut self, app: &AppState) {
-        self.checks.refresh_workspace(&app.workspace);
+        self.checks.refresh_app(app);
         self.synchronize_identity();
         self.entries = self
             .checks
@@ -106,7 +106,7 @@ impl ModelingRecommendationSession {
     }
 
     pub fn recheck(&mut self, app: &AppState) {
-        self.checks.recheck_workspace(&app.workspace);
+        self.checks.recheck_app(app);
         self.refresh(app);
     }
 
@@ -195,9 +195,7 @@ impl ModelingRecommendationSession {
         preview: &RecommendationPreview,
         changed_at: DateTimeUtc,
     ) -> Result<RecommendationReceipt, RecommendationError> {
-        self.accept_with_recheck(app, preview, changed_at, |checks, workspace| {
-            checks.recheck_workspace(workspace)
-        })
+        self.accept_with_recheck(app, preview, changed_at, ModelingCheckSession::recheck_app)
     }
 
     /// The UI uses the same checks to explain why a preview cannot be accepted.
@@ -246,7 +244,7 @@ impl ModelingRecommendationSession {
         app: &mut AppState,
         preview: &RecommendationPreview,
         changed_at: DateTimeUtc,
-        recheck: impl FnOnce(&mut ModelingCheckSession, &rf_ui::WorkspaceState),
+        recheck: impl FnOnce(&mut ModelingCheckSession, &AppState),
     ) -> Result<RecommendationReceipt, RecommendationError> {
         self.validate_preview(app, preview)?;
         let entry = self.current(&preview.recommendation.key)?;
@@ -286,7 +284,7 @@ impl ModelingRecommendationSession {
         // From here the edit has committed. Recheck failure is an outcome, never an
         // action error: returning an error would invite a duplicate transaction.
         self.previews.clear();
-        recheck(&mut self.checks, &app.workspace);
+        recheck(&mut self.checks, app);
         self.refresh(app);
         let receipt = RecommendationReceipt {
             key: preview.recommendation.key.clone(),

@@ -153,8 +153,7 @@ fn mixed_recycle_save_reopens_formal_inputs_and_runs_only_on_explicit_request() 
         unreachable!()
     };
     options
-        .recycle
-        .as_mut()
+        .single_recycle_mut()
         .unwrap()
         .tear
         .initial_component_flows_mol_s =
@@ -380,7 +379,7 @@ fn mixed_recycle_preserves_a_missing_tear_reference_and_rejects_running_it() {
     let FlowPlanConfiguration::Mixed(options) = &mut plan else {
         unreachable!()
     };
-    options.recycle.as_mut().unwrap().tear.stream_id = "missing-tear".into();
+    options.single_recycle_mut().unwrap().tear.stream_id = "missing-tear".into();
     select(&mut app, plan.clone());
     prepare_mixed_recycle_save(&app, &path)
         .unwrap()

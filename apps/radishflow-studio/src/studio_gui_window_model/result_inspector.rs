@@ -4,6 +4,44 @@ use super::*;
 use rf_types::units::{DisplayUnitSet, QuantityKind as Q};
 
 impl StudioGuiWindowSolveSnapshotModel {
+    pub(super) fn capture_comparison_ports(&mut self, host: &StudioGuiSnapshot) {
+        let review = &host.runtime.result_review;
+        if review.status != rf_ui::result_query::ResultStatus::Current
+            || self.result_guard.is_none()
+            || review.guard != self.result_guard
+            || host.runtime.workspace_document.revision != self.document_revision
+        {
+            return;
+        }
+        // The host captured these material edges and the accepted result from the
+        // same workspace. Keep only stable port identities, independent of layout.
+        let view = host.canvas.view();
+        let names: BTreeMap<_, _> = view
+            .unit_blocks
+            .iter()
+            .map(|unit| (unit.unit_id.as_str(), unit.name.as_str()))
+            .collect();
+        let label = |port: &crate::StudioGuiCanvasStreamLineEndpointViewModel| {
+            let id = format!("{}:{}", port.unit_id, port.port_name);
+            match names
+                .get(port.unit_id.as_str())
+                .filter(|name| !name.is_empty())
+            {
+                Some(name) => format!("{name} · {id}"),
+                None => id,
+            }
+        };
+        for line in &view.stream_lines {
+            let ports = self.stream_ports.entry(line.stream_id.clone()).or_default();
+            if ports.source.is_none() {
+                ports.source = line.source.as_ref().map(label);
+            }
+            if let Some(sink) = &line.sink {
+                ports.sinks.push(label(sink));
+            }
+        }
+    }
+
     pub fn result_inspector(
         &self,
         requested_stream_id: Option<&str>,
@@ -69,7 +107,12 @@ impl StudioGuiWindowSolveSnapshotModel {
             .as_ref()
             .zip(comparison_stream.as_ref())
             .map(|(base, compared)| {
-                result_inspector_comparison_model(base, compared, &self.display_units)
+                result_inspector_comparison_model(
+                    base,
+                    compared,
+                    &self.display_units,
+                    &self.stream_ports,
+                )
             });
         let related_steps: Vec<StudioGuiWindowSolveStepModel> = selected_stream_id
             .as_deref()
@@ -412,6 +455,7 @@ fn result_inspector_comparison_model(
     base: &StudioGuiWindowStreamResultModel,
     compared: &StudioGuiWindowStreamResultModel,
     units: &DisplayUnitSet,
+    ports: &BTreeMap<String, StreamComparisonPorts>,
 ) -> StudioGuiWindowResultInspectorComparisonModel {
     let base_composition = base
         .composition_rows
@@ -444,7 +488,7 @@ fn result_inspector_comparison_model(
         .copied()
         .collect::<BTreeSet<_>>();
 
-    let mut summary_rows = vec![
+    let summary_rows = vec![
         StudioGuiWindowResultInspectorComparisonRowModel {
             label: "T",
             detail_label: "Temperature",
@@ -478,9 +522,7 @@ fn result_inspector_comparison_model(
                 units,
             ),
         },
-    ];
-    if base.molar_enthalpy_j_per_mol.is_some() || compared.molar_enthalpy_j_per_mol.is_some() {
-        summary_rows.push(StudioGuiWindowResultInspectorComparisonRowModel {
+        StudioGuiWindowResultInspectorComparisonRowModel {
             label: "H",
             detail_label: "Molar enthalpy",
             base_value: base
@@ -500,10 +542,14 @@ fn result_inspector_comparison_model(
                 }
                 _ => "-".to_string(),
             },
-        });
-    }
+        },
+    ];
 
     StudioGuiWindowResultInspectorComparisonModel {
+        base_label: base.label.clone(),
+        compared_label: compared.label.clone(),
+        base_ports: ports.get(&base.stream_id).cloned().unwrap_or_default(),
+        compared_ports: ports.get(&compared.stream_id).cloned().unwrap_or_default(),
         base_stream_id: base.stream_id.clone(),
         compared_stream_id: compared.stream_id.clone(),
         base_stream_focus_action: result_inspector_stream_focus_action(&base.stream_id)

@@ -48,18 +48,20 @@ fn saved_m2(f: &Fixture, budget: usize, initial: Option<[f64; 2]>, tear_stream: 
             method: MixedBlockMethod::Local,
         });
     }
-    options.recycle = Some(Box::new(MixedRecycleOptions {
-        tear: TearSpecification {
-            stream_id: tear_stream.into(),
-            source: DiagnosticPortTarget::new("splitter-2", "outlet_a"),
-            sink: DiagnosticPortTarget::new("mixer-1", "inlet_b"),
-            initial_component_flows_mol_s: initial.map(|[methane, ethane]| {
-                [("methane".into(), methane), ("ethane".into(), ethane)].into()
-            }),
-            component_scales_mol_s: None,
-        },
-        max_iteration_evaluations: budget,
-    }));
+    options.recycle = Some(Box::new(
+        rf_solver::mixed::MixedRecycleConfiguration::Single(MixedRecycleOptions {
+            tear: TearSpecification {
+                stream_id: tear_stream.into(),
+                source: DiagnosticPortTarget::new("splitter-2", "outlet_a"),
+                sink: DiagnosticPortTarget::new("mixer-1", "inlet_b"),
+                initial_component_flows_mol_s: initial.map(|[methane, ethane]| {
+                    [("methane".into(), methane), ("ethane".into(), ethane)].into()
+                }),
+                component_scales_mol_s: None,
+            },
+            max_iteration_evaluations: budget,
+        }),
+    ));
     let edit = FlowPlanEditContext::capture(&app.workspace);
     app.workspace
         .apply_flow_plan(

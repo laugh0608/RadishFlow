@@ -56,7 +56,7 @@ impl StoredEngineeringInputs {
             .iter()
             .any(|task| task.as_concentric_tube_rating().is_some())
     }
-    pub(crate) fn has_concentric_tube_flow_association(&self) -> bool {
+    pub fn has_concentric_tube_flow_association(&self) -> bool {
         self.tasks
             .iter()
             .filter_map(|task| task.as_concentric_tube_rating())

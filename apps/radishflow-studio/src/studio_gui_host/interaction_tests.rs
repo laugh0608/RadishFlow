@@ -605,14 +605,21 @@ fn gui_host_disconnects_selected_stream_from_canvas_command_surface() {
                 result.action,
                 StudioGuiCanvasInteractionAction::DisconnectSelectedStream
             );
+            let view = crate::StudioGuiCanvasViewModel::from_state(&result.canvas);
             assert!(
-                !result
-                    .canvas
-                    .streams
+                view.stream_lines
                     .iter()
-                    .any(|stream| { stream.stream_id == rf_types::StreamId::new("stream-heated") }),
-                "endpointless stream should no longer render as a canvas line"
+                    .all(|line| line.stream_id != "stream-heated")
             );
+            let item = view
+                .object_list
+                .items
+                .iter()
+                .find(|item| item.kind_label == "Stream" && item.target_id == "stream-heated")
+                .expect("disconnected stream remains in project objects");
+            assert!(item.is_active);
+            assert!(item.viewport_anchor_label.is_none());
+            assert_eq!(view.object_list.stream_count, 4);
             assert_eq!(
                 canvas_port_stream(&result.canvas, "heater-1", "outlet"),
                 None

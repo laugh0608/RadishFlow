@@ -308,6 +308,16 @@ impl Flowsheet {
             .ok_or_else(|| RfError::missing_entity("component", id))
     }
 
+    /// Streams whose overall composition explicitly includes this component, even at zero.
+    pub fn streams_with_overall_component(
+        &self,
+        id: &ComponentId,
+    ) -> impl Iterator<Item = &MaterialStreamState> {
+        self.streams
+            .values()
+            .filter(move |stream| stream.overall_mole_fractions.contains_key(id))
+    }
+
     pub fn stream(&self, id: &StreamId) -> RfResult<&MaterialStreamState> {
         self.streams
             .get(id)

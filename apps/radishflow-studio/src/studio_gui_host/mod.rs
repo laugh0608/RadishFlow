@@ -128,6 +128,7 @@ pub struct StudioGuiHostCloseWindowResult {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct StudioGuiCanvasState {
+    pub selected_stream_reconnect: Option<rf_ui::StreamReconnect>,
     pub view_mode: rf_ui::CanvasViewMode,
     pub units: Vec<StudioGuiCanvasUnitState>,
     pub streams: Vec<StudioGuiCanvasStreamState>,

@@ -25,6 +25,130 @@ fn save_new(fixture: &Fixture) -> PathBuf {
 }
 
 #[test]
+fn h3_flow_association_edit_replaces_the_cold_stream_in_the_same_project() {
+    let fixture = Fixture::new();
+    let alternate = "cold-feed-50";
+    fixture.amend_project(|root| {
+        let flowsheet = &mut root["document"]["flowsheet"];
+        let mut cold = flowsheet["streams"][COLD].clone();
+        cold["id"] = json!(alternate);
+        cold["total_molar_flow_mol_s"] = json!(50.0);
+        flowsheet["streams"][alternate] = cold;
+        let mut feed = flowsheet["units"]["cold-feed-unit"].clone();
+        feed["id"] = json!("cold-feed-unit-50");
+        feed["ports"][0]["stream_id"] = json!(alternate);
+        flowsheet["units"]["cold-feed-unit-50"] = feed;
+        root["objectIdentities"]["streams"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({
+                "objectId":alternate,"creationId":"00000000-0000-4000-8000-000000000050"
+            }));
+        root["objectIdentities"]["units"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({
+                "objectId":"cold-feed-unit-50","creationId":"00000000-0000-4000-8000-000000000051"
+            }));
+    });
+
+    let review = fixture.solved();
+    let pair = |review: &H3FlowReview, cold| ConcentricTubeFlowAssociation {
+        hot: stream(review, HOT),
+        cold: stream(review, cold),
+    };
+    let first = review
+        .preview_association_edit(member(), pair(&review, COLD))
+        .unwrap();
+    let save = review
+        .prepare_association_edit_save(&first, H3AssociationSaveTarget::Source)
+        .unwrap();
+    assert!(save.requires_upgrade());
+    assert!(review.save_association(&save, false).is_err());
+    review.save_association(&save, true).unwrap();
+
+    let mut opened = fixture.open();
+    assert_eq!(
+        opened.workspace().flow_result().status(),
+        ResultStatus::Missing
+    );
+    opened.solve_flow(&fixture.provider).unwrap();
+    let old_rating = opened
+        .rate(opened.preview_saved(member()).unwrap())
+        .unwrap();
+    assert_benchmark(opened.current_rating(&old_rating).unwrap(), 40);
+    assert_code(
+        opened
+            .preview_association_edit(member(), pair(&opened, COLD))
+            .unwrap_err(),
+        "association_unchanged",
+    );
+    assert_code(
+        opened
+            .preview(member(), stream(&opened, HOT), stream(&opened, alternate))
+            .unwrap_err(),
+        "association_mismatch",
+    );
+
+    let candidate = opened
+        .preview_association_edit(member(), pair(&opened, alternate))
+        .unwrap();
+    let original = fs::read(&fixture.path).unwrap();
+    let copy = target(&fixture);
+    let prepared_copy = opened
+        .prepare_association_edit_save(&candidate, H3AssociationSaveTarget::NewFile(&copy))
+        .unwrap();
+    fs::write(&copy, b"external writer").unwrap();
+    let conflict = opened.save_association(&prepared_copy, false).unwrap_err();
+    assert_eq!(
+        conflict.context().diagnostic_code(),
+        Some("store.project.save_target_changed")
+    );
+    assert_eq!(fs::read(&copy).unwrap(), b"external writer");
+    assert_eq!(fs::read(&fixture.path).unwrap(), original);
+
+    let prepared = opened
+        .prepare_association_edit_save(&candidate, H3AssociationSaveTarget::Source)
+        .unwrap();
+    assert!(!prepared.requires_upgrade());
+    opened.save_association(&prepared, false).unwrap();
+    assert_code(
+        opened.save_association(&prepared, false).unwrap_err(),
+        "source_changed",
+    );
+    let mut reopened = fixture.open();
+    assert_eq!(
+        reopened.workspace().flow_result().status(),
+        ResultStatus::Missing
+    );
+    assert_code(
+        reopened.current_rating(&old_rating).unwrap_err(),
+        "inputs_changed",
+    );
+    reopened.solve_flow(&fixture.provider).unwrap();
+    let next_rating = reopened
+        .rate(reopened.preview_saved(member()).unwrap())
+        .unwrap();
+    assert_benchmark(reopened.current_rating(&next_rating).unwrap(), 50);
+
+    let old: Value = serde_json::from_slice(&original).unwrap();
+    let new = json_file(&fixture.path);
+    let old_task = &old["engineering"]["tasks"][0];
+    let new_task = &new["engineering"]["tasks"][0];
+    assert_eq!(new_task["geometry"], old_task["geometry"]);
+    assert_eq!(
+        new_task["revision"].as_u64(),
+        old_task["revision"].as_u64().map(|rev| rev + 1)
+    );
+    assert_eq!(
+        new_task["case"]["revision"].as_u64(),
+        old_task["case"]["revision"].as_u64().map(|rev| rev + 1)
+    );
+    assert_eq!(new["document"]["flowsheet"], old["document"]["flowsheet"]);
+    assert_eq!(new["objectIdentities"], old["objectIdentities"]);
+}
+
+#[test]
 fn h3_flow_storage_reopens_both_pure_water_loads_with_only_formal_references() {
     for cold_flow in [40, 50] {
         let fixture = Fixture::new();

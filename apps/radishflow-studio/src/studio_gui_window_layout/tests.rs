@@ -135,7 +135,10 @@ fn studio_gui_window_layout_maps_panels_into_dock_regions() {
     assert!(commands.active_in_stack);
     assert!(commands.visible);
     assert!(!commands.collapsed);
-    assert_eq!(commands.badge.as_deref(), Some("27"));
+    assert_eq!(
+        commands.badge,
+        Some(dispatch.window.commands.total_command_count.to_string())
+    );
 
     let canvas = layout
         .panel(StudioGuiWindowAreaId::Canvas)

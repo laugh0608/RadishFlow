@@ -182,10 +182,10 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 
 - `Disconnect stream`：解除所有 material port 绑定并保留流股规格。
 - `Disconnect source` / `Disconnect sink`：只解除唯一 upstream source 或 downstream sink 端点。
-- `Reconnect stream`：只补齐 source-only 或 sink-only 流股的唯一缺失端点；候选必须唯一、未绑定且不会形成 unit dependency cycle。
+- 若只缺一端，Studio 会列出方向匹配、空闲且不会成环的合法端口。唯一候选点击「重连流股」即提交。多个候选时，打开「选择源端口…」或「选择目标端口…」，在检查器选中所需端口，核对画布虚线后点击「确认重连」。
 - `Delete stream`：解除绑定后删除流股。
 
-这些动作都进入 undo/redo 历史，但仍不是自由连线、任意端口选择或自动布线工具。
+确认的连接变更可撤销、重做。浏览候选和取消选择均保留原有绑定与文档修订。
 
 当前仍不支持自由拉线、任意端口点击创建、任意端口重连、自动布线、完整组件库、第三方物性包加载、完整物性包浏览器或完整单元参数表。当前只支持受控内置 `二元烃 Lite` package 与 methane / ethane 项目组分选择；这些能力不等同于完整组分数据库或完整物性包系统。
 
@@ -235,7 +235,7 @@ examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json
 - 不在运行前偷偷改写文档
 - 优先通过结构化诊断暴露问题
 - Run Panel recovery action 只执行明确的局部恢复；不能自动修复时，应聚焦到相关 unit / port / stream，帮助用户进入可编辑位置
-- 用户主动修正错连或漏连时，优先使用选中 stream 后的 `Disconnect stream`、`Disconnect source`、`Disconnect sink`、`Reconnect stream` 或 `Delete stream`；不要把它理解为自由连线或任意重连工具
+- 修正错连时先选中流股，只断开需要更换的一端，再从合法端口中重连
 - 开发态 stderr 只作为 smoke 和排查辅助，不替代顶部 `流程运行` screen、底部 `运行日志` 或底部 `诊断` 中的用户可见诊断
 
 连接类诊断当前应按下面理解：

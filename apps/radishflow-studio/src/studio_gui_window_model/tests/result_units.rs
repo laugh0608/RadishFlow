@@ -182,6 +182,33 @@ fn comparisons_use_difference_semantics_and_do_not_invent_missing_values() {
 }
 
 #[test]
+fn comparison_keeps_enthalpy_row_when_both_values_are_absent_or_one_is_zero() {
+    let mut raw = raw_snapshot();
+    raw.streams[0].phases.clear();
+    for (enthalpy, expected) in [(None, "-"), (Some(0.0), "0 kJ/mol")] {
+        raw.streams[1].phases[0].molar_enthalpy_j_per_mol = enthalpy;
+        let model = solve_snapshot_model_from_ui(&raw.clone().into(), &custom_units());
+        let comparison = model
+            .result_inspector_with_comparison(Some("base"), Some("compared"))
+            .comparison
+            .unwrap();
+        let row = comparison
+            .summary_rows
+            .iter()
+            .find(|row| row.label == "H")
+            .unwrap();
+        assert_eq!(
+            (
+                row.base_value.as_str(),
+                row.compared_value.as_str(),
+                row.delta_text.as_str()
+            ),
+            ("-", expected, "-")
+        );
+    }
+}
+
+#[test]
 fn conversion_errors_are_explicit_and_prevent_any_successful_text_export() {
     let mut raw = raw_snapshot();
     raw.streams[0].temperature_k = f64::NAN;

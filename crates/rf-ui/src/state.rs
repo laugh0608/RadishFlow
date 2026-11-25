@@ -1,4 +1,6 @@
 mod actions;
+mod reconnect;
+pub use reconnect::{StreamReconnect, StreamReconnectOptions, stream_reconnect_options};
 mod input_commands;
 mod input_discard;
 pub use input_discard::{InputDiscardScope, InputEditCheckpoint};
@@ -901,9 +903,8 @@ impl AppState {
             .workspace
             .document
             .flowsheet
-            .streams
-            .values()
-            .find(|stream| stream.overall_mole_fractions.contains_key(&component_id))
+            .streams_with_overall_component(&component_id)
+            .next()
         {
             return Err(RfError::invalid_input(format!(
                 "component `{}` is still referenced by stream `{}` composition",
@@ -1143,42 +1144,6 @@ impl AppState {
         Ok(Some(StreamConnectionEditResult {
             stream_id: stream_id.clone(),
             disconnected_ports: vec![disconnected_port],
-            command,
-            revision,
-        }))
-    }
-
-    pub fn reconnect_stream_to_unique_available_endpoint(
-        &mut self,
-        stream_id: &StreamId,
-        changed_at: DateTimeUtc,
-    ) -> RfResult<Option<StreamReconnectEditResult>> {
-        if !self
-            .workspace
-            .document
-            .flowsheet
-            .streams
-            .contains_key(stream_id)
-        {
-            return Ok(None);
-        }
-
-        let Some((command, next_flowsheet, source_port, sink_port)) =
-            apply_reconnect_stream_to_unique_available_endpoint_mutation(
-                &self.workspace.document.flowsheet,
-                stream_id,
-            )?
-        else {
-            return Ok(None);
-        };
-
-        let revision = self.commit_document_change(command.clone(), next_flowsheet, changed_at)?;
-        self.focus_inspector_target(InspectorTarget::Stream(stream_id.clone()));
-
-        Ok(Some(StreamReconnectEditResult {
-            stream_id: stream_id.clone(),
-            source_port,
-            sink_port,
             command,
             revision,
         }))

@@ -1,5 +1,7 @@
 use super::*;
 
+mod comparison;
+
 const RESULT_REVIEW_TOLERANCE: f64 = 1e-9;
 
 pub(super) fn assert_flash_split_material_balance(

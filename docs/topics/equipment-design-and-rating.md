@@ -1,6 +1,6 @@
 # 设备设计与性能校核
 
-更新时间：2026-11-21
+更新时间：2026-11-22
 
 ## 用途与状态
 
@@ -10,7 +10,7 @@
 
 - 层级：一级轨道；上位规划：[模拟平台](../architecture/simulation-platform.md)。
 - 子专题：[气液分离器尺寸与校核](equipment/separator-sizing-and-rating.md)、[换热器设计与校核](equipment/heat-exchanger-design-and-rating.md)。
-- 状态：Draft / 方向已确认。独立分离器尺寸、校核、有限工况矩阵与 C1 固定采纳已完成代表验收。分离器 C2-B／C3 仍受物性和范围门禁约束。换热器已验 H1 热工、H2 初步面积及 H3 同心套管校核，H3 独立复核已接通 CLI v13 与 Studio，流程关联保存与重开限 v4 Rust 应用层。 [分离器门禁](engineering-basis-and-cases.md#c2--c3-进入条件本批不实施) · [换热器现状](equipment/heat-exchanger-design-and-rating.md#h3-流程关联保存与重开)
+- 状态：Draft / 方向已确认。独立分离器尺寸、校核、有限工况矩阵与 C1 固定采纳已完成代表验收。分离器 C2-B／C3 仍受物性和范围门禁约束。换热器已验 H1 热工、H2 初步面积及 H3 同心套管校核，H3 独立工况经 CLI v13 与 Studio 复核。v4 流程关联可经 CLI v14 复核，并在 Studio 建立、更换、保存和重开。 [分离器门禁](engineering-basis-and-cases.md#c2--c3-进入条件本批不实施) · [换热器现状](equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存)
 
 ## 目标与当前基础
 

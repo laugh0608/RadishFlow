@@ -544,13 +544,7 @@ impl BootstrapSession {
                 });
             }
             StudioBackgroundRunAction::EditFlow { access, request } => {
-                let receipt = crate::flow_actions::execute_flow_action(
-                    &mut self.app_state,
-                    access,
-                    &request,
-                    SystemTime::now(),
-                )
-                .map_err(|e| RfError::invalid_input(e.to_string()))?;
+                let receipt = self.execute_flow_edit(access, &request)?;
                 return Ok(crate::StudioBackgroundRunReply {
                     changed: receipt.invalidates_flow_results(),
                     ..Default::default()
@@ -1006,6 +1000,34 @@ impl BootstrapSession {
         Ok(Some(result))
     }
 
+    fn execute_flow_edit(
+        &mut self,
+        access: crate::flow_actions::FlowEditAccess,
+        request: &crate::flow_actions::FlowActionRequest,
+    ) -> RfResult<crate::flow_actions::FlowActionReceipt> {
+        let receipt = crate::flow_actions::execute_flow_action(
+            &mut self.app_state,
+            access,
+            request,
+            SystemTime::now(),
+        )
+        .map_err(|e| RfError::invalid_input(e.to_string()))?;
+        if matches!(
+            request.action,
+            crate::flow_actions::FlowAction::Reconnect { .. }
+        ) && receipt.invalidates_flow_results()
+        {
+            self.refresh_local_canvas_suggestions();
+            if let Err(error) = self.dispatch_automatic_run_after_canvas_write_if_needed() {
+                self.app_state.push_log(
+                    rf_ui::AppLogLevel::Error,
+                    format!("Automatic run after stream reconnection failed: {error}"),
+                );
+            }
+        }
+        Ok(receipt)
+    }
+
     pub(crate) fn reconnect_selected_stream_to_unique_available_endpoint(
         &mut self,
     ) -> RfResult<Option<rf_ui::StreamReconnectEditResult>> {
@@ -1014,14 +1036,48 @@ impl BootstrapSession {
         else {
             return Ok(None);
         };
-        let result = self
-            .app_state
-            .reconnect_stream_to_unique_available_endpoint(&stream_id, SystemTime::now())?;
-        if result.is_some() {
-            self.refresh_local_canvas_suggestions();
-            self.dispatch_automatic_run_after_canvas_write_if_needed()?;
-        }
-        Ok(result)
+        use crate::flow_actions::{
+            FlowAction, FlowActionEffect, FlowActionRequest, FlowEditAccess, FlowEditContext,
+        };
+        let workspace = &self.app_state.workspace;
+        let rf_ui::StreamReconnect::Open(options) =
+            rf_ui::stream_reconnect_options(&workspace.document.flowsheet, &stream_id)
+        else {
+            return Ok(None);
+        };
+        let [chosen] = options.candidates.as_slice() else {
+            return Ok(None);
+        };
+        let receipt = self.execute_flow_edit(
+            FlowEditAccess::Editable,
+            &FlowActionRequest {
+                expected: FlowEditContext::capture(workspace),
+                action: FlowAction::Reconnect {
+                    stream: stream_id.clone(),
+                    fixed: options.fixed,
+                    missing: options.missing,
+                    chosen: chosen.clone(),
+                },
+            },
+        )?;
+        let (
+            FlowActionEffect::Connected(crate::modeling_actions::MaterialConnectionTarget {
+                source,
+                sink: Some(sink),
+                ..
+            }),
+            Some(command),
+        ) = (receipt.effect, receipt.command)
+        else {
+            unreachable!("completed stream reconnection")
+        };
+        Ok(Some(rf_ui::StreamReconnectEditResult {
+            stream_id,
+            source_port: source,
+            sink_port: sink,
+            command,
+            revision: receipt.after.revision(),
+        }))
     }
 
     pub(crate) fn delete_selected_unit(&mut self) -> RfResult<Option<u64>> {

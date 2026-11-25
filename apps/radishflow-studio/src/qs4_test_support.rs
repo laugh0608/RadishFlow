@@ -48,16 +48,82 @@ pub(crate) fn recycle_case(max_iteration_evaluations: usize) -> AppState {
             method: MixedBlockMethod::Local,
         });
     }
-    options.recycle = Some(Box::new(MixedRecycleOptions {
-        tear: TearSpecification {
-            stream_id: "s-rba".into(),
-            source: DiagnosticPortTarget::new("splitter-2", "outlet_a"),
-            sink: DiagnosticPortTarget::new("mixer-1", "inlet_b"),
+    options.recycle = Some(Box::new(
+        rf_solver::mixed::MixedRecycleConfiguration::Single(MixedRecycleOptions {
+            tear: TearSpecification {
+                stream_id: "s-rba".into(),
+                source: DiagnosticPortTarget::new("splitter-2", "outlet_a"),
+                sink: DiagnosticPortTarget::new("mixer-1", "inlet_b"),
+                initial_component_flows_mol_s: None,
+                component_scales_mol_s: None,
+            },
+            max_iteration_evaluations,
+        }),
+    ));
+    crate::qs1_test_support::select(&mut app, FlowPlanConfiguration::Mixed(options));
+    app
+}
+
+pub(crate) fn serial_case(upstream_budget: usize) -> AppState {
+    use rf_solver::{
+        mixed::{
+            MixedBlock, MixedBlockId, MixedBlockMethod, MixedOptions, MixedRecycleConfiguration,
+            MixedRecycleOptions,
+        },
+        partitioned::{FixedRecycleBoundary, TearSpecification},
+    };
+    use rf_types::DiagnosticPortTarget;
+
+    let mut app = crate::load_project_app_state(std::path::Path::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../examples/flowsheets/fixed-tp-serial-recycle-eo-reference.rfproj.json"
+    )))
+    .unwrap();
+    let mut blocks = [
+        "feed-a",
+        "feed-b",
+        "mixer-makeup-b",
+        "splitter-recycle-a",
+        "splitter-recycle-b",
+    ]
+    .map(|id| MixedBlock {
+        id: id.into(),
+        members: [id.into()].into(),
+        method: MixedBlockMethod::Local,
+    })
+    .to_vec();
+    let [mut upstream, downstream] = ["a", "b"].map(|side| {
+        let mixer = format!("mixer-{side}");
+        blocks.push(MixedBlock {
+            id: MixedBlockId::new(format!("equations-{side}")),
+            members: [
+                mixer.clone().into(),
+                format!("splitter-primary-{side}").into(),
+            ]
+            .into(),
+            method: MixedBlockMethod::EquationOriented { scales: None },
+        });
+        MixedRecycleOptions::new(TearSpecification {
+            stream_id: format!("s-r{side}").into(),
+            source: DiagnosticPortTarget::new(format!("splitter-recycle-{side}"), "outlet_a"),
+            sink: DiagnosticPortTarget::new(mixer, "inlet_b"),
             initial_component_flows_mol_s: None,
             component_scales_mol_s: None,
-        },
-        max_iteration_evaluations,
-    }));
-    crate::qs1_test_support::select(&mut app, FlowPlanConfiguration::Mixed(options));
+        })
+    });
+    upstream.max_iteration_evaluations = upstream_budget;
+    crate::qs1_test_support::select(
+        &mut app,
+        FlowPlanConfiguration::Mixed(MixedOptions {
+            boundary: FixedRecycleBoundary {
+                temperature_k: 300.0,
+                pressure_pa: 650_000.0,
+            },
+            blocks,
+            recycle: Some(Box::new(MixedRecycleConfiguration::Serial([
+                upstream, downstream,
+            ]))),
+        }),
+    );
     app
 }

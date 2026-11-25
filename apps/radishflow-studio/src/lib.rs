@@ -114,15 +114,18 @@ pub use document_history_driver::{
     DocumentHistoryOutcome, dispatch_document_history, dispatch_document_history_at,
 };
 pub use document_lifecycle_driver::{
-    DocumentLifecycleOutcome, FILE_SAVE_AS_COMMAND_ID, FILE_SAVE_COMMAND_ID, H3FlowPreview,
-    H3FlowRating, H3FlowReview, H3FlowStream, H3PureWaterQualification, H3WaterPropertySource,
-    PreparedFlowPlanSave, PreparedH3FlowAssociationSave, PreparedMixedRecycleSave,
-    PreparedObjectIdentityInitialization, ProjectSaveCompatibility, StudioDocumentLifecycleAction,
-    StudioDocumentLifecycleCommand, StudioH3Review, StudioProjectOpen, StudioReadOnlyProject,
+    DocumentLifecycleOutcome, FILE_SAVE_AS_COMMAND_ID, FILE_SAVE_COMMAND_ID,
+    H3AssociationPreviewState, H3AssociationSaveTarget, H3FlowPreview, H3FlowRating, H3FlowReview,
+    H3FlowReviewPhase, H3FlowReviewResult, H3FlowStream, H3PureWaterQualification,
+    H3WaterPropertySource, PreparedFlowPlanSave, PreparedH3FlowAssociationSave,
+    PreparedMixedRecycleSave, PreparedObjectIdentityInitialization, ProjectSaveCompatibility,
+    StudioDocumentLifecycleAction, StudioDocumentLifecycleCommand, StudioH3AssociationEditor,
+    StudioH3FlowReview, StudioH3Review, StudioProjectOpen, StudioReadOnlyProject,
     dispatch_document_lifecycle, load_project_app_state, prepare_mixed_recycle_save,
-    prepare_object_identity_initialization, prepare_product_composition_save,
-    project_save_compatibility, project_save_requires_upgrade, project_save_version,
-    read_studio_project, read_studio_project_for_review, read_studio_project_with_support,
+    prepare_mixed_serial_recycle_save, prepare_object_identity_initialization,
+    prepare_product_composition_save, project_save_compatibility, project_save_requires_upgrade,
+    project_save_version, read_studio_project, read_studio_project_for_review,
+    read_studio_project_with_support,
 };
 pub use entitlement_control::{
     StudioEntitlementAction, StudioEntitlementActionOutcome, StudioEntitlementFailure,

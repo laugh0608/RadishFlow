@@ -49,6 +49,7 @@ pub enum SpecificationRule {
     ParameterValues,
     PressureRelationship,
     AnalysisCoverage,
+    FeedPackageComposition,
 }
 
 impl SpecificationRule {
@@ -62,6 +63,7 @@ impl SpecificationRule {
             Self::ParameterValues => "A1-R06",
             Self::PressureRelationship => "A1-R07",
             Self::AnalysisCoverage => "A1-R08",
+            Self::FeedPackageComposition => "A1-R09",
         }
     }
 
@@ -96,6 +98,13 @@ pub enum SpecificationProblem {
     MissingFeedComposition {
         unit_id: UnitId,
         stream_id: StreamId,
+    },
+    FeedPackageCompositionMismatch {
+        stream_id: StreamId,
+        package_id: String,
+        required: Vec<ComponentId>,
+        missing: Vec<ComponentId>,
+        unexpected: Vec<ComponentId>,
     },
     InvalidMoleFraction {
         stream_id: StreamId,
@@ -136,6 +145,9 @@ impl SpecificationProblem {
             Self::InvalidFeedInput { .. } | Self::MissingFeedComposition { .. } => {
                 SpecificationRule::FeedInputs
             }
+            Self::FeedPackageCompositionMismatch { .. } => {
+                SpecificationRule::FeedPackageComposition
+            }
             Self::InvalidMoleFraction { .. }
             | Self::InvalidCompositionTotal { .. }
             | Self::UnnormalizedComposition { .. } => SpecificationRule::CompositionValues,
@@ -148,6 +160,7 @@ impl SpecificationProblem {
     pub fn enforcement(&self) -> SpecificationEnforcement {
         match self {
             Self::Topology(_)
+            | Self::FeedPackageCompositionMismatch { .. }
             | Self::InvalidParameter { .. }
             | Self::OutletPressureAboveInlet { .. } => SpecificationEnforcement::Solver,
             _ => SpecificationEnforcement::AuthoringReadiness,
@@ -165,6 +178,7 @@ pub enum SpecificationCheckScope {
     ProjectComponents,
     FeedInputs,
     StreamCompositions,
+    FeedPackageComposition(String),
     UnitParameters(UnitId),
     InletPressure(UnitId),
     StructuralDegreesOfFreedom,
@@ -176,6 +190,7 @@ pub enum SpecificationCoverage {
     /// The applicable predicates were evaluated, not necessarily passed.
     Evaluated,
     NotCheckedTopology,
+    NotCheckedPackageComponents,
     NotCheckedMissingOrInvalidParameter,
     NotCheckedInputPressure(DocumentPressureContext),
     AwaitingExecution(DocumentPressureContext),
@@ -289,9 +304,18 @@ pub fn check_workspace_modeling_specifications(
     workspace: &rf_ui::WorkspaceState,
     session: ModelingCheckSessionId,
 ) -> ModelingSpecificationReport {
+    workspace_report(workspace, session, None)
+}
+
+fn workspace_report(
+    workspace: &rf_ui::WorkspaceState,
+    session: ModelingCheckSessionId,
+    package_components: Option<&[ComponentId]>,
+) -> ModelingSpecificationReport {
     let checks = checks::check_inputs_with_plan(
         &workspace.document.flowsheet,
         workspace.flow_plan.current(),
+        package_components,
     );
     let mut report = report_from_checks(&workspace.document, session, checks);
     report.plan_generation = Some(workspace.flow_plan.generation().clone());

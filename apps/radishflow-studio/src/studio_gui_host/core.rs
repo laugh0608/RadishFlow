@@ -15,13 +15,8 @@ use super::*;
 use crate::{
     StudioGuiDiagnosticStreamSnapshot, StudioGuiFailureDiagnosticContextSnapshot,
     StudioGuiFailureDiagnosticPortSnapshot, WorkspaceControlState,
-    studio_stream_reconnect_presentation::{
-        StudioStreamReconnectAvailability, StudioStreamReconnectMissingSide,
-        stream_reconnect_already_connected, stream_reconnect_from_candidates,
-        stream_reconnect_missing_endpoint, stream_reconnect_missing_stream,
-    },
+    studio_stream_reconnect_presentation::stream_reconnect_availability,
 };
-use std::collections::BTreeSet;
 
 impl StudioGuiHost {
     pub fn background_run_action(
@@ -129,9 +124,6 @@ impl StudioGuiHost {
                     .cloned()
                     .unwrap_or_default();
                 let is_active_inspector_target = active_stream_id.as_ref() == Some(&stream.id);
-                if endpoint.source.is_none() && endpoint.sinks.is_empty() {
-                    return Vec::new();
-                }
                 if endpoint.sinks.is_empty() {
                     return vec![StudioGuiCanvasStreamState {
                         stream_id: stream.id.clone(),
@@ -161,6 +153,9 @@ impl StudioGuiHost {
             self.controller.document().revision,
         );
         StudioGuiCanvasState {
+            selected_stream_reconnect: active_stream_id
+                .as_ref()
+                .map(|id| rf_ui::stream_reconnect_options(flowsheet, id)),
             view_mode: canvas.view_mode,
             units,
             streams,
@@ -727,7 +722,10 @@ fn stream_connection_actions(
             enabled: true,
         });
     }
-    let reconnect = stream_reconnect_availability(flowsheet, stream_id);
+    let reconnect = stream_reconnect_availability(
+        stream_id.as_str(),
+        &rf_ui::stream_reconnect_options(flowsheet, stream_id),
+    );
     actions.push(StudioGuiInspectorConnectionActionSnapshot {
         label: "Reconnect stream".to_string(),
         detail: reconnect.action_detail(stream_id.as_str()),
@@ -790,209 +788,6 @@ fn unique_material_stream_endpoint_label(
         })
         .collect::<Vec<_>>();
     (endpoints.len() == 1).then(|| endpoints.remove(0))
-}
-
-fn stream_reconnect_availability(
-    flowsheet: &rf_model::Flowsheet,
-    stream_id: &rf_types::StreamId,
-) -> StudioStreamReconnectAvailability {
-    if !flowsheet.streams.contains_key(stream_id) {
-        return stream_reconnect_missing_stream();
-    }
-
-    let mut source_unit_id = None;
-    let mut sink_unit_id = None;
-    let mut latest_sink_binding = None;
-    let mut source_count = 0usize;
-    let mut sink_count = 0usize;
-
-    for unit in flowsheet.units.values() {
-        for port in &unit.ports {
-            if port.kind != rf_types::PortKind::Material
-                || port.stream_id.as_ref() != Some(stream_id)
-            {
-                continue;
-            }
-
-            match port.direction {
-                rf_types::PortDirection::Outlet => {
-                    source_count += 1;
-                    source_unit_id = Some(unit.id.clone());
-                }
-                rf_types::PortDirection::Inlet => {
-                    sink_count += 1;
-                    sink_unit_id = Some(unit.id.clone());
-                    latest_sink_binding = Some(format!("{}:{}", unit.id, port.name));
-                }
-            }
-        }
-    }
-
-    match (source_count, sink_count) {
-        (1, 0) => {
-            let Some(source_unit_id) = source_unit_id else {
-                return stream_reconnect_missing_endpoint();
-            };
-            let candidates = material_reconnect_sink_candidates(flowsheet, &source_unit_id);
-            stream_reconnect_from_host_candidates(
-                stream_id.as_str(),
-                StudioStreamReconnectMissingSide::Sink,
-                candidates,
-            )
-        }
-        (0, 1) => {
-            let Some(sink_unit_id) = sink_unit_id else {
-                return stream_reconnect_missing_endpoint();
-            };
-            let candidates = material_reconnect_source_candidates(flowsheet, &sink_unit_id);
-            stream_reconnect_from_host_candidates(
-                stream_id.as_str(),
-                StudioStreamReconnectMissingSide::Source,
-                candidates,
-            )
-        }
-        (1, 1) => stream_reconnect_already_connected(
-            latest_sink_binding.unwrap_or_else(|| "connected sink".to_string()),
-        ),
-        _ => stream_reconnect_missing_endpoint(),
-    }
-}
-
-fn stream_reconnect_from_host_candidates(
-    stream_id: &str,
-    missing_side: StudioStreamReconnectMissingSide,
-    candidates: Vec<(String, bool)>,
-) -> StudioStreamReconnectAvailability {
-    let candidate_count = candidates.len();
-    let cycle_blocked_count = candidates
-        .iter()
-        .filter(|(_, would_create_cycle)| *would_create_cycle)
-        .count();
-    let available_targets = candidates
-        .into_iter()
-        .filter_map(|(label, would_create_cycle)| (!would_create_cycle).then_some(label))
-        .collect::<Vec<_>>();
-    stream_reconnect_from_candidates(
-        stream_id,
-        missing_side,
-        candidate_count,
-        cycle_blocked_count,
-        available_targets,
-    )
-}
-
-fn material_reconnect_sink_candidates(
-    flowsheet: &rf_model::Flowsheet,
-    source_unit_id: &rf_types::UnitId,
-) -> Vec<(String, bool)> {
-    flowsheet
-        .units
-        .values()
-        .filter(|unit| &unit.id != source_unit_id)
-        .flat_map(|unit| {
-            unit.ports
-                .iter()
-                .filter(move |port| {
-                    port.kind == rf_types::PortKind::Material
-                        && port.direction == rf_types::PortDirection::Inlet
-                        && port.stream_id.is_none()
-                })
-                .map(|port| {
-                    (
-                        format!("{}:{}", unit.id, port.name),
-                        would_create_unit_dependency_cycle(flowsheet, source_unit_id, &unit.id),
-                    )
-                })
-        })
-        .collect()
-}
-
-fn material_reconnect_source_candidates(
-    flowsheet: &rf_model::Flowsheet,
-    sink_unit_id: &rf_types::UnitId,
-) -> Vec<(String, bool)> {
-    flowsheet
-        .units
-        .values()
-        .filter(|unit| &unit.id != sink_unit_id)
-        .flat_map(|unit| {
-            unit.ports
-                .iter()
-                .filter(move |port| {
-                    port.kind == rf_types::PortKind::Material
-                        && port.direction == rf_types::PortDirection::Outlet
-                        && port.stream_id.is_none()
-                })
-                .map(|port| {
-                    (
-                        format!("{}:{}", unit.id, port.name),
-                        would_create_unit_dependency_cycle(flowsheet, &unit.id, sink_unit_id),
-                    )
-                })
-        })
-        .collect()
-}
-
-fn would_create_unit_dependency_cycle(
-    flowsheet: &rf_model::Flowsheet,
-    source_unit_id: &rf_types::UnitId,
-    sink_unit_id: &rf_types::UnitId,
-) -> bool {
-    if source_unit_id == sink_unit_id {
-        return true;
-    }
-
-    let mut source_by_stream = BTreeMap::<rf_types::StreamId, rf_types::UnitId>::new();
-    let mut sinks_by_stream = BTreeMap::<rf_types::StreamId, Vec<rf_types::UnitId>>::new();
-    for unit in flowsheet.units.values() {
-        for port in &unit.ports {
-            if port.kind != rf_types::PortKind::Material {
-                continue;
-            }
-            let Some(stream_id) = port.stream_id.as_ref() else {
-                continue;
-            };
-            match port.direction {
-                rf_types::PortDirection::Outlet => {
-                    source_by_stream
-                        .entry(stream_id.clone())
-                        .or_insert_with(|| unit.id.clone());
-                }
-                rf_types::PortDirection::Inlet => {
-                    sinks_by_stream
-                        .entry(stream_id.clone())
-                        .or_default()
-                        .push(unit.id.clone());
-                }
-            }
-        }
-    }
-
-    let mut downstream_units = BTreeMap::<rf_types::UnitId, Vec<rf_types::UnitId>>::new();
-    for (stream_id, source) in source_by_stream {
-        if let Some(sinks) = sinks_by_stream.get(&stream_id) {
-            downstream_units
-                .entry(source)
-                .or_default()
-                .extend(sinks.clone());
-        }
-    }
-
-    let mut stack = vec![sink_unit_id.clone()];
-    let mut visited = BTreeSet::new();
-    while let Some(unit_id) = stack.pop() {
-        if !visited.insert(unit_id.clone()) {
-            continue;
-        }
-        if &unit_id == source_unit_id {
-            return true;
-        }
-        if let Some(children) = downstream_units.get(&unit_id) {
-            stack.extend(children.iter().cloned());
-        }
-    }
-
-    false
 }
 
 fn stream_property_fields(
@@ -1603,7 +1398,7 @@ fn workspace_document_snapshot_from_controller(
             .map(|component| {
                 let component_id = rf_types::ComponentId::new(component.component_id);
                 let selected = document.flowsheet.components.contains_key(&component_id);
-                let referenced = flowsheet_component_is_referenced(&document.flowsheet, &component_id);
+                let referenced = document.flowsheet.streams_with_overall_component(&component_id).next().is_some();
                 crate::StudioGuiProjectComponentChoiceSnapshot {
                     component_id: component.component_id.to_string(),
                     name: component.name.to_string(),
@@ -1630,14 +1425,4 @@ fn workspace_document_snapshot_from_controller(
         stream_count: document.flowsheet.streams.len(),
         snapshot_history_count: controller.snapshot_history_count(),
     }
-}
-
-fn flowsheet_component_is_referenced(
-    flowsheet: &rf_model::Flowsheet,
-    component_id: &rf_types::ComponentId,
-) -> bool {
-    flowsheet
-        .streams
-        .values()
-        .any(|stream| stream.overall_mole_fractions.contains_key(component_id))
 }

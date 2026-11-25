@@ -1,5 +1,6 @@
 mod cooler;
 mod mixer;
+mod stream_connections;
 mod variable_browser;
 
 use super::result_review::{

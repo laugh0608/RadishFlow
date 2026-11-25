@@ -226,3 +226,115 @@ fn command_shortcuts_survive_modifier_release_before_the_frame_and_are_consumed_
         assert_eq!(app.logical_window_count(), 1);
     }
 }
+
+#[test]
+fn mixer_delete_and_format_upgrade_accept_accessibility_clicks_only_inside_confirmation() {
+    use egui::accesskit::{Action, ActionRequest, NodeId, Role, TreeUpdate};
+    let temp =
+        radishflow_studio::PropertyPackageCacheRoot::temporary("mixer-confirmations").unwrap();
+    let path = temp.path().join("mixer.rfproj.json");
+    fs::copy(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"),
+        &path,
+    )
+    .unwrap();
+    let mut app = ready_app_state(&StudioRuntimeConfig {
+        project_path: path,
+        ..synced_workspace_config()
+    });
+    app.enable_background_runs();
+    app.locale = StudioShellLocale::En;
+    app.screen = StudioShellScreen::Run;
+    let ctx = egui::Context::default();
+    ctx.enable_accesskit();
+    let frame = |app: &mut ReadyAppState, click: Option<NodeId>| {
+        ctx.run(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(1280., 920.),
+                )),
+                focused: true,
+                events: click
+                    .map(|target| {
+                        egui::Event::AccessKitActionRequest(ActionRequest {
+                            action: Action::Click,
+                            target,
+                            data: None,
+                        })
+                    })
+                    .into_iter()
+                    .collect(),
+                ..Default::default()
+            },
+            |ctx| app.update(ctx),
+        )
+        .platform_output
+        .accesskit_update
+        .unwrap()
+    };
+    let button = |tree: &TreeUpdate, label: &str| {
+        tree.nodes
+            .iter()
+            .find(|(_, n)| n.role() == Role::Button && n.label() == Some(label))
+            .unwrap_or_else(|| panic!("missing button {label}"))
+            .0
+    };
+    let destination = temp.path().join("deleted.rfproj.json");
+    app.dispatch_ui_command("inspector.focus_unit:mixer-1");
+    frame(&mut app, None);
+    let initial = frame(&mut app, None);
+    let run = button(&initial, "Run F5");
+    let workspace = initial
+        .nodes
+        .iter()
+        .find(|(_, node)| node.children().contains(&run))
+        .unwrap()
+        .0;
+    for saving in [false, true] {
+        if saving {
+            app.request_save_project_as(destination.clone(), true);
+            assert!(app.pending_format_upgrade.is_some());
+        } else {
+            app.request_unit_deletion();
+            assert!(app.pending_unit_deletion.is_some());
+        }
+        frame(&mut app, None);
+        let tree = frame(&mut app, Some(run));
+        assert!(!app.background_busy());
+        assert!(
+            app.background_runs
+                .as_ref()
+                .unwrap()
+                .borrow()
+                .history()
+                .is_empty()
+        );
+        let (_, background) = tree.nodes.iter().find(|(id, _)| *id == workspace).unwrap();
+        assert!(background.is_hidden() && background.children().contains(&run));
+        let confirm = button(
+            &tree,
+            if saving {
+                "Upgrade and save"
+            } else {
+                "Delete unit"
+            },
+        );
+        assert!(!background.children().contains(&confirm));
+        frame(&mut app, Some(confirm));
+        assert!(app.pending_format_upgrade.is_none() && app.pending_unit_deletion.is_none());
+        let closed = frame(&mut app, None);
+        assert!(closed.nodes.iter().any(|(id, node)| *id == workspace
+            && !node.is_hidden()
+            && node.children().contains(&run)));
+        assert!(
+            !app.platform_host
+                .document()
+                .flowsheet
+                .units
+                .contains_key(&rf_types::UnitId::new("mixer-1"))
+        );
+    }
+    assert!(destination.is_file());
+}

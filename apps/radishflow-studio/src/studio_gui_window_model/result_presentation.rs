@@ -553,6 +553,7 @@ pub(super) fn solve_snapshot_model_from_ui(
         }
     }
     StudioGuiWindowSolveSnapshotModel {
+        stream_ports: Default::default(),
         mixed,
         equation_oriented,
         partitioned,

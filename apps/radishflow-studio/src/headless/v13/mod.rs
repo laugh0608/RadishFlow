@@ -1,69 +1,45 @@
 //! CLI v13 reads saved H3 inputs and runs at most one explicitly selected case.
 
-mod project;
-mod records;
+pub(super) mod project;
+pub(super) mod records;
 
-use super::v3::{self, actions::ExpectedProject, protocol::*};
-use project::{check_expected, load_project, read_only};
+use super::{
+    project_file::{check_expected, read_only},
+    request::JsonObject,
+    v3::{self, actions::ExpectedProject, protocol::*},
+};
+use project::load_project;
 use rf_model::equipment::ConcentricTubeRatingTask;
 use rf_store::project_v3::StoredEngineeringInputs;
 use rf_types::{EngineeringCaseId, EquipmentTaskId};
 use rf_ui::engineering::concentric_tube::{RatingRevisions, SavedRatingError, rate_saved_case};
-use serde::{
-    Deserialize, Deserializer,
-    de::{MapAccess, Visitor, value::MapAccessDeserializer},
-};
+use serde::Deserialize;
 use serde_json::{Value, json};
-use std::{
-    fmt,
-    marker::PhantomData,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 pub(super) const VERSION: u32 = 13;
 
-// Derived struct decoders also accept positional sequences. This protocol
-// requires named JSON objects for request records and identity references.
-struct JsonObject<T>(T);
-impl<'de, T: Deserialize<'de>> Deserialize<'de> for JsonObject<T> {
-    fn deserialize<D: Deserializer<'de>>(de: D) -> Result<Self, D::Error> {
-        struct ObjectVisitor<T>(PhantomData<T>);
-        impl<'de, T: Deserialize<'de>> Visitor<'de> for ObjectVisitor<T> {
-            type Value = JsonObject<T>;
-
-            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.write_str("a JSON object")
-            }
-
-            fn visit_map<M: MapAccess<'de>>(self, map: M) -> Result<Self::Value, M::Error> {
-                T::deserialize(MapAccessDeserializer::new(map)).map(JsonObject)
-            }
-        }
-        de.deserialize_map(ObjectVisitor(PhantomData))
-    }
-}
-
-#[derive(Deserialize)]
+#[derive(Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 struct SavedId<T> {
     id: T,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-struct CaseMember {
+pub(super) struct CaseMember {
     task: JsonObject<SavedId<EquipmentTaskId>>,
     case: JsonObject<SavedId<EngineeringCaseId>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-enum CaseTarget {
+pub(super) enum CaseTarget {
     Case(JsonObject<CaseMember>),
 }
 
 impl CaseTarget {
-    fn reference(&self) -> ObjectRef {
+    pub(super) fn reference(&self) -> ObjectRef {
         let Self::Case(JsonObject(member)) = self;
         ObjectRef::Case {
             task: IdentityRef::id(&member.task.0.id),
@@ -71,7 +47,7 @@ impl CaseTarget {
         }
     }
 
-    fn find<'a>(
+    pub(super) fn find<'a>(
         &self,
         inputs: &'a StoredEngineeringInputs,
         stage: Stage,
@@ -95,13 +71,13 @@ impl CaseTarget {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
-enum ResultScope {
+pub(super) enum ResultScope {
     Object(CaseTarget),
 }
 
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
-enum QueryKind {
+pub(super) enum QueryKind {
     Objects {},
     Record { target: CaseTarget },
     Results { scope: ResultScope },
@@ -109,25 +85,35 @@ enum QueryKind {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Query {
-    id: String,
+pub(super) struct Query {
+    pub(super) id: String,
     query: QueryKind,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct QueryRequest {
-    schema_version: u32,
-    project: PathBuf,
-    queries: Vec<JsonObject<Query>>,
+pub(super) struct QueryRequest {
+    pub(super) schema_version: u32,
+    pub(super) project: PathBuf,
+    pub(super) queries: Vec<JsonObject<Query>>,
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct ExpectedRevisions {
+pub(super) struct ExpectedRevisions {
     task: u64,
     geometry: u64,
     case: u64,
+}
+
+impl From<&ExpectedRevisions> for RatingRevisions {
+    fn from(revisions: &ExpectedRevisions) -> Self {
+        Self {
+            task: revisions.task,
+            geometry: revisions.geometry,
+            case: revisions.case,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -207,11 +193,7 @@ fn execute_step<'a>(
         target,
         expected_revisions: JsonObject(expected_revisions),
     } = &step.action;
-    let expected = RatingRevisions {
-        task: expected_revisions.task,
-        geometry: expected_revisions.geometry,
-        case: expected_revisions.case,
-    };
+    let expected = RatingRevisions::from(expected_revisions);
     let mut reject = |mut error: Failure| {
         error.step_id = Some(step.id.clone());
         response
@@ -278,12 +260,19 @@ fn queries(
     run: Option<&Run<'_>>,
     response: &mut Response,
 ) {
+    reply_queries(queries, response, |query| match inputs {
+        Some(inputs) => query_value(query, inputs, run),
+        None => Err(read_only(Stage::Query)),
+    });
+}
+
+pub(super) fn reply_queries(
+    queries: &[JsonObject<Query>],
+    response: &mut Response,
+    resolve: impl Fn(&QueryKind) -> Result<Value, Failure>,
+) {
     for JsonObject(query) in queries {
-        let value = match inputs {
-            Some(inputs) => query_value(&query.query, inputs, run),
-            None => Err(read_only(Stage::Query)),
-        };
-        let reply = match value {
+        let reply = match resolve(&query.query) {
             Ok(value) => QueryReply {
                 id: query.id.clone(),
                 value: Some(value),

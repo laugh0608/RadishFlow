@@ -25,6 +25,7 @@ struct Run<'a> {
     kind: MixedFailureKind,
     assumed_tear: Option<MaterialStreamState>,
     recycle: Option<MixedRecycleReport>,
+    serial_recycles: Vec<MixedRecycleRegionReport>,
 }
 impl Run<'_> {
     fn at(&mut self, stage: MixedStage) -> RfResult<()> {
@@ -76,6 +77,7 @@ pub(super) fn solve(
             unit: None,
             equation: None,
             recycle: None,
+            recycle_region: None,
         },
         streams: BTreeMap::new(),
         blocks: vec![],
@@ -86,6 +88,7 @@ pub(super) fn solve(
         kind: MixedFailureKind::Assembly,
         assumed_tear: None,
         recycle: None,
+        serial_recycles: vec![],
     };
     let outcome = (|| {
         run.at(MixedStage::Assembly)?;
@@ -112,38 +115,59 @@ pub(super) fn solve(
             material::component_flows(&components, s, options.boundary)?;
         }
 
-        let before = plan
-            .recycle
-            .as_ref()
-            .map_or(plan.ordered.len(), |r| r.cycle.start);
-        for block in &plan.ordered[..before] {
-            execute_block(
+        if let Some(serial) = &plan.serial_recycle {
+            execute_serial(
                 &mut run,
                 &plan,
-                block,
+                &serial.regions,
                 &components,
                 fresh_scale,
                 &counted,
                 factory,
             )?;
-        }
-        if let Some(recycle) = &plan.recycle {
-            execute_recycle(&mut run, &plan, recycle, &components, &counted, factory)?;
-            for block in &plan.ordered[recycle.cycle.end..] {
+        } else {
+            let before = plan
+                .recycle
+                .as_ref()
+                .map_or(plan.ordered.len(), |r| r.cycle.start);
+            for block in &plan.ordered[..before] {
                 execute_block(
                     &mut run,
                     &plan,
                     block,
                     &components,
-                    fresh_scale,
+                    MaterialScale::Legacy(fresh_scale),
                     &counted,
                     factory,
                 )?;
+            }
+            if let Some(recycle) = &plan.recycle {
+                execute_recycle(
+                    &mut run,
+                    &plan,
+                    recycle,
+                    &components,
+                    None,
+                    &counted,
+                    factory,
+                )?;
+                for block in &plan.ordered[recycle.cycle.end..] {
+                    execute_block(
+                        &mut run,
+                        &plan,
+                        block,
+                        &components,
+                        MaterialScale::Legacy(fresh_scale),
+                        &counted,
+                        factory,
+                    )?;
+                }
             }
         }
         run.kind = MixedFailureKind::GlobalVerification;
         run.progress.block = None;
         run.progress.unit = None;
+        run.progress.recycle_region = None;
         run.at(MixedStage::GlobalVerification)?;
         let fresh: Vec<_> = flow
             .units
@@ -168,27 +192,7 @@ pub(super) fn solve(
         }
         let scales = components.iter().cloned().map(|c| (c, total)).collect();
         material::balance(&components, options.boundary, &fresh, &products, &scales)?;
-        let totals = |states: &[MaterialStreamState]| -> RfResult<BTreeMap<ComponentId, f64>> {
-            let mut values: BTreeMap<_, _> = components.iter().cloned().map(|c| (c, 0.0)).collect();
-            for s in states {
-                for (c, v) in material::component_flows(&components, s, options.boundary)? {
-                    *values.get_mut(&c).expect("component") += v;
-                }
-            }
-            Ok(values)
-        };
-        let f = totals(&fresh)?;
-        let p = totals(&products)?;
-        let global = GlobalMaterialEvidence {
-            component_residuals_mol_s: material::residuals(&components, &f, &p),
-            fresh_components_mol_s: f,
-            product_components_mol_s: p,
-            total_residual_mol_s: products
-                .iter()
-                .map(|s| s.total_molar_flow_mol_s)
-                .sum::<f64>()
-                - total,
-        };
+        let global = material_evidence(&components, options.boundary, &fresh, &products)?;
         if !global.total_residual_mol_s.is_finite()
             || (global.total_residual_mol_s / total).abs()
                 > crate::equation_oriented::SCALED_TOLERANCE
@@ -213,6 +217,7 @@ pub(super) fn solve(
             global_material,
             costs: run.costs,
             recycle: run.recycle,
+            serial_recycles: run.serial_recycles,
         }),
         Err(error) => Err(Box::new(MixedFailure {
             method: options.method(),
@@ -225,8 +230,178 @@ pub(super) fn solve(
             equation_failure: run.equation_failure,
             costs: run.costs,
             recycle: run.recycle,
+            serial_recycles: run.serial_recycles,
         })),
     }
+}
+
+#[derive(Clone, Copy)]
+enum MaterialScale<'a> {
+    Legacy(f64),
+    Serial(f64),
+    Region {
+        global: f64,
+        total: f64,
+        inlet: &'a StreamId,
+    },
+}
+
+impl MaterialScale<'_> {
+    fn unit(self, incoming: f64) -> f64 {
+        match self {
+            Self::Legacy(fresh) => {
+                if incoming > 0.0 {
+                    incoming
+                } else {
+                    fresh
+                }
+            }
+            Self::Serial(global) => global,
+            Self::Region { total, .. } => total,
+        }
+    }
+
+    fn boundary(self, stream: &StreamId, incoming: f64) -> f64 {
+        match self {
+            Self::Region { inlet, global, .. } if stream == inlet => global,
+            _ => self.unit(incoming),
+        }
+    }
+}
+
+fn evaluated_feed_total(
+    plan: &MixedPlan,
+    streams: &BTreeMap<StreamId, MaterialStreamState>,
+) -> RfResult<f64> {
+    let total = plan
+        .connections
+        .iter()
+        .filter(|c| plan.flow.units[&c.source.unit_id].kind == "feed")
+        .try_fold(0.0, |total, c| {
+            let stream = streams.get(&c.stream_id).ok_or_else(|| {
+                failure("missing_boundary", "evaluated Feed output is missing")
+                    .with_related_stream_id(c.stream_id.clone())
+            })?;
+            Ok(total + stream.total_molar_flow_mol_s)
+        })?;
+    if !total.is_finite() || total <= 0.0 {
+        return Err(failure(
+            "fresh_total",
+            "positive finite evaluated Feed total required",
+        ));
+    }
+    Ok(total)
+}
+
+fn material_evidence(
+    components: &[ComponentId],
+    boundary: FixedRecycleBoundary,
+    inputs: &[MaterialStreamState],
+    outputs: &[MaterialStreamState],
+) -> RfResult<GlobalMaterialEvidence> {
+    let totals = |states: &[MaterialStreamState]| -> RfResult<BTreeMap<ComponentId, f64>> {
+        let mut values: BTreeMap<_, _> = components.iter().cloned().map(|c| (c, 0.0)).collect();
+        for s in states {
+            for (c, v) in material::component_flows(components, s, boundary)? {
+                *values.get_mut(&c).expect("component") += v;
+            }
+        }
+        Ok(values)
+    };
+    let inputs_total = totals(inputs)?;
+    let outputs_total = totals(outputs)?;
+    let total_flow = |states: &[MaterialStreamState]| {
+        states.iter().map(|s| s.total_molar_flow_mol_s).sum::<f64>()
+    };
+    Ok(GlobalMaterialEvidence {
+        component_residuals_mol_s: material::residuals(components, &inputs_total, &outputs_total),
+        fresh_components_mol_s: inputs_total,
+        product_components_mol_s: outputs_total,
+        total_residual_mol_s: total_flow(outputs) - total_flow(inputs),
+    })
+}
+
+fn execute_serial(
+    run: &mut Run<'_>,
+    plan: &MixedPlan,
+    regions: &[serial_recycle::SerialRecycleRegion; 2],
+    components: &[ComponentId],
+    fresh_scale: f64,
+    services: &crate::SolverServices<'_>,
+    factory: &mut impl FnMut(
+        &UnitNode,
+        &BTreeMap<StreamId, MaterialStreamState>,
+    ) -> RfResult<Box<dyn UnitOperation>>,
+) -> RfResult<()> {
+    let mut cursor = 0;
+    let mut global_scale = fresh_scale;
+    for region in regions {
+        let recycle = &region.recycle;
+        for block in &plan.ordered[cursor..recycle.cycle.start] {
+            execute_block(
+                run,
+                plan,
+                block,
+                components,
+                MaterialScale::Serial(global_scale),
+                services,
+                factory,
+            )?;
+            // The first Feed alone cannot establish the global scale. Once both
+            // are evaluated, the transfer and second region use their real total.
+            if cursor != 0
+                && plan.flow.units[block.members.first().expect("local supply block")].kind
+                    == "feed"
+            {
+                global_scale = evaluated_feed_total(plan, &run.streams)?;
+            }
+        }
+        run.progress.recycle_region = Some(region.equation_block.clone());
+        run.progress.block = Some(region.equation_block.clone());
+        run.progress.unit = None;
+        let outcome = execute_recycle(
+            run,
+            plan,
+            recycle,
+            components,
+            Some(global_scale),
+            services,
+            factory,
+        );
+        if let Some(report) = run.recycle.take() {
+            run.serial_recycles.push(MixedRecycleRegionReport {
+                equation_block: region.equation_block.clone(),
+                recycle: report,
+                balance: None,
+            });
+        }
+        outcome?;
+        run.kind = MixedFailureKind::RecycleVerification;
+        run.progress.block = Some(region.equation_block.clone());
+        run.progress.unit = None;
+        run.at(MixedStage::RegionVerification)?;
+        let report = run
+            .serial_recycles
+            .last_mut()
+            .expect("verified tear evidence");
+        let input = std::slice::from_ref(&run.streams[&recycle.fresh_stream]);
+        let outputs = region
+            .outlets
+            .each_ref()
+            .map(|stream| run.streams[stream].clone());
+        let boundary = plan.options.boundary;
+        report.balance = Some(material_evidence(components, boundary, input, &outputs)?);
+        material::balance(
+            components,
+            boundary,
+            input,
+            &outputs,
+            &report.recycle.component_scales_mol_s,
+        )?;
+        run.progress.recycle_region = None;
+        cursor = recycle.cycle.end;
+    }
+    Ok(())
 }
 
 fn execute_recycle(
@@ -234,39 +409,54 @@ fn execute_recycle(
     plan: &MixedPlan,
     recycle: &recycle::MixedRecyclePlan,
     components: &[ComponentId],
+    serial_global_scale: Option<f64>,
     services: &crate::SolverServices<'_>,
     factory: &mut impl FnMut(
         &UnitNode,
         &BTreeMap<StreamId, MaterialStreamState>,
     ) -> RfResult<Box<dyn UnitOperation>>,
 ) -> RfResult<()> {
-    let options = plan.options.recycle.as_ref().expect("assembled recycle");
+    let options = &recycle.options;
     let tear = &options.tear;
     let boundary = plan.options.boundary;
     run.kind = MixedFailureKind::Boundary;
-    let fresh = &run.streams[&recycle.fresh_stream];
-    if fresh.total_molar_flow_mol_s <= 0.0 {
-        return Err(recycle::tear_error(
-            tear,
-            "tear_fresh_feed",
-            "tear initialization requires a positive evaluated Feed at inlet_a",
+    let inlet_error = || {
+        let (code, message) = if serial_global_scale.is_some() {
+            (
+                "serial_inlet",
+                "serial recycle requires a positive evaluated region inlet",
+            )
+        } else {
+            (
+                "tear_fresh_feed",
+                "tear initialization requires a positive evaluated Feed at inlet_a",
+            )
+        };
+        recycle::tear_error(tear, code, message)
+            .with_related_stream_id(recycle.fresh_stream.clone())
+    };
+    let fresh = run
+        .streams
+        .get(&recycle.fresh_stream)
+        .filter(|state| {
+            state.total_molar_flow_mol_s.is_finite() && state.total_molar_flow_mol_s > 0.0
+        })
+        .cloned()
+        .ok_or_else(inlet_error)?;
+    let (fresh_total, block_scale) = if let Some(global) = serial_global_scale {
+        let total = fresh.total_molar_flow_mol_s;
+        (
+            total,
+            MaterialScale::Region {
+                global,
+                total,
+                inlet: &recycle.fresh_stream,
+            },
         )
-        .with_related_stream_id(fresh.id.clone()));
-    }
-    let fresh = fresh.clone();
-    // Only the evaluated Feed outputs contribute to the global scale.
-    let fresh_total = plan
-        .connections
-        .iter()
-        .filter(|c| plan.flow.units[&c.source.unit_id].kind == "feed")
-        .map(|c| run.streams[&c.stream_id].total_molar_flow_mol_s)
-        .sum::<f64>();
-    if !fresh_total.is_finite() || fresh_total <= 0.0 {
-        return Err(failure(
-            "fresh_total",
-            "positive finite evaluated Feed total required",
-        ));
-    }
+    } else {
+        let total = evaluated_feed_total(plan, &run.streams)?;
+        (total, MaterialScale::Legacy(total))
+    };
     let scales: BTreeMap<_, _> = components
         .iter()
         .cloned()
@@ -312,7 +502,7 @@ fn execute_recycle(
         )?;
         run.assumed_tear = Some(assumed);
         for block in cycle {
-            execute_block(run, plan, block, components, fresh_total, services, factory)?;
+            execute_block(run, plan, block, components, block_scale, services, factory)?;
         }
         let injected = run.assumed_tear.take().expect("sweep input");
         let consumed = run.blocks[completed_before..]
@@ -413,7 +603,7 @@ fn execute_block(
     plan: &MixedPlan,
     block: &MixedBlock,
     components: &[ComponentId],
-    fresh_scale: f64,
+    material_scale: MaterialScale<'_>,
     services: &crate::SolverServices<'_>,
     factory: &mut impl FnMut(
         &UnitNode,
@@ -555,11 +745,7 @@ fn execute_block(
             .iter()
             .map(|s| s.total_molar_flow_mol_s)
             .sum::<f64>();
-        let scale = if input_total > 0.0 {
-            input_total
-        } else {
-            fresh_scale
-        };
+        let scale = material_scale.unit(input_total);
         let scales = components.iter().cloned().map(|c| (c, scale)).collect();
         if unit.kind == "feed" {
             let expected = rf_unitops::catalog::effective_feed_boundary(unit, &flow.streams)?;
@@ -614,11 +800,7 @@ fn execute_block(
             .values()
             .map(|s| s.total_molar_flow_mol_s)
             .sum::<f64>();
-        let total = if incoming_total > 0.0 {
-            incoming_total
-        } else {
-            fresh_scale
-        };
+        let total = material_scale.boundary(&connection.stream_id, incoming_total);
         if !total.is_finite() || total <= 0.0 {
             return Err(failure("zero_scale", "boundary total must be positive"));
         }

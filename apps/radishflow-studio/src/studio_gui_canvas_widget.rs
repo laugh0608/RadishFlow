@@ -2,9 +2,7 @@ use crate::{
     StudioGuiCanvasPlaceUnitKind, StudioGuiCanvasPresentation, StudioGuiCanvasState,
     StudioGuiEvent, StudioGuiShortcut, StudioGuiShortcutKey, StudioGuiShortcutModifier,
     studio_stream_reconnect_presentation::{
-        StudioStreamReconnectAvailability, StudioStreamReconnectMissingSide,
-        stream_reconnect_already_connected, stream_reconnect_from_candidates,
-        stream_reconnect_missing_endpoint,
+        StudioStreamReconnectAvailability, stream_reconnect_availability,
     },
 };
 
@@ -149,9 +147,11 @@ impl StudioGuiCanvasWidgetModel {
         let selected_stream_disconnect = selected_stream.map(|selection| {
             stream_disconnect_availability(&presentation.view, selection.target_id.as_str())
         });
-        let selected_stream_reconnect = selected_stream.map(|selection| {
-            stream_reconnect_availability(&presentation.view, selection.target_id.as_str())
-        });
+        let selected_stream_reconnect = selected_stream
+            .zip(state.selected_stream_reconnect.as_ref())
+            .map(|(selection, options)| {
+                stream_reconnect_availability(selection.target_id.as_str(), options)
+            });
         let selected_stream_source_disconnect = selected_stream.map(|selection| {
             stream_endpoint_disconnect_availability(
                 &presentation.view,
@@ -323,12 +323,10 @@ impl StudioGuiCanvasWidgetModel {
             (Some(selection), Some(availability)) => {
                 availability.action_detail(selection.target_id.as_str())
             }
-            (None, None) => {
+            _ => {
                 "Reconnect selected stream; select a source-only or sink-only material stream first."
                     .to_string()
             }
-            (Some(_), None) => unreachable!("selected stream should have reconnect availability"),
-            (None, Some(_)) => unreachable!("reconnect availability requires a selected stream"),
         };
         actions.push(StudioGuiCanvasRenderableAction {
             id: StudioGuiCanvasActionId::ReconnectSelectedStream,
@@ -649,148 +647,6 @@ impl StreamEndpointDisconnectTarget {
             Self::Sink => stream.sink.as_ref(),
         }
     }
-}
-
-fn stream_reconnect_availability(
-    view: &crate::StudioGuiCanvasViewModel,
-    stream_id: &str,
-) -> StudioStreamReconnectAvailability {
-    let Some(stream) = view
-        .stream_lines
-        .iter()
-        .find(|stream| stream.stream_id == stream_id)
-    else {
-        return crate::studio_stream_reconnect_presentation::stream_reconnect_missing_stream();
-    };
-    match (stream.source.as_ref(), stream.sink.as_ref()) {
-        (Some(source), None) => {
-            let candidate_inlets = view
-                .unit_blocks
-                .iter()
-                .filter(|unit| unit.unit_id != source.unit_id)
-                .flat_map(|unit| {
-                    unit.ports
-                        .iter()
-                        .filter(|port| {
-                            port.kind_label == "material"
-                                && port.direction_label == "inlet"
-                                && port.stream_id.is_none()
-                        })
-                        .map(|port| {
-                            (
-                                format!("{}:{}", unit.unit_id, port.name),
-                                canvas_would_create_unit_dependency_cycle(
-                                    view,
-                                    &source.unit_id,
-                                    &unit.unit_id,
-                                ),
-                            )
-                        })
-                })
-                .collect::<Vec<_>>();
-            stream_reconnect_from_canvas_candidates(
-                stream_id,
-                StudioStreamReconnectMissingSide::Sink,
-                candidate_inlets,
-            )
-        }
-        (None, Some(sink)) => {
-            let candidate_outlets = view
-                .unit_blocks
-                .iter()
-                .filter(|unit| unit.unit_id != sink.unit_id)
-                .flat_map(|unit| {
-                    unit.ports
-                        .iter()
-                        .filter(|port| {
-                            port.kind_label == "material"
-                                && port.direction_label == "outlet"
-                                && port.stream_id.is_none()
-                        })
-                        .map(|port| {
-                            (
-                                format!("{}:{}", unit.unit_id, port.name),
-                                canvas_would_create_unit_dependency_cycle(
-                                    view,
-                                    &unit.unit_id,
-                                    &sink.unit_id,
-                                ),
-                            )
-                        })
-                })
-                .collect::<Vec<_>>();
-            stream_reconnect_from_canvas_candidates(
-                stream_id,
-                StudioStreamReconnectMissingSide::Source,
-                candidate_outlets,
-            )
-        }
-        (Some(_), Some(sink)) => stream_reconnect_already_connected(endpoint_label(sink)),
-        (None, None) => stream_reconnect_missing_endpoint(),
-    }
-}
-
-fn stream_reconnect_from_canvas_candidates(
-    stream_id: &str,
-    missing_side: StudioStreamReconnectMissingSide,
-    candidates: Vec<(String, bool)>,
-) -> StudioStreamReconnectAvailability {
-    let candidate_count = candidates.len();
-    let cycle_blocked_count = candidates
-        .iter()
-        .filter(|(_, would_create_cycle)| *would_create_cycle)
-        .count();
-    let available_targets = candidates
-        .into_iter()
-        .filter_map(|(label, would_create_cycle)| (!would_create_cycle).then_some(label))
-        .collect::<Vec<_>>();
-    stream_reconnect_from_candidates(
-        stream_id,
-        missing_side,
-        candidate_count,
-        cycle_blocked_count,
-        available_targets,
-    )
-}
-
-fn canvas_would_create_unit_dependency_cycle(
-    view: &crate::StudioGuiCanvasViewModel,
-    source_unit_id: &str,
-    sink_unit_id: &str,
-) -> bool {
-    if source_unit_id == sink_unit_id {
-        return true;
-    }
-
-    let mut downstream_units = std::collections::BTreeMap::<String, Vec<String>>::new();
-    for stream in &view.stream_lines {
-        let Some(source) = stream.source.as_ref() else {
-            continue;
-        };
-        let Some(sink) = stream.sink.as_ref() else {
-            continue;
-        };
-        downstream_units
-            .entry(source.unit_id.clone())
-            .or_default()
-            .push(sink.unit_id.clone());
-    }
-
-    let mut stack = vec![sink_unit_id.to_string()];
-    let mut visited = std::collections::BTreeSet::new();
-    while let Some(unit_id) = stack.pop() {
-        if !visited.insert(unit_id.clone()) {
-            continue;
-        }
-        if unit_id == source_unit_id {
-            return true;
-        }
-        if let Some(children) = downstream_units.get(&unit_id) {
-            stack.extend(children.iter().cloned());
-        }
-    }
-
-    false
 }
 
 fn endpoint_label(endpoint: &crate::StudioGuiCanvasStreamLineEndpointViewModel) -> String {

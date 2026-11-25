@@ -50,12 +50,16 @@ pub(super) fn synced_workspace_config() -> StudioRuntimeConfig {
 }
 
 fn blank_workspace_config() -> (StudioRuntimeConfig, PathBuf) {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let sequence = NEXT.fetch_add(1, Ordering::Relaxed);
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("expected current timestamp")
         .as_nanos();
     let project_path = std::env::temp_dir().join(format!(
-        "radishflow-studio-shell-blank-project-{timestamp}.rfproj.json"
+        "radishflow-studio-shell-blank-project-{}-{timestamp}-{sequence}.rfproj.json",
+        std::process::id()
     ));
     let project = StoredProjectFile::new(
         rf_model::Flowsheet::new("Blank Project"),
@@ -181,10 +185,12 @@ mod canvas;
 mod canvas_navigation;
 mod command_palette;
 mod command_surface;
+mod component_catalog;
 mod failure_recovery_lifecycle;
 mod failure_recovery_navigation;
 mod platform_shortcuts;
 mod project_lifecycle;
+pub(super) mod reconnect_picker;
 mod result_export;
 mod result_review;
 mod runtime;
@@ -613,6 +619,28 @@ fn save_project_with_upgrade_consent(app: &mut ReadyAppState) {
     if app.pending_format_upgrade.is_some() {
         app.confirm_format_upgrade();
     }
+}
+
+fn rendered_text_rects(output: &egui::FullOutput) -> Vec<(String, egui::Rect)> {
+    fn collect(shape: &egui::epaint::Shape, text: &mut Vec<(String, egui::Rect)>) {
+        match shape {
+            egui::epaint::Shape::Vec(shapes) => {
+                for shape in shapes {
+                    collect(shape, text);
+                }
+            }
+            egui::epaint::Shape::Text(shape) => text.push((
+                shape.galley.job.text.clone(),
+                shape.galley.rect.translate(shape.pos.to_vec2()),
+            )),
+            _ => {}
+        }
+    }
+    let mut text = Vec::new();
+    for shape in &output.shapes {
+        collect(&shape.shape, &mut text);
+    }
+    text
 }
 
 pub(super) fn ready_app_state(config: &StudioRuntimeConfig) -> ReadyAppState {
