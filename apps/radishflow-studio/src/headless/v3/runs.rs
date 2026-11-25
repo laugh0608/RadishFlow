@@ -390,6 +390,7 @@ fn cancellation(reason: crate::WorkspaceRunCancelReason) -> Value {
         QualificationChanged => json!({"reason":"qualification_changed"}),
         Authorization(e) => json!({"reason":"authorization","details":authorization(e)}),
         Detached => json!({"reason":"detached"}),
+        ObservationUnavailable => json!({"reason":"observation_unavailable"}),
         Closing => json!({"reason":"closing"}),
     }
 }

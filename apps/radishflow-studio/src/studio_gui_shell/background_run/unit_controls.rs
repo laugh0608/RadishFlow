@@ -21,6 +21,7 @@ fn commands(target: &StudioRunActivity) -> Vec<UnitRunCommand> {
         Some(UnitRunControl {
             phase: UnitRunPhase::Running,
             last_released,
+            ..
         }) => vec![UnitRunCommand::Pause {
             last_released: *last_released,
         }],
@@ -121,7 +122,23 @@ impl ReadyAppState {
             return None;
         }
         let zh = self.locale == StudioShellLocale::ZhCn;
-        Some(match &target.unit_control.as_ref()?.phase {
+        let control = target.unit_control.as_ref()?;
+        if control.observation.as_ref().is_some_and(|watch| {
+            matches!(
+                watch.reading,
+                radishflow_studio::outlet_temperature::TemperatureReading::Unavailable { .. }
+            )
+        }) {
+            return Some(
+                if zh {
+                    "监视值不可用 · 正在终止本次运行"
+                } else {
+                    "Monitored value unavailable · terminating this run"
+                }
+                .into(),
+            );
+        }
+        Some(match &control.phase {
             UnitRunPhase::PauseRequested => if zh {
                 "正在暂停 · 等待单元边界"
             } else {

@@ -278,6 +278,9 @@ impl ReadyAppState {
                     .wrap()
                     .sense(egui::Sense::focusable_noninteractive()))
             }).inner;
+            if let Some(watch) = activity.unit_control.as_ref().and_then(|c| c.observation.as_ref()) {
+                ui.small(temperature_watch::observation_text(watch, false, zh));
+            }
             let position = activity.unit_control.as_ref().map(|c| c.last_released);
             ui.push_id(("activity-actions", activity.number, position, paused), |ui| ui.horizontal_wrapped(|ui| {
                 if !paused {
@@ -348,7 +351,7 @@ impl ReadyAppState {
             rf_ui::RunPanelActionId::RunManual | rf_ui::RunPanelActionId::Resume
         ) || self.can_start_background_flow()
     }
-    fn can_start_background_flow(&self) -> bool {
+    pub(super) fn can_start_background_flow(&self) -> bool {
         self.read_only_project.is_none()
             && !self.background_busy()
             && !self.modular_plan_draft_pending()
@@ -536,6 +539,18 @@ impl ReadyAppState {
                         "计算失败"
                     } else {
                         "Calculation failed"
+                    }
+                }
+                StudioRunOutcome::Cancelled
+                    if summary.cancellation
+                        == Some(
+                            radishflow_studio::WorkspaceRunCancelReason::ObservationUnavailable,
+                        ) =>
+                {
+                    if zh {
+                        "运行已终止"
+                    } else {
+                        "Run terminated"
                     }
                 }
                 StudioRunOutcome::Cancelled => {
@@ -736,6 +751,8 @@ pub(super) fn cancellation_text(
     use radishflow_studio::{RunAuthorizationRefusal, WorkspaceRunCancelReason as Reason};
     let zh = locale == StudioShellLocale::ZhCn;
     match (zh, reason) {
+        (true, Reason::ObservationUnavailable) => "运行已终止 · 监视值不可用",
+        (false, Reason::ObservationUnavailable) => "Run terminated · monitored value unavailable",
         (true, Reason::UserRequested) => "用户取消",
         (false, Reason::UserRequested) => "Cancelled by user",
         (true, Reason::QualificationChanged) => "输入或结果资格已变化",

@@ -9,7 +9,7 @@
 不包含：完整调试器、具体持久化 schema、任意脚本执行、工程算法、完整报告及远端审计服务。
 
 - 层级：一级轨道；上位为 [平台规划](../architecture/simulation-platform.md)，阶段顺序见 [路线图](../radishflow-mvp-roadmap.md#运行消息与诊断的配套切片)。
-- 状态：Draft / 2026-09-23 方案已确认；N0 设计衔接 U2 / V0 / R0—R1；N1 的 A1 / A2 子集、AF3 后台 / 取消与 AF4b 运行回执已实现；Studio 无回路稳态已接通 N2 步骤审阅和 [N3 暂停／单步](runtime-messages/scenarios-and-acceptance.md#n3-无回路稳态首批验收)。完整 N1 与条件监视待续。
+- 状态：Draft / 2026-09-23 方案已确认；N0 设计衔接 U2 / V0 / R0—R1；N1 的 A1 / A2 子集、AF3 后台 / 取消与 AF4b 运行回执已实现；Studio 无回路稳态已接通 N2 步骤审阅和 [N3 暂停／单步](runtime-messages/scenarios-and-acceptance.md#n3-无回路稳态首批验收)，以及 [N4 单出口温度监视](runtime-messages/scenarios-and-acceptance.md#n4-出口温度监视首批验收)。完整 N1 与循环残差观察待续。
 - 本专题拥有消息生命周期、执行追踪、停止语义与跨消费者一致性；[结果专题](results-review-diagnostics.md) 拥有结果有效性、工程检查与输出，[辅助专题](modeling-assistance-and-specifications.md) 拥有规则 / 建议，[颜色与状态专题](color-and-state-system.md) 拥有呈现映射，[UI 计划](../architecture/studio-ui-topic-plan.md) 拥有布局与画板。
 
 ## 目标与当前基础

@@ -69,6 +69,7 @@ pub(super) struct WorkerChannels {
 pub(super) struct WorkerControl {
     units: Option<Arc<UnitControlGate>>,
     id: FlowRunId,
+    watching_temperature: bool,
     cancel: Arc<AtomicBool>,
     progress: Arc<Mutex<Option<WorkspaceRunProgress>>>,
     sequence: u64,
@@ -104,6 +105,7 @@ impl WorkerChannels {
                 cancel,
                 progress,
                 sequence: 0,
+                watching_temperature: false,
                 ready: ready_tx,
                 start: start_rx,
                 trace: record_trace.then(|| Box::new(TraceRecorder::new())),
@@ -161,10 +163,22 @@ impl SolverControl for WorkerControl {
                     .expect("unit entry has a target"),
             )?;
         }
+        if self.watching_temperature
+            && progress.stage == rf_solver::SolveStage::Completing
+            && let Some(gate) = &self.units
+        {
+            gate.completing()?;
+        }
         self.emit(WorkspaceSolveProgress::Solving(progress))
     }
 
     fn observe_sequential(&mut self, event: SequentialExecutionEvent<'_>) {
+        if self.watching_temperature
+            && let Some(gate) = &self.units
+            && gate.observe(&event)
+        {
+            self.cancel.store(true, Ordering::Release);
+        }
         if let Some(trace) = &mut self.trace {
             trace.observe(event);
         }
@@ -223,6 +237,10 @@ impl WorkspaceSolveControl for WorkerControl {
             infrastructure_error("start_disconnected", "run owner disconnected during Ready")
         })?;
         Ok(if allowed && !self.cancel.load(Ordering::Acquire) {
+            self.watching_temperature = self
+                .units
+                .as_ref()
+                .is_some_and(|gate| gate.snapshot().observation.is_some());
             if let Some(trace) = &mut self.trace {
                 trace.phase(WorkspaceTracePhase::Started);
             }

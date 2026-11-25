@@ -42,6 +42,7 @@ pub use result_review::{
     EquipmentResultGuard, FlowResultGuard, FlowResultReview, equipment_origin_lines,
     flow_origin_lines,
 };
+pub mod outlet_temperature;
 mod run_panel_driver;
 mod solver_bridge;
 mod studio_app_host;

@@ -71,6 +71,7 @@ pub enum WorkspaceRunPhase {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkspaceRunCancelReason {
+    ObservationUnavailable,
     UserRequested,
     QualificationChanged,
     Authorization(RunAuthorizationRefusal),
@@ -98,6 +99,7 @@ pub struct WorkspaceRunState {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceRunSummary {
+    pub observation: Option<crate::outlet_temperature::TemperatureObservation>,
     pub run_id: FlowRunId,
     pub qualification: FlowExecutionQualification,
     pub trace: WorkspaceTraceRecord,
@@ -349,6 +351,7 @@ impl WorkspaceRunOwner {
                 );
                 let disposition = complete_background_workspace_solve(app, &mut completion);
                 self.record_summary(WorkspaceRunSummary {
+                    observation: None,
                     run_id: id,
                     qualification,
                     object_identities_enabled,
@@ -389,6 +392,25 @@ impl WorkspaceRunOwner {
             progress_sequence: 0,
         }));
         Ok(WorkspaceRunSubmission::Accepted(id))
+    }
+
+    pub(crate) fn arm_new_temperature_condition(
+        &self,
+        id: &FlowRunId,
+        condition: crate::outlet_temperature::TemperatureCondition,
+    ) {
+        let active = self.active.as_ref().expect("newly accepted flow");
+        assert_eq!(active.receipt.run_id(), id);
+        assert!(
+            active.started_at.is_none(),
+            "condition must be frozen before Ready grant"
+        );
+        active
+            .channels
+            .units
+            .as_ref()
+            .expect("acyclic Studio run")
+            .arm(condition);
     }
 
     pub fn control_units(
@@ -588,11 +610,33 @@ impl WorkspaceRunOwner {
                 ),
             ),
         };
+        let observation = active
+            .channels
+            .units
+            .as_ref()
+            .and_then(|gate| gate.snapshot().observation);
+        // The gate cannot sample after cancellation. A stored failure therefore
+        // precedes any user cancellation received while its terminal was in transit.
+        if matches!(
+            active.cancel_reason,
+            None | Some(WorkspaceRunCancelReason::UserRequested)
+        ) && observation.as_ref().is_some_and(|watch| {
+            matches!(
+                watch.reading,
+                crate::outlet_temperature::TemperatureReading::Unavailable { .. }
+            )
+        }) {
+            active.cancel_reason = Some(WorkspaceRunCancelReason::ObservationUnavailable);
+            if let Some(app) = app.as_deref_mut() {
+                app.workspace.revoke_flow_run(completion.run_id());
+            }
+        }
         let disposition = match app {
             Some(app) => complete_background_workspace_solve(app, &mut completion),
             None => FlowRunDisposition::Discarded(FlowRunDiscardReason::DifferentSession),
         };
         let summary = WorkspaceRunSummary {
+            observation,
             run_id: completion.run_id().clone(),
             qualification,
             object_identities_enabled: active.object_identities_enabled,
@@ -609,10 +653,16 @@ impl WorkspaceRunOwner {
             outcome: completion.execution_outcome(),
             disposition,
             cancellation: active.cancel_reason,
-            diagnostic_code: completion
-                .completion_result()
-                .err()
-                .and_then(|error| error.context().diagnostic_code().map(str::to_owned)),
+            diagnostic_code: if active.cancel_reason
+                == Some(WorkspaceRunCancelReason::ObservationUnavailable)
+            {
+                Some("workspace.run.observation_unavailable".into())
+            } else {
+                completion
+                    .completion_result()
+                    .err()
+                    .and_then(|error| error.context().diagnostic_code().map(str::to_owned))
+            },
             mixed_diagnostic: completion
                 .mixed_failure_evidence()
                 .cloned()

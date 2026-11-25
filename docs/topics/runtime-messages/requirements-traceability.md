@@ -36,9 +36,9 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 | MSG-11 | [安全暂停与能力](run-control-and-watch-conditions.md) | N3 | S-11 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
 | MSG-12 | [单步、继续与取消](run-control-and-watch-conditions.md) | N3 | S-12 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
 | MSG-13 | [编辑、退出与迟到隔离](run-control-and-watch-conditions.md) | N3 | S-13 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
-| MSG-14 | [条件量与单位](run-control-and-watch-conditions.md) | N4 | S-14 | [出口温度首批判据](scenarios-and-acceptance.md#n4-出口温度监视首批验收)已确认，局部交互待评审，产品待实现 / 待验证 |
-| MSG-15 | [无效条件与缺值](run-control-and-watch-conditions.md) | N4 | S-15 | [出口温度首批判据](scenarios-and-acceptance.md#n4-出口温度监视首批验收)已确认，局部交互待评审，产品待实现 / 待验证 |
-| MSG-16 | [求值、重新武装与采样](run-control-and-watch-conditions.md) | N4 | S-16 | [出口温度首批判据](scenarios-and-acceptance.md#n4-出口温度监视首批验收)已确认，局部交互待评审，产品待实现 / 待验证 |
+| MSG-14 | [条件量与单位](run-control-and-watch-conditions.md) | N4 | S-14 | 部分实现 / 部分通过，见[无回路单出口温度验收](scenarios-and-acceptance.md#n4-出口温度监视首批验收) |
+| MSG-15 | [无效条件与缺值](run-control-and-watch-conditions.md) | N4 | S-15 | 部分实现 / 部分通过，见[无回路单出口温度验收](scenarios-and-acceptance.md#n4-出口温度监视首批验收) |
+| MSG-16 | [求值、重新武装与采样](run-control-and-watch-conditions.md) | N4 | S-16 | 部分实现 / 部分通过，见[无回路单出口温度验收](scenarios-and-acceptance.md#n4-出口温度监视首批验收) |
 | MSG-17 | [动态、回放与检查点](run-control-and-watch-conditions.md) | N5 | S-17 | 待实现 / 待验证；— |
 | MSG-18 | [双区与多处联动](diagnostic-workbench-and-navigation.md) | N0 / N1 / N2 | S-18 | 待实现 / 待验证；— |
 | MSG-19 | [定位、修复与草稿](diagnostic-workbench-and-navigation.md) | N1 | S-19 | 部分实现 / 部分通过；字段 / 端口定位与草稿返回，见下方 A1 证据；A2-I1—I3 首批动作、预览 / 草稿保护与共享入口已接通，自动 / macOS 代表验收通过，完整 N1 与 I5 未核销 |

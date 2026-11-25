@@ -907,3 +907,153 @@ fn single_phase_rejects_first_stop_and_its_normal_run_has_no_unit_controls() {
             .applied
     );
 }
+
+#[test]
+fn guarded_temperature_start_rejects_stale_and_readonly_and_leaves_an_ordinary_run_alone() {
+    use radishflow_studio::{
+        flow_actions::FlowEditContext,
+        outlet_temperature::*,
+        run_actions::{StudioRunAccess, StudioRunReply},
+    };
+    let mut app = flow_app();
+    let workspace = &app.platform_host.modeling_inputs().workspace;
+    let expected = FlowEditContext::capture(workspace);
+    let condition = TemperatureCondition {
+        expected: workspace.flow_execution_qualification(),
+        outlet: MaterialOutlet::connected(&workspace.document.flowsheet)
+            .next()
+            .unwrap(),
+        threshold: TemperatureThreshold::parse("1", rf_types::units::MeasurementUnit::Kelvin)
+            .unwrap(),
+    };
+    let action = |access, condition| Action::StartWithTemperatureCondition {
+        expected: expected.clone(),
+        access,
+        condition,
+    };
+    let denied = app
+        .platform_host
+        .background_run_action(action(StudioRunAccess::ReadOnly, condition.clone()))
+        .unwrap();
+    assert!(matches!(
+        denied.submission,
+        Some(StudioRunReply::Blocked(_))
+    ));
+    assert!(!app.background_busy());
+    let mut reconnected = condition.clone();
+    reconnected.outlet.stream = "reconnected".into();
+    assert!(
+        app.platform_host
+            .background_run_action(action(StudioRunAccess::Allowed, reconnected))
+            .is_err()
+    );
+    let ordinary = start_flow(&mut app);
+    let duplicate = app
+        .platform_host
+        .background_run_action(action(StudioRunAccess::Allowed, condition.clone()))
+        .unwrap();
+    assert!(
+        matches!(duplicate.submission, Some(StudioRunReply::AlreadyRunning(id)) if id == ordinary.id)
+    );
+    assert!(
+        app.background_runs
+            .as_ref()
+            .unwrap()
+            .borrow()
+            .activity()
+            .unwrap()
+            .unit_control
+            .unwrap()
+            .observation
+            .is_none()
+    );
+    drain(&mut app);
+    commit_pressure(&mut app, "500000");
+    assert!(
+        app.platform_host
+            .background_run_action(action(StudioRunAccess::Allowed, condition.clone()))
+            .is_err()
+    );
+    app.dispatch_ui_command("edit.undo");
+    assert!(
+        app.platform_host
+            .background_run_action(action(StudioRunAccess::Allowed, condition))
+            .is_err()
+    );
+    assert!(!app.background_busy());
+}
+
+#[test]
+fn watched_stop_and_next_rule_fit_the_narrow_run_page_in_both_languages() {
+    use super::runtime::{assert_horizontal_fit, collect_shape_texts};
+    use radishflow_studio::{
+        flow_actions::FlowEditContext, outlet_temperature::*, run_actions::StudioRunAccess,
+    };
+    let mut app = flow_app();
+    let workspace = &app.platform_host.modeling_inputs().workspace;
+    let outlet = MaterialOutlet::connected(&workspace.document.flowsheet)
+        .find(|o| o.stream.as_str() == "stream-feed")
+        .unwrap();
+    let condition = TemperatureCondition {
+        expected: workspace.flow_execution_qualification(),
+        outlet,
+        threshold: TemperatureThreshold::parse("1", rf_types::units::MeasurementUnit::Kelvin)
+            .unwrap(),
+    };
+    let action = Action::StartWithTemperatureCondition {
+        expected: FlowEditContext::capture(workspace),
+        access: StudioRunAccess::Allowed,
+        condition,
+    };
+    app.background_action(action);
+    let activity = wait_for_unit(&mut app, 2);
+    for locale in [StudioShellLocale::ZhCn, StudioShellLocale::En] {
+        app.locale = locale;
+        let ctx = egui::Context::default();
+        fonts::configure_studio_fonts(&ctx);
+        ctx.style_mut(|style| {
+            for font in style.text_styles.values_mut() {
+                font.size = 20.;
+            }
+        });
+        let frame = |app: &mut ReadyAppState| {
+            ctx.run(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(400., 900.),
+                    )),
+                    ..Default::default()
+                },
+                |ctx| {
+                    app.render_background_activity(ctx);
+                    egui::CentralPanel::default().show(ctx, |ui| app.render_temperature_watch(ui));
+                },
+            )
+        };
+        frame(&mut app);
+        let mut texts = Vec::new();
+        for shape in frame(&mut app).shapes {
+            assert_horizontal_fit(
+                &shape.shape,
+                shape.clip_rect,
+                "narrow temperature condition",
+            );
+            collect_shape_texts(&shape.shape, &mut texts);
+        }
+        let text = texts.join(" ");
+        for term in [
+            "stream-feed",
+            "1 K",
+            if locale == StudioShellLocale::ZhCn {
+                "按此条件运行"
+            } else {
+                "Run with this condition"
+            },
+        ] {
+            assert!(text.contains(term), "{term} absent: {text}");
+        }
+    }
+    app.background_action(Action::Cancel(activity.id));
+    drain(&mut app);
+}

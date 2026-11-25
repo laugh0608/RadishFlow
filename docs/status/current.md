@@ -68,7 +68,7 @@
 
 - [装置工程与数字孪生](../architecture/simulation-platform.md#装置工程与数字孪生愿景) 按 DT0—DT4 分期，未因本轮架构梳理启动实施。
 
-- 无回路稳态 N2／N3 已通过 macOS Mixer 验收。N4 出口温度监视行为已确认，[局部交互稿](../architecture/designs/reviews/2026-11-25-studio-n4-outlet-temperature/README.md)待评审。
+- 无回路稳态 N2／N3 与 N4 单出口温度监视已通过 macOS Mixer 验收。循环残差判据待 D-03 评审。[N4 验收](../topics/runtime-messages/scenarios-and-acceptance.md#n4-出口温度监视首批验收)
 
 ### 后续事项
 

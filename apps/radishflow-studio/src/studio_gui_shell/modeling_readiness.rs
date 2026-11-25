@@ -52,7 +52,10 @@ impl ReadyAppState {
     pub(super) fn intercept_modeling_readiness_run_if_needed(&mut self, command_id: &str) -> bool {
         if !matches!(
             command_id,
-            "run_panel.run_manual" | background_run::START_PAUSED | "run_panel.resume_workspace"
+            "run_panel.run_manual"
+                | background_run::START_PAUSED
+                | temperature_watch::START
+                | "run_panel.resume_workspace"
         ) {
             return false;
         }

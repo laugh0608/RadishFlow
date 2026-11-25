@@ -133,6 +133,9 @@ impl ReadyAppState {
                 },
             );
         });
+        if editable && self.background_runs.is_some() && current == FlowPlanConfiguration::Acyclic {
+            self.render_temperature_watch(ui);
+        }
         self.render_feed_package_problem_entry(ui);
         if applied_recycle {
             ui.small(tr(

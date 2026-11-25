@@ -114,8 +114,12 @@ fn tr(locale: StudioShellLocale, zh: &'static str, en: &'static str) -> &'static
     }
 }
 
-fn outcome_label(locale: StudioShellLocale, outcome: WorkspaceExecutionOutcome) -> &'static str {
-    match outcome {
+fn outcome_label(locale: StudioShellLocale, run: &WorkspaceRunSummary) -> &'static str {
+    if run.cancellation == Some(radishflow_studio::WorkspaceRunCancelReason::ObservationUnavailable)
+    {
+        return tr(locale, "运行已终止", "Run terminated");
+    }
+    match run.outcome {
         WorkspaceExecutionOutcome::Succeeded => tr(locale, "已完成", "Completed"),
         WorkspaceExecutionOutcome::Failed => tr(locale, "失败", "Failed"),
         WorkspaceExecutionOutcome::Cancelled => tr(locale, "已取消", "Cancelled"),
@@ -262,9 +266,7 @@ impl ReadyAppState {
                 let label = tr(locale, "查看运行", "Review run");
                 let options = runs
                     .iter()
-                    .map(|(number, run)| {
-                        format!("#{number} · {}", outcome_label(locale, run.outcome))
-                    })
+                    .map(|(number, run)| format!("#{number} · {}", outcome_label(locale, run)))
                     .collect::<Vec<_>>();
                 let choices = options
                     .iter()
@@ -313,6 +315,21 @@ impl ReadyAppState {
             }
         });
         if let Some(activity) = &active {
+            if let Some(watch) = activity
+                .unit_control
+                .as_ref()
+                .and_then(|c| c.observation.as_ref())
+            {
+                ui.label(format!(
+                    "#{} · {}",
+                    activity.number,
+                    temperature_watch::observation_text(
+                        watch,
+                        false,
+                        locale == StudioShellLocale::ZhCn
+                    )
+                ));
+            }
             if let Some(status) = self.unit_control_status(activity) {
                 ui.small(format!("#{} · {status}", activity.number));
             } else {
@@ -336,7 +353,7 @@ impl ReadyAppState {
                 tr(locale, "输入修订", "Input revision"),
                 run.qualification.input.revision()
             ));
-            ui.label(outcome_label(locale, run.outcome));
+            ui.label(outcome_label(locale, run));
             ui.small(match (run.outcome, run.disposition) {
                 (_, FlowRunDisposition::Discarded(_)) => {
                     tr(locale, "结果未接收", "Result not accepted")
@@ -350,6 +367,21 @@ impl ReadyAppState {
                 _ => tr(locale, "已接收失败诊断", "Failure diagnostic accepted"),
             });
         });
+        if let Some(watch) = &run.observation {
+            ui.label(format!(
+                "#{display_number} · {}",
+                temperature_watch::observation_text(watch, true, locale == StudioShellLocale::ZhCn)
+            ));
+            if matches!(
+                watch.reading,
+                radishflow_studio::outlet_temperature::TemperatureReading::Unavailable { .. }
+            ) && ui
+                .button(tr(locale, "检查条件", "Review condition"))
+                .clicked()
+            {
+                self.review_temperature_condition();
+            }
+        }
         if let Some(reason) = run.cancellation {
             ui.small(super::background_run::cancellation_text(locale, reason));
         }

@@ -1186,4 +1186,5 @@ mod mixed_recycle;
 mod serial_recycle;
 mod simultaneous;
 
+mod outlet_temperature;
 mod unit_control;

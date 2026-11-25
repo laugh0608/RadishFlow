@@ -326,6 +326,17 @@ impl StudioRunOwner {
         }
         Ok(StudioRunSubmission::Accepted(id))
     }
+    pub(crate) fn arm_new_temperature_condition(
+        &self,
+        id: &StudioRunId,
+        condition: crate::outlet_temperature::TemperatureCondition,
+    ) {
+        let StudioRunId::Flow(id) = id else {
+            unreachable!("accepted manual flow")
+        };
+        self.flow.arm_new_temperature_condition(id, condition);
+    }
+
     pub(crate) fn control_units(
         &mut self,
         app: &mut AppState,
@@ -642,6 +653,11 @@ pub enum StudioBackgroundRunAction {
     Install(SharedStudioRunOwner),
     Poll {
         attached: bool,
+    },
+    StartWithTemperatureCondition {
+        expected: crate::flow_actions::FlowEditContext,
+        access: crate::run_actions::StudioRunAccess,
+        condition: crate::outlet_temperature::TemperatureCondition,
     },
     StartAtFirstUnit {
         expected: crate::flow_actions::FlowEditContext,

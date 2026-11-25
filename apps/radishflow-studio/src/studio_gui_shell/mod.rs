@@ -62,6 +62,7 @@ mod result_review;
 mod result_table;
 mod state_presentation;
 mod stream_reconnect;
+mod temperature_watch;
 mod unit_deletion;
 mod unit_settings;
 mod utils;
@@ -168,6 +169,7 @@ struct ReadyAppState {
     equipment: equipment::EquipmentPageState,
     material: material_balance::MaterialPanelState,
     flow_plan: flow_plan::FlowPlanPanelState,
+    temperature_watch: temperature_watch::TemperatureWatchDraft,
     left_sidebar_tab: StudioShellLeftSidebarTab,
     reconnect_picker: Option<stream_reconnect::ReconnectPicker>,
     right_sidebar_tab: StudioShellRightSidebarTab,
@@ -514,6 +516,7 @@ impl ReadyAppState {
             execution_trace: execution_trace::ExecutionTraceView::default(),
             material: material_balance::MaterialPanelState::default(),
             flow_plan: flow_plan::FlowPlanPanelState::default(),
+            temperature_watch: Default::default(),
             platform_host,
             platform_timer_executor: EguiPlatformTimerExecutor::default(),
             command_palette: CommandPaletteState::default(),

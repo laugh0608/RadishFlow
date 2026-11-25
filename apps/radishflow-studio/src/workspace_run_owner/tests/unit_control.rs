@@ -140,6 +140,7 @@ fn paused_run_revalidates_immediately_and_all_departure_paths_wake_the_worker() 
         let id = start(&mut owner, &mut app);
         wait_at(&mut owner, &mut app, 1);
         match reason {
+            WorkspaceRunCancelReason::ObservationUnavailable => unreachable!(),
             WorkspaceRunCancelReason::QualificationChanged => rename(&mut app),
             WorkspaceRunCancelReason::Authorization(_) => app
                 .entitlement

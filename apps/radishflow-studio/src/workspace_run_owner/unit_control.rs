@@ -1,6 +1,9 @@
 use std::ops::ControlFlow;
 use std::sync::{Condvar, Mutex};
 
+use crate::outlet_temperature::{
+    TemperatureCondition, TemperatureObservation, TemperatureReading, UnavailableTemperature,
+};
 use rf_types::UnitId;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,6 +25,7 @@ pub struct UnitRunControl {
     /// The last released step. A unit entry can be released only once per run.
     pub last_released: usize,
     pub phase: UnitRunPhase,
+    pub observation: Option<TemperatureObservation>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,6 +57,7 @@ impl UnitControlGate {
         Self {
             state: Mutex::new(UnitRunControl {
                 last_released: 0,
+                observation: None,
                 phase: UnitRunPhase::Running,
             }),
             wake: Condvar::new(),
@@ -60,6 +65,59 @@ impl UnitControlGate {
     }
     pub fn snapshot(&self) -> UnitRunControl {
         self.state.lock().expect("unit control poisoned").clone()
+    }
+    pub fn arm(&self, condition: TemperatureCondition) {
+        let mut state = self.state.lock().expect("unit control poisoned");
+        assert!(state.observation.is_none(), "run condition already frozen");
+        state.observation = Some(TemperatureObservation::new(condition));
+    }
+
+    /// Returns true when the solver must stop at its next cancellation checkpoint.
+    pub fn observe(&self, event: &rf_solver::SequentialExecutionEvent<'_>) -> bool {
+        let mut state = self.state.lock().expect("unit control poisoned");
+        if state.phase == UnitRunPhase::Cancelling {
+            return true;
+        }
+        let Some(watch) = &mut state.observation else {
+            return false;
+        };
+        if watch.reading != TemperatureReading::Pending {
+            return false;
+        }
+        watch.observe(event);
+        match watch.reading {
+            TemperatureReading::Measured { step, actual }
+                if step < watch.total && actual > watch.condition.threshold.kelvin() =>
+            {
+                if state.phase == UnitRunPhase::Running {
+                    state.phase = UnitRunPhase::PauseRequested;
+                }
+                false
+            }
+            TemperatureReading::Unavailable { .. } => {
+                state.phase = UnitRunPhase::Cancelling;
+                true
+            }
+            _ => false,
+        }
+    }
+
+    pub fn completing(&self) -> ControlFlow<()> {
+        let mut state = self.state.lock().expect("unit control poisoned");
+        if state.phase == UnitRunPhase::Cancelling {
+            return ControlFlow::Break(());
+        }
+        if let Some(watch) = &mut state.observation
+            && watch.reading == TemperatureReading::Pending
+        {
+            watch.reading = TemperatureReading::Unavailable {
+                step: None,
+                reason: UnavailableTemperature::TargetNotReached,
+            };
+            state.phase = UnitRunPhase::Cancelling;
+            return ControlFlow::Break(());
+        }
+        ControlFlow::Continue(())
     }
     pub fn request(&self, command: UnitRunCommand) -> UnitControlReply {
         use UnitControlReply as Reply;

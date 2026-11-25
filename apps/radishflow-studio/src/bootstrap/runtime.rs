@@ -477,6 +477,75 @@ fn command_outcome_from_workspace_control(
 }
 
 impl BootstrapSession {
+    fn start_controlled_flow(
+        &mut self,
+        expected: crate::flow_actions::FlowEditContext,
+        access: crate::run_actions::StudioRunAccess,
+        condition: Option<crate::outlet_temperature::TemperatureCondition>,
+    ) -> RfResult<crate::StudioBackgroundRunReply> {
+        if condition
+            .as_ref()
+            .is_some_and(|condition| !condition.is_current(&self.app_state.workspace))
+        {
+            return Err(RfError::invalid_input(
+                "请重新选择当前流程的物料出口 / Reselect a connected material outlet for the current inputs",
+            ));
+        }
+        let Some(background) = self.facade.background.as_ref() else {
+            return Ok(crate::StudioBackgroundRunReply {
+                unit_control: Some(crate::UnitControlReply::Unsupported),
+                ..Default::default()
+            });
+        };
+        if self.app_state.workspace.flow_plan.current()
+            != &rf_ui::flow_plan::FlowPlanConfiguration::Acyclic
+        {
+            return Ok(crate::StudioBackgroundRunReply {
+                unit_control: Some(crate::UnitControlReply::Unsupported),
+                ..Default::default()
+            });
+        }
+        let context =
+            StudioAppAuthCacheContext::new(self.cache_root.path(), &self.auth_cache_index);
+        let submission = self.facade.execute_run_action(
+            &mut self.app_state,
+            &context,
+            access,
+            crate::run_actions::StudioRunRequest::Flow {
+                expected,
+                command: crate::WorkspaceRunCommand::new(
+                    crate::WorkspaceSolveTrigger::Manual,
+                    crate::WorkspaceRunPackageSelection::Preferred,
+                ),
+            },
+        );
+        // Only this UI thread can grant Ready. Arm the new run before returning
+        // to the event loop; duplicate submissions never change the active run.
+        let unit_control = if let crate::run_actions::StudioRunReply::Accepted(id) = &submission {
+            if let Some(condition) = condition {
+                background
+                    .owner
+                    .borrow()
+                    .arm_new_temperature_condition(id, condition);
+                Some(crate::UnitControlReply::Accepted)
+            } else {
+                Some(background.owner.borrow_mut().control_units(
+                    &mut self.app_state,
+                    id,
+                    crate::UnitRunCommand::Pause { last_released: 0 },
+                    SystemTime::now(),
+                ))
+            }
+        } else {
+            None
+        };
+        Ok(crate::StudioBackgroundRunReply {
+            changed: true,
+            submission: Some(submission),
+            unit_control,
+            ..Default::default()
+        })
+    }
     pub(crate) fn background_run_action(
         &mut self,
         action: crate::StudioBackgroundRunAction,
@@ -484,53 +553,14 @@ impl BootstrapSession {
         use crate::StudioBackgroundRunAction;
         match action {
             StudioBackgroundRunAction::StartAtFirstUnit { expected, access } => {
-                let Some(background) = self.facade.background.as_ref() else {
-                    return Ok(crate::StudioBackgroundRunReply {
-                        unit_control: Some(crate::UnitControlReply::Unsupported),
-                        ..Default::default()
-                    });
-                };
-                if self.app_state.workspace.flow_plan.current()
-                    != &rf_ui::flow_plan::FlowPlanConfiguration::Acyclic
-                {
-                    return Ok(crate::StudioBackgroundRunReply {
-                        unit_control: Some(crate::UnitControlReply::Unsupported),
-                        ..Default::default()
-                    });
-                }
-                let context =
-                    StudioAppAuthCacheContext::new(self.cache_root.path(), &self.auth_cache_index);
-                let submission = self.facade.execute_run_action(
-                    &mut self.app_state,
-                    &context,
-                    access,
-                    crate::run_actions::StudioRunRequest::Flow {
-                        expected,
-                        command: crate::WorkspaceRunCommand::new(
-                            crate::WorkspaceSolveTrigger::Manual,
-                            crate::WorkspaceRunPackageSelection::Preferred,
-                        ),
-                    },
-                );
-                // Only this UI thread can grant Ready. Arm the new run before returning
-                // to the event loop; duplicate submissions never change the active run.
-                let unit_control =
-                    if let crate::run_actions::StudioRunReply::Accepted(id) = &submission {
-                        Some(background.owner.borrow_mut().control_units(
-                            &mut self.app_state,
-                            id,
-                            crate::UnitRunCommand::Pause { last_released: 0 },
-                            SystemTime::now(),
-                        ))
-                    } else {
-                        None
-                    };
-                return Ok(crate::StudioBackgroundRunReply {
-                    changed: true,
-                    submission: Some(submission),
-                    unit_control,
-                    ..Default::default()
-                });
+                return self.start_controlled_flow(expected, access, None);
+            }
+            StudioBackgroundRunAction::StartWithTemperatureCondition {
+                expected,
+                access,
+                condition,
+            } => {
+                return self.start_controlled_flow(expected, access, Some(condition));
             }
             StudioBackgroundRunAction::AdoptEquationCandidate { access, preview } => {
                 let busy = self
@@ -716,6 +746,7 @@ impl BootstrapSession {
                 false
             }
             StudioBackgroundRunAction::AdoptEquationCandidate { .. }
+            | StudioBackgroundRunAction::StartWithTemperatureCondition { .. }
             | StudioBackgroundRunAction::StartAtFirstUnit { .. }
             | StudioBackgroundRunAction::ConfigureFlowPlan { .. }
             | StudioBackgroundRunAction::FlowPlanDraft { .. }

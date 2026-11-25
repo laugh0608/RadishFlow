@@ -759,6 +759,7 @@ impl ReadyAppState {
             command_id.as_str(),
             "run_panel.run_manual"
                 | background_run::START_PAUSED
+                | temperature_watch::START
                 | "run_panel.resume_workspace"
                 | "run_panel.set_active"
         ) && self.modular_plan_draft_pending()
@@ -771,6 +772,10 @@ impl ReadyAppState {
             return;
         }
         if self.intercept_modeling_readiness_run_if_needed(&command_id) {
+            return;
+        }
+        if command_id == temperature_watch::START {
+            self.start_temperature_watch();
             return;
         }
         if command_id == background_run::START_PAUSED {
