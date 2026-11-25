@@ -4,7 +4,7 @@
 
 ## 用途
 
-供维护者、用户和 Agent 查当前顺位、门禁与范围。[专题索引](../topics/README.md)连接各项设计与验收，长期规则见协作指南，历史证据见周志。
+当前顺位、门禁与范围见下文，设计与验收见[专题索引](../topics/README.md)。
 
 ## 当前结论
 
@@ -40,12 +40,14 @@
 
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
 - PR #20 已合入 `master` 并回灌 `dev`（`a26de5b2`）。
+- macOS Mixer 已验收 N2 步骤审阅、N3 单步与 N4 出口温度停点。
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
 - [QS4 M2](../topics/modeling/mixed-partition-execution.md)已验。[M3 串联回流](../topics/modeling/mixed-serial-recycle.md)已通过核心、v4、CLI v15 和 macOS Studio 验收。
 - macOS 已验收六类单元的重命名、删除与恢复，以及流股断开、唯一与多候选重连。Mixer 双向第二项的画布预览与重开绑定一致。[建模专题](../topics/flowsheet-modeling-and-solve.md)
 
 ### 下一步
 
+- [ ] [D-03 循环残差判据](../topics/runtime-messages/execution-trace-and-convergence.md#接下来事项)。对照回流收敛与预算耗尽，核对残差、缩放、容差和接收值。
 - [x] macOS 已验双流股端口对照及[组分查询、引用保护、重开与进料组分核对](../topics/property/component-catalog-and-selection.md)。
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
 - [x] [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存)已接通 CLI v14、Studio 只读与编辑。macOS 通过 40／50 mol/s、重跑失效、迟到回执、保存冲突与新会话复算验收。
@@ -67,8 +69,6 @@
 - [变量与对象浏览器 VB0—VB3](../topics/variable-and-object-browser.md) 的后续跨端覆盖衔接 AF4；已有变量读写不等于全部工程对象已覆盖。
 
 - [装置工程与数字孪生](../architecture/simulation-platform.md#装置工程与数字孪生愿景) 按 DT0—DT4 分期，未因本轮架构梳理启动实施。
-
-- 无回路稳态 N2／N3 与 N4 单出口温度监视已通过 macOS Mixer 验收。循环残差判据待 D-03 评审。[N4 验收](../topics/runtime-messages/scenarios-and-acceptance.md#n4-出口温度监视首批验收)
 
 ### 后续事项
 

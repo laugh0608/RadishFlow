@@ -24,15 +24,15 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 | 编号 | 要求 / 规范归属 | 切片 | 场景 | 实施 / 验证；代码与证据 |
 | --- | --- | --- | --- | --- |
 | MSG-01 | [消息分类与来源](message-model-and-lifecycle.md) | N0 / N1 | S-01 | 部分实现 / 部分通过；A1 规格问题与运行诊断来源分开，见下方 A1 证据 |
-| MSG-02 | [身份、关联与本地化](message-model-and-lifecycle.md) | N1 / N2 | S-02 | 部分实现 / 部分通过；A1 类型化问题键 / 双语，运行事件关联待续，见下方 A1 证据 |
+| MSG-02 | [身份、关联与本地化](message-model-and-lifecycle.md) | N1 / N2 | S-02 | 部分实现 / 部分通过，A1 类型化问题键与双语呈现，N2 事件按运行身份和步序归属。[N2 证据](#n2-评审进展2026-11-25) |
 | MSG-03 | [失效、重检与生命周期](message-model-and-lifecycle.md) | N1 | S-03 | 部分实现 / 部分通过；A1 会话失效与重检，见下方 A1 证据 |
-| MSG-04 | [恢复与终止错误](message-model-and-lifecycle.md) | N1 / N2 | S-04 | 待实现 / 待验证；— |
+| MSG-04 | [恢复与终止错误](message-model-and-lifecycle.md) | N1 / N2 | S-04 | 部分实现 / 部分通过，无回路终止保留出错步的原诊断并标出后续未执行单元，修复重跑有独立身份。[N2 证据](#n2-评审进展2026-11-25) |
 | MSG-05 | [过滤与连锁聚合](message-model-and-lifecycle.md) | N1 | S-05 | 部分实现 / 部分通过；A1 共享报告去重，过滤 / 因果聚合待续，见下方 A1 证据 |
 | MSG-06 | [状态维度与结果资格](message-model-and-lifecycle.md) | N0 / N1 / N3 | S-06 | 部分实现 / 部分通过；局部检查与结果资格独立，见下方 A1 证据 |
-| MSG-07 | [真实步骤与失败证据](execution-trace-and-convergence.md) | N2 | S-07 | 待实现 / 待验证；— |
-| MSG-08 | [层级、顺序与能力](execution-trace-and-convergence.md) | N2 / N4 | S-08 | 待实现 / 待验证；— |
-| MSG-09 | [残差与观察值解释](execution-trace-and-convergence.md) | N4 | S-09 | 待实现 / 待验证；— |
-| MSG-10 | [采集、容量与性能](execution-trace-and-convergence.md) | N2 | S-10 | 待实现 / 待验证；— |
+| MSG-07 | [真实步骤与失败证据](execution-trace-and-convergence.md) | N2 | S-07 | 部分实现 / 部分通过，记录真实开始、完成及失败位置，按运行查看步骤。[N2 证据](#n2-评审进展2026-11-25) |
+| MSG-08 | [层级、顺序与能力](execution-trace-and-convergence.md) | N2 / N4 | S-08 | 部分实现 / 部分通过，无回路顺序与缺段可见，循环层级待 D-03。[N2 证据](#n2-评审进展2026-11-25) |
+| MSG-09 | [残差与观察值解释](execution-trace-and-convergence.md) | N4 | S-09 | 部分实现 / 部分通过，单出口温度已显示规范阈值、实测值、步序与结果归属，循环残差待 D-03。[N4 验收](scenarios-and-acceptance.md#n4-出口温度监视首批验收) |
+| MSG-10 | [采集、容量与性能](execution-trace-and-convergence.md) | N2 | S-10 | 部分实现 / 部分通过，无回路记录设有计划行、明细和载荷上限，已测 4,096 步的采集开销与截断。[N2 证据](#n2-评审进展2026-11-25) |
 | MSG-11 | [安全暂停与能力](run-control-and-watch-conditions.md) | N3 | S-11 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
 | MSG-12 | [单步、继续与取消](run-control-and-watch-conditions.md) | N3 | S-12 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
 | MSG-13 | [编辑、退出与迟到隔离](run-control-and-watch-conditions.md) | N3 | S-13 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
@@ -40,12 +40,12 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 | MSG-15 | [无效条件与缺值](run-control-and-watch-conditions.md) | N4 | S-15 | 部分实现 / 部分通过，见[无回路单出口温度验收](scenarios-and-acceptance.md#n4-出口温度监视首批验收) |
 | MSG-16 | [求值、重新武装与采样](run-control-and-watch-conditions.md) | N4 | S-16 | 部分实现 / 部分通过，见[无回路单出口温度验收](scenarios-and-acceptance.md#n4-出口温度监视首批验收) |
 | MSG-17 | [动态、回放与检查点](run-control-and-watch-conditions.md) | N5 | S-17 | 待实现 / 待验证；— |
-| MSG-18 | [双区与多处联动](diagnostic-workbench-and-navigation.md) | N0 / N1 / N2 | S-18 | 待实现 / 待验证；— |
+| MSG-18 | [双区与多处联动](diagnostic-workbench-and-navigation.md) | N0 / N1 / N2 | S-18 | 部分实现 / 部分通过，计算过程可从失败步定位进料组成并返回原步骤，完整双区工作台待续。[N2 证据](#n2-评审进展2026-11-25) |
 | MSG-19 | [定位、修复与草稿](diagnostic-workbench-and-navigation.md) | N1 | S-19 | 部分实现 / 部分通过；字段 / 端口定位与草稿返回，见下方 A1 证据；A2-I1—I3 首批动作、预览 / 草稿保护与共享入口已接通，自动 / macOS 代表验收通过，完整 N1 与 I5 未核销 |
-| MSG-20 | [滚动、焦点与密集更新](diagnostic-workbench-and-navigation.md) | N1 / N2 | S-20 | 待实现 / 待验证；— |
+| MSG-20 | [滚动、焦点与密集更新](diagnostic-workbench-and-navigation.md) | N1 / N2 | S-20 | 部分实现 / 部分通过，停点保留未提交的输入草稿，键盘单步后焦点回到状态控件。密集事件的跟随与滚动待验。[N3 验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
 | MSG-21 | [可访问性与分层信息](diagnostic-workbench-and-navigation.md) | N0 / N1 | S-21 | 部分实现 / 部分通过；双语、键盘代表路径与组件大字体，见下方 A1 证据；I5 未验项保留 |
-| MSG-22 | [空状态与上下文](diagnostic-workbench-and-navigation.md) | N0 / N1 / N2 | S-22 | 部分实现 / 部分通过；A1 未检查 / 异常 / 部分覆盖 / 局部通过，见下方 A1 证据 |
-| MSG-23 | [记录、规则与偏好所有权](records-storage-and-consumers.md) | N2 / N3 / N4 | S-23 | 待实现 / 待验证；— |
+| MSG-22 | [空状态与上下文](diagnostic-workbench-and-navigation.md) | N0 / N1 / N2 | S-22 | 部分实现 / 部分通过，A1 保留未检查、异常与部分覆盖状态。计算过程区分无历史、未采集、记录缺失与未执行。[N2 证据](#n2-评审进展2026-11-25) |
+| MSG-23 | [记录、规则与偏好所有权](records-storage-and-consumers.md) | N2 / N3 / N4 | S-23 | 部分实现 / 部分通过，步骤与求值记录随会话内历史回收，已受理运行保留冻结规则，跨会话保存待 D-08。[N4 验收](scenarios-and-acceptance.md#n4-出口温度监视首批验收) |
 | MSG-24 | [旧工程与未知规则](records-storage-and-consumers.md) | N3 / N4 | S-24 | 待实现 / 待验证；— |
 | MSG-25 | [重开、保留与损坏记录](records-storage-and-consumers.md) | N2 / N3 | S-25 | 待实现 / 待验证；— |
 | MSG-26 | [CLI 与跨端语义](records-storage-and-consumers.md) | N1 / N2 / 后续协议 | S-26 | 部分实现 / 部分通过；A1 GUI / CLI 既有运行契约一致，见下方 A1 证据；无完整问题 DTO |
@@ -61,17 +61,17 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 
 2026-10-11 A1 证据：[I1 共享检查](../modeling-assistance-and-specifications.md#a1-i1-实现与验收状态2026-10-11)及 [I2 接线验收](../modeling-assistance-and-specifications.md#a1-i2-实现与验收状态2026-10-11)列出代码、自动测试和 macOS 代表路径。D-01 必要子集已接通；D-07 局部设计先通过 Pencil 静态门禁；D-10 的平台与载荷按批准范围完成。完整 MSG、运行事件关联、恢复错误策略及后续过滤 / 工作台仍待续，D-09 不新增协议，不核销完整 N1。
 
-以下除 A1 已审定的 D-01 / 07 / 10 子集外，完整范围仍为“细化待决策”；须在进入实现前给出结论并回写所属子专题。负责方指领域职责，不指未获指派的人员。
+表内按各切片记录决定和剩余范围。A1 与无回路稳态已经审定的子集见对应专题，循环观察、持久化及新协议分别评审。
 
 | 编号 | 决策 / 规范归属 | 受影响要求 | 最迟进入时机 / 负责方 |
 | --- | --- | --- | --- |
 | D-01 | [问题键、失效、重检与阻断](message-model-and-lifecycle.md#切片待决策与最小验证) | MSG-01—06 | N1 前 / 检查与应用状态 |
-| D-02 | [事件协议、顺序、采集及容量](execution-trace-and-convergence.md#切片待决策与最小验证) | MSG-07—10 | N2 前 / 求解执行与运行记录 |
-| D-03 | [残差及收敛观察判据](execution-trace-and-convergence.md#切片待决策与最小验证) | MSG-08—09、16 | N4 前 / 数值求解 |
+| D-02 | [事件协议、顺序、采集及容量](execution-trace-and-convergence.md#切片待决策与最小验证) | MSG-07—10 | 无回路 N2 已接线 / 求解执行与运行记录 |
+| D-03 | [残差及收敛观察判据](execution-trace-and-convergence.md#接下来事项) | MSG-08—09、16 | N4 循环残差观察前评审 / 数值求解 |
 | D-04 | [无回路稳态运行控制提案](run-control-and-watch-conditions.md#d-04-无回路稳态运行控制提案) | MSG-11—13 | N3 无回路稳态已接入 Studio / 应用任务与执行者；[首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
-| D-05 | [无回路稳态出口温度监视提案](run-control-and-watch-conditions.md#d-05-无回路稳态出口温度监视提案) | MSG-14—16 | N4 首批行为已确认 / 运行控制与单位 |
+| D-05 | [无回路稳态出口温度监视提案](run-control-and-watch-conditions.md#d-05-无回路稳态出口温度监视提案) | MSG-14—16 | 无回路 N4 单出口温度已接入 Studio / 运行控制与单位 |
 | D-06 | [时间、回放和检查点](run-control-and-watch-conditions.md#切片待决策与最小验证) | MSG-17 | N5 前 / 动态与运行恢复 |
-| D-07 | [布局、空状态和操作路径](diagnostic-workbench-and-navigation.md#切片待决策与最小验证) | MSG-18—22 | N0 局部画板实施前 / Studio 设计；后续实现再复核 |
+| D-07 | [布局、空状态和操作路径](diagnostic-workbench-and-navigation.md#切片待决策与最小验证) | MSG-18—22 | N2 计算过程局部交互已接线，双区整合待评审 / Studio 设计 |
 | D-08 | [记录持久化与规则兼容](records-storage-and-consumers.md#切片待决策与最小验证) | MSG-23—25、27 | N2 持久化前，N3 / N4 规则保存前 / 存储与运行记录 |
 | D-09 | [外部协议与能力版本](records-storage-and-consumers.md#切片待决策与最小验证) | MSG-26—27 | 新协议实施前 / API 与适配层 |
 | D-10 | [验证载荷、指标与平台](scenarios-and-acceptance.md#切片评审与退出) | 全部，尤其 MSG-10、20—21 | 各切片实施前 / 实现与验证 |
