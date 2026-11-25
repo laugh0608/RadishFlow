@@ -68,7 +68,7 @@
 
 - [装置工程与数字孪生](../architecture/simulation-platform.md#装置工程与数字孪生愿景) 按 DT0—DT4 分期，未因本轮架构梳理启动实施。
 
-- [运行与诊断 N0—N5](../topics/runtime-messages-and-diagnostics.md) 的任务基础与结果联动衔接 AF3 / AF5；GUI 后台与取消已接通；暂停和开发工作台待续。
+- [运行与诊断](../topics/runtime-messages-and-diagnostics.md) 已接通 N2 的无回路稳态运行后审阅。GUI 后台取消沿用现有机制，暂停按 N3 推进。
 
 ### 后续事项
 

@@ -37,6 +37,7 @@ fn reopened_m3_save_discards_pre_save_receipts_and_publishes_only_from_the_new_r
         let summary = drain(&mut owner, &mut reopened);
         assert_eq!(summary.run_id, old);
         assert_eq!(summary.outcome, expected);
+        assert_eq!(summary.trace, WorkspaceTraceRecord::NotCollected);
         assert_eq!(
             summary.disposition,
             FlowRunDisposition::Discarded(FlowRunDiscardReason::DifferentSession)

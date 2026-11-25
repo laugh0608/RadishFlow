@@ -100,7 +100,7 @@ pub struct StudioGuiWindowContextToolbarSectionModel {
 pub enum StudioGuiWindowContextToolbarItemTarget {
     Command,
     FlowsheetModeling,
-    RunLog,
+    ExecutionTrace,
     Convergence,
     Suggestions,
     Diagnostics,
@@ -1173,16 +1173,16 @@ fn run_context_monitor_items(
     let diagnostics = status_summary_metric(status_summary, "Diagnostics");
     vec![
         StudioGuiWindowContextToolbarItemModel {
-            target: StudioGuiWindowContextToolbarItemTarget::RunLog,
+            target: StudioGuiWindowContextToolbarItemTarget::ExecutionTrace,
             command_id: None,
             enabled: true,
-            label: "Run Log".to_string(),
+            label: "Execution trace".to_string(),
             detail: runtime
                 .run_panel
                 .view()
                 .latest_log_message
                 .clone()
-                .unwrap_or_else(|| "Open the bottom run log.".to_string()),
+                .unwrap_or_else(|| "Review completed flowsheet execution.".to_string()),
             status_label: Some(if runtime.latest_log_entry.is_some() {
                 "Available".to_string()
             } else {

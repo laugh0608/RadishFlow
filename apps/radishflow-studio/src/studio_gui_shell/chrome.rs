@@ -80,6 +80,7 @@ impl ReadyAppState {
             }
             self.render_run_diagnostic_return_notice(ui, RunDiagnosticSurface::Toolbar);
             self.render_run_diagnostic_return(ui);
+            self.render_execution_trace_return(ui);
             self.render_flow_path_return(ui);
             self.render_project_operation_strip(ui);
             if self.screen != StudioShellScreen::Equipment
@@ -197,8 +198,8 @@ impl ReadyAppState {
                 StudioGuiWindowContextToolbarItemTarget::FlowsheetModeling => {
                     self.enter_flowsheet_modeling_from_property();
                 }
-                StudioGuiWindowContextToolbarItemTarget::RunLog => {
-                    self.focus_run_bottom_drawer_tab(StudioShellBottomDrawerTab::RunLog);
+                StudioGuiWindowContextToolbarItemTarget::ExecutionTrace => {
+                    self.open_execution_trace();
                 }
                 StudioGuiWindowContextToolbarItemTarget::Convergence => {
                     self.focus_run_bottom_drawer_tab(StudioShellBottomDrawerTab::Convergence);
@@ -553,7 +554,11 @@ impl ReadyAppState {
         ctx: &egui::Context,
         window: &StudioGuiWindowModel,
     ) {
-        let height = workbench_bottom_drawer_height(self.bottom_drawer_tab, window);
+        let height = if self.background_run_details_open {
+            230.0
+        } else {
+            workbench_bottom_drawer_height(self.bottom_drawer_tab, window)
+        };
         egui::TopBottomPanel::bottom("studio.bottom_drawer")
             .exact_height(height)
             .resizable(false)
@@ -561,14 +566,18 @@ impl ReadyAppState {
                 if self.background_run_details_open {
                     ui.horizontal_wrapped(|ui| {
                         ui.strong(self.locale.text(ShellText::RuntimeLog));
-                        if ui
-                            .button(match self.locale {
-                                StudioShellLocale::ZhCn => "收起运行详情",
-                                StudioShellLocale::En => "Close run details",
-                            })
-                            .clicked()
+                        let back = ui.button(match self.locale {
+                            StudioShellLocale::ZhCn => "返回计算过程",
+                            StudioShellLocale::En => "Back to execution trace",
+                        });
+                        if back.clicked()
+                            || (back.has_focus()
+                                && ui.input_mut(|input| {
+                                    input.consume_key(egui::Modifiers::NONE, egui::Key::Escape)
+                                }))
                         {
                             self.background_run_details_open = false;
+                            self.execution_trace.restore_log_button();
                         }
                     });
                     ui.separator();
@@ -1318,7 +1327,10 @@ impl ReadyAppState {
 
     fn render_bottom_workbench(&mut self, ui: &mut egui::Ui, window: &StudioGuiWindowModel) {
         let available_width = ui.available_width();
-        if self.bottom_drawer_tab == StudioShellBottomDrawerTab::Diagnostics {
+        if matches!(
+            self.bottom_drawer_tab,
+            StudioShellBottomDrawerTab::Diagnostics | StudioShellBottomDrawerTab::ExecutionTrace
+        ) {
             self.render_bottom_run_information(ui, window);
             return;
         }
@@ -1353,8 +1365,8 @@ impl ReadyAppState {
             );
             ui.selectable_value(
                 &mut self.bottom_drawer_tab,
-                StudioShellBottomDrawerTab::RunLog,
-                self.locale.text(ShellText::RuntimeLog),
+                StudioShellBottomDrawerTab::ExecutionTrace,
+                self.locale.runtime_label("Execution trace").as_ref(),
             );
             ui.selectable_value(
                 &mut self.bottom_drawer_tab,
@@ -1391,7 +1403,7 @@ impl ReadyAppState {
             .show(ui, |ui| {
                 match self.bottom_drawer_tab {
                     StudioShellBottomDrawerTab::Messages => self.render_bottom_messages(ui, window),
-                    StudioShellBottomDrawerTab::RunLog => self.render_bottom_run_log(ui, window),
+                    StudioShellBottomDrawerTab::ExecutionTrace => self.render_execution_trace(ui),
                     StudioShellBottomDrawerTab::Convergence => {
                         self.render_bottom_convergence(ui, window)
                     }
@@ -2042,7 +2054,7 @@ fn workbench_bottom_drawer_height(
 ) -> f32 {
     match tab {
         StudioShellBottomDrawerTab::Messages => 156.0,
-        StudioShellBottomDrawerTab::RunLog => 170.0,
+        StudioShellBottomDrawerTab::ExecutionTrace => 350.0,
         StudioShellBottomDrawerTab::Convergence => 230.0,
         StudioShellBottomDrawerTab::ResultsTable => 250.0,
         StudioShellBottomDrawerTab::Suggestions => 190.0,

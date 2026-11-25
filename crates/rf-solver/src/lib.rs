@@ -11,7 +11,9 @@ pub mod mixed;
 pub mod partitioned;
 pub mod simultaneous;
 pub mod single_phase_recycle;
-pub use control::{ControlledSolveOutcome, SolveProgress, SolveStage, SolverControl};
+pub use control::{
+    ControlledSolveOutcome, SequentialExecutionEvent, SolveProgress, SolveStage, SolverControl,
+};
 pub use rf_unitops::UnitEnergyBalance;
 
 mod parameter_checks;
@@ -299,10 +301,12 @@ impl SequentialModularSolver {
         {
             return Ok(ControlledSolveOutcome::Cancelled);
         }
+        control.observe_sequential(SequentialExecutionEvent::Validating);
         let execution_order = sequential_execution_order(flowsheet)?;
         if let SequentialProperties::SinglePhase { heat_duties_w, .. } = properties {
             validate_heat_duty_targets(flowsheet, heat_duties_w)?;
         }
+        control.observe_sequential(SequentialExecutionEvent::Planned(&execution_order));
         let total_units = execution_order.len();
         if control
             .checkpoint(SolveProgress {
@@ -345,49 +349,36 @@ impl SequentialModularSolver {
                 return Ok(ControlledSolveOutcome::Cancelled);
             }
             let step_number = step_index + 1;
-            let unit = flowsheet
-                .unit(unit_id)
-                .map_err(|error| solver_step_lookup_error(step_number, unit_id, error))?;
-            let spec = validate_unit_node(unit).map_err(|error| {
-                solver_step_error(step_number, unit, SolverDiagnosticCode::StepSpec, error)
-            })?;
-            let operation = match properties {
-                SequentialProperties::Legacy(_) => {
-                    instantiate_operation(unit, flowsheet).map_err(|error| {
-                        solver_step_error(
-                            step_number,
-                            unit,
-                            SolverDiagnosticCode::StepInstantiation,
-                            error,
-                        )
-                    })
-                }
-                SequentialProperties::SinglePhase {
-                    model,
-                    heat_duties_w,
-                } => rf_unitops::catalog::instantiate_single_phase_with_heat_duty(
-                    unit,
-                    &flowsheet.streams,
-                    model,
-                    heat_duties_w.get(unit_id).copied(),
-                ),
-            }?;
-            let step = evaluate_unit_step(
+            control.observe_sequential(SequentialExecutionEvent::StepStarted {
+                number: step_number,
+                unit: unit_id,
+            });
+            let step = execute_sequential_step(
                 step_index,
-                unit,
-                spec,
-                operation.as_ref(),
+                unit_id,
+                flowsheet,
                 &solved_streams,
                 properties,
-            )?;
+            )
+            .inspect_err(|error| {
+                control.observe_sequential(SequentialExecutionEvent::StepFailed {
+                    number: step_number,
+                    unit: unit_id,
+                    error,
+                });
+            })?;
             for stream in &step.produced_streams {
                 solved_streams.insert(stream.id.clone(), stream.clone());
             }
+            control.observe_sequential(SequentialExecutionEvent::StepCompleted {
+                number: step_number,
+                step: &step,
+            });
             diagnostics.push(SolveDiagnostic {
                 severity: SolveDiagnosticSeverity::Info,
                 code: SolverDiagnosticCode::UnitExecuted.as_str().to_string(),
                 message: format!("step {step_number}: {}", step.summary),
-                related_unit_ids: vec![unit.id.clone()],
+                related_unit_ids: vec![step.unit_id.clone()],
                 related_stream_ids: step
                     .consumed_streams
                     .iter()
@@ -461,6 +452,45 @@ fn validate_heat_duty_targets(
         }
     }
     Ok(())
+}
+
+fn execute_sequential_step(
+    step_index: usize,
+    unit_id: &UnitId,
+    flowsheet: &Flowsheet,
+    solved_streams: &BTreeMap<StreamId, MaterialStreamState>,
+    properties: SequentialProperties<'_>,
+) -> RfResult<UnitSolveStep> {
+    let number = step_index + 1;
+    let unit = flowsheet
+        .unit(unit_id)
+        .map_err(|error| solver_step_lookup_error(number, unit_id, error))?;
+    let spec = validate_unit_node(unit)
+        .map_err(|error| solver_step_error(number, unit, SolverDiagnosticCode::StepSpec, error))?;
+    let operation = match properties {
+        SequentialProperties::Legacy(_) => {
+            instantiate_operation(unit, flowsheet).map_err(|error| {
+                solver_step_error(number, unit, SolverDiagnosticCode::StepInstantiation, error)
+            })
+        }
+        SequentialProperties::SinglePhase {
+            model,
+            heat_duties_w,
+        } => rf_unitops::catalog::instantiate_single_phase_with_heat_duty(
+            unit,
+            &flowsheet.streams,
+            model,
+            heat_duties_w.get(unit_id).copied(),
+        ),
+    }?;
+    evaluate_unit_step(
+        step_index,
+        unit,
+        spec,
+        operation.as_ref(),
+        solved_streams,
+        properties,
+    )
 }
 
 fn evaluate_unit_step(
@@ -892,7 +922,7 @@ fn solver_step_execution_error(
         .chain(context.related_stream_ids())
         .cloned()
         .collect();
-    RfError::new(
+    let wrapped = RfError::new(
         error.code(),
         format!(
             "{}: solver step {} {} failed for {} after consuming [{}]: {}",
@@ -907,7 +937,12 @@ fn solver_step_execution_error(
     .with_diagnostic_code(SolverDiagnosticCode::StepExecution.as_str())
     .with_related_unit_id(unit.id.clone())
     .with_related_stream_ids(related_stream_ids)
-    .with_related_port_targets(context.related_port_targets().to_vec())
+    .with_related_port_targets(context.related_port_targets().to_vec());
+    context
+        .related_composition_stream_ids()
+        .iter()
+        .cloned()
+        .fold(wrapped, RfError::with_related_composition_stream_id)
 }
 
 fn validate_step_stream_inputs(
@@ -940,7 +975,8 @@ fn validate_step_stream_inputs(
             ),
             vec![stream.id.clone()],
             inlet_port_targets_for_stream(unit, &stream.id),
-        ));
+        )
+        .with_related_composition_stream_id(stream.id.clone()));
     }
     Ok(())
 }

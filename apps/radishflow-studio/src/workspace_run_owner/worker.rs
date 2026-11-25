@@ -10,10 +10,11 @@ use std::{
 };
 
 use rf_property_package::LocalThermoContext;
-use rf_solver::{SolveProgress, SolverControl};
+use rf_solver::{SequentialExecutionEvent, SolveProgress, SolverControl};
 use rf_types::{RfError, RfResult};
 use rf_ui::FlowRunId;
 
+use super::trace::{TraceRecorder, WorkspaceTracePhase};
 use crate::{
     WorkspaceSolveProgress,
     solver_bridge::execution::{
@@ -37,6 +38,11 @@ pub(super) enum WorkerResult {
     Panicked,
 }
 
+pub(super) struct WorkerTerminal {
+    pub result: WorkerResult,
+    pub trace: Option<Box<TraceRecorder>>,
+}
+
 pub(super) trait WorkerSpawner {
     fn spawn(&self, job: Box<dyn FnOnce() + Send>) -> std::io::Result<JoinHandle<()>>;
 }
@@ -55,7 +61,7 @@ pub(super) struct WorkerChannels {
     pub progress: Arc<Mutex<Option<WorkspaceRunProgress>>>,
     pub ready: Receiver<()>,
     pub start: SyncSender<bool>,
-    pub result: Receiver<WorkerResult>,
+    pub result: Receiver<WorkerTerminal>,
 }
 
 pub(super) struct WorkerControl {
@@ -65,10 +71,14 @@ pub(super) struct WorkerControl {
     sequence: u64,
     ready: SyncSender<()>,
     start: Receiver<bool>,
+    trace: Option<Box<TraceRecorder>>,
 }
 
 impl WorkerChannels {
-    pub fn new(id: FlowRunId) -> (Self, WorkerControl, SyncSender<WorkerResult>) {
+    pub fn new(
+        id: FlowRunId,
+        record_trace: bool,
+    ) -> (Self, WorkerControl, SyncSender<WorkerTerminal>) {
         let cancel = Arc::new(AtomicBool::new(false));
         let progress = Arc::new(Mutex::new(None));
         let (ready_tx, ready) = mpsc::sync_channel(1);
@@ -89,6 +99,7 @@ impl WorkerChannels {
                 sequence: 0,
                 ready: ready_tx,
                 start: start_rx,
+                trace: record_trace.then(|| Box::new(TraceRecorder::new())),
             },
             result_tx,
         )
@@ -123,6 +134,12 @@ impl SolverControl for WorkerControl {
     fn checkpoint(&mut self, progress: SolveProgress) -> ControlFlow<()> {
         self.emit(WorkspaceSolveProgress::Solving(progress))
     }
+
+    fn observe_sequential(&mut self, event: SequentialExecutionEvent<'_>) {
+        if let Some(trace) = &mut self.trace {
+            trace.observe(event);
+        }
+    }
 }
 
 impl rf_solver::partitioned::PartitionedSolverControl for WorkerControl {
@@ -151,7 +168,19 @@ impl rf_solver::equation_oriented::EquationControl for WorkerControl {
 }
 impl WorkspaceSolveControl for WorkerControl {
     fn before_load(&mut self) -> ControlFlow<()> {
-        self.emit(WorkspaceSolveProgress::Preparing)
+        let state = self.emit(WorkspaceSolveProgress::Preparing);
+        if state.is_continue()
+            && let Some(trace) = &mut self.trace
+        {
+            trace.phase(WorkspaceTracePhase::Preparing);
+        }
+        state
+    }
+
+    fn package_loaded(&mut self, id: &str, fingerprint: &str) {
+        if let Some(trace) = &mut self.trace {
+            trace.package(id, fingerprint);
+        }
     }
 
     fn ready(&mut self) -> RfResult<ControlFlow<()>> {
@@ -165,6 +194,9 @@ impl WorkspaceSolveControl for WorkerControl {
             infrastructure_error("start_disconnected", "run owner disconnected during Ready")
         })?;
         Ok(if allowed && !self.cancel.load(Ordering::Acquire) {
+            if let Some(trace) = &mut self.trace {
+                trace.phase(WorkspaceTracePhase::Started);
+            }
             ControlFlow::Continue(())
         } else {
             ControlFlow::Break(())
@@ -178,7 +210,7 @@ pub(super) fn spawn_worker(
     load: PackageLoader,
     cached: bool,
     mut control: WorkerControl,
-    result: SyncSender<WorkerResult>,
+    result: SyncSender<WorkerTerminal>,
 ) -> std::io::Result<JoinHandle<()>> {
     spawner.spawn(Box::new(move || {
         let outcome =
@@ -187,7 +219,10 @@ pub(super) fn spawn_worker(
                 Err(_) => WorkerResult::Panicked,
             };
         // Exactly one terminal payload; progress uses a separate replaceable slot.
-        let _ = result.send(outcome);
+        let _ = result.send(WorkerTerminal {
+            result: outcome,
+            trace: control.trace,
+        });
     }))
 }
 

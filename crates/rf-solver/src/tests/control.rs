@@ -1,11 +1,14 @@
 use super::*;
-use crate::{ControlledSolveOutcome, SolveProgress, SolveStage, SolverControl};
+use crate::{
+    ControlledSolveOutcome, SequentialExecutionEvent, SolveProgress, SolveStage, SolverControl,
+};
 use std::{cell::Cell, ops::ControlFlow};
 
 #[derive(Default)]
 struct RecordingControl {
     events: Vec<SolveProgress>,
     stop_at: Option<usize>,
+    steps: Vec<(usize, usize, bool)>,
 }
 impl SolverControl for RecordingControl {
     fn checkpoint(&mut self, progress: SolveProgress) -> ControlFlow<()> {
@@ -14,6 +17,18 @@ impl SolverControl for RecordingControl {
             ControlFlow::Break(())
         } else {
             ControlFlow::Continue(())
+        }
+    }
+
+    fn observe_sequential(&mut self, event: SequentialExecutionEvent<'_>) {
+        match event {
+            SequentialExecutionEvent::StepStarted { number, .. } => {
+                self.steps.push((self.events.len(), number, false))
+            }
+            SequentialExecutionEvent::StepCompleted { number, .. } => {
+                self.steps.push((self.events.len(), number, true))
+            }
+            _ => {}
         }
     }
 }
@@ -90,6 +105,15 @@ fn cancellation_at_every_declared_boundary_never_returns_a_partial_success() {
             ControlledSolveOutcome::Cancelled
         );
         assert_eq!(control.events, reference.events[..=stop_at]);
+        assert_eq!(
+            control.steps,
+            reference
+                .steps
+                .iter()
+                .copied()
+                .take_while(|(checkpoints, _, _)| *checkpoints <= stop_at)
+                .collect::<Vec<_>>()
+        );
     }
 }
 

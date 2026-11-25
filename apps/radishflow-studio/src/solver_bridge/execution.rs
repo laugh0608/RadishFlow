@@ -35,6 +35,7 @@ pub enum WorkspaceSolveProgress {
 pub(crate) trait WorkspaceSolveControl: FlowExecutionControl {
     fn before_load(&mut self) -> ControlFlow<()>;
     fn ready(&mut self) -> RfResult<ControlFlow<()>>;
+    fn package_loaded(&mut self, _id: &str, _fingerprint: &str) {}
 }
 
 impl WorkspaceSolveControl for UncontrolledSolve {
@@ -377,6 +378,10 @@ impl WorkspaceSolveJob {
                 return self.output(outcome, None);
             }
         };
+        control.package_loaded(
+            &self.request.package_id,
+            &context.provenance().payload_fingerprint,
+        );
         let package = Some(ExecutedPackage {
             descriptor: context.descriptor().clone(),
             provenance: context.provenance().clone(),
@@ -496,6 +501,16 @@ impl CompletedWorkspaceSolve {
             WorkspaceExecutionOutcome::Succeeded => Ok(()),
             WorkspaceExecutionOutcome::Cancelled => Err(cancelled_error()),
             _ => self.result().map(|_| ()),
+        }
+    }
+
+    pub(crate) fn failure_error(&self) -> Option<&RfError> {
+        match &self.outcome {
+            SolveOutcome::Executed(execution) => execution.error(),
+            SolveOutcome::PreparationFailed { error, .. }
+            | SolveOutcome::PackageFailed { error, .. }
+            | SolveOutcome::InfrastructureFailed(error) => Some(error),
+            SolveOutcome::CancelledBeforeExecution => None,
         }
     }
 

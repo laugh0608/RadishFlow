@@ -59,7 +59,7 @@ impl ReadyAppState {
                 if matches!(&outcome.dispatch, radishflow_studio::StudioAppResultDispatch::WorkspaceRun(run)
                     if matches!(run.outcome, radishflow_studio::StudioWorkspaceRunOutcome::Background(_)))
                 {
-                    self.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
+                    self.bottom_drawer_tab = StudioShellBottomDrawerTab::ExecutionTrace;
                 } else {
                     self.update_workbench_tabs_after_run(&dispatch.dispatch.window);
                 }
@@ -92,7 +92,7 @@ impl ReadyAppState {
             self.bottom_drawer_tab = StudioShellBottomDrawerTab::ResultsTable;
         } else {
             self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
-            self.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
+            self.bottom_drawer_tab = StudioShellBottomDrawerTab::ExecutionTrace;
         }
     }
 }

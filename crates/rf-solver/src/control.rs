@@ -1,8 +1,8 @@
 use std::ops::ControlFlow;
 
-use rf_types::UnitId;
+use rf_types::{RfError, UnitId};
 
-use crate::SolveSnapshot;
+use crate::{SolveSnapshot, UnitSolveStep};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SolveStage {
@@ -26,6 +26,29 @@ pub struct SolveProgress {
 /// flash call is never interrupted; a numerical error remains the original Err.
 pub trait SolverControl {
     fn checkpoint(&mut self, progress: SolveProgress) -> ControlFlow<()>;
+
+    /// Observe actual execution without introducing a cancellation boundary.
+    fn observe_sequential(&mut self, _event: SequentialExecutionEvent<'_>) {}
+}
+
+/// Borrowed evidence from the acyclic solver. Step numbers are one-based.
+#[derive(Debug)]
+pub enum SequentialExecutionEvent<'a> {
+    Validating,
+    Planned(&'a [UnitId]),
+    StepStarted {
+        number: usize,
+        unit: &'a UnitId,
+    },
+    StepCompleted {
+        number: usize,
+        step: &'a UnitSolveStep,
+    },
+    StepFailed {
+        number: usize,
+        unit: &'a UnitId,
+        error: &'a RfError,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -166,6 +166,7 @@ impl ReadyAppState {
 
     pub(super) fn render_modeling_problem_return(&mut self, ui: &mut egui::Ui) {
         if !self.at_run_diagnostic_target()
+            && !self.at_execution_trace_target()
             && self.modeling_problems.destination.is_some()
             && ui
                 .button(tr(

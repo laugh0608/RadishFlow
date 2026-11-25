@@ -4,6 +4,7 @@
 mod authorization;
 #[cfg(test)]
 mod tests;
+mod trace;
 mod worker;
 
 use std::{collections::VecDeque, sync::mpsc::TryRecvError, thread::JoinHandle, time::SystemTime};
@@ -11,6 +12,8 @@ use std::{collections::VecDeque, sync::mpsc::TryRecvError, thread::JoinHandle, t
 use rf_property_package::PropertyPackageProvider;
 use rf_store::StoredAuthCacheIndex;
 use rf_types::RfResult;
+use rf_ui::FlowExecutionQualification;
+use rf_ui::flow_plan::FlowPlanConfiguration;
 use rf_ui::{
     AppState, FlowRunDiscardReason, FlowRunDisposition, FlowRunId, FlowRunReceipt, SimulationMode,
 };
@@ -27,9 +30,15 @@ use crate::{
 };
 use authorization::RunAuthorization;
 pub use authorization::RunAuthorizationRefusal;
+use trace::TraceRecorder;
+pub use trace::{
+    WorkspaceExecutionTrace, WorkspaceTraceCoverage, WorkspaceTraceDiagnostic,
+    WorkspaceTracePackage, WorkspaceTracePhase, WorkspaceTraceRecord, WorkspaceTraceStep,
+    WorkspaceTraceStop, WorkspaceTraceStreams,
+};
 pub use worker::WorkspaceRunProgress;
 use worker::{
-    PackageLoader, ThreadSpawner, WorkerChannels, WorkerResult, WorkerSpawner,
+    PackageLoader, ThreadSpawner, WorkerChannels, WorkerResult, WorkerSpawner, WorkerTerminal,
     infrastructure_error, spawn_worker,
 };
 
@@ -87,6 +96,9 @@ pub struct WorkspaceRunState {
 #[derive(Debug, Clone, PartialEq)]
 pub struct WorkspaceRunSummary {
     pub run_id: FlowRunId,
+    pub qualification: FlowExecutionQualification,
+    pub trace: WorkspaceTraceRecord,
+    pub object_identities_enabled: bool,
     pub submitted_at: SystemTime,
     pub started_at: Option<SystemTime>,
     pub finished_at: SystemTime,
@@ -105,12 +117,13 @@ struct ActiveRun {
     receipt: FlowRunReceipt,
     request: StudioSolveRequest,
     authorization: RunAuthorization,
+    object_identities_enabled: bool,
     submitted_at: SystemTime,
     started_at: Option<SystemTime>,
     cancel_reason: Option<WorkspaceRunCancelReason>,
     channels: WorkerChannels,
     handle: JoinHandle<()>,
-    received: Option<WorkerResult>,
+    received: Option<WorkerTerminal>,
     progress: Option<WorkspaceRunProgress>,
     progress_sequence: u64,
 }
@@ -282,11 +295,13 @@ impl WorkspaceRunOwner {
         now: SystemTime,
         spawner: &impl WorkerSpawner,
     ) -> RfResult<WorkspaceRunSubmission> {
+        let object_identities_enabled = app.workspace.object_identities_enabled();
         let prepared = prepare_workspace_solve(app, &request)?;
         let plan = prepared.plan().clone();
         let (receipt, job) = prepared.into_job();
         let id = receipt.run_id().clone();
-        let (channels, control, result) = WorkerChannels::new(id.clone());
+        let collect_trace = plan == FlowPlanConfiguration::Acyclic;
+        let (channels, control, result) = WorkerChannels::new(id.clone(), collect_trace);
         let handle = match spawn_worker(spawner, job, load, cached, control, result) {
             Ok(handle) => handle,
             Err(error) => {
@@ -294,6 +309,7 @@ impl WorkspaceRunOwner {
                     "spawn_failed",
                     &format!("failed to start solve worker: {error}"),
                 );
+                let qualification = receipt.execution_qualification();
                 let mut completion = CompletedWorkspaceSolve::infrastructure_failure(
                     receipt,
                     request,
@@ -303,6 +319,15 @@ impl WorkspaceRunOwner {
                 let disposition = complete_background_workspace_solve(app, &mut completion);
                 self.record_summary(WorkspaceRunSummary {
                     run_id: id,
+                    qualification,
+                    object_identities_enabled,
+                    trace: if collect_trace {
+                        WorkspaceTraceRecord::Recorded(
+                            TraceRecorder::new().finish(Some(&error)).into(),
+                        )
+                    } else {
+                        WorkspaceTraceRecord::NotCollected
+                    },
                     submitted_at: now,
                     started_at: None,
                     finished_at: now,
@@ -322,6 +347,7 @@ impl WorkspaceRunOwner {
             request,
             plan,
             authorization,
+            object_identities_enabled,
             submitted_at: now,
             started_at: None,
             cancel_reason: None,
@@ -490,7 +516,12 @@ impl WorkspaceRunOwner {
         if active.received.is_none() {
             active.received = active.channels.result.try_recv().ok();
         }
-        let mut completion = match (joined, active.received) {
+        let qualification = active.receipt.execution_qualification();
+        let collect_trace = active.plan == FlowPlanConfiguration::Acyclic;
+        let (result, trace) = active.received.map_or((None, None), |terminal| {
+            (Some(terminal.result), terminal.trace)
+        });
+        let mut completion = match (joined, result) {
             (Ok(()), Some(WorkerResult::Completed(output))) => {
                 CompletedWorkspaceSolve::from_output(active.receipt, *output)
             }
@@ -518,6 +549,15 @@ impl WorkspaceRunOwner {
         };
         let summary = WorkspaceRunSummary {
             run_id: completion.run_id().clone(),
+            qualification,
+            object_identities_enabled: active.object_identities_enabled,
+            trace: match trace {
+                Some(trace) => {
+                    WorkspaceTraceRecord::Recorded(trace.finish(completion.failure_error()).into())
+                }
+                None if collect_trace => WorkspaceTraceRecord::Unavailable,
+                None => WorkspaceTraceRecord::NotCollected,
+            },
             submitted_at: active.submitted_at,
             started_at: active.started_at,
             finished_at: now,

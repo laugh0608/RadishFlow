@@ -20,7 +20,7 @@ pub(super) fn stream_composition_vector(
             normalized.len(),
             component_ids.len()
         ))
-        .with_related_stream_id(stream.id.clone()));
+        .with_related_composition_stream_id(stream.id.clone()));
     }
 
     component_ids
@@ -31,7 +31,7 @@ pub(super) fn stream_composition_vector(
                     "stream `{}` is missing thermo component `{}`",
                     stream.id, component_id
                 ))
-                .with_related_stream_id(stream.id.clone())
+                .with_related_composition_stream_id(stream.id.clone())
             })
         })
         .collect()

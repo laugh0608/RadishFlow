@@ -128,6 +128,12 @@ impl StudioRunOwner {
     pub fn history(&self) -> &VecDeque<StudioRunSummary> {
         &self.history
     }
+    pub fn flow_run_summary(&self, id: &FlowRunId) -> Option<&crate::WorkspaceRunSummary> {
+        self.flow
+            .history()
+            .iter()
+            .find(|summary| &summary.run_id == id)
+    }
     fn set_activity(&mut self, id: StudioRunId, target: String, now: SystemTime) {
         self.next_number = self
             .next_number
@@ -171,7 +177,34 @@ impl StudioRunOwner {
                 self.activity.as_ref().expect("occupied slot").id.clone(),
             ));
         }
-        let submission = self.flow.submit_cached(app, root, index, command, now)?;
+        let previous_run = self.flow.history().back().map(|run| run.run_id.clone());
+        let submission = match self.flow.submit_cached(app, root, index, command, now) {
+            Ok(submission) => submission,
+            Err(error) => {
+                // Preparation can accept a receipt and fail to spawn before an activity is set.
+                if let Some(run) = self
+                    .flow
+                    .history()
+                    .back()
+                    .filter(|run| Some(&run.run_id) != previous_run.as_ref())
+                {
+                    let id = StudioRunId::Flow(run.run_id.clone());
+                    let applied = run.disposition == rf_ui::FlowRunDisposition::Applied;
+                    let code = run.diagnostic_code.clone();
+                    self.set_activity(id, app.workspace.document.metadata.title.clone(), now);
+                    let activity = self.activity.take().expect("recorded failed start");
+                    self.record_terminal(StudioRunSummary {
+                        activity,
+                        outcome: StudioRunOutcome::InfrastructureFailed,
+                        applied,
+                        finished_at: now,
+                        cancellation: None,
+                        diagnostic_code: code,
+                    });
+                }
+                return Err(error);
+            }
+        };
         if let WorkspaceRunSubmission::Accepted(id) = &submission {
             self.set_activity(
                 StudioRunId::Flow(id.clone()),
@@ -461,7 +494,7 @@ impl StudioRunOwner {
                     format!("Equipment {}: {outcome:?}", activity.target),
                 );
             }
-            self.history.push_back(StudioRunSummary {
+            self.record_terminal(StudioRunSummary {
                 activity,
                 outcome,
                 applied,
@@ -469,12 +502,15 @@ impl StudioRunOwner {
                 cancellation,
                 diagnostic_code,
             });
-            while self.history.len() > 8 {
-                self.history.pop_front();
-            }
             true
         } else {
             false
+        }
+    }
+    fn record_terminal(&mut self, summary: StudioRunSummary) {
+        self.history.push_back(summary);
+        while self.history.len() > 8 {
+            self.history.pop_front();
         }
     }
     pub fn should_attempt_automatic(&self, app: &AppState) -> bool {

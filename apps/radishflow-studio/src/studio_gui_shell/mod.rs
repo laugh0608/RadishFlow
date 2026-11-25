@@ -139,12 +139,14 @@ enum AppState {
 }
 
 mod background_run;
+mod execution_trace;
 
 struct ReadyAppState {
     background_runs: Option<radishflow_studio::SharedStudioRunOwner>,
     h3_flow_run: radishflow_studio::WorkspaceRunOwner,
     pending_run_exit: Option<background_run::PendingRunExit>,
     background_run_details_open: bool,
+    execution_trace: execution_trace::ExecutionTraceView,
     platform_host: StudioGuiPlatformHost,
     platform_timer_executor: EguiPlatformTimerExecutor,
     command_palette: CommandPaletteState,
@@ -308,7 +310,7 @@ enum StudioShellRightSidebarTab {
 enum StudioShellBottomDrawerTab {
     #[default]
     Messages,
-    RunLog,
+    ExecutionTrace,
     Convergence,
     Suggestions,
     Diagnostics,
@@ -509,6 +511,7 @@ impl ReadyAppState {
             h3_flow_run: radishflow_studio::WorkspaceRunOwner::new(),
             pending_run_exit: None,
             background_run_details_open: false,
+            execution_trace: execution_trace::ExecutionTraceView::default(),
             material: material_balance::MaterialPanelState::default(),
             flow_plan: flow_plan::FlowPlanPanelState::default(),
             platform_host,

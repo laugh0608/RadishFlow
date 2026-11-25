@@ -158,6 +158,19 @@ fn real_cached_background_matches_sync_without_executing_on_the_submitter() {
     let expected_execution = expected_origin.execution().unwrap();
     assert_ne!(actual_execution.run_id, expected_execution.run_id);
     assert_eq!(actual_execution.package, expected_execution.package);
+    let WorkspaceTraceRecord::Recorded(trace) = &result.trace else {
+        panic!("sequential trace")
+    };
+    assert_eq!(trace.package.as_ref().unwrap().id, PACKAGE);
+    assert_eq!(trace.planned_steps, Some(3));
+    assert_eq!(trace.steps.len(), 3);
+    assert!(
+        trace
+            .steps
+            .iter()
+            .all(|step| step.completed_sequence > Some(step.started_sequence))
+    );
+    assert_eq!(trace.terminal_sequence + 1, trace.receipt_sequence);
     assert_eq!(
         actual_execution.solver_implementation,
         expected_execution.solver_implementation
@@ -170,6 +183,54 @@ fn real_cached_background_matches_sync_without_executing_on_the_submitter() {
     expected.origin = None;
     assert_eq!(actual, expected);
     assert!(owner.try_close().is_ok());
+}
+
+#[test]
+fn failed_second_feed_retains_actual_steps_and_composition_target() {
+    let project = rf_store::parse_project_file_json(include_str!(
+        "../../../../examples/flowsheets/feed-mixer-flash-binary-hydrocarbon.rfproj.json"
+    ))
+    .unwrap();
+    let mut flow = project.document.flowsheet;
+    flow.units.remove(&"flash-1".into());
+    flow.streams.remove(&"stream-liquid".into());
+    flow.streams.remove(&"stream-vapor".into());
+    flow.streams
+        .get_mut(&"stream-feed-b".into())
+        .unwrap()
+        .overall_mole_fractions
+        .remove(&"ethane".into());
+    let mut app = AppState::new(FlowsheetDocument::new(
+        flow,
+        DocumentMetadata::new("mixer", "Mixer", UNIX_EPOCH),
+    ));
+    let mut owner = WorkspaceRunOwner::new();
+    spawn(&mut owner, &mut app, load(), &ThreadSpawner);
+    let result = drain(&mut owner, &mut app);
+    assert_eq!(result.outcome, WorkspaceExecutionOutcome::Failed);
+    assert_eq!(result.disposition, FlowRunDisposition::Applied);
+    assert!(app.workspace.snapshot_history.is_empty());
+    let WorkspaceTraceRecord::Recorded(trace) = &result.trace else {
+        panic!("sequential trace")
+    };
+    assert_eq!(trace.planned_steps, Some(3));
+    assert_eq!(trace.last_started, 2);
+    assert_eq!(
+        trace.steps[0].streams.as_ref().unwrap().produced,
+        ["stream-feed-a".into()]
+    );
+    assert!(trace.steps[1].completed_sequence.is_none());
+    let failure = trace.stop.as_ref().unwrap();
+    assert_eq!(failure.number, 2);
+    assert_eq!(failure.unit.as_ref().unwrap().as_str(), "feed-b");
+    assert!(failure.failed_sequence > Some(failure.started_sequence));
+    assert_eq!(trace.plan_prefix[2].as_ref().unwrap().as_str(), "mixer-1");
+    let diagnostic = failure.diagnostic.as_ref().unwrap();
+    assert_eq!(diagnostic.code.as_deref(), Some("solver.step.execution"));
+    assert_eq!(
+        diagnostic.compositions.as_deref(),
+        Some(["stream-feed-b".into()].as_slice())
+    );
 }
 
 #[test]
@@ -307,6 +368,12 @@ impl WorkerSpawner for GatedSpawner {
 fn finished_payload_cancel_race_keeps_execution_success_and_discards_publication() {
     let mut app = app();
     let mut owner = WorkspaceRunOwner::new();
+    let prior_run = spawn(&mut owner, &mut app, load(), &ThreadSpawner);
+    assert_eq!(
+        drain(&mut owner, &mut app).disposition,
+        FlowRunDisposition::Applied
+    );
+    let prior_snapshots = app.workspace.snapshot_history.clone();
     let (entered_tx, entered) = mpsc::sync_channel(1);
     let (release, released) = mpsc::sync_channel(1);
     let spawner = GatedSpawner {
@@ -324,7 +391,7 @@ fn finished_payload_cancel_race_keeps_execution_success_and_discards_publication
         owner.poll(&mut app, now()).is_none(),
         "terminal payload alone must not free worker slot"
     );
-    assert!(app.workspace.snapshot_history.is_empty());
+    assert_eq!(app.workspace.snapshot_history, prior_snapshots);
     owner.cancel(&mut app, &id);
     release.send(()).unwrap();
     let summary = drain(&mut owner, &mut app);
@@ -337,7 +404,22 @@ fn finished_payload_cancel_race_keeps_execution_success_and_discards_publication
         summary.cancellation,
         Some(WorkspaceRunCancelReason::UserRequested)
     );
-    assert!(app.workspace.snapshot_history.is_empty());
+    assert_eq!(app.workspace.snapshot_history, prior_snapshots);
+    let WorkspaceTraceRecord::Recorded(trace) = summary.trace else {
+        panic!("discarded run trace")
+    };
+    assert_eq!(trace.steps.len(), 3);
+    assert!(
+        trace
+            .steps
+            .iter()
+            .all(|step| step.completed_sequence.is_some())
+    );
+    let rf_ui::result_query::FlowResultView::Current { origin, .. } = app.workspace.flow_result()
+    else {
+        panic!("prior result remains current")
+    };
+    assert_eq!(origin.execution().unwrap().run_id, prior_run);
 }
 
 #[test]
@@ -504,12 +586,21 @@ fn spawn_panic_and_disconnected_terminal_are_distinct_failures_and_release_quali
         panic.diagnostic_code.as_deref(),
         Some("workspace.run.worker_panicked")
     );
+    let WorkspaceTraceRecord::Recorded(trace) = panic.trace else {
+        panic!("worker trace")
+    };
+    assert_eq!(
+        trace.phases.last().unwrap().1,
+        WorkspaceTracePhase::Preparing
+    );
+    assert!(trace.planned_steps.is_none());
     spawn(&mut owner, &mut app, load(), &SilentSpawner);
     let disconnected = drain(&mut owner, &mut app);
     assert_eq!(
         disconnected.diagnostic_code.as_deref(),
         Some("workspace.run.completion_disconnected")
     );
+    assert_eq!(disconnected.trace, WorkspaceTraceRecord::Unavailable);
     assert!(app.workspace.pending_flow_run().is_none());
     assert_eq!(app.workspace.solve_session.status, RunStatus::Error);
 }
@@ -781,7 +872,7 @@ fn ten_thousand_progress_updates_coalesce_without_blocking_terminal_delivery() {
     use rf_solver::{SolveProgress, SolveStage, SolverControl};
     let mut app = app();
     let id = app.prepare_flow_run().receipt().run_id().clone();
-    let (channels, mut control, terminal) = WorkerChannels::new(id.clone());
+    let (channels, mut control, terminal) = WorkerChannels::new(id.clone(), false);
     for completed_units in 0..10_000 {
         assert!(
             control
@@ -797,9 +888,16 @@ fn ten_thousand_progress_updates_coalesce_without_blocking_terminal_delivery() {
     let latest = channels.progress.lock().unwrap().clone().unwrap();
     assert_eq!(latest.run_id, id);
     assert_eq!(latest.sequence, 10_000);
-    terminal.send(WorkerResult::Panicked).unwrap();
+    assert!(
+        terminal
+            .send(WorkerTerminal {
+                result: WorkerResult::Panicked,
+                trace: None
+            })
+            .is_ok()
+    );
     assert!(matches!(
-        channels.result.try_recv().unwrap(),
+        channels.result.try_recv().unwrap().result,
         WorkerResult::Panicked
     ));
     assert_eq!(channels.progress.lock().unwrap().take(), Some(latest));

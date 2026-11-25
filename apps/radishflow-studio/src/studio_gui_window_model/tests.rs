@@ -5628,9 +5628,9 @@ fn studio_gui_window_model_builds_run_context_toolbar_from_run_panel_state() {
             .collect::<Vec<_>>(),
         vec![
             (
-                crate::StudioGuiWindowContextToolbarItemTarget::RunLog,
+                crate::StudioGuiWindowContextToolbarItemTarget::ExecutionTrace,
                 None,
-                "Run Log"
+                "Execution trace"
             ),
             (
                 crate::StudioGuiWindowContextToolbarItemTarget::Convergence,

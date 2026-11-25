@@ -59,7 +59,8 @@ impl ReadyAppState {
         let zh = self.locale == StudioShellLocale::ZhCn;
         let message: String = match reply {
             Reply::Accepted(_) => {
-                self.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
+                self.execution_trace.follow_latest();
+                self.open_execution_trace();
                 if zh {
                     "计算已受理。"
                 } else {
@@ -302,7 +303,7 @@ impl ReadyAppState {
     }
     pub(super) fn show_background_run_details(&mut self) {
         self.background_run_details_open = true;
-        self.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
+        self.bottom_drawer_tab = StudioShellBottomDrawerTab::ExecutionTrace;
     }
     pub(super) fn equipment_target_busy(
         &self,
@@ -524,31 +525,7 @@ impl ReadyAppState {
                 ),
             );
             if let Some(reason) = summary.cancellation {
-                use radishflow_studio::{
-                    RunAuthorizationRefusal, WorkspaceRunCancelReason as Reason,
-                };
-                ui.small(match (zh, reason) {
-                    (true, Reason::UserRequested) => "用户取消",
-                    (false, Reason::UserRequested) => "Cancelled by user",
-                    (true, Reason::QualificationChanged) => "输入或结果资格已变化",
-                    (false, Reason::QualificationChanged) => "Inputs or result eligibility changed",
-                    (true, Reason::Detached) => "已离开原工作区",
-                    (false, Reason::Detached) => "Original workspace detached",
-                    (true, Reason::Closing) => "关闭工作区",
-                    (false, Reason::Closing) => "Workspace closing",
-                    (true, Reason::Authorization(RunAuthorizationRefusal::Expired)) => {
-                        "开始前授权已过期"
-                    }
-                    (false, Reason::Authorization(RunAuthorizationRefusal::Expired)) => {
-                        "Authorization expired before start"
-                    }
-                    (true, Reason::Authorization(RunAuthorizationRefusal::Changed)) => {
-                        "运行授权已变化"
-                    }
-                    (false, Reason::Authorization(RunAuthorizationRefusal::Changed)) => {
-                        "Run authorization changed"
-                    }
-                });
+                ui.small(cancellation_text(self.locale, reason));
             }
             if let Ok(duration) = summary
                 .finished_at
@@ -706,5 +683,31 @@ impl ReadyAppState {
             self.return_from_background_exit();
         }
         true
+    }
+}
+
+pub(super) fn cancellation_text(
+    locale: StudioShellLocale,
+    reason: radishflow_studio::WorkspaceRunCancelReason,
+) -> &'static str {
+    use radishflow_studio::{RunAuthorizationRefusal, WorkspaceRunCancelReason as Reason};
+    let zh = locale == StudioShellLocale::ZhCn;
+    match (zh, reason) {
+        (true, Reason::UserRequested) => "用户取消",
+        (false, Reason::UserRequested) => "Cancelled by user",
+        (true, Reason::QualificationChanged) => "输入或结果资格已变化",
+        (false, Reason::QualificationChanged) => "Inputs or result eligibility changed",
+        (true, Reason::Detached) => "已离开原工作区",
+        (false, Reason::Detached) => "Original workspace detached",
+        (true, Reason::Closing) => "关闭工作区",
+        (false, Reason::Closing) => "Workspace closing",
+        (true, Reason::Authorization(RunAuthorizationRefusal::Expired)) => "开始前授权已过期",
+        (false, Reason::Authorization(RunAuthorizationRefusal::Expired)) => {
+            "Authorization expired before start"
+        }
+        (true, Reason::Authorization(RunAuthorizationRefusal::Changed)) => "运行授权已变化",
+        (false, Reason::Authorization(RunAuthorizationRefusal::Changed)) => {
+            "Run authorization changed"
+        }
     }
 }

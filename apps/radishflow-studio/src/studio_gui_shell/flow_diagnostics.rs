@@ -55,6 +55,13 @@ impl ReadyAppState {
         ui.horizontal_wrapped(|ui| {
             ui.strong(self.locale.text(title));
             render_wrapped_label(ui, &window.runtime.workspace_document.flowsheet_name);
+            if self.screen == StudioShellScreen::Results
+                && ui
+                    .button(text(self.locale, "计算过程", "Execution trace"))
+                    .clicked()
+            {
+                self.open_execution_trace();
+            }
             if ui
                 .button(text(self.locale, "运行诊断", "Run diagnostics"))
                 .clicked()

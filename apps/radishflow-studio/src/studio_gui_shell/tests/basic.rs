@@ -912,7 +912,7 @@ fn run_context_toolbar_renders_existing_run_commands_and_state() {
         "控制",
         "运行当前流程",
         "监控",
-        "运行日志",
+        "计算过程",
         "收敛",
         "建议",
         "诊断",
@@ -1567,7 +1567,7 @@ fn bottom_drawer_tabs_align_with_run_information_roles() {
 
     let texts = render_bottom_drawer_texts(&mut app);
 
-    for expected in ["消息", "运行日志", "收敛", "建议", "当前问题", "结果表"] {
+    for expected in ["消息", "计算过程", "收敛", "建议", "当前问题", "结果表"] {
         assert!(
             texts.iter().any(|text| text == expected),
             "expected bottom drawer tab `{expected}`, rendered texts: {:?}",
@@ -1581,6 +1581,12 @@ fn bottom_drawer_tabs_align_with_run_information_roles() {
             texts
         );
     }
+    app.open_execution_trace();
+    assert!(
+        render_bottom_drawer_texts(&mut app)
+            .iter()
+            .any(|text| text == "查看运行日志")
+    );
 }
 
 #[test]

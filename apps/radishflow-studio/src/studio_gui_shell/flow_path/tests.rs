@@ -229,8 +229,8 @@ fn flow_path_keyboard_enters_the_selected_result_and_returns_to_the_origin() {
             ),
             "1e-",
         );
-        app.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
-        app.bottom_drawer_tab = StudioShellBottomDrawerTab::RunLog;
+        app.bottom_drawer_tab = StudioShellBottomDrawerTab::ExecutionTrace;
+        app.bottom_drawer_tab = StudioShellBottomDrawerTab::ExecutionTrace;
         let viewport = CanvasInitialViewportFitState::restore(egui::vec2(-36.0, 16.0));
         app.canvas_initial_viewport_fit = viewport;
         let ctx = egui::Context::default();
@@ -286,7 +286,10 @@ fn flow_path_keyboard_enters_the_selected_result_and_returns_to_the_origin() {
             app.flow_path.selected(),
             Some(&StreamId::new("stream-heated"))
         );
-        assert_eq!(app.bottom_drawer_tab, StudioShellBottomDrawerTab::RunLog);
+        assert_eq!(
+            app.bottom_drawer_tab,
+            StudioShellBottomDrawerTab::ExecutionTrace
+        );
         assert_eq!(app.canvas_initial_viewport_fit, viewport);
         assert_eq!(
             app.platform_host.snapshot().runtime.workspace_document,
