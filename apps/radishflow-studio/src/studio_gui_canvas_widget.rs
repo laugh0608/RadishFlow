@@ -658,6 +658,7 @@ mod tests {
     use std::{
         fs,
         path::PathBuf,
+        sync::atomic::{AtomicU64, Ordering},
         time::{SystemTime, UNIX_EPOCH},
     };
 
@@ -679,14 +680,21 @@ mod tests {
         }
     }
 
-    fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
+    fn canvas_widget_project_path(case: &str) -> PathBuf {
+        static NEXT_PROJECT: AtomicU64 = AtomicU64::new(0);
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("expected current timestamp")
             .as_nanos();
-        let project_path = std::env::temp_dir().join(format!(
-            "radishflow-studio-canvas-widget-{timestamp}.rfproj.json"
-        ));
+        let process_id = std::process::id();
+        let sequence = NEXT_PROJECT.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!(
+            "radishflow-studio-canvas-widget-{case}-{process_id}-{timestamp}-{sequence}.rfproj.json"
+        ))
+    }
+
+    fn flash_drum_local_rules_config() -> (StudioRuntimeConfig, PathBuf) {
+        let project_path = canvas_widget_project_path("flash-local-rules");
         let project = crate::test_support::build_flash_drum_local_rules_project_json();
         fs::write(&project_path, project).expect("expected local rules project");
 
@@ -700,13 +708,7 @@ mod tests {
     }
 
     fn flash_drum_sink_only_reconnect_config() -> (StudioRuntimeConfig, PathBuf) {
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("expected current timestamp")
-            .as_nanos();
-        let project_path = std::env::temp_dir().join(format!(
-            "radishflow-studio-canvas-widget-sink-only-{timestamp}.rfproj.json"
-        ));
+        let project_path = canvas_widget_project_path("sink-only");
         let mut project = rf_store::parse_project_file_json(
             crate::test_support::official_heater_binary_hydrocarbon_project_json(),
         )
@@ -736,13 +738,7 @@ mod tests {
     }
 
     fn cycle_reconnect_config() -> (StudioRuntimeConfig, PathBuf) {
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("expected current timestamp")
-            .as_nanos();
-        let project_path = std::env::temp_dir().join(format!(
-            "radishflow-studio-canvas-widget-cycle-reconnect-{timestamp}.rfproj.json"
-        ));
+        let project_path = canvas_widget_project_path("cycle-reconnect");
         let mut flowsheet = rf_model::Flowsheet::new("reconnect-cycle");
         flowsheet
             .insert_stream(rf_model::MaterialStreamState::new("stream-feed", "Feed"))
