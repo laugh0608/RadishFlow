@@ -1,0 +1,6 @@
+# Tab-separated entries. See the family asset policy v1 documentation.
+version	1.0.0
+baseline	2579f464fe3a7ec74f410d2cc8f658c2d148d083
+deny	artifacts/*
+allow	apps/radishflow-studio/assets/fonts/SourceHanSansSC-Regular.otf	16529832	f1d8611151880c6c336aabeac4640ef434fa13cbfbf1ffe82d0a71b2a5637256	Studio 内嵌简中字体	docs/architecture/studio-visual-system.md
+allow	apps/radishflow-studio/assets/fonts/SourceHanSansSC-Medium.otf	16546328	1df61d31687d04fd2f928a3bb6ca6cd61f0e988cc267cf317f32406edbb49f70	现有设计预览字重	docs/architecture/studio-visual-system.md

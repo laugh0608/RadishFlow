@@ -136,3 +136,9 @@ PR 中适用的 Rust、.NET 和打包 job 在治理通过后并行；聚合等�
 - 若后续调整分支角色、PR 目标分支、required checks、回灌策略或稳定主线保护规则，应同步更新本 ADR、根协作入口、贡献指南、PR 模板和 ruleset 说明
 - 稳定主线 PR 未完成回灌时，不把该批次视为拓扑收口完成；发现遗漏应先补回灌，再继续下一批开发
 - 新增同类治理规则时，继续采用“仓库文件声明 + 自动契约检查 + GitHub 设置落地 + ADR 固化”的方式，避免只靠口头约定
+
+## 二进制资产门禁
+
+本仓采用 [Radish 系列资产规则 v1](https://github.com/RadishIntelligence/.github/tree/main/asset-policy/v1)。单个二进制超过 5 MiB 时须登记例外，新增二进制合计超过 10 MiB 时提示复核。本仓的输出路径和例外以 [policy.tsv](../../.radish-assets/policy.tsv) 为准。
+
+新克隆在仓库根目录运行 `git config --local core.hooksPath .githooks` 启用本地钩子。PR 检查会核对新增提交中的资产。可用 `bash .radish-assets/check.sh --staged` 检查暂存区。

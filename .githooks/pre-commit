@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+bash .radish-assets/check.sh --staged
+exec scripts/hooks/pre-commit

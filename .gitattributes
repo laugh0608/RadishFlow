@@ -15,3 +15,8 @@
 # Defense in depth for source archives, including accidental forced additions.
 /private-resources export-ignore
 /private-resources/** export-ignore
+
+# Repository asset checks
+/.radish-assets/* text eol=lf
+/.githooks/pre-commit text eol=lf
+/.githooks/pre-push text eol=lf

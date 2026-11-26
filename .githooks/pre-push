@@ -1,0 +1,3 @@
+#!/bin/sh
+set -eu
+bash .radish-assets/check.sh --pre-push
