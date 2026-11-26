@@ -1,6 +1,6 @@
 # CAPE-OPEN Boundary
 
-更新时间：2026-11-13
+更新时间：2026-11-26
 
 > 本文定义接口边界并保留历史验证说明。具体迭代与验证安排见 [当前状态](../status/current.md)。native 句柄生命周期契约见 [适配层专题](../topics/capeopen-pmc-adapter.md#native-engine-生命周期)。
 
@@ -27,6 +27,15 @@ CAPE-OPEN 定义组件互操作契约，不要求模拟器内部照搬 COM 对�
 “物流对象不实现物性算法”是职责分离，不等于不能提供物性或闪蒸调用入口。Material Object 可将请求交给热力学服务；内部仍可保持“状态数据 + 显式服务”。算法独立于流程拓扑，也不意味着配置不可变或所有任务共享一个可变全局实例。依据为 [Thermo 1.1 规范第 5 节](https://www.colan.org/wp-content/uploads/2015/05/CO_Thermo_1.1_Specification_311.pdf)；实现时同时核对 [官方勘误入口](https://www.colan.org/specifications/thermodynamics-and-physical-properties-interface-specification-v1-1/)。
 
 将物性与单元分开也符合通用模拟架构；例如 [IDAES](https://idaes-pse.readthedocs.io/en/stable/explanations/components/property_package/index.html) 将共享物性参数和各处状态子模型分开组织。这是职责参考，不要求采用其具体类结构。
+
+## CAPE-OPEN 规范参考原件
+
+两套完整说明资料保存在项目所有者的本地资料仓库 `private-resources`。维护者可按下表核对本地 ZIP，公开读者可从固定提交查看原始目录。互操作代码用于校准 IID 和异常契约的示例源码继续放在 `adapters/reference/`。
+
+| 原目录版本 | 文件数 | 本地 ZIP 的 SHA-256 | 原始目录 |
+| --- | ---: | --- | --- |
+| `1.0_Y17-07` | 31 | `1bf1217d084785b77210a7af91cc1b71abc1ab1de0d76db8f5249bbd40705cfc` | [固定版本原件](https://github.com/laugh0608/RadishFlow/tree/a26de5b2f1008cbbb78936653fcbd53af017dfe0/adapters/reference/CO_Documentation_set_1.0_Y17-07) |
+| `1.1_Y23-12` | 581 | `3c60dba4dcb99e2ef7581d570c50578f23cf6bf1dcb9072f302e7359ea5781d8` | [固定版本原件](https://github.com/laugh0608/RadishFlow/tree/a26de5b2f1008cbbb78936653fcbd53af017dfe0/adapters/reference/CO_Documentation_set_1.1_Y23-12) |
 
 ## 互操作方向与符合性证据
 
