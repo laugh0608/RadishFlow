@@ -1,6 +1,6 @@
 # RadishFlow 开发路线图
 
-更新时间：2026-11-25
+更新时间：2026-11-26
 
 ## 用途
 
@@ -129,7 +129,7 @@ U3 首批已接入项目显示单位。A1 / A2 与设备模型可按各自切片
 
 ### 运行、消息与诊断的配套切片
 
-[运行与诊断大专题](topics/runtime-messages-and-diagnostics.md)覆盖 N0—N5。N1 已接入 A1 / A2 的当前问题与推荐。Studio 的无回路稳态切片已通过步骤审阅、单元暂停与单步、单出口温度监视的代表验收。循环残差观察待 D-03 评审。各项实施与验证范围见[需求追踪表](topics/runtime-messages/requirements-traceability.md)。
+[运行与诊断大专题](topics/runtime-messages-and-diagnostics.md)覆盖 N0—N5。N1 已接入 A1 / A2 的当前问题与推荐。Studio 的无回路稳态切片已通过步骤审阅、单元暂停与单步、单出口温度监视的代表验收。固定温压回流已完成 D-03 报告对照和 S-09 字段评审，待局部交互设计。各项实施与验证范围见[需求追踪表](topics/runtime-messages/requirements-traceability.md)。
 
 | 切片 | 进入时机 | 核心退出依据 |
 | --- | --- | --- |

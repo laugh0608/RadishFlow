@@ -1,6 +1,6 @@
 # 当前状态
 
-更新时间：2026-11-25
+更新时间：2026-11-26
 
 ## 用途
 
@@ -47,7 +47,7 @@
 
 ### 下一步
 
-- [ ] [D-03 循环残差判据](../topics/runtime-messages/execution-trace-and-convergence.md#接下来事项)。对照回流收敛与预算耗尽，核对残差、缩放、容差和接收值。
+- [ ] [S-09](../topics/runtime-messages/execution-trace-and-convergence.md#s-09-界面改动范围) 已完成回流残差字段评审，下一步出运行条、成功及失败详情的局部交互稿。
 - [x] macOS 已验双流股端口对照及[组分查询、引用保护、重开与进料组分核对](../topics/property/component-catalog-and-selection.md)。
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
 - [x] [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存)已接通 CLI v14、Studio 只读与编辑。macOS 通过 40／50 mol/s、重跑失效、迟到回执、保存冲突与新会话复算验收。
