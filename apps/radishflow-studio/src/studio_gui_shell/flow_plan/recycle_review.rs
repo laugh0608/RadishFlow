@@ -13,9 +13,30 @@ pub(super) struct RecycleReview {
 
 struct Visit {
     stream: StreamId,
+    binding: String,
     screen: StudioShellScreen,
     action: egui::Id,
     focus_row: bool,
+}
+
+pub(super) fn tear_is_bound(workspace: &rf_ui::WorkspaceState, tear: &TearSpecification) -> bool {
+    let flow = &workspace.document.flowsheet;
+    flow.streams.contains_key(&tear.stream_id)
+        && [
+            (&tear.source, PortDirection::Outlet),
+            (&tear.sink, PortDirection::Inlet),
+        ]
+        .iter()
+        .all(|(end, direction)| {
+            flow.units.get(&end.unit_id).is_some_and(|u| {
+                u.ports.iter().any(|p| {
+                    p.kind == PortKind::Material
+                        && p.direction == *direction
+                        && p.name == end.port_name
+                        && p.stream_id.as_ref() == Some(&tear.stream_id)
+                })
+            })
+        })
 }
 
 impl RecycleReview {
@@ -89,44 +110,62 @@ impl ReadyAppState {
         {
             return;
         }
-        match workspace.flow_result() {
+        let (report, snapshot_id) = match workspace.flow_result() {
             FlowResultView::Current {
                 snapshot: rf_ui::FlowResultRecord::Partitioned(p),
                 ..
-            } if p.result.streams.contains_key(&stream) => {
-                let snapshot_id = p.common.id.to_string();
-                self.focus_result_table_stream(&snapshot_id, stream.as_str());
-                self.screen = StudioShellScreen::Results;
-            }
-            FlowResultView::Failed { .. }
-                if workspace
-                    .partitioned_failure_evidence()
-                    .and_then(|f| f.active_recycle.as_ref())
-                    .is_some_and(|r| r.tear.stream_id == stream)
-                    && workspace.document.flowsheet.streams.contains_key(&stream) =>
-            {
-                self.focus_browser_object(rf_ui::variable_browser::ObjectId::Stream(
-                    stream.clone(),
-                ));
-            }
+            } if p.result.streams.contains_key(&stream) => (
+                p.result
+                    .blocks
+                    .iter()
+                    .filter_map(|b| b.recycle.as_ref())
+                    .find(|r| r.tear.stream_id == stream),
+                Some(p.common.id.to_string()),
+            ),
+            FlowResultView::Failed { .. } => (
+                workspace.partitioned_failure_evidence().and_then(|f| {
+                    f.completed_blocks
+                        .iter()
+                        .filter_map(|b| b.recycle.as_ref())
+                        .chain(&f.active_recycle)
+                        .find(|r| r.tear.stream_id == stream && tear_is_bound(workspace, &r.tear))
+                }),
+                None,
+            ),
             _ => return,
+        };
+        let Some(report) = report else { return };
+        let t = &report.tear;
+        let binding = format!(
+            "{}.{} → {} → {}.{}",
+            t.source.unit_id, t.source.port_name, stream, t.sink.unit_id, t.sink.port_name
+        );
+        if let Some(id) = snapshot_id {
+            self.focus_result_table_stream(&id, stream.as_str());
+            self.screen = StudioShellScreen::Results;
+        } else {
+            self.focus_browser_object(rf_ui::variable_browser::ObjectId::Stream(stream.clone()));
+            self.left_sidebar_tab = StudioShellLeftSidebarTab::Project;
         }
         self.background_run_details_open = false;
         self.flow_plan.recycle.visit = Some(Visit {
             stream,
+            binding,
             action,
             screen: self.screen,
-            focus_row: self.screen == StudioShellScreen::Results,
+            focus_row: true,
         });
     }
-    pub(in crate::studio_gui_shell) fn focus_recycle_result_row(
+    pub(in crate::studio_gui_shell) fn focus_recycle_stream_row(
         &mut self,
+        screen: StudioShellScreen,
         stream: &str,
         response: &egui::Response,
     ) {
         if let Some(v) = &mut self.flow_plan.recycle.visit
             && v.focus_row
-            && self.screen == v.screen
+            && self.screen == screen
+            && v.screen == screen
             && stream == v.stream.as_str()
         {
             response.scroll_to_me(None);
@@ -148,6 +187,7 @@ impl ReadyAppState {
             return;
         }
         let zh = self.locale == StudioShellLocale::ZhCn;
+        ui.small(&visit.binding);
         if let FlowResultView::Current {
             snapshot: rf_ui::FlowResultRecord::Partitioned(p),
             ..

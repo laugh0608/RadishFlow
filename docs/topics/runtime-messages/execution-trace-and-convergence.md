@@ -107,6 +107,18 @@
 
 首批覆盖固定温压单撕裂回流的运行内观察。依赖现有报告与检查点即可完成显示；嵌套循环、停滞／振荡自动诊断和新增逐次组分采集各有独立设计条件。
 
+### Q7 串联双回流块的结果归属
+
+[Q7 工程](../../../examples/flowsheets/fixed-tp-q7-serial-recycle.rfproj.json)使用同一固定温压分块方法。第一块的出口 `s-bleed` 供给第二块，两块分别做独立复核。UI 面向用户从 1 起算块号，CLI v4 的 `index` 和失败阶段的 `block` 从 0 起算。Studio 按两种终态的[已认可交互稿](../../architecture/designs/reviews/2026-11-26-studio-q7-serial-recycle/README.md)展示这三处信息。
+
+| 流程结果区 | Studio 行为 |
+| --- | --- |
+| 整图摘要 | 在运行来源旁显示一次 Current 和已发布流股数，或 Failed、终止原因与本次无正式结果。按末块产品的实际连接及该次调用计数标明直接下游是否执行。 |
+| 两块复核 | 按执行顺序显示块号、撕裂、迭代／复核次数、末次求值及双判据。失败时从 `completed_blocks` 读取已通过复核的块并标「仅诊断」，从 `active_recycle` 与失败阶段读取终止块。串联块的候选、组分和完整轨迹在各自「块证据」中展开，绑定按运行和块隔离。 |
+| 流股往返 | 成功定位同次整图快照里的生产端返回行。失败定位已完成块或终止块的工程流股，核对报告中的撕裂和工程源、汇端口后打开对象树与检查器。返回时同一回执内恢复原按钮焦点和证据展开状态。 |
+
+[结果区](../../../apps/radishflow-studio/src/studio_gui_shell/flow_plan/partitioned_results.rs)和[流股导航](../../../apps/radishflow-studio/src/studio_gui_shell/flow_plan/recycle_review.rs)共用既有结果资格查询。验收对照了 CLI v4 和 macOS 实窗的 617 个轨迹样本及四次流股往返。[场景与验证记录](scenarios-and-acceptance.md#q7-串联双回流块)
+
 ## 接下来事项
 
 - [局部交互稿](../../architecture/designs/reviews/2026-11-26-studio-s09-recycle-residuals/README.md)已按两份真实报告验证运行条、成功和失败摘要、精确读数、完整轨迹与来源失效。三处界面获认可后已接入 Studio。两例原生验收见 [S-09 场景](scenarios-and-acceptance.md#s-09-固定温压单撕裂回流)。嵌套回流须先确定块与内外层求值身份。[需求跟踪](requirements-traceability.md)

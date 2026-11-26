@@ -975,6 +975,9 @@ impl ReadyAppState {
                     .frame(false),
             )
             .on_hover_text(self.locale.runtime_label(&item.detail).as_ref());
+        if item.kind_label == "Stream" {
+            self.focus_recycle_stream_row(StudioShellScreen::Workbench, &item.target_id, &response);
+        }
         if response.clicked() {
             self.right_sidebar_tab = StudioShellRightSidebarTab::Inspector;
             self.select_canvas_stream(&item.command_id);

@@ -44,7 +44,11 @@ impl ReadyAppState {
                         .add_enabled(current, egui::Button::new(&stream.label).frame(false))
                         .on_hover_text(&stream.stream_id);
                     if current {
-                        self.focus_recycle_result_row(&stream.stream_id, &response);
+                        self.focus_recycle_stream_row(
+                            StudioShellScreen::Results,
+                            &stream.stream_id,
+                            &response,
+                        );
                         self.focus_flow_path_result_row(&stream.stream_id, &response);
                     }
                     if response.clicked()

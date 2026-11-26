@@ -109,18 +109,21 @@ fn sample(
     ));
 }
 
-pub(super) fn summary(
+pub(super) fn evidence(
     ui: &mut egui::Ui,
     r: &RecycleBlockReport,
     unit: MeasurementUnit,
     zh: bool,
-    current: bool,
+    verified: bool,
+    compact: bool,
 ) {
     let Some((last, earlier)) = r.residual_trace.split_last() else {
+        details(ui, r, unit, zh);
         return;
     };
-    if current && last.phase == EvaluationPhase::Verification {
-        if let Some((candidate, before)) = earlier.split_last() {
+    let verified = verified && last.phase == EvaluationPhase::Verification;
+    let candidates = |ui: &mut egui::Ui| {
+        if verified && let Some((candidate, before)) = earlier.split_last() {
             if let Some(previous) = before.last() {
                 sample(
                     ui,
@@ -140,27 +143,35 @@ pub(super) fn summary(
                 tr(zh, "候选", "Candidate"),
             );
         }
-        sample(
-            ui,
-            last,
-            r.tolerances,
-            unit,
-            zh,
-            tr(zh, "复核通过", "Verified"),
+    };
+    if !compact {
+        candidates(ui);
+    }
+    let role = if verified {
+        tr(zh, "复核通过", "Verified")
+    } else {
+        tr(zh, "最后完成求值", "Last completed evaluation")
+    };
+    sample(ui, last, r.tolerances, unit, zh, role);
+    if compact {
+        ui.collapsing(
+            format!(
+                "{} · {} ({})",
+                tr(zh, "块证据", "Block evidence"),
+                r.tear.stream_id,
+                r.residual_trace.len()
+            ),
+            |ui| {
+                candidates(ui);
+                details(ui, r, unit, zh);
+            },
         );
     } else {
-        sample(
-            ui,
-            last,
-            r.tolerances,
-            unit,
-            zh,
-            tr(zh, "最后完成求值", "Last completed evaluation"),
-        );
+        details(ui, r, unit, zh);
     }
 }
 
-pub(super) fn details(ui: &mut egui::Ui, r: &RecycleBlockReport, unit: MeasurementUnit, zh: bool) {
+fn details(ui: &mut egui::Ui, r: &RecycleBlockReport, unit: MeasurementUnit, zh: bool) {
     let t = &r.tear;
     ui.collapsing(
         tr(zh, "撕裂绑定与边界", "Tear binding and boundary"),

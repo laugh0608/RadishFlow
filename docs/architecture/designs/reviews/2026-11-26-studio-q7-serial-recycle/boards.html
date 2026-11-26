@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Q7 · RadishFlow Studio</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="reports.js"></script>
+  <script defer src="boards.js"></script>
+</head>
+<body>
+  <header class="toolbar">
+    <div class="tools">
+      <strong id="review-label">交互稿评审</strong>
+      <label><span id="case-label">工况</span><select id="scene">
+        <option value="025">0.60 / 0.25</option><option value="099">0.60 / 0.99</option>
+      </select></label>
+      <label><span id="context-label">来源</span><select id="context">
+        <option value="original">原运行</option><option value="edited">修改输入</option>
+        <option value="reopened">重开同一工程</option><option value="replaced">新回执已接收</option>
+      </select></label>
+      <label><span id="language-label">语言</span><select id="language">
+        <option value="zh">中文</option><option value="en">English</option>
+      </select></label>
+      <label><span id="size-label">字号</span><select id="size">
+        <option value="14">14 px</option><option value="20">20 px</option>
+      </select></label>
+    </div>
+  </header>
+  <main>
+    <div class="chrome">
+      <span class="brand"><b>RF</b> RadishFlow Studio</span>
+      <span id="project-name">Q7 串联回流</span>
+    </div>
+    <div class="workspace">
+      <div id="review"></div>
+      <div id="destination" hidden></div>
+    </div>
+  </main>
+</body>
+</html>

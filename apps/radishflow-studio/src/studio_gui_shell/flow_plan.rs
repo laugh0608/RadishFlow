@@ -18,6 +18,7 @@ mod mixed;
 mod mixed_recycle;
 pub(super) mod mixed_results;
 pub(super) mod partitioned_residuals;
+mod partitioned_results;
 mod recycle_review;
 mod results;
 mod simultaneous;

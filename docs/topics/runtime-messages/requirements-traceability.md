@@ -31,7 +31,7 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 | MSG-06 | [状态维度与结果资格](message-model-and-lifecycle.md) | N0 / N1 / N3 | S-06 | 部分实现 / 部分通过；局部检查与结果资格独立，见下方 A1 证据 |
 | MSG-07 | [真实步骤与失败证据](execution-trace-and-convergence.md) | N2 | S-07 | 部分实现 / 部分通过，记录真实开始、完成及失败位置，按运行查看步骤。[N2 证据](#n2-评审进展2026-11-25) |
 | MSG-08 | [层级、顺序与能力](execution-trace-and-convergence.md) | N2 / N4 | S-08 | 部分实现 / 部分通过，无回路顺序与缺段可见。D-03 已核对固定温压单层回流的迭代与复核坐标，嵌套循环待续。[N2 证据](#n2-评审进展2026-11-25) |
-| MSG-09 | [残差与观察值解释](execution-trace-and-convergence.md) | N4 | S-09 | 部分实现 / 部分通过。单出口温度与固定温压单撕裂的[双判据、末次组分及轨迹](scenarios-and-acceptance.md#s-09-固定温压单撕裂回流)已做 macOS 验收，内外层残差待续。[回流验收记录](../../devlogs/2026-11/2026-W48.md#2026-11-26-s-09-studio-回流残差实窗验收)。[温度验收](scenarios-and-acceptance.md#n4-出口温度监视首批验收) |
+| MSG-09 | [残差与观察值解释](execution-trace-and-convergence.md) | N4 | S-09 | 部分实现 / 部分通过。单出口温度与固定温压单撕裂的[双判据、末次组分及轨迹](scenarios-and-acceptance.md#s-09-固定温压单撕裂回流)已做 macOS 验收。[Q7 串联双块](execution-trace-and-convergence.md#q7-串联双回流块的结果归属)两种终态的整图归属、逐块复核和流股往返已通过 [macOS 实窗验收](../../devlogs/2026-11/2026-W48.md#2026-11-26-q7-串联回流-studio-实窗验收)。内外层残差待续。[回流验收记录](../../devlogs/2026-11/2026-W48.md#2026-11-26-s-09-studio-回流残差实窗验收)。[温度验收](scenarios-and-acceptance.md#n4-出口温度监视首批验收) |
 | MSG-10 | [采集、容量与性能](execution-trace-and-convergence.md) | N2 | S-10 | 部分实现 / 部分通过，无回路记录设有计划行、明细和载荷上限，已测 4,096 步的采集开销与截断。[N2 证据](#n2-评审进展2026-11-25) |
 | MSG-11 | [安全暂停与能力](run-control-and-watch-conditions.md) | N3 | S-11 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
 | MSG-12 | [单步、继续与取消](run-control-and-watch-conditions.md) | N3 | S-12 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
