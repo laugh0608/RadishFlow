@@ -93,7 +93,7 @@
 
 2026-11-26 用两个工况完成字段评审。**主改「流程运行 → 稳态运行计划 → 流程结果」的成功块详情和失败详情；顶部运行进度条补一处样本归属。** 独立「流程结果」页继续承载正式流股查询，只需从成功详情跳转到已有的目标行。评审依据为原版界面帧、求解检查点及两份运行报告。[页面入口](../../../apps/radishflow-studio/src/studio_gui_shell/chrome.rs) · [原版帧记录](../../devlogs/2026-11/2026-W48.md#2026-11-26-s-09-原版残差字段评审)
 
-| 位置 | 现版读到的内容 | 本次改动 |
+| 位置 | 接线前的原版表现 | 本次改动 |
 | --- | --- | --- |
 | 运行中 · 顶部进度条 | 当前阶段有序号，「最近完成残差」只有两个数。0.90 开始复核 1 时，最近样本仍属于迭代 229。 | 「正在执行」取进度的块、阶段与序号；「最近完成」取样本自己的阶段、序号及两项带单位的最大值。尚无样本时显示「尚无已完成求值」。进度可合并刷新，完整轨迹在终态查看。[进度视图](../../../apps/radishflow-studio/src/studio_gui_shell/background_run.rs) · [检查点](../../../crates/rf-solver/src/partitioned/execution.rs) |
 | 成功 · 回流块详情 | 第 4 块可展开计数、容差、假设值、返回值与 230 个样本。容差集中另列，复核值在常规精度下看似与假设相同。 | 在该块顶部依次给出「候选前一次」「候选」「独立复核」的实际样本，再给出本次结果资格。0.90 依次对应迭代 228、229 和复核 1；样本按实际阶段取行，首轮即达标时只显示已有求值。末次组分详情标「独立复核 1」；「查看正式流股 s-recycle」按本次 Current 快照定位生产端返回值。[成功详情](../../../apps/radishflow-studio/src/studio_gui_shell/flow_plan/results.rs) · [现有结果行定位](../../../apps/radishflow-studio/src/studio_gui_shell/variable_browser/navigation.rs) |
@@ -109,4 +109,4 @@
 
 ## 接下来事项
 
-- 下一步按[S-09 工况与验收读数](scenarios-and-acceptance.md#s-09-固定温压单撕裂回流)出局部交互稿，覆盖运行中、成功和预算耗尽的默认摘要、展开明细及窄区键盘路径。当前完成的是字段评审，产品接线与实窗验收待续。[需求跟踪](requirements-traceability.md)
+- [局部交互稿](../../architecture/designs/reviews/2026-11-26-studio-s09-recycle-residuals/README.md)已按两份真实报告验证运行条、成功和失败摘要、精确读数、完整轨迹与来源失效。三处界面获认可后已接入 Studio。两例原生验收见 [S-09 场景](scenarios-and-acceptance.md#s-09-固定温压单撕裂回流)。嵌套回流须先确定块与内外层求值身份。[需求跟踪](requirements-traceability.md)

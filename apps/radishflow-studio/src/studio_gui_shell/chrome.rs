@@ -82,6 +82,7 @@ impl ReadyAppState {
             self.render_run_diagnostic_return(ui);
             self.render_execution_trace_return(ui);
             self.render_flow_path_return(ui);
+            self.render_recycle_return(ui);
             self.render_project_operation_strip(ui);
             if self.screen != StudioShellScreen::Equipment
                 && !window.commands.menu_tree.is_empty()

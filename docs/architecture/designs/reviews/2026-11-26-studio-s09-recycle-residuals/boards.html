@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>S-09 · RadishFlow Studio</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+  <script src="reports.js" defer></script>
+  <script src="boards.js" defer></script>
+</head>
+<body>
+  <aside id="controls" aria-label="评审设置">
+    <strong data-en="Review settings">评审设置</strong>
+    <label><span data-en="Case">工况</span>
+      <select id="scene">
+        <option value="success" data-en="0.90 · Converged">0.90 · 收敛</option>
+        <option value="failure" data-en="0.99 · Budget exhausted">0.99 · 预算耗尽</option>
+        <option value="running90" data-en="0.90 · Running">0.90 · 运行中</option>
+        <option value="running99" data-en="0.99 · Running">0.99 · 运行中</option>
+      </select>
+    </label>
+    <label id="checkpoint-label" hidden><span data-en="Checkpoint">检查点</span>
+      <select id="checkpoint"></select>
+    </label>
+    <label id="context-label"><span data-en="Context">结果上下文</span>
+      <select id="context">
+        <option value="original" data-en="Original run">原运行</option>
+        <option value="pending" data-en="Rerun pending · original still Current">重跑中 · 原结果仍为 Current</option>
+        <option value="edited" data-en="Input edited">输入已修改</option>
+        <option value="switched" data-en="Project switched">已切换工程</option>
+        <option value="rerun" data-en="New run receipt accepted">重跑回执已接收</option>
+      </select>
+    </label>
+    <label><span data-en="Language">语言</span>
+      <select id="language"><option value="zh">中文</option><option value="en">English</option></select>
+    </label>
+    <label><span data-en="Text">字号</span>
+      <select id="size"><option value="14">14 px</option><option value="20">20 px</option></select>
+    </label>
+  </aside>
+  <main>
+    <header class="chrome"><div class="brand"><span class="mark">RF</span>RadishFlow Studio</div><span data-en="Steady-state simulation">稳态模拟</span></header>
+    <div id="activity-bar" hidden></div>
+    <div class="workspace">
+      <p class="crumb" id="path"></p>
+      <div class="heading"><h1 id="heading" tabindex="-1"></h1><span id="badge" class="badge"></span></div>
+      <div class="columns">
+        <div id="primary"></div>
+        <aside id="source" class="card source"></aside>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

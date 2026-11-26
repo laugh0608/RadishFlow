@@ -1,6 +1,6 @@
 # Studio UI 专题计划
 
-更新时间：2026-11-25
+更新时间：2026-11-26
 
 ## 用途与决策状态
 
@@ -134,6 +134,8 @@ N2 [计算过程局部评审稿](designs/reviews/2026-11-25-studio-n2-execution-
 N3 [无回路运行控制局部设计](designs/reviews/2026-11-25-studio-n3-run-control/README.md)已认可并接入 Studio。macOS 实窗已核对首步前暂停、逐个单元放行、终态与结果归属。
 
 N4 [出口温度条件局部交互稿](designs/reviews/2026-11-25-studio-n4-outlet-temperature/README.md)已认可并接入 Studio。覆盖单次运行规则、阈值附近的精确读数、等待与已确认停点，以及缺值终止后检查条件。
+
+S-09 [固定温压回流残差局部交互稿](designs/reviews/2026-11-26-studio-s09-recycle-residuals/README.md)已获认可。运行条、成功块和失败诊断已接入 Studio，两份工程的回执、精确组分值及流股往返已在 macOS 窗口核对。
 
 ## 持续有效的视觉原则
 

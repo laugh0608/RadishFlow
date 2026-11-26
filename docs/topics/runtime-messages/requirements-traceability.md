@@ -31,7 +31,7 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 | MSG-06 | [状态维度与结果资格](message-model-and-lifecycle.md) | N0 / N1 / N3 | S-06 | 部分实现 / 部分通过；局部检查与结果资格独立，见下方 A1 证据 |
 | MSG-07 | [真实步骤与失败证据](execution-trace-and-convergence.md) | N2 | S-07 | 部分实现 / 部分通过，记录真实开始、完成及失败位置，按运行查看步骤。[N2 证据](#n2-评审进展2026-11-25) |
 | MSG-08 | [层级、顺序与能力](execution-trace-and-convergence.md) | N2 / N4 | S-08 | 部分实现 / 部分通过，无回路顺序与缺段可见。D-03 已核对固定温压单层回流的迭代与复核坐标，嵌套循环待续。[N2 证据](#n2-评审进展2026-11-25) |
-| MSG-09 | [残差与观察值解释](execution-trace-and-convergence.md) | N4 | S-09 | 部分实现 / 部分通过，单出口温度已验。固定温压回流已完成[原版字段评审](../../devlogs/2026-11/2026-W48.md#2026-11-26-s-09-原版残差字段评审)，[局部交互与产品验收](scenarios-and-acceptance.md#s-09-固定温压单撕裂回流)待续。[温度验收](scenarios-and-acceptance.md#n4-出口温度监视首批验收) |
+| MSG-09 | [残差与观察值解释](execution-trace-and-convergence.md) | N4 | S-09 | 部分实现 / 部分通过。单出口温度与固定温压单撕裂的[双判据、末次组分及轨迹](scenarios-and-acceptance.md#s-09-固定温压单撕裂回流)已做 macOS 验收，内外层残差待续。[回流验收记录](../../devlogs/2026-11/2026-W48.md#2026-11-26-s-09-studio-回流残差实窗验收)。[温度验收](scenarios-and-acceptance.md#n4-出口温度监视首批验收) |
 | MSG-10 | [采集、容量与性能](execution-trace-and-convergence.md) | N2 | S-10 | 部分实现 / 部分通过，无回路记录设有计划行、明细和载荷上限，已测 4,096 步的采集开销与截断。[N2 证据](#n2-评审进展2026-11-25) |
 | MSG-11 | [安全暂停与能力](run-control-and-watch-conditions.md) | N3 | S-11 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
 | MSG-12 | [单步、继续与取消](run-control-and-watch-conditions.md) | N3 | S-12 | 部分实现 / 部分通过，见[无回路稳态首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
@@ -67,7 +67,7 @@ MSG 编号稳定且不复用；删除 / 替代要求保留去向，拆分保留�
 | --- | --- | --- | --- |
 | D-01 | [问题键、失效、重检与阻断](message-model-and-lifecycle.md#切片待决策与最小验证) | MSG-01—06 | N1 前 / 检查与应用状态 |
 | D-02 | [事件协议、顺序、采集及容量](execution-trace-and-convergence.md#切片待决策与最小验证) | MSG-07—10 | 无回路 N2 已接线 / 求解执行与运行记录 |
-| D-03 | [残差及收敛观察判据](execution-trace-and-convergence.md#d-03-固定温压回流残差) | MSG-08—09、16 | 固定温压单撕裂报告及 S-09 字段评审已完成，待局部交互稿 / 数值求解与 Studio |
+| D-03 | [残差及收敛观察判据](execution-trace-and-convergence.md#d-03-固定温压回流残差) | MSG-08—09、16 | 固定温压单撕裂报告及字段评审已完成，S-09 固定温压首批已接线并验收 / 数值求解与 Studio |
 | D-04 | [无回路稳态运行控制提案](run-control-and-watch-conditions.md#d-04-无回路稳态运行控制提案) | MSG-11—13 | N3 无回路稳态已接入 Studio / 应用任务与执行者；[首批验收](scenarios-and-acceptance.md#n3-无回路稳态首批验收) |
 | D-05 | [无回路稳态出口温度监视提案](run-control-and-watch-conditions.md#d-05-无回路稳态出口温度监视提案) | MSG-14—16 | 无回路 N4 单出口温度已接入 Studio / 运行控制与单位 |
 | D-06 | [时间、回放和检查点](run-control-and-watch-conditions.md#切片待决策与最小验证) | MSG-17 | N5 前 / 动态与运行恢复 |

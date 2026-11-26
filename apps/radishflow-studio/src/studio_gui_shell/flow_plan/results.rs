@@ -6,6 +6,11 @@ impl ReadyAppState {
         let workspace = &self.platform_host.modeling_inputs().workspace;
         ui.separator();
         ui.heading(tr(zh, "流程结果", "Flow results"));
+        let mut recycle_action = None;
+        let unit = workspace
+            .project_presentation
+            .display_units()
+            .unit_for(rf_types::units::QuantityKind::MolarFlow);
         let mut adopt = false;
         let mut locate = None;
         match workspace.flow_result() {
@@ -46,24 +51,79 @@ impl ReadyAppState {
                     }
                 }
                 if let rf_ui::FlowResultRecord::Partitioned(part) = snapshot {
+                    let generation = self.flow_plan.recycle.bind(workspace);
+                    ui.label(self.recycle_source_text(origin, zh));
                     ui.small(tr(
                         zh,
-                        "固定温压回流；整体物料结果，不代表完整能量求解。",
-                        "Fixed-T/P recycle and material closure; this is not a full energy solve.",
+                        "固定温压回流 · 整体物料衡算",
+                        "Fixed-T/P recycle · overall material balance",
                     ));
                     for (index, block) in part.result.blocks.iter().enumerate() {
-                        ui.collapsing(format!("{} {} · {:?} · {}",tr(zh,"依赖块","Block"),index+1,block.kind,block.members.iter().map(ToString::to_string).collect::<Vec<_>>().join(" + ")), |ui| {
-                            if let Some(report) = &block.recycle {
-                                ui.label(format!("{}: {} · {}: {}",tr(zh,"迭代求值","Iteration evaluations"),report.iteration_evaluations,tr(zh,"独立复核","Independent verification"),report.verification_evaluations));
-                                ui.label(format!("T = {} K · P = {} Pa",report.boundary.temperature_k,report.boundary.pressure_pa));
-                                ui.label(format!("{}: {}.{} → {} → {}.{}",tr(zh,"撕裂绑定","Tear"),report.tear.source.unit_id,report.tear.source.port_name,report.tear.stream_id,report.tear.sink.unit_id,report.tear.sink.port_name));
-                                for (id, residual) in &report.residuals_mol_s { ui.label(format!("{id}: r = {residual:.6e} mol/s · scale = {:.6e} mol/s",report.component_scales_mol_s[id])); }
-                                ui.label(format!("tol: {:.3e} mol/s · scaled {:.3e} · total {:.3e} mol/s · T {:.3e} K · P {:.3e} Pa",report.tolerances.component_absolute_flow_mol_s,report.tolerances.scaled_flow,report.tolerances.total_absolute_flow_mol_s,report.tolerances.temperature_k,report.tolerances.pressure_pa));
-                                ui.collapsing(tr(zh,"假设值与返回值","Assumed and returned states"), |ui| { state(ui,tr(zh,"假设入口","Assumed inlet"),&report.assumed); state(ui,tr(zh,"返回出口","Returned outlet"),&report.returned); });
-                                ui.collapsing(tr(zh,"残差轨迹","Residual trace"), |ui| { for sample in &report.residual_trace { ui.label(format!("{:?} {}: {:.6e} mol/s · scaled {:.6e}",sample.phase,sample.evaluation,sample.max_absolute_mol_s,sample.max_scaled)); } });
-                            }
-                            for unit in &block.final_units { ui.collapsing(format!("{} · {}",unit.unit_id,tr(zh,"最终实际输入 / 输出","Final actual inputs / outputs")), |ui| { for stream in &unit.consumed_streams { state(ui,tr(zh,"消耗","Consumed"),stream); } for stream in &unit.produced_streams { state(ui,tr(zh,"产出","Produced"),stream); } }); }
-                        });
+                        let members = block
+                            .members
+                            .iter()
+                            .map(ToString::to_string)
+                            .collect::<Vec<_>>()
+                            .join(" + ");
+                        let title = format!(
+                            "{} {} · {:?} · {members}",
+                            tr(zh, "依赖块", "Block"),
+                            index + 1,
+                            block.kind
+                        );
+                        egui::CollapsingHeader::new(title)
+                            .id_salt(("partitioned-block", generation, index))
+                            .default_open(block.recycle.is_some())
+                            .show(ui, |ui| {
+                                if let Some(r) = &block.recycle {
+                                    ui.label(format!(
+                                        "{} · {} {} · {} {}",
+                                        r.tear.stream_id,
+                                        tr(zh, "迭代求值", "Iteration evaluations"),
+                                        r.iteration_evaluations,
+                                        tr(zh, "独立复核", "Independent verification"),
+                                        r.verification_evaluations
+                                    ));
+                                    partitioned_residuals::summary(ui, r, unit, zh, true);
+                                    ui.label(tr(
+                                        zh,
+                                        "Current · 已发布正式结果",
+                                        "Current · Formal result published",
+                                    ));
+                                    let response = ui.button(format!(
+                                        "{} {}",
+                                        tr(zh, "查看正式流股", "View formal stream"),
+                                        r.tear.stream_id
+                                    ));
+                                    self.flow_plan.recycle.stream_action(
+                                        &r.tear.stream_id,
+                                        &response,
+                                        &mut recycle_action,
+                                    );
+                                    partitioned_residuals::details(ui, r, unit, zh);
+                                }
+                                for u in &block.final_units {
+                                    ui.collapsing(
+                                        format!(
+                                            "{} · {}",
+                                            u.unit_id,
+                                            tr(
+                                                zh,
+                                                "最终实际输入 / 输出",
+                                                "Final actual inputs / outputs"
+                                            )
+                                        ),
+                                        |ui| {
+                                            for stream in &u.consumed_streams {
+                                                state(ui, tr(zh, "消耗", "Consumed"), stream);
+                                            }
+                                            for stream in &u.produced_streams {
+                                                state(ui, tr(zh, "产出", "Produced"), stream);
+                                            }
+                                        },
+                                    );
+                                }
+                            });
                     }
                     let cost = &part.result.costs;
                     ui.label(format!(
@@ -106,7 +166,7 @@ impl ReadyAppState {
                     "Missing · no qualified result in this session.",
                 ));
             }
-            FlowResultView::Failed { diagnostic, .. } => {
+            FlowResultView::Failed { diagnostic, origin } => {
                 ui.label(format!("Failed · {}", diagnostic.primary_message));
                 if let Some(failure) = workspace.mixed_failure_evidence() {
                     ui.strong(tr(
@@ -190,31 +250,89 @@ impl ReadyAppState {
                     }
                 }
                 if let Some(failure) = workspace.partitioned_failure_evidence() {
-                    ui.label(format!(
-                        "{:?} · block {:?} · unit {:?} · {} local calls",
-                        failure.kind,
-                        failure.stage.block.map(|b| b + 1),
-                        failure.stage.unit,
-                        failure.costs.local_unit_calls
-                    ));
-                    if let Some(report) = &failure.active_recycle {
-                        for sample in &report.residual_trace {
-                            ui.label(format!(
-                                "{:?} {}: {:.3e} mol/s · {:.3e}",
-                                sample.phase,
-                                sample.evaluation,
-                                sample.max_absolute_mol_s,
-                                sample.max_scaled
-                            ));
+                    let generation = self.flow_plan.recycle.bind(workspace);
+                    let source = self.recycle_source_text(origin, zh);
+                    ui.push_id(("partitioned-failure", generation), |ui| {
+                        if failure.kind
+                            == rf_solver::partitioned::PartitionedFailureKind::IterationLimit
+                        {
+                            ui.strong(tr(zh, "迭代预算耗尽", "Iteration budget exhausted"));
                         }
-                    }
-                    ui.small(tr(
-                        zh,
-                        "仅诊断证据；没有发布部分流程结果。",
-                        "Diagnostic evidence only; no partial flow result was published.",
-                    ));
+                        ui.strong(tr(zh, "本次无正式结果", "No formal result for this run"));
+                        ui.label(source);
+                        if let Some(code) = failure.error.context().diagnostic_code() {
+                            ui.label(code);
+                        }
+                        if let Some(block) = failure.stage.block {
+                            ui.label(format!("{} {}", tr(zh, "依赖块", "Block"), block + 1));
+                        }
+                        if let Some(id) = &failure.stage.unit {
+                            ui.label(format!("{} {id}", tr(zh, "单元", "Unit")));
+                        }
+                        if let Some(r) = &failure.active_recycle {
+                            ui.label(format!(
+                                "{} + {} · {}",
+                                r.tear.sink.unit_id, r.tear.source.unit_id, r.tear.stream_id
+                            ));
+                            if let Some(last) = r.residual_trace.last()
+                                && last.phase == rf_solver::partitioned::EvaluationPhase::Iteration
+                            {
+                                ui.strong(format!(
+                                    "{} {}",
+                                    tr(zh, "最后试算", "Last trial"),
+                                    last.evaluation
+                                ));
+                            }
+                            if failure.kind
+                                == rf_solver::partitioned::PartitionedFailureKind::IterationLimit
+                            {
+                                ui.label(tr(
+                                    zh,
+                                    "独立复核未执行",
+                                    "Independent verification not run",
+                                ));
+                            } else {
+                                ui.label(format!(
+                                    "{} {}",
+                                    tr(
+                                        zh,
+                                        "已完成独立复核求值",
+                                        "Completed verification evaluations"
+                                    ),
+                                    r.verification_evaluations
+                                ));
+                            }
+                            partitioned_residuals::summary(ui, r, unit, zh, false);
+                            let response = ui.add_enabled(
+                                workspace
+                                    .document
+                                    .flowsheet
+                                    .streams
+                                    .contains_key(&r.tear.stream_id),
+                                egui::Button::new(format!(
+                                    "{} {}",
+                                    tr(zh, "定位撕裂流股", "Locate tear stream"),
+                                    r.tear.stream_id
+                                )),
+                            );
+                            self.flow_plan.recycle.stream_action(
+                                &r.tear.stream_id,
+                                &response,
+                                &mut recycle_action,
+                            );
+                            partitioned_residuals::details(ui, r, unit, zh);
+                        }
+                        ui.small(format!(
+                            "{} {}",
+                            tr(zh, "实际局部调用", "Actual local calls"),
+                            failure.costs.local_unit_calls
+                        ));
+                    });
                 }
             }
+        }
+        if let Some((stream, action)) = recycle_action {
+            self.open_recycle_stream(stream, action);
         }
         if let Some(stream) = locate {
             self.dispatch_ui_command(radishflow_studio::inspector_target_command_id(

@@ -17,6 +17,8 @@ pub(super) mod equation_results;
 mod mixed;
 mod mixed_recycle;
 pub(super) mod mixed_results;
+pub(super) mod partitioned_residuals;
+mod recycle_review;
 mod results;
 mod simultaneous;
 mod single_phase;
@@ -25,6 +27,7 @@ pub(super) mod modular_results;
 
 #[derive(Default)]
 pub(super) struct FlowPlanPanelState {
+    recycle: recycle_review::RecycleReview,
     notice: Option<String>,
     pub(super) adoption: Option<radishflow_studio::equation_actions::EquationAdoptionPreview>,
     adoption_focus_first: bool,
