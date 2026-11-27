@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Q9 · RadishFlow Studio</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="boards.js"></script>
+</head>
+<body>
+  <header class="tools">
+    <strong data-label="review"></strong>
+    <label><span data-label="edit"></span>
+      <select id="candidate"><option>s-recycle-2</option><option selected>s-bleed</option></select>
+    </label>
+    <label><span data-label="language"></span>
+      <select id="language"><option value="zh">中文</option><option value="en">English</option></select>
+    </label>
+    <label><span data-label="size"></span>
+      <select id="size"><option>14</option><option>20</option></select>
+    </label>
+    <button id="restart" data-label="restart"></button>
+  </header>
+
+  <main>
+    <header class="chrome"><strong>RadishFlow Studio</strong><span>Q7 Fixed-T/P Serial Recycle</span></header>
+    <div class="workspace">
+      <header class="title">
+        <div><h1 data-label="title"></h1><span data-label="method"></span></div>
+        <button id="run"><span data-label="run"></span> <kbd>F5</kbd></button>
+      </header>
+
+      <section aria-labelledby="binding-heading" class="bindings">
+        <div class="section-title"><h2 id="binding-heading" data-label="bindings"></h2><span id="edit-state"></span></div>
+        <div class="binding-row"><b>1</b><code>s-recycle</code><span>splitter-1.outlet_a → mixer-2.inlet_b</span></div>
+        <div class="binding-row"><b>2</b><code id="draft-stream"></code><span id="draft-ports"></span></div>
+        <p id="draft-notice" data-label="draftNotice"></p>
+        <div class="actions">
+          <button id="apply" data-label="apply"></button>
+          <button id="restore" data-label="restore"></button>
+          <button id="discard" data-label="discard"></button>
+        </div>
+      </section>
+
+      <section class="readiness" id="readiness" aria-labelledby="owner" aria-live="polite">
+        <div class="section-title"><h2 id="owner" data-label="owner"></h2><span id="revision"></span></div>
+        <h3 id="verdict"></h3>
+        <p id="reason"></p>
+        <dl id="targets" hidden>
+          <div><dt data-label="stream"></dt><dd><code id="target-stream"></code></dd></div>
+          <div><dt data-label="source"></dt><dd><code id="target-source"></code></dd></div>
+          <div><dt data-label="sink"></dt><dd><code id="target-sink"></code></dd></div>
+        </dl>
+      </section>
+
+      <section class="result" aria-labelledby="result-heading" aria-live="polite">
+        <h2 id="result-heading" data-label="result"></h2><p id="receipt"></p>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

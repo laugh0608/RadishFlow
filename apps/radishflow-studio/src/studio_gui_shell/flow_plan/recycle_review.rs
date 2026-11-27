@@ -27,16 +27,23 @@ pub(super) fn tear_is_bound(workspace: &rf_ui::WorkspaceState, tear: &TearSpecif
             (&tear.sink, PortDirection::Inlet),
         ]
         .iter()
-        .all(|(end, direction)| {
-            flow.units.get(&end.unit_id).is_some_and(|u| {
-                u.ports.iter().any(|p| {
-                    p.kind == PortKind::Material
-                        && p.direction == *direction
-                        && p.name == end.port_name
-                        && p.stream_id.as_ref() == Some(&tear.stream_id)
-                })
-            })
+        .all(|(end, direction)| material_port_is_bound(flow, &tear.stream_id, end, *direction))
+}
+
+pub(super) fn material_port_is_bound(
+    flow: &rf_model::Flowsheet,
+    stream: &StreamId,
+    end: &DiagnosticPortTarget,
+    direction: PortDirection,
+) -> bool {
+    flow.units.get(&end.unit_id).is_some_and(|unit| {
+        unit.ports.iter().any(|port| {
+            port.kind == PortKind::Material
+                && port.direction == direction
+                && port.name == end.port_name
+                && port.stream_id.as_ref() == Some(stream)
         })
+    })
 }
 
 impl RecycleReview {

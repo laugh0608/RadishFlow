@@ -3,6 +3,7 @@ use super::*;
 use radishflow_studio::{StudioBackgroundRunAction as Action, flow_actions::FlowEditAccess};
 use rf_ui::flow_plan::*;
 mod partitioned_residuals;
+mod readiness;
 mod single_phase;
 mod single_phase_recycle;
 fn app() -> ReadyAppState {

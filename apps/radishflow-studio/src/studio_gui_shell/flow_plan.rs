@@ -19,6 +19,7 @@ mod mixed_recycle;
 pub(super) mod mixed_results;
 pub(super) mod partitioned_residuals;
 mod partitioned_results;
+mod readiness;
 mod recycle_review;
 mod results;
 mod simultaneous;
@@ -30,6 +31,7 @@ pub(super) mod modular_results;
 pub(super) struct FlowPlanPanelState {
     recycle: recycle_review::RecycleReview,
     notice: Option<String>,
+    restore_apply_focus: bool,
     pub(super) adoption: Option<radishflow_studio::equation_actions::EquationAdoptionPreview>,
     adoption_focus_first: bool,
     stream: String,
@@ -410,21 +412,41 @@ impl ReadyAppState {
         }
         ui.horizontal_wrapped(|ui| {
             let can_apply = editable && pending && configuration.is_ok();
-            let apply = ui.add_enabled(
-                can_apply,
-                egui::Button::new(tr(zh, "应用计划", "Apply plan")),
-            );
+            let restore_focus = std::mem::take(&mut self.flow_plan.restore_apply_focus);
+            let title = tr(zh, "应用计划", "Apply plan");
+            let apply = if editable
+                && !pending
+                && (restore_focus || ui.memory(|m| m.has_focus(ui.next_auto_id())))
+            {
+                // Keep the just-used button in the tab sequence until focus moves on.
+                let response = ui.add(
+                    egui::Button::new(egui::RichText::new(title).weak())
+                        .sense(egui::Sense::focusable_noninteractive()),
+                );
+                ui.ctx()
+                    .accesskit_node_builder(response.id, |node| node.set_disabled());
+                if restore_focus {
+                    response.request_focus();
+                }
+                response
+            } else {
+                ui.add_enabled(can_apply, egui::Button::new(title))
+            };
             reveal_plan_focus(&apply);
             let rejected = if can_apply
                 && (apply.clicked() || apply_requested || equation_submission.is_some())
             {
-                !self.plan_action(Action::ConfigureFlowPlan {
+                let applied = self.plan_action(Action::ConfigureFlowPlan {
                     expected: draft.context().clone(),
                     access,
                     command: FlowPlanCommand::Apply(
                         configuration.clone().expect("enabled valid draft"),
                     ),
-                })
+                });
+                if applied && apply.clicked() && apply.has_focus() {
+                    self.flow_plan.restore_apply_focus = true;
+                }
+                !applied
             } else {
                 configuration.is_err()
             };
@@ -482,18 +504,7 @@ impl ReadyAppState {
             }
         });
         let workspace = &self.platform_host.modeling_inputs().workspace;
-        match workspace
-            .flow_plan
-            .current()
-            .validate_for(&workspace.document.flowsheet)
-        {
-            Ok(()) => {
-                ui.label(tr(zh,"计划拓扑与绑定已就绪；运行时继续检查输入与物性。","Plan topology and bindings ready; runtime also checks physical inputs and property package."));
-            }
-            Err(error) => {
-                ui.label(format!("{}: {error}", tr(zh, "尚未就绪", "Not ready")));
-            }
-        }
+        readiness::render_applied_plan(ui, workspace, zh);
         self.render_exact_connection(ui, access);
         self.render_flow_results(ui);
         self.render_equation_adoption(ui.ctx());
