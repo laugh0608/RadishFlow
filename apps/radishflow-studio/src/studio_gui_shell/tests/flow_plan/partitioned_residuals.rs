@@ -232,3 +232,60 @@ fn serial_recycle_owns_one_receipt_and_routes_each_tear_by_its_block() {
         }
     }
 }
+
+#[test]
+fn downstream_balance_failure_shows_publication_then_unit_before_block_evidence() {
+    let temp = PropertyPackageCacheRoot::temporary("q10-unit-balance").unwrap();
+    let mut data: serde_json::Value = serde_json::from_slice(include_bytes!(
+        "../../../../../../examples/flowsheets/fixed-tp-q7-serial-recycle.rfproj.json"
+    ))
+    .unwrap();
+    data["document"]["flowsheet"]["streams"]["s-fb"]["total_molar_flow_mol_s"] = 537793.0.into();
+    let path = temp.path().join("downstream-balance.rfproj.json");
+    fs::write(&path, serde_json::to_vec(&data).unwrap()).unwrap();
+    let mut app = ready_app_state(&StudioRuntimeConfig {
+        project_path: path,
+        ..synced_workspace_config()
+    });
+    app.enable_background_runs();
+    app.screen = StudioShellScreen::Run;
+    app.dispatch_ui_command("run_panel.run_manual");
+    let ctx = egui::Context::default();
+    drain(&mut app, &ctx);
+    ctx.style_mut(|style| {
+        for font in style.text_styles.values_mut() {
+            font.size = 20.0;
+        }
+    });
+    for (locale, publication, cause, verdict) in [
+        (
+            StudioShellLocale::ZhCn,
+            "Failed · 本次无正式结果",
+            "依赖块 6 · heater-1 · 单元物料衡算超限",
+            "本块复核通过 · 仅诊断",
+        ),
+        (
+            StudioShellLocale::En,
+            "Failed · No formal result for this run",
+            "Block 6 · heater-1 · Unit material balance exceeds tolerance",
+            "Block verification passed · Diagnostic only",
+        ),
+    ] {
+        app.locale = locale;
+        let labels = frame(&mut app, &ctx, 400.0);
+        let headline = labels.iter().position(|text| text == publication).unwrap();
+        assert_eq!(labels[headline + 1], cause);
+        assert_eq!(
+            labels[headline + 2..]
+                .iter()
+                .filter(|text| *text == verdict)
+                .count(),
+            2
+        );
+        assert!(
+            !labels
+                .iter()
+                .any(|text| text.contains("local or overall material balance"))
+        );
+    }
+}

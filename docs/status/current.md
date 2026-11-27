@@ -47,7 +47,7 @@
 
 ### 下一步
 
-- [x] S-09 单撕裂、Q7 双块、Q9 同名流股与重开已验。Q9 [块外撕裂](../topics/runtime-messages/scenarios-and-acceptance.md#q9-块外撕裂)的计划就绪提示、源汇端口与恢复重跑已通过 macOS 实窗验收。
+- [x] S-09、Q7、Q9 已验。Q10 [下游晚失败](../topics/runtime-messages/scenarios-and-acceptance.md#q10-两块复核后的下游失败)已对照 CLI v4，失败摘要已通过 macOS 实窗验收。
 - [x] macOS 已验双流股端口对照及[组分查询、引用保护、重开与进料组分核对](../topics/property/component-catalog-and-selection.md)。
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
 - [x] [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存)已接通 CLI v14、Studio 只读与编辑。macOS 通过 40／50 mol/s、重跑失效、迟到回执、保存冲突与新会话复算验收。

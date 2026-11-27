@@ -187,22 +187,12 @@ impl ReadyAppState {
                 }
                 if let Some(failure) = workspace.partitioned_failure_evidence() {
                     let source = self.recycle_source_text(origin, zh);
-                    let reason = if failure.kind
-                        == rf_solver::partitioned::PartitionedFailureKind::IterationLimit
-                    {
-                        tr(zh, "迭代预算耗尽", "Iteration budget exhausted")
-                    } else {
-                        diagnostic.primary_message.as_str()
-                    };
-                    let stopped = failure
-                        .stage
-                        .block
-                        .map(|n| format!("{} {} · ", tr(zh, "依赖块", "Block"), n + 1))
-                        .unwrap_or_default();
-                    ui.strong(format!(
-                        "Failed · {stopped}{reason} · {}",
-                        tr(zh, "本次无正式结果", "No formal result for this run")
-                    ));
+                    partitioned_results::failure_summary(
+                        ui,
+                        failure,
+                        &diagnostic.primary_message,
+                        zh,
+                    );
                     ui.label(source);
                     recycle_action = partitioned_results::Panel::new(
                         workspace,

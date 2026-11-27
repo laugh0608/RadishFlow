@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>Q10 · Studio 流程结果</title>
+  <style>
+    @font-face { font-family: StudioInter; src: url("../../../../../apps/radishflow-studio/assets/fonts/InterVariable.ttf"); font-weight: 100 900; }
+    @font-face { font-family: StudioHan; src: url("../../../../../apps/radishflow-studio/assets/fonts/SourceHanSansSC-Regular.otf"); }
+    :root { font: 16px/1.5 StudioInter, StudioHan, sans-serif; background: #eff1ef; color: #182e29; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    nav { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem 1.2rem; padding: .8rem max(1rem, calc((100% - 51rem)/2)); border-bottom: 1px solid #c2cbc7; background: #f9faf8; }
+    label { display: inline-flex; align-items: center; gap: .4rem; }
+    select { font: inherit; color: inherit; background: white; padding: .2rem; border: 1px solid #84948f; border-radius: .25rem; }
+    :focus-visible { outline: 3px solid #286655; outline-offset: 3px; }
+    main { max-width: 51rem; margin: 1.5rem auto; padding: 1.4rem; border: 1px solid #b7c4bd; border-radius: .4rem; background: white; overflow-wrap: anywhere; }
+    h1 { margin: 0 0 .8rem; font-size: 1.45rem; }
+    h2, p { margin: 0; }
+    h2 { font-size: 1.15rem; }
+    .receipt { border-left: .28rem solid #a24529; background: #f9f0e9; padding: .7rem .9rem; }
+    main[data-case="current"] .receipt, main[data-case="rerun"] .receipt { border-color: #37705b; background: #eef5f0; }
+    main[data-case="restored"] .receipt { border-color: #947242; background: #f8f4e9; }
+    #cause { margin-top: .28rem; font-weight: 600; }
+    #origin, #downstream { color: #41564e; font-size: .9rem; margin-top: .4rem; }
+    #blocks { list-style: none; padding: 0; margin: 1rem 0 0; }
+    #blocks li { border-top: 1px solid #cdd6d1; padding: .55rem 0; }
+    #blocks span { display: block; }
+    details { margin-top: .35rem; border-top: 1px solid #cdd6d1; padding-top: .5rem; }
+    summary { cursor: pointer; }
+    code { font-family: inherit; font-variant-numeric: tabular-nums; }
+    @media(max-width: 600px) { nav { padding: .7rem; } main { margin: .65rem .35rem; padding: .75rem; } }
+  </style>
+</head>
+<body>
+  <nav aria-label="交互稿设置">
+    <label><span id="case-label">工况</span><select id="scenario">
+      <option value="current">基准成功</option><option value="failed" selected>下游失败</option>
+      <option value="restored">恢复未重跑</option><option value="rerun">恢复后重跑</option>
+    </select></label>
+    <label><span id="lang-label">语言</span><select id="language"><option value="zh">中文</option><option value="en">English</option></select></label>
+    <label><span id="size-label">字号</span><select id="size"><option>14</option><option>20</option></select>px</label>
+  </nav>
+  <main data-case="failed">
+    <h1 id="title">流程结果</h1>
+    <div aria-live="polite">
+      <div class="receipt"><h2 id="status"></h2><p id="cause"></p></div>
+      <p id="origin"></p><p id="downstream"></p>
+      <ul id="blocks"></ul>
+    </div>
+    <details id="details"><summary id="detail-label">诊断依据</summary>
+      <p><code>solver.partitioned.component_balance</code></p>
+      <p lang="en">invalid_input: local or overall material balance exceeds frozen absolute/scaled tolerances</p>
+      <p id="detail-target"></p>
+    </details>
+  </main>
+  <script src="boards.js"></script>
+</body>
+</html>
