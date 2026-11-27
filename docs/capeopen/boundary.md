@@ -37,6 +37,8 @@ CAPE-OPEN 定义组件互操作契约，不要求模拟器内部照搬 COM 对�
 | `1.0_Y17-07` | 31 | `1bf1217d084785b77210a7af91cc1b71abc1ab1de0d76db8f5249bbd40705cfc` | [固定版本原件](https://github.com/laugh0608/RadishFlow/tree/a26de5b2f1008cbbb78936653fcbd53af017dfe0/adapters/reference/CO_Documentation_set_1.0_Y17-07) |
 | `1.1_Y23-12` | 581 | `3c60dba4dcb99e2ef7581d570c50578f23cf6bf1dcb9072f302e7359ea5781d8` | [固定版本原件](https://github.com/laugh0608/RadishFlow/tree/a26de5b2f1008cbbb78936653fcbd53af017dfe0/adapters/reference/CO_Documentation_set_1.1_Y23-12) |
 
+两套 C# 示例附带的 CHM 各有三份。三份不同内容的原件已归入本地资料仓 `RFR-0035`，逐文件清单记录六条原始路径。需要离线查看时按清单取回原件。[CapeOpenMixerExample_CSharp 原始目录](https://github.com/laugh0608/RadishFlow/tree/a26de5b2f1008cbbb78936653fcbd53af017dfe0/adapters/reference/CapeOpenMixerExample_CSharp) · [MyCO-CSharp 原始目录](https://github.com/laugh0608/RadishFlow/tree/a26de5b2f1008cbbb78936653fcbd53af017dfe0/adapters/reference/MyCO-CSharp)
+
 ## 互操作方向与符合性证据
 
 | 方向 | 当前状态 | 证据边界 |

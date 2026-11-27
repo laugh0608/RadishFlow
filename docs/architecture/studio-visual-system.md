@@ -75,6 +75,7 @@ RadishFlow Studio 从稳态流程起步，逐步覆盖物性、设备工程与�
 - 单位必须贴近数值字段，不能藏在说明文本里。
 - Studio shell 默认加载仓库内 bundled UI 字体，当前使用 `InterVariable` 和 `SourceHanSansSC` 作为拉丁 / 简中 CJK 覆盖；不依赖 macOS、Windows 或 Linux 的系统字体名称来保证中文可见性。
 - 新增或替换字体资源时，只保留主 UI 必需字重和对应许可证文件，不把完整字体包、serif 家族或未使用地区字体一并打入项目。
+- Studio 内嵌 `SourceHanSansSC-Regular.otf`，已有设计预览仍使用 `Medium`。`Bold` 归档在本地资料库 `RFR-0034`，随归档保留 OFL。可从[固定快照](https://github.com/laugh0608/RadishFlow/blob/a26de5b2f1008cbbb78936653fcbd53af017dfe0/apps/radishflow-studio/assets/fonts/SourceHanSansSC-Bold.otf)查阅字体原件。
 
 ## 间距、圆角和密度
 
