@@ -209,8 +209,9 @@ fn platform_shortcuts_pending_document_dialogs_block_history() {
         match kind {
             0 => app.project_open.pending_blank_project_confirmation = true,
             1 => {
-                app.project_open.pending_save_as_overwrite =
-                    Some(PathBuf::from("unused.rfproj.json"))
+                app.project_open.pending_save_as_overwrite = Some(
+                    project_save::PendingSaveAs::retry(PathBuf::from("unused.rfproj.json")),
+                )
             }
             2 => app.project_open.pending_close_window_confirmation = app.current_window_id(),
             _ => app.command_palette.open = true,

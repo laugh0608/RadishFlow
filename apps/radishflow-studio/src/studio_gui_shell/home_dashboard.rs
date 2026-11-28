@@ -834,9 +834,9 @@ impl ReadyAppState {
                     self.cancel_pending_close_window();
                 }
             }
-            if self.project_open.pending_save_as_overwrite.is_some() {
+            if let Some(pending) = &self.project_open.pending_save_as_overwrite {
                 if ui
-                    .button(self.locale.text(ShellText::ConfirmSaveAsOverwrite))
+                    .button(self.locale.text(pending.button_label()))
                     .clicked()
                 {
                     self.confirm_pending_save_as_overwrite();

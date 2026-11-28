@@ -253,7 +253,7 @@ struct ProjectOpenState {
     pending_confirmation: Option<ProjectOpenRequest>,
     pending_blank_project_confirmation: bool,
     pending_authoring_blank_project: Option<AuthoringCaseKind>,
-    pending_save_as_overwrite: Option<PathBuf>,
+    pending_save_as_overwrite: Option<project_save::PendingSaveAs>,
     pending_close_window_confirmation: Option<StudioWindowHostId>,
     departure_checkpoint: Option<input_departure::ProjectDepartureCheckpoint>,
 }

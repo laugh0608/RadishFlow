@@ -637,12 +637,14 @@ impl ReadyAppState {
                     }
                 });
             }
-            if self.project_open.pending_save_as_overwrite.is_some() {
+            if let Some(label) = self
+                .project_open
+                .pending_save_as_overwrite
+                .as_ref()
+                .map(|pending| pending.button_label())
+            {
                 ui.horizontal_wrapped(|ui| {
-                    if ui
-                        .button(self.locale.text(ShellText::ConfirmSaveAsOverwrite))
-                        .clicked()
-                    {
+                    if ui.button(self.locale.text(label)).clicked() {
                         self.confirm_pending_save_as_overwrite();
                     }
                     if ui

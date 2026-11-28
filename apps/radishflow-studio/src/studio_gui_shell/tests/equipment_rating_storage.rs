@@ -156,7 +156,10 @@ fn rating_save_target_error_preserves_retry_target_inputs_and_original_file() {
     app.confirm_pending_save_as_overwrite();
     assert!(app.pending_format_upgrade.is_none());
     assert_eq!(
-        app.project_open.pending_save_as_overwrite.as_ref(),
+        app.project_open
+            .pending_save_as_overwrite
+            .as_ref()
+            .map(|pending| &pending.path),
         Some(&target)
     );
     assert_eq!(

@@ -1499,7 +1499,10 @@ fn save_project_as_from_picker_requires_confirmation_before_overwrite() {
         "existing project placeholder"
     );
     assert_eq!(
-        app.project_open.pending_save_as_overwrite.as_deref(),
+        app.project_open
+            .pending_save_as_overwrite
+            .as_ref()
+            .map(|pending| pending.path.as_path()),
         Some(target_project.as_path())
     );
     assert_eq!(
@@ -1548,7 +1551,10 @@ fn failed_confirmed_save_as_keeps_workspace_state_and_retry_target() {
 
     app.save_project_as_from_picker();
     assert_eq!(
-        app.project_open.pending_save_as_overwrite.as_deref(),
+        app.project_open
+            .pending_save_as_overwrite
+            .as_ref()
+            .map(|pending| pending.path.as_path()),
         Some(target_project.as_path())
     );
 
@@ -1570,7 +1576,10 @@ fn failed_confirmed_save_as_keeps_workspace_state_and_retry_target() {
     );
     assert!(app.project_open.recent_projects.is_empty());
     assert_eq!(
-        app.project_open.pending_save_as_overwrite.as_deref(),
+        app.project_open
+            .pending_save_as_overwrite
+            .as_ref()
+            .map(|pending| pending.path.as_path()),
         Some(target_project.as_path()),
         "failed overwrite save-as should keep the retry/cancel target visible"
     );

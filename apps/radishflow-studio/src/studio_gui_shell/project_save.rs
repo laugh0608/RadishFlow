@@ -4,11 +4,47 @@ use radishflow_studio::{
     PreparedFlowPlanSave, ProjectSaveCompatibility, StudioDocumentLifecycleCommand,
 };
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct SaveTargetReview {
+    workspace: input_departure::ProjectDepartureCheckpoint,
+    target_sha256: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct PendingSaveAs {
+    pub(super) path: PathBuf,
+    action: SaveAsAction,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum SaveAsAction {
+    Overwrite {
+        review: Box<SaveTargetReview>,
+        compatibility: Option<ProjectSaveCompatibility>,
+    },
+    Retry,
+}
+
+impl PendingSaveAs {
+    pub(super) fn retry(path: PathBuf) -> Self {
+        Self {
+            path,
+            action: SaveAsAction::Retry,
+        }
+    }
+
+    pub(super) fn button_label(&self) -> ShellText {
+        match self.action {
+            SaveAsAction::Overwrite { .. } => ShellText::ConfirmSaveAsOverwrite,
+            SaveAsAction::Retry => ShellText::RetrySaveAs,
+        }
+    }
+}
+
 pub(super) enum PendingFormatUpgrade {
     Legacy {
-        checkpoint: Box<input_departure::ProjectDepartureCheckpoint>,
+        review: Box<SaveTargetReview>,
         compatibility: ProjectSaveCompatibility,
-        target_contents: Option<Vec<u8>>,
         path: PathBuf,
     },
     FlowPlan {
@@ -39,6 +75,8 @@ impl ReadyAppState {
     }
 
     pub(super) fn request_save_project_as(&mut self, path: PathBuf, confirm_overwrite: bool) {
+        self.project_open.pending_save_as_overwrite = None;
+        self.pending_format_upgrade = None;
         if self.read_only_project.is_some() {
             return;
         }
@@ -52,7 +90,6 @@ impl ReadyAppState {
         };
         if let Some(prepared) = prepared {
             let overwrite = prepared.replaces_file() && !self.is_current_project_path(&path);
-            self.project_open.pending_save_as_overwrite = None;
             if overwrite || prepared.compatibility().is_some() {
                 self.pending_format_upgrade = Some(PendingFormatUpgrade::FlowPlan {
                     prepared,
@@ -69,18 +106,6 @@ impl ReadyAppState {
             }
             return;
         }
-        if confirm_overwrite && self.save_as_requires_overwrite_confirmation(&path) {
-            self.project_open.pending_save_as_overwrite = Some(path.clone());
-            self.project_open.notice = Some(ProjectOpenNotice {
-                level: ProjectOpenNoticeLevel::Warning,
-                title: "Confirm overwrite".into(),
-                detail: format!(
-                    "Save As target already exists and will be replaced: {}",
-                    path.display()
-                ),
-            });
-            return;
-        }
         let compatibility = match self.platform_host.project_save_compatibility(&path) {
             Ok(value) => value,
             Err(error) => {
@@ -88,25 +113,49 @@ impl ReadyAppState {
                 return;
             }
         };
-        if let Some(compatibility) = compatibility {
-            let target_contents = match read_save_target(&path) {
+        let check_overwrite = confirm_overwrite && !self.is_current_project_path(&path);
+        if check_overwrite || compatibility.is_some() {
+            let target_sha256 = match save_target_fingerprint(&path) {
                 Ok(value) => value,
                 Err(error) => {
-                    self.record_project_save_failure(
-                        path,
-                        &rf_types::RfError::invalid_input(format!("inspect save target: {error}")),
-                    );
+                    self.record_project_save_failure(path, &error);
                     return;
                 }
             };
-            self.pending_format_upgrade = Some(PendingFormatUpgrade::Legacy {
-                checkpoint: Box::new(self.project_departure_checkpoint()),
-                compatibility,
-                target_contents,
-                path,
-            });
-            self.project_open.pending_save_as_overwrite = None;
-            return;
+            let overwrite = check_overwrite && target_sha256.is_some();
+            let capture_review = || {
+                Box::new(SaveTargetReview {
+                    workspace: self.project_departure_checkpoint(),
+                    target_sha256,
+                })
+            };
+            if overwrite {
+                let review = capture_review();
+                self.project_open.notice = Some(ProjectOpenNotice {
+                    level: ProjectOpenNoticeLevel::Warning,
+                    title: "Confirm overwrite".into(),
+                    detail: format!(
+                        "Save As target already exists and will be replaced: {}",
+                        path.display()
+                    ),
+                });
+                self.project_open.pending_save_as_overwrite = Some(PendingSaveAs {
+                    path,
+                    action: SaveAsAction::Overwrite {
+                        review,
+                        compatibility,
+                    },
+                });
+                return;
+            }
+            if let Some(compatibility) = compatibility {
+                self.pending_format_upgrade = Some(PendingFormatUpgrade::Legacy {
+                    path,
+                    review: capture_review(),
+                    compatibility,
+                });
+                return;
+            }
         }
         self.execute_project_save(path, false);
     }
@@ -116,9 +165,8 @@ impl ReadyAppState {
             return false;
         };
         let PendingFormatUpgrade::Legacy {
-            checkpoint,
+            review,
             compatibility,
-            target_contents,
             path,
         } = pending
         else {
@@ -133,15 +181,33 @@ impl ReadyAppState {
                 },
             );
         };
-        if self.project_departure_checkpoint() != *checkpoint
-            || self.platform_host.project_save_compatibility(&path).ok()
-                != Some(Some(compatibility))
-            || read_save_target(&path).ok().as_ref() != Some(&target_contents)
+        self.validate_save_review(&path, &review, Some(&compatibility))
+            && self.execute_project_save(path, true)
+    }
+
+    fn validate_save_review(
+        &mut self,
+        path: &std::path::Path,
+        review: &SaveTargetReview,
+        compatibility: Option<&ProjectSaveCompatibility>,
+    ) -> bool {
+        if self.project_departure_checkpoint() == review.workspace
+            && save_target_fingerprint(path).is_ok_and(|digest| digest == review.target_sha256)
+            && self
+                .platform_host
+                .project_save_compatibility(path)
+                .is_ok_and(|current| current.as_ref() == compatibility)
         {
-            self.cancel_project_save("保存目标已失效", "工程或输入已变化，请重新检查后保存。");
-            return false;
+            return true;
         }
-        self.execute_project_save(path, true)
+        let title = tr(self.locale, "保存目标已失效", "Save confirmation expired");
+        let detail = tr(
+            self.locale,
+            "工程、输入或目标文件已变化或无法核对，请重新检查后保存。",
+            "The workspace or target file changed or could not be verified. Review it before saving again.",
+        );
+        self.cancel_project_save(title, detail);
+        false
     }
 
     fn is_current_project_path(&self, path: &std::path::Path) -> bool {
@@ -223,7 +289,7 @@ impl ReadyAppState {
             .is_none_or(|current| !paths_match(std::path::Path::new(current), &path));
         self.pending_format_upgrade = None;
         if save_as {
-            self.project_open.pending_save_as_overwrite = Some(path.clone());
+            self.project_open.pending_save_as_overwrite = Some(PendingSaveAs::retry(path.clone()));
         }
         self.platform_host.record_activity_line(format!(
             "{} failed: {error}",
@@ -247,8 +313,30 @@ impl ReadyAppState {
     }
 
     pub(super) fn confirm_pending_save_as_overwrite(&mut self) {
-        if let Some(path) = self.project_open.pending_save_as_overwrite.take() {
-            self.request_save_project_as(path, false);
+        let Some(PendingSaveAs { path, action }) =
+            self.project_open.pending_save_as_overwrite.take()
+        else {
+            return;
+        };
+        match action {
+            SaveAsAction::Retry => self.request_save_project_as(path, true),
+            SaveAsAction::Overwrite {
+                review,
+                compatibility,
+            } => {
+                if !self.validate_save_review(&path, &review, compatibility.as_ref()) {
+                    return;
+                }
+                if let Some(compatibility) = compatibility {
+                    self.pending_format_upgrade = Some(PendingFormatUpgrade::Legacy {
+                        path,
+                        review,
+                        compatibility,
+                    });
+                } else {
+                    self.execute_project_save(path, false);
+                }
+            }
         }
     }
 
@@ -267,19 +355,6 @@ impl ReadyAppState {
             title: title.into(),
             detail: detail.into(),
         });
-    }
-
-    fn save_as_requires_overwrite_confirmation(&self, path: &std::path::Path) -> bool {
-        path.exists()
-            && self
-                .platform_host
-                .snapshot()
-                .runtime
-                .workspace_document
-                .project_path
-                .as_deref()
-                .map(std::path::Path::new)
-                .is_none_or(|current| !paths_match(current, path))
     }
 
     pub(super) fn render_format_upgrade(&mut self, ctx: &egui::Context) -> bool {
@@ -519,10 +594,19 @@ impl ReadyAppState {
     }
 }
 
-fn read_save_target(path: &std::path::Path) -> std::io::Result<Option<Vec<u8>>> {
-    match std::fs::read(path) {
-        Ok(bytes) => Ok(Some(bytes)),
+fn save_target_fingerprint(path: &std::path::Path) -> rf_types::RfResult<Option<String>> {
+    let inspect_error = |error: std::io::Error| {
+        rf_types::RfError::invalid_input(format!("inspect save target {}: {error}", path.display()))
+    };
+    match std::fs::metadata(path) {
+        Ok(metadata) if metadata.is_file() => std::fs::read(path)
+            .map(|bytes| Some(rf_store::sha256_hex(&bytes)))
+            .map_err(inspect_error),
+        Ok(_) => Err(rf_types::RfError::invalid_input(format!(
+            "save target {} is not a regular file",
+            path.display()
+        ))),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(error),
+        Err(error) => Err(inspect_error(error)),
     }
 }
