@@ -42,7 +42,7 @@
 
 ### 重放整图对照
 
-复用 [CLI v6 查询与执行契约](../../reference/headless-cli.md#qs3-cli-v62026-10-31已实现)与已有 `binary-hydrocarbon-lite-v1` 测试包缓存。将查询及运行模板的 `project` 改为上述工程，先查询再用其 `document_id`、`file_sha256` 填写 `expected_project`，使用查询返回的输入及计划修订。`run_flow` 后核对 `results(flow)` 的 13 股与来源。两组区分工况在副本中分别只编辑 `s-fb` 的进料组成和 `splitter-recycle-a` 的固定比例，修改后重新查询身份与指纹。
+复用 [CLI v6 查询与执行契约](../../reference/headless-cli-v4-v6.md#qs3-cli-v62026-10-31已实现)与已有 `binary-hydrocarbon-lite-v1` 测试包缓存。将查询及运行模板的 `project` 改为上述工程，先查询再用其 `document_id`、`file_sha256` 填写 `expected_project`，使用查询返回的输入及计划修订。`run_flow` 后核对 `results(flow)` 的 13 股与来源。两组区分工况在副本中分别只编辑 `s-fb` 的进料组成和 `splitter-recycle-a` 的固定比例，修改后重新查询身份与指纹。
 
 ## 核心执行范围
 

@@ -109,7 +109,7 @@ S1 字段映射：`operatingTemperature` → 原 `absolute_temperature`；`opera
 `ALL_QUANTITIES` / `DisplayUnitSet` 已包含 15 类；`LEGACY_QUANTITIES` 冻结原 7 类，现有项目 v2、个人默认 v1 与现有单位设置 / 流程轻量文本导出使用该投影。旧格式完整性校验后才在内存补新量 SI；写入前拒绝新量非 SI，防止静默丢失。v3 的 15 类投影已实现，并于 2026-10-15 接通最小 Studio 生命周期；旧文件出现新增量非 SI 选择时须显式升级：
 
 - v1 不带 presentation；v2 的 `displayUnits` 始终是原 7 类，每类恰一次。读取旧文件在内存为新 8 类补 SI 显示选择，保留原 7 类，不据此升级或写盘。
-- v3 的同一 `presentation.displayUnits` 完整包含 15 类，不另建设备私有单位表；原 7 类编码不变。新增量非 SI 呈现也属于需要 v3 的内容，即使工程区当前为空。格式细则见 [v3 契约](../project-lifecycle-storage.md#v3-字段与兼容契约2026-10-11)。
+- v3 的同一 `presentation.displayUnits` 完整包含 15 类，不另建设备私有单位表；原 7 类编码不变。新增量非 SI 呈现也属于需要 v3 的内容，即使工程区当前为空。格式细则见 [v3 契约](../../reference/project-v3-engineering.md#v3-字段与兼容契约2026-10-11)。
 - 现有 `unit-defaults.rfstudio-preferences.json` 的 v1 也使用该呈现 DTO，必须冻结原 7 类。首批新 8 类默认 SI、选择保存在项目 v3；不隐式升级个人默认文件。“存为个人默认”遇新量非 SI 时明确说明本批仅支持项目保存，不能报告全部保存成功。个人默认扩展另排，原 7 类路径保持。
 - v3 缺量 / 重复量 / 未知量 / 不兼容单位一律拒绝，不补 SI 掩盖损坏；旧文件补新量只属于版本迁移，不是通用 fallback。明确拒绝将含新非 SI 呈现的项目回存旧格式。
 

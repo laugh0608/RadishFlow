@@ -21,7 +21,7 @@
 - 复用单 worker、Ready 双资格、取消 / join；结构未就绪在预检 Blocked，worker 独立复验。成功 / 失败 / 取消证据分开，实际包与核心来源不伪造。
 - 正式采纳从 Current 结果取得候选，预览 / 提交复验输入、计划、执行及访问资格；单次输入事务、计划保留、Stale、不自动运行、no-op 和 Undo 后旧资格不恢复均有自动验证。
 - GUI 已接通规格、结构、尺度、诊断、真实结果及显式采纳；自动帧覆盖中英 400 px / 20 px 字体、未完成草稿、默认取消焦点、失败无 Current 数值、保存升级与重开。macOS 实窗覆盖反算 Run、采纳、保存、重开 Missing 及显式 rerun。
-- CLI v6 公开查询 / 运行 / 建图 / 采纳后切正向重算模板已加入；真实进程验证整个临时目录、资源和工程字节不变，旧协议及外部执行引用拒绝。接口和运行方式见 [CLI 参考](../../reference/headless-cli.md#qs3-cli-v62026-10-31已实现)。
+- CLI v6 公开查询 / 运行 / 建图 / 采纳后切正向重算模板已加入；真实进程验证整个临时目录、资源和工程字节不变，旧协议及外部执行引用拒绝。接口和运行方式见 [CLI 参考](../../reference/headless-cli-v4-v6.md#qs3-cli-v62026-10-31已实现)。
 - 阶段验证与未覆盖原生平台记录见 [W44](../../devlogs/2026-10/2026-W44.md)。
 
 ## 实施起点与职责分配
@@ -105,7 +105,7 @@ E2 的 `dq/dalpha=-C*(1-beta)/(1-alpha*beta)^2`；解处为 `-361/132 mol/s`，�
 
 ### 产品组成反算 CLI v10
 
-`schema_version: 10` 使用 `query` 和 `execute`。EO 方法仍为 `radishflow.fixed-tp-material-eo/1`。组成目标及其显式尺度行使用 `kind: product_mole_fraction`。两者均以 `stream`、生产者 `source` 和 `component_id` 定位，目标另有 `value_mol_mol`（有限的 [0, 1]）。对应的方程与验收契约均为 2，既有正向及总量反算使用 1。配置语法沿用 [CLI v6](../../reference/headless-cli.md#qs3-cli-v62026-10-31已实现) 的 IdentityRef 与 `scale_si`。
+`schema_version: 10` 使用 `query` 和 `execute`。EO 方法仍为 `radishflow.fixed-tp-material-eo/1`。组成目标及其显式尺度行使用 `kind: product_mole_fraction`。两者均以 `stream`、生产者 `source` 和 `component_id` 定位，目标另有 `value_mol_mol`（有限的 [0, 1]）。对应的方程与验收契约均为 2，既有正向及总量反算使用 1。配置语法沿用 [CLI v6](../../reference/headless-cli-v4-v6.md#qs3-cli-v62026-10-31已实现) 的 IdentityRef 与 `scale_si`。
 
 `results(flow_plan)` 返回所需能力、就绪状态、规范配置和 `configuration_sha256`。`run_flow` 的 `result` 与 `results(flow)` 复用共享回执。组成证据位于 `evidence.verified_target` 与 `evidence.conditional_evaluations`，使用 `mol/s` 的物料残差和 `mol/mol` 的组成残差。 [共享结果契约](#组成规格的共享运行与结果)
 

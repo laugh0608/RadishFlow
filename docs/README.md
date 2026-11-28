@@ -1,6 +1,6 @@
 # RadishFlow Docs
 
-更新时间：2026-11-23
+更新时间：2026-11-28
 
 ## 先读什么
 
@@ -91,7 +91,8 @@ Reference 文档回答“字段、单位、结果、格式分别是什么”，�
 
 | 文档 | 说明 |
 | --- | --- |
-| `reference/headless-cli.md` | 本地无界面查询、建模与参数化运行的命令、JSON 与错误语义 |
+| [本地 CLI](reference/headless-cli.md) | 查询、建模、运行命令与错误语义。固定温压求解计划见 [CLI v4–v6](reference/headless-cli-v4-v6.md) |
+| [项目 v3 工程区](reference/project-v3-engineering.md) | G0/S1 字段、来源与设备输入绑定、结构样本和读写兼容规则 |
 | `reference/units-and-conventions.md` | 当前稳定的单位、相标签、组成与字段后缀约定 |
 | [设备计算表](reference/equipment-calculation-tables.md) | Sizing / Rating / Matrix CSV、JSON 字段、来源版本与输出资格 |
 | `reference/solve-snapshot-results.md` | `SolveSnapshot`、step 输入/输出与结果 DTO 的稳定语义 |
