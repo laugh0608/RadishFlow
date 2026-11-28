@@ -89,6 +89,9 @@ impl ReadyAppState {
         if scroll_top {
             scroll = scroll.vertical_scroll_offset(0.0);
         }
+        if let Some(notice) = &self.project_open.notice {
+            render_project_notice(ui, notice);
+        }
         scroll.show(ui, |ui| {
             ui.heading(format!("{} · {}", task_label(l, &task.clone().into()), tr(l, "已有几何校核", "Given-geometry rating",)));
             if task.geometry.adoption.is_some() {
@@ -112,9 +115,6 @@ impl ReadyAppState {
                 nonempty(&case.name, tr(l, "未命名工况", "Untitled case",)),
                 rating_labels::status_label(l, session.case_result_status(&key))
             ));
-            if let Some(notice) = &self.project_open.notice {
-                render_project_notice(ui, notice);
-            }
             if pending {
                 ui.label(tr(
                     l,

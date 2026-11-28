@@ -338,3 +338,64 @@ fn canceled_rating_export_does_not_focus_another_same_named_case() {
     );
     fs::remove_dir_all(project.parent().unwrap()).unwrap();
 }
+
+#[test]
+fn matrix_overview_shows_expired_overwrite_notice_without_opening_a_case() {
+    for (locale, matrix_button, current_case_button, expired) in [
+        (
+            StudioShellLocale::ZhCn,
+            "矩阵 JSON",
+            "当前工况 JSON",
+            "导出覆盖确认已失效",
+        ),
+        (
+            StudioShellLocale::En,
+            "Matrix JSON",
+            "Current case JSON",
+            "Export overwrite confirmation expired",
+        ),
+    ] {
+        let (mut app, project, _) = super::equipment_adoption::fixture("matrix-overwrite-notice");
+        app.locale = locale;
+        app.equipment_command(EquipmentEditorCommand::Select(
+            EquipmentEditorTarget::RatingTask("matrix-v2".into()),
+        ));
+        let output = project.with_file_name("review.json");
+        fs::write(&output, b"original").unwrap();
+        app.project_file_picker = Box::new(EquipmentPicker {
+            path: Some(output.clone()),
+            supported: true,
+        });
+
+        let width = 400.0;
+        let ctx = context(width);
+        let tree = frame(&ctx, &mut app, width, true, vec![]);
+        let button = action(&tree, matrix_button);
+        assert!(
+            !tree
+                .nodes
+                .iter()
+                .any(|(_, n)| n.label() == Some(current_case_button))
+        );
+        activate(&ctx, &mut app, width, button);
+        assert!(app.equipment.pending_export.is_some());
+        fs::write(&output, b"external").unwrap();
+        app.confirm_equipment_export();
+        assert_eq!(fs::read(&output).unwrap(), b"external");
+
+        let tree = frame(&ctx, &mut app, width, true, vec![]);
+        let texts: Vec<_> = tree
+            .nodes
+            .iter()
+            .filter(|(_, node)| node.role() == egui::accesskit::Role::Label)
+            .filter_map(|(_, node)| node.value())
+            .collect();
+        assert_eq!(
+            texts.iter().filter(|t| t.contains(expired)).count(),
+            1,
+            "{texts:?}"
+        );
+        assert!(texts.iter().any(|t| t.contains(output.to_str().unwrap())));
+        fs::remove_dir_all(project.parent().unwrap()).unwrap();
+    }
+}
