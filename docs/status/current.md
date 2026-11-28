@@ -57,7 +57,7 @@
 - [x] QS3／QS4 macOS 取消与重跑通过，QS3 英文窄区焦点可见性复验通过。见 [专题](../topics/modeling/equation-oriented-block.md#接下来事项)。
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)已通过代表验证，分离器关联另审。
-- [x] macOS 已验工程另存为、流程 TXT 与设备表 CSV／JSON 的覆盖前复核及窄窗矩阵导出反馈。
+- [x] macOS 已验另存为及 TXT／CSV／JSON 的覆盖前复核、窄窗矩阵反馈、导出权限失败重试与长文件名。
 - [ ] [AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23) 两个构建各三轮未复现面板不可见，原故障二进制缺失，根因待定。
 - [x] [AF2a / b 与 AF3—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 已接通批准范围。AF5 [流股检查器](../topics/modeling/material-stream.md)已在 macOS 核对工程输入、当前求解值和失效提示。
 - [x] Studio R2、V1 动效与 V2 三个流股图层通过 macOS 代表验证。 [UI 计划](../architecture/studio-ui-topic-plan.md)

@@ -46,6 +46,7 @@ pub(super) fn replace_existing_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::staged_file::create_unique_backup_sibling;
     use std::{
         path::PathBuf,
         sync::atomic::{AtomicU64, Ordering},
@@ -62,7 +63,7 @@ mod tests {
     }
 
     impl Files {
-        fn new() -> Self {
+        fn new(target_name: &str) -> Self {
             let nonce = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
@@ -73,10 +74,12 @@ mod tests {
                 NEXT_DIRECTORY.fetch_add(1, Ordering::Relaxed)
             ));
             fs::create_dir(&directory).unwrap();
+            let target = directory.join(target_name);
+            let backup = create_unique_backup_sibling(&target).unwrap();
             let files = Self {
-                target: directory.join("project.json"),
+                target,
                 staged: directory.join("project.tmp"),
-                backup: directory.join("project.bak"),
+                backup,
                 directory,
             };
             fs::write(&files.target, br#"{"revision":1}"#).unwrap();
@@ -119,7 +122,7 @@ mod tests {
 
     #[test]
     fn successful_replacement_reopens_new_content_and_removes_backup() {
-        let files = Files::new();
+        let files = Files::new("project.json");
         files.replace(&[]).unwrap();
         assert_eq!(revision(&files.target), 2);
         assert!(!files.backup.exists());
@@ -128,7 +131,7 @@ mod tests {
 
     #[test]
     fn failed_backup_move_leaves_original_untouched() {
-        let files = Files::new();
+        let files = Files::new("project.json");
         let error = files.replace(&[1]).unwrap_err();
         assert!(error.message().contains("injected rename 1"));
         assert!(error.context().file_recovery().is_none());
@@ -139,7 +142,7 @@ mod tests {
 
     #[test]
     fn failed_replacement_restores_original_for_reopen() {
-        let files = Files::new();
+        let files = Files::new("project.json");
         let error = files.replace(&[2]).unwrap_err();
         assert!(error.message().contains("injected rename 2"));
         assert!(error.context().file_recovery().is_none());
@@ -148,8 +151,8 @@ mod tests {
     }
 
     #[test]
-    fn failed_recovery_preserves_both_errors_and_recoverable_backup() {
-        let files = Files::new();
+    fn failed_recovery_preserves_both_errors_and_recoverable_backup_for_long_target_name() {
+        let files = Files::new(&format!("{}.json", "x".repeat(250)));
         let error = files.replace(&[2, 3]).unwrap_err();
         assert_eq!(
             error.context().diagnostic_code(),

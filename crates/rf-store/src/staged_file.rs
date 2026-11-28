@@ -1,4 +1,5 @@
 use rf_types::{RfError, RfResult};
+use std::borrow::Cow;
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -95,51 +96,37 @@ fn replace_with_staged_file(temp_path: &Path, path: &Path, action: &str) -> RfRe
     })
 }
 
-fn create_unique_temp_sibling(path: &Path) -> RfResult<(PathBuf, File)> {
-    create_unique_sibling(path, "tmp")
+fn sibling_candidates(path: &Path, suffix: &str) -> impl Iterator<Item = PathBuf> {
+    let directory = path.parent().unwrap_or_else(|| Path::new("."));
+    let file_name = path.file_name().unwrap_or_default();
+    // Leave room within a 255-byte component for the PID, timestamp and retries.
+    let stem = match file_name.to_str() {
+        Some(name) if name.len() <= 128 => Cow::Borrowed(name),
+        _ => Cow::Owned(crate::sha256_hex(file_name.as_encoded_bytes())),
+    };
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos();
+    let pid = process::id();
+    (0..32)
+        .map(move |attempt| directory.join(format!(".{stem}.{pid}.{timestamp}.{attempt}.{suffix}")))
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, test))]
 fn create_unique_backup_sibling(path: &Path) -> RfResult<PathBuf> {
-    let directory = path.parent().unwrap_or_else(|| Path::new("."));
-    let file_name = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("radishflow");
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    let pid = process::id();
-
-    for attempt in 0..32 {
-        let candidate = directory.join(format!(".{file_name}.{pid}.{timestamp}.{attempt}.bak"));
-        if !candidate.exists() {
-            return Ok(candidate);
-        }
-    }
-
-    Err(RfError::invalid_input(format!(
-        "create staged backup file `{}`: could not allocate a unique sibling path",
-        path.display()
-    )))
+    sibling_candidates(path, "bak")
+        .find(|candidate| !candidate.exists())
+        .ok_or_else(|| {
+            RfError::invalid_input(format!(
+                "create staged backup file `{}`: could not allocate a unique sibling path",
+                path.display()
+            ))
+        })
 }
 
-fn create_unique_sibling(path: &Path, suffix: &str) -> RfResult<(PathBuf, File)> {
-    let directory = path.parent().unwrap_or_else(|| Path::new("."));
-    let file_name = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("radishflow");
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    let pid = process::id();
-
-    for attempt in 0..32 {
-        let candidate =
-            directory.join(format!(".{file_name}.{pid}.{timestamp}.{attempt}.{suffix}"));
+fn create_unique_temp_sibling(path: &Path) -> RfResult<(PathBuf, File)> {
+    for candidate in sibling_candidates(path, "tmp") {
         match OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -168,7 +155,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn text_file_creation_rejects_existing_target_and_leaves_no_staging_file() {
+    fn text_file_writes_preserve_overwrite_policy_for_short_and_long_names() {
         let directory = std::env::temp_dir().join(format!(
             "rf-text-file-{}",
             SystemTime::now()
@@ -177,14 +164,21 @@ mod tests {
                 .as_nanos()
         ));
         fs::create_dir(&directory).unwrap();
-        let path = directory.join("结果.txt");
-        write_text_file(&path, "original", FileOverwritePolicy::Forbid).unwrap();
-        assert!(write_text_file(&path, "replacement", FileOverwritePolicy::Forbid).is_err());
-        assert_eq!(fs::read_to_string(&path).unwrap(), "original");
-        assert_eq!(fs::read_dir(&directory).unwrap().count(), 1);
-        write_text_file(&path, "替换文本", FileOverwritePolicy::Allow).unwrap();
-        assert_eq!(fs::read_to_string(&path).unwrap(), "替换文本");
-        assert_eq!(fs::read_dir(&directory).unwrap().count(), 1);
+        let names = [
+            "结果.txt".to_owned(),
+            format!("{}.csv", "x".repeat(251)),
+            format!("{}.json", "表".repeat(80)),
+        ];
+        for name in &names {
+            let path = directory.join(name);
+            write_text_file(&path, "original", FileOverwritePolicy::Forbid).unwrap();
+            assert!(write_text_file(&path, "replacement", FileOverwritePolicy::Forbid).is_err());
+            assert_eq!(fs::read_to_string(&path).unwrap(), "original");
+
+            write_text_file(&path, "替换文本", FileOverwritePolicy::Allow).unwrap();
+            assert_eq!(fs::read_to_string(&path).unwrap(), "替换文本");
+        }
+        assert_eq!(fs::read_dir(&directory).unwrap().count(), names.len());
         fs::remove_dir_all(directory).unwrap();
     }
 
