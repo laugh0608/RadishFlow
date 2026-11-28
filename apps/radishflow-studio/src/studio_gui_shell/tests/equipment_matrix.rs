@@ -817,3 +817,35 @@ fn overwrite_confirmation_tracks_export_target() {
     );
     fs::remove_dir_all(project.parent().unwrap()).unwrap();
 }
+
+#[test]
+fn selecting_project_for_matrix_csv_confirms_and_rechecks_the_calculation_table() {
+    let (mut app, project) = matrix("matrix-csv-project-suffix");
+    rate(&mut app, member());
+    let project_bytes = fs::read(&project).unwrap();
+    let table = project.with_added_extension("calculation.csv");
+    super::export_overwrite::check_target_changes(
+        &mut app,
+        &table,
+        |app, expected_path| {
+            encoded(app, Format::Csv, &project);
+            assert_eq!(fs::read(&project).unwrap(), project_bytes);
+            if app.equipment.pending_export.is_some() {
+                let tree = super::unit_accessibility::accessibility_frame(|ctx| {
+                    app.render_equipment_export_dialog(ctx);
+                });
+                let path = expected_path.display().to_string();
+                assert!(
+                    tree.nodes.iter().any(|(_, node)| {
+                        [node.label(), node.value()].contains(&Some(path.as_str()))
+                    }),
+                    "missing overwrite path {path}"
+                );
+            }
+        },
+        ReadyAppState::confirm_equipment_export,
+        ReadyAppState::cancel_equipment_export,
+    );
+    assert_eq!(fs::read(&project).unwrap(), project_bytes);
+    fs::remove_dir_all(project.parent().unwrap()).unwrap();
+}
