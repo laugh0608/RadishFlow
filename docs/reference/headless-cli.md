@@ -2,7 +2,7 @@
 
 更新时间：2026-11-28
 
-本地脚本与适配器从这里查询 CLI v1–v15 的命令和兼容边界。v4–v6 的请求字段与回执示例集中在[固定温压求解计划参考](headless-cli-v4-v6.md)。
+本地脚本与适配器从这里查询 CLI v1–v16 的命令和兼容边界。v4–v6 的请求字段与回执示例集中在[固定温压求解计划参考](headless-cli-v4-v6.md)。
 
 ## 版本与兼容边界
 
@@ -21,6 +21,8 @@ v13 复核已保存的独立同心套管校核任务。 [v13 查询与复算](#h
 v14 查询 v4 保存的 H3 流股关联，并从一次显式稳态运行的快照复核一个纯水工况。 [v14 请求、回执与兼容边界](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联-cli-v14)
 
 v15 查询并显式运行 v4 保存的 M3 串联回流计划。每个独立查询会话从 `missing` 开始。 [v15 请求、回执与验收](../topics/modeling/mixed-serial-recycle.md#cli-v15-接入评审)
+
+v16 沿用 v12 通用计划的请求和工程读取能力，向脚本提供固定温压分块求解的定量失败读数。[v16 衡算失败回执](#v16-分块物料衡算失败回执)
 
 v2 增加创建、连接和步骤引用。工程与请求独立版本化，v1／v2 按 SI 读写。 [单位存储](../topics/units/unit-sets-and-persistence.md#u2-存储接口)
 
@@ -373,3 +375,21 @@ target/debug/radishflow-studio --headless execute examples/automation/size-adopt
 - **计算完成**使用退出码 0。步骤回执与同请求结果查询给出相同的 `current` 结果，包括 `heat_duty_w`、`ua_w_per_k`、LMTD、面积、两侧出口、传热与水力中间量和闭合残差。`checks` 中 `heat_duty`、`hot_pressure_drop`、`cold_pressure_drop` 各返回 `passed`、`failed` 或 `not_specified`。超限时完整数值仍可用。
 - **计算失败**使用退出码 4 和 `run_failed`。该工况结果状态为 `failed`，包含原 Core 的 `diagnostic.code` 与 `message`。步骤拒绝、项目字节变化及错误身份走独立处理。`different_document`、`project_conflict`、`record_conflict` 和 `object_missing` 使用退出码 2。
 - **来源**由 `origin` 给出，包括工程 ID 与文件指纹、步骤 ID、工况身份、三项修订、方法以及几何与两侧物性来源 ID。独立调用 `query` 会重新从 `Missing` 开始。v12 可查询含 H3 工程的安全元数据并禁止执行；已有协议的能力边界照旧。
+
+## v16 分块物料衡算失败回执
+
+在通用计划的 `query` 或 `execute` 请求中指定 `schema_version: 16`。工程指纹、文档和计划修订、受支持的计划、物性资源及读盘规则沿用 v12。文件格式与求解验收契约使用各自的版本。需确认的动作用本请求版本的确认摘要。
+
+固定温压分块求解器实际拒绝物料衡算时，`run_flow` 的 `steps[i].result` 和同请求末尾 `results/flow` 的 `queries[j].value` 都包含 `diagnostic_evidence.material_balance`。退出码为 4。该字段只随已接收的衡算失败出现。另起进程查询得到 `missing`，成功、旧化、迭代耗尽及更早的 `nonfinite_residual` 均省略该键。
+
+| 对象内的字段 | 读法 |
+| --- | --- |
+| `scope` | `kind: "unit"` 带 `block_index` 和 `unit_id`，`"recycle_region"` 带 `block_index` 和 `tear_stream_id`，`"flowsheet"` 只含 `kind`。索引从 0 起。 |
+| `input_stream_ids`、`output_stream_ids` | 两侧分别按本次累加顺序列出工程流股 ID。 |
+| `tolerances` | `component_absolute_flow_mol_s`、`scaled_flow`、`total_absolute_flow_mol_s` 是当次冻结的组分绝对门槛、无量纲缩放门槛与总量门槛。 |
+| `exceeded_components[]` | 按冻结组分顺序列出 `component_id`、两侧流量 `input_mol_s` / `output_mol_s`、带符号的出口减入口 `difference_mol_s`、冻结尺度 `scale_mol_s`、无量纲绝对缩放差 `scaled_absolute`，以及独立判定 `absolute_exceeded` / `scaled_exceeded`。仅总量超限时为空数组。 |
+| `total` | 两侧总流量 `input_mol_s` / `output_mol_s`、带符号差 `difference_mol_s` 与总量判定 `exceeded`。等于门槛时通过，总量差非有限时拒绝。 |
+
+读数保留核心的数值精度。有限值为 JSON 数字，非有限值使用单键对象 `{"non_finite":"nan"}`、`{"non_finite":"positive_infinity"}` 或 `{"non_finite":"negative_infinity"}`。
+
+用[公开请求模板](../../examples/automation/run-q10-material-balance-v16.request.template.json)复现时，将 `flow_resources` 的两个路径指向现有缓存和索引，工程路径相对于请求文件。运行 `radishflow-studio --headless execute <请求文件>`。进料 B 为 180029 mol/s 时，`scope` 指向第 4 块（`block_index: 3`）和 `s-recycle`，乙烷从 `s-fresh` 到 `s-bleed` 的差额为 `-1.1641532182693481e-10 mol/s`，仅绝对项超限。把同一写入值换为 537793 或 158822 mol/s，可分别复现下游 Heater 或整图失败。[三例的判定依据](../topics/modeling/recycle-and-block-execution.md#q10-衡算失败回执评审)

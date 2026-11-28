@@ -7,19 +7,31 @@ pub(crate) enum Numbers {
     Current,
     Diagnostic,
 }
+
+pub(crate) fn diagnostic_number(value: f64) -> Value {
+    if value.is_finite() {
+        json!(value)
+    } else {
+        let kind = if value.is_nan() {
+            "nan"
+        } else if value.is_sign_positive() {
+            "positive_infinity"
+        } else {
+            "negative_infinity"
+        };
+        json!({ "non_finite": kind })
+    }
+}
+
 impl Numbers {
     pub(crate) fn value(self, value: f64) -> RfResult<Value> {
-        if value.is_finite() {
-            return Ok(json!(value));
-        }
-        match self {
-            Self::Current => Err(
+        if matches!(self, Self::Current) && !value.is_finite() {
+            Err(
                 RfError::invalid_input("nonfinite value in formal flow result")
                     .with_diagnostic_code("workspace.result.nonfinite"),
-            ),
-            Self::Diagnostic => Ok(
-                json!({"non_finite": if value.is_nan() {"nan"} else if value.is_sign_positive() {"positive_infinity"} else {"negative_infinity"}}),
-            ),
+            )
+        } else {
+            Ok(diagnostic_number(value))
         }
     }
     pub(crate) fn optional(self, value: Option<f64>) -> RfResult<Value> {

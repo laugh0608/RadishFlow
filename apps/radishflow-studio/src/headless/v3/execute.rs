@@ -1,4 +1,4 @@
-use super::super::{v9, v10, v11, v12, v13, v14, v15};
+use super::super::{v9, v10, v11, v12, v13, v14, v15, v16};
 use super::{
     actions::*,
     confirmation::Aliases,
@@ -24,11 +24,12 @@ pub fn file(path: &Path, response: &mut Response) -> Result<(), Failure> {
             | v13::VERSION
             | v14::VERSION
             | v15::VERSION
+            | v16::VERSION
     ) {
         return Err(Failure::new(
             Stage::Request,
             Code::UnsupportedVersion,
-            "execute requires schema_version 3 through 7 or 9 through 15",
+            "execute requires schema_version 3 through 7 or 9 through 16",
         ));
     }
     response.schema_version = version;
@@ -47,6 +48,7 @@ pub fn file(path: &Path, response: &mut Response) -> Result<(), Failure> {
         v13::VERSION => v13::execute_file(path, &bytes, response),
         v14::VERSION => v14::execute_file(path, &bytes, response),
         v15::VERSION => v15::execute_file(path, &bytes, response),
+        v16::VERSION => super::super::planned::execute_file::<v16::Plan>(path, &bytes, response),
         _ => unreachable!("validated execute version"),
     }
 }

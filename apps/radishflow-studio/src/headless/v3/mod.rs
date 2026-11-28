@@ -127,7 +127,7 @@ pub(super) fn load_project_version(
         6 => FlowPlanSupport::EquationOriented,
         super::v10::VERSION => FlowPlanSupport::ProductComposition,
         super::v11::VERSION => FlowPlanSupport::SinglePhase,
-        super::v12::VERSION => FlowPlanSupport::SinglePhaseRecycle,
+        super::v12::VERSION | super::v16::VERSION => FlowPlanSupport::SinglePhaseRecycle,
         _ => FlowPlanSupport::Mixed,
     };
     load_project_with_support(
@@ -209,11 +209,11 @@ pub(super) fn load_project_with_support(
 }
 fn query_file(path: &Path, response: &mut Response) -> Result<(), Failure> {
     let (version, bytes) = read_request(path)?;
-    if !matches!(version, 3..=super::v15::VERSION) {
+    if !matches!(version, 3..=super::v16::VERSION) {
         return Err(Failure::new(
             Stage::Request,
             Code::UnsupportedVersion,
-            "query requires schema_version 3 through 15",
+            "query requires schema_version 3 through 16",
         ));
     }
     response.schema_version = version;
@@ -237,6 +237,9 @@ fn query_file(path: &Path, response: &mut Response) -> Result<(), Failure> {
         super::v13::VERSION => super::v13::query_file(path, &bytes, response),
         super::v14::VERSION => super::v14::query_file(path, &bytes, response),
         super::v15::VERSION => super::v15::query_file(path, &bytes, response),
+        super::v16::VERSION => {
+            super::planned::query_file::<super::v16::Plan>(path, &bytes, response)
+        }
         _ => unreachable!("validated query version"),
     }
 }

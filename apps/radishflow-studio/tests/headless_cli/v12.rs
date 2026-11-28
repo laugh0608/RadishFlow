@@ -121,10 +121,14 @@ fn v12_process_checks_plan_revision_and_v11_protects_project() {
         {"id":"apply","action":{"kind":"configure_flow_plan","expected_plan_revision":0,"plan":configuration}},
         {"id":"solve","action":{"kind":"run_flow","expected_revision":0,"expected_plan_revision":1}}
     ]);
-    let (code, executed) = f.v3("execute", &configured);
-    assert_eq!(code, 0, "{executed}");
-    assert_eq!(executed["steps"][0]["plan_revision"], 1);
-    assert_eq!(executed["steps"][1]["result"]["status"], "current");
+    for version in [12, 16] {
+        configured["schema_version"] = json!(version);
+        let (code, executed) = f.v3("execute", &configured);
+        assert_eq!(code, 0, "{executed}");
+        assert_eq!(executed["schema_version"], version);
+        assert_eq!(executed["steps"][0]["plan_revision"], 1);
+        assert_eq!(executed["steps"][1]["result"]["status"], "current");
+    }
     assert_eq!(f.v3("query", &query), (0, before));
 
     query["schema_version"] = json!(11);

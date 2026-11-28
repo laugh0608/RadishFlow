@@ -501,7 +501,7 @@ fn saved_m3_uses_strict_requests_and_preserves_legacy_whole_file_protection() {
         .retain(|cap| cap["id"] != MIXED_SERIAL_RECYCLE_CAPABILITY);
     fs::write(f.root.join("unmarked.json"), unmarked.to_string()).unwrap();
     for project in [M3, "unmarked.json"] {
-        for version in 4..=14 {
+        for version in (4..=14).chain([16]) {
             let discovery = json!({"schema_version":version,"project":project,"queries":[]});
             let (code, response) = f.v3("query", &discovery);
             assert_eq!(code, 0, "v{version}: {response}");
@@ -510,7 +510,7 @@ fn saved_m3_uses_strict_requests_and_preserves_legacy_whole_file_protection() {
             run["schema_version"] = json!(version);
             run["queries"] = json!([]);
             run["flow_resources"]["auth_cache_index"] = json!("absent.json");
-            if version >= 13 {
+            if matches!(version, 13 | 14) {
                 run.as_object_mut().unwrap().remove("flow_resources");
                 run["steps"][0]["action"] = json!({
                     "kind": if version == 13 {"rate_concentric_tube"} else {"rate_concentric_tube_from_flow"},

@@ -1,0 +1,51 @@
+{
+  "schema_version": 16,
+  "project": "../flowsheets/fixed-tp-q7-serial-recycle.rfproj.json",
+  "expected_project": {
+    "document_id": "example-qs1-q7-serial-recycle",
+    "file_sha256": "28a7babb0c9ef0b8b5a1c9a5e45476c5cb4b9641aee3bdb448e2852ad068dc0b"
+  },
+  "flow_resources": {
+    "cache_root": "./property-package-cache",
+    "auth_cache_index": "./auth-cache-index.json",
+    "package": {
+      "kind": "preferred"
+    }
+  },
+  "steps": [
+    {
+      "id": "high",
+      "action": {
+        "kind": "write",
+        "expected_revision": 0,
+        "target": {
+          "object": {
+            "stream": {
+              "id": "s-fb"
+            }
+          },
+          "section": "inputs",
+          "field": "molar_flow"
+        },
+        "value": 180029
+      }
+    },
+    {
+      "id": "attempt",
+      "action": {
+        "kind": "run_flow",
+        "expected_revision": 1,
+        "expected_plan_revision": 0
+      }
+    }
+  ],
+  "queries": [
+    {
+      "id": "result",
+      "query": {
+        "kind": "results",
+        "scope": "flow"
+      }
+    }
+  ]
+}
