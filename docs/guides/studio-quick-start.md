@@ -1,6 +1,6 @@
 # Studio Quick Start
 
-更新时间：2026-11-16
+更新时间：2026-11-28
 
 > 本文用于运行与验证当前 MVP 用户路径。内置样例与历史 `official` 称谓表示仓库演示 / 回归案例，运行成功不构成工程精度验证；解释结果前请阅读 [模型与样例边界](../thermo/mvp-model.md)。
 
@@ -96,7 +96,7 @@ cargo run -p radishflow-studio
 开发态说明：
 
 - 这是长时间运行的桌面 UI 命令
-- Windows 当前已接入原生打开/另存为选择器；其他平台的文件工作流暂不承诺同等完成度
+- macOS 和 Windows 使用原生工程打开与另存为面板。另存到已有工程时，还须在 Studio 核对目标再确认覆盖。 [保存与重开](run-first-flowsheet.md#5-保存并重新打开)
 - macOS 开发态使用 `eframe/wgpu` + Metal backend，避免系统 OpenGL loader 探测较新 `gl*` 符号时刷出无关 `dlsym` 日志。
 - macOS 直接运行 `target/debug/radishflow-studio` 或从 RustRover debug 裸二进制时，终端可能输出 `com.apple.linkd.autoShortcut`、App Intents、`[WindowTab] Cannot index window tabs due to missing main bundle identifier` 或 task name port right 相关系统日志。只要窗口正常打开、退出码正常、功能路径可用，当前将其视为 macOS 非 `.app` bundle 开发态噪声；真正收口点放到未来 macOS `.app`、`Info.plist`、bundle identifier、签名或打包流程。
 

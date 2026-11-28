@@ -35,8 +35,7 @@
 4. 基础契约中提前审查 EO / 动态 / 瞬态的扩展边界，具体物性、单元、递归分块 / recycle 和高级算法按真实场景逐步填入；每项另做物理验证。
 5. 保持可靠性、固定工具链及跨平台回归；I5、未验平台和发布前 GUI / PME 门禁不变。
 
-
-### 最近进展（截至 2026-11-25）
+### 最近进展（截至 2026-11-28）
 
 - [PMC](../topics/capeopen-pmc-adapter.md)物料治理本机通过，x64 PME 待验；Mac 主开发，COBIA 暂不接入 / 安装 SDK。
 - PR #20 已合入 `master` 并回灌 `dev`（`a26de5b2`）。
@@ -44,20 +43,21 @@
 - [共享稳态执行](../topics/modeling/solver-strategies-and-assembly.md#共享稳态执行契约)已接通 Studio／CLI／FFI，旧接口能力保持。
 - [QS4 M2](../topics/modeling/mixed-partition-execution.md)已验。[M3 串联回流](../topics/modeling/mixed-serial-recycle.md)已通过核心、v4、CLI v15 和 macOS Studio 验收。
 - macOS 已验收六类单元的重命名、删除与恢复，以及流股断开、唯一与多候选重连。Mixer 双向第二项的画布预览与重开绑定一致。[建模专题](../topics/flowsheet-modeling-and-solve.md)
+- S-09、Q7、Q9 已验，Q10 三类衡算失败已接通 Rust、Studio 和 [CLI v16](../reference/headless-cli.md#v16-分块物料衡算失败回执)，七个旧版 CLI 通过兼容对照。
+- macOS 已验工程另存、TXT／CSV／JSON 覆盖复核、窄窗反馈、长文件名、误选工程名与写入失败后重试。
+- H3 已验解除关联后两档独立复算、取消与冲突、混合工程重开。
 
 ### 下一步
 
-- [x] S-09、Q7、Q9 已验。Q10 回执已收口，Rust、Studio 与 [CLI v16](../reference/headless-cli.md#v16-分块物料衡算失败回执) 已验三类衡算失败，七个旧版 CLI 通过兼容对照。
+- [ ] 评审 [H3 独立工况入口编辑](../topics/equipment/heat-exchanger-design-and-rating.md#接下来事项)，用冷侧 40／50 mol/s 核对取消、保存重开与复算。
 - [x] macOS 已验双流股端口对照及[组分查询、引用保护、重开与进料组分核对](../topics/property/component-catalog-and-selection.md)。
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
-- [x] H3 关联复核与[解除关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-解除关联转为独立工况)已验两档复算、取消与冲突、混合工程重开。
 - [x] [AF3-V10 macOS 原版等待中返回](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24) 已在同一窗口验证草稿保留、取消回执拒收、旧 Current 保留和显式重跑接收。
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 待取得 Parrish 原页和公开复用依据，再冻结二元留出矩阵。
 - [x] QS3／QS4 macOS 取消与重跑通过，QS3 英文窄区焦点可见性复验通过。见 [专题](../topics/modeling/equation-oriented-block.md#接下来事项)。
 - [ ] 按已确认的 [I5 延期安排](../topics/units/requirements-traceability.md#i5-受控延期与-u3-开工安排) 保留未验项与补验节点；U / A 首批完成不表示 I5 通过或发布放行。
 - [x] G0 / S1、S2-A、G2-B 与 [C1](../architecture/designs/studio-equipment-adoption-brief.md#接下来事项)已通过代表验证，分离器关联另审。
-- [x] macOS 已验另存为与 TXT／CSV／JSON 覆盖复核、误选工程名、窄窗矩阵反馈、长文件名及权限或空间不足后重试。
 - [ ] [AF1](../topics/project-lifecycle-storage.md#af1-接下来事项2026-10-23) 两个构建各三轮未复现面板不可见，原故障二进制缺失，根因待定。
 - [x] [AF2a / b 与 AF3—AF6](../radishflow-mvp-roadmap.md#基础架构优先的实施切片) 已接通批准范围。AF5 [流股检查器](../topics/modeling/material-stream.md)已在 macOS 核对工程输入、当前求解值和失效提示。
 - [x] Studio R2、V1 动效与 V2 三个流股图层通过 macOS 代表验证。 [UI 计划](../architecture/studio-ui-topic-plan.md)
@@ -113,7 +113,7 @@ macOS 现有图形依赖链中的 `block 0.1.6` 仍有未来 Rust 兼容性警�
 
 最近通过记录：
 
-- 2026-11-28 macOS 全仓 Rust 2,394 项通过。见 [W48](../devlogs/2026-11/2026-W48.md)。
+- 2026-11-28 macOS 全仓 Rust 2,397 项通过，1 项开发测量按标记跳过。见 [W48](../devlogs/2026-11/2026-W48.md)。
 
 - 2026-11-22：PR #19 七项 CI 门禁全通过。跨平台原生、I5、PME 与发布验收见各专题。
 

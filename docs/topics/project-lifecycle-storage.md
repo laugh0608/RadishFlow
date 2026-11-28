@@ -321,7 +321,7 @@ H3 使用 v3／v4 共有工程区，沿用外层版本、项目呈现与单位�
 
 带 `case.flowAssociation` 的工况要求 v4、无回路计划、`objectIdentities` 和 `radishflow.equipment.concentric-tube-flow-association` v1。关联由 `EquipmentSupport::ConcentricTubeFlowAssociation` 显式启用。读写验证能力声明与内容一致，冷热引用须指向两个不同的本工程流股，并匹配已保存的创建身份。已知格式拒绝缺项、显式 `null`、未知键，以及关联与数值入口混用。v3 继续保存独立 H3 输入。 [H3 关联契约](equipment/heat-exchanger-design-and-rating.md#h3-流程关联保存与重开)
 
-沿用 v4 暂存写入和目标指纹。新路径按显式关联保存动作写入，覆盖首次加入关联能力的目标须确认。旧读者走整份原文只读，旧 writer 拒绝另存与覆盖。常规 writer 拒绝隐式移除关联。Studio 显式解除时，专用准备操作从指纹匹配的源工程构造目标，仅固定已核对工况的六个入口值。另存独占新路径，写回只针对该源文件。冻结 `ac91d1c3` 验证了两档工程的原文和写保护。CLI v13 与 Studio 原有独立复核仍走原能力门禁。 [重开验收](../devlogs/2026-11/2026-W47.md#2026-11-21-h3-流程关联保存与重开)
+沿用 v4 暂存写入和目标指纹。新路径按显式关联保存动作写入，覆盖首次加入关联能力的目标须确认。旧读者走整份原文只读，旧 writer 拒绝另存与覆盖。常规 writer 拒绝隐式移除关联。Studio 显式解除时，专用准备操作从指纹匹配的源工程构造目标，仅固定已核对工况的六个入口值。另存独占新路径，写回只针对该源文件。冻结 `ac91d1c3` 验证了两档工程的原文和写保护。CLI v13 遇到仍含关联的工程时整份只读。Studio 可在同一工程中分别复核独立工况与剩余关联工况。 [解除关联与混合工程重开](equipment/heat-exchanger-design-and-rating.md#h3-解除关联转为独立工况) · [重开验收](../devlogs/2026-11/2026-W47.md#2026-11-21-h3-流程关联保存与重开)
 
 Studio 的关联编辑事务准备和提交时均复核旧配对、目标工况及其修订、新流股创建身份、已接收快照、源文件原字节和目标指纹。更换关联沿用相同 `flowAssociation` wire。相同配对不推进修订；首次建立或更换成功推进文档、任务和工况修订，保留几何修订。另存只接受新路径；打开保存结果时创建新会话。 [Studio 关联编辑](equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存)
 

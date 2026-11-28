@@ -1,6 +1,6 @@
 # Solve Snapshot Results Reference
 
-更新时间：2026-11-23
+更新时间：2026-11-28
 
 ## 目的
 
@@ -90,7 +90,9 @@ M3 的复核报告按实际 A→B 运行顺序记录各区入口、尺度、候�
 
 跨帧结果动作和待写输出携带 `FlowResultGuard`，激活 / 写入时重新查询当前工作区；定位还检查目标存在。设备使用独立 `EquipmentResultGuard` 和原计算 / 矩阵输出捕获机制，按相关工况资格重验，不用流程 revision 作为设备全局锁。RunId / CalculationId 不透明且不持久化，技术详情 / 文本只说明身份已记录、会话内使用，不输出内存地址或可恢复令牌。
 
-H3 流程关联复核从同一次无回路 `Current` 读取冷热侧入口，复核结果及其守卫归应用层会话。保存的流股引用在新会话中从 `Missing` 起步，须重新取得流程结果及校核。 [H3 关联契约](../topics/equipment/heat-exchanger-design-and-rating.md#h3-流程关联保存与重开)
+固定温压分块求解因物料衡算被拒绝时，已接收的 `Failed` 回执保留单元、回流区或整图在判定处的实测读数。Studio 显示该次失败的诊断，CLI v16 经 `diagnostic_evidence.material_balance` 返回同一证据。 [字段与结果资格](headless-cli.md#v16-分块物料衡算失败回执)
+
+H3 流程关联复核从同一次无回路 `Current` 读取冷热侧入口，复核结果及其守卫归应用层会话。保存的流股引用在新会话中从 `Missing` 起步，须重新取得流程结果及校核。显式解除并保存后，独立工况从文件读取六个 SI 入口值，原快照来源只在解除确认页展示。 [H3 解除关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-解除关联转为独立工况)
 
 ## `StreamStateSnapshot` 的稳定语义
 
