@@ -47,7 +47,7 @@
 
 ### 下一步
 
-- [x] S-09、Q7、Q9 已验。Q10 失败摘要通过 CLI v4 对照与 macOS 实窗验收。[高流量衡算已定位](../topics/modeling/recycle-and-block-execution.md#q10-高流量衡算)，数值修正待评审。
+- [x] S-09、Q7、Q9 已验。Q10 失败摘要通过 CLI v4 对照与 macOS 实窗验收。[跨区组分流量试验](../topics/modeling/recycle-and-block-execution.md#q10-高流量衡算)仅部分工况通过，保留现行求解器。
 - [x] macOS 已验双流股端口对照及[组分查询、引用保护、重开与进料组分核对](../topics/property/component-catalog-and-selection.md)。
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
 - [x] [H3 流程关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-studio-流程关联编辑与保存)已接通 CLI v14、Studio 只读与编辑。macOS 通过 40／50 mol/s、重跑失效、迟到回执、保存冲突与新会话复算验收。
