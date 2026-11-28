@@ -805,3 +805,15 @@ fn matrix_upgrade_and_delete_confirmation_are_localized_readable_and_cancel_pres
         fs::remove_dir_all(project.parent().unwrap()).unwrap();
     }
 }
+
+#[test]
+fn overwrite_confirmation_tracks_export_target() {
+    let (mut app, project) = matrix("matrix-target-change");
+    rate(&mut app, member());
+    super::export_overwrite::check_equipment_formats(
+        &mut app,
+        &project.with_file_name("matrix"),
+        encoded,
+    );
+    fs::remove_dir_all(project.parent().unwrap()).unwrap();
+}

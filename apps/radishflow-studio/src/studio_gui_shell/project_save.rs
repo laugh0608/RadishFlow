@@ -1,3 +1,4 @@
+use super::file_target::save_target_fingerprint;
 use super::locale::tr;
 use super::*;
 use radishflow_studio::{
@@ -591,22 +592,5 @@ impl ReadyAppState {
         if response.should_close() && self.pending_format_upgrade.is_some() {
             self.cancel_project_save("Save canceled", "Project file and save baseline preserved.");
         }
-    }
-}
-
-fn save_target_fingerprint(path: &std::path::Path) -> rf_types::RfResult<Option<String>> {
-    let inspect_error = |error: std::io::Error| {
-        rf_types::RfError::invalid_input(format!("inspect save target {}: {error}", path.display()))
-    };
-    match std::fs::metadata(path) {
-        Ok(metadata) if metadata.is_file() => std::fs::read(path)
-            .map(|bytes| Some(rf_store::sha256_hex(&bytes)))
-            .map_err(inspect_error),
-        Ok(_) => Err(rf_types::RfError::invalid_input(format!(
-            "save target {} is not a regular file",
-            path.display()
-        ))),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(inspect_error(error)),
     }
 }

@@ -1,5 +1,6 @@
 //! File-dialog orchestration for an immutable, qualified equipment table.
 use super::*;
+use crate::studio_gui_shell::file_target::ExportTarget;
 use rf_types::EquipmentTaskId;
 use rf_ui::engineering::{CalculationId, EquipmentCaseKey};
 
@@ -59,7 +60,7 @@ pub(in crate::studio_gui_shell) struct CapturedEquipmentOutput {
 }
 pub(in crate::studio_gui_shell) struct PendingEquipmentExport {
     output: CapturedEquipmentOutput,
-    path: PathBuf,
+    target: ExportTarget,
     origin: Option<RatingExportOrigin>,
 }
 
@@ -280,22 +281,20 @@ impl ReadyAppState {
         origin: Option<RatingExportOrigin>,
     ) {
         let path = equipment_export_path(path, output.format);
-        if path.is_file() {
+        let Some(target) = self.select_export_target(path) else {
+            return;
+        };
+        if target.requires_confirmation() {
             self.equipment.pending_export = Some(PendingEquipmentExport {
                 output,
-                path,
+                target,
                 origin,
             });
         } else {
-            self.write_equipment_export(output, path, rf_store::FileOverwritePolicy::Forbid);
+            self.write_equipment_export(output, target);
         }
     }
-    fn write_equipment_export(
-        &mut self,
-        output: CapturedEquipmentOutput,
-        path: PathBuf,
-        policy: rf_store::FileOverwritePolicy,
-    ) {
+    fn write_equipment_export(&mut self, output: CapturedEquipmentOutput, target: ExportTarget) {
         let workspace = &self.platform_host.modeling_inputs().workspace;
         let session = &workspace.engineering;
         // CalculationId is session-local and non-reusable, including after an
@@ -333,6 +332,10 @@ impl ReadyAppState {
             self.equipment_export_unavailable();
             return;
         }
+        let Some(policy) = self.export_write_policy(&target) else {
+            return;
+        };
+        let path = target.path;
         match rf_store::write_text_file(&path, &output.text, policy) {
             Ok(()) => self.equipment_export_notice(
                 ProjectOpenNoticeLevel::Info,
@@ -352,11 +355,7 @@ impl ReadyAppState {
     }
     pub(in crate::studio_gui_shell) fn confirm_equipment_export(&mut self) {
         if let Some(pending) = self.equipment.pending_export.take() {
-            self.write_equipment_export(
-                pending.output,
-                pending.path,
-                rf_store::FileOverwritePolicy::Allow,
-            );
+            self.write_equipment_export(pending.output, pending.target);
         }
     }
     pub(in crate::studio_gui_shell) fn cancel_equipment_export(&mut self) {
@@ -429,7 +428,7 @@ impl ReadyAppState {
         let Some(pending) = self.equipment.pending_export.as_ref() else {
             return;
         };
-        let path = pending.path.display().to_string();
+        let path = pending.target.path.display().to_string();
         let locale = self.locale;
         let response =
             egui::Modal::new(egui::Id::new("equipment-export-overwrite")).show(ctx, |ui| {

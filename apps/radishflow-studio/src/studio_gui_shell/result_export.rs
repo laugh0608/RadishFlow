@@ -1,3 +1,4 @@
+use super::file_target::ExportTarget;
 use super::*;
 
 struct CapturedResultOutput {
@@ -8,7 +9,7 @@ struct CapturedResultOutput {
 
 pub(super) struct PendingResultExport {
     output: CapturedResultOutput,
-    path: PathBuf,
+    target: ExportTarget,
 }
 
 impl ReadyAppState {
@@ -71,19 +72,17 @@ impl ReadyAppState {
 
     fn export_captured_result_to_path(&mut self, output: CapturedResultOutput, path: PathBuf) {
         let path = project_picker::ensure_text_file_extension(path);
-        if path.is_file() {
-            self.pending_result_export = Some(PendingResultExport { output, path });
+        let Some(target) = self.select_export_target(path) else {
+            return;
+        };
+        if target.requires_confirmation() {
+            self.pending_result_export = Some(PendingResultExport { output, target });
             return;
         }
-        self.write_result_export(output, path, rf_store::FileOverwritePolicy::Forbid);
+        self.write_result_export(output, target);
     }
 
-    fn write_result_export(
-        &mut self,
-        output: CapturedResultOutput,
-        path: PathBuf,
-        overwrite: rf_store::FileOverwritePolicy,
-    ) {
+    fn write_result_export(&mut self, output: CapturedResultOutput, target: ExportTarget) {
         if self.platform_host.document().metadata.document_id.as_str() != output.document_id
             || self.current_result_for_output(&output.snapshot).is_none()
         {
@@ -96,6 +95,10 @@ impl ReadyAppState {
             );
             return;
         }
+        let Some(overwrite) = self.export_write_policy(&target) else {
+            return;
+        };
+        let path = target.path;
         let snapshot = &output.snapshot;
         match rf_store::write_text_file(&path, &output.text, overwrite) {
             Ok(()) => {
@@ -258,11 +261,7 @@ impl ReadyAppState {
         let Some(pending) = self.pending_result_export.take() else {
             return;
         };
-        self.write_result_export(
-            pending.output,
-            pending.path,
-            rf_store::FileOverwritePolicy::Allow,
-        );
+        self.write_result_export(pending.output, pending.target);
     }
 
     pub(super) fn cancel_result_export(&mut self) {
@@ -284,7 +283,7 @@ impl ReadyAppState {
         let Some(pending) = self.pending_result_export.as_ref() else {
             return;
         };
-        let path = pending.path.clone();
+        let path = pending.target.path.clone();
         let response = egui::Modal::new(egui::Id::new("result-export-overwrite")).show(ctx, |ui| {
             ui.set_max_width(480.0);
             ui.heading(result_output_text(

@@ -37,6 +37,7 @@ mod choice_selector;
 mod chrome;
 mod equipment;
 mod failure_recovery;
+mod file_target;
 mod flow_diagnostics;
 mod flow_path;
 mod flow_plan;

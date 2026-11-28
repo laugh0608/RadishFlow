@@ -186,6 +186,7 @@ mod canvas_navigation;
 mod command_palette;
 mod command_surface;
 mod component_catalog;
+mod export_overwrite;
 mod failure_recovery_lifecycle;
 mod failure_recovery_navigation;
 mod platform_shortcuts;

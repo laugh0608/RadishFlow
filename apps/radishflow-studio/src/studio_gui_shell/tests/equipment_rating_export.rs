@@ -324,3 +324,15 @@ fn rating_export_cancel_io_failure_and_success_leave_engineering_unchanged() {
     assert_eq!(app.platform_host.modeling_inputs().workspace, before);
     fs::remove_dir_all(project.parent().unwrap()).unwrap();
 }
+
+#[test]
+fn overwrite_confirmation_tracks_export_target() {
+    let (mut app, project) = fixture("rating-target-change", |_| {});
+    calculate(&mut app);
+    super::export_overwrite::check_equipment_formats(
+        &mut app,
+        &project.with_file_name("rating"),
+        output,
+    );
+    fs::remove_dir_all(project.parent().unwrap()).unwrap();
+}

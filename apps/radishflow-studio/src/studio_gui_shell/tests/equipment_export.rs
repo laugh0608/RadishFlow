@@ -809,3 +809,14 @@ fn equipment_export_full_frame_renders_confirmation_safe_focus_and_notice() {
         }
     }
 }
+
+#[test]
+fn overwrite_confirmation_tracks_export_target() {
+    let (mut app, task, _) = complete_case();
+    calculate(&mut app, &task);
+    let base = path("sizing-target-change", "csv");
+    super::export_overwrite::check_equipment_formats(&mut app, &base, |app, format, path| {
+        export(app, &task, format, path)
+    });
+    fs::remove_dir_all(base.parent().unwrap()).unwrap();
+}

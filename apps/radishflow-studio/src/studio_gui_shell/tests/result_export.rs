@@ -367,3 +367,19 @@ fn result_review_rejects_identical_ids_from_another_session_and_preserves_drafts
     first.dispatch_ui_command("run_panel.run_manual");
     assert!(!old_action.result_is_current(&first.platform_host.modeling_inputs().workspace));
 }
+
+#[test]
+fn overwrite_confirmation_tracks_export_target() {
+    let mut app = solved_app();
+    let snapshot = current_snapshot(&app);
+    super::export_overwrite::check_target_changes(
+        &mut app,
+        &output_path("target-change"),
+        |app, path| {
+            app.project_file_picker = Box::new(TestProjectFilePicker::new(Some(path.to_owned())));
+            app.export_solve_snapshot_from_picker(&snapshot);
+        },
+        ReadyAppState::confirm_result_export,
+        ReadyAppState::cancel_result_export,
+    );
+}
