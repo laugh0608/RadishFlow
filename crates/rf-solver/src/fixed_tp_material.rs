@@ -1,6 +1,7 @@
 //! Fixed-T/P material checks shared by the supported modular strategies.
 use crate::partitioned::{
-    ABSOLUTE_FLOW_TOLERANCE, EvaluationPhase, FixedRecycleBoundary, PRESSURE_TOLERANCE_PA,
+    ABSOLUTE_FLOW_TOLERANCE, ComponentBalanceExcess, EvaluationPhase, FixedRecycleBoundary,
+    FlowDifference, MaterialBalanceReadings, PRESSURE_TOLERANCE_PA, RecycleTolerances,
     ResidualSample, SCALED_FLOW_TOLERANCE, TEMPERATURE_TOLERANCE_K,
 };
 use rf_model::MaterialStreamState;
@@ -202,6 +203,32 @@ pub(crate) fn converged(sample: &ResidualSample) -> bool {
         && sample.max_scaled <= SCALED_FLOW_TOLERANCE
 }
 
+#[derive(Debug)]
+pub(crate) enum BalanceCheckError {
+    Invalid(RfError),
+    Exceeded(Box<MaterialBalanceReadings>),
+}
+
+impl From<RfError> for BalanceCheckError {
+    fn from(error: RfError) -> Self {
+        Self::Invalid(error)
+    }
+}
+
+impl MaterialBalanceReadings {
+    pub(crate) fn diagnostic(&self) -> RfError {
+        let mut error = failure(
+            "component_balance",
+            "local or overall material balance exceeds frozen absolute/scaled tolerances",
+        )
+        .with_related_stream_ids(self.inputs.iter().chain(&self.outputs).cloned().collect());
+        for row in &self.exceeded_components {
+            error = error.with_related_component_id(row.component_id.clone());
+        }
+        error
+    }
+}
+
 pub(crate) fn balance(
     components: &[ComponentId],
     boundary: FixedRecycleBoundary,
@@ -209,6 +236,19 @@ pub(crate) fn balance(
     outputs: &[MaterialStreamState],
     scales: &BTreeMap<ComponentId, f64>,
 ) -> RfResult<()> {
+    check_balance(components, boundary, inputs, outputs, scales).map_err(|error| match error {
+        BalanceCheckError::Invalid(error) => error,
+        BalanceCheckError::Exceeded(readings) => readings.diagnostic(),
+    })
+}
+
+pub(crate) fn check_balance(
+    components: &[ComponentId],
+    boundary: FixedRecycleBoundary,
+    inputs: &[MaterialStreamState],
+    outputs: &[MaterialStreamState],
+    scales: &BTreeMap<ComponentId, f64>,
+) -> Result<(), BalanceCheckError> {
     let mut totals = vec![BTreeMap::from_iter(components.iter().cloned().map(|id| (id, 0.0))); 2];
     let mut total_flows = [0.0; 2];
     for (side, streams) in [inputs, outputs].into_iter().enumerate() {
@@ -222,24 +262,47 @@ pub(crate) fn balance(
     }
     let defects = residuals(components, &totals[0], &totals[1]);
     let evidence = sample(&defects, scales, EvaluationPhase::Verification, 0)?;
-    let total_defect = (total_flows[1] - total_flows[0]).abs();
-    if !converged(&evidence)
-        || !total_defect.is_finite()
-        || total_defect > components.len() as f64 * ABSOLUTE_FLOW_TOLERANCE
-    {
-        let mut error = failure(
-            "component_balance",
-            "local or overall material balance exceeds frozen absolute/scaled tolerances",
-        )
-        .with_related_stream_ids(inputs.iter().chain(outputs).map(|s| s.id.clone()).collect());
-        for (id, defect) in &defects {
-            if defect.abs() > ABSOLUTE_FLOW_TOLERANCE
-                || defect.abs() / scales[id] > SCALED_FLOW_TOLERANCE
-            {
-                error = error.with_related_component_id(id.clone());
-            }
-        }
-        return Err(error);
+    let tolerances = RecycleTolerances::for_components(components.len());
+    let total_difference = total_flows[1] - total_flows[0];
+    let total_exceeded = !total_difference.is_finite()
+        || total_difference.abs() > tolerances.total_absolute_flow_mol_s;
+    if converged(&evidence) && !total_exceeded {
+        return Ok(());
     }
-    Ok(())
+    let mut exceeded_components = Vec::new();
+    for (id, difference_mol_s) in defects {
+        let scale_mol_s = scales[&id];
+        let absolute = difference_mol_s.abs();
+        let scaled_absolute = absolute / scale_mol_s;
+        let absolute_exceeded = absolute > tolerances.component_absolute_flow_mol_s;
+        let scaled_exceeded = scaled_absolute > tolerances.scaled_flow;
+        if absolute_exceeded || scaled_exceeded {
+            exceeded_components.push(ComponentBalanceExcess {
+                flow: FlowDifference {
+                    input_mol_s: totals[0][&id],
+                    output_mol_s: totals[1][&id],
+                    difference_mol_s,
+                },
+                component_id: id,
+                scale_mol_s,
+                scaled_absolute,
+                absolute_exceeded,
+                scaled_exceeded,
+            });
+        }
+    }
+    Err(BalanceCheckError::Exceeded(Box::new(
+        MaterialBalanceReadings {
+            inputs: inputs.iter().map(|s| s.id.clone()).collect(),
+            outputs: outputs.iter().map(|s| s.id.clone()).collect(),
+            exceeded_components,
+            tolerances,
+            total: FlowDifference {
+                input_mol_s: total_flows[0],
+                output_mol_s: total_flows[1],
+                difference_mol_s: total_difference,
+            },
+            total_exceeded,
+        },
+    )))
 }

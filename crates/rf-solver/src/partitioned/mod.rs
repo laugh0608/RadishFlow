@@ -2,6 +2,7 @@
 //! task identity, or automatic strategy selection is implied by this API.
 mod checks;
 mod execution;
+mod material_balance;
 mod plan;
 
 use crate::SolverServices;
@@ -12,6 +13,10 @@ use std::collections::BTreeMap;
 use std::ops::ControlFlow;
 use std::time::Duration;
 
+pub use material_balance::{
+    ComponentBalanceExcess, FlowDifference, MaterialBalanceFailure, MaterialBalanceReadings,
+    MaterialBalanceScope,
+};
 pub use plan::assemble_partitioned_plan;
 
 pub const ABSOLUTE_FLOW_TOLERANCE: f64 = 1e-10;
@@ -173,7 +178,7 @@ pub struct RecycleTolerances {
     pub pressure_pa: f64,
 }
 impl RecycleTolerances {
-    fn for_components(count: usize) -> Self {
+    pub(crate) fn for_components(count: usize) -> Self {
         Self {
             component_absolute_flow_mol_s: ABSOLUTE_FLOW_TOLERANCE,
             scaled_flow: SCALED_FLOW_TOLERANCE,
@@ -251,6 +256,8 @@ pub enum PartitionedFailureKind {
 pub struct PartitionedSolveFailure {
     pub kind: PartitionedFailureKind,
     pub error: RfError,
+    /// Present only when a measured material balance rejected this run.
+    pub material_balance: Option<MaterialBalanceFailure>,
     /// Diagnostic evidence only: never a partially publishable solve result.
     pub completed_blocks: Vec<BlockReport>,
     pub stage: PartitionedProgress,

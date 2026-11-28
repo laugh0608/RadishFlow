@@ -200,7 +200,7 @@ impl ReadyAppState {
                         unit,
                         zh,
                     )
-                    .failed(ui, failure);
+                    .failed(ui, failure, &mut locate);
                 }
             }
         }

@@ -11,6 +11,7 @@ use rf_solver::single_phase_recycle::SinglePhaseTearBinding;
 use rf_types::units::{ALL_UNITS, MeasurementUnit, from_canonical};
 use rf_types::{DiagnosticPortTarget, PortDirection, PortKind, StreamId};
 use rf_ui::flow_plan::*;
+mod balance_failure;
 mod connection;
 mod equation_oriented;
 pub(super) mod equation_results;

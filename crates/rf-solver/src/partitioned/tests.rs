@@ -7,6 +7,7 @@ use rf_unitops::{build_feed_node, build_heater_node, build_mixer_node, build_spl
 mod boundaries;
 mod faults;
 mod graph;
+mod material_balance;
 
 fn composition(a: f64, b: f64) -> BTreeMap<ComponentId, f64> {
     [("methane".into(), a), ("ethane".into(), b)].into()
@@ -186,6 +187,7 @@ fn high_recycle_uses_frozen_tolerances_and_fails_when_budget_is_insufficient() {
     let (flow, options) = case(0.99);
     let failure = solve(&flow, &options).unwrap_err();
     assert_eq!(failure.kind, PartitionedFailureKind::IterationLimit);
+    assert!(failure.material_balance.is_none());
     assert_eq!(failure.costs.iteration_evaluations, 500);
     assert_eq!(failure.costs.verification_evaluations, 0);
     assert!(!failure.costs.calls_by_unit.contains_key(&UnitId::new("h1")));

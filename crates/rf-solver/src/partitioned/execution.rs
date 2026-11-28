@@ -11,10 +11,49 @@ use std::time::Instant;
 struct RunError {
     kind: PartitionedFailureKind,
     error: RfError,
+    material_balance: Option<MaterialBalanceFailure>,
+}
+impl RunError {
+    fn new(kind: PartitionedFailureKind, error: RfError) -> Self {
+        Self {
+            kind,
+            error,
+            material_balance: None,
+        }
+    }
 }
 type RunResult<T> = Result<T, RunError>;
 fn classified<T>(kind: PartitionedFailureKind, result: RfResult<T>) -> RunResult<T> {
-    result.map_err(|error| RunError { kind, error })
+    result.map_err(|error| RunError::new(kind, error))
+}
+
+fn check_material_balance(
+    plan: &PartitionedSolvePlan,
+    inputs: &[MaterialStreamState],
+    outputs: &[MaterialStreamState],
+    scales: &BTreeMap<ComponentId, f64>,
+    scope: impl FnOnce() -> MaterialBalanceScope,
+) -> RunResult<()> {
+    use crate::fixed_tp_material::BalanceCheckError;
+    checks::balance(plan, inputs, outputs, scales).map_err(|failure| {
+        let scope = scope();
+        let at_scope = |error: RfError| match &scope {
+            MaterialBalanceScope::Unit { unit_id, .. } => {
+                error.with_related_unit_id(unit_id.clone())
+            }
+            _ => error,
+        };
+        match failure {
+            BalanceCheckError::Invalid(error) => {
+                RunError::new(PartitionedFailureKind::Balance, at_scope(error))
+            }
+            BalanceCheckError::Exceeded(readings) => RunError {
+                kind: PartitionedFailureKind::Balance,
+                error: at_scope(readings.diagnostic()),
+                material_balance: Some(MaterialBalanceFailure { scope, readings }),
+            },
+        }
+    })
 }
 
 struct TrialExecution<'a, 'b> {
@@ -51,6 +90,7 @@ pub(super) fn solve(
         Box::new(PartitionedSolveFailure {
             kind,
             error,
+            material_balance: None,
             completed_blocks: Vec::new(),
             active_recycle: None,
             active_units: Vec::new(),
@@ -155,6 +195,7 @@ pub(super) fn solve(
         Err(error) => Err(Box::new(PartitionedSolveFailure {
             kind: error.kind,
             error: error.error,
+            material_balance: error.material_balance,
             completed_blocks: trial.blocks,
             active_recycle: trial.active_recycle,
             active_units: trial.active_units,
@@ -213,10 +254,7 @@ impl TrialExecution<'_, '_> {
             if let Some(unit) = &self.progress.unit {
                 error = error.with_related_unit_id(unit.clone());
             }
-            return Err(RunError {
-                kind: PartitionedFailureKind::Cancelled,
-                error,
-            });
+            return Err(RunError::new(PartitionedFailureKind::Cancelled, error));
         }
         Ok(())
     }
@@ -242,13 +280,13 @@ impl TrialExecution<'_, '_> {
                     .components
                     .len()
         {
-            return Err(RunError {
-                kind: PartitionedFailureKind::Initialization,
-                error: failure(
+            return Err(RunError::new(
+                PartitionedFailureKind::Initialization,
+                failure(
                     "thermo_component_binding",
                     "thermo and engineering component registries must match",
                 ),
-            });
+            ));
         }
         let mut fresh_total = 0.0;
         let mut templates = self.plan.flowsheet.streams.clone();
@@ -295,13 +333,13 @@ impl TrialExecution<'_, '_> {
             self.operations.insert(unit.id.clone(), operation);
         }
         if !fresh_total.is_finite() || fresh_total <= 0.0 {
-            return Err(RunError {
-                kind: PartitionedFailureKind::Initialization,
-                error: failure(
+            return Err(RunError::new(
+                PartitionedFailureKind::Initialization,
+                failure(
                     "nonpositive_fresh_flow",
                     "fixed-boundary task requires positive finite fresh inflow",
                 ),
-            });
+            ));
         }
         self.global_scales = self
             .plan
@@ -357,10 +395,9 @@ impl TrialExecution<'_, '_> {
             .filter(|c| c.sink.is_none())
             .map(|c| self.streams[&c.stream_id].clone())
             .collect();
-        classified(
-            PartitionedFailureKind::Balance,
-            checks::balance(self.plan, &feeds, &products, &self.global_scales),
-        )?;
+        check_material_balance(self.plan, &feeds, &products, &self.global_scales, || {
+            MaterialBalanceScope::Flowsheet
+        })?;
         Ok(())
     }
 
@@ -458,15 +495,15 @@ impl TrialExecution<'_, '_> {
                 }),
             )?;
             if Some(&output.id) != port.stream_id.as_ref() {
-                return Err(RunError {
-                    kind: PartitionedFailureKind::LocalEvaluation,
-                    error: failure(
+                return Err(RunError::new(
+                    PartitionedFailureKind::LocalEvaluation,
+                    failure(
                         "output_identity",
                         "local output does not match its source port binding",
                     )
                     .with_related_unit_id(id.clone())
                     .with_related_stream_id(output.id.clone()),
-                });
+                ));
             }
             classified(
                 PartitionedFailureKind::Boundary,
@@ -480,11 +517,12 @@ impl TrialExecution<'_, '_> {
             produced.push(output.clone());
         }
         if unit.kind != "feed" {
-            classified(
-                PartitionedFailureKind::Balance,
-                checks::balance(self.plan, &consumed, &produced, scales)
-                    .map_err(|e| e.with_related_unit_id(id.clone())),
-            )?;
+            check_material_balance(self.plan, &consumed, &produced, scales, || {
+                MaterialBalanceScope::Unit {
+                    block_index: self.block_index,
+                    unit_id: id.clone(),
+                }
+            })?;
         }
         for output in &produced {
             self.streams.insert(output.id.clone(), output.clone());
@@ -522,29 +560,29 @@ impl TrialExecution<'_, '_> {
             checks::component_flows(&self.plan.components, &fresh, self.plan.options.boundary),
         )?;
         if fresh.total_molar_flow_mol_s <= 0.0 {
-            return Err(RunError {
-                kind: PartitionedFailureKind::Initialization,
-                error: failure(
+            return Err(RunError::new(
+                PartitionedFailureKind::Initialization,
+                failure(
                     "nonpositive_fresh_flow",
                     "zero-flow guess requires positive fresh inflow",
                 )
                 .with_related_stream_id(fresh.id.clone()),
-            });
+            ));
         }
         let fraction = self.plan.flowsheet.units[&recycle.splitter]
             .parameters
             .outlet_a_split_fraction
             .expect("assembled fraction");
         if fraction == 1.0 {
-            return Err(RunError {
-                kind: PartitionedFailureKind::NoFiniteSteadyState,
-                error: failure(
+            return Err(RunError::new(
+                PartitionedFailureKind::NoFiniteSteadyState,
+                failure(
                     "no_finite_steady_state",
                     "unit split fraction with positive fresh inflow has no finite steady state",
                 )
                 .with_related_unit_id(recycle.splitter.clone())
                 .with_related_stream_id(recycle.tear.stream_id.clone()),
-            });
+            ));
         }
         let scales = recycle
             .tear
@@ -655,13 +693,15 @@ impl TrialExecution<'_, '_> {
                 });
                 self.checkpoint(PartitionedStage::VerificationCompleted, None)?;
                 if !verified {
-                    return Err(RunError { kind: PartitionedFailureKind::Verification, error: failure("verification_failed", "independent final loop verification did not meet both residual tolerances").with_related_stream_id(recycle.tear.stream_id.clone()) });
+                    return Err(RunError::new(PartitionedFailureKind::Verification, failure("verification_failed", "independent final loop verification did not meet both residual tolerances").with_related_stream_id(recycle.tear.stream_id.clone())));
                 }
                 let product = self.streams[&recycle.product_stream].clone();
-                classified(
-                    PartitionedFailureKind::Balance,
-                    checks::balance(self.plan, &[fresh], &[product], &scales),
-                )?;
+                check_material_balance(self.plan, &[fresh], &[product], &scales, || {
+                    MaterialBalanceScope::RecycleRegion {
+                        block_index: self.block_index,
+                        tear_stream_id: recycle.tear.stream_id.clone(),
+                    }
+                })?;
                 return Ok(BlockReport {
                     members: block.members.clone(),
                     kind: BlockKind::Recycle,
@@ -672,15 +712,15 @@ impl TrialExecution<'_, '_> {
             // Keep no full intermediate local-state history.
             drop(units);
         }
-        Err(RunError {
-            kind: PartitionedFailureKind::IterationLimit,
-            error: failure(
+        Err(RunError::new(
+            PartitionedFailureKind::IterationLimit,
+            failure(
                 "iteration_limit",
                 "direct substitution exhausted its evaluation budget",
             )
             .with_related_stream_id(recycle.tear.stream_id.clone())
             .with_related_unit_ids(block.members.clone()),
-        })
+        ))
     }
 
     fn evaluate_loop(

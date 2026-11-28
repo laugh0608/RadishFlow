@@ -8,8 +8,8 @@ pub(super) fn balance(
     inputs: &[MaterialStreamState],
     outputs: &[MaterialStreamState],
     scales: &BTreeMap<ComponentId, f64>,
-) -> RfResult<()> {
-    crate::fixed_tp_material::balance(
+) -> Result<(), crate::fixed_tp_material::BalanceCheckError> {
+    crate::fixed_tp_material::check_balance(
         &plan.components,
         plan.options.boundary,
         inputs,

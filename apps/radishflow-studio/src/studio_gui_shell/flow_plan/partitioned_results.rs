@@ -2,21 +2,9 @@
 use super::*;
 use recycle_review::{RecycleReview, tear_is_bound};
 use rf_solver::partitioned::{
-    EvaluationPhase, PartitionedFailureKind, PartitionedSolveFailure, PartitionedSolveResult,
-    PartitionedStage, RecycleBlockReport, SolveCosts,
+    EvaluationPhase, MaterialBalanceScope, PartitionedFailureKind, PartitionedSolveFailure,
+    PartitionedSolveResult, RecycleBlockReport, SolveCosts,
 };
-
-fn unit_balance_location(failure: &PartitionedSolveFailure) -> Option<(usize, &rf_types::UnitId)> {
-    // The final flowsheet balance and recycle verification can emit the same error code.
-    if failure.kind == PartitionedFailureKind::Balance
-        && failure.stage.stage == PartitionedStage::UnitStarted
-        && failure.error.context().diagnostic_code() == Some("solver.partitioned.component_balance")
-    {
-        Some((failure.stage.block?, failure.stage.unit.as_ref()?))
-    } else {
-        None
-    }
-}
 
 pub(super) fn failure_summary(
     ui: &mut egui::Ui,
@@ -26,7 +14,7 @@ pub(super) fn failure_summary(
 ) {
     let publication = tr(zh, "本次无正式结果", "No formal result for this run");
     let block_label = tr(zh, "依赖块", "Block");
-    if let Some((index, unit)) = unit_balance_location(failure) {
+    if let Some(balance) = &failure.material_balance {
         let accent = ui.visuals().error_fg_color;
         let frame = egui::Frame::new()
             .fill(accent.gamma_multiply(0.08))
@@ -34,12 +22,10 @@ pub(super) fn failure_summary(
             .show(ui, |ui| {
                 ui.set_min_width(ui.available_width());
                 ui.strong(format!("Failed · {publication}"));
-                let reason = tr(
-                    zh,
-                    "单元物料衡算超限",
-                    "Unit material balance exceeds tolerance",
-                );
-                ui.strong(format!("{block_label} {} · {unit} · {reason}", index + 1));
+                ui.strong(balance_failure::location(&balance.scope, zh));
+                if balance.scope == MaterialBalanceScope::Flowsheet {
+                    ui.label(balance_failure::flowsheet_boundary(balance, zh));
+                }
             });
         let rect = frame.response.rect;
         ui.painter()
@@ -63,6 +49,7 @@ pub(super) fn failure_summary(
 enum BlockState {
     Published,
     CompletedDiagnostic,
+    RegionBalanceFailed,
     Interrupted(PartitionedFailureKind),
 }
 
@@ -178,8 +165,29 @@ impl<'a> Panel<'a> {
         mut self,
         ui: &mut egui::Ui,
         failure: &PartitionedSolveFailure,
+        locate: &mut Option<StreamId>,
     ) -> Option<(StreamId, egui::Id)> {
         let zh = self.zh;
+        let balance = failure.material_balance.as_ref();
+        let diagnostics = |ui: &mut egui::Ui| {
+            if let Some(failed) = balance {
+                balance_failure::details(
+                    ui,
+                    failed,
+                    &self.workspace.document.flowsheet,
+                    zh,
+                    locate,
+                );
+            }
+            ui.label(failure.error.to_string());
+            if let Some(code) = failure.error.context().diagnostic_code() {
+                ui.label(code);
+            }
+            if let Some(id) = &failure.stage.unit {
+                ui.label(format!("{} {id}", tr(zh, "单元", "Unit")));
+            }
+        };
+        ui.collapsing(tr(zh, "诊断依据", "Diagnostic evidence"), diagnostics);
         let completed: Vec<_> = failure
             .completed_blocks
             .iter()
@@ -214,26 +222,29 @@ impl<'a> Panel<'a> {
                 ui,
                 failure.stage.block,
                 r,
-                BlockState::Interrupted(failure.kind),
+                if matches!(
+                    balance.map(|b| &b.scope),
+                    Some(MaterialBalanceScope::RecycleRegion { .. })
+                ) {
+                    BlockState::RegionBalanceFailed
+                } else {
+                    BlockState::Interrupted(failure.kind)
+                },
                 compact,
                 tear_is_bound(self.workspace, &r.tear),
             );
-        } else if let Some(index) = failure.stage.block {
+        } else if let Some(index) = failure.stage.block
+            && !matches!(
+                balance.map(|b| &b.scope),
+                Some(MaterialBalanceScope::Flowsheet)
+            )
+        {
             ui.label(format!(
                 "{} {}",
                 tr(zh, "终止阶段 · 依赖块", "Stopped at block"),
                 index + 1
             ));
         }
-        ui.collapsing(tr(zh, "诊断依据", "Diagnostic evidence"), |ui| {
-            ui.label(failure.error.to_string());
-            if let Some(code) = failure.error.context().diagnostic_code() {
-                ui.label(code);
-            }
-            if let Some(id) = &failure.stage.unit {
-                ui.label(format!("{} {id}", tr(zh, "单元", "Unit")));
-            }
-        });
         ui.small(format!(
             "{} {}",
             tr(zh, "实际局部调用", "Actual local calls"),
@@ -276,6 +287,11 @@ impl<'a> Panel<'a> {
                         zh,
                         "本块复核通过 · 仅诊断",
                         "Block verification passed · Diagnostic only",
+                    ),
+                    BlockState::RegionBalanceFailed => tr(
+                        zh,
+                        "撕裂复核通过 · 区域衡算超限",
+                        "Tear verification passed · Region balance failed",
                     ),
                     BlockState::Interrupted(PartitionedFailureKind::IterationLimit)
                         if r.verification_evaluations == 0 =>
@@ -391,46 +407,5 @@ fn transfer(
             source + 1,
             index + 1
         ));
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use rf_solver::partitioned::PartitionedProgress;
-    use rf_types::{RfError, UnitId};
-
-    #[test]
-    fn balance_location_requires_a_unit_evaluation_and_its_balance_diagnostic() {
-        let error = RfError::invalid_input("balance")
-            .with_diagnostic_code("solver.partitioned.component_balance");
-        let unit = UnitId::new("heater-7");
-        let mut failure = PartitionedSolveFailure {
-            kind: PartitionedFailureKind::Balance,
-            error,
-            stage: PartitionedProgress {
-                stage: PartitionedStage::UnitStarted,
-                block: Some(8),
-                unit: Some(unit.clone()),
-                phase: None,
-                evaluation: None,
-                residual: None,
-            },
-            completed_blocks: vec![],
-            active_units: vec![],
-            active_recycle: None,
-            costs: SolveCosts::default(),
-        };
-        assert_eq!(unit_balance_location(&failure), Some((8, &unit)));
-        for stage in [
-            PartitionedStage::VerificationCompleted,
-            PartitionedStage::Completing,
-        ] {
-            failure.stage.stage = stage;
-            assert_eq!(unit_balance_location(&failure), None);
-        }
-        failure.stage.stage = PartitionedStage::UnitStarted;
-        failure.error = RfError::invalid_input("local or overall material balance");
-        assert_eq!(unit_balance_location(&failure), None);
     }
 }

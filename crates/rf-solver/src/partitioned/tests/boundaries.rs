@@ -232,9 +232,30 @@ fn total_flow_acceptance_propagates_component_tolerances_instead_of_using_a_perc
         for z in output.overall_mole_fractions.values_mut() {
             *z *= 5.0 / output.total_molar_flow_mol_s;
         }
-        assert_eq!(
-            checks::balance(&plan, std::slice::from_ref(&input), &[output], &scales).is_ok(),
-            accepted
+        let result = checks::balance(
+            &plan,
+            std::slice::from_ref(&input),
+            std::slice::from_ref(&output),
+            &scales,
         );
+        if accepted {
+            result.unwrap();
+        } else {
+            let Err(crate::fixed_tp_material::BalanceCheckError::Exceeded(readings)) = result
+            else {
+                panic!("expected only the total flow to exceed tolerance")
+            };
+            assert!(readings.exceeded_components.is_empty());
+            assert!(readings.total_exceeded);
+            assert_eq!(readings.total.input_mol_s, input.total_molar_flow_mol_s);
+            assert_eq!(readings.total.output_mol_s, output.total_molar_flow_mol_s);
+            assert_eq!(
+                readings.total.difference_mol_s,
+                output.total_molar_flow_mol_s - input.total_molar_flow_mol_s
+            );
+            assert!(
+                readings.total.difference_mol_s > readings.tolerances.total_absolute_flow_mol_s
+            );
+        }
     }
 }
