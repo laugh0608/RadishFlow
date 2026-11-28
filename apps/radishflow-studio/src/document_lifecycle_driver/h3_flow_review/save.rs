@@ -167,6 +167,16 @@ impl H3FlowReview {
         preview: &H3FlowPreview,
         previous: Option<&ConcentricTubeFlowAssociation>,
     ) -> RfResult<&ConcentricTubeRatingTask> {
+        let task = self.check_save_inputs(preview, previous)?;
+        self.check_source_bytes()?;
+        Ok(task)
+    }
+
+    pub(super) fn check_save_inputs(
+        &self,
+        preview: &H3FlowPreview,
+        previous: Option<&ConcentricTubeFlowAssociation>,
+    ) -> RfResult<&ConcentricTubeRatingTask> {
         let task = self.current_case(preview)?;
         if task.case.flow_association.as_ref() != previous {
             return Err(super::inputs_changed());
@@ -180,7 +190,6 @@ impl H3FlowReview {
                 "association save requires a flow result from the saved source inputs",
             ));
         }
-        self.check_source_bytes()?;
         Ok(task)
     }
 

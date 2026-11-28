@@ -3,6 +3,7 @@ use super::*;
 use radishflow_studio::{StudioH3AssociationEditor, StudioProjectOpen, StudioReadOnlyProject};
 use rf_ui::engineering::EquipmentCaseKey;
 mod association_editor;
+mod detachment;
 mod h3;
 mod h3_flow;
 
@@ -13,6 +14,7 @@ struct ReviewControls {
     edit_available: bool,
     focus_edit: bool,
     edit: Option<EquipmentCaseKey>,
+    unlink: Option<EquipmentCaseKey>,
 }
 
 impl ReviewControls {
@@ -39,6 +41,11 @@ impl ReviewControls {
             if button.clicked() {
                 self.edit = Some(member.clone());
             }
+            if linked
+                && h3::button(ui, tr(locale, "解除流股关联", "Detach stream association")).clicked()
+            {
+                self.unlink = Some(member.clone());
+            }
         }
     }
 }
@@ -50,6 +57,8 @@ pub(super) struct ReadOnlyProjectView {
     pub(super) project: Box<radishflow_studio::StudioReadOnlyProject>,
     h3: h3::ReviewState,
     h3_flow: h3_flow::ReviewState,
+    independent_tab: bool,
+    detachment: Option<detachment::DetachmentView>,
     association_editable: bool,
     editor: Option<AssociationEditorView>,
     focus_edit: bool,
@@ -70,6 +79,8 @@ impl ReadOnlyProjectView {
             project,
             h3: h3::ReviewState::default(),
             h3_flow: h3_flow::ReviewState::default(),
+            independent_tab: false,
+            detachment: None,
             association_editable,
             editor: None,
             focus_edit: false,
@@ -123,6 +134,14 @@ impl ReadyAppState {
             self.render_h3_association_editor(ctx);
             return true;
         }
+        if self
+            .read_only_project
+            .as_ref()
+            .is_some_and(|v| v.detachment.is_some())
+        {
+            self.render_h3_detachment(ctx);
+            return true;
+        }
         let Some(view) = &mut self.read_only_project else {
             return false;
         };
@@ -137,6 +156,7 @@ impl ReadyAppState {
             edit_available: view.association_editable && self.h3_flow_run.is_idle(),
             focus_edit: std::mem::take(&mut view.focus_edit),
             edit: None,
+            unlink: None,
         };
         if let Some(notice) = &view.association_notice {
             egui::TopBottomPanel::bottom("h3-association-open-notice").show(ctx, |ui| {
@@ -144,17 +164,47 @@ impl ReadyAppState {
             });
         }
         if let StudioReadOnlyProject::H3Flow(project) = view.project.as_mut() {
+            controls.edit_available &= project.activity(&self.h3_flow_run).is_none();
+            if project.saved_inputs().independent_cases().next().is_some() {
+                egui::TopBottomPanel::top("h3-case-kinds").show(ctx, |ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.selectable_value(
+                            &mut view.independent_tab,
+                            false,
+                            tr(self.locale, "关联工况", "Linked cases"),
+                        );
+                        ui.selectable_value(
+                            &mut view.independent_tab,
+                            true,
+                            tr(self.locale, "独立工况", "Independent cases"),
+                        );
+                    });
+                });
+            }
             let close = close_requested
-                || view.h3_flow.render(
-                    ctx,
-                    project,
-                    &mut self.h3_flow_run,
-                    &view.path,
-                    self.locale,
-                    &mut controls,
-                );
+                || if view.independent_tab {
+                    view.h3.render(
+                        ctx,
+                        project.saved_inputs(),
+                        &view.path,
+                        self.locale,
+                        &mut controls,
+                    )
+                } else {
+                    view.h3_flow.render(
+                        ctx,
+                        project,
+                        &mut self.h3_flow_run,
+                        &view.path,
+                        self.locale,
+                        &mut controls,
+                    )
+                };
             if close {
                 self.close_read_only_project();
+                ctx.request_repaint();
+            } else if let Some(member) = controls.unlink {
+                view.detachment = Some(detachment::DetachmentView::new(member));
                 ctx.request_repaint();
             } else if let Some(member) = controls.edit {
                 view.enter_association_editor(member);
@@ -262,7 +312,7 @@ impl ReadyAppState {
                 editor.detach(&mut self.h3_flow_run);
                 view.editor = None;
                 view.focus_edit = true;
-                self.refresh_h3_review_on_return();
+                self.refresh_h3_review_on_return(false);
             }
             EditorAction::OpenSaved(path, member) => match read_studio_gui_project(&path) {
                 Ok(StudioProjectOpen::ReadOnly(project)) => {
@@ -286,14 +336,15 @@ impl ReadyAppState {
         ctx.request_repaint();
     }
 
-    fn refresh_h3_review_on_return(&mut self) {
+    fn refresh_h3_review_on_return(&mut self, force_reload: bool) {
         let view = self
             .read_only_project
             .as_ref()
             .expect("returning from association editor");
         let path = view.path.clone();
-        if std::fs::read_to_string(&path)
-            .is_ok_and(|contents| contents == view.project.original_json())
+        if !force_reload
+            && std::fs::read_to_string(&path)
+                .is_ok_and(|contents| contents == view.project.original_json())
         {
             return;
         }

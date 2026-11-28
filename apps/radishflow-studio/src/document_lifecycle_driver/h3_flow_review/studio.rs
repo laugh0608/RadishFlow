@@ -56,6 +56,7 @@ enum ReviewWork {
 struct Pending {
     member: EquipmentCaseKey,
     work: ReviewWork,
+    preview_only: bool,
 }
 
 #[derive(Debug)]
@@ -64,6 +65,8 @@ pub struct StudioH3FlowReview {
     current: Option<H3FlowRating>,
     records: BTreeMap<EquipmentCaseKey, ReviewRecord>,
     pending: Option<Pending>,
+    source_needs_reload: bool,
+    detachment: Option<(H3FlowPreview, rf_store::project_v4::PreparedProjectV4Write)>,
 }
 
 impl StudioH3FlowReview {
@@ -83,6 +86,8 @@ impl StudioH3FlowReview {
             current: None,
             records: BTreeMap::new(),
             pending: None,
+            detachment: None,
+            source_needs_reload: false,
         })
     }
 
@@ -104,6 +109,107 @@ impl StudioH3FlowReview {
 
     pub fn basis(&self) -> &EngineeringBasis {
         self.review.saved.basis()
+    }
+
+    pub fn saved_inputs(&self) -> &crate::StudioH3Review {
+        &self.review.saved
+    }
+
+    pub fn detachment_needs_reload(&self) -> bool {
+        self.source_needs_reload
+    }
+
+    fn verify_detachment_source(&mut self) -> RfResult<()> {
+        if self.source_needs_reload {
+            return Err(super::rejected(
+                "source_changed",
+                "reload the changed H3 source project",
+            ));
+        }
+        let verified = self.review.check_source_bytes();
+        self.source_needs_reload = verified.is_err();
+        verified
+    }
+
+    fn detachment_case(&self, preview: &H3FlowPreview) -> RfResult<&ConcentricTubeRatingTask> {
+        if self.pending.is_some() {
+            return Err(super::inputs_changed());
+        }
+        let pair = rf_model::equipment::ConcentricTubeFlowAssociation {
+            hot: preview.hot.clone(),
+            cold: preview.cold.clone(),
+        };
+        let task = self.review.check_save_inputs(preview, Some(&pair))?;
+        bundled_water::check_case(
+            self.qualification(),
+            self.review
+                .workspace()
+                .document
+                .flowsheet
+                .property_package_id(),
+            self.basis(),
+            &task.case,
+        )?;
+        Ok(task)
+    }
+
+    pub fn has_current_flow(&self) -> bool {
+        matches!(
+            self.review.workspace().flow_result(),
+            FlowResultView::Current { .. }
+        )
+    }
+
+    pub fn prepare_detachment(
+        &mut self,
+        member: &EquipmentCaseKey,
+        target: super::H3AssociationSaveTarget<'_>,
+    ) -> RfResult<()> {
+        self.cancel_detachment();
+        self.verify_detachment_source()?;
+        let preview = self.review.preview_saved(member.clone())?;
+        let task = self.detachment_case(&preview)?;
+        let copy = match target {
+            super::H3AssociationSaveTarget::Source => None,
+            super::H3AssociationSaveTarget::NewFile(path) => Some(
+                std::path::absolute(path)
+                    .map_err(|e| RfError::invalid_input(format!("resolve new H3 project: {e}")))?,
+            ),
+        };
+        let write = rf_store::project_v4::prepare_h3_detachment(
+            self.review.source_path()?,
+            self.review.saved.file_sha256(),
+            task,
+            preview.hot_inlet,
+            preview.cold_inlet,
+            copy.as_deref(),
+        )?;
+        self.detachment = Some((preview, write));
+        Ok(())
+    }
+
+    pub fn prepared_detachment(&self) -> Option<(&H3FlowPreview, &Path)> {
+        self.detachment
+            .as_ref()
+            .map(|(preview, write)| (preview, write.path()))
+    }
+
+    pub fn cancel_detachment(&mut self) {
+        self.detachment = None;
+    }
+
+    pub fn confirm_detachment(
+        &mut self,
+        member: &EquipmentCaseKey,
+    ) -> RfResult<std::path::PathBuf> {
+        let (preview, write) = self.detachment.take().ok_or_else(super::inputs_changed)?;
+        if preview.member() != member {
+            return Err(super::inputs_changed());
+        }
+        self.verify_detachment_source()?;
+        self.detachment_case(&preview)?;
+        rf_store::project_v4::write_prepared(&write, false)?;
+        Ok(write.path().to_owned())
     }
 
     pub fn qualification(&self) -> &H3PureWaterQualification {
@@ -186,6 +292,25 @@ impl StudioH3FlowReview {
         member: &EquipmentCaseKey,
         now: SystemTime,
     ) -> bool {
+        self.start_flow(owner, member, now, false)
+    }
+
+    pub fn start_detachment_preview(
+        &mut self,
+        owner: &mut WorkspaceRunOwner,
+        member: &EquipmentCaseKey,
+        now: SystemTime,
+    ) -> bool {
+        self.start_flow(owner, member, now, true)
+    }
+
+    fn start_flow(
+        &mut self,
+        owner: &mut WorkspaceRunOwner,
+        member: &EquipmentCaseKey,
+        now: SystemTime,
+        preview_only: bool,
+    ) -> bool {
         if self.pending.is_some() || !owner.is_idle() {
             return false;
         }
@@ -224,6 +349,7 @@ impl StudioH3FlowReview {
                 return false;
             }
         };
+        self.cancel_detachment();
         if let Some(previous) = self.current.take() {
             self.records
                 .insert(previous.preview.member().clone(), ReviewRecord::Stale);
@@ -232,6 +358,7 @@ impl StudioH3FlowReview {
         self.pending = Some(Pending {
             member: member.clone(),
             work: ReviewWork::Flow(id),
+            preview_only,
         });
         true
     }
@@ -276,7 +403,14 @@ impl StudioH3FlowReview {
                     && summary.disposition == FlowRunDisposition::Applied
                     && summary.outcome == WorkspaceExecutionOutcome::Succeeded
                 {
-                    self.pending.as_mut().expect("flow task").work = ReviewWork::Rating;
+                    if pending.preview_only {
+                        let member = self.pending.take().expect("flow preview").member;
+                        if let Err(error) = self.review.preview_saved(member.clone()) {
+                            self.records.insert(member, ReviewRecord::Blocked(error));
+                        }
+                    } else {
+                        self.pending.as_mut().expect("flow task").work = ReviewWork::Rating;
+                    }
                 } else {
                     let pending = self.pending.take().expect("flow task");
                     let cancelled = summary.cancellation.is_some()

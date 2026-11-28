@@ -48,6 +48,10 @@ impl Default for ReviewState {
 }
 
 impl ReviewState {
+    pub(super) fn select_saved_case(&mut self, member: EquipmentCaseKey) {
+        self.selected = Some(member);
+    }
+
     pub(super) fn render(
         &mut self,
         ctx: &egui::Context,
@@ -60,7 +64,7 @@ impl ReviewState {
             return true;
         }
         if self.selected.is_none() {
-            self.selected = project.cases().next().map(member);
+            self.selected = project.independent_cases().next().map(member);
         }
         let mut close = false;
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -96,7 +100,7 @@ impl ReviewState {
                             "Rate the saved inputs. Results are kept for this review only.",
                         ));
                         ui.add_space(8.0);
-                        let multiple = project.cases().nth(1).is_some();
+                        let multiple = project.independent_cases().nth(1).is_some();
                         if multiple && ui.available_width() >= 860.0 {
                             let width = ui.available_width();
                             ui.horizontal_top(|ui| {
@@ -125,7 +129,7 @@ impl ReviewState {
     fn case_picker(&mut self, ui: &mut egui::Ui, project: &StudioH3Review, l: StudioShellLocale) {
         panel(ui).show(ui, |ui| {
             ui.heading(tr(l, "工况", "Cases"));
-            let tasks: Vec<_> = project.cases().collect();
+            let tasks: Vec<_> = project.independent_cases().collect();
             let columns = if ui.available_width() >= 320.0 { 2 } else { 1 };
             for pair in tasks.chunks(columns) {
                 ui.columns(pair.len(), |uis| {

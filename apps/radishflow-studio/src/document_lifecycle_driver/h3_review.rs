@@ -88,6 +88,11 @@ impl StudioH3Review {
             .filter_map(|task| task.as_concentric_tube_rating())
     }
 
+    pub fn independent_cases(&self) -> impl Iterator<Item = &ConcentricTubeRatingTask> {
+        self.cases()
+            .filter(|task| task.case.flow_association.is_none())
+    }
+
     pub fn case(&self, member: &EquipmentCaseKey) -> Option<&ConcentricTubeRatingTask> {
         self.cases()
             .find(|task| task.id == member.task_id && task.case.id == member.case_id)

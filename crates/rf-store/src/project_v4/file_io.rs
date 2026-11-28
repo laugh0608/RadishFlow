@@ -216,6 +216,81 @@ pub fn prepare_write_with_equipment_support(
         target_has_variable_watch_list,
     })
 }
+/// Freeze only the reviewed pair from these exact source bytes. Building the
+/// new document here keeps ordinary v4 overwrites subject to the removal guard.
+pub fn prepare_h3_detachment(
+    source: &Path,
+    source_sha256: &str,
+    reviewed: &rf_model::equipment::ConcentricTubeRatingTask,
+    hot: rf_model::equipment::ConcentricTubeLiquidInlet,
+    cold: rf_model::equipment::ConcentricTubeLiquidInlet,
+    new_file: Option<&Path>,
+) -> RfResult<PreparedProjectV4Write> {
+    let support = FlowPlanSupport::Sequential;
+    let equipment_support = EquipmentSupport::ConcentricTubeFlowAssociation;
+    let bytes = fs::read(source)
+        .map_err(|error| RfError::invalid_input(format!("read H3 detachment source: {error}")))?;
+    if sha256_hex(&bytes) != source_sha256 {
+        return Err(RfError::invalid_input("H3 detachment source changed")
+            .with_diagnostic_code("store.project.save_target_changed"));
+    }
+    let original = std::str::from_utf8(&bytes)
+        .map_err(|error| RfError::invalid_input(format!("project source UTF-8: {error}")))?;
+    let ProjectV4Read::Editable(mut project) =
+        parse_with_equipment_support(original, support, equipment_support)?
+    else {
+        return Err(readonly_target());
+    };
+    let task = project
+        .engineering
+        .iter_mut()
+        .flat_map(|inputs| &mut inputs.tasks)
+        .find_map(|entry| match entry {
+            rf_model::equipment::EquipmentTask::ConcentricTubeRating(task)
+                if task.as_ref() == reviewed && task.case.flow_association.is_some() =>
+            {
+                Some(task)
+            }
+            _ => None,
+        })
+        .ok_or_else(|| RfError::invalid_input("the reviewed H3 task or binding changed"))?;
+    let increment = |n: u64| {
+        n.checked_add(1)
+            .ok_or_else(|| RfError::invalid_input("H3 detachment revision exhausted"))
+    };
+    task.case.flow_association = None;
+    task.case.hot.inlet = hot;
+    task.case.cold.inlet = cold;
+    task.case.revision = increment(task.case.revision)?;
+    task.revision = increment(task.revision)?;
+    project.document.revision = increment(project.document.revision)?;
+    project.document.metadata.updated_at =
+        std::time::SystemTime::now().max(project.document.metadata.updated_at);
+    let target_has_variable_watch_list = project.variable_watch_list.is_some();
+    let output = ProjectV4Read::Editable(project);
+    if let Some(path) = new_file {
+        return prepare_write_with_equipment_support(
+            path,
+            &output,
+            FileOverwritePolicy::Forbid,
+            support,
+            equipment_support,
+        );
+    }
+    Ok(PreparedProjectV4Write {
+        path: source.into(),
+        contents: to_pretty_json_with_equipment_support(&output, support, equipment_support)?,
+        support,
+        equipment_support,
+        target_fingerprint: Some(source_sha256.into()),
+        requires_upgrade: false,
+        target_has_object_identities: true,
+        replaces_target_object_identities: false,
+        replaces_target_variable_watch_list: false,
+        target_has_variable_watch_list,
+    })
+}
+
 pub fn write_prepared(prepared: &PreparedProjectV4Write, upgrade_confirmed: bool) -> RfResult<()> {
     if prepared.requires_upgrade && !upgrade_confirmed {
         return Err(RfError::invalid_input(

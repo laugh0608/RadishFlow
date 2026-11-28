@@ -1,3 +1,5 @@
+mod detachment;
+
 use super::*;
 use crate::{
     StudioProjectOpen, StudioReadOnlyProject, WorkspaceRunCancelReason, read_studio_project,

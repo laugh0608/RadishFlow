@@ -50,7 +50,7 @@
 - [x] S-09、Q7、Q9 已验。Q10 回执已收口，Rust、Studio 与 [CLI v16](../reference/headless-cli.md#v16-分块物料衡算失败回执) 已验三类衡算失败，七个旧版 CLI 通过兼容对照。
 - [x] macOS 已验双流股端口对照及[组分查询、引用保护、重开与进料组分核对](../topics/property/component-catalog-and-selection.md)。
 - [x] [显热回流](../topics/modeling/recycle-and-block-execution.md#固定压力单相显热回流) 已接通 v4、CLI v12 与 Studio。
-- [x] H3 流程关联 v14／Studio 已验 40／50 mol/s、重跑、迟到回执、保存冲突与重开。[解除关联字段对照与验收表](../topics/equipment/heat-exchanger-design-and-rating.md#h3-解除关联转为独立工况评审稿)待评审。
+- [x] H3 关联复核与[解除关联](../topics/equipment/heat-exchanger-design-and-rating.md#h3-解除关联转为独立工况)已验两档复算、取消与冲突、混合工程重开。
 - [x] [AF3-V10 macOS 原版等待中返回](../topics/runtime-messages/scenarios-and-acceptance.md#af3c-实施覆盖2026-10-24) 已在同一窗口验证草稿保留、取消回执拒收、旧 Current 保留和显式重跑接收。
 - [x] VB2 进料批量与 [VB3 CLI 只读首片](../topics/variable-and-object-browser.md#接下来事项)已接通。Q1 暂缓。
 - [ ] [C2-A](../thermo/mvp-model.md#接下来事项) 待取得 Parrish 原页和公开复用依据，再冻结二元留出矩阵。
