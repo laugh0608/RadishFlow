@@ -183,7 +183,7 @@ mod tests {
     }
 
     #[test]
-    fn text_file_failed_staging_preserves_target() {
+    fn partial_staged_write_leaves_existing_and_new_targets_ready_for_retry() {
         let directory = std::env::temp_dir().join(format!(
             "rf-text-failure-{}",
             SystemTime::now()
@@ -192,25 +192,36 @@ mod tests {
                 .as_nanos()
         ));
         fs::create_dir(&directory).unwrap();
-        let path = directory.join("result.txt");
-        fs::write(&path, "original").unwrap();
-        let result = write_staged_file_with(
-            &path,
-            b"replacement",
-            "test write",
-            FileOverwritePolicy::Allow,
-            |mut file, staged, _, action| {
-                file.write_all(b"partial replacement").unwrap();
-                Err(map_io_error(
-                    action,
-                    staged,
-                    &std::io::Error::other("injected write failure"),
-                ))
-            },
-        );
-        assert!(result.is_err());
-        assert_eq!(fs::read_to_string(&path).unwrap(), "original");
-        assert_eq!(fs::read_dir(&directory).unwrap().count(), 1);
+        let existing = directory.join("existing.txt");
+        let new = directory.join("new.txt");
+        fs::write(&existing, "original").unwrap();
+        let targets = [
+            (&existing, FileOverwritePolicy::Allow),
+            (&new, FileOverwritePolicy::Forbid),
+        ];
+        let full = std::io::Error::from(std::io::ErrorKind::StorageFull);
+        for (path, policy) in targets {
+            let error = write_staged_file_with(
+                path,
+                b"replacement",
+                "test write",
+                policy,
+                |mut file, staged, contents, action| {
+                    file.write_all(&contents[..4]).unwrap();
+                    Err(map_io_error(action, staged, &full))
+                },
+            )
+            .unwrap_err();
+            assert!(error.message().contains(&full.to_string()));
+            assert_eq!(fs::read_to_string(&existing).unwrap(), "original");
+            assert!(!new.try_exists().unwrap());
+            assert_eq!(fs::read_dir(&directory).unwrap().count(), 1);
+        }
+        for (path, policy) in targets {
+            write_text_file(path, "replacement", policy).unwrap();
+            assert_eq!(fs::read_to_string(path).unwrap(), "replacement");
+        }
+        assert_eq!(fs::read_dir(&directory).unwrap().count(), 2);
         fs::remove_dir_all(directory).unwrap();
     }
 }
