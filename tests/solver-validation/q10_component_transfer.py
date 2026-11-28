@@ -6,7 +6,7 @@ match fixed-tp-q7-serial-recycle.rfproj.json. Only material flows are evaluated.
 
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import NamedTuple
+from typing import NamedTuple, Union
 
 
 ABSOLUTE = 1e-10  # mol/s per component
@@ -18,6 +18,17 @@ class Stream(NamedTuple):
     total: float
     ethane: float
     methane: float
+
+
+class Sweep(NamedTuple):
+    region: int
+    evaluation: Union[int, str]  # Candidate iteration number or "verification".
+    fraction: float
+    fresh: Stream
+    assumed: Stream
+    mixed: Stream
+    returned: Stream
+    product: Stream
 
 
 class Balance(NamedTuple):
@@ -65,7 +76,7 @@ class Transfer:
             inlet.methane * fraction,
         )
 
-    def region(self, index, fresh, fraction):
+    def region(self, index, fresh, fraction, on_sweep=None):
         recycle = Stream(0.0, 0.0, 0.0)
 
         def sweep(tear, evaluation):
@@ -80,6 +91,8 @@ class Transfer:
                 abs(returned.ethane - assumed.ethane),
                 abs(returned.methane - assumed.methane),
             )
+            if on_sweep is not None:
+                on_sweep(Sweep(index, evaluation, fraction, fresh, assumed, mixed, returned, product))
             return returned, product, residual
 
         for iteration in range(1, 501):
@@ -92,14 +105,14 @@ class Transfer:
                 return product, iteration, balance
         raise ValueError("iteration budget exhausted")
 
-    def run(self, feed_b, heater_loss=0.0):
+    def run(self, feed_b, heater_loss=0.0, *, on_sweep=None):
         a = Stream(2.0, 2.0 * 0.2, 2.0 * 0.8)
         b = Stream(feed_b, feed_b * 0.8, feed_b * 0.2)
         scale = a.total + b.total
         fresh = self.mix(a, b)
         check("fresh mixer", [a, b], [fresh], scale)
-        bleed, first, first_balance = self.region(1, fresh, 0.6)
-        inlet, second, second_balance = self.region(2, bleed, 0.25)
+        bleed, first, first_balance = self.region(1, fresh, 0.6, on_sweep)
+        inlet, second, second_balance = self.region(2, bleed, 0.25, on_sweep)
         outlet = self.stream(inlet.total - heater_loss, inlet.ethane - heater_loss, inlet.methane)
         heater = check("heater", [inlet], [outlet], scale)
         overall = check("overall", [a, b], [outlet], scale)
