@@ -17,6 +17,26 @@ fn zero_split_keeps_structural_cycle_and_explicit_zero_flow_composition_rule() {
     );
     assert_flows(&result, "s-product", 2.2, 2.8, 1e-9);
 }
+
+#[test]
+fn positive_recycle_survives_when_the_product_fraction_rounds_to_one() {
+    let fraction = 2.0_f64.powi(-54);
+    assert_eq!(1.0 - fraction, 1.0);
+    let (flow, options) = case(fraction);
+    let result = solve(&flow, &options).unwrap();
+
+    // The analytical return is fresh * fraction / (1 - fraction). At this
+    // fraction the correction is smaller than one ulp of either component.
+    let tolerance = 5.0 * fraction * f64::EPSILON;
+    assert_flows(
+        &result,
+        "s-recycle",
+        2.2 * fraction,
+        2.8 * fraction,
+        tolerance,
+    );
+}
+
 #[test]
 fn one_zero_feed_and_registered_absent_component_preserve_dimension() {
     let (mut flow, mut options) = case(0.6);

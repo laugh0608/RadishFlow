@@ -76,6 +76,10 @@ class Transfer:
             inlet.methane * fraction,
         )
 
+    def split_after_mix(self, fresh, assumed, mixed, fraction):
+        """The reference Splitter uses the rounded Mixer outlet for both branches."""
+        return self.split(mixed, fraction), self.split(mixed, 1.0 - fraction)
+
     def region(self, index, fresh, fraction, on_sweep=None):
         recycle = Stream(0.0, 0.0, 0.0)
 
@@ -84,8 +88,7 @@ class Transfer:
             assumed = Stream(tear.ethane + tear.methane, tear.ethane, tear.methane)
             mixed = self.mix(fresh, assumed)
             check(f"region {index} mixer {evaluation}", [fresh, assumed], [mixed], fresh.total)
-            returned = self.split(mixed, fraction)
-            product = self.split(mixed, 1.0 - fraction)
+            returned, product = self.split_after_mix(fresh, assumed, mixed, fraction)
             check(f"region {index} splitter {evaluation}", [mixed], [returned, product], fresh.total)
             residual = max(
                 abs(returned.ethane - assumed.ethane),
